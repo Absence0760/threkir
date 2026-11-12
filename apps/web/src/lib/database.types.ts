@@ -6897,58 +6897,6 @@ export type Database = {
           updated_at: string | null
           user_id: string | null
         }
-        Insert: {
-          age_grade_pct?: never
-          bib?: string | null
-          chip_time_s?: number | null
-          clock_offset_ms?: never
-          course_id?: string | null
-          created_at?: string | null
-          distance_m?: number | null
-          duration_s?: number | null
-          event_id?: string | null
-          finish_detection?: never
-          finish_method?: string | null
-          finisher_name?: string | null
-          finisher_status?: string | null
-          gun_time_s?: number | null
-          id?: string | null
-          instance_start?: string | null
-          needs_review?: never
-          note?: never
-          organiser_approved?: boolean | null
-          rank?: number | null
-          run_id?: never
-          start_detection?: never
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          age_grade_pct?: never
-          bib?: string | null
-          chip_time_s?: number | null
-          clock_offset_ms?: never
-          course_id?: string | null
-          created_at?: string | null
-          distance_m?: number | null
-          duration_s?: number | null
-          event_id?: string | null
-          finish_detection?: never
-          finish_method?: string | null
-          finisher_name?: string | null
-          finisher_status?: string | null
-          gun_time_s?: number | null
-          id?: string | null
-          instance_start?: string | null
-          needs_review?: never
-          note?: never
-          organiser_approved?: boolean | null
-          rank?: number | null
-          run_id?: never
-          start_detection?: never
-          updated_at?: string | null
-          user_id?: string | null
-        }
         Relationships: [
           {
             foreignKeyName: "event_results_course_id_fkey"

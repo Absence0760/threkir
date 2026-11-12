@@ -280,8 +280,11 @@ class LineCalibrationTest {
             parseCalibrationInstants("2026-11-10T07:42:13", day, zone)!!.single(),
             0.0,
         )
+        // An epoch-ms double near 1.79e12 resolves 2^-12 ms (0.244 us), so the
+        // microsecond survives to within half a microsecond and no finer:
+        // 0.123 comes back as 0.123046875.
         assertEquals(0.123, parseCalibrationInstants("00:00:00.000123", day, ZoneId.of("UTC"))!!.single() -
-            ZonedDateTime.of(2026, 11, 10, 0, 0, 0, 0, ZoneId.of("UTC")).toInstant().toEpochMilli(), 1e-9)
+            ZonedDateTime.of(2026, 11, 10, 0, 0, 0, 0, ZoneId.of("UTC")).toInstant().toEpochMilli(), 5e-4)
     }
 
     @Test

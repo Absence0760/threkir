@@ -28,18 +28,18 @@ export function isDeadlineReason(reason: CourseReportReason): boolean {
   return DEADLINE_REASONS.includes(reason);
 }
 
-/// The per-address rate-limit bucket a signed-out report spends, or null for
-/// none. `ip` is the address the trusted header established (null when it
-/// did not). An ordinary report always spends one: with no address it shares
-/// the single `unknown` bucket, which is the fail-closed choice. A deadline
-/// request spends its own bucket, apart from the ordinary one; with no
-/// address it spends none, because the shared `unknown` bucket is spent by
-/// everyone else without one, and a request with a deadline must not be
-/// refused for their traffic. submit_park_course_report's 120-an-hour
-/// deadline cap still bounds it.
-export function addressBucket(reason: CourseReportReason, ip: string | null): string | null {
+/// The per-address rate-limit bucket a signed-out report spends. `ip` is the
+/// address the trusted header established, or null; the bucket's key is that
+/// address, or the one `unknown` key every caller without one shares. Every
+/// signed-out report spends a bucket. A deadline request spends one apart
+/// from the ordinary one, so ordinary traffic cannot lock it out, and a
+/// deadline request with no address spends a third, shared only with other
+/// such requests: it caps the admin notices header-less callers can raise at
+/// one address's worth an hour, where submit_park_course_report's own
+/// deadline cap would admit 120.
+export function addressBucket(reason: CourseReportReason, ip: string | null): string {
   if (!isDeadlineReason(reason)) return 'park-course-report:anon';
-  return ip === null ? null : 'park-course-report:anon:deadline';
+  return ip === null ? 'park-course-report:anon:deadline:unknown' : 'park-course-report:anon:deadline';
 }
 
 export const MAX_NOTES_LEN = 1000;

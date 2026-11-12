@@ -400,9 +400,12 @@ reply; a rights-holder request must leave one.
   rights-holder requests an hour, neither bucket counting the other, so a
   flood of one cannot lock the other out (SQLSTATE `PT429`, `20271224000600`);
   the Edge Function's per-address limit splits the same way, and a deadline
-  request whose address it cannot establish spends no per-address bucket
-  rather than the one every header-less caller shares; one pending report per course per signed-in
-  reporter, or per contact email when signed out; at most two links in a note.
+  request whose address it cannot establish spends a third bucket (10 an
+  hour) shared only with other such requests, not the one every header-less
+  ordinary report shares, so header-less callers can raise at most 10 admin
+  notices an hour rather than the database's 120; one pending report per
+  course per signed-in reporter, or per contact email when signed out; at
+  most two links in a note.
 - **The row** is a `reports` row (`target_kind = 'park_course'`) carrying
   `contact_email` and `signed_out`, so it shares the moderation queue, the
   legal hold and the retention purge. Anon and authenticated can neither write

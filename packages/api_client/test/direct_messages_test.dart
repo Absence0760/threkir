@@ -1236,6 +1236,36 @@ void main() {
       );
     });
 
+    test('every group refusal SQLSTATE maps to its reason; any other code '
+        'stays a PostgrestException', () async {
+      await _signIn(client);
+      const path = '/rest/v1/rpc/create_group_conversation';
+      const reasons = {
+        '0A000': GroupRefusal.unavailable,
+        'P0002': GroupRefusal.notFound,
+        '42501': GroupRefusal.refused,
+        '54000': GroupRefusal.capReached,
+        '22023': GroupRefusal.titleInvalid,
+      };
+      expect(reasons.values.toSet(), GroupRefusal.values.toSet(),
+          reason: 'a new GroupRefusal needs its SQLSTATE here');
+      fake.statusByPath[path] = 400;
+      for (final MapEntry(key: code, value: reason) in reasons.entries) {
+        fake.bodyByPath[path] = {'code': code, 'message': 'refused'};
+        await expectLater(
+          api.createGroupConversation('Tempo', ['a']),
+          throwsA(isA<GroupActionRefused>()
+              .having((e) => e.reason, 'reason', reason)),
+          reason: code,
+        );
+      }
+      fake.bodyByPath[path] = {'code': '23505', 'message': 'duplicate'};
+      await expectLater(
+        api.createGroupConversation('Tempo', ['a']),
+        throwsA(isA<PostgrestException>().having((e) => e.code, 'code', '23505')),
+      );
+    });
+
     test('the roster reads roles, invitations and names; outside it is notFound',
         () async {
       await _signIn(client);

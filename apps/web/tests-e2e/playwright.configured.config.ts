@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 
 import { defineConfig, devices } from '@playwright/test';
 
+import { viteCommand } from './fixtures/vite-command';
+
 /**
  * Dedicated Playwright config for surfaces that render only on a build with an
  * optional integration's public id set.
@@ -58,7 +60,7 @@ export default defineConfig({
 	reporter: process.env.CI ? [['github'], ['list']] : 'list',
 
 	webServer: {
-		command: `pnpm exec vite dev --port ${DEV_PORT}`,
+		command: viteCommand(`dev --port ${DEV_PORT}`),
 		cwd: WEB_DIR,
 		url: `http://localhost:${DEV_PORT}`,
 		reuseExistingServer: !process.env.CI,

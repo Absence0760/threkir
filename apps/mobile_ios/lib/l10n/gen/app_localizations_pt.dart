@@ -1297,6 +1297,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get safetyEmpty => 'Nenhum contacto de segurança ainda.';
 
   @override
+  String get safetyLoadFailed =>
+      'Não foi possível carregar os seus contactos de segurança. Nada foi removido. Verifique a sua ligação e tente novamente.';
+
+  @override
   String get safetyStatusPending => 'Pendente — a aguardar a confirmação';
 
   @override
@@ -15609,6 +15613,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routeConditionsEmpty => 'Ainda não há relatos.';
 
   @override
+  String get routeConditionsLoadFailed =>
+      'Não foi possível carregar os relatos. Verifique a sua ligação e tente novamente.';
+
+  @override
   String get routeConditionsLoading => 'A carregar…';
 
   @override
@@ -22103,6 +22111,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível alterar os pedidos de mensagem.';
 
   @override
+  String get asyncSwitchLoadFailed =>
+      'Não foi possível carregar esta definição. Toque para tentar novamente.';
+
+  @override
   String get messagesReact => 'Reagir';
 
   @override
@@ -23820,6 +23832,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get safetyEmpty => 'Nenhum contato de segurança ainda.';
+
+  @override
+  String get safetyLoadFailed =>
+      'Não foi possível carregar seus contatos de segurança. Nada foi removido. Verifique sua conexão e tente novamente.';
 
   @override
   String get safetyStatusPending => 'Pendente — aguardando a confirmação';
@@ -38123,6 +38139,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get routeConditionsEmpty => 'Ainda não há relatos.';
 
   @override
+  String get routeConditionsLoadFailed =>
+      'Não foi possível carregar os relatos. Verifique sua conexão e tente novamente.';
+
+  @override
   String get routeConditionsLoading => 'Carregando…';
 
   @override
@@ -44608,6 +44628,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get prefsMessageRequestsFailed =>
       'Não foi possível alterar as solicitações de mensagem.';
+
+  @override
+  String get asyncSwitchLoadFailed =>
+      'Não foi possível carregar esta configuração. Toque para tentar novamente.';
 
   @override
   String get messagesReact => 'Reagir';

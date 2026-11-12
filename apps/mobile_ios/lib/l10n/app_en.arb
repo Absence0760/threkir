@@ -1702,6 +1702,10 @@
   "@safetyEmpty": {
     "description": "Empty-state text when the user has no safety contacts"
   },
+  "safetyLoadFailed": "Couldn't load your safety contacts. Nothing has been removed. Check your connection and try again.",
+  "@safetyLoadFailed": {
+    "description": "Inline error on Settings > Safety when the contact lists could not be read; distinct from the empty state, and says nothing was lost"
+  },
   "safetyStatusPending": "Pending — waiting for them to confirm",
   "@safetyStatusPending": {
     "description": "Status badge for a contact who hasn't opted in yet"
@@ -20645,6 +20649,10 @@
   "@routeConditionsEmpty": {
     "description": "Empty state for the route condition-reports panel"
   },
+  "routeConditionsLoadFailed": "Couldn't load condition reports. Check your connection and try again.",
+  "@routeConditionsLoadFailed": {
+    "description": "Inline error in the route condition-reports panel when the reports could not be read; distinct from the empty state"
+  },
   "routeConditionsLoading": "Loading…",
   "@routeConditionsLoading": {
     "description": "Loading state for the route condition-reports panel"
@@ -29145,6 +29153,10 @@
   "prefsMessageRequestsFailed": "Couldn't update message requests.",
   "@prefsMessageRequestsFailed": {
     "description": "Banner when the message requests switch could not be saved; the switch reverts"
+  },
+  "asyncSwitchLoadFailed": "Couldn't load this setting. Tap to retry.",
+  "@asyncSwitchLoadFailed": {
+    "description": "Subtitle of a settings row whose saved value could not be read; the switch is hidden and tapping the row retries the read"
   },
   "messagesReact": "React",
   "@messagesReact": {

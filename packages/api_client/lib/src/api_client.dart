@@ -862,8 +862,8 @@ class ApiClient {
   /// read returns the union of the rows the caller owns and the rows naming
   /// THEM as someone else's contact, which the settings screen then renders as
   /// the caller's own list under their own email address.
-  /// Returns an empty list on read failure so the settings screen renders an
-  /// empty state rather than throwing.
+  /// Throws on read failure, so the settings screen can tell "couldn't load"
+  /// from "you have no contacts"; the log line carries only the error type.
   Future<List<SafetyContact>> fetchMySafetyContacts() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return const [];
@@ -882,7 +882,7 @@ class ApiClient {
           .toList();
     } catch (e) {
       debugPrint('fetchMySafetyContacts failed: ${safeErrorLabel(e)}');
-      return const [];
+      rethrow;
     }
   }
 
@@ -970,7 +970,7 @@ class ApiClient {
   /// Pending requests where the signed-in user is the named contact (matched
   /// by their account email via the `my_pending_safety_requests` SECURITY
   /// DEFINER RPC — the pending row isn't directly readable until they link by
-  /// confirming). Fails soft to an empty list.
+  /// confirming). Throws on read failure.
   Future<List<PendingSafetyRequest>> fetchPendingSafetyRequests() async {
     try {
       final data = await _client.rpc('my_pending_safety_requests',
@@ -982,7 +982,7 @@ class ApiClient {
           .toList();
     } catch (e) {
       debugPrint('fetchPendingSafetyRequests failed: ${safeErrorLabel(e)}');
-      return const [];
+      rethrow;
     }
   }
 
@@ -1018,9 +1018,10 @@ class ApiClient {
   /// `confirm_safety_contact`, which stamps `confirmed_at` in the same UPDATE.
   ///
   /// The owner's name comes from a second read; a shadow-hidden or otherwise
-  /// unreadable profile degrades to null rather than dropping the row, since
-  /// the consent controls are the point and the name is decoration. Fails
-  /// soft to an empty list like its siblings on this screen.
+  /// unreadable profile, or a failed name read, degrades to null rather than
+  /// dropping the row, since the consent controls are the point and the name
+  /// is decoration. A failed relationship read throws, like its siblings on
+  /// this screen.
   Future<List<SafetyContactOf>> fetchSafetyContactOf() async {
     try {
       final userId = _client.auth.currentUser?.id;
@@ -1037,13 +1038,19 @@ class ApiClient {
       // Cross-user reads must stay inside the granted column set
       // (migration 20260707_001) — a bare select() requests revoked columns
       // and PostgREST rejects the whole read with 42501.
-      final profiles = await readChunked(
-        ownerIds,
-        (chunk) async => _client
-            .from(UserProfileRow.table)
-            .select('id, display_name')
-            .inFilter(UserProfileRow.colId, chunk),
-      );
+      List<Map<String, dynamic>> profiles;
+      try {
+        profiles = await readChunked(
+          ownerIds,
+          (chunk) async => _client
+              .from(UserProfileRow.table)
+              .select('id, display_name')
+              .inFilter(UserProfileRow.colId, chunk),
+        );
+      } catch (e) {
+        debugPrint('fetchSafetyContactOf names failed: ${safeErrorLabel(e)}');
+        profiles = const [];
+      }
       final nameById = <String, String?>{
         for (final p in profiles)
           p['id'] as String: p['display_name'] as String?,
@@ -1057,7 +1064,7 @@ class ApiClient {
       ];
     } catch (e) {
       debugPrint('fetchSafetyContactOf failed: ${safeErrorLabel(e)}');
-      return const [];
+      rethrow;
     }
   }
 
@@ -1654,7 +1661,8 @@ class ApiClient {
   /// Community condition reports for a route, newest first. Reads through the
   /// `route_conditions_for_viewer` RPC, which gates visibility and nulls the
   /// anchor of any report inside the owner's privacy zones for a non-owner.
-  /// Fails closed (empty list) on error so a redaction failure never leaks.
+  /// Throws on error, so the panel can say "couldn't load" rather than "no
+  /// reports"; a redaction failure still returns no rows.
   Future<List<RouteConditionRow>> fetchRouteConditions(String routeId) async {
     if (routeId.isEmpty) return const [];
     try {
@@ -1668,7 +1676,7 @@ class ApiClient {
           .toList();
     } catch (e) {
       debugPrint('fetchRouteConditions failed: ${safeErrorLabel(e)}');
-      return const [];
+      rethrow;
     }
   }
 

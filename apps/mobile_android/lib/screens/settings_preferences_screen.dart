@@ -28,6 +28,7 @@ import '../settings_sync.dart';
 import '../typed_decimal.dart';
 import '../undo_queue.dart';
 import '../weekly_goal.dart';
+import '../widgets/async_switch_tile.dart';
 import '../widgets/top_banner.dart';
 import 'follow_requests_screen.dart';
 import 'nearby_area_screen.dart';
@@ -129,19 +130,24 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
 
   /// user_profiles.profile_private, not a prefs key: RLS and the public views
   /// read it (decisions § 1967), so it is read and written on the profile row.
-  bool _profilePrivate = false;
+  /// Null until read; a failed read sets [_profilePrivateFailed] instead of
+  /// guessing (issue #1374 FS-6).
+  bool? _profilePrivate;
   bool _profilePrivateSaving = false;
+  bool _profilePrivateFailed = false;
 
   /// user_settings.dm_read_receipts, a column because the server reads it when
   /// a message is marked read (migration 20271113000001). Null until read: the
   /// switch stays disabled rather than claim a state it has not seen.
   bool? _readReceipts;
   bool _readReceiptsSaving = false;
+  bool _readReceiptsFailed = false;
 
   /// user_settings.dm_requests, a column because the INSERT policy reads it
   /// (migration 20271213121601). Null until read, like [_readReceipts].
   bool? _messageRequests;
   bool _messageRequestsSaving = false;
+  bool _messageRequestsFailed = false;
 
   /// Date of birth lives in two stores under two rules (decisions § 718).
   /// [_profileDob] is the `user_profiles` age record behind the under-18
@@ -1172,17 +1178,19 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     }
   }
 
-  /// Best-effort (L4) on read: a failed read leaves the switch off, which is
-  /// the account's state until its owner turned it on.
+  /// A failed read shows a retry row, not the switch: OFF over a private
+  /// account would tell its owner their activity is public.
   Future<void> _loadProfilePrivate() async {
     final api = widget.apiClient;
     if (api == null) return;
+    if (_profilePrivateFailed) setState(() => _profilePrivateFailed = false);
     try {
       final value = await api.fetchMyProfilePrivate();
       if (!mounted) return;
       setState(() => _profilePrivate = value);
     } catch (e) {
       debugPrint('profile privacy read failed: $e');
+      if (mounted) setState(() => _profilePrivateFailed = true);
     }
   }
 
@@ -1210,12 +1218,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   Future<void> _loadReadReceipts() async {
     final api = widget.apiClient;
     if (api == null) return;
+    if (_readReceiptsFailed) setState(() => _readReceiptsFailed = false);
     try {
       final value = await api.fetchMyDmReadReceipts();
       if (!mounted) return;
       setState(() => _readReceipts = value);
     } catch (e) {
       debugPrint('read receipts read failed: $e');
+      if (mounted) setState(() => _readReceiptsFailed = true);
     }
   }
 
@@ -1243,12 +1253,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   Future<void> _loadMessageRequests() async {
     final api = widget.apiClient;
     if (api == null) return;
+    if (_messageRequestsFailed) setState(() => _messageRequestsFailed = false);
     try {
       final value = await api.fetchMyDmRequests();
       if (!mounted) return;
       setState(() => _messageRequests = value);
     } catch (e) {
       debugPrint('message requests read failed: $e');
+      if (mounted) setState(() => _messageRequestsFailed = true);
     }
   }
 
@@ -2006,25 +2018,26 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       onTap: _editCoachInMessages,
                     ),
                     if (widget.apiClient != null)
-                      SwitchListTile(
-                        key: const Key('prefsReadReceipts'),
-                        title: Text(l10n.prefsReadReceipts),
-                        subtitle: Text(l10n.prefsReadReceiptsHint),
-                        value: _readReceipts ?? false,
-                        onChanged: _readReceipts == null || _readReceiptsSaving
-                            ? null
-                            : _editReadReceipts,
+                      AsyncSwitchTile(
+                        switchKey: const Key('prefsReadReceipts'),
+                        title: l10n.prefsReadReceipts,
+                        subtitle: l10n.prefsReadReceiptsHint,
+                        value: _readReceipts,
+                        failed: _readReceiptsFailed,
+                        saving: _readReceiptsSaving,
+                        onChanged: _editReadReceipts,
+                        onRetry: _loadReadReceipts,
                       ),
                     if (widget.apiClient != null)
-                      SwitchListTile(
-                        key: const Key('prefsMessageRequests'),
-                        title: Text(l10n.prefsMessageRequests),
-                        subtitle: Text(l10n.prefsMessageRequestsHint),
-                        value: _messageRequests ?? false,
-                        onChanged:
-                            _messageRequests == null || _messageRequestsSaving
-                                ? null
-                                : _editMessageRequests,
+                      AsyncSwitchTile(
+                        switchKey: const Key('prefsMessageRequests'),
+                        title: l10n.prefsMessageRequests,
+                        subtitle: l10n.prefsMessageRequestsHint,
+                        value: _messageRequests,
+                        failed: _messageRequestsFailed,
+                        saving: _messageRequestsSaving,
+                        onChanged: _editMessageRequests,
+                        onRetry: _loadMessageRequests,
                       ),
                   ],
                 ),
@@ -2320,15 +2333,17 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                           : null,
                     ),
                     if (widget.apiClient != null) ...[
-                      SwitchListTile(
-                        key: const ValueKey('prefs-private-profile'),
-                        title: Text(l10n.prefsPrivateProfile),
-                        subtitle: Text(l10n.prefsPrivateProfileSubtitle),
+                      AsyncSwitchTile(
+                        switchKey: const ValueKey('prefs-private-profile'),
+                        title: l10n.prefsPrivateProfile,
+                        subtitle: l10n.prefsPrivateProfileSubtitle,
                         value: _profilePrivate,
-                        onChanged:
-                            _profilePrivateSaving ? null : _editProfilePrivate,
+                        failed: _profilePrivateFailed,
+                        saving: _profilePrivateSaving,
+                        onChanged: _editProfilePrivate,
+                        onRetry: _loadProfilePrivate,
                       ),
-                      if (_profilePrivate)
+                      if (_profilePrivate == true)
                         ListTile(
                           key: const ValueKey('prefs-follow-requests'),
                           title: Text(l10n.followRequestsTitle),

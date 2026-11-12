@@ -1298,6 +1298,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get safetyEmpty => 'Aucun contact de sécurité pour le moment.';
 
   @override
+  String get safetyLoadFailed =>
+      'Impossible de charger vos contacts de sécurité. Rien n\'a été supprimé. Vérifiez votre connexion et réessayez.';
+
+  @override
   String get safetyStatusPending => 'En attente — confirmation requise';
 
   @override
@@ -15635,6 +15639,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routeConditionsEmpty => 'Aucun signalement pour l\'instant.';
 
   @override
+  String get routeConditionsLoadFailed =>
+      'Impossible de charger les signalements. Vérifiez votre connexion et réessayez.';
+
+  @override
   String get routeConditionsLoading => 'Chargement…';
 
   @override
@@ -22141,6 +22149,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get prefsMessageRequestsFailed =>
       'Impossible de modifier les demandes de message.';
+
+  @override
+  String get asyncSwitchLoadFailed =>
+      'Impossible de charger ce réglage. Touchez pour réessayer.';
 
   @override
   String get messagesReact => 'Réagir';

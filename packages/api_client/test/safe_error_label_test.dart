@@ -59,23 +59,15 @@ void main() {
       fake.dispose();
     });
 
-    test('fetchMySafetyContacts fails soft and logs only the error type', () async {
+    // A failed read throws rather than answering an empty list: the settings
+    // screen rendered [] as "No safety contacts yet" and the runner re-added
+    // contacts that were never lost (issue #1374 FS-1).
+    test('fetchMySafetyContacts throws and logs only the error type', () async {
       // The list read is owner-scoped, so it needs a session before it will
       // reach the wire at all (decisions §720).
-      await fake.auth.setInitialSession(jsonEncode({
-        'access_token': 'fake-token',
-        'token_type': 'bearer',
-        'user': {
-          'id': 'user-1',
-          'aud': 'authenticated',
-          'app_metadata': <String, dynamic>{},
-          'user_metadata': <String, dynamic>{},
-          'created_at': '2026-01-01T00:00:00Z',
-        },
-      }));
+      await _signIn(fake);
       final api = ApiClient.withClient(fake);
-      final contacts = await api.fetchMySafetyContacts();
-      expect(contacts, isEmpty);
+      await expectLater(api.fetchMySafetyContacts(), throwsA(anything));
       final line = logged.singleWhere((l) => l.startsWith('fetchMySafetyContacts failed:'));
       expect(line, isNot(contains('127.0.0.1')));
       expect(line, isNot(contains('http')));
@@ -99,13 +91,44 @@ void main() {
       );
     });
 
-    test('fetchPendingSafetyRequests fails soft and logs only the error type', () async {
+    test('fetchPendingSafetyRequests throws and logs only the error type', () async {
       final api = ApiClient.withClient(fake);
-      final requests = await api.fetchPendingSafetyRequests();
-      expect(requests, isEmpty);
+      await expectLater(api.fetchPendingSafetyRequests(), throwsA(anything));
       final line = logged.singleWhere((l) => l.startsWith('fetchPendingSafetyRequests failed:'));
+      expect(line, isNot(contains('127.0.0.1')));
+      expect(line, isNot(contains('http')));
+    });
+
+    test('fetchSafetyContactOf throws and logs only the error type', () async {
+      await _signIn(fake);
+      final api = ApiClient.withClient(fake);
+      await expectLater(api.fetchSafetyContactOf(), throwsA(anything));
+      final line = logged.singleWhere((l) => l.startsWith('fetchSafetyContactOf failed:'));
+      expect(line, isNot(contains('127.0.0.1')));
+      expect(line, isNot(contains('http')));
+    });
+
+    // Issue #1374 FS-2: a failed read said "No condition reports yet" over a
+    // route someone had reported closed.
+    test('fetchRouteConditions throws and logs only the error type', () async {
+      final api = ApiClient.withClient(fake);
+      await expectLater(api.fetchRouteConditions('route-1'), throwsA(anything));
+      final line = logged.singleWhere((l) => l.startsWith('fetchRouteConditions failed:'));
       expect(line, isNot(contains('127.0.0.1')));
       expect(line, isNot(contains('http')));
     });
   });
 }
+
+Future<void> _signIn(SupabaseClient client) =>
+    client.auth.setInitialSession(jsonEncode({
+      'access_token': 'fake-token',
+      'token_type': 'bearer',
+      'user': {
+        'id': 'user-1',
+        'aud': 'authenticated',
+        'app_metadata': <String, dynamic>{},
+        'user_metadata': <String, dynamic>{},
+        'created_at': '2026-01-01T00:00:00Z',
+      },
+    }));

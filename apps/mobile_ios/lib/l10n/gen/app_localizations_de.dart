@@ -1301,6 +1301,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get safetyEmpty => 'Noch keine Sicherheitskontakte.';
 
   @override
+  String get safetyLoadFailed =>
+      'Deine Sicherheitskontakte konnten nicht geladen werden. Es wurde nichts entfernt. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get safetyStatusPending => 'Ausstehend — wartet auf Bestätigung';
 
   @override
@@ -15627,6 +15631,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get routeConditionsEmpty => 'Noch keine Meldungen.';
 
   @override
+  String get routeConditionsLoadFailed =>
+      'Meldungen konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get routeConditionsLoading => 'Wird geladen…';
 
   @override
@@ -22124,6 +22132,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get prefsMessageRequestsFailed =>
       'Nachrichtenanfragen konnten nicht geändert werden.';
+
+  @override
+  String get asyncSwitchLoadFailed =>
+      'Diese Einstellung konnte nicht geladen werden. Tippe, um es erneut zu versuchen.';
 
   @override
   String get messagesReact => 'Reagieren';

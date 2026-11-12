@@ -12,17 +12,46 @@ class ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
   final IconData icon;
+  final bool compact;
 
   const ErrorState({
     super.key,
     required this.message,
     required this.onRetry,
     this.icon = Icons.cloud_off,
-  });
+  }) : compact = false;
+
+  /// The same state as one row, for a section inside a page that otherwise
+  /// loaded (a panel, a list section), where the full-height form would
+  /// push the rest of the page away.
+  const ErrorState.inline({
+    super.key,
+    required this.message,
+    required this.onRetry,
+    this.icon = Icons.cloud_off,
+  }) : compact = true;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: theme.colorScheme.outline),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message, style: theme.textTheme.bodyMedium)),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: Text(AppLocalizations.of(context).errorStateRetry),
+            ),
+          ],
+        ),
+      );
+    }
     // SingleChildScrollView wrapping the Center so the contents can
     // scroll when the parent's available height shrinks (e.g. the
     // software keyboard sliding up on the Clubs → Browse search

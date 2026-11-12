@@ -10,6 +10,7 @@ import '../off_route_flag.dart';
 import '../safety_live_audience.dart';
 import '../settings_sync.dart';
 import '../widgets/confirm_destructive.dart';
+import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
 
 /// Settings → Safety contacts (decisions §131). Mirror of the web
@@ -53,6 +54,16 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   List<SafetyContact> _contacts = const [];
   List<PendingSafetyRequest> _pending = const [];
   List<SafetyContactOf> _contactOf = const [];
+  // Per section, set when its read fails before it has ever loaded, so the
+  // section says "couldn't load" rather than "no contacts" (issue #1374
+  // FS-1). A failed reload after a good one keeps that section's last good
+  // list on screen and says it is stale.
+  bool _contactsFailed = false;
+  bool _pendingFailed = false;
+  bool _contactOfFailed = false;
+  bool _contactsLoaded = false;
+  bool _pendingLoaded = false;
+  bool _contactOfLoaded = false;
   // In-flight guard for the contact-of controls, kept separate from
   // [_respondingId] so a pending-request response and a consent change can't
   // disable each other's list.
@@ -209,26 +220,60 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     super.dispose();
   }
 
-  Future<void> _reload() async {
+  /// True when every list on screen is fresh. Each section is read on its
+  /// own, so one failed read leaves the other two standing. A failure shows
+  /// the stale banner (or, for a section that never loaded, its inline
+  /// error), so a caller only confirms its own write over current lists.
+  Future<bool> _reload() async {
     final api = widget.api;
-    if (api == null || api.userId == null) return;
-    final results = await Future.wait([
-      api.fetchMySafetyContacts(),
-      api.fetchPendingSafetyRequests(),
-      api.fetchSafetyContactOf(),
-    ]);
-    if (!mounted) return;
+    if (api == null || api.userId == null) return true;
+    final (contacts, pending, contactOf) = await (
+      _settle(api.fetchMySafetyContacts()),
+      _settle(api.fetchPendingSafetyRequests()),
+      _settle(api.fetchSafetyContactOf()),
+    ).wait;
+    if (!mounted) return false;
+    final stale = (contacts == null && _contactsLoaded) ||
+        (pending == null && _pendingLoaded) ||
+        (contactOf == null && _contactOfLoaded);
     setState(() {
-      _contacts = results[0] as List<SafetyContact>;
-      _pending = results[1] as List<PendingSafetyRequest>;
-      _contactOf = results[2] as List<SafetyContactOf>;
+      if (contacts != null) {
+        _contacts = contacts;
+        _contactsLoaded = true;
+      }
+      if (pending != null) {
+        _pending = pending;
+        _pendingLoaded = true;
+      }
+      if (contactOf != null) {
+        _contactOf = contactOf;
+        _contactOfLoaded = true;
+      }
+      _contactsFailed = !_contactsLoaded;
+      _pendingFailed = !_pendingLoaded;
+      _contactOfFailed = !_contactOfLoaded;
     });
+    if (stale) {
+      _banner(AppLocalizations.of(context).commonStaleRefreshFailed,
+          onRetry: _reload);
+    }
+    return contacts != null && pending != null && contactOf != null;
+  }
+
+  Future<List<T>?> _settle<T>(Future<List<T>> read) async {
+    try {
+      return await read;
+    } catch (e) {
+      debugPrint('safety load failed: $e');
+      return null;
+    }
   }
 
   Future<void> _load() async {
     await _reload();
     if (mounted) setState(() => _loading = false);
   }
+
 
   void _banner(String message, {VoidCallback? onRetry}) {
     if (!mounted) return;
@@ -266,8 +311,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
       await api.addSafetyContact(value, phone: phone);
       _emailCtl.clear();
       _phoneCtl.clear();
-      await _reload();
-      _banner(l10n.safetyAddedToast);
+      if (await _reload()) _banner(l10n.safetyAddedToast);
     } catch (e) {
       debugPrint('safety add failed: $e');
       // The typed text survives (cleared only on success), so a retry
@@ -302,8 +346,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     if (confirmed != true) return;
     try {
       await api.removeSafetyContact(contact.id);
-      await _reload();
-      _banner(l10n.safetyRemovedToast);
+      if (await _reload()) _banner(l10n.safetyRemovedToast);
     } catch (e) {
       debugPrint('safety remove failed: $e');
       _banner(l10n.safetyRemoveFailed(friendlyError(l10n, e)),
@@ -320,8 +363,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
       await api.confirmSafetyRequest(req.id,
           smsOptIn: req.hasPhone && _smsOptIn.contains(req.id));
       _smsOptIn.remove(req.id);
-      await _reload();
-      _banner(l10n.safetyConfirmedToast);
+      if (await _reload()) _banner(l10n.safetyConfirmedToast);
     } catch (e) {
       debugPrint('safety add failed: $e');
       _banner(l10n.safetyAddFailed(friendlyError(l10n, e)),
@@ -338,8 +380,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     setState(() => _respondingId = req.id);
     try {
       await api.declineSafetyRequest(req.id);
-      await _reload();
-      _banner(l10n.safetyDeclinedToast);
+      if (await _reload()) _banner(l10n.safetyDeclinedToast);
     } catch (e) {
       debugPrint('safety add failed: $e');
       _banner(l10n.safetyAddFailed(friendlyError(l10n, e)),
@@ -359,7 +400,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     setState(() => _contactOfBusyId = rel.id);
     try {
       final ok = await api.setSafetySmsOptIn(rel.id, value);
-      await _reload();
+      if (!await _reload()) return;
       _banner(ok
           ? (value
               ? l10n.safetyContactOfSmsOnToast
@@ -397,7 +438,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
     setState(() => _contactOfBusyId = rel.id);
     try {
       final ok = await api.declineSafetyRequest(rel.id);
-      await _reload();
+      if (!await _reload()) return;
       _banner(ok
           ? l10n.safetyContactOfWithdrawnToast
           : l10n.safetyContactOfSmsNoChange);
@@ -482,7 +523,15 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-                if (_contacts.isEmpty)
+                if (_contactsFailed)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ErrorState.inline(
+                      message: l10n.safetyLoadFailed,
+                      onRetry: _reload,
+                    ),
+                  )
+                else if (_contacts.isEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                     child: Text(
@@ -595,7 +644,24 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
-                if (_pending.isNotEmpty) ...[
+                if (_pendingFailed) ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                    child: Text(
+                      l10n.safetyIncomingTitle,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ErrorState.inline(
+                      message: l10n.safetyLoadFailed,
+                      onRetry: _reload,
+                    ),
+                  ),
+                ] else if (_pending.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Divider(height: 1),
                   Padding(
@@ -661,7 +727,24 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                     ),
                   ],
                 ],
-                if (_contactOf.isNotEmpty) ...[
+                if (_contactOfFailed) ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                    child: Text(
+                      l10n.safetyContactOfTitle,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ErrorState.inline(
+                      message: l10n.safetyLoadFailed,
+                      onRetry: _reload,
+                    ),
+                  ),
+                ] else if (_contactOf.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Divider(height: 1),
                   Padding(

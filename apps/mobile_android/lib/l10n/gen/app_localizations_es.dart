@@ -1295,6 +1295,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get safetyEmpty => 'Aún no hay contactos de seguridad.';
 
   @override
+  String get safetyLoadFailed =>
+      'No se pudieron cargar tus contactos de seguridad. No se ha eliminado nada. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
   String get safetyStatusPending => 'Pendiente: esperando su confirmación';
 
   @override
@@ -15602,6 +15606,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routeConditionsEmpty => 'Aún no hay reportes.';
 
   @override
+  String get routeConditionsLoadFailed =>
+      'No se pudieron cargar los reportes. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
   String get routeConditionsLoading => 'Cargando…';
 
   @override
@@ -22100,6 +22108,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get prefsMessageRequestsFailed =>
       'No se pudieron cambiar las solicitudes de mensaje.';
+
+  @override
+  String get asyncSwitchLoadFailed =>
+      'No se pudo cargar este ajuste. Toca para reintentar.';
 
   @override
   String get messagesReact => 'Reaccionar';

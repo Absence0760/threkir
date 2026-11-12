@@ -1237,6 +1237,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get safetyEmpty => '緊急連絡先はまだありません。';
 
   @override
+  String get safetyLoadFailed =>
+      '緊急連絡先を読み込めませんでした。削除されたものはありません。接続を確認して、もう一度お試しください。';
+
+  @override
   String get safetyStatusPending => '保留中 — 相手の確認待ち';
 
   @override
@@ -14866,6 +14870,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routeConditionsEmpty => 'まだ報告はありません。';
 
   @override
+  String get routeConditionsLoadFailed => '報告を読み込めませんでした。接続を確認して、もう一度お試しください。';
+
+  @override
   String get routeConditionsLoading => '読み込み中…';
 
   @override
@@ -21008,6 +21015,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsMessageRequestsFailed => 'メッセージリクエストの設定を変更できませんでした。';
+
+  @override
+  String get asyncSwitchLoadFailed => 'この設定を読み込めませんでした。タップして再試行してください。';
 
   @override
   String get messagesReact => 'リアクション';

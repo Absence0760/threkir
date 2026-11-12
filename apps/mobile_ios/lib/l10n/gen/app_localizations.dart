@@ -2141,6 +2141,12 @@ abstract class AppLocalizations {
   /// **'No safety contacts yet.'**
   String get safetyEmpty;
 
+  /// Inline error on Settings > Safety when the contact lists could not be read; distinct from the empty state, and says nothing was lost
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your safety contacts. Nothing has been removed. Check your connection and try again.'**
+  String get safetyLoadFailed;
+
   /// Status badge for a contact who hasn't opted in yet
   ///
   /// In en, this message translates to:
@@ -25322,6 +25328,12 @@ abstract class AppLocalizations {
   /// **'No condition reports yet.'**
   String get routeConditionsEmpty;
 
+  /// Inline error in the route condition-reports panel when the reports could not be read; distinct from the empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load condition reports. Check your connection and try again.'**
+  String get routeConditionsLoadFailed;
+
   /// Loading state for the route condition-reports panel
   ///
   /// In en, this message translates to:
@@ -35536,6 +35548,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t update message requests.'**
   String get prefsMessageRequestsFailed;
+
+  /// Subtitle of a settings row whose saved value could not be read; the switch is hidden and tapping the row retries the read
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this setting. Tap to retry.'**
+  String get asyncSwitchLoadFailed;
 
   /// Option in a message's long-press menu that opens the reaction picker
   ///

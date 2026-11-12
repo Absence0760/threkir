@@ -13,9 +13,10 @@ import '../lib/screens/settings_preferences_screen.dart';
 /// `profile_private`, not a prefs key, so it is read and written through the
 /// api rather than the settings bag.
 class _FakeApi extends ApiClient {
-  _FakeApi({this.storedPrivate = false});
+  _FakeApi({this.storedPrivate = false, this.failReads = 0});
 
   final bool storedPrivate;
+  int failReads;
   final List<bool> writes = [];
 
   @override
@@ -25,7 +26,13 @@ class _FakeApi extends ApiClient {
   Future<UserProfileRow?> fetchMyProfile() async => null;
 
   @override
-  Future<bool> fetchMyProfilePrivate() async => storedPrivate;
+  Future<bool> fetchMyProfilePrivate() async {
+    if (failReads > 0) {
+      failReads--;
+      throw Exception('network down');
+    }
+    return storedPrivate;
+  }
 
   @override
   Future<void> setProfilePrivate(bool value) async => writes.add(value);
@@ -109,5 +116,43 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.byKey(const ValueKey('follow-requests-empty')), findsOneWidget);
+  });
+
+  // Issue #1374 FS-6: a failed read left the switch OFF and interactive, so a
+  // private runner on a flaky connection read their activity as public.
+  testWidgets('a failed read shows a retry row, not a guessed OFF switch',
+      (tester) async {
+    final api = _FakeApi(storedPrivate: true, failReads: 1);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SettingsPreferencesScreen(
+          apiClient: api,
+          preferences: await _prefs(),
+          settingsSync: null,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final l10n = AppLocalizations.of(
+        tester.element(find.byType(SettingsPreferencesScreen)));
+    final title = find.text(l10n.prefsPrivateProfile);
+    await tester.scrollUntilVisible(title, 250,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_switchKey), findsNothing);
+    final retryRow = find.ancestor(of: title, matching: find.byType(ListTile));
+    expect(
+        find.descendant(
+            of: retryRow, matching: find.text(l10n.asyncSwitchLoadFailed)),
+        findsOneWidget);
+
+    await tester.tap(retryRow);
+    await tester.pumpAndSettle();
+    expect(_switchValue(tester), isTrue);
+    expect(find.byKey(_requestsKey), findsOneWidget);
+    expect(api.writes, isEmpty);
   });
 }

@@ -8,6 +8,7 @@ import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../social_service.dart';
 import '../undo_queue.dart';
+import 'error_state.dart';
 import 'top_banner.dart';
 import 'undo_bar.dart';
 
@@ -80,8 +81,9 @@ bool routeConditionIsStale(DateTime createdAt, {DateTime? now}) {
 /// Mirrors the web `RouteConditions.svelte`: a panel listing community
 /// condition reports for a route newest-first, with a report composer for a
 /// signed-in viewer who can see the route. Reads through
-/// `ApiClient.fetchRouteConditions` (the privacy-redacting RPC); failures
-/// fall back to an empty state (L4).
+/// `ApiClient.fetchRouteConditions` (the privacy-redacting RPC); a failed
+/// read shows an inline error with Retry, never the empty copy, because "no
+/// reports" over a route reported closed is the one wrong answer (L4).
 class RouteConditions extends StatefulWidget {
   final ApiClient api;
   final String routeId;
@@ -110,6 +112,7 @@ class _RouteConditionsState extends State<RouteConditions> {
   String _severity = 'caution';
   final _noteCtrl = TextEditingController();
   List<RouteConditionRow> _conditions = const [];
+  bool _loadFailed = false;
 
   bool get _signedIn => widget.api.userId != null;
   bool get _showComposer => widget.canReport && _signedIn;
@@ -127,13 +130,25 @@ class _RouteConditionsState extends State<RouteConditions> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    final rows = await widget.api.fetchRouteConditions(widget.routeId);
-    if (!mounted) return;
     setState(() {
-      _conditions = rows;
-      _loading = false;
+      _loading = true;
+      _loadFailed = false;
     });
+    try {
+      final rows = await widget.api.fetchRouteConditions(widget.routeId);
+      if (!mounted) return;
+      setState(() {
+        _conditions = rows;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('route conditions load failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
+    }
   }
 
   bool _canDelete(RouteConditionRow c) =>
@@ -230,6 +245,11 @@ class _RouteConditionsState extends State<RouteConditions> {
             child: Text(l10n.routeConditionsLoading,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: cs.onSurfaceVariant)),
+          )
+        else if (_loadFailed)
+          ErrorState.inline(
+            message: l10n.routeConditionsLoadFailed,
+            onRetry: _load,
           )
         else if (_conditions.isEmpty)
           Padding(

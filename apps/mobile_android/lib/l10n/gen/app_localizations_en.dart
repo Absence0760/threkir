@@ -1281,6 +1281,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get safetyEmpty => 'No safety contacts yet.';
 
   @override
+  String get safetyLoadFailed =>
+      'Couldn\'t load your safety contacts. Nothing has been removed. Check your connection and try again.';
+
+  @override
   String get safetyStatusPending => 'Pending — waiting for them to confirm';
 
   @override
@@ -15450,6 +15454,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routeConditionsEmpty => 'No condition reports yet.';
 
   @override
+  String get routeConditionsLoadFailed =>
+      'Couldn\'t load condition reports. Check your connection and try again.';
+
+  @override
   String get routeConditionsLoading => 'Loading…';
 
   @override
@@ -21853,6 +21861,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsMessageRequestsFailed => 'Couldn\'t update message requests.';
+
+  @override
+  String get asyncSwitchLoadFailed =>
+      'Couldn\'t load this setting. Tap to retry.';
 
   @override
   String get messagesReact => 'React';

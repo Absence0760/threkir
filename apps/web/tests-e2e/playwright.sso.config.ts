@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 
 import { defineConfig, devices } from '@playwright/test';
 
+import { viteCommand } from './fixtures/vite-command';
+
 /**
  * Dedicated Playwright config for the SSO / OAuth login lane.
  *
@@ -74,7 +76,7 @@ export default defineConfig({
 			// .env.development localhost dev services off (same guard the
 			// livehub config uses) — the SSO lane never renders a map, but
 			// the dev server still boots cleaner without them.
-			command: `pnpm exec vite dev --port ${DEV_PORT}`,
+			command: viteCommand(`dev --port ${DEV_PORT}`),
 			cwd: WEB_DIR,
 			url: `http://localhost:${DEV_PORT}`,
 			reuseExistingServer: !process.env.CI,

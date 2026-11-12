@@ -1264,14 +1264,16 @@ void main() {
       );
     });
 
-    test('the flag fails closed', () async {
+    test('a failed flag read is unknown, not off', () async {
       await _signIn(client);
       const path = '/rest/v1/rpc/group_messages_enabled';
       fake.bodyByPath[path] = true;
       expect(await api.fetchGroupMessagesEnabled(), isTrue);
+      fake.bodyByPath[path] = false;
+      expect(await api.fetchGroupMessagesEnabled(), isFalse);
       fake.statusByPath[path] = 500;
       fake.bodyByPath[path] = {'message': 'boom'};
-      expect(await api.fetchGroupMessagesEnabled(), isFalse);
+      expect(await api.fetchGroupMessagesEnabled(), isNull);
     });
 
     test('a search hit in a group names the group, not a partner', () async {

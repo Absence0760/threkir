@@ -142,6 +142,31 @@ test.describe('/messages — group conversations', () => {
 		}
 	});
 
+	test('a failed flag read is not "off": the next poll reads it again and the group appears', async ({ browser }) => {
+		const a = await open(browser, owner);
+		try {
+			await a.page.route('**/rest/v1/rpc/group_messages_enabled*', (route) =>
+				route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"blip"}' }),
+			);
+			await a.page.goto(`/messages/group/${groupId}`);
+			await expect(a.page.getByRole('heading', { name: 'Messages', level: 2 })).toBeVisible({ timeout: 15_000 });
+			// Unknown renders as nothing of the group, and not as "not available".
+			await expect(a.page.getByTestId('inbox-new-group')).toHaveCount(0);
+			await expect(a.page.getByTestId('dm-bubble')).toHaveCount(0);
+			await expect(a.page.getByTestId('group-unavailable')).toHaveCount(0);
+
+			await a.page.unroute('**/rest/v1/rpc/group_messages_enabled*');
+			// The thread's 10 s poll and the inbox's 30 s poll each read the flag again.
+			await expect(a.page.getByTestId('dm-bubble').filter({ hasText: `hello group ${stamp}` })).toBeVisible({
+				timeout: 20_000,
+			});
+			await expect(a.page.getByTestId('inbox-new-group')).toBeVisible({ timeout: 40_000 });
+			await expect(a.page.getByTestId('inbox-group-row').filter({ hasText: title })).toBeVisible();
+		} finally {
+			await a.ctx.close();
+		}
+	});
+
 	test('a late joiner reads nothing from before they joined', async ({ browser }) => {
 		const a = await open(browser, owner);
 		try {
@@ -305,7 +330,7 @@ test.describe('/messages — group conversations', () => {
 			await expect(a.page.getByTestId('group-unavailable')).toBeVisible({ timeout: 15_000 });
 			await expect(a.page.getByTestId('dm-bubble')).toHaveCount(0);
 
-			// A failed read is off too.
+			// A failed read shows nothing of them either.
 			await a.page.unroute('**/rest/v1/rpc/group_messages_enabled*');
 			await a.page.route('**/rest/v1/rpc/group_messages_enabled*', (route) =>
 				route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' }),

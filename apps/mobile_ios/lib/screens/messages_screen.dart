@@ -149,9 +149,13 @@ class _MessagesScreenState extends State<MessagesScreen>
   bool _showingRequests = false;
 
   /// Group conversations are on for this deploy (decisions § 2463). False
-  /// until the server says otherwise, and on a failed read: every group
-  /// surface stays hidden rather than offering what the server refuses.
+  /// until the server says otherwise, and while a failed read leaves it
+  /// unknown: every group surface stays hidden rather than offering what the
+  /// server refuses, and each poll reads the flag again until it answers.
   bool _groupsEnabled = false;
+
+  /// The last flag read failed, so the next poll reads it again.
+  bool _groupsUnknown = false;
 
   /// The runner's live group invitations, listed under Requests.
   List<GroupInvite> _invites = const [];
@@ -203,6 +207,7 @@ class _MessagesScreenState extends State<MessagesScreen>
       _showingArchived = false;
       _showingRequests = false;
       _groupsEnabled = false;
+      _groupsUnknown = false;
       _invites = const [];
     });
     _clearSearch();
@@ -216,11 +221,15 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   /// Reads the flag and, when it is on, the runner's invitations. The list
   /// already holds whatever groups `dm_threads()` returned; with the flag off
-  /// the server lists none, and this client hides them too.
+  /// the server lists none, and this client hides them too. A failed read
+  /// hides them as well and is retried by the next poll, so one blip does not
+  /// hide them until the screen is opened again.
   Future<void> _loadGroups() async {
     final generation = ++_groupsGeneration;
-    final enabled = await widget.api.fetchGroupMessagesEnabled();
+    final read = await widget.api.fetchGroupMessagesEnabled();
     if (!mounted || generation != _groupsGeneration) return;
+    final enabled = read == true;
+    _groupsUnknown = read == null;
     setState(() {
       _groupsEnabled = enabled;
       if (!enabled) _invites = const [];
@@ -622,6 +631,7 @@ class _MessagesScreenState extends State<MessagesScreen>
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     final userId = widget.api.userId;
     if (userId == null) return;
+    if (_groupsUnknown) unawaited(_loadGroups());
     if (_loadError != null) return _load();
     final gen = _readGen;
     _pollGen = gen;

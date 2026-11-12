@@ -95,8 +95,10 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   final _composer = TextEditingController();
   Timer? _poll;
 
-  /// The server's `group_messages` flag; null until read, false on a failed
-  /// read (fail-closed).
+  /// The server's `group_messages` flag; null until read and while a failed
+  /// read leaves it unknown, which shows nothing of the group (fail-closed)
+  /// and is read again on the next poll. Only a definite false is "not
+  /// available".
   bool? _enabled;
   _Membership _membership = _Membership.unknown;
   List<GroupMember> _members = const [];
@@ -178,9 +180,9 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     });
     final on = await widget.api.fetchGroupMessagesEnabled();
     if (!mounted) return;
-    if (!on) {
+    if (on != true) {
       setState(() {
-        _enabled = false;
+        _enabled = on;
         _loading = false;
       });
       return;
@@ -353,12 +355,12 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   /// does not reach the newest message on screen replaces the list, as the
   /// 1:1 thread does, so no gap is left that "load earlier" cannot fill.
   Future<void> _refresh() async {
-    if (_loading || _refreshing || _loadError != null || _enabled != true) {
-      return;
-    }
+    if (_loading || _refreshing) return;
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    if (_enabled == null) return _load();
+    if (_loadError != null || _enabled != true) return;
     _refreshing = true;
     final writesAtStart = _localWrites;
     try {

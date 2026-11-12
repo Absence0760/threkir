@@ -65,7 +65,10 @@ UserProfileRow _person(String id, String name) => UserProfileRow(
     profilePrivate: false, id: id, displayName: name, shadowHidden: false);
 
 class _FakeApi extends ApiClient {
-  bool groupsOn = true;
+  /// The flag read: null is a failed read.
+  bool? groupsOn = true;
+  int flagReads = 0;
+
   List<DmThread> threads = [];
   List<GroupInvite> invites = [];
   List<DirectMessageRow> messages = [];
@@ -91,7 +94,10 @@ class _FakeApi extends ApiClient {
   Stream<String?> get authUserChanges => const Stream.empty();
 
   @override
-  Future<bool> fetchGroupMessagesEnabled() async => groupsOn;
+  Future<bool?> fetchGroupMessagesEnabled() async {
+    flagReads++;
+    return groupsOn;
+  }
 
   @override
   Future<List<DmThread>> fetchDmThreads() async => threads;
@@ -268,6 +274,52 @@ void main() {
       await _pumpInbox(tester, api);
       expect(find.text('Tuesday tempo'), findsNothing);
       expect(find.byKey(const ValueKey('inbox-new-group')), findsNothing);
+    });
+
+    testWidgets(
+        'a failed flag read hides groups until the next poll reads it '
+        'again; a definite off is not re-read', (tester) async {
+      final api = _FakeApi()
+        ..groupsOn = null
+        ..threads = [_groupRow()];
+      const poll = Duration(seconds: 30);
+      await tester.pumpWidget(_app(MessagesScreen(
+        api: api,
+        pollInterval: poll,
+        threadPollInterval: _quiet,
+      )));
+      await pumpUntil(
+          tester, () => !_shows(find.byType(LinearProgressIndicator)),
+          describe: 'the inbox to load');
+      await tester.pump();
+      expect(find.text('Tuesday tempo'), findsNothing);
+      expect(find.byKey(const ValueKey('inbox-new-group')), findsNothing);
+
+      api.groupsOn = true;
+      await tester.pump(poll);
+      await pumpUntil(
+          tester, () => _shows(find.byKey(const ValueKey('inbox-new-group'))),
+          describe: 'the poll to read the flag again');
+      expect(find.text('Tuesday tempo'), findsOneWidget);
+      expect(api.flagReads, 2);
+
+      final off = _FakeApi()
+        ..groupsOn = false
+        ..threads = [_groupRow()];
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(_app(MessagesScreen(
+        api: off,
+        pollInterval: poll,
+        threadPollInterval: _quiet,
+      )));
+      await pumpUntil(
+          tester, () => !_shows(find.byType(LinearProgressIndicator)),
+          describe: 'the inbox to load');
+      await tester.pump(poll);
+      await tester.pump();
+      expect(off.flagReads, 1);
+      expect(find.text('Tuesday tempo'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
     });
 
     testWidgets('a group row shows its title, size and the right preview',
@@ -454,6 +506,34 @@ void main() {
       final composer = tester.widget<TextField>(
           find.byKey(const ValueKey('message-composer')));
       expect(composer.controller!.text, isEmpty);
+    });
+
+    testWidgets(
+        'a failed flag read shows nothing of the group, and the next poll '
+        'opens it', (tester) async {
+      final api = _FakeApi()
+        ..groupsOn = null
+        ..messages = [_msg('m1', body: 'tempo at 6')];
+      const poll = Duration(seconds: 10);
+      await tester.pumpWidget(_app(GroupThreadScreen(
+        api: api,
+        conversationId: _group,
+        title: 'Tuesday tempo',
+        pollInterval: poll,
+      )));
+      await pumpUntil(tester, () => api.flagReads == 1,
+          describe: 'the first flag read');
+      await tester.pump();
+      expect(find.byKey(const ValueKey('group-unavailable')), findsNothing);
+      expect(find.text('tempo at 6'), findsNothing);
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+
+      api.groupsOn = true;
+      await tester.pump(poll);
+      await pumpUntil(tester, () => _shows(find.text('tempo at 6')),
+          describe: 'the poll to read the flag again and load the thread');
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
     });
 
     testWidgets('Leave asks first; Cancel stays', (tester) async {

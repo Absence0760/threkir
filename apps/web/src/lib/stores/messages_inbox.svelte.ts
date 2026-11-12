@@ -88,8 +88,9 @@ class MessagesInboxStore {
 	/// has not answered, migration 20271115002384, and group invites).
 	showingRequests = $state(false);
 	/// Group conversations are on for this deploy (decisions § 2463). False
-	/// until the server says otherwise, and on a failed read: every group
-	/// surface stays hidden rather than offering what the server refuses.
+	/// until the server says otherwise, and while a failed read leaves it
+	/// unknown: every group surface stays hidden rather than offering what the
+	/// server refuses, and each poll reads the flag again until it answers.
 	groupsEnabled = $state(false);
 	/// The runner's live group invites, listed under Requests.
 	invites = $state<GroupInvite[]>([]);
@@ -97,6 +98,8 @@ class MessagesInboxStore {
 	#userId: string | null = null;
 	#polling = false;
 	#groupsGeneration = 0;
+	/// The last flag read failed, so the next poll reads it again.
+	#groupsUnknown = false;
 	#coachGeneration = 0;
 	/// When each conversation was last marked read. A list fetch that started
 	/// before that answers with the count from before the mark, and assigning
@@ -124,6 +127,7 @@ class MessagesInboxStore {
 		this.showingArchived = false;
 		this.showingRequests = false;
 		this.groupsEnabled = false;
+		this.#groupsUnknown = false;
 		this.invites = [];
 		this.#groupsGeneration++;
 		this.#markedReadAt.clear();
@@ -170,6 +174,7 @@ class MessagesInboxStore {
 	/// retry, and a banner every 30 s would be noise. A list that never loaded
 	/// retries through loadThreads so its error state can clear.
 	async poll() {
+		if (this.#groupsUnknown) void this.loadGroups();
 		if (this.#polling) return;
 		if (this.threadsError) return this.loadThreads();
 		this.#polling = true;
@@ -341,14 +346,18 @@ class MessagesInboxStore {
 		void dmUnreadStore.refresh();
 	}
 
-	/// Reads the flag and, when it is on, the runner's invites. A failed invite
-	/// read keeps the list it had: the next poll retries.
+	/// Reads the flag and, when it is on, the runner's invites. A failed flag
+	/// read leaves the groups hidden and is retried by the next poll, so one
+	/// blip does not hide them until the page is reloaded; a failed invite
+	/// read keeps the list it had, and the next poll retries that too.
 	async loadGroups() {
 		const userId = this.#userId;
 		const generation = ++this.#groupsGeneration;
 		if (!userId) return;
-		const enabled = await fetchGroupMessagesEnabled();
+		const read = await fetchGroupMessagesEnabled();
 		if (generation !== this.#groupsGeneration) return;
+		this.#groupsUnknown = read === null;
+		const enabled = read === true;
 		this.groupsEnabled = enabled;
 		if (!enabled) {
 			this.invites = [];

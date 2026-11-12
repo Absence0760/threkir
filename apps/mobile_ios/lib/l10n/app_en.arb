@@ -15128,6 +15128,10 @@
   "@reportTitleMessage": {
     "description": "Report sheet title when reporting a direct message"
   },
+  "reportTitleGroupInvite": "Report group invitation",
+  "@reportTitleGroupInvite": {
+    "description": "Report sheet title when reporting a group invitation from the Requests list, before joining the group"
+  },
   "reportTitleContent": "Report content",
   "@reportTitleContent": {
     "description": "Report sheet title fallback for generic content"
@@ -29292,6 +29296,10 @@
   "groupsInviteDecline": "Decline",
   "@groupsInviteDecline": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDecline"
+  },
+  "groupsInviteReport": "Report",
+  "@groupsInviteReport": {
+    "description": "Button on a group invitation row under Requests that opens the report sheet for the invite (its title and who sent it)"
   },
   "groupsInviteAcceptedToast": "You joined {title}",
   "@groupsInviteAcceptedToast": {

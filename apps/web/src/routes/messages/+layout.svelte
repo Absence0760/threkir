@@ -18,6 +18,7 @@
 	import { goto } from '$app/navigation';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import GroupCreateDialog from '#lib/components/GroupCreateDialog.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -153,6 +154,7 @@
 	let creatingGroup = $state(false);
 	let inviteBusy = $state<string | null>(null);
 	let declineTarget = $state<GroupInvite | null>(null);
+	let reportInvite = $state<GroupInvite | null>(null);
 
 	async function acceptInvite(invite: GroupInvite) {
 		if (inviteBusy) return;
@@ -360,6 +362,14 @@
 										>
 											{m('groups.inviteDecline')}
 										</button>
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											data-testid="group-invite-report"
+											onclick={() => (reportInvite = invite)}
+										>
+											{m('groups.inviteReport')}
+										</button>
 									</span>
 								</span>
 							</li>
@@ -521,6 +531,15 @@
 			oncancel={() => (declineTarget = null)}
 			data-testid="group-invite-decline-confirm"
 		/>
+		{#if reportInvite}
+			<ReportDialog
+				open={reportInvite !== null}
+				targetKind="group_invite"
+				targetId={reportInvite.conversationId}
+				targetLabel={reportInvite.title}
+				onclose={() => (reportInvite = null)}
+			/>
+		{/if}
 	{/if}
 </div>
 

@@ -18117,6 +18117,12 @@ abstract class AppLocalizations {
   /// **'Report message'**
   String get reportTitleMessage;
 
+  /// Report sheet title when reporting a group invitation from the Requests list, before joining the group
+  ///
+  /// In en, this message translates to:
+  /// **'Report group invitation'**
+  String get reportTitleGroupInvite;
+
   /// Report sheet title fallback for generic content
   ///
   /// In en, this message translates to:
@@ -35728,6 +35734,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Decline'**
   String get groupsInviteDecline;
+
+  /// Button on a group invitation row under Requests that opens the report sheet for the invite (its title and who sent it)
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get groupsInviteReport;
 
   /// Group conversations (issue #1365): the web catalogue's groups.inviteAcceptedToast
   ///

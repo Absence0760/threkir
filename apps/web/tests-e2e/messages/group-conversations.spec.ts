@@ -16,8 +16,9 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
  * joined; a member who blocked someone sees a placeholder in place of that
  * person's message while everyone else sees the message; a removed member and
  * a stranger who knows the URL both meet "not available"; a leaver keeps only
- * their own messages. pgtap (group_messages_*_test.sql) pins the server rules;
- * this pins what each side is shown.
+ * their own messages; an invitee can report the invite before accepting it.
+ * pgtap (group_messages_*_test.sql) pins the server rules; this pins what each
+ * side is shown.
  *
  * Every user is an ephemeral saga user: the group RPCs spend each caller's
  * own create_group_conversation and invite_to_group buckets, and blocks,
@@ -52,6 +53,7 @@ test.describe('/messages — group conversations', () => {
 	test.afterAll(async () => {
 		const admin = getAdminClient();
 		if (groupId) {
+			await admin.from('reports').delete().eq('target_kind', 'group_invite').eq('target_id', groupId);
 			await admin.from('direct_messages').delete().eq('conversation_id', groupId);
 			await admin.from('conversations').delete().eq('id', groupId);
 		}
@@ -215,6 +217,28 @@ test.describe('/messages — group conversations', () => {
 
 		const d = await open(browser, dev);
 		try {
+			// The invite can be reported before it is accepted; the report keeps
+			// the title and the inviter Dev was shown (20271224000800).
+			await d.page.goto('/messages');
+			await d.page.getByTestId('inbox-show-requests').click({ timeout: 15_000 });
+			const invite = d.page.getByTestId('inbox-group-invite').filter({ hasText: title });
+			await invite.getByTestId('group-invite-report').click();
+			const dialog = d.page.getByRole('dialog', { name: 'Report this group invitation' });
+			await expect(dialog).toBeVisible();
+			await dialog.getByRole('radio', { name: /Spam/ }).check();
+			await dialog.getByRole('button', { name: 'Submit report' }).click();
+			await expect(d.page.getByText('Report submitted. Thanks for flagging.')).toBeVisible({ timeout: 10_000 });
+			const reports = await readRows(
+				'the invite report',
+				getAdminClient()
+					.from('reports')
+					.select('reason, snapshot_body, snapshot_author_id')
+					.eq('target_kind', 'group_invite')
+					.eq('target_id', groupId)
+					.eq('reporter_id', dev.id),
+			);
+			expect(reports).toEqual([{ reason: 'spam', snapshot_body: title, snapshot_author_id: owner.id }]);
+
 			await acceptFromRequests(d.page);
 			await expect(d.page.getByTestId('group-history-note')).toBeVisible();
 			await send(d.page, `dev says hi ${stamp}`);

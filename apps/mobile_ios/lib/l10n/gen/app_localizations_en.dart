@@ -11166,6 +11166,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportTitleMessage => 'Report message';
 
   @override
+  String get reportTitleGroupInvite => 'Report group invitation';
+
+  @override
   String get reportTitleContent => 'Report content';
 
   @override
@@ -21979,6 +21982,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupsInviteDecline => 'Decline';
+
+  @override
+  String get groupsInviteReport => 'Report';
 
   @override
   String groupsInviteAcceptedToast(String title) {

@@ -118,6 +118,18 @@ class _FakeApi extends ApiClient {
   }
 
   @override
+  Future<String> submitReport({
+    required String targetKind,
+    required String targetId,
+    required String reason,
+    String? notes,
+  }) async {
+    calls.add('report:$targetKind:$targetId:$reason');
+    return 'r-1';
+  }
+
+
+  @override
   Future<String> createGroupConversation(
       String title, List<String> invitees) async {
     created = (title: title, invitees: invitees);
@@ -414,6 +426,36 @@ void main() {
           describe: 'the decline to reach the server');
       await tester.pump();
       expect(find.text('Tuesday tempo'), findsNothing);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('Report files the invitation itself, before joining',
+        (tester) async {
+      final api = _FakeApi()
+        ..invites = [
+          GroupInvite(
+            conversationId: _group,
+            title: 'Tuesday tempo',
+            invitedAt: DateTime.utc(2026, 11, 10, 9),
+            memberCount: 4,
+          ),
+        ];
+      await _pumpInbox(tester, api, requests: true);
+      await pumpUntil(
+          tester,
+          () => _shows(
+              find.byKey(const ValueKey('group-invite-report-g-1'))),
+          describe: 'the invitation row');
+
+      await tester.tap(find.byKey(const ValueKey('group-invite-report-g-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Report group invitation'), findsOneWidget);
+      await tester.tap(find.text('Submit report'));
+      await pumpUntil(
+          tester, () => api.calls.contains('report:group_invite:g-1:spam'),
+          describe: 'the report to reach the server');
+      expect(api.calls, isNot(contains('decline:g-1')));
+      expect(api.calls, isNot(contains('accept:g-1')));
       await _drainBanner(tester);
     });
   });

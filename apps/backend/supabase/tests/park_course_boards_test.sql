@@ -476,7 +476,7 @@ set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000cb0b2",
 select throws_ok(
   $$ insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at, matched_by)
      values (pg_temp.pcb_seg('swift-creek-10k'), 'cb000000-0000-4000-8000-00000000000c',
-             '00000000-0000-0000-0000-0000000cb0b2', 3000, pg_temp.pcb_day(7), 'gate') $$,
+             '00000000-0000-0000-0000-0000000cb0b2', 1500, pg_temp.pcb_day(7), 'gate') $$,
   '42501', null, 'the run owner cannot insert an effort on a closed course');
 
 -- A's effort from before the closure: a re-match that no longer finds it, and

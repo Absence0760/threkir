@@ -11309,6 +11309,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reportTitleMessage => 'Signaler le message';
 
   @override
+  String get reportTitleGroupInvite => 'Signaler l\'invitation de groupe';
+
+  @override
   String get reportTitleContent => 'Signaler le contenu';
 
   @override
@@ -22269,6 +22272,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get groupsInviteDecline => 'Refuser';
+
+  @override
+  String get groupsInviteReport => 'Signaler';
 
   @override
   String groupsInviteAcceptedToast(String title) {

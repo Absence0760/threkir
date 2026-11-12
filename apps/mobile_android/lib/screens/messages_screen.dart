@@ -23,6 +23,7 @@ import '../training_service.dart';
 import '../widgets/ai_tag.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
+import '../widgets/report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import 'coach_screen.dart';
@@ -1035,7 +1036,8 @@ class _MessagesScreenState extends State<MessagesScreen>
   }
 
   /// One group invitation under Requests: the title, who invited and the
-  /// size, never the roster (memo C5). Join runs at once; Decline confirms.
+  /// size, never the roster (memo C5). Join runs at once; Decline confirms;
+  /// Report files the invite (its title and inviter) before joining.
   Widget _inviteRow(AppLocalizations l10n, GroupInvite invite, String tag) {
     final theme = Theme.of(context);
     final busy = _inviteBusy != null;
@@ -1075,6 +1077,16 @@ class _MessagesScreenState extends State<MessagesScreen>
                 key: ValueKey('group-invite-decline-${invite.conversationId}'),
                 onPressed: busy ? null : () => _declineInvite(invite),
                 child: Text(l10n.groupsInviteDecline),
+              ),
+              TextButton(
+                key: ValueKey('group-invite-report-${invite.conversationId}'),
+                onPressed: () => showReportSheet(
+                  context,
+                  api: widget.api,
+                  targetKind: 'group_invite',
+                  targetId: invite.conversationId,
+                ),
+                child: Text(l10n.groupsInviteReport),
               ),
             ],
           ),

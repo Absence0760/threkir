@@ -1,12 +1,13 @@
 -- Class guard for the column-level SELECT lockdowns: which public tables
 -- withhold which columns from anon + authenticated, and why.
 --
--- Seven tables revoke table-level SELECT from anon/authenticated and re-grant
+-- These tables revoke table-level SELECT from anon/authenticated and re-grant
 -- column by column (user_profiles 20260707_001 + 20260810_001, clubs + events
 -- 20260818_001 redoing 20260801_001 / 20260723_001 / 20260806_001,
 -- checkpoint_crossings 20270201_001, donations + instructor_payout_accounts
 -- 20270621_001, matrix re-asserted by 20270408_001, direct_messages
--- 20271113000001). Every withholding below
+-- 20271113000001, direct_message_images 20271213121604, event_results
+-- 20271224000700). Every withholding below
 -- is a security decision with a named replacement read path, not an accident
 -- of reaching for `grant select (a, b, c)`.
 --
@@ -65,7 +66,22 @@ begin;
 
 select plan(4);
 
-create temporary table lockdown_registry (tbl name, col name, reason text);
+-- `roles` narrows an entry to the role it is withheld from. Both roles is the
+-- default and the norm; assertion (4) holds every column without a narrowed
+-- entry identical across the two.
+create temporary table lockdown_registry (
+  tbl name, col name, reason text, roles name[] not null default '{anon,authenticated}'
+);
+
+-- A role that holds no SELECT on any column of a registered table: every
+-- column counts as withheld from it, so the table's column list need not be
+-- copied out here, and a column granted back to it fails (1).
+create temporary table role_unreadable (tbl name, role name, reason text);
+
+insert into role_unreadable (tbl, role, reason) values
+  -- 20271224000100 (audit of PR #1359). Every policy on the table is
+  -- `to authenticated`; no signed-out surface reads a message image.
+  ('direct_message_images', 'anon', 'no signed-out surface reads a message image, and every policy is to authenticated');
 
 insert into lockdown_registry (tbl, col, reason) values
   -- checkpoint_crossings — 20270201_001. Organiser reads go through
@@ -96,6 +112,15 @@ insert into lockdown_registry (tbl, col, reason) values
   -- 20271114000210: the text as first sent, kept after an edit only so
   -- submit_report can snapshot it for moderators. Clients show the edited text.
   ('direct_messages',      'original_body',        'moderation evidence of the text before an edit; read only by submit_report, never by a client'),
+
+  -- event_results — 20271224000700 (audit of PR #1359). Leaderboard reads go
+  -- through event_results_redacted, which reads these through
+  -- private.event_result_withheld_columns (the runner; the race director for
+  -- the detections and needs_review). No client writes needs_review, and a
+  -- director's approval writes the other two with a plain UPDATE.
+  ('event_results',        'needs_review',         'the review flag the redacted view shows only to the runner and the race director'),
+  ('event_results',        'organiser_approved_by','which director approved a result; no client read site'),
+  ('event_results',        'organiser_approved_at','when a director approved a result; no client read site'),
 
   -- course_alerts — 20271124002407 (issue #1190, decisions § 2407). An alert
   -- speaks for its organiser club; the admin who typed it is no reader's
@@ -143,6 +168,21 @@ insert into lockdown_registry (tbl, col, reason) values
   ('user_profiles',        'onboarded_at',         'account lifecycle state; self-read only'),
   ('user_profiles',        'shadow_hidden',        'moderation state; disclosing it to the subject defeats shadow-hiding');
 
+-- Withheld from anon only. The runner's own result upsert writes these, and an
+-- INSERT ... ON CONFLICT DO UPDATE needs SELECT on every column its SET reads
+-- from EXCLUDED, so authenticated keeps them until the write path stops
+-- reading them back (followups, "Surfaced by the PR #1359 rounds"). anon
+-- writes nothing.
+insert into lockdown_registry (tbl, col, reason, roles) values
+  ('event_results', 'age_grade_pct',    'the runner''s own age grade; the redacted view shows it to the runner only', '{anon}'),
+  ('event_results', 'note',             'the runner''s own note; the redacted view shows it to the runner only', '{anon}'),
+  ('event_results', 'run_id',           'links a public result to a run its runner may keep private', '{anon}'),
+  ('event_results', 'start_at',         'the runner''s line crossings; the redacted view never shows them', '{anon}'),
+  ('event_results', 'finish_at',        'the runner''s line crossings; the redacted view never shows them', '{anon}'),
+  ('event_results', 'start_detection',  'how the start was timed; the runner and the race director only', '{anon}'),
+  ('event_results', 'finish_detection', 'how the finish was timed; the runner and the race director only', '{anon}'),
+  ('event_results', 'clock_offset_ms',  'the runner''s device clock offset; the runner only', '{anon}');
+
 -- (1) The registry IS the withheld map, in both directions and for both roles.
 select is(
   (with roles(role) as (values ('anon'::name), ('authenticated'::name)),
@@ -156,7 +196,15 @@ select is(
              and not has_column_privilege(r.role, cl.oid, a.attnum, 'SELECT')
         ),
         registered as (
-          select r.role, g.tbl, g.col from lockdown_registry g cross join roles r
+          select r.role, g.tbl, g.col
+            from lockdown_registry g
+            join roles r on r.role = any (g.roles)
+          union
+          select u.role, cl.relname, a.attname
+            from role_unreadable u
+            join pg_class cl on cl.relname = u.tbl and cl.relkind in ('r', 'p')
+            join pg_namespace n on n.oid = cl.relnamespace and n.nspname = 'public'
+            join pg_attribute a on a.attrelid = cl.oid and a.attnum > 0 and not a.attisdropped
         )
    select coalesce(string_agg(offence, ', ' order by offence), '')
      from (
@@ -216,7 +264,9 @@ select is(
 -- (4) The two roles are held identical on these tables. They have diverged
 -- before (20260723_001 revoked the meet point from anon; 20260806_001 caught
 -- authenticated up eleven weeks later), and a divergence is a leak on the
--- wider side rather than a variant worth carrying silently.
+-- wider side rather than a variant worth carrying silently. A divergence the
+-- registry declares (an entry narrowed to one role, or a role_unreadable
+-- table) is carried with its reason, so it is not silent.
 select is(
   (select coalesce(string_agg(cl.relname || '.' || a.attname, ', '
                               order by cl.relname, a.attname), '')
@@ -224,6 +274,10 @@ select is(
      join pg_namespace n on n.oid = cl.relnamespace and n.nspname = 'public'
      join pg_attribute a on a.attrelid = cl.oid and a.attnum > 0 and not a.attisdropped
     where cl.relname in (select distinct tbl from lockdown_registry)
+      and cl.relname not in (select tbl from role_unreadable)
+      and not exists (select 1 from lockdown_registry g
+                       where g.tbl = cl.relname and g.col = a.attname
+                         and cardinality(g.roles) < 2)
       and has_column_privilege('anon', cl.oid, a.attnum, 'SELECT')
        <> has_column_privilege('authenticated', cl.oid, a.attnum, 'SELECT')),
   '',

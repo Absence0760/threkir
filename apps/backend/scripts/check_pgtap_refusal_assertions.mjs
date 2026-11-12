@@ -1808,6 +1808,33 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'the 60th ordinary report is filed: the deadline requests this hour do not count toward its cap',
+    columns: ['reports.signed_out'],
+    readBack: 'the 60th ordinary report is stored signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'a land-manager request is filed although the ordinary bucket is spent',
+    columns: ['reports.signed_out'],
+    readBack: 'the land-manager request is stored pending, signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'neither bucket holds back a signed-in reporter',
+    columns: ['reports.signed_out'],
+    readBack: 'the signed-in report is stored with its reporter, not signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
     file: 'park_course_rights_holder_test.sql',
     description: "an ordinary report opens the course's queue",
     columns: ['reports.signed_out'],
@@ -2615,6 +2642,22 @@ export const UNOBSERVED_RPC_WRITES = [
  * @type {{ file: string, description: string, columns: string[], readBack?: string, reason: string }[]}
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
+  {
+    file: 'event_results_column_lock_test.sql',
+    description: "the runner's own merge upsert, reading every column it writes back from EXCLUDED, still lands",
+    columns: [
+      'event_results.duration_s',
+      'event_results.finish_at',
+      'event_results.finish_detection',
+      'event_results.start_at',
+      'event_results.start_detection',
+    ],
+    readBack: "the upsert's note is stored",
+    reason:
+      'the claim is that the column grants admit the upsert at all (an ON CONFLICT DO UPDATE needs SELECT on ' +
+      'every column it reads from EXCLUDED), not what the race guard makes of the timing columns; the read-back ' +
+      'proves the write landed, through a column the guard never rewrites.',
+  },
   {
     file: 'group_messages_read_matrix_test.sql',
     description: 'an active member sends to the group by naming the conversation',

@@ -8,15 +8,23 @@
 /// a bot learns nothing from the response. Then the caller: a verified JWT
 /// files as that user against a per-user bucket; anyone else files signed out
 /// against a per-address bucket (check_rate_limit through ipBucketKey, which
-/// keeps a hash of the address, never the address). Both buckets fail closed.
-/// The database then applies its own caps, which no rotation of addresses gets
-/// around (submit_park_course_report: 25 pending a course, 60 signed-out
-/// reports an hour).
+/// keeps a hash of the address, never the address); a land-manager or
+/// rights-holder request has a per-address bucket of its own (lib.ts
+/// addressBucket). Every bucket fails closed. The database then applies its
+/// own caps, which no rotation of addresses gets around
+/// (submit_park_course_report: 25 pending a course, and signed-out reports an
+/// hour, 60 ordinary and 120 deadline requests, each counted apart).
 ///
 /// Nothing the reporter wrote is logged: an error is logged by its code alone.
 
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
-import { type CourseReport, MAX_BODY_BYTES, parseReportBody, rpcErrorToResponse } from './lib.ts';
+import {
+  type CourseReport,
+  type CourseReportReason,
+  MAX_BODY_BYTES,
+  parseReportBody,
+  rpcErrorToResponse,
+} from './lib.ts';
 
 export interface ParkCourseReportDeps {
   /// The signed-in user's id when the request carries a valid user JWT, else
@@ -24,7 +32,9 @@ export interface ParkCourseReportDeps {
   resolveUser: (req: Request) => Promise<string | null>;
   /// Null to proceed, or the 429 / 503 to return.
   limitUser: (userId: string) => Promise<Response | null>;
-  limitAddress: (req: Request) => Promise<Response | null>;
+  /// The signed-out caller's per-address limit for this reason (lib.ts
+  /// addressBucket decides which bucket, if any).
+  limitAddress: (req: Request, reason: CourseReportReason) => Promise<Response | null>;
   submit: (report: CourseReport, reporterId: string | null) => Promise<{ errorCode: string | null }>;
 }
 
@@ -44,7 +54,9 @@ export function makeParkCourseReportHandler(deps: ParkCourseReportDeps): (req: R
     if (parsed.trap) return Response.json(FILED, { status: 201 });
 
     const userId = await deps.resolveUser(req);
-    const denied = userId ? await deps.limitUser(userId) : await deps.limitAddress(req);
+    const denied = userId
+      ? await deps.limitUser(userId)
+      : await deps.limitAddress(req, parsed.report.reason);
     if (denied) return denied;
 
     let errorCode: string | null;

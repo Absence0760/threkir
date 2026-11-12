@@ -51,18 +51,15 @@ const handler = makeParkCourseReportHandler({
     checkRateLimit(adminClient(), userId, 'park-course-report', PARK_COURSE_REPORT_USER_PER_HOUR, 3600, {
       failClosed: true,
     }),
-  limitAddress: async (req, reason) => {
-    const bucket = addressBucket(reason, trustedRequestIp(req));
-    if (bucket === null) return null;
-    return checkRateLimit(
+  limitAddress: async (req, reason) =>
+    checkRateLimit(
       adminClient(),
       await ipBucketKey(req),
-      bucket,
+      addressBucket(reason, trustedRequestIp(req)),
       PARK_COURSE_REPORT_ADDRESS_PER_HOUR,
       3600,
       { failClosed: true },
-    );
-  },
+    ),
   submit: async (report, reporterId) => {
     const { error } = await adminClient().rpc('submit_park_course_report', {
       p_course_id: report.courseId,

@@ -244,13 +244,18 @@ internal fun ServerClockOffset.seed(entry: CachedClockOffset) {
     addSample(sentAtMs = 0L, receivedAtMs = entry.rttMs, serverAtMs = entry.offsetMs + entry.rttMs / 2)
 }
 
-/// Whether a failed upsert is worth replaying. The body is the problem on a
+/// Whether a failed write is worth replaying. The body is the problem on a
 /// 400 / 403 / 404 / 422 and a replay sends the same body; everything else —
 /// offline, 5xx, a 409 on a run that has not uploaded yet, an expired token —
-/// can come right on its own.
+/// can come right on its own. So can a 404 carrying `PGRST202`:
+/// `file_event_result` is not in the schema yet (this build reached the wrist
+/// before the backend release, or before PostgREST reloaded its schema
+/// cache), and dropping it would delete the finisher's only copy of the time.
 internal fun isRetryableRaceResultFailure(e: Throwable): Boolean {
-    val code = Regex("""^HTTP (\d{3})""").find(e.message.orEmpty())
+    val message = e.message.orEmpty()
+    val code = Regex("""^HTTP (\d{3})""").find(message)
         ?.groupValues?.get(1)?.toIntOrNull() ?: return true
+    if (code == 404 && Regex(""""code"\s*:\s*"PGRST202"""").containsMatchIn(message)) return true
     return code !in setOf(400, 403, 404, 422)
 }
 

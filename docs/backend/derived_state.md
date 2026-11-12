@@ -520,7 +520,16 @@ matcher over a stored track, which SQL cannot run (decisions § 2392).
   A result for bytes that are no longer stored is refused and the job retried.
   The web run-detail fallback (`computeGlobalSegmentEffortsForRun`) reconciles
   the owner's run the same way, by delete then insert (there is no client
-  UPDATE), when the catalogue grew or the run's matcher stamp is behind.
+  UPDATE), when the catalogue grew or the run's matcher stamp is behind. Its
+  writes meet the BEFORE INSERT OR UPDATE trigger
+  `global_segment_efforts_client_bounds` (`20271224000500`, corrected by
+  `20271225000200`), which refuses a client-written effort starting more than
+  60 s before its run or faster than the activity's cap (11 m/s on foot,
+  25 m/s on a ride); the server writer is not held to it. So the fallback can
+  diverge from the authoritative recompute: it screens each effort by the same
+  rule before deleting anything and treats a refused one as no match, and a
+  refusal it did not foresee costs only that row. `segment-match` records
+  those efforts.
 - **Not recomputed on:** a segment's geometry being edited, a new segment being
   added, or a matcher version change. The park sync queues the backfill for a
   created or redrawn course; a matcher change ships a one-off ops task that

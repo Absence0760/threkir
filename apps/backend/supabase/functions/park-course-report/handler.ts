@@ -9,8 +9,9 @@
 /// files as that user against a per-user bucket; anyone else files signed out
 /// against a per-address bucket (check_rate_limit through ipBucketKey, which
 /// keeps a hash of the address, never the address); a land-manager or
-/// rights-holder request has a per-address bucket of its own (lib.ts
-/// addressBucket). Every bucket fails closed. The database then applies its
+/// rights-holder request has a per-address bucket of its own, and one shared
+/// by every such request with no address (lib.ts addressBucket). Every bucket
+/// fails closed. The database then applies its
 /// own caps, which no rotation of addresses gets around
 /// (submit_park_course_report: 25 pending a course, and signed-out reports an
 /// hour, 60 ordinary and 120 deadline requests, each counted apart).
@@ -33,7 +34,7 @@ export interface ParkCourseReportDeps {
   /// Null to proceed, or the 429 / 503 to return.
   limitUser: (userId: string) => Promise<Response | null>;
   /// The signed-out caller's per-address limit for this reason (lib.ts
-  /// addressBucket decides which bucket, if any).
+  /// addressBucket decides which bucket).
   limitAddress: (req: Request, reason: CourseReportReason) => Promise<Response | null>;
   submit: (report: CourseReport, reporterId: string | null) => Promise<{ errorCode: string | null }>;
 }

@@ -1047,10 +1047,83 @@ test('computeGlobalSegmentEffortsForRun re-matches by delete then insert, and ga
 		'the gate must compare the run\'s matcher version with the current one',
 	);
 	const deleteAt = body.indexOf('.delete().in(\'id\', part)');
-	const insertAt = body.indexOf('.upsert(rows');
+	const insertAt = body.indexOf('.upsert(batch');
 	assert.ok(deleteAt >= 0 && insertAt > deleteAt, 'stale efforts are deleted before the re-matched ones are inserted');
 	assert.match(body, /matched_by: eff\.matched_by/, 'the insert records how the effort was matched');
 	assert.doesNotMatch(body, /\.update\(\{ time_seconds/, 'no client UPDATE of an effort');
+});
+
+test('computeGlobalSegmentEffortsForRun screens each effort against the client bounds before deleting anything', () => {
+	// Reason (audit of PR #1359): the trigger global_segment_efforts_client_bounds
+	// refuses an implausible client-written effort, and the fallback wrote every
+	// effort in one statement after deleting the stale rows. One refused row
+	// failed the statement, so the run lost every effort and was retried and
+	// refused on every view. Each effort is screened by the trigger's own rule
+	// first, and the write isolates any refusal the screen did not foresee.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	const screenAt = body.indexOf('globalSegmentEffortRefusal(');
+	const deleteAt = body.indexOf(".delete().in('id', part)");
+	assert.ok(screenAt >= 0 && deleteAt > screenAt, 'the bounds screen must run before the stale delete');
+	assert.match(body, /select\('metadata, started_at, activity_type'\)/, 'the screen needs the run start and activity');
+	assert.match(body, /writeEffortsIsolatingRefusals\(rows,/, 'the insert must isolate a refused row');
+});
+
+test('one refused effort in a batch does not void the others', async () => {
+	const { writeEffortsIsolatingRefusals } = await import('../segments/effort_bounds');
+	const writes: string[][] = [];
+	const result = await writeEffortsIsolatingRefusals(['a', 'forged', 'c'], async (batch) => {
+		writes.push(batch);
+		if (batch.includes('forged')) return { count: 0, error: { code: '23514' } };
+		return { count: batch.length, error: null };
+	});
+	assert.deepEqual(result, { written: 2, refused: 1, error: null });
+	assert.deepEqual(writes, [['a', 'forged', 'c'], ['a'], ['forged'], ['c']]);
+
+	const transport = await writeEffortsIsolatingRefusals(['a', 'b'], async () => ({
+		count: 0,
+		error: { code: 'PGRST301' },
+	}));
+	assert.equal(transport.written, 0);
+	assert.ok(transport.error, 'a failure that is not a refusal is reported, so the run is not stamped');
+
+	const mixed = await writeEffortsIsolatingRefusals(['forged', 'b'], async (batch) => {
+		if (batch.includes('forged')) return { count: 0, error: { code: '23514' } };
+		return { count: 0, error: { code: '08006' } };
+	});
+	assert.deepEqual([mixed.written, mixed.refused], [0, 1]);
+	assert.ok(mixed.error, 'a non-refusal failure on one row still withholds the stamp');
+});
+
+test('the client effort bounds mirror the trigger: start slack and speed cap, never duration_s', async () => {
+	const { globalSegmentEffortRefusal } = await import('../segments/effort_bounds');
+	const run = { started_at: '2027-06-01T08:00:00Z', activity_type: 'run' };
+	// A paused run: 08:00 start, 3000 s of moving time. 08:52 is inside it.
+	assert.equal(globalSegmentEffortRefusal({ time_seconds: 100, started_at: '2027-06-01T08:52:00Z' }, run, 400), null);
+	assert.equal(globalSegmentEffortRefusal({ time_seconds: 3300, started_at: '2027-06-01T08:01:00Z' }, run, 4000), null);
+	assert.equal(globalSegmentEffortRefusal({ time_seconds: 120, started_at: '2027-06-01T07:59:00Z' }, run, 400), null);
+	assert.equal(
+		globalSegmentEffortRefusal({ time_seconds: 120, started_at: '2027-06-01T07:58:59Z' }, run, 400),
+		'starts_before_run',
+	);
+	assert.equal(
+		globalSegmentEffortRefusal({ time_seconds: 1, started_at: '2027-06-01T08:10:00Z' }, run, 400),
+		'faster_than_activity',
+	);
+	for (const activity_type of ['walk', 'hike', 'stroller']) {
+		assert.equal(
+			globalSegmentEffortRefusal({ time_seconds: 25, started_at: '2027-06-01T08:10:00Z' }, { ...run, activity_type }, 400),
+			'faster_than_activity',
+			`${activity_type} is held to the foot cap`,
+		);
+	}
+	assert.equal(
+		globalSegmentEffortRefusal({ time_seconds: 25, started_at: '2027-06-01T08:10:00Z' }, { ...run, activity_type: 'cycle' }, 400),
+		null,
+	);
+	assert.equal(globalSegmentEffortRefusal({ time_seconds: 1, started_at: '2027-06-01T08:10:00Z' }, run, null), null);
 });
 
 test('saveRun writes elevation_gain_m alongside the metadata key', () => {

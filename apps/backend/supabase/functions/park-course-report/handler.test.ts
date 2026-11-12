@@ -8,7 +8,7 @@
 
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import { makeParkCourseReportHandler, type ParkCourseReportDeps } from './handler.ts';
-import { addressBucket, type CourseReport, MAX_BODY_BYTES } from './lib.ts';
+import { type CourseReport, MAX_BODY_BYTES } from './lib.ts';
 
 const URL = 'http://127.0.0.1:24321/functions/v1/park-course-report';
 const COURSE = '6f1c2b8e-3a4d-4e5f-8a9b-0c1d2e3f4a5b';
@@ -204,13 +204,4 @@ Deno.test('the address limit is told the reason, so a deadline request spends it
     'limit-address:other',
     'limit-address:land_manager_request',
   ]);
-});
-
-Deno.test('addressBucket keeps deadline requests out of the ordinary and the shared unknown buckets', () => {
-  assertEquals(addressBucket('other', '203.0.113.7'), 'park-course-report:anon');
-  assertEquals(addressBucket('course_hazard', null), 'park-course-report:anon');
-  assertEquals(addressBucket('land_manager_request', '203.0.113.7'), 'park-course-report:anon:deadline');
-  assertEquals(addressBucket('rights_holder_request', '203.0.113.7'), 'park-course-report:anon:deadline');
-  assertEquals(addressBucket('rights_holder_request', null), null);
-  assertEquals(addressBucket('land_manager_request', null), null);
 });

@@ -488,7 +488,11 @@ and install from there.
   [decisions § 2474](../architecture/decisions.md)). A web, phone or Wear
   build that files a result through the RPC gets PostgREST's `PGRST202`
   (404) against a database without it, so the order is `backend@*`, then
-  `web@*`, the store builds and the Wear build in any order. Released builds
+  `web@*`, the store builds and the Wear build in any order. If a phone or
+  Wear build reaches runners first anyway, a queued finisher time is kept,
+  not lost: both clients treat `PGRST202` as retryable (unlike every other
+  404) and replay it once the backend release lands. Web keeps no queue, so
+  a web result filed in that gap fails in front of the runner. Released builds
   still file with the merge upsert, which needs SELECT on the eight columns
   it writes back from `EXCLUDED`, so those stay granted to `authenticated`.
   **Trigger for the revoke:** once the minimum supported `mobile_android@*`,

@@ -472,7 +472,9 @@ void main() {
               from: 'p-2', minute: 2, body: 'Tempo club', kind: 'group_renamed'),
           _msg('m4', from: _me, minute: 4, body: 'in'),
         ]
-        ..placeholders = [(id: 'm3', createdAt: DateTime.utc(2026, 11, 10, 8, 3))];
+        ..placeholders = [
+          (id: 'm3', createdAt: DateTime.utc(2026, 11, 10, 8, 1, 30)),
+        ];
       await _pumpThread(tester, api);
       await pumpUntil(
           tester, () => _shows(find.text('Message from someone you blocked')),
@@ -557,6 +559,25 @@ void main() {
           describe: 'the poll to read the flag again and load the thread');
       expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets(
+        'a blocked renamer\'s newer rename leaves the header on the group\'s '
+        'own title, not an older rename line', (tester) async {
+      final api = _FakeApi()
+        ..threads = [_groupRow(title: 'Hill reps')]
+        ..messages = [
+          _msg('m1',
+              from: 'p-2', minute: 1, body: 'Tempo club', kind: 'group_renamed'),
+          _msg('m2', from: 'p-1', minute: 2, body: 'see you'),
+        ]
+        ..placeholders = [(id: 'm3', createdAt: DateTime.utc(2026, 11, 10, 8, 3))];
+      await _pumpThread(tester, api);
+      String header() =>
+          tester.widget<Text>(find.byKey(const ValueKey('group-title'))).data!;
+      await pumpUntil(tester, () => header() == 'Hill reps',
+          describe: 'the header to take the group row\'s title');
+      expect(header(), isNot('Tempo club'));
     });
 
     testWidgets('Leave asks first; Cancel stays', (tester) async {

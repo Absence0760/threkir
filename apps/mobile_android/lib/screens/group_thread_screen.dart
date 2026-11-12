@@ -113,6 +113,9 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   bool _refreshing = false;
   String? _markedThroughId;
   String? _title;
+
+  /// The newest blocked placeholder the row's title was re-read for.
+  DateTime? _titleReadFor;
   bool _muted = false;
   bool _left = false;
   bool _busy = false;
@@ -218,7 +221,10 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   }
 
   /// A thread opened from outside the inbox reads its row for the title, the
-  /// mute and whether the viewer left. A failure keeps the fallback title.
+  /// mute and whether the viewer left; so does one whose newest line is a
+  /// blocked placeholder, which may be a rename this viewer cannot read. The
+  /// row's title is the group's own, so it wins over what was passed in. A
+  /// failure keeps the title shown.
   Future<void> _loadRow() async {
     try {
       final rows = await widget.api.fetchDmThreads();
@@ -226,7 +232,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
         if (t.isGroup && t.conversationId == widget.conversationId) {
           if (!mounted) return;
           setState(() {
-            _title ??= t.title;
+            _title = t.title ?? _title;
             _muted = t.muted;
             _left = t.membershipState == 'left';
           });
@@ -306,7 +312,10 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     try {
       final rows = await widget.api.fetchGroupBlockedPlaceholders(
           widget.conversationId, placeholdersSince(_messages, _hasMore));
-      if (mounted && _active) setState(() => _placeholders = rows);
+      if (mounted && _active) {
+        setState(() => _placeholders = rows);
+        _rereadTitleIfHidden();
+      }
     } catch (e) {
       debugPrint('group placeholders read failed: ${safeErrorLabel(e)}');
     }
@@ -450,14 +459,45 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     return _profiles[id]?.avatarUrl;
   }
 
-  /// The newest rename line names the title, so a rename shows here on the
-  /// next read without another round trip. An unsent one names nothing.
-  String _displayTitle(AppLocalizations l10n) {
+  DirectMessageRow? get _newestRename {
     for (final m in _messages.reversed) {
-      if (m.kind == 'group_renamed') {
-        if (m.unsentAt == null && m.body != null) return m.body!;
-        break;
-      }
+      if (m.kind == 'group_renamed') return m;
+    }
+    return null;
+  }
+
+  DateTime? get _newestPlaceholderAt {
+    DateTime? at;
+    for (final p in _placeholders) {
+      if (at == null || p.createdAt.isAfter(at)) at = p.createdAt;
+    }
+    return at;
+  }
+
+  /// A placeholder newer than every rename line this viewer can read may be a
+  /// rename by someone they blocked, so the group's own title is read again,
+  /// once per such placeholder.
+  void _rereadTitleIfHidden() {
+    final hiddenAt = _newestPlaceholderAt;
+    if (hiddenAt == null || hiddenAt == _titleReadFor) return;
+    final rename = _newestRename;
+    if (rename != null && rename.createdAt.isAfter(hiddenAt)) return;
+    _titleReadFor = hiddenAt;
+    unawaited(_loadRow());
+  }
+
+  /// The newest rename line names the title, so a rename shows here on the
+  /// next read without another round trip. An unsent one names nothing, and
+  /// one older than a blocked placeholder may be stale (the placeholder can
+  /// hide a newer rename): both defer to the group row's title.
+  String _displayTitle(AppLocalizations l10n) {
+    final rename = _newestRename;
+    final hiddenAt = _newestPlaceholderAt;
+    if (rename != null &&
+        rename.unsentAt == null &&
+        rename.body != null &&
+        (hiddenAt == null || rename.createdAt.isAfter(hiddenAt))) {
+      return rename.body!;
     }
     return _title ?? l10n.groupsGroupFallback;
   }

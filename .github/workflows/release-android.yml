@@ -2,17 +2,29 @@ name: Release Android
 
 # Per-app tag convention: `mobile_android@1.2.3`. The workflow parses the
 # version out of the tag, injects it into the AAB, signs it with the
-# release keystore from Secrets, uploads to Play Internal track, and
-# attaches the AAB to a GitHub Release so there's an audit trail.
+# release keystore from Secrets, attaches the AAB to the GitHub Release so
+# there's an audit trail, uploads it to the Play Internal track, and sends it
+# to production as a staged rollout (1% on approval; play-rollout.yml walks it
+# up the ramp once a day). The `production` environment's approval is the
+# human gate, as on iOS (decisions § 2040, § 2433). The Release body must
+# carry an owner-written `## What's New` section of at most 500 characters,
+# which becomes the en-US Play release notes; the job fails in its first
+# minute without one.
+#
+# `workflow_dispatch` with a tag promotes a build Play already holds without
+# rebuilding it (the `promote` job), still behind the `production` approval.
 #
 # Signing / upload secrets (configure under Settings → Secrets → Actions):
 #   ANDROID_KEYSTORE_BASE64       base64-encoded upload-keystore.jks
 #   ANDROID_KEYSTORE_PASSWORD     store password
 #   ANDROID_KEY_ALIAS             alias inside the keystore
 #   ANDROID_KEY_PASSWORD          key password (often same as store)
-#   PLAY_SERVICE_ACCOUNT_JSON     Google Play service-account JSON key
-#                                 (grant the account "Release apps to testing
-#                                 tracks" on the Play Console)
+#   PLAY_SERVICE_ACCOUNT_JSON     Google Play service-account JSON key. Play
+#                                 Console → Users and permissions → the account
+#                                 → app permissions for com.threkir.app: "Release
+#                                 to production, exclude devices, and use Play
+#                                 App Signing" (production) as well as "Release
+#                                 apps to testing tracks" (the Internal upload)
 #   GOOGLE_SERVICES_JSON_BASE64   base64-encoded google-services.json from the
 #                                 Firebase project's Android app. Optional: an
 #                                 AAB built without it receives no push
@@ -56,6 +68,12 @@ name: Release Android
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "An existing mobile_android@<version> tag whose build Play already holds, to send to production without rebuilding"
+        required: true
+        type: string
 
 # Least-privilege default; the release job opts up to `contents: write`
 # for the GitHub Release step.
@@ -75,11 +93,11 @@ env:
 
 jobs:
   release:
-    name: Build, sign, upload to Play Internal
+    name: Build, sign, upload to Play and send to production
     runs-on: ubuntu-latest
     # Guard: `on: release` fires for every published release in the repo,
     # so only act on mobile_android@* releases.
-    if: startsWith(github.event.release.tag_name, 'mobile_android@')
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mobile_android@')
     # Pause on the `production` environment's required-reviewer rule
     # before any prod credentials/steps run (repo Settings → Environments).
     environment: production
@@ -90,6 +108,18 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0   # git rev-list --count needs full history
+
+      # Before the build, so a Release with no note fails in seconds. Read
+      # through the API rather than the event payload, which is frozen at
+      # publish time: editing the Release and re-running the job picks the
+      # edit up. Never falls back to the generated notes (decisions § 2040).
+      - name: The GitHub Release carries a What's New for Google Play
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.body // ""' > "$RUNNER_TEMP/release-body.md"
+          node scripts/play_release.mjs notes "$RUNNER_TEMP/release-body.md" "$RUNNER_TEMP/play-notes.txt"
 
       - name: Parse version from tag
         id: version
@@ -271,7 +301,18 @@ jobs:
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
             apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
 
+      # A re-run rebuilds the same commit, so the same version code, and Play
+      # refuses a version code it already holds. This lets the upload skip a
+      # bundle Play has, so a re-run after a failed promotion gets to it.
+      - name: Is this build already on Google Play
+        id: uploaded
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: node scripts/play_release.mjs uploaded --version-code "$VERSION_CODE"
+
       - name: Upload to Play Internal
+        if: steps.uploaded.outputs.uploaded != 'true'
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -279,6 +320,63 @@ jobs:
           releaseFiles: apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
-          # Rolling out to a fraction isn't meaningful on the internal
-          # track — always 100% there. Promote to beta / prod manually
-          # via the Play Console once tested.
+
+      # Puts the bundle on production with the What's New as its en-US notes
+      # and sends it for review: a staged rollout at 1%, or, for the app's
+      # first production release, a full one (Play stages updates only).
+      # Production already carrying it is a no-op, so re-running is safe; a
+      # different build still rolling out, or other changes in review, fail
+      # the job rather than being cancelled (scripts/play_release.mjs).
+      - name: Send the build to production as a staged rollout
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: node scripts/play_release.mjs promote --version-code "$VERSION_CODE" --notes "$RUNNER_TEMP/play-notes.txt"
+
+  # workflow_dispatch: send a build Play already holds to production without
+  # rebuilding it. The scripts come from the ref the workflow runs on, not the
+  # tag, so a tag cut before play_release.mjs existed (mobile_android@1.24.0)
+  # can still go out. The version code is the tag's commit count, exactly as
+  # the release job derived it when it built the bundle.
+  promote:
+    name: Send an uploaded build to production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Resolve the tag's version code
+        id: version
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          case "$TAG" in
+            mobile_android@*) ;;
+            *) echo "::error::\"$TAG\" is not a mobile_android@<version> tag."; exit 1 ;;
+          esac
+          if ! git rev-parse --verify --quiet "refs/tags/$TAG^{commit}" > /dev/null; then
+            echo "::error::There is no tag $TAG."
+            exit 1
+          fi
+          echo "code=$(git rev-list --count "refs/tags/$TAG")" >> "$GITHUB_OUTPUT"
+
+      - name: The GitHub Release carries a What's New for Google Play
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.body // ""' > "$RUNNER_TEMP/release-body.md"
+          node scripts/play_release.mjs notes "$RUNNER_TEMP/release-body.md" "$RUNNER_TEMP/play-notes.txt"
+
+      # promote fails, naming the version code, when Play holds no such bundle.
+      - name: Send the build to production as a staged rollout
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: node scripts/play_release.mjs promote --version-code "$VERSION_CODE" --notes "$RUNNER_TEMP/play-notes.txt"

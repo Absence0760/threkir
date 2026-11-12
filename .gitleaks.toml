@@ -66,6 +66,11 @@ regexes = [
   # Matched on the value so a real audit key in that test file is still a
   # finding.
   '''an-operator-secret-at-least-32-bytes-long''',
+  # og_grisnir_placement.test.ts: `badge_key: 'distance_42k'`, the marathon
+  # badge's catalogue key. generic-api-key fires on the `_key` name beside a
+  # mixed letter-and-digit value; it is a public achievement slug. Matched on
+  # the value, so a real key in that file is still a finding.
+  '''distance_42k''',
   # check_production_env.test.mjs (history only): the VAPID public point an
   # interim commit on the native-push branch carried as a literal before the
   # test was changed to mint one per run with node:crypto. A 65-byte

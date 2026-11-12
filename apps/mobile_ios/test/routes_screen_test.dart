@@ -798,7 +798,7 @@ void main() {
             'Discover tile');
       });
 
-      testWidgets('at ${scale}x every filter chip sits on screen',
+      testWidgets('at ${scale}x Filters and the Starred chip sit on screen',
           (tester) async {
         usePhone(tester);
         final prefs = await _makePrefs();
@@ -808,18 +808,19 @@ void main() {
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'no overflow stripe');
 
-        final strip = find.byKey(const ValueKey('routes-filter-chips'));
-        final chips = find.descendant(
+        // Filters beside the search, Starred on the chip line.
+        final strip = find.byKey(const ValueKey('routes-filter-bar'));
+        final controls = find.descendant(
           of: strip,
           matching: find.byWidgetPredicate(
-              (w) => w is FilterChip || w is ActionChip),
+              (w) => w is FilterChip || w is IconButton),
         );
-        expect(chips, findsNWidgets(4));
-        expectInsideScreen(tester, chips, 'filter chip');
-        for (var i = 0; i < 4; i++) {
-          expect(tester.getSize(chips.at(i)).height,
+        expect(controls, findsNWidgets(2));
+        expectInsideScreen(tester, controls, 'filter control');
+        for (var i = 0; i < 2; i++) {
+          expect(tester.getSize(controls.at(i)).height,
               greaterThanOrEqualTo(kMinInteractiveDimension),
-              reason: 'filter chip #$i keeps a 48 dp tap target');
+              reason: 'filter control #$i keeps a 48 dp tap target');
         }
       });
 
@@ -884,7 +885,7 @@ void main() {
               'the title width');
     });
 
-    testWidgets('Build is the one FAB; Import sits in the AppBar',
+    testWidgets('Build is the one FAB; Import sits in the control row',
         (tester) async {
       usePhone(tester);
       final prefs = await _makePrefs();
@@ -895,10 +896,13 @@ void main() {
               'title of every card that scrolled under the pair');
       expect(find.widgetWithText(FloatingActionButton, 'Build'),
           findsOneWidget);
+      expect(find.byTooltip('Import'), findsOneWidget);
       expect(
           find.descendant(
               of: find.byType(AppBar), matching: find.byTooltip('Import')),
-          findsOneWidget);
+          findsNothing,
+          reason: 'a tab body\'s actions live in its control row, hosted or '
+              'pushed');
       expect(
           find.descendant(
               of: find.byKey(const ValueKey('routes-discover-strip')),
@@ -1028,13 +1032,13 @@ void main() {
       await _pump(tester, prefs: prefs, routeStore: routeStore);
       await tester.pump();
 
-      // Open the sort chip and pick A–Z.
-      await tester.tap(find.text('Newest first'));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      // Sort lives in the Filters sheet.
+      await tester.tap(find.byTooltip('Filters'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('A–Z').last);
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
 
       double y(String name) => tester.getTopLeft(find.text(name)).dy;
       // Folded: "are trail" < "riverside way" < "zaragoza loop". A raw

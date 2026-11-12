@@ -24488,35 +24488,11 @@ abstract class AppLocalizations {
   /// **'Search races by name…'**
   String get racesSearchPlaceholder;
 
-  /// Label of the button that opens the race calendar's filter sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Filters'**
-  String get racesFilters;
-
-  /// Screen-reader label of the Filters button when filters are on. {count} is how many.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{Filters, 1 on} other{Filters, {count} on}}'**
-  String racesFiltersCount(int count);
-
-  /// Tooltip and screen-reader label of the remove action on an active race-calendar filter chip. {filter} is the chip's own label.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove filter: {filter}'**
-  String racesRemoveFilter(String filter);
-
   /// Active-filter chip for the near-a-place filter. {place} is what the runner typed.
   ///
   /// In en, this message translates to:
   /// **'Near {place}'**
   String racesNearChip(String place);
-
-  /// Button that closes the race calendar's filter sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get racesFiltersDone;
 
   /// Heading over the distance-band chips in the race calendar filter sheet
   ///
@@ -36184,6 +36160,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} invited you to a group'**
   String profileNotifGroupInvite(String name);
+
+  /// Label of the button at the start of a list's filter row that opens its filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get filterBarFilters;
+
+  /// Screen-reader label of a list's Filters button when filters are on. {count} is how many.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Filters, 1 on} other{Filters, {count} on}}'**
+  String filterBarFiltersCount(int count);
+
+  /// Tooltip of the remove button on an active-filter chip. {filter} is the chip's label.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove filter: {filter}'**
+  String filterBarRemoveFilter(String filter);
+
+  /// Button that closes a list's filter sheet; the filters already applied as they changed
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get filterBarDone;
+
+  /// Heading of the surface choices in a list's filter sheet (routes, segments)
+  ///
+  /// In en, this message translates to:
+  /// **'Surface'**
+  String get filterBarSurface;
+
+  /// Heading of the distance choices in a list's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get filterBarDistance;
+
+  /// Heading of the sort-order choices in a list's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get filterBarSort;
+
+  /// Placeholder of the Runs tab's search field, which matches the names runners give their runs
+  ///
+  /// In en, this message translates to:
+  /// **'Search run names'**
+  String get runsSearchHint;
+
+  /// Heading of the region choices in a list's filter sheet (the segment catalogue)
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get filterBarRegion;
 }
 
 class _AppLocalizationsDelegate

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../fab_clearance.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gym_store.dart';
@@ -36,9 +37,13 @@ import 'runs_screen.dart';
 ///     courses you can run any time (issue #1352).
 ///   - Gym: `GymScreen`. Nutrition: `NutritionScreen`.
 ///
-/// Each tab body owns its own Scaffold, AppBar actions and FAB; the hub
-/// provides only the strip. One strip in every configuration: gym and food
-/// join the same row rather than stacking a second strip inside Runs.
+/// The hub owns the only app bar (the strip, no title) and the one FAB, as
+/// the Social hub does: every tab body is a ui_kit `HubTabBody`, which inside
+/// the hub's [HubTabScope] draws no app bar or title of its own, puts its
+/// secondary actions in its control row and hands its primary action to the
+/// hub, which shows the active tab's as its FAB (issue #1374). One strip in
+/// every configuration: gym and food join the same row rather than stacking a
+/// second strip inside Runs.
 ///
 /// Gym and Nutrition are only in the strip while [modalityShown] says so: off
 /// for a runner who has logged neither until they switch them on in Settings,
@@ -154,6 +159,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   late List<FitnessTab> _tabs;
   late bool _centreStartsRun;
   late final RaceService _raceService = RaceService();
+  final _actions = HubPrimaryActions();
 
   late final ValueNotifier<FitnessTab> _tab = widget.selectedTab ??
       ValueNotifier(_storedTab() ?? FitnessTab.history);
@@ -269,6 +275,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     _controller.removeListener(_publishTab);
     _controller.dispose();
     if (_ownsTab) _tab.dispose();
+    _actions.dispose();
     super.dispose();
   }
 
@@ -301,7 +308,15 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
       ),
       body: TabBarView(
         controller: _controller,
-        children: [for (final t in _tabs) _body(t, l10n)],
+        children: [
+          for (final t in _tabs)
+            HubTabScope(tab: t, actions: _actions, child: _body(t, l10n)),
+        ],
+      ),
+      floatingActionButtonLocation: pageFabLocation(context),
+      floatingActionButton: ValueListenableBuilder<FitnessTab>(
+        valueListenable: _tab,
+        builder: (_, tab, _) => HubFab(actions: _actions, tab: tab),
       ),
     );
   }
@@ -342,7 +357,6 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             settingsSync: widget.settingsSync,
             social: widget.social,
             showSyncActions: _ownsSyncActions(tab),
-            titleText: l10n.fitnessTabRuns,
             centreStartsRun: _centreStartsRun,
           ),
         // These four keep no state alive of their own, and a TabBarView page

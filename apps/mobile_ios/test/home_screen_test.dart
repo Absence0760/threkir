@@ -514,8 +514,8 @@ void main() {
 
       expect(s.prefs.showGym, isTrue);
       expect(find.byType(GymScreen), findsOneWidget);
-      // The hub's tab label and the Gym screen's own title.
-      expect(find.text('Gym'), findsNWidgets(2));
+      // The hub's tab label only: the tab draws no title bar of its own.
+      expect(find.text('Gym'), findsOneWidget);
       // It changed what the centre button does, so it says so.
       expect(find.text('Gym is now shown'), findsOneWidget);
       // showTopBanner arms an auto-dismiss timer; let it run out.
@@ -618,9 +618,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       // Not a modal composer — the Log action navigates the PageView to the
       // Fitness hub's Gym tab (same dwell-in model as the run recorder), so
-      // the bottom nav stays visible alongside the surface's own "Gym" AppBar
-      // title. Twice: the hub's tab label, and that title 48dp below it.
-      expect(find.text('Gym'), findsNWidgets(2));
+      // the bottom nav stays visible. "Gym" once: the hub's tab label, with
+      // no title bar under it (issue #1374).
+      expect(find.text('Gym'), findsOneWidget);
       expect(find.byType(GymScreen), findsOneWidget);
       expect(find.byType(BottomAppBar), findsOneWidget);
     });
@@ -637,7 +637,7 @@ void main() {
       await tester.tap(find.byTooltip('Log food'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.text('Nutrition'), findsOneWidget);
       expect(find.byType(NutritionScreen), findsOneWidget);
       expect(find.byType(BottomAppBar), findsOneWidget);
     });
@@ -1902,7 +1902,7 @@ void main() {
       await tester.tap(_inMenu('Log food'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.text('Nutrition'), findsOneWidget);
       expect(find.byType(NutritionScreen), findsOneWidget);
       expect(find.byType(BottomAppBar), findsOneWidget);
       expect(shellPage(tester), 1);

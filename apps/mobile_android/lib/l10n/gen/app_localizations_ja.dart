@@ -14394,30 +14394,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesSearchPlaceholder => 'レースを名前で検索…';
 
   @override
-  String get racesFilters => '絞り込み';
-
-  @override
-  String racesFiltersCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '絞り込み（$count件適用中）',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String racesRemoveFilter(String filter) {
-    return '絞り込みを解除: $filter';
-  }
-
-  @override
   String racesNearChip(String place) {
     return '$placeの近く';
   }
-
-  @override
-  String get racesFiltersDone => '完了';
 
   @override
   String get racesDistanceGroup => '距離';
@@ -21423,4 +21402,40 @@ class AppLocalizationsJa extends AppLocalizations {
   String profileNotifGroupInvite(String name) {
     return '$nameさんからグループに招待されました';
   }
+
+  @override
+  String get filterBarFilters => '絞り込み';
+
+  @override
+  String filterBarFiltersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '絞り込み（$count件適用中）',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String filterBarRemoveFilter(String filter) {
+    return '絞り込みを解除: $filter';
+  }
+
+  @override
+  String get filterBarDone => '完了';
+
+  @override
+  String get filterBarSurface => '路面';
+
+  @override
+  String get filterBarDistance => '距離';
+
+  @override
+  String get filterBarSort => '並べ替え';
+
+  @override
+  String get runsSearchHint => 'ランの名前で検索';
+
+  @override
+  String get filterBarRegion => '地域';
 }

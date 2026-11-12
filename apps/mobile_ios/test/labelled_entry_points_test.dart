@@ -91,10 +91,11 @@ void main() {
       tester,
       PlansScreen(training: TrainingService(), apiClient: _SignedInApi()),
     );
-    // A labelled action next to New plan, as on web — not a peer tab, which
-    // repeated the AppBar title as a selected chip (issue #1186).
+    // A labelled secondary action, as on web — not a peer tab, which
+    // repeated the AppBar title as a selected chip (issue #1186). New plan is
+    // the page's one primary action, its FAB (issue #1374).
     expect(find.widgetWithText(OutlinedButton, 'Browse library'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'New plan'), findsOneWidget);
+    expect(find.widgetWithText(FloatingActionButton, 'New plan'), findsOneWidget);
     expect(find.byType(SurfacePeerStrip), findsNothing);
     expect(find.widgetWithIcon(IconButton, Icons.public), findsNothing);
   });

@@ -4,7 +4,20 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SelectionHint;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ActiveFilter,
+        AppInsets,
+        AppSearchField,
+        AppSemanticColors,
+        AppSpace,
+        EmptyState,
+        FilterBar,
+        HubSelection,
+        HubTabBody,
+        PrimaryAction,
+        SelectionHint,
+        showFilterSheet;
 
 import '../widgets/grisnir_moments.dart';
 import '../auth_error.dart';
@@ -73,14 +86,6 @@ class RoutesScreen extends StatefulWidget {
   /// the user's clubs. When null, the picker is hidden and saved
   /// routes go to the user's personal library (existing behaviour).
   final SocialService? social;
-  /// When true, the screen renders only its body and a hosting parent owns
-  /// the Scaffold/AppBar/FAB chrome. No host uses it today — the Fitness hub
-  /// mounts Routes as a tab body that keeps its own Scaffold, actions and FAB
-  /// (decisions § 2437) — but the dual "Build" / "Import" FAB column stays
-  /// exposed via [RoutesScreenState.buildRouteFabs] for one.
-  /// Same pattern as `ClubsScreen.embedded`.
-  final bool embedded;
-
   const RoutesScreen({
     super.key,
     this.apiClient,
@@ -88,7 +93,6 @@ class RoutesScreen extends StatefulWidget {
     this.runStore,
     required this.preferences,
     this.social,
-    this.embedded = false,
   });
 
   @override
@@ -123,6 +127,7 @@ class RoutesScreenState extends State<RoutesScreen> {
   // Filter state — mirrors the web `/routes` toolbar. The
   // post-filter list feeds the visible-window paging.
   String _search = '';
+  final _searchCtl = TextEditingController();
   _SurfaceFilter _surfaceFilter = _SurfaceFilter.any;
   _DistanceBucket _distanceFilter = _DistanceBucket.any;
   _RouteSort _sort = _RouteSort.newest;
@@ -153,6 +158,7 @@ class RoutesScreenState extends State<RoutesScreen> {
   void dispose() {
     widget.routeStore.removeListener(_onChange);
     widget.preferences.removeListener(_onChange);
+    _searchCtl.dispose();
     super.dispose();
   }
 
@@ -308,7 +314,10 @@ class RoutesScreenState extends State<RoutesScreen> {
       final sort = j['sort'];
       final starred = j['starredOnly'];
       setState(() {
-        if (search is String) _search = search;
+        if (search is String) {
+          _search = search;
+          _searchCtl.text = search;
+        }
         if (surface is String) {
           _surfaceFilter = _SurfaceFilter.values.firstWhere(
             (e) => e.name == surface,
@@ -380,6 +389,7 @@ class RoutesScreenState extends State<RoutesScreen> {
 
 
   void _clearFilters() {
+    _searchCtl.clear();
     setState(() {
       _search = '';
       _surfaceFilter = _SurfaceFilter.any;
@@ -576,8 +586,7 @@ class RoutesScreenState extends State<RoutesScreen> {
     }
   }
 
-  Widget _selectionBanner({
-    required ThemeData theme,
+  HubSelection _selectionBar({
     required List<cm.Route> visible,
     required Set<String> ownedIds,
   }) {
@@ -586,54 +595,35 @@ class RoutesScreenState extends State<RoutesScreen> {
         visible.where((r) => ownedIds.contains(r.id)).map((r) => r.id).toSet();
     final allSelected = ownedVisibleIds.isNotEmpty &&
         ownedVisibleIds.difference(_selected).isEmpty;
-    return Material(
-      color: theme.colorScheme.primaryContainer,
-      child: SafeArea(
-        top: false,
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close),
-                tooltip: l10n.routeBuilderCancel,
-                onPressed: _deleting ? null : _clearSelection,
-              ),
-              Expanded(
-                child: Text(
-                  l10n.routesSelectionTitle(_selected.length),
-                  style: theme.textTheme.titleSmall,
-                ),
-              ),
-              IconButton(
-                icon: Icon(allSelected ? Icons.deselect : Icons.select_all),
-                tooltip: allSelected
-                    ? l10n.historyClearSelectionTooltip
-                    : l10n.historySelectAllTooltip,
-                onPressed: _deleting
-                    ? null
-                    : (allSelected
-                        ? () => setState(() => _selected.clear())
-                        : () => _selectAllOwnedVisible(visible, ownedIds)),
-              ),
-              IconButton(
-                icon: _deleting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.delete_outline),
-                tooltip: l10n.historyDeleteTooltip,
-                onPressed: (_selected.isEmpty || _deleting)
-                    ? null
-                    : _deleteSelected,
-              ),
-            ],
-          ),
+    return HubSelection(
+      title: l10n.routesSelectionTitle(_selected.length),
+      closeTooltip: l10n.routeBuilderCancel,
+      onClose: _deleting ? null : _clearSelection,
+      actions: [
+        IconButton(
+          icon: Icon(allSelected ? Icons.deselect : Icons.select_all),
+          tooltip: allSelected
+              ? l10n.historyClearSelectionTooltip
+              : l10n.historySelectAllTooltip,
+          onPressed: _deleting
+              ? null
+              : (allSelected
+                  ? () => setState(() => _selected.clear())
+                  : () => _selectAllOwnedVisible(visible, ownedIds)),
         ),
-      ),
+        IconButton(
+          icon: _deleting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.delete_outline),
+          tooltip: l10n.historyDeleteTooltip,
+          onPressed:
+              (_selected.isEmpty || _deleting) ? null : _deleteSelected,
+        ),
+      ],
     );
   }
 
@@ -757,100 +747,26 @@ class RoutesScreenState extends State<RoutesScreen> {
             onRetry: _fetchRemoteRoutes,
           )
         : mergedRoutes.isEmpty
-          // Scrolls when it cannot fit (a short phone at a raised text
-          // scale), centred otherwise, as ui_kit's EmptyState does.
-          ? LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints:
-                      BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          grisnirWaitingOrNull() ??
-                              Icon(
-                                Icons.route,
-                                size: 64,
-                                color: theme.colorScheme.outline,
-                              ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l10n.routesEmptyTitle,
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            // Mention BOTH affordances. The Build FAB is the
-                            // canonical "create from scratch" path; Import
-                            // covers GPX / KML / GeoJSON / TCX files.
-                            // The old copy only mentioned Import — users
-                            // missed the in-app builder.
-                            l10n.routesEmptyBody,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Compact inline reminder for the Build FAB and the
-                          // Import action's icons, so a user who lands on this
-                          // screen for the first time can match the verbal CTA
-                          // to the visual affordances. A Wrap, so the two
-                          // hints stack on a narrow phone at a raised text scale
-                          // instead of overflowing.
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 16,
-                            runSpacing: 4,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.add_location_alt,
-                                      size: 18,
-                                      color: theme.colorScheme.outline),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    l10n.routesBuild,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.upload_file,
-                                      size: 18,
-                                      color: theme.colorScheme.outline),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    l10n.routesImport,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+          // Names both ways in: the body copy says Build and Import, and the
+          // button is whichever the hub's FAB is.
+          ? EmptyState(
+              icon: Icons.route,
+              illustration: grisnirWaitingOrNull(),
+              title: l10n.routesEmptyTitle,
+              body: l10n.routesEmptyBody,
+              ctaLabel: widget.apiClient == null
+                  ? l10n.routesImport
+                  : l10n.routesBuild,
+              ctaIcon: widget.apiClient == null
+                  ? Icons.upload_file
+                  : Icons.add_location_alt,
+              onCta: widget.apiClient == null ? _importFile : _openBuilder,
             )
           : ListView.builder(
               // Clears the Build FAB and the navigation bar, so the last
               // route's star button can scroll out from under both.
-              padding:
-                  EdgeInsets.fromLTRB(16, 8, 16, fabScrollClearance(context)),
+              padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
+                  AppInsets.gutter, fabScrollClearance(context)),
               itemCount: 1 +
                   (emptyAfterFilter ? 1 : routes.length) +
                   (showLoadMore && !emptyAfterFilter ? 1 : 0),
@@ -860,54 +776,8 @@ class RoutesScreenState extends State<RoutesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _discoverStrip(theme, l10n, inList: true),
-                      _RoutesFilterHeader(
-                        search: _search,
-                        surfaceFilter: _surfaceFilter,
-                        distanceFilter: _distanceFilter,
-                        sort: _sort,
-                        starredOnly: _starredOnly,
-                        visibleCount: routes.length,
-                        totalCount: mergedRoutes.length,
-                        filtersActive: _filtersActive(),
-                        onSearchChanged: (v) {
-                          setState(() {
-                            _search = v;
-                            _visibleCount = _kRoutesPageSize;
-                          });
-                          _persistFilters();
-                        },
-                        onSurfaceChanged: (v) {
-                          setState(() {
-                            _surfaceFilter = v;
-                            _visibleCount = _kRoutesPageSize;
-                          });
-                          _persistFilters();
-                        },
-                        onDistanceChanged: (v) {
-                          setState(() {
-                            _distanceFilter = v;
-                            _visibleCount = _kRoutesPageSize;
-                          });
-                          _persistFilters();
-                        },
-                        onSortChanged: (v) {
-                          setState(() {
-                            _sort = v;
-                            _visibleCount = _kRoutesPageSize;
-                          });
-                          _persistFilters();
-                        },
-                        onStarredOnlyToggled: () {
-                          final turningOn = !_starredOnly;
-                          setState(() {
-                            _starredOnly = turningOn;
-                            _visibleCount = _kRoutesPageSize;
-                          });
-                          _persistFilters();
-                          if (turningOn) _ensureStarredLoaded();
-                        },
-                        onClearFilters: _clearFilters,
-                      ),
+                      _countRow(theme, l10n,
+                          visible: routes.length, total: mergedRoutes.length),
                       // Long-press is the only way into multi-select, so it
                       // needs saying. Suppressed once selecting (the app bar
                       // has taken over the surface) and when nothing on
@@ -1136,33 +1006,200 @@ class RoutesScreenState extends State<RoutesScreen> {
               },
             );
 
-    // The "Discover" strip (Public routes / Routes heatmap / Run heatmap +
-    // the compact sync affordance) is the single home of every map/discovery
-    // entry point — icon-only AppBar actions proved undiscoverable (field
-    // reports for both heatmaps). With routes on screen it heads the list and
-    // scrolls away with it; over the empty and error states it stays put.
-    final content = Column(
-      children: [
-        if (_selecting)
-          _selectionBanner(theme: theme, visible: routes, ownedIds: ownedIds),
-        if (mergedRoutes.isEmpty) _discoverStrip(theme, l10n, inList: false),
-        Expanded(child: body),
-      ],
-    );
-
-    // Embedded mode: the parent owns the Scaffold + the FAB.
-    if (widget.embedded) return content;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.fitnessRunsRoutes),
-        actions: buildRouteAppBarActions(context),
-      ),
-      floatingActionButtonLocation: pageFabLocation(context),
-      floatingActionButton: buildRouteFabs(context),
-      body: content,
+    // The "Discover" strip (Public routes / Routes heatmap / Run heatmap) is
+    // the single home of every map/discovery entry point: icon-only actions
+    // proved undiscoverable (field reports for both heatmaps). With routes on
+    // screen it heads the list and scrolls away with it; over the empty and
+    // error states it stays put.
+    return HubTabBody(
+      title: l10n.fitnessRunsRoutes,
+      actions: _routeActions(l10n),
+      primary: _primaryAction(l10n),
+      filters: mergedRoutes.isEmpty ? null : _filterBar(theme, l10n),
+      selection: _selecting
+          ? _selectionBar(visible: routes, ownedIds: ownedIds)
+          : null,
+      banner:
+          mergedRoutes.isEmpty ? _discoverStrip(theme, l10n, inList: false) : null,
+      // The list never refreshed on its own: a stale cache stayed stale with
+      // no way to ask again (issue #1374 FS-5).
+      onRefresh: _refresh,
+      body: body,
     );
   }
+
+  Future<void> _refresh() =>
+      Future.wait([_fetchRemoteRoutes(), _fetchBookmarks()]);
+
+  void _setSurface(_SurfaceFilter v) {
+    setState(() {
+      _surfaceFilter = v;
+      _visibleCount = _kRoutesPageSize;
+    });
+    _persistFilters();
+  }
+
+  void _setDistance(_DistanceBucket v) {
+    setState(() {
+      _distanceFilter = v;
+      _visibleCount = _kRoutesPageSize;
+    });
+    _persistFilters();
+  }
+
+  void _setSort(_RouteSort v) {
+    setState(() {
+      _sort = v;
+      _visibleCount = _kRoutesPageSize;
+    });
+    _persistFilters();
+  }
+
+  void _toggleStarredOnly() {
+    final turningOn = !_starredOnly;
+    setState(() {
+      _starredOnly = turningOn;
+      _visibleCount = _kRoutesPageSize;
+    });
+    _persistFilters();
+    if (turningOn) _ensureStarredLoaded();
+  }
+
+  /// Search, the Starred chip (the most-toggled filter), and Filters for
+  /// surface, distance and sort, whose non-default values show as removable
+  /// chips on the same line. Mirrors the web `/routes` toolbar's set.
+  FilterBar _filterBar(ThemeData theme, AppLocalizations l10n) {
+    ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
+          label: label,
+          onRemove: onRemove,
+          removeTooltip: l10n.filterBarRemoveFilter(label),
+        );
+    final filters = [
+      if (_surfaceFilter != _SurfaceFilter.any)
+        active(_surfaceLabel(l10n, _surfaceFilter),
+            () => _setSurface(_SurfaceFilter.any)),
+      if (_distanceFilter != _DistanceBucket.any)
+        active(_distanceLabel(l10n, _distanceFilter),
+            () => _setDistance(_DistanceBucket.any)),
+      if (_sort != _RouteSort.newest)
+        active(_sortLabel(l10n, _sort), () => _setSort(_RouteSort.newest)),
+    ];
+    return FilterBar(
+      key: const ValueKey('routes-filter-bar'),
+      search: AppSearchField(
+        controller: _searchCtl,
+        hint: l10n.routesSearchHint,
+        clearTooltip: l10n.routesClearSearch,
+        onChanged: (v) {
+          setState(() {
+            _search = v;
+            _visibleCount = _kRoutesPageSize;
+          });
+          _persistFilters();
+        },
+      ),
+      chips: [
+        FilterChip(
+          label: Text(l10n.routesStarred),
+          avatar: Icon(
+            _starredOnly ? Icons.star : Icons.star_border,
+            size: 18,
+            color: _starredOnly
+                ? AppSemanticColors.of(context).crown
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+          selected: _starredOnly,
+          onSelected: (_) => _toggleStarredOnly(),
+        ),
+      ],
+      activeFilters: filters,
+      filtersLabel: l10n.filterBarFilters,
+      filtersSemanticLabel:
+          filters.isEmpty ? null : l10n.filterBarFiltersCount(filters.length),
+      activeFilterCount: filters.length,
+      onOpenFilters: _openFilters,
+    );
+  }
+
+  Future<void> _openFilters() {
+    final l10n = AppLocalizations.of(context);
+    return showFilterSheet(
+      context: context,
+      title: l10n.filterBarFilters,
+      doneLabel: l10n.filterBarDone,
+      builder: (sheetContext, setSheet) {
+        final theme = Theme.of(sheetContext);
+        Widget group<T>(String heading, List<T> values, T selected,
+                String Function(T) label, ValueChanged<T> onPick) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(heading, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: AppSpace.sm),
+                  Semantics(
+                    container: true,
+                    label: heading,
+                    child: Wrap(
+                      spacing: AppSpace.sm,
+                      children: [
+                        for (final v in values)
+                          ChoiceChip(
+                            label: Text(label(v)),
+                            selected: v == selected,
+                            onSelected: (_) {
+                              onPick(v);
+                              setSheet(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            group(l10n.filterBarSurface, _SurfaceFilter.values,
+                _surfaceFilter, (v) => _surfaceLabel(l10n, v), _setSurface),
+            group(l10n.filterBarDistance, _DistanceBucket.values,
+                _distanceFilter, (v) => _distanceLabel(l10n, v), _setDistance),
+            group(l10n.filterBarSort, _RouteSort.values, _sort,
+                (v) => _sortLabel(l10n, v), _setSort),
+          ],
+        );
+      },
+    );
+  }
+
+  /// "Showing n of m" under the Discover strip, with Clear filters while any
+  /// filter or search narrows the list.
+  Widget _countRow(ThemeData theme, AppLocalizations l10n,
+          {required int visible, required int total}) =>
+      Padding(
+        padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xs),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.routesCountMeta(visible, total),
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            if (_filtersActive())
+              TextButton(
+                onPressed: _clearFilters,
+                child: Text(l10n.routesClearFilters),
+              ),
+          ],
+        ),
+      );
 
   /// The "Discover" strip: the labelled discovery entry points — Public
   /// routes, the community routes heatmap (discoverable-route + club pins)
@@ -1250,64 +1287,51 @@ class RoutesScreenState extends State<RoutesScreen> {
     );
   }
 
-  /// The AppBar actions: Import (when Build holds the FAB) and the cloud
-  /// sync. Public so an `embedded: true` host can mount them in its own
-  /// AppBar beside [buildRouteFabs].
-  List<Widget> buildRouteAppBarActions(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return [
-      if (widget.apiClient != null)
-        IconButton(
-          key: const ValueKey('routes-import-action'),
-          icon: const Icon(Icons.upload_file),
-          tooltip: l10n.routesImport,
-          onPressed: _fabBusy ? null : _importFile,
-        ),
-      if (_syncing)
-        const SizedBox(
-          width: 48,
-          height: 48,
-          child: Center(
-            child: SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+  /// Import (when Build is the primary action) and the cloud sync, at the
+  /// end of the control row.
+  List<Widget> _routeActions(AppLocalizations l10n) => [
+        if (widget.apiClient != null)
+          IconButton(
+            key: const ValueKey('routes-import-action'),
+            icon: const Icon(Icons.upload_file),
+            tooltip: l10n.routesImport,
+            onPressed: _fabBusy ? null : _importFile,
           ),
-        )
-      else if (widget.apiClient?.userId != null)
-        IconButton(
-          icon: const Icon(Icons.cloud_download),
-          tooltip: l10n.routesSyncFromCloud,
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          onPressed: _fetchRemoteRoutes,
-        ),
-    ];
-  }
+        if (_syncing)
+          const SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else if (widget.apiClient?.userId != null)
+          IconButton(
+            icon: const Icon(Icons.cloud_download),
+            tooltip: l10n.routesSyncFromCloud,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: _fetchRemoteRoutes,
+          ),
+      ];
 
-  /// The one FAB: the extended "Build" FAB, with Import in the AppBar
-  /// ([buildRouteAppBarActions]). A second FAB stacked above it covered the
-  /// star button and the title of every card that scrolled under the pair.
-  /// Without an api client there is nothing to build against, so Import is
-  /// the FAB and keeps its label. Public so an `embedded: true` host can
-  /// hoist it into its own Scaffold's `floatingActionButton` slot.
-  Widget buildRouteFabs(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    if (widget.apiClient == null) {
-      return FloatingActionButton.extended(
-        heroTag: 'routes_import_fab',
-        onPressed: _fabBusy ? null : _importFile,
-        icon: const Icon(Icons.upload_file),
-        label: Text(l10n.routesImport),
-      );
-    }
-    return FloatingActionButton.extended(
-      heroTag: 'routes_build_fab',
-      onPressed: _fabBusy ? null : _openBuilder,
-      icon: const Icon(Icons.add_location_alt),
-      label: Text(l10n.routesBuild),
-    );
-  }
+  /// Build, with Import among the actions. Without an api client there is
+  /// nothing to build against, so Import is the primary action.
+  PrimaryAction _primaryAction(AppLocalizations l10n) => widget.apiClient ==
+          null
+      ? PrimaryAction(
+          label: l10n.routesImport,
+          icon: Icons.upload_file,
+          onPressed: _fabBusy ? null : _importFile,
+        )
+      : PrimaryAction(
+          label: l10n.routesBuild,
+          icon: Icons.add_location_alt,
+          onPressed: _fabBusy ? null : _openBuilder,
+        );
 }
 
 /// One Discover entry: a labelled, outlined tile whose label may take a
@@ -1363,271 +1387,27 @@ String routeStatsLine(cm.Route route, cm.DistanceUnit unit) {
       '  •  ${glued('${UnitFormat.elevation(route.elevationGainMetres, unit)} ↑')}';
 }
 
-/// Filter toolbar for the routes list. Stateless — every change goes
-/// through callbacks back to the screen so persistence + paging reset
-/// stay in one place. Layout matches the web `/routes` toolbar:
-/// search, surface, distance, sort, starred toggle, then a
-/// visible-count meta row with Clear filters when active.
-class _RoutesFilterHeader extends StatefulWidget {
-  final String search;
-  final _SurfaceFilter surfaceFilter;
-  final _DistanceBucket distanceFilter;
-  final _RouteSort sort;
-  final bool starredOnly;
-  final int visibleCount;
-  final int totalCount;
-  final bool filtersActive;
-  final ValueChanged<String> onSearchChanged;
-  final ValueChanged<_SurfaceFilter> onSurfaceChanged;
-  final ValueChanged<_DistanceBucket> onDistanceChanged;
-  final ValueChanged<_RouteSort> onSortChanged;
-  final VoidCallback onStarredOnlyToggled;
-  final VoidCallback onClearFilters;
+String _surfaceLabel(AppLocalizations l10n, _SurfaceFilter v) => switch (v) {
+      _SurfaceFilter.any => l10n.routesSurfaceAny,
+      _SurfaceFilter.road => l10n.routesSurfaceRoad,
+      _SurfaceFilter.trail => l10n.routesSurfaceTrail,
+      _SurfaceFilter.mixed => l10n.routesSurfaceMixed,
+    };
 
-  const _RoutesFilterHeader({
-    required this.search,
-    required this.surfaceFilter,
-    required this.distanceFilter,
-    required this.sort,
-    required this.starredOnly,
-    required this.visibleCount,
-    required this.totalCount,
-    required this.filtersActive,
-    required this.onSearchChanged,
-    required this.onSurfaceChanged,
-    required this.onDistanceChanged,
-    required this.onSortChanged,
-    required this.onStarredOnlyToggled,
-    required this.onClearFilters,
-  });
+// Distance-bucket labels stay raw — the km/mi thresholds are numeric
+// formatting owned by Epic C, not UI copy.
+String _distanceLabel(AppLocalizations l10n, _DistanceBucket v) => switch (v) {
+      _DistanceBucket.any => l10n.routesDistanceAny,
+      _DistanceBucket.lt5 => '< 5 km',
+      _DistanceBucket.t5to10 => '5–10 km',
+      _DistanceBucket.t10to20 => '10–20 km',
+      _DistanceBucket.gt20 => '20+ km',
+    };
 
-  @override
-  State<_RoutesFilterHeader> createState() => _RoutesFilterHeaderState();
-}
-
-class _RoutesFilterHeaderState extends State<_RoutesFilterHeader> {
-  late final TextEditingController _searchCtl;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchCtl = TextEditingController(text: widget.search);
-  }
-
-  @override
-  void didUpdateWidget(covariant _RoutesFilterHeader old) {
-    super.didUpdateWidget(old);
-    // Only stomp the controller when an external reset (Clear filters)
-    // changes the prop out from under us — otherwise the user's typing
-    // would lose the cursor position on every keystroke roundtrip.
-    if (widget.search != _searchCtl.text) {
-      _searchCtl.value = TextEditingValue(
-        text: widget.search,
-        selection: TextSelection.collapsed(offset: widget.search.length),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchCtl.dispose();
-    super.dispose();
-  }
-
-  static String _surfaceLabel(AppLocalizations l10n, _SurfaceFilter v) {
-    switch (v) {
-      case _SurfaceFilter.any:
-        return l10n.routesSurfaceAny;
-      case _SurfaceFilter.road:
-        return l10n.routesSurfaceRoad;
-      case _SurfaceFilter.trail:
-        return l10n.routesSurfaceTrail;
-      case _SurfaceFilter.mixed:
-        return l10n.routesSurfaceMixed;
-    }
-  }
-
-  // Distance-bucket labels stay raw — the km/mi thresholds are numeric
-  // formatting owned by Epic C, not UI copy.
-  static String _distanceLabel(AppLocalizations l10n, _DistanceBucket v) {
-    switch (v) {
-      case _DistanceBucket.any:
-        return l10n.routesDistanceAny;
-      case _DistanceBucket.lt5:
-        return '< 5 km';
-      case _DistanceBucket.t5to10:
-        return '5–10 km';
-      case _DistanceBucket.t10to20:
-        return '10–20 km';
-      case _DistanceBucket.gt20:
-        return '20+ km';
-    }
-  }
-
-  static String _sortLabel(AppLocalizations l10n, _RouteSort v) {
-    switch (v) {
-      case _RouteSort.newest:
-        return l10n.routesSortNewest;
-      case _RouteSort.longest:
-        return l10n.routesSortLongest;
-      case _RouteSort.shortest:
-        return l10n.routesSortShortest;
-      case _RouteSort.mostRun:
-        return l10n.routesSortMostRun;
-      case _RouteSort.az:
-        return l10n.routesSortAlpha;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: _searchCtl,
-            onChanged: widget.onSearchChanged,
-            decoration: InputDecoration(
-              isDense: true,
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchCtl.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: l10n.routesClearSearch,
-                      onPressed: () {
-                        _searchCtl.clear();
-                        widget.onSearchChanged('');
-                      },
-                    ),
-              hintText: l10n.routesSearchHint,
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Starred first: it's the most-toggled filter in practice (people
-          // flip the watch-starred set far more often than they re-pick a
-          // surface or sort order). The chips wrap rather than scroll
-          // sideways: a sideways row clipped "Any distance" at the screen
-          // edge with no cue that more followed, and hid the sort chip
-          // entirely (decisions § 1954). Each row takes its height from the
-          // chips, not a literal — a chip needs 58 px at 2x OS text scale.
-          Wrap(
-            key: const ValueKey('routes-filter-chips'),
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              FilterChip(
-                label: Text(l10n.routesStarred),
-                avatar: Icon(
-                  widget.starredOnly ? Icons.star : Icons.star_border,
-                  size: 18,
-                  color: widget.starredOnly
-                      ? AppSemanticColors.of(context).crown
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-                selected: widget.starredOnly,
-                onSelected: (_) => widget.onStarredOnlyToggled(),
-              ),
-              _DropdownChip<_SurfaceFilter>(
-                value: widget.surfaceFilter,
-                items: _SurfaceFilter.values,
-                labelOf: (v) => _surfaceLabel(l10n, v),
-                onChanged: widget.onSurfaceChanged,
-              ),
-              _DropdownChip<_DistanceBucket>(
-                value: widget.distanceFilter,
-                items: _DistanceBucket.values,
-                labelOf: (v) => _distanceLabel(l10n, v),
-                onChanged: widget.onDistanceChanged,
-              ),
-              _DropdownChip<_RouteSort>(
-                value: widget.sort,
-                items: _RouteSort.values,
-                labelOf: (v) => _sortLabel(l10n, v),
-                onChanged: widget.onSortChanged,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.routesCountMeta(widget.visibleCount, widget.totalCount),
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              if (widget.filtersActive)
-                TextButton(
-                  onPressed: widget.onClearFilters,
-                  child: Text(l10n.routesClearFilters),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A single-choice picker rendered as a chip — surface / distance / sort — so
-/// it shares the filter row with the starred toggle.
-///
-/// A Material chip rather than a `DropdownButton` in a pill: the button sized
-/// itself to its widest option, so at 2x OS text "Any surface" overflowed the
-/// row; it ignored the 48 dp tap-target floor (26 dp tall at 1.3x); and it sat
-/// visibly shorter than the FilterChip beside it. The chip ellipsizes its
-/// label, pads its target like its neighbour, and opens a menu of the options.
-class _DropdownChip<T> extends StatelessWidget {
-  final T value;
-  final List<T> items;
-  final String Function(T) labelOf;
-  final ValueChanged<T> onChanged;
-
-  const _DropdownChip({
-    required this.value,
-    required this.items,
-    required this.labelOf,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return MenuAnchor(
-      menuChildren: [
-        for (final v in items)
-          MenuItemButton(
-            leadingIcon: Icon(v == value ? Icons.check : null, size: 18),
-            onPressed: () {
-              if (v != value) onChanged(v);
-            },
-            child: Text(labelOf(v)),
-          ),
-      ],
-      builder: (context, controller, _) => ActionChip(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                labelOf(value),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down, size: 18),
-          ],
-        ),
-        onPressed: () =>
-            controller.isOpen ? controller.close() : controller.open(),
-      ),
-    );
-  }
-}
+String _sortLabel(AppLocalizations l10n, _RouteSort v) => switch (v) {
+      _RouteSort.newest => l10n.routesSortNewest,
+      _RouteSort.longest => l10n.routesSortLongest,
+      _RouteSort.shortest => l10n.routesSortShortest,
+      _RouteSort.mostRun => l10n.routesSortMostRun,
+      _RouteSort.az => l10n.routesSortAlpha,
+    };

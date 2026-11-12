@@ -4194,11 +4194,7 @@
   "fundraiserDonateOnWeb": "Donar en la web",
   "racesTitle": "Calendario de carreras",
   "racesSearchPlaceholder": "Buscar carreras por nombre…",
-  "racesFilters": "Filtros",
-  "racesFiltersCount": "{count, plural, one{Filtros, 1 activo} other{Filtros, {count} activos}}",
-  "racesRemoveFilter": "Quitar filtro: {filter}",
   "racesNearChip": "Cerca de {place}",
-  "racesFiltersDone": "Listo",
   "racesDistanceGroup": "Distancia",
   "racesNearPlace": "Cerca de un lugar…",
   "racesDistanceAway": "a {distance}",
@@ -6202,5 +6198,14 @@
   "groupsCancelInviteConfirmMessage": "No podrá unirse con ella. Puedes volver a invitarle más adelante.",
   "groupsInviteCancelledToast": "Invitación a {name} cancelada",
   "profileNotifGroupMessage": "{name} escribió en un grupo",
-  "profileNotifGroupInvite": "{name} te invitó a un grupo"
+  "profileNotifGroupInvite": "{name} te invitó a un grupo",
+  "filterBarFilters": "Filtros",
+  "filterBarFiltersCount": "{count, plural, one{Filtros, 1 activo} other{Filtros, {count} activos}}",
+  "filterBarRemoveFilter": "Quitar filtro: {filter}",
+  "filterBarDone": "Listo",
+  "filterBarSurface": "Superficie",
+  "filterBarDistance": "Distancia",
+  "filterBarSort": "Ordenar",
+  "runsSearchHint": "Buscar actividades por nombre",
+  "filterBarRegion": "Región"
 }

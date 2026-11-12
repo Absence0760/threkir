@@ -19,17 +19,14 @@ const _unmigratedSearch = <String, int>{
   'lib/screens/clubs_screen.dart': 1,
   'lib/screens/discover_screen.dart': 1,
   'lib/screens/explore_routes_screen.dart': 1,
-  'lib/screens/global_segments_screen.dart': 1,
   'lib/screens/help_screen.dart': 1,
   'lib/screens/messages_screen.dart': 1,
   'lib/screens/nearby_area_screen.dart': 1,
   'lib/screens/plan_library_screen.dart': 1,
   'lib/screens/privacy_zones_screen.dart': 1,
-  'lib/screens/races_screen.dart': 1,
   'lib/screens/route_builder_screen.dart': 1,
   'lib/screens/route_picker_screen.dart': 1,
   'lib/screens/routes_heatmap_screen.dart': 1,
-  'lib/screens/routes_screen.dart': 1,
   'lib/screens/routine_public_library_screen.dart': 1,
   'lib/widgets/audience_sheet.dart': 1,
   'lib/widgets/exercise_catalogue_picker.dart': 1,
@@ -62,9 +59,6 @@ const _unmigratedChipWraps = <String, int>{
   'lib/screens/clubs_screen.dart': 1,
   'lib/screens/discover_screen.dart': 2,
   'lib/screens/feed_screen.dart': 1,
-  'lib/screens/plans_screen.dart': 1,
-  'lib/screens/races_screen.dart': 1,
-  'lib/screens/routes_screen.dart': 1,
 };
 
 /// [source] with comments removed and every string literal emptied, so a

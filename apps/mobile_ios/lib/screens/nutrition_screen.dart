@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../adaptive_width.dart';
+import '../fab_clearance.dart';
 import '../auth_error.dart';
 import '../column_limits.dart';
 import '../diary_day.dart';
@@ -982,116 +983,115 @@ class _NutritionScreenState extends State<NutritionScreen>
     final theme = Theme.of(context);
     final today = _dayEntries;
     final groups = groupByMealSlot(today);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.nutritionTitle),
-        actions: [
-          // None of the three is gated on `_refreshing`: every one of them
-          // writes through the offline-first store, which needs no server and
-          // no arrival refresh, and the add control is the only way into the
-          // composer. Disabling them for the refresh made the surface's whole
-          // point unavailable for its slowest seven seconds (issue #921).
-          if (today.isNotEmpty)
-            IconButton(
-              tooltip: l10n.nutritionSaveAsMeal,
-              icon: const Icon(Icons.bookmark_add_outlined),
-              onPressed: _savingMeal ? null : _saveAsMeal,
-            ),
-          if (today.isNotEmpty)
-            IconButton(
-              tooltip: l10n.nutritionSaveAsRecipe,
-              icon: const Icon(Icons.menu_book_outlined),
-              onPressed: _savingRecipe ? null : _saveAsRecipe,
-            ),
-          if (_platePhotoAvailable)
-            IconButton(
-              tooltip: l10n.nutritionLogFromPhoto,
-              icon: const Icon(Icons.photo_camera),
-              onPressed: _logFromPhoto,
-            ),
+    return HubTabBody(
+      title: l10n.fitnessTabNutrition,
+      // None of these is gated on `_refreshing`: every one of them writes
+      // through the offline-first store, which needs no server and no arrival
+      // refresh, and Log food is the only way into the composer. Disabling
+      // them for the refresh made the surface's whole point unavailable for
+      // its slowest seven seconds (issue #921).
+      primary: PrimaryAction(
+        label: l10n.nutritionLogFood,
+        icon: Icons.add,
+        tooltip: l10n.nutritionLogFood,
+        onPressed: _logFood,
+      ),
+      actions: [
+        if (_platePhotoAvailable)
           IconButton(
-            tooltip: l10n.nutritionLogFood,
-            icon: const Icon(Icons.add),
-            onPressed: _logFood,
+            tooltip: l10n.nutritionLogFromPhoto,
+            icon: const Icon(Icons.photo_camera),
+            onPressed: _logFromPhoto,
+          ),
+        if (today.isNotEmpty)
+          IconButton(
+            tooltip: l10n.nutritionSaveAsMeal,
+            icon: const Icon(Icons.bookmark_add_outlined),
+            onPressed: _savingMeal ? null : _saveAsMeal,
+          ),
+        if (today.isNotEmpty)
+          IconButton(
+            tooltip: l10n.nutritionSaveAsRecipe,
+            icon: const Icon(Icons.menu_book_outlined),
+            onPressed: _savingRecipe ? null : _saveAsRecipe,
+          ),
+      ],
+      banner: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_isOnline && !_anyPending)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppInsets.gutter, vertical: AppSpace.sm),
+              color: theme.colorScheme.surfaceContainerHigh,
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off, size: 16),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.nutritionOfflineCached,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          PendingSyncBanner(
+            api: widget.api,
+            isOnline: _isOnline,
+            stores: [widget.store, _templateStore, _recipeStore],
           ),
         ],
       ),
+      onRefresh: _refresh,
       body: contentColumn(
         context,
-        Column(
+        ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppInsets.pageTop,
+              AppInsets.gutter, fabScrollClearance(context)),
           children: [
-            if (!_isOnline && !_anyPending)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: theme.colorScheme.surfaceContainerHigh,
-                child: Row(
-                  children: [
-                    const Icon(Icons.cloud_off, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.nutritionOfflineCached,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            PendingSyncBanner(
-              api: widget.api,
-              isOnline: _isOnline,
-              stores: [widget.store, _templateStore, _recipeStore],
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _dayBar(theme, l10n),
-                    const SizedBox(height: 12),
-                    _ringsCard(theme, l10n, sumMacros(today)),
-                    const SizedBox(height: 12),
-                    _waterCard(theme, l10n),
-                    const SizedBox(height: 12),
-                    ...(() {
-                      final nutrients = _nutrientBudgets(today);
-                      return nutrients.isEmpty
-                          ? const <Widget>[]
-                          : <Widget>[
-                              _nutrientsCard(theme, l10n, nutrients),
-                              const SizedBox(height: 12),
-                            ];
-                    })(),
-                    if (_templateStore.templates.isNotEmpty) ...[
-                      _templatesCard(theme, l10n),
+            _dayBar(theme, l10n),
+            const SizedBox(height: 12),
+            _ringsCard(theme, l10n, sumMacros(today)),
+            const SizedBox(height: 12),
+            _waterCard(theme, l10n),
+            const SizedBox(height: 12),
+            ...(() {
+              final nutrients = _nutrientBudgets(today);
+              return nutrients.isEmpty
+                  ? const <Widget>[]
+                  : <Widget>[
+                      _nutrientsCard(theme, l10n, nutrients),
                       const SizedBox(height: 12),
-                    ],
-                    if (_recipeStore.recipes.isNotEmpty) ...[
-                      _recipesCard(theme, l10n),
-                      const SizedBox(height: 12),
-                    ],
-                    if (groups.isEmpty)
-                      EmptyState(
-                        icon: Icons.restaurant,
-                        title: _viewingToday
-                            ? l10n.nutritionEmptyTitle
-                            : l10n.nutritionDayEmptyPast,
-                        body: l10n.nutritionEmptyBody,
-                        ctaLabel: l10n.nutritionLogFood,
-                        onCta: _logFood,
-                      )
-                    else
-                      ...groups.map((g) => _mealGroup(theme, l10n, g)),
-                    if (today.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      _trendCard(theme, l10n),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+                    ];
+            })(),
+            if (_templateStore.templates.isNotEmpty) ...[
+              _templatesCard(theme, l10n),
+              const SizedBox(height: 12),
+            ],
+            if (_recipeStore.recipes.isNotEmpty) ...[
+              _recipesCard(theme, l10n),
+              const SizedBox(height: 12),
+            ],
+            if (groups.isEmpty)
+              EmptyState(
+                icon: Icons.restaurant,
+                title: _viewingToday
+                    ? l10n.nutritionEmptyTitle
+                    : l10n.nutritionDayEmptyPast,
+                body: l10n.nutritionEmptyBody,
+                ctaLabel: l10n.nutritionLogFood,
+                onCta: _logFood,
+              )
+            else
+              ...groups.map((g) => _mealGroup(theme, l10n, g)),
+            if (today.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _trendCard(theme, l10n),
+            ],
           ],
         ),
       ),
@@ -1304,8 +1304,12 @@ class _NutritionScreenState extends State<NutritionScreen>
               _calorieChip(theme, l10n, budget.calories),
               const SizedBox(height: 12),
             ],
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            // A Wrap, so the four rings take two lines at 2x text on a 320 dp
+            // phone rather than overflowing it by 305 dp.
+            Wrap(
+              alignment: WrapAlignment.spaceAround,
+              spacing: 8,
+              runSpacing: 12,
               children: [for (final r in rings) _ringWidget(theme, r)],
             ),
             if (_targets != null && _targets!.exerciseKcal > 0) ...[

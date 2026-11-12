@@ -15113,31 +15113,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesSearchPlaceholder => 'Buscar carreras por nombre…';
 
   @override
-  String get racesFilters => 'Filtros';
-
-  @override
-  String racesFiltersCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Filtros, $count activos',
-      one: 'Filtros, 1 activo',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String racesRemoveFilter(String filter) {
-    return 'Quitar filtro: $filter';
-  }
-
-  @override
   String racesNearChip(String place) {
     return 'Cerca de $place';
   }
-
-  @override
-  String get racesFiltersDone => 'Listo';
 
   @override
   String get racesDistanceGroup => 'Distancia';
@@ -22536,4 +22514,41 @@ class AppLocalizationsEs extends AppLocalizations {
   String profileNotifGroupInvite(String name) {
     return '$name te invitó a un grupo';
   }
+
+  @override
+  String get filterBarFilters => 'Filtros';
+
+  @override
+  String filterBarFiltersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Filtros, $count activos',
+      one: 'Filtros, 1 activo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String filterBarRemoveFilter(String filter) {
+    return 'Quitar filtro: $filter';
+  }
+
+  @override
+  String get filterBarDone => 'Listo';
+
+  @override
+  String get filterBarSurface => 'Superficie';
+
+  @override
+  String get filterBarDistance => 'Distancia';
+
+  @override
+  String get filterBarSort => 'Ordenar';
+
+  @override
+  String get runsSearchHint => 'Buscar actividades por nombre';
+
+  @override
+  String get filterBarRegion => 'Región';
 }

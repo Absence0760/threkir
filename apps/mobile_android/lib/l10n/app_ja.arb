@@ -4194,11 +4194,7 @@
   "fundraiserDonateOnWeb": "ウェブで寄付する",
   "racesTitle": "レースカレンダー",
   "racesSearchPlaceholder": "レースを名前で検索…",
-  "racesFilters": "絞り込み",
-  "racesFiltersCount": "{count, plural, other{絞り込み（{count}件適用中）}}",
-  "racesRemoveFilter": "絞り込みを解除: {filter}",
   "racesNearChip": "{place}の近く",
-  "racesFiltersDone": "完了",
   "racesDistanceGroup": "距離",
   "racesNearPlace": "場所の近くで…",
   "racesDistanceAway": "{distance}先",
@@ -6202,5 +6198,14 @@
   "groupsCancelInviteConfirmMessage": "この招待では参加できなくなります。後でもう一度招待できます。",
   "groupsInviteCancelledToast": "{name}さんへの招待を取り消しました",
   "profileNotifGroupMessage": "{name}さんがグループに投稿しました",
-  "profileNotifGroupInvite": "{name}さんからグループに招待されました"
+  "profileNotifGroupInvite": "{name}さんからグループに招待されました",
+  "filterBarFilters": "絞り込み",
+  "filterBarFiltersCount": "{count, plural, other{絞り込み（{count}件適用中）}}",
+  "filterBarRemoveFilter": "絞り込みを解除: {filter}",
+  "filterBarDone": "完了",
+  "filterBarSurface": "路面",
+  "filterBarDistance": "距離",
+  "filterBarSort": "並べ替え",
+  "runsSearchHint": "ランの名前で検索",
+  "filterBarRegion": "地域"
 }

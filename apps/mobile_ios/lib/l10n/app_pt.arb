@@ -4194,11 +4194,7 @@
   "fundraiserDonateOnWeb": "Doar na web",
   "racesTitle": "Calendário de provas",
   "racesSearchPlaceholder": "Procurar provas por nome…",
-  "racesFilters": "Filtros",
-  "racesFiltersCount": "{count, plural, one{Filtros, 1 ativo} other{Filtros, {count} ativos}}",
-  "racesRemoveFilter": "Remover filtro: {filter}",
   "racesNearChip": "Perto de {place}",
-  "racesFiltersDone": "Concluído",
   "racesDistanceGroup": "Distância",
   "racesNearPlace": "Perto de um local…",
   "racesDistanceAway": "a {distance}",
@@ -6202,5 +6198,14 @@
   "groupsCancelInviteConfirmMessage": "A pessoa não poderá entrar com ele. Pode convidá-la de novo mais tarde.",
   "groupsInviteCancelledToast": "Convite para {name} cancelado",
   "profileNotifGroupMessage": "{name} escreveu num grupo",
-  "profileNotifGroupInvite": "{name} convidou-o para um grupo"
+  "profileNotifGroupInvite": "{name} convidou-o para um grupo",
+  "filterBarFilters": "Filtros",
+  "filterBarFiltersCount": "{count, plural, one{Filtros, 1 ativo} other{Filtros, {count} ativos}}",
+  "filterBarRemoveFilter": "Remover filtro: {filter}",
+  "filterBarDone": "Concluído",
+  "filterBarSurface": "Superfície",
+  "filterBarDistance": "Distância",
+  "filterBarSort": "Ordenar",
+  "runsSearchHint": "Pesquisar corridas pelo nome",
+  "filterBarRegion": "Região"
 }

@@ -456,74 +456,66 @@ class _GymScreenState extends State<GymScreen>
     final theme = Theme.of(context);
     final workouts = widget.store.workouts;
     final pending = widget.store.hasPending || _routineStore.hasPending;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.gymTitle)),
-      // The Fitness hub's modality tabs all put their add in the same place,
-      // so switching tabs doesn't move the one control the surface exists for
-      // — it used to be a top-right glyph here and a bottom-right FAB on the
-      // run tabs. Never gated on the arrival refresh: logging a lift is an
-      // offline-first write, and the one thing that refresh feeds the composer
-      // — the exercise catalogue — reaches an already-open sheet through its
-      // own listenable (§ 1571).
-      //
-      // The tag is per-mount because the hub's Gym tab stays alive under a
-      // GymScreen pushed from Home or the run list.
-      floatingActionButtonLocation: pageFabLocation(context),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: ObjectKey(this),
-        onPressed: _create,
-        icon: const Icon(Icons.add),
-        label: Text(l10n.gymLog),
+    return HubTabBody(
+      title: l10n.fitnessTabGym,
+      // The Fitness hub's tabs all put their add in the same place, the hub's
+      // FAB, so switching tabs doesn't move the one control the surface
+      // exists for. Never gated on the arrival refresh: logging a lift is an
+      // offline-first write, and the one thing that refresh feeds the
+      // composer — the exercise catalogue — reaches an already-open sheet
+      // through its own listenable (§ 1571).
+      primary: PrimaryAction(
+        label: l10n.gymLog,
+        icon: Icons.add,
         tooltip: l10n.gymLog,
+        onPressed: _create,
       ),
+      filters: SurfacePeerStrip(
+        label: l10n.gymSurfaceLabel,
+        peers: _peers(l10n, workouts),
+      ),
+      banner: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_isOnline && !pending)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppInsets.gutter, vertical: AppSpace.sm),
+              color: theme.colorScheme.surfaceContainerHigh,
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off, size: 16),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.gymOfflineCached,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          PendingSyncBanner(
+            api: widget.api,
+            isOnline: _isOnline,
+            stores: [widget.store, _routineStore],
+          ),
+          if (_resumableDraft() case final d?) _draftCard(d, theme, l10n),
+        ],
+      ),
+      onRefresh: _refresh,
       body: contentColumn(
         context,
-        Column(
-          children: [
-            SurfacePeerStrip(
-              label: l10n.gymSurfaceLabel,
-              peers: _peers(l10n, workouts),
-            ),
-            if (!_isOnline && !pending)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: theme.colorScheme.surfaceContainerHigh,
-                child: Row(
-                  children: [
-                    const Icon(Icons.cloud_off, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.gymOfflineCached,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            PendingSyncBanner(
-              api: widget.api,
-              isOnline: _isOnline,
-              stores: [widget.store, _routineStore],
-            ),
-            if (_resumableDraft() case final d?) _draftCard(d, theme, l10n),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: workouts.isEmpty
-                    ? EmptyState(
-                        icon: Icons.fitness_center,
-                        title: l10n.gymEmptyTitle,
-                        body: l10n.gymEmptyBody,
-                        ctaLabel: l10n.gymLog,
-                        onCta: _create,
-                      )
-                    : _list(workouts, theme, l10n),
-              ),
-            ),
-          ],
-        ),
+        workouts.isEmpty
+            ? EmptyState(
+                icon: Icons.fitness_center,
+                title: l10n.gymEmptyTitle,
+                body: l10n.gymEmptyBody,
+                ctaLabel: l10n.gymLog,
+                onCta: _create,
+              )
+            : _list(workouts, theme, l10n),
       ),
     );
   }

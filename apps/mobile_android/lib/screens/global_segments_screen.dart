@@ -3,16 +3,26 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        ActiveFilter,
+        AppInsets,
+        AppSearchField,
         AppSemanticColors,
+        AppSpace,
+        AsyncView,
         EmptyState,
+        FilterBar,
+        HubTabBody,
         IdentityAvatar,
         ListSkeleton,
+        LoadingState,
         SkeletonBlock,
         StatGrid,
-        StatTile;
+        StatTile,
+        showFilterSheet;
 
 import '../backend_timeout.dart';
 import '../catalogue_browse.dart';
+import '../fab_clearance.dart';
 import '../fitness_surface_requests.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
@@ -140,68 +150,173 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
         ),
       );
 
+  List<CatalogueSegment> get _catalogue => [
+        for (final s in _segments)
+          CatalogueSegment(
+            id: s.id,
+            name: s.name,
+            surface: s.surface,
+            region: s.region,
+            distanceM: s.distanceM,
+            elevationM: s.elevationM,
+          ),
+      ];
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.segmentCatalogueTitle),
-        actions: [
-          IconButton(
-            key: const Key('segments-parks-link'),
-            tooltip: l10n.parksBrowseLink,
-            icon: const Icon(Icons.park_outlined),
-            onPressed: _openParks,
-          ),
-        ],
+    final catalogue = _catalogue;
+    return HubTabBody(
+      // The tab's own name: "Famous segments" under a tab reading "Segments"
+      // was two names for one place (issue #1374 report 2).
+      title: l10n.runSurfaceTabSegments,
+      actions: [
+        IconButton(
+          key: const Key('segments-parks-link'),
+          tooltip: l10n.parksBrowseLink,
+          icon: const Icon(Icons.park_outlined),
+          onPressed: _openParks,
+        ),
+      ],
+      filters: catalogue.isEmpty ? null : _filterBar(l10n, catalogue),
+      onRefresh: _load,
+      body: AsyncView<List<CatalogueSegment>>(
+        loading: _loading,
+        error: _error ? true : null,
+        data: catalogue,
+        isEmpty: (c) => c.isEmpty,
+        loadingState: LoadingState.list(label: l10n.segmentsPanelLoading),
+        errorBuilder: (_, _) => AppErrorState(
+          message: l10n.segmentCatalogueLoadFailed,
+          onRetry: _load,
+        ),
+        empty: EmptyState(
+          icon: Icons.terrain,
+          title: l10n.segmentCatalogueEmpty,
+          ctaLabel: l10n.parksBrowseLink,
+          ctaIcon: Icons.park_outlined,
+          onCta: _openParks,
+        ),
+        builder: (context, c) => _buildCatalogue(context, l10n, c),
       ),
-      body: _loading
-          ? ListView(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-                const SkeletonBlock(height: 14, radius: 4),
-                const SizedBox(height: 12),
-                const SkeletonBlock(height: 56),
-                const SizedBox(height: 12),
-                ListSkeleton.section(
-                  label: l10n.segmentsPanelLoading,
-                  rows: 6,
-                ),
-              ],
-            )
-          : _error
-              ? AppErrorState(
-                  message: l10n.segmentCatalogueLoadFailed,
-                  onRetry: _load,
-                )
-              : _segments.isEmpty
-                  ? EmptyState(
-                      icon: Icons.terrain,
-                      title: l10n.segmentCatalogueEmpty,
-                      ctaLabel: l10n.parksBrowseLink,
-                      ctaIcon: Icons.park_outlined,
-                      onCta: _openParks,
-                    )
-                  : _buildCatalogue(context, l10n),
     );
   }
 
-  Widget _buildCatalogue(BuildContext context, AppLocalizations l10n) {
-    final theme = Theme.of(context);
-    final catalogue = [
-      for (final s in _segments)
-        CatalogueSegment(
-          id: s.id,
-          name: s.name,
-          surface: s.surface,
-          region: s.region,
-          distanceM: s.distanceM,
-          elevationM: s.elevationM,
-        ),
+  /// Search, then Filters for region, surface and sort, whose non-default
+  /// values show as removable chips. A one-value choice filters nothing, so a
+  /// group with one value is left out of the sheet.
+  FilterBar _filterBar(AppLocalizations l10n, List<CatalogueSegment> catalogue) {
+    ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
+          label: label,
+          onRemove: onRemove,
+          removeTooltip: l10n.filterBarRemoveFilter(label),
+        );
+    final filters = [
+      if (_region case final r?) active(r, () => setState(() => _region = null)),
+      if (_surface case final s?)
+        active(routeSurfaceLabel(l10n, s), () => setState(() => _surface = null)),
+      if (_sort != CatalogueSort.name)
+        active(_sortLabel(l10n, _sort),
+            () => setState(() => _sort = CatalogueSort.name)),
     ];
+    return FilterBar(
+      key: const Key('segments-filter-bar'),
+      search: AppSearchField(
+        controller: _search,
+        hint: l10n.segmentCatalogueSearchHint,
+        clearTooltip: l10n.commonClearSearch,
+        onChanged: (v) => setState(() => _query = v),
+      ),
+      activeFilters: filters,
+      filtersLabel: l10n.filterBarFilters,
+      filtersSemanticLabel:
+          filters.isEmpty ? null : l10n.filterBarFiltersCount(filters.length),
+      activeFilterCount: filters.length,
+      onOpenFilters: () => _openFilters(l10n, catalogue),
+    );
+  }
+
+  Future<void> _openFilters(
+      AppLocalizations l10n, List<CatalogueSegment> catalogue) {
     final regions = catalogueRegions(catalogue);
     final surfaces = catalogueSurfaces(catalogue);
+    return showFilterSheet(
+      context: context,
+      title: l10n.filterBarFilters,
+      doneLabel: l10n.filterBarDone,
+      resetLabel: l10n.segmentsPanelResetFilters,
+      onReset: _reset,
+      builder: (sheetContext, setSheet) {
+        final theme = Theme.of(sheetContext);
+        Widget group<T>(String heading, List<(T, String)> options, T selected,
+                ValueChanged<T> onPick) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(heading, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: AppSpace.sm),
+                  Semantics(
+                    container: true,
+                    label: heading,
+                    child: Wrap(
+                      spacing: AppSpace.sm,
+                      children: [
+                        for (final (value, label) in options)
+                          ChoiceChip(
+                            label: Text(label),
+                            selected: value == selected,
+                            onSelected: (_) {
+                              setState(() => onPick(value));
+                              setSheet(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (regions.length > 1)
+              group<String?>(
+                l10n.filterBarRegion,
+                [
+                  (null, l10n.segmentCatalogueAllRegions),
+                  for (final r in regions) (r, r),
+                ],
+                _region,
+                (v) => _region = v,
+              ),
+            if (surfaces.length > 1)
+              group<String?>(
+                l10n.filterBarSurface,
+                [
+                  (null, l10n.segmentCatalogueAllSurfaces),
+                  for (final s in surfaces) (s, routeSurfaceLabel(l10n, s)),
+                ],
+                _surface,
+                (v) => _surface = v,
+              ),
+            group<CatalogueSort>(
+              l10n.filterBarSort,
+              [for (final s in CatalogueSort.values) (s, _sortLabel(l10n, s))],
+              _sort,
+              (v) => _sort = v,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCatalogue(BuildContext context, AppLocalizations l10n,
+      List<CatalogueSegment> catalogue) {
+    final theme = Theme.of(context);
     final shown = sortCatalogue(
       filterCatalogue(
         catalogue,
@@ -211,98 +326,17 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
       ),
       _sort,
     );
-    final filtered =
-        _query.trim().isNotEmpty || _region != null || _surface != null;
-
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
+          AppInsets.gutter, fabScrollClearance(context)),
       children: [
         Text(
           l10n.segmentCatalogueIntro,
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _search,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search),
-            labelText: l10n.segmentCatalogueSearchLabel,
-            hintText: l10n.segmentCatalogueSearchHint,
-          ),
-          onChanged: (v) => setState(() => _query = v),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            // A one-value dropdown filters nothing — it only offers the
-            // selection the list already is.
-            if (regions.length > 1)
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _region,
-                  isDense: true,
-                  hint: Text(l10n.segmentCatalogueAllRegions),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.segmentCatalogueAllRegions),
-                    ),
-                    for (final r in regions)
-                      DropdownMenuItem(value: r, child: Text(r)),
-                  ],
-                  onChanged: (v) => setState(() => _region = v),
-                ),
-              ),
-            if (surfaces.length > 1)
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _surface,
-                  isDense: true,
-                  hint: Text(l10n.segmentCatalogueAllSurfaces),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.segmentCatalogueAllSurfaces),
-                    ),
-                    for (final s in surfaces)
-                      DropdownMenuItem(
-                        value: s,
-                        child: Text(routeSurfaceLabel(l10n, s)),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _surface = v),
-                ),
-              ),
-            DropdownButtonHideUnderline(
-              child: DropdownButton<CatalogueSort>(
-                value: _sort,
-                isDense: true,
-                items: [
-                  for (final s in CatalogueSort.values)
-                    DropdownMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
-                ],
-                onChanged: (v) =>
-                    v == null ? null : setState(() => _sort = v),
-              ),
-            ),
-            if (filtered || _sort != CatalogueSort.name)
-              TextButton.icon(
-                onPressed: _reset,
-                icon: const Icon(Icons.close, size: 16),
-                label: Text(l10n.segmentsPanelResetFilters),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.smPlus),
         // One live region whose CONTENTS swap rather than one per branch: a
         // status node that is removed when the result set empties announces
         // nothing on the transition that most needs announcing.
@@ -322,10 +356,10 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.sm),
         for (final segment in shown) ...[
           _CatalogueCard(segment: segment, onTap: () => _open(segment.id)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.sm),
         ],
       ],
     );

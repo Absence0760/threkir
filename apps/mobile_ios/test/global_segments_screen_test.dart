@@ -317,10 +317,14 @@ void main() {
         (tester) async {
       await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _CatalogueApi(_catalogue))));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('All surfaces').first);
+      // Surface waits in the Filters sheet, and shows as a removable chip.
+      await tester.tap(find.byTooltip('Filters'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Trail').last);
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Trail'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(InputChip, 'Trail'), findsOneWidget);
       expect(find.text('Harlem Hill'), findsOneWidget);
       expect(find.text('Champs-Élysées Sprint'), findsNothing);
     });

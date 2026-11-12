@@ -264,8 +264,8 @@ void main() {
   /// Gym's own add, the composer it opens, one exercise with one set, Save.
   /// Returns once the store has written the workout and the composer is gone.
   Future<void> logALift(WidgetTester tester, LocalGymStore gymStore) async {
-    final add = find.descendant(
-        of: find.byType(GymScreen), matching: find.byTooltip('Log workout'));
+    // The Gym tab's add is the hub's FAB (issue #1374), not drawn inside it.
+    final add = find.widgetWithText(FloatingActionButton, 'Log workout');
     expect(add, findsOneWidget);
     await tester.tap(add);
     await settle(tester);
@@ -292,8 +292,7 @@ void main() {
   /// Nutrition's own add, the manual entry, Add. Returns once the store has
   /// written the entry and the composer is gone.
   Future<void> logAMeal(WidgetTester tester, LocalFoodStore foodStore) async {
-    final add = find.descendant(
-        of: find.byType(NutritionScreen), matching: find.byTooltip('Log food'));
+    final add = find.widgetWithText(FloatingActionButton, 'Log food');
     expect(add, findsOneWidget);
     await tester.tap(add);
     await settle(tester);
@@ -415,8 +414,8 @@ void main() {
       await pick(tester, 'Log food');
       expect(shellPage(tester), 1, reason: 'the same hub, another tab');
       expect(find.byType(NutritionScreen), findsOneWidget);
-      // The hub's tab label and the Nutrition screen's own title.
-      expect(find.text('Nutrition'), findsNWidgets(2));
+      // The hub's tab label only: the tab draws no title bar of its own.
+      expect(find.text('Nutrition'), findsOneWidget);
       expect(find.textContaining('already on'), findsNothing);
 
       await unmount(tester);

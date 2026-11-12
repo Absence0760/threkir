@@ -6,12 +6,21 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, EmptyState, SelectionHint;
+    show
+        AppSearchField,
+        AppSemanticColors,
+        EmptyState,
+        FilterBar,
+        HubSelection,
+        HubTabBody,
+        PrimaryAction,
+        SelectionHint;
 
 import '../widgets/grisnir_moments.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
+import '../catalogue_browse.dart' show fold;
 import '../fab_clearance.dart';
 import '../goals.dart';
 import '../l10n/date_format.dart';
@@ -85,12 +94,6 @@ class RunsScreen extends StatefulWidget {
   /// clutters and overflows the Runs AppBar.
   final bool showSyncActions;
 
-  /// Static AppBar title. The Fitness hub's Runs sub-tab passes "Runs" so its
-  /// title matches the Gym / Nutrition sibling tabs; the range + count status
-  /// the title otherwise carries then renders as a row in the filter header
-  /// instead (its pre-polish home), so the active date filter stays visible.
-  /// Null keeps the range + count title (the All tab + standalone mounts).
-  final String? titleText;
 
   /// When false the screen renders no add FAB of its own. The Fitness hub's
   /// History tab passes false: its add is the cross-modal run / lift / meal
@@ -118,7 +121,6 @@ class RunsScreen extends StatefulWidget {
     this.foodStore,
     this.showKindChips = true,
     this.showSyncActions = true,
-    this.titleText,
     this.showAddFab = true,
     this.centreStartsRun = false,
   });
@@ -236,6 +238,11 @@ class _RunsScreenState extends State<RunsScreen>
   /// hasn't seen. Set to false when a paginated `getRuns` returns less
   /// than _kRunsPageSize rows (the standard "out of pages" signal).
   bool _remoteHasMore = true;
+
+  /// The run list's title search. Not persisted, like web's: a search is a
+  /// question asked now, not a view to come back to.
+  String _query = '';
+  final _searchCtl = TextEditingController();
 
   bool _selecting = false;
   // Guards the bulk delete. Without it the trash action stayed live through
@@ -412,6 +419,7 @@ class _RunsScreenState extends State<RunsScreen>
     widget.preferences.removeListener(_onStoreChanged);
     widget.gymStore?.removeListener(_onActivitySourceChanged);
     widget.foodStore?.removeListener(_onActivitySourceChanged);
+    _searchCtl.dispose();
     super.dispose();
   }
 
@@ -461,6 +469,7 @@ class _RunsScreenState extends State<RunsScreen>
       _sort,
       _activityFilter,
       _sourceFilter,
+      _query,
     );
     final slice = _filtered.length <= _visibleCount
         ? _filtered
@@ -563,6 +572,7 @@ class _RunsScreenState extends State<RunsScreen>
     _RunsSort sort,
     ActivityType? activityFilter,
     RunSource? sourceFilter,
+    String query,
   ) {
     // Pipe filters through Iterable.where so we materialise a List
     // exactly once. When no filter applies and the requested sort
@@ -585,6 +595,13 @@ class _RunsScreenState extends State<RunsScreen>
     }
     if (sourceFilter != null) {
       stream = stream.where((r) => r.source == sourceFilter);
+    }
+    final q = fold(query.trim());
+    if (q.isNotEmpty) {
+      stream = stream.where((r) {
+        final title = r.metadata?[MetadataKeys.title];
+        return title is String && fold(title).contains(q);
+      });
     }
     final noFilters = identical(stream, all);
     if (noFilters && sort == _RunsSort.newest) return all;
@@ -1024,22 +1041,38 @@ class _RunsScreenState extends State<RunsScreen>
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _selecting) _clearSelection();
       },
-      child: Scaffold(
-        appBar: _selecting ? _selectionAppBar(l10n) : _normalAppBar(l10n),
+      child: HubTabBody(
+        title: _timelineMode ? l10n.navHistory : l10n.fitnessTabRuns,
+        filters: _timelineMode || totalCount == 0 ? null : _searchBar(l10n),
+        actions: _runActions(l10n),
+        primary: widget.showAddFab ? _addAction(l10n) : null,
+        selection: _selecting ? _selection(l10n) : null,
         body: _buildBody(theme, l10n, unit, totalCount),
-        floatingActionButtonLocation: pageFabLocation(context),
-        floatingActionButton:
-            (_selecting || !widget.showAddFab) ? null : _buildAddFab(l10n),
       ),
     );
   }
+
+  /// The run list's search, over the titles of the whole history.
+  FilterBar _searchBar(AppLocalizations l10n) => FilterBar(
+        key: const ValueKey('runs-filter-bar'),
+        search: AppSearchField(
+          controller: _searchCtl,
+          hint: l10n.runsSearchHint,
+          clearTooltip: l10n.commonClearSearch,
+          onChanged: (v) => setState(() {
+            _query = v;
+            _resetPaging();
+            _recompute();
+          }),
+        ),
+      );
 
   /// The add affordance follows the active timeline chip, mirroring web
   /// `/history`: the cross-modal All view opens a run / lift / meal picker; a
   /// single-modality tab adds straight into that modality beside its "View
   /// all" link. A run-only mount (no gym store, so no chips) keeps the plain
   /// Add-run FAB it has always had.
-  Widget _buildAddFab(AppLocalizations l10n) {
+  PrimaryAction _addAction(AppLocalizations l10n) {
     final kind = _timelineMode ? _kind : _HistoryKind.run;
     final (String label, String tooltip, VoidCallback onPressed) = switch (kind) {
       _HistoryKind.all => (l10n.logSheetTitle, l10n.historyLogTooltip, _openLogPicker),
@@ -1049,15 +1082,11 @@ class _RunsScreenState extends State<RunsScreen>
       _HistoryKind.lift => (l10n.logLift, l10n.historyLogTooltip, _openAddLift),
       _HistoryKind.meal => (l10n.logFood, l10n.historyLogTooltip, _openAddMeal),
     };
-    return FloatingActionButton.extended(
-      // The Fitness hub mounts this screen twice, side by side, and both stay
-      // alive now — a constant tag would put two heroes with one tag in the
-      // same Navigator subtree, which asserts on every push out of the hub.
-      heroTag: ObjectKey(this),
-      onPressed: onPressed,
-      icon: const Icon(Icons.add),
-      label: Text(label),
+    return PrimaryAction(
+      label: label,
+      icon: Icons.add,
       tooltip: tooltip,
+      onPressed: onPressed,
     );
   }
 
@@ -1170,54 +1199,12 @@ class _RunsScreenState extends State<RunsScreen>
     _persistFilters();
   }
 
-  AppBar _normalAppBar(AppLocalizations l10n) {
+  /// Range and sort (list mode), then the cloud slot, at the end of the
+  /// control row. The range and count read in the filter header below.
+  List<Widget> _runActions(AppLocalizations l10n) {
     final unsyncedCount = widget.runStore.unsyncedCount;
     final blockedCount = widget.runStore.blockedCount;
-    final visibleCount = _visible.length;
-    // Move the date-range label + visible-count into the AppBar
-    // title so the otherwise-empty left half of the bar carries
-    // meaningful state. Pre-polish this lived on its own row at
-    // the top of `_RunsFilterHeader` directly under an empty
-    // AppBar — half a row of dead vertical real estate. The new
-    // title row composes the range ("This week") with a small
-    // count chip ("12 runs") next to it.
-    return AppBar(
-      // A hub-supplied static title wins (the Runs sub-tab reads "Runs" like
-      // its Gym / Nutrition siblings; the range + count status renders in the
-      // filter header instead). In timeline mode the range / count title is
-      // run-specific noise — show a neutral History title (the run toolbar
-      // returns on the Runs chip).
-      title: widget.titleText != null
-          ? Text(widget.titleText!)
-          : _timelineMode
-          ? Text(l10n.navHistory)
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                // Custom ranges render as a two-date span ("Dec 15, 2023 –
-                // Jan 20, 2024"), which — alongside up to six AppBar actions
-                // on a narrow phone — overruns the title slot and trips a
-                // RenderFlex overflow. Ellipsize the range label so the count
-                // chip stays visible instead.
-                Flexible(
-                  child: Text(
-                    _activeRangeLabel(l10n),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.historyCount(visibleCount),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              ],
-            ),
-      actions: [
+    return [
         if (!_timelineMode)
         PopupMenuButton<_RunsRange>(
           icon: const Icon(Icons.calendar_month),
@@ -1335,20 +1322,16 @@ class _RunsScreenState extends State<RunsScreen>
             tooltip: l10n.historyOfflineTooltip,
             onPressed: null,
           ),
-      ],
-    );
+    ];
   }
 
-  AppBar _selectionAppBar(AppLocalizations l10n) {
+  HubSelection _selection(AppLocalizations l10n) {
     final allSelected =
         _visible.isNotEmpty && _selected.length == _visible.length;
-    return AppBar(
-      leading: IconButton(
-        icon: const Icon(Icons.close),
-        tooltip: l10n.historyCancelTooltip,
-        onPressed: _deleting ? null : _clearSelection,
-      ),
-      title: Text(l10n.historySelectionTitle(_selected.length)),
+    return HubSelection(
+      title: l10n.historySelectionTitle(_selected.length),
+      closeTooltip: l10n.historyCancelTooltip,
+      onClose: _deleting ? null : _clearSelection,
       actions: [
         IconButton(
           icon: Icon(allSelected ? Icons.deselect : Icons.select_all),
@@ -1724,7 +1707,7 @@ class _RunsScreenState extends State<RunsScreen>
       l10n: l10n,
       rangeLabel: _activeRangeLabel(l10n),
       visibleCount: _visible.length,
-      showRangeRow: widget.titleText != null,
+      showRangeRow: true,
       summary: summariseRuns(_filtered),
       unit: unit,
       activityFilter: _activityFilter,
@@ -1763,7 +1746,9 @@ class _RunsScreenState extends State<RunsScreen>
           const SizedBox(height: 8),
           TextButton(
             onPressed: () {
+              _searchCtl.clear();
               setState(() {
+                _query = '';
                 _activityFilter = null;
                 _sourceFilter = null;
                 _range = _RunsRange.all;
@@ -2078,9 +2063,15 @@ class _RunsFilterHeader extends StatelessWidget {
                   Icon(Icons.filter_alt_outlined,
                       size: 16, color: theme.colorScheme.outline),
                   const SizedBox(width: 6),
-                  Text(
-                    l10n.historySourceLabel(_sourceLabel(sourceFilter, l10n)),
-                    style: theme.textTheme.bodyMedium,
+                  // Flexible: at 2x text on a 320 dp phone the label is wider
+                  // than the screen and overflowed by 289 dp.
+                  Flexible(
+                    child: Text(
+                      l10n.historySourceLabel(_sourceLabel(sourceFilter, l10n)),
+                      style: theme.textTheme.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   Icon(Icons.arrow_drop_down,
                       size: 18, color: theme.colorScheme.outline),

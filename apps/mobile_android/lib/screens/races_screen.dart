@@ -235,47 +235,37 @@ class _RacesScreenState extends State<RacesScreen> {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final api = widget.api;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l.runSurfaceTabRacesCourses),
-        actions: const [HelpButton(routes: ['/races'])],
-      ),
-      floatingActionButtonLocation: pageFabLocation(context),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openSubmit,
-        icon: const Icon(Icons.add),
-        label: Text(l.racesSubmitRace),
-      ),
+    final racesShown = _show.value != RacesShow.courses;
+    return HubTabBody(
+      title: l.runSurfaceTabRacesCourses,
+      // No primary action: "Add a race" contributes a listing, which few
+      // people do and nobody comes here to do, so it waits in the overflow
+      // rather than holding the FAB (issue #1374 report 2).
+      actions: [
+        const HelpButton(routes: ['/races']),
+        PopupMenuButton<void>(
+          key: const Key('races-overflow'),
+          itemBuilder: (_) => [
+            PopupMenuItem<void>(
+              onTap: _openSubmit,
+              child: ListTile(
+                leading: const Icon(Icons.add),
+                title: Text(l.racesSubmitRace),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+      ],
+      filters: _filterBar(l, api: api, racesShown: racesShown),
+      onRefresh: racesShown ? _run : null,
       // One scroll for both sections: Upcoming races first, as on web, then
       // Run any time below the results.
       body: CustomScrollView(
         key: const Key('races-scroll'),
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          if (api != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Semantics(
-                  key: const Key('races-show'),
-                  container: true,
-                  label: l.racesShowGroup,
-                  child: ChoiceChipRow<RacesShow>(
-                    selected: _show.value,
-                    onChanged: (v) => _show.value = v,
-                    options: [
-                      ChoiceChipOption(
-                          value: RacesShow.all, label: l.racesShowAll),
-                      ChoiceChipOption(
-                          value: RacesShow.races, label: l.racesShowRaces),
-                      ChoiceChipOption(
-                          value: RacesShow.courses,
-                          label: l.racesShowCourses),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          if (_show.value != RacesShow.courses) ..._raceSlivers(l, theme),
+          if (racesShown) ..._raceSlivers(l, theme),
           if (api != null && _show.value != RacesShow.races)
             // Keyed so switching views keeps its courses, records and fix
             // rather than reading them again.
@@ -297,65 +287,72 @@ class _RacesScreenState extends State<RacesScreen> {
     );
   }
 
+  /// The race search and Filters (hidden with the race calendar in Courses),
+  /// the All · Races · Courses view on the one chip line, and the filters
+  /// that are on as removable chips after it.
+  FilterBar _filterBar(AppLocalizations l,
+      {required ApiClient? api, required bool racesShown}) {
+    ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
+          label: label,
+          onRemove: onRemove,
+          removeTooltip: l.filterBarRemoveFilter(label),
+        );
+    return FilterBar(
+      key: const Key('races-filter-bar'),
+      search: racesShown
+          ? AppSearchField(
+              controller: _searchCtl,
+              hint: l.racesSearchPlaceholder,
+              clearTooltip: l.commonClearSearch,
+              onChanged: (v) {
+                _query = v;
+                _schedule();
+              },
+            )
+          : null,
+      chipsLabel: api == null ? null : l.racesShowGroup,
+      chips: [
+        if (api != null)
+          for (final o in [
+            ChoiceChipOption(value: RacesShow.all, label: l.racesShowAll),
+            ChoiceChipOption(value: RacesShow.races, label: l.racesShowRaces),
+            ChoiceChipOption(
+                value: RacesShow.courses, label: l.racesShowCourses),
+          ])
+            buildChoiceChip<RacesShow>(
+                context, o, _show.value, (v) => _show.value = v),
+      ],
+      activeFilters: racesShown
+          ? [
+              if (_recent) active(l.racesWhenRecent, () => _setRecent(false)),
+              if (_distance.isNotEmpty)
+                active(_bandLabel(l, _distance), () => _setDistance('')),
+              if (_nearPlace.trim().isNotEmpty)
+                active(l.racesNearChip(_nearPlace.trim()), _clearNear),
+            ]
+          : const [],
+      filtersLabel: racesShown ? l.filterBarFilters : null,
+      filtersSemanticLabel:
+          _activeCount > 0 ? l.filterBarFiltersCount(_activeCount) : null,
+      activeFilterCount: _activeCount,
+      onOpenFilters: racesShown ? _openFilters : null,
+    );
+  }
+
   List<Widget> _raceSlivers(AppLocalizations l, ThemeData theme) => [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Semantics(
-                header: true,
-                child: Text(l.racesSectionUpcoming,
-                    style: theme.textTheme.titleMedium),
-              ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppInsets.gutter,
+                AppInsets.pageTop, AppInsets.gutter, AppSpace.xs),
+            child: Semantics(
+              header: true,
+              child: Text(l.racesSectionUpcoming,
+                  style: theme.textTheme.titleMedium),
             ),
           ),
-          // One row: the list is what the section is for, so only the search
-          // stays out here and every other filter waits behind Filters.
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchCtl,
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search),
-                        hintText: l.racesSearchPlaceholder,
-                        isDense: true,
-                      ),
-                      onChanged: (v) {
-                        _query = v;
-                        _schedule();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    key: const Key('races-filters-button'),
-                    onPressed: _openFilters,
-                    icon: ExcludeSemantics(
-                      child: Badge(
-                        isLabelVisible: _activeCount > 0,
-                        label: Text('$_activeCount'),
-                        child: const Icon(Icons.tune),
-                      ),
-                    ),
-                    label: Semantics(
-                      label: _activeCount > 0
-                          ? l.racesFiltersCount(_activeCount)
-                          : l.racesFilters,
-                      excludeSemantics: true,
-                      child: Text(l.racesFilters),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_activeCount > 0)
-            SliverToBoxAdapter(child: _buildActiveFilters(l)),
-          _buildResults(l),
-        ];
+        ),
+        _buildResults(l),
+      ];
 
   int get _activeCount =>
       (_distance.isEmpty ? 0 : 1) +
@@ -378,45 +375,13 @@ class _RacesScreenState extends State<RacesScreen> {
     _run();
   }
 
-  /// The filter state with the sheet closed: one removable chip per filter,
-  /// in a single row that scrolls rather than wraps so it never costs the
-  /// list more than one line.
-  Widget _buildActiveFilters(AppLocalizations l) {
-    Widget chip(String label, VoidCallback onRemove) => Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: InputChip(
-            label: Text(label),
-            selected: true,
-            showCheckmark: false,
-            onPressed: _openFilters,
-            onDeleted: onRemove,
-            deleteButtonTooltipMessage: l.racesRemoveFilter(label),
-          ),
-        );
-    return SingleChildScrollView(
-      key: const Key('races-active-filters'),
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          if (_recent) chip(l.racesWhenRecent, () => _setRecent(false)),
-          if (_distance.isNotEmpty)
-            chip(_bandLabel(l, _distance), () => _setDistance('')),
-          if (_nearPlace.trim().isNotEmpty)
-            chip(l.racesNearChip(_nearPlace.trim()), _clearNear),
-        ],
-      ),
-    );
-  }
-
   Future<void> _openFilters() {
     final l = AppLocalizations.of(context);
-    return showModalBottomSheet<void>(
+    return showFilterSheet(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheet) {
+      title: l.filterBarFilters,
+      doneLabel: l.filterBarDone,
+      builder: (sheetContext, setSheet) {
           // Each change applies at once, so the list behind the sheet and the
           // chips above it are already right when it closes.
           void apply(VoidCallback change) {
@@ -425,16 +390,7 @@ class _RacesScreenState extends State<RacesScreen> {
           }
 
           final theme = Theme.of(sheetContext);
-          return SheetScaffold(
-            title: Text(l.racesFilters),
-            actions: Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: FilledButton(
-                onPressed: () => Navigator.of(sheetContext).pop(),
-                child: Text(l.racesFiltersDone),
-              ),
-            ),
-            body: Column(
+          return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -498,10 +454,8 @@ class _RacesScreenState extends State<RacesScreen> {
                     ],
                   ),
                 ],
-              ),
-          );
-        },
-      ),
+              );
+      },
     );
   }
 

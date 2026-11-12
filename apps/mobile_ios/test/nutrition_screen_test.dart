@@ -892,6 +892,10 @@ void _diaryDayTests() {
           describe: 'the saved template to be written to disk');
       await tester.pumpAndSettle();
 
+      // The hub's FAB floats over the list's last rows; scroll the saved
+      // card's Log clear of it, as a person would.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
       await tester.runAsync(() async {
         await tester.tap(find.widgetWithText(TextButton, 'Log'));
       });
@@ -949,6 +953,10 @@ void _diaryDayTests() {
           describe: 'the saved recipe to be written to disk');
       await tester.pumpAndSettle();
 
+      // The hub's FAB floats over the list's last rows; scroll the saved
+      // card's Log clear of it, as a person would.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
       await tester.runAsync(() async {
         await tester.tap(find.widgetWithText(TextButton, 'Log'));
       });
@@ -1096,10 +1104,8 @@ void _livenessTests() {
       await tester.pump();
       expect(api.pulls, 1, reason: 'the refresh is still hanging');
 
-      final add = tester.widget<IconButton>(find
-          .ancestor(
-              of: find.byIcon(Icons.add), matching: find.byType(IconButton))
-          .first);
+      final add = tester.widget<FloatingActionButton>(
+          find.widgetWithText(FloatingActionButton, 'Log food'));
       expect(add.onPressed, isNotNull,
           reason: 'the add control is not gated on a read');
 

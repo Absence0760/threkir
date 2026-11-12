@@ -5810,6 +5810,7 @@ void main() {
       // Hosts that hoist a sub-screen's FAB into their own Scaffold. The
       // clearance belongs to the list, which lives in the sub-screen.
       const hoists = {
+        'lib/screens/fitness_hub_screen.dart',
         'lib/screens/home_screen.dart',
         'lib/screens/social_screen.dart',
       };

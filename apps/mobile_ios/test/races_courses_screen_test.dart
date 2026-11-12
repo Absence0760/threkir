@@ -325,7 +325,7 @@ void main() {
     await tester.pump();
     expect(find.text('Upcoming races'), findsNothing);
     expect(find.text('Richmond 10K'), findsNothing);
-    expect(find.byKey(const Key('races-filters-button')), findsNothing);
+    expect(find.byKey(const Key('filter-bar-filters')), findsNothing);
     // The section is kept, not rebuilt, so every course is there at once.
     expect(cards, findsNWidgets(10));
     expect(find.byKey(const Key('races-any-time-all')), findsOneWidget);
@@ -442,7 +442,8 @@ void main() {
       describe: 'the race to list',
     );
     expect(find.byKey(const Key('races-any-time')), findsNothing);
-    expect(find.byKey(const Key('races-show')), findsNothing);
+    expect(find.widgetWithText(ChoiceChip, 'Courses'), findsNothing,
+        reason: 'no client, so no courses view to switch to');
   });
 
   group('RunAnyTimeSection', () {

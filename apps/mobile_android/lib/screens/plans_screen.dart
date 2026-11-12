@@ -5,14 +5,19 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        AppInsets,
         AppSemanticColors,
+        AsyncView,
         ChoiceChipOption,
-        ChoiceChipRow,
         EmptyState,
-        ListSkeleton,
+        FilterBar,
+        HubTabBody,
+        LoadingState,
+        PrimaryAction,
         ProgressBar,
         StatusPill,
-        StatusPillSize;
+        StatusPillSize,
+        buildChoiceChip;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -28,6 +33,7 @@ import '../training.dart';
 import '../plan_calibration.dart' show PlanCalibration;
 import '../training_service.dart';
 import '../backend_timeout.dart';
+import '../fab_clearance.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
 import '../widgets/next_race_card.dart';
@@ -258,197 +264,159 @@ class _PlansScreenState extends State<PlansScreen> {
     }
   }
 
+  void _openLibrary() => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanLibraryScreen(training: widget.training),
+        ),
+      );
+
+  Future<void> _openNewPlan() => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanNewScreen(training: widget.training),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final signedIn = widget.apiClient?.userId != null;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.plansTitle)),
-      body: !signedIn
-          ? SignInRequiredState(
-              api: widget.apiClient,
-              onSignedIn: () => setState(() {}),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Toolbar(
-                  onBrowseLibrary: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          PlanLibraryScreen(training: widget.training),
-                    ),
-                  ),
-                  onNewPlan: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            PlanNewScreen(training: widget.training),
-                      ),
-                    );
-                  },
-                ),
-                if (!_loading && _error == null && _plans.isNotEmpty)
-                  _FilterRow(
-                    plans: _plans,
-                    selected: _filter,
-                    onChanged: (f) => setState(() => _filter = f),
-                  ),
-                Expanded(child: _body(l10n)),
-              ],
+    if (!signedIn) {
+      return HubTabBody(
+        title: l10n.runSurfaceTabPlans,
+        body: SignInRequiredState(
+          api: widget.apiClient,
+          onSignedIn: () => setState(() {}),
+        ),
+      );
+    }
+    return HubTabBody(
+      title: l10n.runSurfaceTabPlans,
+      // "Browse library" is a second way to get a plan, as on web, so it is a
+      // secondary action rather than a tab or a second primary button, and a
+      // labelled one: as a bare glyph nobody found it (issue #1186).
+      actions: [
+        // Flexible, so at 2x text on a narrow phone the label ellipsizes
+        // rather than pushing the row off the screen.
+        Flexible(
+          child: OutlinedButton.icon(
+            onPressed: _openLibrary,
+            icon: const Icon(Icons.public),
+            label: Text(
+              l10n.plansBrowseLibrary,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-    );
-  }
-
-  Widget _body(AppLocalizations l10n) {
-    if (_loading && _plans.isEmpty) {
-      return ListSkeleton(label: l10n.commonLoading, hasLeading: false);
-    }
-    if (_error != null) {
-      return AppErrorState(
-          message: _error == _PlansLoadError.timeout
-              ? l10n.plansTimeoutError
-              : l10n.plansLoadError,
-          onRetry: _load);
-    }
-    if (_plans.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _load,
-        child: EmptyState(
+          ),
+        ),
+      ],
+      primary: PrimaryAction(
+        label: l10n.plansNewPlan,
+        icon: Icons.add,
+        onPressed: _openNewPlan,
+      ),
+      filters: _plans.isEmpty ? null : _filterBar(l10n),
+      onRefresh: _load,
+      body: AsyncView<List<TrainingPlanRow>>(
+        loading: _loading,
+        error: _error,
+        data: _plans,
+        isEmpty: (p) => p.isEmpty,
+        loadingState: LoadingState.list(label: l10n.commonLoading, hasLeading: false),
+        errorBuilder: (_, _) =>
+            AppErrorState(message: _errorText(l10n), onRetry: _load),
+        empty: EmptyState(
           icon: Icons.calendar_month,
           title: l10n.plansEmptyTitle,
           body: l10n.plansEmptyBody,
+          ctaLabel: l10n.plansNewPlan,
+          onCta: _openNewPlan,
           footer: _Starters(
             today: DateTime.now(),
             creatingId: _creatingStarterId,
             onPick: _createStarter,
           ),
         ),
-      );
-    }
-    final f = _filter;
-    final shown = sortPlansForList(
-        f == null ? _plans : _plans.where((p) => p.status == f).toList());
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: shown.isEmpty
-          ? EmptyState(
-              icon: Icons.filter_alt_off,
-              title: l10n.plansNoFilteredPlans(planStatusLabel(l10n, f!)),
-              ctaLabel: l10n.plansShowAllPlans,
-              ctaIcon: Icons.apps,
-              onCta: () => setState(() => _filter = null),
-            )
-          : ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-              itemCount: shown.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (ctx, i) {
-                final p = shown[i];
-                final abandonable =
-                    p.status == 'active' || p.status == 'paused';
-                return PlanListCard(
-                  plan: p,
-                  now: DateTime.now(),
-                  onTap: () => _openPlan(p.id),
-                  onAbandon: abandonable ? () => _abandon(p) : null,
-                  onDelete: abandonable ? null : () => _delete(p),
-                  actionBusy: _actingPlanId == p.id,
-                  actionsLocked: _actingPlanId != null,
-                );
-              },
-            ),
-    );
-  }
-}
-
-/// "Browse library" beside "New plan", as on web: the library is a second way
-/// to get a plan, not a sibling surface, so it is an action rather than a tab.
-class _Toolbar extends StatelessWidget {
-  final VoidCallback onBrowseLibrary;
-  final VoidCallback onNewPlan;
-
-  const _Toolbar({required this.onBrowseLibrary, required this.onNewPlan});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Wrap(
-        alignment: WrapAlignment.end,
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          OutlinedButton.icon(
-            onPressed: onBrowseLibrary,
-            icon: const Icon(Icons.public),
-            label: Text(l10n.plansBrowseLibrary),
-          ),
-          FilledButton.icon(
-            onPressed: onNewPlan,
-            icon: const Icon(Icons.add),
-            label: Text(l10n.plansNewPlan),
-          ),
-        ],
+        builder: (_, plans) => _list(l10n, plans),
       ),
     );
   }
-}
 
-class _FilterRow extends StatelessWidget {
-  final List<TrainingPlanRow> plans;
-  final _StatusFilter selected;
-  final ValueChanged<_StatusFilter> onChanged;
+  String _errorText(AppLocalizations l10n) => _error == _PlansLoadError.timeout
+      ? l10n.plansTimeoutError
+      : l10n.plansLoadError;
 
-  const _FilterRow({
-    required this.plans,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+  /// The status chips on one line, each with its count, as on web.
+  FilterBar _filterBar(AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     int count(String? s) =>
-        s == null ? plans.length : plans.where((p) => p.status == s).length;
+        s == null ? _plans.length : _plans.where((p) => p.status == s).length;
     String label(String text, String? s) {
       final n = count(s);
       return n == 0 ? text : '$text · ${formatFixed(n.toDouble(), 0, tag)}';
     }
 
-    return Semantics(
-      container: true,
-      label: l10n.plansFilterGroupLabel,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-        child: ChoiceChipRow<String?>(
-          selected: selected,
-          onChanged: onChanged,
-          options: [
-            ChoiceChipOption(
-                value: null, label: label(l10n.plansFilterAll, null)),
-            ChoiceChipOption(
-                value: 'active',
-                label: label(l10n.plansFilterActive, 'active'),
-                icon: Icons.play_circle_outline),
-            ChoiceChipOption(
-                value: 'paused',
-                label: label(l10n.plansFilterPaused, 'paused'),
-                icon: Icons.pause_circle_outline),
-            ChoiceChipOption(
-                value: 'completed',
-                label: label(l10n.plansFilterCompleted, 'completed'),
-                icon: Icons.check_circle_outline),
-            ChoiceChipOption(
-                value: 'abandoned',
-                label: label(l10n.plansFilterAbandoned, 'abandoned'),
-                icon: Icons.cancel_outlined),
-          ],
-        ),
-      ),
+    final options = [
+      ChoiceChipOption<String?>(
+          value: null, label: label(l10n.plansFilterAll, null)),
+      ChoiceChipOption<String?>(
+          value: 'active',
+          label: label(l10n.plansFilterActive, 'active'),
+          icon: Icons.play_circle_outline),
+      ChoiceChipOption<String?>(
+          value: 'paused',
+          label: label(l10n.plansFilterPaused, 'paused'),
+          icon: Icons.pause_circle_outline),
+      ChoiceChipOption<String?>(
+          value: 'completed',
+          label: label(l10n.plansFilterCompleted, 'completed'),
+          icon: Icons.check_circle_outline),
+      ChoiceChipOption<String?>(
+          value: 'abandoned',
+          label: label(l10n.plansFilterAbandoned, 'abandoned'),
+          icon: Icons.cancel_outlined),
+    ];
+    return FilterBar(
+      chipsLabel: l10n.plansFilterGroupLabel,
+      chips: [
+        for (final o in options)
+          buildChoiceChip<String?>(
+              context, o, _filter, (f) => setState(() => _filter = f)),
+      ],
+    );
+  }
+
+  Widget _list(AppLocalizations l10n, List<TrainingPlanRow> plans) {
+    final f = _filter;
+    final shown = sortPlansForList(
+        f == null ? plans : plans.where((p) => p.status == f).toList());
+    if (shown.isEmpty) {
+      return EmptyState(
+        icon: Icons.filter_alt_off,
+        title: l10n.plansNoFilteredPlans(planStatusLabel(l10n, f!)),
+        ctaLabel: l10n.plansShowAllPlans,
+        ctaIcon: Icons.apps,
+        onCta: () => setState(() => _filter = null),
+      );
+    }
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppInsets.pageTop,
+          AppInsets.gutter, fabScrollClearance(context)),
+      itemCount: shown.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppInsets.itemGap),
+      itemBuilder: (ctx, i) {
+        final p = shown[i];
+        final abandonable = p.status == 'active' || p.status == 'paused';
+        return PlanListCard(
+          plan: p,
+          now: DateTime.now(),
+          onTap: () => _openPlan(p.id),
+          onAbandon: abandonable ? () => _abandon(p) : null,
+          onDelete: abandonable ? null : () => _delete(p),
+          actionBusy: _actingPlanId == p.id,
+          actionsLocked: _actingPlanId != null,
+        );
+      },
     );
   }
 }

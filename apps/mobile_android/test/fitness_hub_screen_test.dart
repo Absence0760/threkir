@@ -174,10 +174,11 @@ void main() {
     // chips suppressed (the hub TabBar owns that axis).
     expect(find.byType(ActivityTimelineList), findsOneWidget);
     expect(find.text('Leg day'), findsOneWidget);
-    // The tab and the AppBar 48dp below it now say the same thing. This is
-    // the mount where the contradiction showed: the timeline title only
-    // renders once a second modality has data (#666 I9).
-    expect(find.text('History'), findsNWidgets(2));
+    // The strip names the tab; the body draws no title bar of its own under
+    // it (#666 I9 showed two names stacked here; issue #1374 removed the
+    // second bar altogether).
+    expect(find.text('History'), findsOneWidget);
+    expect(find.byType(AppBar), findsOneWidget, reason: 'only the hub\'s');
     // No in-screen kind chips — the hub TabBar is the single kind selector.
     expect(find.text('Lifts'), findsNothing);
   });
@@ -190,6 +191,9 @@ void main() {
     await tester.tap(tab(label));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    // A tab body hands the hub its primary action after the frame it first
+    // builds in, so the hub's FAB lands one frame later.
+    await tester.pump();
   }
 
   int routeCount(WidgetTester tester) {
@@ -238,8 +242,9 @@ void main() {
     // swipeable, and the filter header scrolls sideways.
     await pump(tester, storedPrefs: const {}, selectedTab: selected);
     final view = tester.getRect(find.byType(TabBarView));
+    // From the middle: the hub's FAB sits at the bottom-right.
     await tester.flingFrom(
-        Offset(view.right - 40, view.bottom - 60), const Offset(-600, 0), 2000);
+        Offset(view.center.dx, view.bottom - 60), const Offset(-600, 0), 2000);
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
@@ -248,17 +253,16 @@ void main() {
     expect(routeCount(tester), 1);
   });
 
-  // The hub owns only the strip: each surface keeps its own toolbar actions
-  // and add button inside its tab, as Social's tabs do.
-  testWidgets("each run surface keeps its own actions and FAB in its tab",
-      (tester) async {
+  // The hub owns the strip and the one FAB, as Social does: a tab body keeps
+  // its secondary actions in its own control row, hands its primary action to
+  // the hub, and draws no app bar of its own (issue #1374).
+  testWidgets('the hub owns the only app bar and the FAB; each tab keeps its '
+      'secondary actions', (tester) async {
     await pump(tester, runs: [runRow('r1')], storedPrefs: const {});
     await openTab(tester, 'Races & courses');
-    expect(
-        find.descendant(
-            of: find.byType(RacesScreen),
-            matching: find.byType(FloatingActionButton)),
-        findsOneWidget);
+    expect(find.byType(AppBar), findsOneWidget);
+    // Add a race is rare, so it waits in the overflow and the tab has no FAB.
+    expect(find.byType(FloatingActionButton), findsNothing);
     expect(
         find.descendant(
             of: find.byType(RacesScreen),
@@ -266,11 +270,14 @@ void main() {
         findsOneWidget);
 
     await openTab(tester, 'Routes');
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(find.widgetWithText(FloatingActionButton, 'Import'), findsOneWidget);
     expect(
         find.descendant(
             of: find.byType(RoutesScreen),
             matching: find.byType(FloatingActionButton)),
-        findsWidgets);
+        findsNothing,
+        reason: 'the FAB is the hub\'s, not drawn inside the tab');
 
     await openTab(tester, 'Segments');
     expect(
@@ -449,14 +456,13 @@ void main() {
   });
 
   testWidgets(
-      'Runs sub-tab titles itself "Runs" and moves the range status into '
-      'the filter header', (tester) async {
+      'Runs sub-tab carries no title of its own and shows the range status '
+      'in the filter header', (tester) async {
     await pump(tester, runs: [runRow('r1')]);
     await openTab(tester, 'Runs');
-    // "Runs" appears twice: the hub's tab label and the sub-tab's static
-    // AppBar title (matching the Gym / Nutrition siblings). There is no
-    // second, in-body peer strip any more.
-    expect(find.text('Runs'), findsNWidgets(2));
+    // "Runs" appears once, on the strip: the tab draws no title bar of its
+    // own under it.
+    expect(find.text('Runs'), findsOneWidget);
     // The range + count status the title otherwise carries renders as the
     // filter header's leading row instead (default range = This week).
     expect(find.text('This week · 1 run'), findsOneWidget);

@@ -5467,36 +5467,34 @@ export async function submitEventResult(params: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	const noteTrimmed = params.note?.trim();
-	const { error } = await supabase.from(TABLES.event_results).upsert(
-		{
-			event_id: params.eventId,
-			instance_start: params.instanceStart,
-			user_id: userId,
-			run_id: params.runId ?? null,
-			duration_s: params.durationS,
-			distance_m: params.distanceM,
-			finisher_status: params.finisherStatus ?? 'finished',
-			age_grade_pct: params.ageGradePct ?? null,
-			// Trim + collapse empty-after-trim to null so a whitespace
-			// note from the result-submit dialog doesn't survive to the
-			// DB. Mobile's `SocialService.submitEventResult` applies the
-			// same normalisation.
-			note: noteTrimmed && noteTrimmed.length > 0 ? noteTrimmed : null,
-			...(params.finishMethod !== undefined ? { finish_method: params.finishMethod } : {}),
-			...(params.chipTimeS !== undefined ? { chip_time_s: params.chipTimeS } : {}),
-			...(params.courseId !== undefined ? { course_id: params.courseId } : {}),
-			// A time typed here asserts no line crossings. The upsert keeps an
-			// omitted column, and the server derives the gun and chip time from
-			// a `finish_at` left by an earlier device result (#1307), so clear
-			// them; `clock_offset_ms` is a device fact and stays.
-			start_at: null,
-			finish_at: null,
-			start_detection: null,
-			finish_detection: null,
-			updated_at: new Date().toISOString(),
-		},
-		{ onConflict: 'event_id,instance_start,user_id' }
-	);
+	const result: JsonObject = {
+		event_id: params.eventId,
+		instance_start: params.instanceStart,
+		user_id: userId,
+		run_id: params.runId ?? null,
+		duration_s: params.durationS,
+		distance_m: params.distanceM,
+		finisher_status: params.finisherStatus ?? 'finished',
+		age_grade_pct: params.ageGradePct ?? null,
+		// Trim + collapse empty-after-trim to null so a whitespace
+		// note from the result-submit dialog doesn't survive to the
+		// DB. Mobile's `SocialService.submitEventResult` applies the
+		// same normalisation.
+		note: noteTrimmed && noteTrimmed.length > 0 ? noteTrimmed : null,
+		...(params.finishMethod !== undefined ? { finish_method: params.finishMethod } : {}),
+		...(params.chipTimeS !== undefined ? { chip_time_s: params.chipTimeS } : {}),
+		...(params.courseId !== undefined ? { course_id: params.courseId } : {}),
+		// A time typed here asserts no line crossings. The upsert keeps an
+		// omitted column, and the server derives the gun and chip time from
+		// a `finish_at` left by an earlier device result (#1307), so clear
+		// them; `clock_offset_ms` is a device fact and stays.
+		start_at: null,
+		finish_at: null,
+		start_detection: null,
+		finish_detection: null,
+		updated_at: new Date().toISOString(),
+	};
+	const { error } = await supabase.rpc('file_event_result', { p_result: result });
 	if (error) throw dbError(error);
 	markListsStale('runs', 'history', 'routes');
 	// Best-effort back-link so the run-detail page can show "ran at {event}".
@@ -5618,11 +5616,11 @@ export async function fetchRunRetimeContext(run: {
 	};
 }
 
-/// File a re-timed result (#1307 M11): an upsert of the runner's own row with
-/// the crossings, inside the 24 h write window (§ 1849). The race guard
-/// re-derives the gun and chip time from `finish_at` / `start_at`, applies the
-/// Self-timed lock rule (keeping a faster protected row by returning it
-/// unchanged), sets `needs_review` and resets approval on a race that is not
+/// File a re-timed result (#1307 M11): the runner's own row with the
+/// crossings, upserted through `file_event_result` inside the 24 h write
+/// window (§ 1849). The race guard re-derives the gun and chip time from
+/// `finish_at` / `start_at`, applies the Self-timed lock rule (keeping a
+/// faster protected row by returning it unchanged), sets `needs_review` and resets approval on a race that is not
 /// auto-approved, so the row read back afterwards is the answer, not the
 /// payload. A write past the window is refused as `race_result_window_closed`.
 export async function retimeEventResult(params: {
@@ -5636,28 +5634,26 @@ export async function retimeEventResult(params: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	const c = params.candidate;
-	const { error } = await supabase.from(TABLES.event_results).upsert(
-		{
-			event_id: params.eventId,
-			instance_start: params.instanceStart,
-			user_id: userId,
-			run_id: params.runId,
-			distance_m: params.distanceM,
-			finisher_status: 'finished',
-			finish_method: 'auto',
-			duration_s: c.durationS,
-			gun_time_s: c.gunTimeS,
-			chip_time_s: c.chipTimeS,
-			start_at: c.startAt,
-			finish_at: c.finishAt,
-			start_detection: c.startDetection,
-			finish_detection: c.finishDetection,
-			...(c.clockOffsetMs !== null ? { clock_offset_ms: c.clockOffsetMs } : {}),
-			...(params.courseId !== null ? { course_id: params.courseId } : {}),
-			updated_at: new Date().toISOString(),
-		},
-		{ onConflict: 'event_id,instance_start,user_id' }
-	);
+	const result: JsonObject = {
+		event_id: params.eventId,
+		instance_start: params.instanceStart,
+		user_id: userId,
+		run_id: params.runId,
+		distance_m: params.distanceM,
+		finisher_status: 'finished',
+		finish_method: 'auto',
+		duration_s: c.durationS,
+		gun_time_s: c.gunTimeS,
+		chip_time_s: c.chipTimeS,
+		start_at: c.startAt,
+		finish_at: c.finishAt,
+		start_detection: c.startDetection,
+		finish_detection: c.finishDetection,
+		...(c.clockOffsetMs !== null ? { clock_offset_ms: c.clockOffsetMs } : {}),
+		...(params.courseId !== null ? { course_id: params.courseId } : {}),
+		updated_at: new Date().toISOString(),
+	};
+	const { error } = await supabase.rpc('file_event_result', { p_result: result });
 	if (error) {
 		if (typeof error.message === 'string' && error.message.startsWith('race_result_window_closed')) {
 			throw new Error('race_result_window_closed');

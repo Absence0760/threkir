@@ -165,6 +165,30 @@ void main() {
       expect(restored.indoor, true);
     });
 
+    test('carries the title through the index and back onto the run', () {
+      final summary = RunSummary.fromRun(
+        buildRun(metadata: {MetadataKeys.title: 'Richmond Half'}),
+        synced: false,
+      );
+      final restored = RunSummary.fromIndexJson(summary.toIndexJson());
+      expect(restored.title, 'Richmond Half');
+      expect(restored.toRun().metadata?[MetadataKeys.title], 'Richmond Half');
+      expect(restored.withSynced(true).title, 'Richmond Half');
+    });
+
+    test('a row from an index written before the title was carried is '
+        'refused, so the store rebuilds it from the run files', () {
+      final j = RunSummary.fromRun(buildRun(), synced: false).toIndexJson()
+        ..remove('title');
+      expect(
+        () => RunSummary.fromIndexJson(j),
+        throwsA(isA<FormatException>()
+            .having((e) => e.message, 'message', contains('title'))),
+      );
+      final untitled = RunSummary.fromRun(buildRun(), synced: false).toIndexJson();
+      expect(RunSummary.fromIndexJson(untitled).title, isNull);
+    });
+
     test('source falls back to app for an unknown wire value', () {
       final j = RunSummary.fromRun(buildRun(), synced: false).toIndexJson()
         ..['source'] = 'martian';

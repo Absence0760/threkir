@@ -57,6 +57,7 @@ import {
 } from '../nutrition/meal_plan';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { MAX_RUN_DURATION_S, isPlausibleRunDuration } from '../runs/run_duration';
+import { globalSegmentEffortRefusal, writeEffortsIsolatingRefusals } from '../segments/effort_bounds';
 import { prCardEntries, type PrCardEntry } from '../share/pr_card';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
@@ -11533,8 +11534,10 @@ export async function fetchGlobalSegmentsInBbox(
 /// said, as the server's `record_segment_match` does: a new match is
 /// inserted, an effort the run no longer earns is deleted, and one whose time
 /// or rule changed is deleted then re-inserted (there is no client UPDATE
-/// path). A segment it did not score is never touched. Returns the number of
-/// efforts inserted.
+/// path). A segment it did not score is never touched. An effort the
+/// server's client bounds would refuse (`segments/effort_bounds.ts`) counts
+/// as no match, and a refusal the screen missed costs only its own row.
+/// Returns the number of efforts inserted.
 ///
 /// Two `runs.metadata` stamps gate the pass so a scored run does not
 /// re-match on every view: `global_segments_scored_count`, the size of the
@@ -11553,12 +11556,17 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	if (!userId || userId !== input.user_id) return 0;
 
 	const [{ data: runRow }, { count: activeCount }] = await Promise.all([
-		supabase.from(TABLES.runs).select('metadata').eq('id', input.run_id).maybeSingle(),
+		supabase
+			.from(TABLES.runs)
+			.select('metadata, started_at, activity_type')
+			.eq('id', input.run_id)
+			.maybeSingle(),
 		supabase
 			.from(TABLES.global_segments)
 			.select('id', { count: 'exact', head: true })
 			.eq('is_active', true),
 	]);
+	if (!runRow) return 0;
 	const runMetadata = (runRow?.metadata ?? null) as JsonObject | null;
 	if (!shouldRescoreGlobalSegments(runMetadata, activeCount, GLOBAL_SEGMENT_MATCHER_VERSION)) return 0;
 	// An unknown count cannot be stamped; the pass still runs, and the next
@@ -11602,7 +11610,14 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	const staleIds: string[] = [];
 	const rows: Insertable<'global_segment_efforts'>[] = [];
 	for (let i = 0; i < scorable.length; i++) {
-		const eff = efforts[i];
+		// An effort the server's client bounds would refuse is treated as no
+		// match, before anything is deleted: written in the batch it would
+		// fail the whole statement.
+		const measured = efforts[i];
+		const eff =
+			measured && globalSegmentEffortRefusal(measured, runRow, scorable[i].distance_m) === null
+				? measured
+				: null;
 		const have = stored.get(scorable[i].id);
 		if (
 			have &&
@@ -11635,20 +11650,23 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 			return 0;
 		}
 	}
-	let newCount = 0;
-	if (rows.length > 0) {
-		const { data: inserted, error } = await supabase
+	const written = await writeEffortsIsolatingRefusals(rows, async (batch) => {
+		const { data, error } = await supabase
 			.from(TABLES.global_segment_efforts)
-			.upsert(rows, { onConflict: 'global_segment_id,run_id', ignoreDuplicates: true })
+			.upsert(batch, { onConflict: 'global_segment_id,run_id', ignoreDuplicates: true })
 			.select('id');
-		if (error) {
-			// Don't stamp on a failed write — the run stays un-scored so
-			// the next view retries rather than dropping real matches.
-			console.warn('global segment effort batch upsert failed', input.run_id, error);
-			return 0;
-		}
-		newCount = inserted?.length ?? 0;
+		return { count: data?.length ?? 0, error };
+	});
+	if (written.refused > 0) {
+		console.warn('global segment efforts refused by the client bounds', input.run_id, written.refused);
 	}
+	if (written.error) {
+		// Don't stamp on a failed write — the run stays un-scored so
+		// the next view retries rather than dropping real matches.
+		console.warn('global segment effort write failed', input.run_id, written.error);
+		return written.written;
+	}
+	const newCount = written.written;
 	if (scoredCount === null) return newCount;
 
 	// Stamp even when nothing matched (rows.length === 0): a no-match run

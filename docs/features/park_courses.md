@@ -93,10 +93,14 @@ The run owner can still write their own effort rows (the RLS that has carried
 the catalogue since `20270411_001`), which the web fallback below uses, so a
 client that skips the checkpoint rule can still insert a time. Removing the
 fallback and that policy, once the server job has run in production, closes it.
-Until then `global_segment_efforts_client_bounds` (`20271224000500`) holds a
-client-written effort to its run: no longer than the run, starting within it,
-and no faster than 11 m/s over the segment (25 m/s on a ride), so a forged
-time cannot take a board; `record_segment_match` is not checked.
+Until then `global_segment_efforts_client_bounds` (`20271224000500`,
+corrected by `20271225000200`) refuses a client-written effort with a
+physically impossible time: one starting more than a minute before its run,
+or faster than 11 m/s over the segment on foot (25 m/s on a ride). A forged 1 s
+time is refused; a plausible forged time is not, and stays open until
+`segment-match` is the only writer (issue #1313). The effort's end and length
+are not bounded, because `runs.duration_s` is moving time and the run has no
+stored wall-clock end. `record_segment_match` is not checked.
 
 ## Matching
 

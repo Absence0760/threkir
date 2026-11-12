@@ -1991,6 +1991,14 @@ fix, and a companion case proves it reads all of them and bites on a bump.
 
 ---
 
+### `apps/backend/supabase/tests/global_segment_effort_client_bounds_test.sql` — 14 tests
+
+The client bounds on a catalogue effort (`20271224000500`, corrected by `20271225000200`, decisions § 2474): a forged 1 s effort and one starting hours before its run are refused; the 60 s start slack refuses 61 s and admits 60 s; on a paused run (`duration_s` 3000 over a 3600 s span) an effort starting after `started_at + duration_s` and one longer than `duration_s` both land; a ride admits 16 m/s and a walk, a hike and a stroller run refuse it on the foot cap; a client UPDATE is refused by privilege, and with one admitted inside the test the trigger still refuses a forged time; the service role is not held to any of it.
+
+### `apps/web/src/lib/core/data.test.ts` — 65 tests
+
+Source guards on the data layer, plus three for the catalogue fallback's client bounds: each effort is screened by the trigger's rule before the stale delete, one refused row in a batch costs only that row (`writeEffortsIsolatingRefusals`, a non-refusal failure still withholds the stamp), and `globalSegmentEffortRefusal` mirrors the trigger (paused-run efforts admitted, the 60 s slack, the foot cap on walk / hike / stroller, the ride cap).
+
 ## Suite totals after the #789 coverage round (2026-08-31)
 
 Measured on the merged branch, not transcribed from the six slice reports. Each

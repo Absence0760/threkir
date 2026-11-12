@@ -294,11 +294,11 @@ private val voidSerializer = ListSerializer(PendingRaceVoid.serializer())
 
 /// An unreadable entry list is dropped rather than allowed to block every
 /// later finish from being written: the one result it held is lost either way.
-private fun decodeOrEmpty(raw: String?): List<PendingRaceResult> {
+private fun decodeOrEmpty(raw: String?, warn: (String, Throwable) -> Unit): List<PendingRaceResult> {
     if (raw == null) return emptyList()
     return runCatching { pendingJson.decodeFromString(pendingSerializer, raw) }
         .getOrElse { e ->
-            Log.w("RaceResultStore", "pending race results unreadable, dropping", e)
+            warn("pending race results unreadable, dropping", e)
             emptyList()
         }
 }
@@ -310,18 +310,27 @@ internal fun removeRaceResult(
     result: PendingRaceResult,
 ): List<PendingRaceResult> = queue - result
 
+private fun logRaceStoreWarning(message: String, e: Throwable) {
+    Log.w("RaceResultStore", message, e)
+}
+
 /// The DataStore is injected so the queue's behaviour is pinned on the host
-/// JVM against a real file store; the app always takes the Context one.
-class RaceResultStore internal constructor(private val dataStore: DataStore<Preferences>) {
+/// JVM against a real file store; the app always takes the Context one. So is
+/// [warn], because `android.util.Log` throws on the host JVM and the unreadable
+/// paths are the ones worth pinning there.
+class RaceResultStore internal constructor(
+    private val dataStore: DataStore<Preferences>,
+    private val warn: (String, Throwable) -> Unit = ::logRaceStoreWarning,
+) {
 
     constructor(context: Context) : this(context.raceResultDataStore)
 
     suspend fun current(): List<PendingRaceResult> =
-        decodeOrEmpty(dataStore.data.first()[KEY_PENDING])
+        decodeOrEmpty(dataStore.data.first()[KEY_PENDING], warn)
 
     suspend fun add(result: PendingRaceResult) {
         dataStore.edit { prefs ->
-            val list = decodeOrEmpty(prefs[KEY_PENDING])
+            val list = decodeOrEmpty(prefs[KEY_PENDING], warn)
             prefs[KEY_PENDING] = pendingJson.encodeToString(
                 pendingSerializer,
                 enqueueRaceResult(list, result),
@@ -331,7 +340,7 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
 
     suspend fun remove(result: PendingRaceResult) {
         dataStore.edit { prefs ->
-            val list = decodeOrEmpty(prefs[KEY_PENDING])
+            val list = decodeOrEmpty(prefs[KEY_PENDING], warn)
             prefs[KEY_PENDING] = pendingJson.encodeToString(
                 pendingSerializer,
                 removeRaceResult(list, result),
@@ -342,7 +351,7 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
     /// Drop every queued result for [userId] in one race.
     suspend fun dequeue(userId: String, eventId: String, instanceStart: String) {
         dataStore.edit { prefs ->
-            val list = decodeOrEmpty(prefs[KEY_PENDING])
+            val list = decodeOrEmpty(prefs[KEY_PENDING], warn)
             prefs[KEY_PENDING] = pendingJson.encodeToString(
                 pendingSerializer,
                 dequeueRaceResults(list, userId, eventId, instanceStart),
@@ -350,18 +359,18 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
         }
     }
 
-    suspend fun voids(): List<PendingRaceVoid> = decodeVoids(dataStore.data.first()[KEY_VOIDS])
+    suspend fun voids(): List<PendingRaceVoid> = decodeVoids(dataStore.data.first()[KEY_VOIDS], warn)
 
     suspend fun addVoid(v: PendingRaceVoid) {
         dataStore.edit { prefs ->
-            val list = decodeVoids(prefs[KEY_VOIDS])
+            val list = decodeVoids(prefs[KEY_VOIDS], warn)
             prefs[KEY_VOIDS] = pendingJson.encodeToString(voidSerializer, list.filterNot { it == v } + v)
         }
     }
 
     suspend fun removeVoid(v: PendingRaceVoid) {
         dataStore.edit { prefs ->
-            val list = decodeVoids(prefs[KEY_VOIDS])
+            val list = decodeVoids(prefs[KEY_VOIDS], warn)
             prefs[KEY_VOIDS] = pendingJson.encodeToString(voidSerializer, list - v)
         }
     }
@@ -382,7 +391,7 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
         val raw = dataStore.data.first()[KEY_COURSE] ?: return null
         val entry = runCatching { pendingJson.decodeFromString(CachedRaceCourse.serializer(), raw) }
             .getOrElse { e ->
-                Log.w("RaceResultStore", "cached race course unreadable, ignoring", e)
+                warn("cached race course unreadable, ignoring", e)
                 null
             } ?: return null
         val mine = entry.userId == userId && entry.eventId == eventId && entry.instanceStart == instanceStart
@@ -405,7 +414,7 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
         val raw = dataStore.data.first()[KEY_ACTIVE] ?: return null
         return runCatching { pendingJson.decodeFromString(CachedActiveRace.serializer(), raw) }
             .getOrElse { e ->
-                Log.w("RaceResultStore", "cached race unreadable, ignoring", e)
+                warn("cached race unreadable, ignoring", e)
                 null
             }
     }
@@ -436,7 +445,7 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
         val raw = dataStore.data.first()[KEY_CLOCK] ?: return null
         return runCatching { pendingJson.decodeFromString(CachedClockOffset.serializer(), raw) }
             .getOrElse { e ->
-                Log.w("RaceResultStore", "cached clock offset unreadable, ignoring", e)
+                warn("cached clock offset unreadable, ignoring", e)
                 null
             }
     }
@@ -457,7 +466,7 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
         val raw = dataStore.data.first()[KEY_UNDONE] ?: return null
         return runCatching { pendingJson.decodeFromString(UndoneRaceFinish.serializer(), raw) }
             .getOrElse { e ->
-                Log.w("RaceResultStore", "undone race finish unreadable, ignoring", e)
+                warn("undone race finish unreadable, ignoring", e)
                 null
             }
     }
@@ -476,11 +485,11 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
     }
 }
 
-private fun decodeVoids(raw: String?): List<PendingRaceVoid> {
+private fun decodeVoids(raw: String?, warn: (String, Throwable) -> Unit): List<PendingRaceVoid> {
     if (raw == null) return emptyList()
     return runCatching { pendingJson.decodeFromString(voidSerializer, raw) }
         .getOrElse { e ->
-            Log.w("RaceResultStore", "pending race voids unreadable, dropping", e)
+            warn("pending race voids unreadable, dropping", e)
             emptyList()
         }
 }

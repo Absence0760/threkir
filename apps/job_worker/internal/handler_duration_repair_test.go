@@ -209,10 +209,11 @@ func TestDurationRepair_RefusesAPayloadForSomeoneElsesRun(t *testing.T) {
 // The wire shape of the write: duration_s only, conditional on the read's
 // duration, track and flag.
 func TestUpdateRunDuration_IsAConditionalPatchOfTheDurationAlone(t *testing.T) {
-	var method, query string
+	var method, query, prefer string
 	var body []byte
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		method = r.Method
+		prefer = r.Header.Get("Prefer")
 		query = r.URL.Query().Encode()
 		body, _ = io.ReadAll(r.Body)
 		_, _ = w.Write([]byte(`[{"id":"` + drRunID + `"}]`))
@@ -226,6 +227,11 @@ func TestUpdateRunDuration_IsAConditionalPatchOfTheDurationAlone(t *testing.T) {
 	}
 	if string(body) != `{"duration_s":3000}` {
 		t.Fatalf("body = %s", body)
+	}
+	// With return=minimal a zero-row PATCH is a bare 204, so a lost race
+	// would read as a write.
+	if prefer != "return=representation" {
+		t.Fatalf("Prefer = %q, want return=representation", prefer)
 	}
 	for _, want := range []string{
 		"duration_s=eq.864000",
@@ -243,5 +249,45 @@ func TestUpdateRunDuration_IsAConditionalPatchOfTheDurationAlone(t *testing.T) {
 	})
 	if err := client.UpdateRunDuration(context.Background(), &run, 3000); !errors.Is(err, ErrRunChangedDuringDurationRepair) {
 		t.Fatalf("a zero-row patch = %v, want ErrRunChangedDuringDurationRepair", err)
+	}
+}
+
+// Without a track_url the CAS would lose its track filter, so the write is
+// refused before it reaches the network.
+func TestUpdateRunDuration_RefusesAReadWithNoTrack(t *testing.T) {
+	called := false
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) { called = true })
+	run := cappedRun()
+	run.TrackURL = nil
+	if err := client.UpdateRunDuration(context.Background(), &run, 3000); err == nil {
+		t.Fatal("want an error for a read with no track_url")
+	}
+	if called {
+		t.Fatal("a read with no track_url reached the network")
+	}
+}
+
+func TestReadRunForDurationRepair_DecodesTheRunItWasAskedFor(t *testing.T) {
+	var query string
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query().Encode()
+		_, _ = w.Write([]byte(`[{"id":"` + drRunID + `","user_id":"` + drUserID + `","activity_type":"run","track_url":"` + drTrack + `","distance_m":5000,"duration_s":864000,"metadata":` + flaggedMeta + `}]`))
+	})
+	run, err := client.ReadRunForDurationRepair(context.Background(), drRunID)
+	if err != nil {
+		t.Fatalf("ReadRunForDurationRepair: %v", err)
+	}
+	if !strings.Contains(query, "id=eq."+drRunID) {
+		t.Fatalf("query %q lacks the id filter", query)
+	}
+	if run.ID != drRunID || run.UserID != drUserID || run.DurationS != 864000 || run.TrackURL == nil || *run.TrackURL != drTrack {
+		t.Fatalf("decoded %+v", run)
+	}
+
+	client = newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[]`))
+	})
+	if _, err := client.ReadRunForDurationRepair(context.Background(), drRunID); !errors.Is(err, ErrRunNotFound) {
+		t.Fatalf("an empty read = %v, want ErrRunNotFound", err)
 	}
 }

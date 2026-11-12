@@ -547,11 +547,9 @@ A `DateTime.now()` or `.toUtc()` receiver is exempt structurally — an instant 
 
 This is the timezone-independent half of the fix: the behavioural repros in `current_week_strip_test.dart` only bite under `TZ=America/New_York`. They carry the `tz` tag, so CI's `test-timezones` job runs them there too ([testing.md § Timezone-sensitive Dart tests](testing.md#timezone-sensitive-dart-tests)); this guard still catches the shape in the UTC run.
 
-### `apps/mobile_android/test/post_await_setstate_guard_test.dart` — 3 tests
+### `apps/mobile_android/test/mount_guard_test.dart` — 3 tests
 
-The async-gap guard (issue #734). One test pins the detector itself against ten shapes — the bare `await` → `setState`, an early-return guard, a positive `if (mounted)`, a `context.mounted` guard, an await that comes *after* the setState, an escaping block (`if (x) { await f(); return; }`), a closure body, an await inside a `try` read from both the code after it and the `catch`, and a commented-out mention. The second scans every file under `lib/` and fails with file:line for any `setState` whose enclosing function reaches it across an unguarded await.
-
-Structural rather than a backwards regex: it walks a frame per brace so a closure is not a continuation of its enclosing method, and an escaping block does not hand its awaits to the code after it. Tuned for precision over recall — a guard that lives in a helper the method calls is not seen, and the allowlist is empty deliberately. Runs in about a second over the whole tree.
+The async-gap guard ([decisions § 2479](../architecture/decisions.md), which supersedes the text scanner issue #734 added). It parses every file under `lib/` with `package:analyzer` and walks each async body of a `State` subclass, or of a mixin `on State`, in order. It fails with file:line for any `setState` or bare `context` reached across an `await` with no `mounted` check in between. Two of the three declarations are loops over fixture tables, so the run reports one case per fixture: shapes the walk must flag, shapes it must spare, and every shape the #734 scanner pinned. The third declaration is the scan of `lib/` itself.
 
 ### Page FAB placement — `apps/mobile_android/test/page_fab_location_guard_test.dart` (2 source guards) · `fab_clearance_test.dart` (7)
 

@@ -945,7 +945,9 @@ On the Flutter apps, every `setState` reached after an `await` needs `if (!mount
 
 Write the guard **immediately after the await that opened the gap** — not after the `setState`, and not only on the failure arm. Both were real: `runs_screen.dart` set `_syncing = false` and asked about `mounted` on the next line, and the route-detail tag row checked only inside its `catch` while the success arm wrote straight through (issue #734, 34 sites).
 
-`apps/mobile_android/test/post_await_setstate_guard_test.dart` (mirrored on iOS) scans `lib/` and fails on the next one. It is deliberately precision-tuned — a guard that lives in a helper the method calls is not seen — so a hit is a real finding, and the allowlist is empty on purpose. A dialog `await` counts: `showDatePicker`, `confirmDestructive` and `Navigator.push` all open the same gap as a network call.
+The same applies to `context`: a share sheet, a dialog, a banner or an `AppLocalizations.of(context)` reached after an await needs the check too, and `if (!context.mounted) return;` is the form when the `BuildContext` is a parameter rather than the State's own.
+
+`apps/mobile_android/test/mount_guard_test.dart` (mirrored on iOS) parses `lib/` and fails on the next one ([decisions § 2479](decisions.md)). It follows control flow, not text. A check only covers the code it actually comes before: an `if (mounted) { … }` that does not exit says nothing about the code after it, and a `mounted` on the left of an `&&` says nothing about an await on its right. When a use is safe for a reason the walk cannot see, mark it with a `// mount-safe:` comment saying why, on the line or the line above. A dialog `await` counts: `showDatePicker`, `confirmDestructive` and `Navigator.push` all open the same gap as a network call.
 
 ## Mobile distances and paces render through the unit pref, never a hand-rolled divide
 

@@ -14,7 +14,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
 | Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races`, the `/segments` header link and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
-| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight courses with distance, shape and this season's record, nearest first once the page has a place or the runner's location, otherwise region, park, distance, name; closed courses last (`orderAnyTimeCourses` in `lib/parks/any_time_courses.ts`). Its own loading, error and `EmptyState`, independent of the race calendar above it | Shipped |
+| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight courses with distance, shape and this season's record, nearest first once the page has a place or the runner's location, otherwise region, park, distance, name; closed courses last (`orderAnyTimeCourses` in `lib/parks/any_time_courses.ts`). Its own loading, error and `EmptyState`, independent of the race calendar above it. An **All · Races · Courses** switch (`?show=`, `lib/races/races_show.ts`; decisions § 2480) shows either section alone, and Courses lists every course with the place control beside them; mobile has the same switch on the Races & courses tab | Shipped |
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the **Parks** peer on the Fitness hub's Runs strip, and the segment catalogue's app bar) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
@@ -194,7 +194,14 @@ because a course is something you go and do, not a stretch you happen to run.
   distance and name order, closed courses last. Each card shows distance,
   shape, the park and this season's record, and opens the course page. An
   "All park courses" link goes to `/parks`. Each section loads and fails on
-  its own.
+  its own. A switch under the intro, **All · Races · Courses**, shows both or
+  either alone (decisions § 2480). Courses hides the race calendar and its
+  filters, lists every course rather than eight, and puts the place field and
+  Use my location at the top of the courses so they still order them. On web
+  the choice is `?show=races|courses` (none, or an unknown value, is All),
+  written by a shallow navigation, so a link, a refresh and back from a course
+  page reopen it; on mobile it is the tab's own state and the courses are
+  ordered by the phone's fix, as before.
 - **`/parks`** stays the full index and the deep-link target for share pages
   and posts, with a back-link to Races & courses and no strip.
 - **`/segments`** keeps its header link to `/parks`.
@@ -786,7 +793,12 @@ These gate going live, not the code:
   strip, both sections, a course card with its record and its link, no time
   yet, each section's error leaving the other standing, the empty state, failed
   records, nearest first from the granted location, `/parks` from Run any
-  time, Segments and directly).
+  time, Segments and directly, the Show switch and its `?show=` links, every
+  course in the Courses view against eight in All, back from a course to the
+  Courses view, Use my location inside it); `apps/web/src/lib/races/races_show.test.ts`
+  (parsing, the query string, the course limit per view); Flutter
+  `apps/mobile_android/test/races_courses_screen_test.dart` (the switch hides
+  either section and Courses lists every course without reloading).
 - Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
   (creation, an unchanged re-run, changed geometry in place with efforts
   kept, status untouched, a deleted route recreated, the backfill flag, the

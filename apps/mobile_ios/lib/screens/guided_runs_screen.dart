@@ -5,6 +5,7 @@ import '../auth_error.dart';
 import '../audio_cues.dart';
 import '../guided_runs.dart';
 import '../main.dart' show pendingArmGuidedRun;
+import '../return_to_shell.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../widgets/top_banner.dart';
 
@@ -124,9 +125,11 @@ class _GuidedRunDetailScreenState extends State<GuidedRunDetailScreen> {
   /// Arm this script on the recorder and get out of the way: the Run tab is
   /// several pops down, so the shell has to come back to the front before
   /// the tab switch HomeScreen makes is visible.
-  void _useThisRun() {
-    pendingArmGuidedRun.value = widget.run.id;
-    Navigator.of(context).popUntil((r) => r.isFirst);
+  Future<void> _useThisRun() async {
+    final id = widget.run.id;
+    if (await returnToShell(Navigator.of(context))) {
+      pendingArmGuidedRun.value = id;
+    }
   }
 
   Future<void> _previewCue(String text) async {

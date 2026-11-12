@@ -22,6 +22,7 @@ import '../plan_volume_anchor.dart';
 import '../plan_restart.dart';
 import '../planned_size_label.dart';
 import '../rate_limit_message.dart' show rateLimitErrorMessage;
+import '../return_to_shell.dart';
 import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
 import '../cycle_plan_config.dart';
 import '../share_sheet.dart';
@@ -3667,9 +3668,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     _load();
   }
 
-  void _startWorkout(PlanWorkoutRow wo) {
-    pendingStartWorkout.value = wo;
-    Navigator.of(context).popUntil((r) => r.isFirst);
+  Future<void> _startWorkout(PlanWorkoutRow wo) async {
+    if (await returnToShell(Navigator.of(context))) {
+      pendingStartWorkout.value = wo;
+    }
   }
 }
 

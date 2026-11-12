@@ -36,6 +36,7 @@ import 'plan_library_screen.dart';
 import 'plan_target_screen.dart';
 import '../race_controller.dart';
 import '../race_service.dart';
+import '../return_to_shell.dart';
 import '../run_stop_dock.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
@@ -534,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen>
       case PushTargetKind.runPrCard:
         await _openRun(target.id!, sharePr: true);
       case PushTargetKind.plans:
-        _openFitnessTab(FitnessTab.plans);
+        await _openFitnessTab(FitnessTab.plans);
       case PushTargetKind.plan:
       case PushTargetKind.planWorkout:
         await _pushScreen(planTargetScreen(target,
@@ -690,9 +691,9 @@ class _HomeScreenState extends State<HomeScreen>
       case HelpDestination.notifications:
         if (api != null) await _openPushTarget(api, PushTarget.inbox);
       case HelpDestination.runs:
-        _openFitnessTab(FitnessTab.runs);
+        await _openFitnessTab(FitnessTab.runs);
       case HelpDestination.races:
-        _openFitnessTab(FitnessTab.races);
+        await _openFitnessTab(FitnessTab.races);
       case HelpDestination.integrations:
         await _pushScreen(
             _settingsDestinationScreen(SettingsDestination.integrations));
@@ -720,11 +721,15 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// The run list and the run surface's sections are Fitness hub tabs, not
   /// pushable screens: return to the shell and select the tab, as the Log
-  /// action does for Gym and Nutrition (decisions § 2437).
-  void _openFitnessTab(FitnessTab tab) {
+  /// action does for Gym and Nutrition (decisions § 2437). A form above the
+  /// shell is asked to discard first, and keeping it cancels the switch.
+  Future<void> _openFitnessTab(FitnessTab tab, {RacesShow? racesShow}) async {
     if (!mounted) return;
     final shell = ModalRoute.of(context);
-    Navigator.of(context).popUntil((route) => route == shell);
+    final reached = await returnToShell(Navigator.of(context),
+        isShell: (route) => route == shell);
+    if (!reached || !mounted) return;
+    if (racesShow != null) _racesShow.value = racesShow;
     _fitnessTab.value = tab;
     _goToPage(_pageFitness);
   }
@@ -732,8 +737,7 @@ class _HomeScreenState extends State<HomeScreen>
   void _onFitnessSurfaceRequest() {
     final request = fitnessSurfaceRequests.take();
     if (request == null) return;
-    if (request.racesShow case final show?) _racesShow.value = show;
-    _openFitnessTab(request.tab);
+    _openFitnessTab(request.tab, racesShow: request.racesShow);
   }
 
   Future<void> _pushScreen(Widget screen) {
@@ -1005,7 +1009,13 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  void _startRunWithRoute(cm.Route route) {
+  Future<void> _startRunWithRoute(cm.Route route) async {
+    // Dismiss any screens pushed on top of the shell (RoutesScreen /
+    // RouteDetailScreen — "Start run" is reached by pushing those), or the
+    // recorder is selected behind them and "Start run" reads as reopening
+    // the route page. A form kept through its discard prompt cancels it.
+    if (!mounted) return;
+    if (!await returnToShell(Navigator.of(context)) || !mounted) return;
     // The Run page takes a preselected route via constructor; changing it
     // means rebuilding that page. Cheap — only reached by draining the
     // pendingStartRunWithRoute handoff, not during a swipe.
@@ -1013,15 +1023,6 @@ class _HomeScreenState extends State<HomeScreen>
     setState(_rebuildPages);
     _currentIndex.value = _pageRun;
     _pageController.jumpToPage(_pageRun);
-    // Dismiss any screens pushed on top of the shell (RoutesScreen /
-    // RouteDetailScreen — "Start run" is reached by pushing those). We
-    // just jumped the shell PageView to the recorder, but a pushed
-    // route screen would keep obscuring it — so tapping "Start run" from
-    // the routes page looked like it just reopened the route page. Pop
-    // back to the shell so the recorder is actually shown.
-    if (mounted) {
-      Navigator.of(context).popUntil((r) => r.isFirst);
-    }
   }
 
   void _goToPage(int index) {

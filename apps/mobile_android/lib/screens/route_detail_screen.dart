@@ -57,6 +57,7 @@ import '../widgets/missing_map_tiles_hint.dart';
 import '../park_course_routes.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_markers_panel.dart';
+import '../widgets/route_review_dialog.dart';
 import '../race_service.dart';
 import '../widgets/course_alerts_section.dart';
 import '../widgets/route_conditions.dart';
@@ -920,76 +921,21 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       return;
     }
 
-    int selectedRating = 4;
-    final commentCtl = TextEditingController();
-
     final existing = _reviews
         .where((r) => r.userId == api.userId)
         .firstOrNull;
-    if (existing != null) {
-      selectedRating = existing.rating;
-      commentCtl.text = existing.comment ?? '';
-    }
-
-    final l10n = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l10n.routeDetailRateDialogTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  final star = i + 1;
-                  return IconButton(
-                    tooltip: AppLocalizations.of(context).routeDetailRateStars(star),
-                    icon: Icon(
-                      star <= selectedRating
-                          ? Icons.star
-                          : Icons.star_border,
-                      color: AppSemanticColors.of(context).crown,
-                      size: 24,
-                    ),
-                    onPressed: () =>
-                        setDialogState(() => selectedRating = star),
-                  );
-                }),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: commentCtl,
-                decoration: InputDecoration(
-                  labelText: l10n.routeDetailCommentLabel,
-                ),
-                maxLines: 3,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.routeDetailCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.routeDetailSubmit),
-            ),
-          ],
-        ),
-      ),
+    final draft = await showRouteReviewDialog(
+      context,
+      initialRating: existing?.rating ?? 4,
+      initialComment: existing?.comment,
     );
-    if (ok != true) return;
+    if (draft == null) return;
 
     try {
       await api.upsertRouteReview(
         routeId: widget.route.id,
-        rating: selectedRating,
-        comment: commentCtl.text.trim().isEmpty
-            ? null
-            : commentCtl.text.trim(),
+        rating: draft.rating,
+        comment: draft.comment,
       );
       await _fetchReviews();
     } catch (e) {

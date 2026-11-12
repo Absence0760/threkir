@@ -59,8 +59,9 @@ void main() {
   });
 
   for (final scale in [1.0, 2.0]) {
-    testWidgets('chips stay on one line at 320 dp and ${scale}x, led by the '
-        'Filters button and its count', (tester) async {
+    testWidgets('chips stay on one line at 320 dp and ${scale}x, and the '
+        'Filters button with its count sits beside the search',
+        (tester) async {
       var opened = 0;
       var removed = 0;
       await _pump(
@@ -93,12 +94,13 @@ void main() {
       };
       expect(tops, hasLength(1), reason: 'the chips wrapped to a second line');
       final button = find.byKey(const Key('filter-bar-filters'));
-      expect(tester.getRect(button).left, 16);
-      expect(
-          tester.getCenter(button).dy,
-          closeTo(tester.getCenter(find.byType(ChoiceChip).first).dy, 1));
+      expect(tester.getRect(button).right, lessThanOrEqualTo(320 - 16));
+      expect(tester.getCenter(button).dy,
+          closeTo(tester.getCenter(find.byType(TextField)).dy, 1));
       expect(find.text('2'), findsOneWidget);
+      expect(find.byTooltip('Filters'), findsOneWidget);
       expect(find.bySemanticsLabel('Filters, 2 active'), findsOneWidget);
+      expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
       await tester.tap(button);
       expect(opened, 1);
       await tester.ensureVisible(find.byTooltip('Remove Near Richmond'));
@@ -108,23 +110,20 @@ void main() {
     });
   }
 
-  testWidgets('a bar with only Filters still gives it a line of its own',
-      (tester) async {
+  testWidgets('with no search, Filters leads the chip line', (tester) async {
     await _pump(
       tester,
       FilterBar(
-        search: AppSearchField(
-          controller: TextEditingController(),
-          hint: 'Search',
-          clearTooltip: 'Clear',
-        ),
+        chips: _bands('All', (_) {}),
         filtersLabel: 'Filters',
         onOpenFilters: () {},
       ),
     );
-    expect(
-        tester.getTopLeft(find.byKey(const Key('filter-bar-filters'))).dy,
-        greaterThan(tester.getBottomLeft(find.byType(TextField)).dy));
+    final button = find.byKey(const Key('filter-bar-filters'));
+    expect(tester.getRect(button).left, 16);
+    expect(tester.getCenter(button).dy,
+        closeTo(tester.getCenter(find.byType(ChoiceChip).first).dy, 4));
+    expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
   });
 
   testWidgets('withTrailing appends a host\'s actions to the search row',
@@ -142,6 +141,25 @@ void main() {
       ]),
     );
     expect(find.byTooltip('Sort'), findsOneWidget);
+  });
+
+  testWidgets('with no search, the actions take the first row and the chips '
+      'the line under it', (tester) async {
+    await _pump(
+      tester,
+      FilterBar(
+        chips: _bands('All', (_) {}),
+        chipsLabel: 'Distance',
+        trailing: [
+          IconButton(icon: const Icon(Icons.public), tooltip: 'Library', onPressed: () {}),
+        ],
+      ),
+    );
+    expect(tester.getRect(find.byTooltip('Library')).bottom,
+        lessThanOrEqualTo(tester.getRect(find.byType(ChoiceChip).first).top));
+    expect(tester.getRect(find.byTooltip('Library')).right,
+        closeTo(360 - 16, 8));
+    expect(find.bySemanticsLabel('Distance'), findsOneWidget);
   });
 
   testWidgets('the filter sheet\'s Done closes it and Reset resets',

@@ -118,15 +118,15 @@ class ActiveFilter {
 /// The chips only filter; a chip that opened another screen would look like
 /// a filter and navigate (issue #1374 report 2, rule 4).
 ///
-/// The Filters button leads the chip line, inside its scroll, so the chips
-/// keep the line's whole width on a 320 dp phone at 2x text, where a button
-/// pinned beside them left the chips about 30 dp.
+/// The Filters button sits beside the search when there is one, and
+/// otherwise leads the chip line inside its scroll.
 class FilterBar extends StatelessWidget {
   const FilterBar({
     super.key,
     this.search,
     this.trailing = const [],
     this.chips = const [],
+    this.chipsLabel,
     this.activeFilters = const [],
     this.filtersLabel,
     this.filtersSemanticLabel,
@@ -140,9 +140,15 @@ class FilterBar extends StatelessWidget {
   /// Usually an [AppSearchField].
   final Widget? search;
 
-  /// Icon buttons at the end of the search row: a sort menu, the tab's
-  /// overflow.
+  /// Actions at the end of the bar's first row, after the search: a sort
+  /// menu, a labelled secondary action, the tab's overflow. Always a row of
+  /// their own rather than the chip line's end, where a labelled button at 2x
+  /// text left the chips no room.
   final List<Widget> trailing;
+
+  /// Names the chip line as a group for a screen reader, e.g. "Filter plans
+  /// by status".
+  final String? chipsLabel;
 
   /// The screen's most-used filter, as chips. [buildChoiceChip] lays a
   /// single-select set out the way `ChoiceChipRow` does.
@@ -170,6 +176,7 @@ class FilterBar extends StatelessWidget {
           search: search,
           trailing: [...trailing, ...extra],
           chips: chips,
+          chipsLabel: chipsLabel,
           activeFilters: activeFilters,
           filtersLabel: filtersLabel,
           filtersSemanticLabel: filtersSemanticLabel,
@@ -178,69 +185,74 @@ class FilterBar extends StatelessWidget {
           padding: padding,
         );
 
-  Widget _filtersButton() => OutlinedButton.icon(
-        key: const Key('filter-bar-filters'),
-        onPressed: onOpenFilters,
-        style: OutlinedButton.styleFrom(
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.smPlus),
-        ),
-        icon: ExcludeSemantics(
-          child: Badge(
+  /// An icon button carrying the count as a badge, named by its tooltip and
+  /// its semantics label. Icon-only so it never squeezes the search: as a
+  /// labelled button it took 177 dp at 1.3x text and pushed the row past a
+  /// 360 dp screen.
+  Widget _filtersButton() => Semantics(
+        button: true,
+        label: filtersSemanticLabel ?? filtersLabel,
+        excludeSemantics: true,
+        child: IconButton(
+          key: const Key('filter-bar-filters'),
+          tooltip: filtersLabel,
+          onPressed: onOpenFilters,
+          isSelected: activeFilterCount > 0,
+          icon: Badge(
             isLabelVisible: activeFilterCount > 0,
             label: Text('$activeFilterCount'),
             child: const Icon(Icons.tune),
           ),
-        ),
-        label: Semantics(
-          label: filtersSemanticLabel ?? filtersLabel,
-          excludeSemantics: true,
-          child: Text(filtersLabel!),
         ),
       );
 
   @override
   Widget build(BuildContext context) {
     final hasFilters = onOpenFilters != null;
-    final hasLine = hasFilters || chips.isNotEmpty || activeFilters.isNotEmpty;
+    final filtersBesideSearch = hasFilters && search != null;
+    final hasLine = (hasFilters && !filtersBesideSearch) ||
+        chips.isNotEmpty ||
+        activeFilters.isNotEmpty;
     final hasTop = search != null || trailing.isNotEmpty;
     Widget spaced(Widget child) => Padding(
           padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
           child: child,
         );
+    final line = SingleChildScrollView(
+      key: const Key('filter-bar-chips'),
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          if (hasFilters && !filtersBesideSearch) spaced(_filtersButton()),
+          for (final chip in chips) spaced(chip),
+          for (final f in activeFilters)
+            spaced(InputChip(
+              label: Text(f.label),
+              selected: true,
+              showCheckmark: false,
+              onPressed: onOpenFilters,
+              onDeleted: f.onRemove,
+              deleteButtonTooltipMessage: f.removeTooltip,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            )),
+        ],
+      ),
+    );
+    final labelledLine = chipsLabel == null
+        ? line
+        : Semantics(container: true, label: chipsLabel, child: line);
     final rows = <Widget>[
       if (hasTop)
         Row(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            if (search case final search?)
-              Expanded(child: search)
-            else
-              const Spacer(),
+            if (search case final search?) Expanded(child: search),
+            if (filtersBesideSearch) _filtersButton(),
             ...trailing,
           ],
         ),
-      if (hasLine)
-        SingleChildScrollView(
-          key: const Key('filter-bar-chips'),
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              if (hasFilters) spaced(_filtersButton()),
-              for (final chip in chips) spaced(chip),
-              for (final f in activeFilters)
-                spaced(InputChip(
-                  label: Text(f.label),
-                  selected: true,
-                  showCheckmark: false,
-                  onPressed: onOpenFilters,
-                  onDeleted: f.onRemove,
-                  deleteButtonTooltipMessage: f.removeTooltip,
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                )),
-            ],
-          ),
-        ),
+      if (hasLine) labelledLine,
     ];
     if (rows.isEmpty) return const SizedBox.shrink();
     return Padding(

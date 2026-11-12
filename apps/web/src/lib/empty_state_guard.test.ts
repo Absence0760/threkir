@@ -38,11 +38,19 @@ function styleBlocks(source: string): string {
 	return [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style(?=[\s/>])[^>]*>/g)].map((m) => m[1]).join('\n');
 }
 
+// Repeated to a fixed point: one pass can join the halves of a nested
+// `<sty<style></style>le>` into a block it then leaves behind.
 function markup(source: string): string {
-	return source
-		.replace(/<style[^>]*>[\s\S]*?<\/style(?=[\s/>])[^>]*>/g, '')
-		.replace(/<script[^>]*>[\s\S]*?<\/script(?=[\s/>])[^>]*>/g, '')
-		.replace(/<!--[\s\S]*?-->/g, '');
+	let prev: string;
+	let out = source;
+	do {
+		prev = out;
+		out = out
+			.replace(/<style[^>]*>[\s\S]*?<\/style(?=[\s/>])[^>]*>/g, '')
+			.replace(/<script[^>]*>[\s\S]*?<\/script(?=[\s/>])[^>]*>/g, '')
+			.replace(/<!--[\s\S]*?-->/g, '');
+	} while (out !== prev);
+	return out;
 }
 
 function ruleHits(source: string): string[] {

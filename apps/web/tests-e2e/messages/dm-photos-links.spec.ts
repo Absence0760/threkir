@@ -170,7 +170,7 @@ test.describe('/messages — photos and links', () => {
 			await expect(link).toHaveAttribute('href', 'https://www.example.com/route/1');
 			await expect(link).toHaveAttribute('rel', 'noopener noreferrer nofollow ugc');
 			await expect(link).toHaveAttribute('target', '_blank');
-			await expect(bubble.getByTestId('dm-link-domain')).toHaveText(/example\.com/);
+			await expect(bubble.getByTestId('dm-link-domain')).toContainText('example.com');
 		} finally {
 			await v.close();
 		}

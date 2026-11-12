@@ -287,6 +287,7 @@ class _FakeApi extends ApiClient {
   bool imagesEnabled = false;
   final Map<String, DmImageView?> images = {};
   final List<String> imageReads = [];
+  Object? imageError;
   final List<Uint8List> uploads = [];
   Object? uploadError;
 
@@ -296,6 +297,7 @@ class _FakeApi extends ApiClient {
   @override
   Future<DmImageView?> fetchDmImage(String imageId) async {
     imageReads.add(imageId);
+    if (imageError != null) throw imageError!;
     return images[imageId];
   }
 
@@ -2451,6 +2453,58 @@ void main() {
       expect(find.text(l10n.messagesPhotoRejected), findsOneWidget);
       expect(find.text(l10n.messagesPhotoUnavailableToView), findsOneWidget);
       expect(find.text(l10n.messagesUnsentPlaceholder), findsNothing);
+    });
+
+    testWidgets('a photo whose read keeps failing says so after the fast '
+        'checks and comes back when the read does', (tester) async {
+      final api = _FakeApi()
+        ..newest = [photoMsg('m1', 'img-1', body: 'from the summit')]
+        ..imageError = Exception('network down');
+      await pumpWith(tester, api);
+      for (var i = 1; i < kDmImageFastChecks - 1; i++) {
+        await tester.pump(kDmImageFastRecheck);
+      }
+      expect(api.imageReads, hasLength(kDmImageFastChecks - 1));
+      expect(find.byKey(const ValueKey('dm-photo-pending')), findsOneWidget);
+      expect(find.text('from the summit'), findsOneWidget);
+
+      await tester.pump(kDmImageFastRecheck);
+      expect(api.imageReads, hasLength(kDmImageFastChecks));
+      expect(find.byKey(const ValueKey('dm-photo-unavailable')), findsOneWidget);
+      expect(find.text('from the summit'), findsOneWidget);
+
+      api
+        ..imageError = null
+        ..images['img-1'] = const DmImageView(
+          status: 'ready',
+          width: 400,
+          height: 300,
+          url: 'https://storage.invalid/sign/img-1.jpg?token=t',
+        );
+      await tester.pump(kDmImageSlowRecheck);
+      await tester.pump();
+      expect(api.imageReads, hasLength(kDmImageFastChecks + 1));
+      expect(find.byKey(const ValueKey('dm-photo')), findsOneWidget);
+    });
+
+    testWidgets('a ready photo is signed again a minute before its URL '
+        'expires', (tester) async {
+      final api = _FakeApi()
+        ..newest = [photoMsg('m1', 'img-1')]
+        ..images['img-1'] = const DmImageView(
+          status: 'ready',
+          width: 400,
+          height: 300,
+          url: 'https://storage.invalid/sign/img-1.jpg?token=t',
+        );
+      await pumpWith(tester, api);
+      expect(api.imageReads, ['img-1']);
+
+      const resign = Duration(seconds: ApiClient.dmImageSignedUrlSeconds - 60);
+      await tester.pump(resign - const Duration(seconds: 1));
+      expect(api.imageReads, ['img-1']);
+      await tester.pump(const Duration(seconds: 1));
+      expect(api.imageReads, ['img-1', 'img-1']);
     });
 
     testWidgets('a link shows its domain and opens only on a tap; markup '

@@ -259,14 +259,19 @@ class RaceSessionClient(
         }
     }
 
+    /// Files through `file_event_result`, not an upsert on `event_results`:
+    /// the upsert reads back from EXCLUDED every column it writes, which
+    /// needs SELECT on columns being withdrawn from signed-in readers
+    /// (decisions § 2474). The function keeps the upsert's shape, so an
+    /// omitted key still keeps its stored value.
     suspend fun submitResult(accessToken: String, result: PendingRaceResult) {
+        val body = buildJsonObject { put("p_result", resultBody(result)) }
         val req = Request.Builder()
-            .url("$baseUrl/rest/v1/event_results?on_conflict=event_id,instance_start,user_id")
+            .url("$baseUrl/rest/v1/rpc/file_event_result")
             .header("apikey", anonKey)
             .header("Authorization", "Bearer $accessToken")
             .header("Content-Type", "application/json")
-            .header("Prefer", "resolution=merge-duplicates,return=minimal")
-            .post(resultBody(result).toString().toRequestBody(jsonMedia))
+            .post(body.toString().toRequestBody(jsonMedia))
             .build()
         execute(req)
     }
@@ -424,7 +429,7 @@ class RaceSessionClient(
             )
         }
 
-        /// The `event_results` upsert body. The race-mode columns are written
+        /// The result `file_event_result` files. The race-mode columns are written
         /// only when known, so a result with no course or no gun says nothing
         /// about them rather than writing nulls over a host's correction.
         ///

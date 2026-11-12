@@ -302,6 +302,44 @@ class RaceSessionClientTest {
     }
 
     @Test
+    fun `submitResult files through file_event_result with the result under p_result`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                seen += chain.request()
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(204)
+                    .message("No Content")
+                    .body("".toResponseBody(null))
+                    .build()
+            }
+            .build()
+        val client = RaceSessionClient("https://example.test", "anon", http)
+        val result = PendingRaceResult(
+            userId = "u1",
+            eventId = "e1",
+            instanceStart = "2026-05-22T18:00:00+00:00",
+            runId = null,
+            durationS = 1500,
+            distanceM = 5000.0,
+            finisherStatus = "finished",
+        )
+        runBlocking { client.submitResult("t", result) }
+        val req = seen.single()
+        assertEquals("POST", req.method)
+        assertEquals("/rest/v1/rpc/file_event_result", req.url.encodedPath)
+        assertNull("no upsert resolution on an RPC", req.header("Prefer"))
+        val buffer = okio.Buffer()
+        req.body!!.writeTo(buffer)
+        val sent = kotlinx.serialization.json.Json.parseToJsonElement(buffer.readUtf8())
+            as kotlinx.serialization.json.JsonObject
+        assertEquals(setOf("p_result"), sent.keys)
+        assertEquals(RaceSessionClient.resultBody(result), sent["p_result"])
+    }
+
+    @Test
     fun `fetchCourse with no finish point returns the course for a manual finish, no route read`() {
         val seen = mutableListOf<String>()
         val client = recordingClient(

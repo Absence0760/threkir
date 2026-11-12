@@ -8382,6 +8382,7 @@ export type Database = {
           target_kind: string
         }[]
       }
+      file_event_result: { Args: { p_result: Json }; Returns: undefined }
       find_backlogged_jobs: {
         Args: { p_queued_after?: string }
         Returns: {

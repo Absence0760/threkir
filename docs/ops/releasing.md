@@ -482,6 +482,26 @@ and install from there.
   the course/distance refusal after the 24 h window, which it surfaces as
   the window-closed error it already handles. Order: `backend@*`, then
   `web@*`, the store builds and the Wear build in any order.
+- **`file_event_result` ships with the `backend@*` release before any
+  client build that calls it, and the last `event_results` column revoke
+  waits for the minimum supported builds** (migration `20271225000100`,
+  [decisions § 2474](../architecture/decisions.md)). A web, phone or Wear
+  build that files a result through the RPC gets PostgREST's `PGRST202`
+  (404) against a database without it, so the order is `backend@*`, then
+  `web@*`, the store builds and the Wear build in any order. Released builds
+  still file with the merge upsert, which needs SELECT on the eight columns
+  it writes back from `EXCLUDED`, so those stay granted to `authenticated`.
+  **Trigger for the revoke:** once the minimum supported `mobile_android@*`,
+  `mobile_ios@*` and `watch_wear@*` builds (the force-update floor, or the
+  oldest build still reporting in) all call `file_event_result` — watchOS
+  relays its finish to the phone and needs nothing of its own — ship a
+  migration with exactly:
+  `revoke select (age_grade_pct, note, run_id, start_at, finish_at, start_detection, finish_detection, clock_offset_ms) on public.event_results from authenticated;`
+  and in the same change move those eight into the `authenticated` withheld
+  set of `column_grant_lockdown_registry_test.sql` and flip
+  `event_results_column_lock_test.sql`'s upsert case to a refusal. A build
+  older than that floor then fails every result it files with
+  `42501 permission denied for table event_results`.
 - **The job_worker that handles `duration_repair` ships before the
   `backend@*` release carrying `20271218000001`–`…03`** (issue #1300 § 5,
   [decisions § 2464](../architecture/decisions.md)). `…02` caps every run

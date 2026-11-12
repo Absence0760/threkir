@@ -2413,8 +2413,12 @@ class SocialService extends ChangeNotifier {
     final noteTrimmed = note?.trim();
     final normalisedNote =
         (noteTrimmed == null || noteTrimmed.isEmpty) ? null : noteTrimmed;
-    await _c.from('event_results').upsert(
-      {
+    // An upsert on `event_results` reads every column it writes back from
+    // EXCLUDED, which needs SELECT on columns being withdrawn from signed-in
+    // readers (decisions § 2474); `file_event_result` files the same row
+    // without it, and an omitted key still keeps its stored value.
+    await _c.rpc('file_event_result', params: {
+      'p_result': {
         'event_id': eventId,
         'instance_start': instanceStartKey(instance),
         'user_id': uid,
@@ -2434,8 +2438,7 @@ class SocialService extends ChangeNotifier {
         'note': normalisedNote,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
-      onConflict: 'event_id,instance_start,user_id',
-    );
+    });
     if (runId != null) {
       // Best-effort back-link. If the run isn't owned by this user
       // (shouldn't happen via this UI path, but RLS would block it

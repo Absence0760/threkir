@@ -2473,6 +2473,22 @@ test('reschedulePlanAfterBreak sends the previewed change as one RPC and surface
 	assert.doesNotMatch(body, /\.from\(/, 'the reschedule must not write tables around the RPC');
 });
 
+test('a runner files a race result through file_event_result, never an event_results upsert', () => {
+	// The upsert reads every column it writes back from EXCLUDED, which needs
+	// SELECT on the eight runner-written columns the server withdraws from
+	// authenticated once the supported builds stop upserting (decisions § 2474).
+	const source = stripComments(read('src/lib/core/data.ts'));
+	for (const fn of ['submitEventResult', 'retimeEventResult']) {
+		const start = source.indexOf(`export async function ${fn}(`);
+		assert.ok(start >= 0, `Could not locate ${fn} — rename?`);
+		const next = source.indexOf('\nexport ', start + 1);
+		const body = source.slice(start, next > start ? next : undefined);
+		assert.match(body, /supabase\.rpc\('file_event_result', \{ p_result: result \}\)/, `${fn} must file through the RPC`);
+		assert.doesNotMatch(body, /\.upsert\(/, `${fn} must not upsert event_results`);
+		assert.doesNotMatch(body, /onConflict/, `${fn} must not name an upsert arbiter`);
+	}
+});
+
 test('deleteRoute removes the photo files only after the row delete succeeded, and never fails on them', () => {
 	// Reason: removing the files first and then failing the row delete left a
 	// route whose photos 404 forever; and a storage error after the row is gone

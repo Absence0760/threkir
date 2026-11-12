@@ -172,9 +172,9 @@ async function confirmRetime(page: Page, panel: ReturnType<Page['getByTestId']>)
 	await expect(dialog).toBeHidden({ timeout: 10_000 });
 }
 
-/** A request to the result table itself, not its `_redacted` view. */
+/** The result write: a call to the filing RPC (decisions § 2474). */
 function isResultWrite(url: string, method: string): boolean {
-	return new URL(url).pathname.endsWith('/rest/v1/event_results') && method === 'POST';
+	return new URL(url).pathname.endsWith('/rest/v1/rpc/file_event_result') && method === 'POST';
 }
 
 test.describe('/runs/[id] — re-time a race result from the track', () => {
@@ -249,7 +249,7 @@ test.describe('/runs/[id] — re-time a race result from the track', () => {
 
 		test('a failed write is surfaced and leaves the result and the action in place', async ({ page }) => {
 			const s = await seedRace({ finishedAgoMs: HOUR_MS, dnf: true, onSeeded: remember });
-			await page.route('**/rest/v1/event_results*', (route) =>
+			await page.route('**/rest/v1/rpc/file_event_result*', (route) =>
 				isResultWrite(route.request().url(), route.request().method())
 					? route.fulfill({
 							status: 500,

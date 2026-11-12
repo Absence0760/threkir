@@ -30,6 +30,7 @@
 	import { orderAnyTimeCourses } from '#lib/parks/any_time_courses.ts';
 	import { anyTimeCourseLimit, parseRacesShow, racesShowSearch, type RacesShow } from '#lib/races/races_show.ts';
 	import { regionName, regionSlug } from '#lib/parks/park_courses.ts';
+	import ParkCard from '#lib/components/parks/ParkCard.svelte';
 	import { SHAPE_LABEL, STATUS_LABEL, labelKey } from '#lib/parks/park_labels.ts';
 	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
@@ -173,6 +174,26 @@
 			center,
 		).slice(0, anyTimeCourseLimit(show) ?? undefined),
 	);
+
+	// The Courses view leads with the parks, in the order their first course
+	// lists, so a set place brings the nearest park first too.
+	const anyTimeParks = $derived.by(() => {
+		if (show !== 'courses') return [];
+		const byPark = new Map<string, ParkCourseWithPark[]>();
+		for (const c of courses) {
+			const list = byPark.get(c.park_id);
+			if (list) list.push(c);
+			else byPark.set(c.park_id, [c]);
+		}
+		const seen = new Set<string>();
+		const out: { park: ParkCourseWithPark['park']; courses: ParkCourseWithPark[] }[] = [];
+		for (const { course } of orderedCourses) {
+			if (seen.has(course.park_id)) continue;
+			seen.add(course.park_id);
+			out.push({ park: course.park, courses: byPark.get(course.park_id) ?? [] });
+		}
+		return out;
+	});
 
 	async function loadCourses() {
 		coursesLoading = true;
@@ -573,6 +594,16 @@
 			{:else if orderedCourses.length === 0}
 				<EmptyState icon="park" title={m('parks.empty')} data-testid="races-any-time-empty" />
 			{:else}
+				{#if anyTimeParks.length > 0}
+					<div class="any-time-parks">
+						<h3 id="races-any-time-parks-heading">{m('races.anyTimeParks')}</h3>
+						<ul class="park-row" aria-labelledby="races-any-time-parks-heading" data-testid="races-any-time-parks">
+							{#each anyTimeParks as p (p.park.id)}
+								<li><ParkCard park={p.park} courses={p.courses} /></li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
 				{#if recordsFailed}
 					<p class="records-failed" role="status" data-testid="races-any-time-records-failed">
 						{m('races.anyTimeFastestFailed')}
@@ -585,32 +616,37 @@
 						{@const laps = courseLapsChip(course.laps)}
 						{@const statusKey = labelKey(STATUS_LABEL, course.status)}
 						{@const record = records.get(course.id)}
-						<li>
+						<!-- The course name's link covers the card; the park name is a
+						     second link drawn above it, to the park's page. -->
+						<li class="course-card" data-testid="races-any-time-course">
 							<a
-								class="course-card"
+								class="course-name"
 								href="/parks/{regionSlug(course.park.region_code)}/{course.park.slug}/{course.slug}"
-								data-testid="races-any-time-course"
-							>
-								<span class="course-name">{course.segment.name}</span>
-								<span class="course-park">{course.park.name}, {regionName(course.park.region_code)}</span>
-								<span class="course-meta" data-testid="races-any-time-meta">
-									<span data-testid="races-any-time-distance">{fmtCourseDistance(course.segment.distance_m)}</span>{#if laps}&nbsp;·&nbsp;<span data-testid="races-any-time-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}{#if shapeKey}&nbsp;·&nbsp;{m(shapeKey)}{/if}{#if awayM !== null}&nbsp;·&nbsp;{m('races.anyTimeAway', { distance: fmtDist(awayM, 1) })}{/if}
+								data-testid="races-any-time-course-link"
+							>{course.segment.name}</a>
+							<a
+								class="course-park"
+								href="/parks/{regionSlug(course.park.region_code)}/{course.park.slug}"
+								aria-label={m('races.anyTimeParkLink', { park: `${course.park.name}, ${regionName(course.park.region_code)}` })}
+								data-testid="races-any-time-park-link"
+							>{course.park.name}, {regionName(course.park.region_code)}</a>
+							<span class="course-meta" data-testid="races-any-time-meta">
+								<span data-testid="races-any-time-distance">{fmtCourseDistance(course.segment.distance_m)}</span>{#if laps}&nbsp;·&nbsp;<span data-testid="races-any-time-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}{#if shapeKey}&nbsp;·&nbsp;{m(shapeKey)}{/if}{#if awayM !== null}&nbsp;·&nbsp;{m('races.anyTimeAway', { distance: fmtDist(awayM, 1) })}{/if}
+							</span>
+							{#if !recordsFailed}
+								<span class="course-record" data-testid="races-any-time-record">
+									{#if record}
+										{record.displayName
+											? m('races.anyTimeFastestBy', { year: record.season, time: formatDuration(record.timeSeconds), name: record.displayName })
+											: m('races.anyTimeFastest', { year: record.season, time: formatDuration(record.timeSeconds) })}
+									{:else}
+										{m('races.anyTimeNoTimeYet')}
+									{/if}
 								</span>
-								{#if !recordsFailed}
-									<span class="course-record" data-testid="races-any-time-record">
-										{#if record}
-											{record.displayName
-												? m('races.anyTimeFastestBy', { year: record.season, time: formatDuration(record.timeSeconds), name: record.displayName })
-												: m('races.anyTimeFastest', { year: record.season, time: formatDuration(record.timeSeconds) })}
-										{:else}
-											{m('races.anyTimeNoTimeYet')}
-										{/if}
-									</span>
-								{/if}
-								{#if course.status !== 'open' && statusKey}
-									<span class="status-pill" class:closed={course.status === 'closed'}>{m(statusKey)}</span>
-								{/if}
-							</a>
+							{/if}
+							{#if course.status !== 'open' && statusKey}
+								<span class="status-pill" class:closed={course.status === 'closed'}>{m(statusKey)}</span>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -720,7 +756,29 @@
 		grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr));
 		gap: var(--space-sm);
 	}
+	.any-time-parks h3 {
+		margin: 0 0 var(--space-xs);
+		font-size: var(--font-size-section-label);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: var(--section-label-tracking);
+		color: var(--color-text-secondary);
+	}
+	/* One row that scrolls inside itself, so the parks lead the courses
+	   without pushing them a screen down. */
+	.park-row {
+		list-style: none;
+		margin: 0;
+		padding: 0 0 2px;
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: min(16rem, 80%);
+		gap: var(--space-sm);
+		overflow-x: auto;
+		scrollbar-width: thin;
+	}
 	.course-card {
+		position: relative;
 		display: grid;
 		grid-template-columns: 1fr auto;
 		align-items: start;
@@ -733,12 +791,31 @@
 		color: var(--color-text);
 		text-decoration: none;
 	}
-	.course-card:hover {
+	.course-card:hover,
+	.course-card:focus-within {
 		border-color: var(--color-primary);
 	}
 	.course-name {
 		grid-column: 1;
 		font-weight: 600;
+		color: var(--color-text);
+		text-decoration: none;
+	}
+	.course-name::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+	}
+	.course-park {
+		position: relative;
+		z-index: 1;
+		justify-self: start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 24px;
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 	.course-park,
 	.course-meta,

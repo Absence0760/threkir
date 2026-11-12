@@ -4,11 +4,8 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchAllParkCourses, fetchParks, type Park, type ParkCourseWithPark } from '#lib/core/data.ts';
-	import { groupParksByRegion, regionName, regionSlug } from '#lib/parks/park_courses.ts';
-	import { AGENCY_LABEL, labelKey } from '#lib/parks/park_labels.ts';
-	import { fmtCourseDistanceRange } from '#lib/parks/course_distance_format.ts';
-	import ParkCourseLinesThumb from '#lib/components/parks/ParkCourseLinesThumb.svelte';
-	import type { TrackPoint } from '#lib/types.ts';
+	import { groupParksByRegion, regionName } from '#lib/parks/park_courses.ts';
+	import ParkCard from '#lib/components/parks/ParkCard.svelte';
 
 	let parks = $state<Park[]>([]);
 	let loading = $state(true);
@@ -28,10 +25,6 @@
 		}
 		return out;
 	});
-
-	function linesOf(list: ParkCourseWithPark[]): TrackPoint[][] {
-		return list.map((c) => c.segment.waypoints.map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })));
-	}
 
 	async function loadCourses() {
 		try {
@@ -97,30 +90,7 @@
 				<h2 id="region-{group.regionCode}">{regionName(group.regionCode)}</h2>
 				<ul class="park-grid">
 					{#each group.parks as park (park.id)}
-						{@const agencyKey = labelKey(AGENCY_LABEL, park.agency)}
-						{@const list = byPark.get(park.id) ?? []}
-						{@const range = fmtCourseDistanceRange(list.map((c) => c.segment.distance_m))}
-						{@const lines = linesOf(list)}
-						<li>
-							<a href="/parks/{regionSlug(park.region_code)}/{park.slug}" class="park-card" data-testid="park-card">
-								<span class="thumb" aria-hidden="true">
-									{#if lines.some((l) => l.length >= 2)}
-										<ParkCourseLinesThumb {lines} />
-									{:else}
-										<span class="material-symbols thumb-icon">park</span>
-									{/if}
-								</span>
-								<span class="park-text">
-									<span class="park-name">{park.name}</span>
-									{#if agencyKey}<span class="park-agency">{m(agencyKey)}</span>{/if}
-									{#if list.length > 0}
-										<span class="park-facts" data-testid="park-card-facts">
-											{m('parks.courseCount', { n: list.length })}{#if range}&nbsp;·&nbsp;{range}{/if}
-										</span>
-									{/if}
-								</span>
-							</a>
-						</li>
+						<li><ParkCard {park} courses={byPark.get(park.id) ?? []} /></li>
 					{/each}
 				</ul>
 			</section>
@@ -168,53 +138,5 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
 		gap: var(--space-md);
-	}
-	.park-card {
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		text-decoration: none;
-		overflow: hidden;
-	}
-	.park-card:hover,
-	.park-card:focus-visible {
-		border-color: var(--color-primary);
-	}
-	.thumb {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		aspect-ratio: 2 / 1;
-		background: var(--color-fill-subtle);
-	}
-	.thumb-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-	}
-	.park-text {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-		padding: var(--space-sm) var(--space-md) var(--space-md);
-		min-width: 0;
-	}
-	.park-name {
-		font-weight: 600;
-		font-size: 1.05rem;
-	}
-	.park-agency {
-		font-size: 0.8rem;
-		color: var(--color-text-tertiary);
-	}
-	.park-facts {
-		margin-top: var(--space-xs);
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		font-variant-numeric: tabular-nums;
 	}
 </style>

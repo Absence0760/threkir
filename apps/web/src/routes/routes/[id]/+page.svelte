@@ -126,7 +126,7 @@
 		const id = route?.is_official ? route.id : null;
 		courseCredit = null;
 		if (!id) return;
-		fetchParkCourseCredit({ routeId: id })
+		fetchParkCourseCredit(id)
 			.then((credit) => {
 				if (route?.id === id) courseCredit = credit;
 			})

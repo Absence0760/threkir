@@ -81,7 +81,7 @@
 	<header class="page-header">
 		<h1>{m('segments.browseTitle')}</h1>
 		<p class="subtitle">{m('segments.browseIntro')}</p>
-		<a class="parks-link" href="/parks" data-testid="segments-parks-link">
+		<a class="parks-link" href="/races?show=courses" data-testid="segments-parks-link">
 			<span class="material-symbols" aria-hidden="true">park</span>
 			{m('parks.browseLink')}
 		</a>
@@ -103,7 +103,7 @@
 	{:else if segments.length === 0}
 		<EmptyState icon="terrain" title={m('segments.browseEmpty')} data-testid="segment-catalogue-empty">
 			{#snippet actions()}
-				<a class="btn btn-outline" href="/parks">
+				<a class="btn btn-outline" href="/races?show=courses">
 					<span class="material-symbols" aria-hidden="true">park</span>
 					{m('parks.browseLink')}
 				</a>

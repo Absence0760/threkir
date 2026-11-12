@@ -11806,7 +11806,8 @@ export async function fetchParkCourseRecords(): Promise<Map<string, ParkCourseRe
 }
 
 /// The park course built on a catalogue segment, with its park, if any. The
-/// segment page uses it to link back to the course. Throws on a failed read.
+/// segment page uses it to link to the course and to show its credit. Throws
+/// on a failed read.
 export async function fetchParkCourseForSegment(
 	segmentId: string,
 ): Promise<{ course: ParkCourseRow; park: Park } | null> {
@@ -11857,19 +11858,16 @@ export async function fetchRouteCourseAttribution(routeId: string): Promise<GpxA
 	);
 }
 
-/// The geometry credit of the park course built on this official route or
-/// catalogue segment (`park_courses.attribution`, decisions § 2438), for the
-/// route and segment pages, which show the course outside its own page. Null
-/// when it is no park course's, or the course predates the column. Throws on
-/// a failed read.
-export async function fetchParkCourseCredit(
-	of: { routeId: string } | { segmentId: string },
-): Promise<string | null> {
-	const query = supabase.from(TABLES.park_courses).select('attribution');
-	const { data, error } = await ('routeId' in of
-		? query.eq('route_id', of.routeId)
-		: query.eq('global_segment_id', of.segmentId)
-	)
+/// The geometry credit of the park course whose official route this is
+/// (`park_courses.attribution`, decisions § 2438), for the route page, which
+/// shows the course outside its own page; the segment page reads it from
+/// `fetchParkCourseForSegment`. Null when it is no park course's, or the
+/// course predates the column. Throws on a failed read.
+export async function fetchParkCourseCredit(routeId: string): Promise<string | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('attribution')
+		.eq('route_id', routeId)
 		.limit(1)
 		.maybeSingle();
 	if (error) throw dbError(error);

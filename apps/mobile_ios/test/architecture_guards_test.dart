@@ -5633,7 +5633,6 @@ void main() {
       'screens/roadbook_screen.dart::l10n.roadbookPlanTitle': 1,
       'screens/route_builder_screen.dart::l10n.routeBuilderGenerateLoop': 1,
       'screens/route_builder_screen.dart::l10n.routeBuilderSaveDialogTitle': 1,
-      'screens/route_detail_screen.dart::l10n.routeDetailRateDialogTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailEditTitle': 1,
       // A race director's result correction form: the save is the edit, and
       // the same form makes the next one.
@@ -5656,6 +5655,8 @@ void main() {
       // leaves the caller where it was, so neither button can lose data.
       'widgets/activity_waiver_dialog.dart::l10n.clubWaiverTitle': 1,
       'widgets/nutrition_log_sheet.dart::widget.result.name': 1,
+      // Submits a rating; Cancel files nothing and a review can be re-rated.
+      'widgets/route_review_dialog.dart::l10n.routeDetailRateDialogTitle': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsMealTitle': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsRecipeTitle': 1,
       // Copies rather than replaces; the source plan is untouched.

@@ -172,6 +172,10 @@ Since migration `20271213121604` ([decisions § 2451](../architecture/decisions.
 
 A URL in a message is drawn as its text plus a chip naming its domain, worked out on the client from the text alone (`dmTextSegments` / `dmLinkDomain`, the `dm_link` parity pair). **No preview is fetched**: there is no server-side request to aim at an internal address (no SSRF surface) and no request that tells a third party who opened the message. Only an `http(s)` URL with an ASCII host and no user-info becomes a link; a host in another script stays text (a look-alike domain is the phishing case the chip exists to expose), as does `user@host`. The anchor opens in a new tab with `rel="noopener noreferrer nofollow ugc"`; nothing is rendered as HTML. A fetched preview card was considered and not built ([decisions § 2451](../architecture/decisions.md)).
 
+## Sending
+
+The composer keeps what was typed during a send. On web a successful send clears the conversation's draft (and its AI-assisted mark) only if it still holds the words that were sent, and the photo beside the composer only if it is the one that was sent; text typed or a photo picked while the send was in flight stays for the next message (`dm-draft-scope.spec.ts`). Mobile empties the composer the moment Send is tapped and shows the message as sending, so the success never touches the composer; a failed send puts the text back only into an empty composer, and the photo is cleared only if it is still the one sent (`direct_messages_screen_test.dart`). Group threads follow the same rule ([group_messages.md](group_messages.md)).
+
 ## Unsend, report and deleted accounts
 
 Sender-only soft unsend, a recipient-only `direct_message` report with a server-side snapshot, and keep-on-delete threads shown as "Deleted account" — see [decisions § 2221](../architecture/decisions.md) and [retention.md](../compliance/retention.md).

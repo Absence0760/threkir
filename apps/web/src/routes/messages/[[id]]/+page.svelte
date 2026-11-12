@@ -642,9 +642,13 @@
 			localWrites++;
 			messages = mergeDmMessages(messages, [msg]);
 			void scrollToNewest();
-			delete drafts[id];
-			drafts = { ...drafts };
-			delete assistedDrafts[id];
+			// Text typed while a slow send was in flight is the runner's next
+			// message, not this one's leftovers: only the sent words clear.
+			if ((drafts[id] ?? '') === body) {
+				delete drafts[id];
+				drafts = { ...drafts };
+				delete assistedDrafts[id];
+			}
 			// The send itself succeeded and already renders; a failed list
 			// refresh must not claim "send failed".
 			await messagesInbox.refreshThreads();

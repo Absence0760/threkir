@@ -5477,18 +5477,15 @@ export async function submitEventResult(params: {
 		distance_m: params.distanceM,
 		finisher_status: params.finisherStatus ?? 'finished',
 		age_grade_pct: params.ageGradePct ?? null,
-		// Trim + collapse empty-after-trim to null so a whitespace
-		// note from the result-submit dialog doesn't survive to the
-		// DB. Mobile's `SocialService.submitEventResult` applies the
-		// same normalisation.
+		// Mobile's `SocialService.submitEventResult` normalises the same way.
 		note: noteTrimmed && noteTrimmed.length > 0 ? noteTrimmed : null,
 		...(params.finishMethod !== undefined ? { finish_method: params.finishMethod } : {}),
 		...(params.chipTimeS !== undefined ? { chip_time_s: params.chipTimeS } : {}),
 		...(params.courseId !== undefined ? { course_id: params.courseId } : {}),
-		// A time typed here asserts no line crossings. The upsert keeps an
-		// omitted column, and the server derives the gun and chip time from
-		// a `finish_at` left by an earlier device result (#1307), so clear
-		// them; `clock_offset_ms` is a device fact and stays.
+		// A time typed here asserts no line crossings. `file_event_result`
+		// keeps an omitted column, and the server derives the gun and chip
+		// time from a `finish_at` left by an earlier device result (#1307),
+		// so clear them; `clock_offset_ms` is a device fact and stays.
 		start_at: null,
 		finish_at: null,
 		start_detection: null,
@@ -5617,13 +5614,11 @@ export async function fetchRunRetimeContext(run: {
 	};
 }
 
-/// File a re-timed result (#1307 M11): the runner's own row with the
-/// crossings, upserted through `file_event_result` inside the 24 h write
-/// window (§ 1849). The race guard re-derives the gun and chip time from
-/// `finish_at` / `start_at`, applies the Self-timed lock rule (keeping a
-/// faster protected row by returning it unchanged), sets `needs_review` and resets approval on a race that is not
-/// auto-approved, so the row read back afterwards is the answer, not the
-/// payload. A write past the window is refused as `race_result_window_closed`.
+/// File a re-timed result (#1307 M11). The race guard re-derives the gun and
+/// chip time, may keep a faster protected row unchanged and may reset
+/// approval, so the row read back afterwards is the answer, not the payload.
+/// A write past the 24 h window (§ 1849) is refused as
+/// `race_result_window_closed`.
 export async function retimeEventResult(params: {
 	eventId: string;
 	instanceStart: string;

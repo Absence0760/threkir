@@ -15,7 +15,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under **Run any time** on [[route:/races|Races & courses]], nearest first when you set a place, or browse every one under [[route:/parks|Park courses]].',
+					text: 'A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under **Run any time** on [[route:/races|Races & courses]], nearest first when you set a place, or browse every one under [[route:/parks|Park courses]]. Select **Courses** at the top of Races & courses to list every course on its own, without the race calendar.',
 				},
 				{
 					type: 'list',

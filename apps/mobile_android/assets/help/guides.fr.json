@@ -3776,7 +3776,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]."
+            "text": "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]. Sélectionnez **Parcours** en haut d'Épreuves et parcours pour afficher tous les parcours seuls, sans le calendrier des épreuves."
           },
           {
             "type": "list",

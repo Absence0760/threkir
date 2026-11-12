@@ -8,7 +8,7 @@ export const translation: GuideTranslation = {
 		{
 			heading: "Qu'est-ce qu'un parcours de parc",
 			blocks: [
-				{ type: 'p', text: "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]." },
+				{ type: 'p', text: "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]. Sélectionnez **Parcours** en haut d'Épreuves et parcours pour afficher tous les parcours seuls, sans le calendrier des épreuves." },
 				{
 					type: 'list',
 					items: [
@@ -73,7 +73,7 @@ export const translation: GuideTranslation = {
 		title: "c0967d2bf224e3d2",
 		summary: "6a173631b44944bc",
 		"s0.heading": "216fc084817bfda9",
-		"s0.b0": "a96a5717c602367f",
+		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",

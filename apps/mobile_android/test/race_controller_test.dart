@@ -689,7 +689,7 @@ void main() {
         '42501', // RLS
         '42P01', '42883',
         'P0001',
-        'PGRST204', 'PGRST202', 'PGRST100',
+        'PGRST204', 'PGRST205', 'PGRST100',
       ]) {
         expect(isRetryableRaceResultFailure(pg(code)), isFalse, reason: code);
       }
@@ -707,6 +707,20 @@ void main() {
       }
       expect(isRetryableRaceResultFailure(Exception('offline')), isTrue);
       expect(isRetryableRaceResultFailure(TimeoutException('slow')), isTrue);
+    });
+
+    test('a missing file_event_result (PGRST202) is kept for the deploy', () {
+      // A build that reaches runners before the backend release meets a
+      // database without the RPC. Dropping that would delete the finisher's
+      // only copy of their time.
+      expect(
+          isRetryableRaceResultFailure(pg(
+              'PGRST202',
+              'Could not find the function '
+                  'public.file_event_result(p_result) in the schema cache')),
+          isTrue);
+      expect(isRetryableRaceResultFailure(pg('404')), isFalse,
+          reason: 'any other 404 is still permanent');
     });
 
     test('a rate-limit refusal clears by itself, so it is kept', () {

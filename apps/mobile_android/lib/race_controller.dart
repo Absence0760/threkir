@@ -135,13 +135,16 @@ const Map<String, int> _pgrstStatus = {
 /// the capped queue until a real result is pushed out; it is dropped, as
 /// Wear's `isRetryableRaceResultFailure` drops it. Everything else is kept:
 /// no network, a 5xx, an expired session (401), a code this cannot read,
-/// and a rate-limit refusal, which PostgREST also answers 400 but which
-/// clears by itself.
+/// a rate-limit refusal, which PostgREST also answers 400 but which clears
+/// by itself, and `PGRST202`: `file_event_result` is not in the schema yet
+/// (this build reached the runner before the backend release, or before
+/// PostgREST reloaded its schema cache), which the deploy fixes.
 bool isRetryableRaceResultFailure(Object e) {
   if (e is! PostgrestException) return true;
   if (parseRateLimitError(code: e.code, message: e.message) != null) {
     return true;
   }
+  if (e.code == 'PGRST202') return true;
   final status = postgrestHttpStatus(e.code);
   return status == null || !const {400, 403, 404, 422}.contains(status);
 }

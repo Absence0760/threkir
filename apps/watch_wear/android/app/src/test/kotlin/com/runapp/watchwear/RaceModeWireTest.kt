@@ -154,6 +154,16 @@ class RaceModeWireTest {
     }
 
     @Test
+    fun `a missing file_event_result is replayed - any other 404 is dropped`() {
+        val missing = """HTTP 404: {"code":"PGRST202","details":null,"hint":null,"""" +
+            """"message":"Could not find the function public.file_event_result(p_result) in the schema cache"}"""
+        assertTrue(isRetryableRaceResultFailure(RuntimeException(missing)))
+        assertFalse(isRetryableRaceResultFailure(RuntimeException("""HTTP 404: {"code":"PGRST205"}""")))
+        assertFalse(isRetryableRaceResultFailure(RuntimeException("HTTP 404: gone")))
+        assertFalse(isRetryableRaceResultFailure(RuntimeException("""HTTP 400: {"code":"PGRST202"}""")))
+    }
+
+    @Test
     fun `a newer result for the same race and runner replaces the queued one`() {
         val a = PendingRaceResult("u1", "e1", "i1", "run1", 100, 1.0, "dnf")
         val b = a.copy(durationS = 90, finisherStatus = "finished", finishMethod = "manual")

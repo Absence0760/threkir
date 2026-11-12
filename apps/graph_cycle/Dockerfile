@@ -17,7 +17,7 @@
 # holds every Go module's builder to it, which is what keeps this identical to
 # apps/job_worker/Dockerfile (a comment saying so did not: this file sat on
 # 1.26 while that one moved to 1.27).
-FROM golang:1.27.3-alpine@sha256:d530cf60723abf1ffae0cd16bb546b379ec0550d2f3815e5b16ed69dbc00fba4 AS build
+FROM golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS build
 WORKDIR /src
 
 # Cache go.mod / go.sum first so dependency-only changes don't invalidate the

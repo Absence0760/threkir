@@ -1164,7 +1164,7 @@ Every static-map image on web renders through `StaticMapImage.svelte`, which swa
 
 `activityUsesSpeed`: only `cycle` reads by speed, the twin of core_models' `ActivityType.usesSpeed`, and an untagged or unknown activity reads by pace. Drives the pace-or-speed key-stat tile on `/runs/[id]`.
 
-### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 1257 Wear OS Kotlin/JUnit tests across 113 files
+### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 1258 Wear OS Kotlin/JUnit tests across 113 files
 
 Run with `cd apps/watch_wear/android && ./gradlew testDebugUnitTest`. Pure-JVM tests — no Android instrumentation, no Robolectric. **Six of them read files outside this Gradle build** (the phone's two `Wear*Bridge.kt`, `apps/web/src/lib/core/env_flag.ts`, `docs/backend/metadata.md`, the `activity_type` migration and the two client label catalogues), plus the manifest, and none was a declared input of the test task until [decisions § 946](../architecture/decisions.md) — so a local run reported UP-TO-DATE and SUCCESSFUL on exactly the drift those guards exist to catch. They are declared now; if you add a guard that reads anything outside `app/src`, add it to `guardedCrossTreeFiles` / `guardedCrossTreeSets` in `app/build.gradle.kts` in the same change or it will not re-run when its subject changes. `ScreenWiringTest` also now pins the pre-run signed-out notice ([decisions § 948](../architecture/decisions.md)): the `!authed` branch renders `not_signed_in` and NOT `offline`, read branch-scoped so the sibling `!online && authed` branch a few lines above cannot satisfy it — two conditions sharing one string breaks nothing, so only an assertion about which branch says which can see it. The team deliberately avoided UI-test infrastructure (see `apps/watch_wear/CLAUDE.md`'s "layouts can't be unit-tested without Robolectric"); the pattern is to extract pure helpers from the Android-bound classes and exercise them at the JVM level.
 
@@ -1999,6 +1999,30 @@ The client bounds on a catalogue effort (`20271224000500`, corrected by `2027122
 ### `apps/web/src/lib/core/data.test.ts` — 65 tests
 
 Source guards on the data layer, plus three for the catalogue fallback's client bounds: each effort is screened by the trigger's rule before the stale delete, one refused row in a batch costs only that row (`writeEffortsIsolatingRefusals`, a non-refusal failure still withholds the stamp), and `globalSegmentEffortRefusal` mirrors the trigger (paused-run efforts admitted, the 60 s slack, the foot cap on walk / hike / stroller, the ride cap).
+
+### `apps/web/tests-e2e/fixtures/vite-command.test.ts` — 3 tests
+
+The Playwright lanes start vite from its own bin, never through a package-manager wrapper, which leaves vite outside the process group Playwright kills at teardown and holds the run open after it reports. `viteBin` resolves to vite's bin script, every lane config is found, and no lane's `webServer.command` goes through `pnpm` / `npm` / `npx`.
+
+### `scripts/script_entry_points.test.mjs` — 2 tests
+
+A script decides it is the entry point by comparing real paths, never by building a `file://` URL by hand, which misses a path needing URL-encoding or reached through a symlink and then exits 0 having done nothing. No tracked script uses the hand-built form, and a script reached through such a path and a symlink still runs.
+
+### `apps/web/tests-e2e/messages/dm-draft-scope.spec.ts` — 2 tests
+
+An unsent direct-message draft belongs to the thread it was typed in: switching conversations neither carries it into the next one (where Send would post it to the wrong person) nor destroys it on switching back, and text typed while a send is in flight stays in the composer.
+
+### `apps/web/tests-e2e/onboarding/onboarding-grisnir.spec.ts` — 2 tests
+
+Grisnir shows in the onboarding side panel only once `show_mascot` is known: a new account with no settings row sees him, and a settings read that fails with nothing cached keeps him hidden (#1364).
+
+### `apps/web/tests-e2e/routes/course-preview-grisnir.spec.ts` — 4 tests
+
+Grisnir in the 3D course preview (#1364): with the setting on he replaces the dot and his GLB is fetched only when the dialog opens; reopening the dialog brings him back; `show_mascot` off keeps the dot and never fetches him; a GLB that fails to load keeps the dot and says nothing. Each case skips where headless Chromium lacks WebGL2.
+
+### Direct-message photos — `apps/web/src/lib/social/dm_image.test.ts` (4) · `apps/mobile_android/test/dm_image_test.dart` (4 mirror) · `apps/mobile_android/test/dm_image_encode_test.dart` (5) · `apps/backend/supabase/tests/dm_images_test.sql` (41) · `apps/job_worker/internal/handler_dm_image_process_test.go` (16) · `apps/job_worker/internal/handler_dm_image_orphan_sweep_test.go` (11)
+
+Photos in direct messages (issue #1216, `20271213121604`). The `dm_image` pair reads the migration so the client limits match the bucket and the size CHECK, the statuses match the status CHECK, a pending photo is polled fast for about three minutes and then slowly, and a photo is scaled to its long edge and never up. The phone's re-encode strips EXIF and turns a geotagged photo upright, keeps a small photo's size, refuses a non-photo and one still over the limit at the lowest quality, and steps quality down as web does (web's half is `dm_image_encode.test.ts` above). pgTAP pins the table, bucket and RPC rules; the worker's `dm_image_process` settles a pending upload to ready with its size or rejects and deletes it, retries a transient failure, logs no path, and its client redacts paths from errors and stops a download at the cap; `dm_image_orphan_sweep` erases only its worklist in bounded batches, fails when Storage did not erase, and its chunking fits one run.
 
 ## Suite totals after the #789 coverage round (2026-08-31)
 

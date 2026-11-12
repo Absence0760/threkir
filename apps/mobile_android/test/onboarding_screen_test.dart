@@ -83,7 +83,11 @@ void main() {
       final prefs = await _makePrefs();
       await _pump(tester, prefs: prefs);
       expect(find.text('Track every run'), findsOneWidget);
-      expect(find.byIcon(Icons.directions_run), findsOneWidget);
+      // show_mascot is on unless set false, so Grisnir waits in place of the
+      // page's icon.
+      expect(find.byKey(const Key('empty-state-grisnir')), findsOneWidget);
+      expect(find.byKey(const Key('onboarding-grisnir-line')), findsOneWidget);
+      expect(find.byIcon(Icons.directions_run), findsNothing);
     });
 
     testWidgets('first-page CTA reads "Next"', (tester) async {

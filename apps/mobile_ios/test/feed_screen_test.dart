@@ -307,8 +307,10 @@ void main() {
         (tester) async {
       await _pump(tester, _FakeApi(entries: const [], followees: const []));
       await _settle(tester);
-      // The empty state renders with the groups glyph and no toolbar.
-      expect(find.byIcon(Icons.groups_outlined), findsOneWidget);
+      // The empty state renders with Grisnir in place of the groups glyph
+      // (show_mascot is on unless set false) and no toolbar.
+      expect(find.byKey(const Key('empty-state-grisnir')), findsOneWidget);
+      expect(find.byIcon(Icons.groups_outlined), findsNothing);
       expect(find.byType(ChoiceChip), findsNothing);
     });
 

@@ -288,6 +288,23 @@ Your MapTiler API key is missing or invalid. Sign up at maptiler.com/cloud for a
 
 The local Supabase backend isn't running. Start it first — see [../backend/local_testing.md](../backend/local_testing.md).
 
+### A POST now and then answers 502 from kong
+
+Something like `POST /rest/v1/rpc/...` answers `502` with kong's `An invalid
+response was received from the upstream server`, while the requests around it
+succeed. Kong reused an idle connection just as PostgREST closed it. Kong
+retries that for a GET, but not for a POST. The stack's defaults allow it:
+kong keeps idle connections for 60 s, and PostgREST closes them after 30–60 s.
+CI shortens kong's side after every start. Do the same after
+`supabase start`, from the repo root:
+
+```bash
+bash .github/actions/start-supabase/tune_kong_keepalive.sh
+```
+
+It lasts until the kong container is recreated. [decisions § 2476](../../docs/architecture/decisions.md)
+has the measurements.
+
 ### Type errors after pulling changes
 
 ```bash

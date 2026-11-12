@@ -529,6 +529,17 @@ jobs:
             echo "Reproduce with: node --test .github/actions/start-supabase/wait_for_sidecars.test.mjs (drives the loop with stub curl/docker on PATH)."
             exit 1
           fi
+      # Same action, same reason: the kong keep-alive reload is shell no job's
+      # suite reaches. Its test also holds the idle timeout under every
+      # upstream's measured idle-close, which is the property that keeps a
+      # POST through kong from 502ing on a reset connection (run 35655765654).
+      - name: Supabase stack kong keep-alive reload
+        run: |
+          if ! node --test .github/actions/start-supabase/tune_kong_keepalive.test.mjs; then
+            echo "::error::The start-supabase composite action's kong keep-alive reload regressed: it no longer reloads the one kong container with the CLI's template, no longer confirms the setting took, or its idle timeout is no longer below every upstream's idle-close (then an upstream can reset a connection kong reuses, and a POST 502s). Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
+            echo "Reproduce with: node --test .github/actions/start-supabase/tune_kong_keepalive.test.mjs (drives the script with a stub docker on PATH)."
+            exit 1
+          fi
       # Same shape as the step above, one action over. install-playwright's
       # verification + apt fallback was inline in its action.yml, where nothing
       # could run it — and its apt branch fires only after a launch has already

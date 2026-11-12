@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { setStorageOnLoad } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 
@@ -52,11 +53,7 @@ test('a settings read that fails with nothing cached keeps him hidden', async ({
 		);
 		// The signed-in storage state carries a warm settings cache, which is
 		// a known answer; empty it so the failed read is all there is.
-		await page.addInitScript(() => {
-			for (const k of Object.keys(localStorage)) {
-				if (k.startsWith('settings_cache_')) localStorage.removeItem(k);
-			}
-		});
+		await setStorageOnLoad(page, { removeLocalPrefixes: ['settings_cache_'] });
 		await page.setViewportSize({ width: 1440, height: 900 });
 		const settingsFailed = page.waitForResponse((r) => isUserSettings(new URL(r.url())) && r.status() === 500);
 		await page.goto('/onboarding');

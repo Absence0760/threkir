@@ -346,6 +346,8 @@ class _ReportSheetState extends State<_ReportSheet> {
         return l10n.reportTitleReview;
       case 'direct_message':
         return l10n.reportTitleMessage;
+      case 'group_invite':
+        return l10n.reportTitleGroupInvite;
     }
     return l10n.reportTitleContent;
   }

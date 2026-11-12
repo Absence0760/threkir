@@ -11282,6 +11282,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get reportTitleMessage => 'Denunciar mensagem';
 
   @override
+  String get reportTitleGroupInvite => 'Denunciar convite para grupo';
+
+  @override
   String get reportTitleContent => 'Denunciar conteúdo';
 
   @override
@@ -22229,6 +22232,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get groupsInviteDecline => 'Recusar';
+
+  @override
+  String get groupsInviteReport => 'Denunciar';
 
   @override
   String groupsInviteAcceptedToast(String title) {
@@ -33766,6 +33772,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get reportTitleMessage => 'Denunciar mensagem';
 
   @override
+  String get reportTitleGroupInvite => 'Denunciar convite para grupo';
+
+  @override
   String get reportTitleContent => 'Denunciar conteúdo';
 
   @override
@@ -44703,6 +44712,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get groupsInviteDecline => 'Recusar';
+
+  @override
+  String get groupsInviteReport => 'Denunciar';
 
   @override
   String groupsInviteAcceptedToast(String title) {

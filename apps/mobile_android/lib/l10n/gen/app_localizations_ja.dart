@@ -10703,6 +10703,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get reportTitleMessage => 'メッセージを報告';
 
   @override
+  String get reportTitleGroupInvite => 'グループへの招待を報告';
+
+  @override
   String get reportTitleContent => 'コンテンツを報告';
 
   @override
@@ -21127,6 +21130,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get groupsInviteDecline => '辞退する';
+
+  @override
+  String get groupsInviteReport => '報告';
 
   @override
   String groupsInviteAcceptedToast(String title) {

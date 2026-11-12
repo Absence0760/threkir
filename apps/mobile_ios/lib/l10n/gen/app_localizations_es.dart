@@ -11280,6 +11280,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reportTitleMessage => 'Denunciar mensaje';
 
   @override
+  String get reportTitleGroupInvite => 'Denunciar invitación a grupo';
+
+  @override
   String get reportTitleContent => 'Denunciar contenido';
 
   @override
@@ -22227,6 +22230,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupsInviteDecline => 'Rechazar';
+
+  @override
+  String get groupsInviteReport => 'Denunciar';
 
   @override
   String groupsInviteAcceptedToast(String title) {

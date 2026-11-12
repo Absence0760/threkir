@@ -826,6 +826,31 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets('text typed while a send is in flight stays in the composer',
+        (tester) async {
+      final api = _FakeApi()..sendGate = Completer<DirectMessageRow>();
+      await _pumpThread(tester, api);
+
+      await _type(tester, 'slow one');
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await tester.pump();
+      await _type(tester, 'typed meanwhile');
+
+      api.sendGate!.complete(
+          _msg('stored-1', from: _me, minute: 30, body: 'slow one'));
+      await pumpUntil(tester, () => _sendButton(tester).onPressed != null,
+          describe: 'the send to settle');
+
+      expect(api.sent, ['slow one']);
+      expect(find.text('slow one'), findsOneWidget);
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const ValueKey('message-composer')))
+              .controller!
+              .text,
+          'typed meanwhile');
+    });
+
     testWidgets('a refused send is withdrawn, the text comes back, and the '
         'follow/block reason is shown', (tester) async {
       final semantics = tester.ensureSemantics();

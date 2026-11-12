@@ -658,6 +658,7 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
         '${tmp.path}/period-${widget.periodName}-${widget.periodStartIso}.png',
       );
       await file.writeAsBytes(bytes);
+      if (!mounted) return;
 
       await shareFilesFrom(
         context,

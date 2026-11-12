@@ -94,6 +94,7 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
       final tmp = await getTemporaryDirectory();
       final file = File('${tmp.path}/route-${widget.route.id}.png');
       await file.writeAsBytes(bytes);
+      if (!mounted) return;
 
       await shareFilesFrom(
         context,

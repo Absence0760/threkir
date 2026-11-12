@@ -180,7 +180,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               hasLeading: true,
             )
           : _loadError
-              ? ErrorState(message: l10n.challengesLoadFailed, onRetry: _load)
+              ? AppErrorState(message: l10n.challengesLoadFailed, onRetry: _load)
               : _notFound || c == null
               ? EmptyState(
                   icon: Icons.emoji_events,

@@ -1267,7 +1267,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       );
     }
     if (_loadError != null) {
-      return ErrorState(message: l10n.messagesThreadLoadError, onRetry: _load);
+      return AppErrorState(message: l10n.messagesThreadLoadError, onRetry: _load);
     }
     if (_messages.isEmpty && _pending.isEmpty) {
       return EmptyState(

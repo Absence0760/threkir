@@ -253,7 +253,7 @@ class _FeedScreenState extends State<FeedScreen> {
       );
     }
     if (_loadError != null) {
-      return ErrorState(
+      return AppErrorState(
         message: AppLocalizations.of(context).feedLoadError,
         onRetry: _loadInitial,
       );

@@ -270,7 +270,7 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
                 hasLeading: false,
               )
             : _loadFailed
-                ? ErrorState(
+                ? AppErrorState(
                     message: l10n.nutritionTargetsLoadError,
                     onRetry: _retry,
                   )

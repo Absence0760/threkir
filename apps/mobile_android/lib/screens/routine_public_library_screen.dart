@@ -154,7 +154,7 @@ class _RoutinePublicLibraryScreenState
                 : _signedOut
                     ? SignInRequiredState(api: widget.api, onSignedIn: _load)
                     : _error
-                    ? ErrorState(
+                    ? AppErrorState(
                         message: l10n.gymLibraryLoadError, onRetry: _load)
                     : _routines.isEmpty
                         ? Center(

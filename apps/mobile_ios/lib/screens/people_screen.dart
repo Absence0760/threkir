@@ -371,7 +371,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: ErrorState(
+                child: AppErrorState(
                   message: l10n.exploreRoutesSearchFailed,
                   onRetry: _runSearch,
                 ),
@@ -398,7 +398,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: ErrorState(
+                child: AppErrorState(
                   message: l10n.peopleSuggestionsLoadFailed,
                   onRetry: _retrySuggestions,
                 ),
@@ -474,7 +474,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: ErrorState(
+                  child: AppErrorState(
                     message: l10n.peopleNearbyLoadFailed,
                     onRetry: _loadNearby,
                   ),

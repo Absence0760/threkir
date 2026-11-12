@@ -171,7 +171,7 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
               ],
             )
           : _error
-              ? ErrorState(
+              ? AppErrorState(
                   message: l10n.segmentCatalogueLoadFailed,
                   onRetry: _load,
                 )
@@ -531,7 +531,7 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
               ],
             )
           : _loadFailed
-              ? ErrorState(
+              ? AppErrorState(
                   message: l10n.segmentCatalogueDetailFailedTitle,
                   onRetry: _loadSegment,
                 )
@@ -746,7 +746,7 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
         if (_segment case final segment?)
           OldMatchNote(api: api, segment: segment),
         if (_boardFailed)
-          ErrorState(
+          AppErrorState(
             message: l10n.segmentsPanelLeaderboardError,
             onRetry: _refreshBoard,
           )

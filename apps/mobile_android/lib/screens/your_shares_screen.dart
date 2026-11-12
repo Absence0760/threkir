@@ -63,7 +63,7 @@ class _YourSharesScreenState extends State<YourSharesScreen> {
       body: _loading
           ? ListSkeleton.section(label: l10n.commonLoading, rowHeight: 72)
           : _error
-              ? ErrorState(message: l10n.sharesLoadFailed, onRetry: _load)
+              ? AppErrorState(message: l10n.sharesLoadFailed, onRetry: _load)
               : rows.isEmpty
                   ? EmptyState(
                       icon: Icons.share_outlined,

@@ -71,10 +71,15 @@ void main() {
   });
 
   test('ErrorState takes no art, so an error can never carry him', () {
-    final src = File('lib/widgets/error_state.dart').readAsStringSync();
-    expect(src, isNot(contains('Widget?')));
-    expect(src, isNot(contains('illustration')));
-    expect(src, isNot(contains('Grisnir')));
+    for (final path in [
+      'lib/widgets/error_state.dart',
+      '../../packages/ui_kit/lib/src/widgets/error_state.dart',
+    ]) {
+      final src = File(path).readAsStringSync();
+      expect(src, isNot(contains('Widget?')), reason: path);
+      expect(src, isNot(contains('illustration')), reason: path);
+      expect(src, isNot(contains('Grisnir')), reason: path);
+    }
   });
 
   test('only the named "nothing yet" surfaces and onboarding draw him', () {

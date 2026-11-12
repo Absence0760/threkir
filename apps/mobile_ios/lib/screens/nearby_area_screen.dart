@@ -207,7 +207,7 @@ class _NearbyAreaScreenState extends State<NearbyAreaScreen> {
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               )
             else if (_loadFailed)
-              ErrorState(
+              AppErrorState(
                 message: l10n.nearbyAreaLoadFailed,
                 onRetry: _loadLabel,
               )

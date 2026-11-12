@@ -2182,7 +2182,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(),
-        body: ErrorState(
+        body: AppErrorState(
             message: switch (_error!) {
               _PlanDetailLoadError.timeout => l10n.planDetailTimeoutError,
               _PlanDetailLoadError.offline => l10n.authErrorOffline,

@@ -517,7 +517,7 @@ class _RacesScreenState extends State<RacesScreen> {
     }
     if (_error) {
       return SliverToBoxAdapter(
-        child: ErrorState(message: l.racesSearchFailed, onRetry: _run),
+        child: AppErrorState(message: l.racesSearchFailed, onRetry: _run),
       );
     }
     if (_results.isEmpty) {

@@ -305,7 +305,7 @@ class _PlansScreenState extends State<PlansScreen> {
       return ListSkeleton(label: l10n.commonLoading, hasLeading: false);
     }
     if (_error != null) {
-      return ErrorState(
+      return AppErrorState(
           message: _error == _PlansLoadError.timeout
               ? l10n.plansTimeoutError
               : l10n.plansLoadError,

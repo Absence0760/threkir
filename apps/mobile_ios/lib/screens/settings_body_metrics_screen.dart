@@ -415,7 +415,7 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
               hasLeading: false,
             )
           : _loadFailed
-          ? ErrorState(message: l10n.bodyMetricsLoadError, onRetry: _retryLoad)
+          ? AppErrorState(message: l10n.bodyMetricsLoadError, onRetry: _retryLoad)
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [

@@ -243,7 +243,7 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
       body: _loading
           ? MapDetailSkeleton(label: l10n.commonLoading)
           : _loadError != null
-              ? ErrorState(
+              ? AppErrorState(
                   message: l10n.publicRouteLoadError, onRetry: _load)
               : _route == null
                   ? Center(

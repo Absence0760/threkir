@@ -63,7 +63,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
       body: _loading
           ? ListSkeleton(label: l10n.commonLoading, hasLeading: false)
           : _error
-              ? ErrorState(message: l10n.sessionLoadError, onRetry: _load)
+              ? AppErrorState(message: l10n.sessionLoadError, onRetry: _load)
               : _plans.isEmpty
                   ? EmptyState(
                       icon: Icons.self_improvement,

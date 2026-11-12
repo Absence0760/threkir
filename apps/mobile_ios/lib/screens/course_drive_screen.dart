@@ -299,7 +299,7 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
       body: _loading
           ? SectionedDetailSkeleton(label: l.courseDriveTitle, hasAction: true)
           : _loadFailed
-          ? ErrorState(message: l.courseDriveLoadFailed, onRetry: _load)
+          ? AppErrorState(message: l.courseDriveLoadFailed, onRetry: _load)
           : _run == _DriveRun.running
           ? _driving(context, l)
           : _handOff(context, l),

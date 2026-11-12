@@ -158,7 +158,7 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
       body: _loading
           ? MapDetailSkeleton(label: l10n.commonLoading)
           : _loadError != null
-              ? ErrorState(
+              ? AppErrorState(
                   message: l10n.publicRunLoadError,
                   onRetry: _load,
                 )

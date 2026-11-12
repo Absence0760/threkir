@@ -758,7 +758,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
               rows: 3,
             )
           : _loadFailed
-              ? ErrorState(message: l.racesDetailLoadFailed, onRetry: _load)
+              ? AppErrorState(message: l.racesDetailLoadFailed, onRetry: _load)
               : race == null
                   ? _message(l.racesDetailNotFound)
                   : _body(context, l, race),

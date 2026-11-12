@@ -499,7 +499,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     if (c == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: ErrorState(
+        body: AppErrorState(
           icon: Icons.help_outline,
           message: _timedOut
               ? AppLocalizations.of(context).clubDetailTimeoutError
@@ -1366,7 +1366,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     }
     if (_membersFailed && _members.isEmpty) {
       return [
-        ErrorState(
+        AppErrorState(
           message: l10n.clubDetailMembersLoadFailed,
           onRetry: _loadMembers,
         ),

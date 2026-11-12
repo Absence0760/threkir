@@ -282,7 +282,7 @@ class _SegmentsPanelState extends State<SegmentsPanel> {
               ),
             )
           else if (_loadError)
-            ErrorState(
+            AppErrorState(
               message: l10n.segmentsPanelLoadError,
               onRetry: _load,
             )
@@ -658,7 +658,7 @@ class _Leaderboard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     if (error) {
-      return ErrorState(
+      return AppErrorState(
         message: l10n.segmentsPanelLeaderboardError,
         onRetry: onRetry,
       );

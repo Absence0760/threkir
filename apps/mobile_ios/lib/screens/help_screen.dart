@@ -130,7 +130,7 @@ class _HelpLibraryBuilderState extends State<HelpLibraryBuilder> {
           appBar: AppBar(title: Text(widget.title)),
           body: loading
               ? ListSkeleton(label: l10n.helpLoading)
-              : ErrorState(
+              : AppErrorState(
                   icon: Icons.menu_book_outlined,
                   message: l10n.helpUnavailable,
                   onRetry: () => setState(() {

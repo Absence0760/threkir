@@ -890,7 +890,7 @@ class _MessagesScreenState extends State<MessagesScreen>
           );
     final hasCoachRow = entries.any((e) => e is CoachInboxEntry<DmThread>);
     if (_loadError != null && _threads.isEmpty && !hasCoachRow) {
-      return ErrorState(message: l10n.messagesLoadError, onRetry: _load);
+      return AppErrorState(message: l10n.messagesLoadError, onRetry: _load);
     }
     if (entries.isEmpty && split.archived.isEmpty && requestCount == 0) {
       return EmptyState(

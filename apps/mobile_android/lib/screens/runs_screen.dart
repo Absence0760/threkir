@@ -1378,7 +1378,7 @@ class _RunsScreenState extends State<RunsScreen>
       // exists for: "no lifts yet" and "we could not ask" are different
       // answers, and only one of them has a retry.
       if (_modalityLoadFailed) {
-        return ErrorState(
+        return AppErrorState(
           message: l10n.historyModalityLoadFailed,
           onRetry: _retryModalities,
         );

@@ -184,7 +184,7 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
                 : _signedOut
                     ? SignInRequiredState(onSignedIn: _load)
                     : _error
-                    ? ErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
+                    ? AppErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
                     : _plans.isEmpty
                         ? RefreshIndicator(
                             onRefresh: _load,
@@ -582,7 +582,7 @@ class _PlanLibraryLinkScreenState extends State<PlanLibraryLinkScreen> {
               hasLeading: false,
             )
           : _error
-              ? ErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
+              ? AppErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
               : Center(
                   key: const Key('planLibraryLinkNotFound'),
                   child: EmptyState(

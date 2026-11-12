@@ -526,7 +526,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                 if (_contactsFailed)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ErrorState.inline(
+                    child: AppErrorState.inline(
                       message: l10n.safetyLoadFailed,
                       onRetry: _reload,
                     ),
@@ -656,7 +656,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ErrorState.inline(
+                    child: AppErrorState.inline(
                       message: l10n.safetyLoadFailed,
                       onRetry: _reload,
                     ),
@@ -739,7 +739,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ErrorState.inline(
+                    child: AppErrorState.inline(
                       message: l10n.safetyLoadFailed,
                       onRetry: _reload,
                     ),

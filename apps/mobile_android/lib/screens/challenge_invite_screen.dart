@@ -132,7 +132,7 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
         ),
       );
     } else if (_loadFailed) {
-      body = ErrorState(message: l10n.challengeInviteLoadFailed, onRetry: _load);
+      body = AppErrorState(message: l10n.challengeInviteLoadFailed, onRetry: _load);
     } else if (p == null) {
       body = Padding(
         padding: const EdgeInsets.all(24),

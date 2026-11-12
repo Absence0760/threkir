@@ -140,7 +140,7 @@ class _ParksScreenState extends State<ParksScreen> {
               ],
             )
           : _error
-          ? ErrorState(message: l10n.parksLoadFailed, onRetry: _load)
+          ? AppErrorState(message: l10n.parksLoadFailed, onRetry: _load)
           : _parks.isEmpty
           ? EmptyState(
               key: const Key('parks-empty'),
@@ -610,7 +610,7 @@ class _ParkScreenState extends State<ParkScreen> {
               ],
             )
           : _error
-          ? ErrorState(message: l10n.parksLoadFailed, onRetry: _load)
+          ? AppErrorState(message: l10n.parksLoadFailed, onRetry: _load)
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
@@ -1390,7 +1390,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
   ) {
     if (_boardFailed) {
       return [
-        ErrorState(message: l10n.parksBoardFailed, onRetry: _refreshBoard),
+        AppErrorState(message: l10n.parksBoardFailed, onRetry: _refreshBoard),
       ];
     }
     final muted = theme.textTheme.bodySmall?.copyWith(

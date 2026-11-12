@@ -294,7 +294,7 @@ class ClubsScreenState extends State<ClubsScreen> {
     return _loading
           ? ListSkeleton(label: l10n.commonLoading)
           : _error != null
-              ? ErrorState(
+              ? AppErrorState(
                   message: _error == _ClubsLoadError.timeout
                       ? l10n.clubsTimeoutError
                       : l10n.clubsLoadError,

@@ -957,7 +957,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
       );
     }
     if (_loadError != null) {
-      return ErrorState(message: l10n.messagesThreadLoadError, onRetry: _load);
+      return AppErrorState(message: l10n.messagesThreadLoadError, onRetry: _load);
     }
     final tag = localeToTag(Localizations.localeOf(context));
     final me = widget.api.userId;

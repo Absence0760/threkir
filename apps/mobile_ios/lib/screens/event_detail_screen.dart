@@ -1390,7 +1390,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (_loadError != null) {
       return Scaffold(
         appBar: AppBar(),
-        body: ErrorState(
+        body: AppErrorState(
           message: _loadError == _EventLoadError.timeout
               ? l10n.eventTimeoutError
               : l10n.eventLoadError,

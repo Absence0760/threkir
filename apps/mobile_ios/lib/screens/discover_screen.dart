@@ -324,7 +324,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     } else if (_error) {
       resultsArea = Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-        child: ErrorState(
+        child: AppErrorState(
           message: l10n.discoverSearchFailed,
           onRetry: _run,
         ),

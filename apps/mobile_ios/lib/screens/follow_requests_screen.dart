@@ -93,7 +93,7 @@ class _FollowRequestsScreenState extends State<FollowRequestsScreen> {
   Widget _body(AppLocalizations l10n) {
     if (_loading) return ListSkeleton(label: l10n.commonLoading);
     if (_error != null) {
-      return ErrorState(message: l10n.followRequestsLoadError, onRetry: _load);
+      return AppErrorState(message: l10n.followRequestsLoadError, onRetry: _load);
     }
     if (_requests.isEmpty) {
       return EmptyState(

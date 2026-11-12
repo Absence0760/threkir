@@ -752,7 +752,7 @@ class RoutesScreenState extends State<RoutesScreen> {
         mergedRoutes.isNotEmpty && filtered.isEmpty;
 
     final body = mergedRoutes.isEmpty && _fetchError && !_syncing
-        ? ErrorState(
+        ? AppErrorState(
             message: l10n.routesLoadErrorRetry,
             onRetry: _fetchRemoteRoutes,
           )

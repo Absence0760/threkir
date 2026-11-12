@@ -247,7 +247,7 @@ class _RouteConditionsState extends State<RouteConditions> {
                     ?.copyWith(color: cs.onSurfaceVariant)),
           )
         else if (_loadFailed)
-          ErrorState.inline(
+          AppErrorState.inline(
             message: l10n.routeConditionsLoadFailed,
             onRetry: _load,
           )

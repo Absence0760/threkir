@@ -767,7 +767,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _surfaceFor(ThemeData theme, AppLocalizations l10n, ProfileTab tab) {
     if (_loading) return ListSkeleton(label: l10n.commonLoading);
     if (_loadError != null) {
-      return ErrorState(message: l10n.profileLoadError, onRetry: _load);
+      return AppErrorState(message: l10n.profileLoadError, onRetry: _load);
     }
     final summary = _summary;
     if (summary == null) {
@@ -1027,7 +1027,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       return ListSkeleton(label: AppLocalizations.of(context).commonLoading);
     }
     if (error != null) {
-      return ErrorState(
+      return AppErrorState(
         message: AppLocalizations.of(context).profileSectionError,
         onRetry: onRetry,
       );

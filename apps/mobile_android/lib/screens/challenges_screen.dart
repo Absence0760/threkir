@@ -90,7 +90,7 @@ class ChallengesScreenState extends State<ChallengesScreen> {
       body = const Center(
           child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()));
     } else if (_failed) {
-      body = ErrorState(message: l10n.challengesLoadFailed, onRetry: _load);
+      body = AppErrorState(message: l10n.challengesLoadFailed, onRetry: _load);
     } else {
       body = RefreshIndicator(
             onRefresh: _load,

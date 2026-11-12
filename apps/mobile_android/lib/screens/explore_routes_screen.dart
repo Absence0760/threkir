@@ -636,7 +636,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   Widget _buildBody(ThemeData theme, DistanceUnit unit) {
     final l10n = AppLocalizations.of(context);
     if (_error != null) {
-      return ErrorState(
+      return AppErrorState(
         message: _error!,
         onRetry: _mode == _ExploreMode.nearMe ? _searchNearby : _search,
       );

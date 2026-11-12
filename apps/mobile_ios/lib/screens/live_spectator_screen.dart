@@ -632,7 +632,7 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
               ],
             )
           : _loadError != null
-              ? ErrorState(
+              ? AppErrorState(
                   message: l10n.liveSpectatorConnectError, onRetry: _hydrate)
               : Column(
                   children: [

@@ -327,7 +327,7 @@ class _HeadToHeadPanelState extends State<HeadToHeadPanel> {
     final muted = theme.textTheme.bodyMedium
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     if (_failed) {
-      return ErrorState(message: l10n.headToHeadLoadFailed, onRetry: _load);
+      return AppErrorState(message: l10n.headToHeadLoadFailed, onRetry: _load);
     }
     final rows = _rows;
     if (rows == null) {

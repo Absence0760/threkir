@@ -213,7 +213,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
       body: _loading
           ? ListSkeleton(label: l10n.commonLoading)
           : _loadError != null
-              ? ErrorState(message: l10n.devicesLoadError, onRetry: _load)
+              ? AppErrorState(message: l10n.devicesLoadError, onRetry: _load)
               : _devices.isEmpty
                   ? Center(
                       child: Padding(

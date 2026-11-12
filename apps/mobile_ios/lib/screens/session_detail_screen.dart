@@ -213,7 +213,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
               hasLeading: false,
             )
           : _error
-              ? ErrorState(message: l10n.sessionDetailLoadError, onRetry: _load)
+              ? AppErrorState(message: l10n.sessionDetailLoadError, onRetry: _load)
               : _steps.isEmpty
               ? EmptyState(
                   icon: Icons.self_improvement,

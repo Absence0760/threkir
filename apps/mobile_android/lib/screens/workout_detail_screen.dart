@@ -262,7 +262,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(),
-        body: ErrorState(
+        body: AppErrorState(
             message: switch (_error!) {
               _WorkoutLoadError.timeout => l10n.workoutTimeoutError,
               _WorkoutLoadError.offline => l10n.authErrorOffline,

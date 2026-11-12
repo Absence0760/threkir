@@ -93,6 +93,10 @@ The run owner can still write their own effort rows (the RLS that has carried
 the catalogue since `20270411_001`), which the web fallback below uses, so a
 client that skips the checkpoint rule can still insert a time. Removing the
 fallback and that policy, once the server job has run in production, closes it.
+Until then `global_segment_efforts_client_bounds` (`20271224000500`) holds a
+client-written effort to its run: no longer than the run, starting within it,
+and no faster than 11 m/s over the segment (25 m/s on a ride), so a forged
+time cannot take a board; `record_segment_match` is not checked.
 
 ## Matching
 
@@ -381,8 +385,13 @@ reply; a rights-holder request must leave one.
   `submit_park_course_report`, which only the service role may execute.
 - **The database's own caps,** which rotating addresses does not get round:
   25 pending reports per course (a land-manager or rights-holder request is
-  never refused by, nor counted toward, this one) and 60 signed-out reports an hour across all
-  courses (SQLSTATE `PT429`); one pending report per course per signed-in
+  never refused by, nor counted toward, this one) and, signed out, 60 ordinary
+  reports an hour across all courses plus a separate 120 land-manager and
+  rights-holder requests an hour, neither bucket counting the other, so a
+  flood of one cannot lock the other out (SQLSTATE `PT429`, `20271224000600`);
+  the Edge Function's per-address limit splits the same way, and a deadline
+  request whose address it cannot establish spends no per-address bucket
+  rather than the one every header-less caller shares; one pending report per course per signed-in
   reporter, or per contact email when signed out; at most two links in a note.
 - **The row** is a `reports` row (`target_kind = 'park_course'`) carrying
   `contact_email` and `signed_out`, so it shares the moderation queue, the
@@ -695,7 +704,8 @@ These gate going live, not the code:
 - [ ] Owner check of the park course report defaults (decisions § 2449): the
       30-day contact-email retention, the hand reply in place of an
       acknowledgement email, and the caps (10 an hour per user or address,
-      25 pending a course, 60 signed-out an hour), and that
+      25 pending a course, 60 ordinary and 120 deadline signed-out reports
+      an hour), and that
       `TRUSTED_CLIENT_IP_HEADER` is right for the production edge, or every
       signed-out reporter shares one bucket.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.

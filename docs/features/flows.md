@@ -411,6 +411,6 @@ Athlete (/coaching)                    Supabase                      Coach (web 
                                        Pro? rate slot? → context through COACH_ASSIST_REGISTRY → Anthropic
                                                                        ◄── draft (not stored, coach only)
                                                                        Use draft → edit → Send
-                                       insert direct_messages kind=ai_assisted (only from an active coach)
+                                       insert direct_messages kind=ai_assisted (only from an active coach, with consent)
   message marked "AI-assisted" ◄─────────────────────────────────────── marked on both sides
 ```

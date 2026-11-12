@@ -58,6 +58,9 @@ data class Checkpoint(
     // summed raw hops, so a recovered run of that vintage claims no estimator.
     val distanceEstimator: String? = null,
     val distanceStepFilledM: Double? = null,
+    // What of [distanceStepFilledM] the gaps' chords would not have credited.
+    // Null on an older checkpoint, whose run uploads without it.
+    val distanceStepOverChordM: Double? = null,
     // Which stream recorded the fixes so far, so a recovered run says what
     // the normal stop path would. Null on an older checkpoint, or before the
     // run has a track.

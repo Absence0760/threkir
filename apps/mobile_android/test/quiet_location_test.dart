@@ -258,13 +258,16 @@ void main() {
     // as RunRecorder.prepare does, that a GPS run can get a fix at all.
     // course_drive_location.dart is the third named intent, driving a
     // course (docs/features/course_drive.md gotcha 7): a background stream
-    // with no recorder behind it.
+    // with no recorder behind it. line_calibration_screen.dart is the fourth:
+    // the debug-build-only #1304 tool centres the line under test on one
+    // full-accuracy fix, the opposite of a browse read (decisions § 2453).
     const allowed = {
       'lib/screens/run_screen.dart': {
         'openLocationSettings',
         'isLocationServiceEnabled',
       },
       'lib/course_drive_location.dart': {'getPositionStream'},
+      'lib/screens/line_calibration_screen.dart': {'getCurrentPosition'},
     };
     final forbidden = RegExp(
         r'\b(isLocationServiceEnabled|openLocationSettings|getLocationAccuracy|'

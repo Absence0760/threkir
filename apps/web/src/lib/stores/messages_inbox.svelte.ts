@@ -21,14 +21,19 @@ import {
 } from '#lib/core/ai_disclosure.ts';
 import {
 	acceptDmRequest,
+	acceptGroupInvite,
 	declineDmRequest,
+	declineGroupInvite,
 	fetchDmThreads,
+	fetchGroupInvites,
+	fetchGroupMessagesEnabled,
 	fetchLatestCoachMessage,
 	hideDmConversation,
 	setDmConversationArchived,
 	setDmConversationMuted,
 	setDmConversationUnread,
 	type DmThread,
+	type GroupInvite,
 	type LatestCoachMessage,
 } from '#lib/core/data.ts';
 import { supabase } from '#lib/core/supabase.ts';
@@ -80,11 +85,21 @@ class MessagesInboxStore {
 	/// The inbox is showing its Archived list.
 	showingArchived = $state(false);
 	/// The inbox is showing its Requests list (message requests the runner
-	/// has not answered, migration 20271115002384).
+	/// has not answered, migration 20271115002384, and group invites).
 	showingRequests = $state(false);
+	/// Group conversations are on for this deploy (decisions § 2463). False
+	/// until the server says otherwise, and while a failed read leaves it
+	/// unknown: every group surface stays hidden rather than offering what the
+	/// server refuses, and each poll reads the flag again until it answers.
+	groupsEnabled = $state(false);
+	/// The runner's live group invites, listed under Requests.
+	invites = $state<GroupInvite[]>([]);
 
 	#userId: string | null = null;
 	#polling = false;
+	#groupsGeneration = 0;
+	/// The last flag read failed, so the next poll reads it again.
+	#groupsUnknown = false;
 	#coachGeneration = 0;
 	/// When each conversation was last marked read. A list fetch that started
 	/// before that answers with the count from before the mark, and assigning
@@ -111,6 +126,10 @@ class MessagesInboxStore {
 		this.coach = null;
 		this.showingArchived = false;
 		this.showingRequests = false;
+		this.groupsEnabled = false;
+		this.#groupsUnknown = false;
+		this.invites = [];
+		this.#groupsGeneration++;
 		this.#markedReadAt.clear();
 		this.#hiddenAt.clear();
 		dmPendingHides.clear();
@@ -132,7 +151,10 @@ class MessagesInboxStore {
 		for (const w of settledConversationWrites(this.#writes.values(), startedAt)) {
 			this.#writes.delete(conversationWriteKey(w.conversationId, w.flag));
 		}
-		this.threads = visible.map((t) =>
+		// The server lists no group while the flag is off (20271217000006); a
+		// client that has not yet read the flag hides them too.
+		const shown = this.groupsEnabled ? visible : visible.filter((t) => t.kind !== 'group');
+		this.threads = shown.map((t) =>
 			(this.#markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t,
 		);
 	}
@@ -152,6 +174,7 @@ class MessagesInboxStore {
 	/// retry, and a banner every 30 s would be noise. A list that never loaded
 	/// retries through loadThreads so its error state can clear.
 	async poll() {
+		if (this.#groupsUnknown) void this.loadGroups();
 		if (this.#polling) return;
 		if (this.threadsError) return this.loadThreads();
 		this.#polling = true;
@@ -164,6 +187,7 @@ class MessagesInboxStore {
 		} finally {
 			this.#polling = false;
 		}
+		await this.refreshInvites();
 		await this.refreshCoachPreview();
 	}
 
@@ -319,6 +343,63 @@ class MessagesInboxStore {
 		await declineDmRequest(conversationId, throughMessageId, block);
 		this.threads = this.threads.filter((t) => t.conversationId !== conversationId);
 		void this.refreshThreads();
+		void dmUnreadStore.refresh();
+	}
+
+	/// Reads the flag and, when it is on, the runner's invites. A failed flag
+	/// read leaves the groups hidden and is retried by the next poll, so one
+	/// blip does not hide them until the page is reloaded; a failed invite
+	/// read keeps the list it had, and the next poll retries that too.
+	async loadGroups() {
+		const userId = this.#userId;
+		const generation = ++this.#groupsGeneration;
+		if (!userId) return;
+		const read = await fetchGroupMessagesEnabled();
+		if (generation !== this.#groupsGeneration) return;
+		this.#groupsUnknown = read === null;
+		const enabled = read === true;
+		this.groupsEnabled = enabled;
+		if (!enabled) {
+			this.invites = [];
+			this.threads = this.threads.filter((t) => t.kind !== 'group');
+			return;
+		}
+		// A list read that landed before the flag did left the groups out.
+		await Promise.all([this.refreshInvites(), this.refreshThreads()]);
+	}
+
+	async refreshInvites() {
+		if (!this.groupsEnabled) return;
+		const generation = this.#groupsGeneration;
+		try {
+			const invites = await fetchGroupInvites();
+			if (generation === this.#groupsGeneration) this.invites = invites;
+		} catch (e) {
+			console.warn('messages inbox: group invites read failed', e);
+		}
+	}
+
+	/// Accepts an invite: the group joins the inbox and its thread opens from
+	/// the moment of acceptance (D3). A refusal rethrows for the caller.
+	async acceptInvite(conversationId: string) {
+		await acceptGroupInvite(conversationId);
+		this.invites = this.invites.filter((i) => i.conversationId !== conversationId);
+		await this.refreshThreads();
+		void dmUnreadStore.refresh();
+	}
+
+	/// Declines an invite. Not undoable from the app (the group cannot invite
+	/// the runner back for 14 days), so the caller confirms first.
+	async declineInvite(conversationId: string) {
+		await declineGroupInvite(conversationId);
+		this.invites = this.invites.filter((i) => i.conversationId !== conversationId);
+	}
+
+	/// After leaving a group, or the open thread finding the runner removed:
+	/// the row stays as "You left" while it holds a message of the runner's
+	/// own, else it goes.
+	async afterLeave() {
+		await this.refreshThreads();
 		void dmUnreadStore.refresh();
 	}
 

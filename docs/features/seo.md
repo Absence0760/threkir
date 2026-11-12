@@ -101,6 +101,12 @@ Two rows above are easy to misread, and both were wrong in this table before:
   That is what puts it on the club side of the people-directory line rather
   than the segment side (`/segments/[id]` is a board of named runners). The
   course map is behind `requireExplicitConsent`, as on the route share page.
+  Its written text is the course's **route guide** (issue #1344, decisions
+  § 2448): the page body lists it in the reader's language, the JSON-LD
+  `description` carries it in canonical English (`buildCourseGuideText`, from
+  `GUIDE_EN`), and while nobody has checked it at the park the meta
+  description ends "Route guide: drafted from map data, not yet checked on the
+  ground." so search text never presents a draft as verified.
   The `/parks` index and the park pages stay CSR and out of the sitemap for
   now; a park page is the next surface if search traffic says so.
 - **`/share/session/[id]` + `/share/workout/[id]` are NOT in the sitemap**,
@@ -300,6 +306,20 @@ renders every card with the bundled face only and fails when its text does not
 paint; `og_font_packaging.test.ts` fails on `loadSystemFonts: true`, a second
 resvg constructor, a card-rendering Lambda whose zip omits the faces, or the
 faces drifting from `ui_kit`.
+
+Every card also carries **Grisnir**, the mascot, small in one corner
+(#1360, [decisions § 2445](../architecture/decisions.md)): top-right on the run,
+badge and recap cards, under the wordmark on the route card (the track's
+viewport owns the right), bottom-right on the challenge card (its kicker owns
+the top-right, and the attribution lines are clipped short of him). resvg loads
+no files, so the badge PNG travels inline as a data URI from
+`lib/share/grisnir_badge_data.ts`, generated from
+`static/brand/grisnir/grisnir-badge-256.png` (36 KB, 48 KB of base64 per card).
+He is drawn 150 px tall on the 1200 px card, about 45 px where a feed shows it
+360 px wide. An unfurl is a link preview rendered with no session, so the
+owner's `show_mascot` does not reach it, as it never reached the wordmark.
+`grisnir_badge.test.ts` pins the inline bytes to the PNG and
+`og_grisnir_placement.test.ts` pins each corner clear of the card's content.
 
 ## The shared entity-SSR Lambda
 

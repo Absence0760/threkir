@@ -10,6 +10,7 @@ import '../race_controller.dart';
 import '../race_finish.dart' show raceDistanceM;
 import '../course_gates.dart' show SessionStartMode;
 import '../race_start_modes.dart';
+import '../screens/help_screen.dart' show openGuide;
 
 /// The idle run screen's banner for a race this runner is going to (#1306).
 ///
@@ -20,7 +21,8 @@ import '../race_start_modes.dart';
 /// * Self-timed: while the window is open it says how the attempt works,
 ///   shows the distance to the frozen start line, and holds the explicit
 ///   "This run is my attempt" switch (owner decision 4a): nothing binds
-///   without it.
+///   without it. Before and during the window it links the
+///   run-a-self-timed-race guide.
 class RaceBanner extends StatefulWidget {
   const RaceBanner({
     super.key,
@@ -255,6 +257,12 @@ class _RaceBannerState extends State<RaceBanner> {
                               );
                       },
                     ),
+                  ),
+                if (race.isSelfTimed)
+                  TextButton(
+                    key: const ValueKey('race-banner-self-timed-guide'),
+                    onPressed: () => openGuide(context, 'run-a-self-timed-race'),
+                    child: Text(l10n.infoTipReadGuide),
                   ),
               ],
             ),

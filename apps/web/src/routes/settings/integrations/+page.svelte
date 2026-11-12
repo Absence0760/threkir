@@ -4,12 +4,13 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { fetchIntegrations, connectIntegration, disconnectIntegration } from '#lib/core/data.ts';
+	import { fetchIntegrations, disconnectIntegration } from '#lib/core/data.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		stravaAuthUrl,
@@ -29,8 +30,6 @@
 	import ImportFailureReport from '#lib/components/ImportFailureReport.svelte';
 	import { newImportFailureLog, type ImportFailureLog } from '#lib/integrations/import_failures.ts';
 	import { importRefusalMessage } from '#lib/i18n/import_refusal_message.ts';
-	import { browser } from '$app/env';
-	import { parkrunLikelyUnavailable } from '#lib/integrations/parkrun_regions.ts';
 	import {
 		CONNECT_INTEGRATIONS,
 		RACE_INTEGRATIONS,
@@ -42,7 +41,6 @@
 		type GateVerdict,
 	} from '#lib/integrations/integration_visibility.ts';
 	import InfoTip from '#lib/components/InfoTip.svelte';
-	import UltraSignUpLinkPanel from '#lib/components/UltraSignUpLinkPanel.svelte';
 	import ParkrunBarcodeCard from '#lib/components/ParkrunBarcodeCard.svelte';
 	import PlanCalendarFeedCard from '#lib/components/PlanCalendarFeedCard.svelte';
 
@@ -82,9 +80,7 @@
 		visibleIntegrations(CONNECT_INTEGRATIONS, verdicts, connectedProviders)
 	);
 	// The race cards are not connections — the import is a per-race act on
-	// /races — so none of them reads as "connected" here. UltraSignup does keep
-	// an `integrations` row, but it records WHO the runner is there (the person
-	// its name-keyed feed is scoped by), and its own panel owns that row.
+	// /races — so none of them reads as "connected" here.
 	const visibleRace = $derived(visibleIntegrations(RACE_INTEGRATIONS, verdicts, []));
 
 	function uiFor(provider: string): IntegrationUI {
@@ -99,11 +95,6 @@
 	// catalogue, so an index into it means nothing to `integrations`.
 	let confirmingDisconnect = $state<string | null>(null);
 
-	// parkrun runs in ~20 countries; outside its footprint the card keeps
-	// working (an expat can still connect an athlete ID) but discloses that
-	// there may be no events nearby instead of presenting as universal.
-	const parkrunRegionNote = browser ? parkrunLikelyUnavailable(navigator.language) : false;
-
 	async function refreshIntegrations() {
 		const saved = await fetchIntegrations();
 		for (const ui of integrations) {
@@ -116,8 +107,8 @@
 	onMount(async () => {
 		// fetchIntegrations returns [] silently when auth.user is null,
 		// so a hard reload during the auth race rendered every row as
-		// "Connect" (unconnected) even for runner who has parkrun +
-		// strava connected per seed.
+		// "Connect" (unconnected) even for a runner who has Strava
+		// connected per seed.
 		await auth.ready();
 		await refreshIntegrations();
 
@@ -194,23 +185,6 @@
 			// Redirect the window directly — Strava's OAuth page doesn't
 			// frame cleanly and the callback must come back to us.
 			window.location.href = stravaAuthUrl(window.location.origin, state);
-			return;
-		}
-
-		// Placeholder-connect for the non-OAuth providers.
-		item.loading = true;
-		try {
-			await connectIntegration(item.provider);
-			item.connected = true;
-		} catch (err) {
-			showToast(
-				m('settingsIntegrations.connectFailed', {
-					error: errorCopy(err, m, 'settingsIntegrations.connectFailed')
-				}),
-				'error'
-			);
-		} finally {
-			item.loading = false;
 		}
 	}
 
@@ -401,13 +375,9 @@
 		<p class="visually-hidden" role="status">{m('settingsIntegrations.loading')}</p>
 	{:else}
 		{#if integrations.every((i) => !i.connected)}
-			<section class="card empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">link</span>
-				<h3>{m('settingsIntegrations.emptyTitle')}</h3>
-				<p class="empty-text">
-					{m('settingsIntegrations.emptyText')}
-				</p>
-			</section>
+			<div class="integrations-empty">
+				<EmptyState icon="link" title={m('settingsIntegrations.emptyTitle')} text={m('settingsIntegrations.emptyText')} />
+			</div>
 		{/if}
 		{#if visibleConnect.length > 0}
 		<section class="provider-section">
@@ -438,9 +408,6 @@
 							<p class="sync-note" data-testid="stranded-{integration.provider}">
 								{m('settingsIntegrations.strandedNote')}
 							</p>
-						{/if}
-						{#if integration.provider === 'parkrun' && parkrunRegionNote}
-							<p class="sync-note">{m('settingsIntegrations.parkrunRegionNote')}</p>
 						{/if}
 						{#if integration.connected && integration.lastSync}
 							<span class="last-sync">
@@ -690,9 +657,6 @@
 					<a class="btn btn-connect" href="/races" data-testid="{gated.spec.provider}-open">
 						{m(`integrations.${gated.spec.provider}Open` as MessageKey)}
 					</a>
-					{#if gated.spec.provider === 'ultrasignup'}
-						<UltraSignUpLinkPanel />
-					{/if}
 				</div>
 			</section>
 		{/each}
@@ -746,33 +710,8 @@
 	}
 
 	/* Empty-state card — matches /u/[id]'s shape. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
+	.integrations-empty {
 		margin-bottom: var(--space-xl);
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
 	}
 
 	/* Skeletons */
@@ -847,10 +786,6 @@
 		background: rgba(252, 76, 2, 0.12);
 		color: var(--provider-strava-ink);
 	}
-	.integration-icon[data-provider="parkrun"] {
-		background: rgba(217, 122, 84, 0.14);
-		color: var(--provider-parkrun-ink);
-	}
 	.integration-icon[data-provider="garmin"] {
 		background: rgba(0, 119, 200, 0.12);
 		color: var(--provider-garmin-ink);
@@ -862,10 +797,6 @@
 	.integration-icon[data-provider="runsignup"] {
 		background: rgba(217, 142, 207, 0.14);
 		color: var(--provider-runsignup-ink);
-	}
-	.integration-icon[data-provider="ultrasignup"] {
-		background: rgba(76, 145, 92, 0.14);
-		color: var(--provider-ultrasignup-ink);
 	}
 
 	.integration-icon[data-provider="chronotrack"] {

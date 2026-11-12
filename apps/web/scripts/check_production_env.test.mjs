@@ -42,8 +42,8 @@ const VALID_VAPID_PUBLIC = freshVapidPublicKey();
 const SCRIPT_PATH = fileURLToPath(new URL('./check_production_env.mjs', import.meta.url));
 
 /**
- * Run the script as its own CLI process. The script's `import.meta.url ===
- * file:${argv[1]}` entry-point guard only fires when invoked as a binary,
+ * Run the script as its own CLI process. The script's entry-point guard
+ * (argv[1] resolved against `import.meta.url`) only fires when invoked as a binary,
  * so the in-process import above wouldn't exercise the process.exit /
  * stderr-write paths; this wrapper covers them.
  *

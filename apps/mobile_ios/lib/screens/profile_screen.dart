@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../auth_error.dart';
 import '../entity_link.dart';
@@ -16,6 +17,7 @@ import '../settings_destination.dart';
 import '../social_service.dart';
 import '../training_service.dart';
 import '../undo_queue.dart';
+import '../web_base_url.dart';
 import '../widgets/badge_grid.dart';
 import '../widgets/badge_share_sheet.dart';
 import '../widgets/collapsing_tab_host.dart';
@@ -29,7 +31,9 @@ import 'challenge_detail_screen.dart';
 import 'club_detail_screen.dart';
 import 'event_detail_screen.dart';
 import 'follow_requests_screen.dart';
+import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
+import 'messages_screen.dart';
 import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
 import 'race_detail_screen.dart';
@@ -1472,7 +1476,26 @@ class _ProfileScreenState extends State<ProfileScreen>
     await _markNotifRead(item);
     if (!mounted) return;
     final kind = item.row.kind;
-    if (kind == 'message' && item.row.actorId != null) {
+    if (kind == 'message' && item.row.conversationId != null) {
+      // A group message opens its group, never a 1:1 thread with the sender.
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => GroupThreadScreen(
+            api: widget.api,
+            conversationId: item.row.conversationId!,
+          ),
+        ),
+      );
+    } else if (kind == 'group_invite') {
+      // Join and Decline sit in the inbox's Requests list; the group itself
+      // opens only once accepted (decisions § 2463).
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              MessagesScreen(api: widget.api, initialShowRequests: true),
+        ),
+      );
+    } else if (kind == 'message' && item.row.actorId != null) {
       await _openConversation(
         item.row.actorId!,
         name: item.actor?.displayName,
@@ -1545,6 +1568,13 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
+    } else if (kind == 'organiser_dispute') {
+      // Both sides read the decision and any rename deadline on the web's
+      // disputes page; the review is web-only (decisions § 24, § 2441).
+      await _openOnWeb('/disputes');
+    } else if (kind == 'park_course_report') {
+      // App admins review park course reports in the web queue (§ 2449).
+      await _openOnWeb('/admin/reports');
     } else if (kind == 'course_alert' && item.row.courseAlertId != null) {
       await _openCourseAlert(item.row.courseAlertId!);
     } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
@@ -1585,6 +1615,22 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _openOnWeb(String path) async {
+    final url = '${resolveWebBaseUrl()}$path';
+    try {
+      final ok = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        showTopBanner(context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    } catch (e) {
+      debugPrint('ProfileScreen: opening $url failed: $e');
+      if (mounted) {
+        showTopBanner(context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
     }
   }
 
@@ -1696,6 +1742,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.clubName != null
             ? l10n.profileNotifClubVerificationNamed(item.clubName!)
             : l10n.profileNotifClubVerification;
+      case 'organiser_dispute':
+        return item.clubName != null
+            ? l10n.profileNotifOrganiserDisputeNamed(item.clubName!)
+            : l10n.profileNotifOrganiserDispute;
+      case 'park_course_report':
+        return l10n.profileNotifParkCourseReport;
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)
@@ -1731,7 +1783,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       case 'refund_failed':
         return l10n.profileNotifRefundFailed;
       case 'message':
-        return l10n.profileNotifMessage(name);
+        return item.row.conversationId != null
+            ? l10n.profileNotifGroupMessage(name)
+            : l10n.profileNotifMessage(name);
+      case 'group_invite':
+        return l10n.profileNotifGroupInvite(name);
       case 'club_post':
         return item.clubName != null
             ? l10n.profileNotifClubPostNamed(name, item.clubName!)

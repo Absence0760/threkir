@@ -222,6 +222,18 @@ test('course: a row maps onto the course, its segment geometry and its park', as
 					status_note: null,
 					geometry_source: 'osm',
 					difficulty: null,
+					laps: 2,
+					attribution: '  © OpenStreetMap contributors (ODbL)  ',
+					route_guide: {
+						version: 1,
+						lang: 'en',
+						steps: [
+							{ kind: 'start', at_m: 0, way: 'path' },
+							{ kind: 'finish', at_m: 5120 },
+						],
+					},
+					route_guide_checked_at: '2026-12-01',
+					shared_use: 'saturday_morning_group',
 					global_segments: {
 						name: 'Lake Loop',
 						description: null,
@@ -250,4 +262,14 @@ test('course: a row maps onto the course, its segment geometry and its park', as
 		{ lat: 37.2, lng: -77.6, ele: 3 },
 	]);
 	assert.equal(course?.park.name, 'Fixture State Park');
+	assert.equal(course?.laps, 2);
+	assert.equal(course?.attribution, '© OpenStreetMap contributors (ODbL)');
+	assert.deepEqual(course?.route_guide?.steps, [
+		{ kind: 'start', at_m: 0, way: 'path' },
+		{ kind: 'finish', at_m: 5120 },
+	]);
+	assert.equal(course?.route_guide_checked_at, '2026-12-01');
+	assert.equal(course?.shared_use, 'saturday_morning_group');
+	const select = requests.at(-1)?.searchParams.get('select') ?? '';
+	assert.ok(select.split(/,\s*/).includes('shared_use'), select);
 });

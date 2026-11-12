@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfstellen, LOS, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
+					text: 'Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfschalten, GO, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
 				},
 				{
 					type: 'p',
@@ -35,7 +35,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Die Ziellinie, an der die Teilnehmenden gemessen werden, ist der letzte Punkt der Route der Strecke. Zeichne die Route so, dass sie genau dort endet, wo dein Zielbogen stehen wird.',
+					text: 'Jede Strecke bekommt eine Startlinie am ersten Punkt ihrer Route und eine Ziellinie am letzten. Zeichne die Route so, dass sie genau dort endet, wo dein Zielbogen stehen wird, oder verschiebe die Linien danach; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]].',
+				},
+				{
+					type: 'p',
+					text: 'Wähle unter **Wie das Rennen startet** die Option **GO durch Veranstalter**, **Geplanter GO** oder **Selbstgestoppter Zeitraum**. Siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]].',
 				},
 			],
 		},
@@ -68,6 +72,10 @@ export const translation: GuideTranslation = {
 					tone: 'caution',
 					text: 'Wenn du eine Route anhängst, wird ihr Zielpunkt allen angezeigt, die das Event sehen können, selbst wenn die Route selbst privat ist. Du kannst nur Routen anhängen, die du sehen darfst.',
 				},
+				{
+					type: 'p',
+					text: 'Eine Strecke ohne Route bekommt keine Start- oder Ziellinie aus einer Route, aber sobald das Event gespeichert ist, kannst du beide Linien selbst für sie setzen.',
+				},
 			],
 		},
 		{
@@ -93,7 +101,11 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Kurz bevor du das Rennen scharfstellst, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst.',
+					text: 'Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst.',
+				},
+				{
+					type: 'p',
+					text: 'Bei einem Rennen im Modus **Geplanter GO** oder **Selbstgestoppter Zeitraum** legst du diese Einstellung stattdessen im Event-Editor unter **Wie das Rennen startet** fest. Bei einem selbstgestoppten Rennen ist der Haken anfangs nicht gesetzt.',
 				},
 			],
 		},
@@ -129,7 +141,8 @@ export const translation: GuideTranslation = {
 		's1.b0.i3': '66dae8991279459e',
 		's1.b0.i4': '5dc3211a9d733e18',
 		's1.b0.i5': '9b013cf91adfef1d',
-		's1.b1': '4dedb854832fabbb',
+		's1.b1': '3902a06ca97028f7',
+		's1.b2': '424a050508e905e9',
 		's2.heading': 'aa02687fee3b093f',
 		's2.b0': '1e44be9c1cbe6aa5',
 		's2.b1.i0': '59ec7388c26ff153',
@@ -140,6 +153,7 @@ export const translation: GuideTranslation = {
 		's2.b2.i1': '614d8a4a47ff46c0',
 		's2.b2.i2': '6ba6f0661b9e166a',
 		's2.b3': '47950903add3bde2',
+		's2.b4': 'ee2f7ff41e59b09f',
 		's3.heading': '8b4ed9e415e501f7',
 		's3.b0.i0': '7366e2c6f9eafeb3',
 		's3.b0.i1': '76dc29eb1e584662',
@@ -148,6 +162,7 @@ export const translation: GuideTranslation = {
 		's3.b1': 'd636d4186f153c0f',
 		's4.heading': 'ff04ee128bd05b1f',
 		's4.b0': '8887aff2546f155b',
+		's4.b1': '4f8df39f54f69616',
 		's5.heading': '05127d2bcbe7e55c',
 		's5.b0': '632ca275dd6dbc2e',
 		's5.b1': 'd81f08a86fd29b85',

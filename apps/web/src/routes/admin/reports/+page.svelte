@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import {
 		amIAdmin,
 		fetchPendingReports,
@@ -9,6 +10,17 @@
 		adminUnhideTarget,
 		fetchResolvedReports,
 		setReportLegalHold,
+		resolveOrganiserDispute,
+		fetchOrganiserDisputeHistory,
+		fetchAdminParkCourse,
+		fetchAdminReportConversation,
+		type ReportConversation,
+		adminSetParkCourseStatus,
+		fetchParkCourseStatusHistory,
+		fetchParkNpsAlerts,
+		type AdminParkCourse,
+		type ParkCourseStatusHistoryEntry,
+		type OrganiserDisputeHistoryEntry,
 		type PendingReportTarget,
 		type ResolvedReportTarget,
 		type TargetReport,
@@ -22,11 +34,35 @@
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { reportTargetHref, reportTargetLabelKey } from './report_target';
+	import {
+		DISPUTE_DEADLINE_DEFAULT_DAYS,
+		DISPUTE_DEADLINE_MAX_DAYS,
+		DISPUTE_DEADLINE_MIN_DAYS,
+		deadlineDaysOrNull,
+		deadlinePassed,
+	} from '#lib/social/organiser_dispute.ts';
+	import type { OrganiserDisputeTargetKind } from '#lib/types.ts';
+	import { courseReportMailto, landManagerDueAt, rightsHolderDueAt } from '#lib/parks/course_report.ts';
+	import { regionSlug } from '#lib/parks/park_courses.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 
 	type QueueTarget = Pick<
 		PendingReportTarget,
 		'target_kind' | 'target_id' | 'page_id' | 'shadow_hidden' | 'report_count'
-	>;
+	> &
+		Partial<
+			Pick<
+				PendingReportTarget,
+				| 'organiser_dispute'
+				| 'organiser_clubs'
+				| 'rename_deadline_at'
+				| 'land_manager_since'
+				| 'rights_holder_since'
+			>
+		>;
+
+	type DisputeAction = 'takedown' | 'rename_notice' | 'dismiss';
+	const DISPUTE_KINDS: readonly string[] = ['club', 'route', 'training_plan', 'gym_routine', 'challenge', 'race_listing'];
 
 	let isAdmin = $state<boolean | null>(null);
 	let loading = $state(true);
@@ -47,7 +83,103 @@
 	let confirmUnhide = $state(false);
 	let holdBusy = $state<string | null>(null);
 	let confirmLiftHold = $state<TargetReport | null>(null);
-	let hasPending = $derived(detail.some((r) => r.status === 'pending'));
+	let hasPending = $derived(detail.some((r) => r.status === 'pending' && r.reason !== 'organiser_dispute'));
+	let hasPendingDispute = $derived(
+		detail.some((r) => r.status === 'pending' && r.reason === 'organiser_dispute') &&
+			!!selected &&
+			DISPUTE_KINDS.includes(selected.target_kind),
+	);
+	let disputeNote = $state('');
+	let deadlineDays = $state<string | number | null>(DISPUTE_DEADLINE_DEFAULT_DAYS);
+	let disputeBusy = $state(false);
+	let confirmDispute = $state<DisputeAction | null>(null);
+	let history = $state<OrganiserDisputeHistoryEntry[]>([]);
+	const deadlineValid = $derived(deadlineDaysOrNull(deadlineDays) !== null);
+
+	// Park course reports (decisions § 2449): a report never closes a course;
+	// the admin does, here, with the note the course page shows.
+	let course = $state<AdminParkCourse | null>(null);
+	// The audience a reported message went to: a 1:1 thread or a group, with
+	// the group's name and size (group_messages.md § 6). Null when unknown.
+	let conversation = $state<ReportConversation | null>(null);
+	let conversationFailed = $state(false);
+	let courseHistory = $state<ParkCourseStatusHistoryEntry[]>([]);
+	let courseNote = $state('');
+	let courseBusy = $state(false);
+	let confirmCourse = $state<'closed' | 'open' | null>(null);
+	const CATALOGUE_NOTE = 'Removed from the park catalogue.';
+	const courseHref = $derived(
+		course?.park ? `/parks/${regionSlug(course.park.region_code)}/${course.park.slug}/${course.slug}` : null,
+	);
+	const pendingLandManager = $derived(
+		detail
+			.filter((r) => r.status === 'pending' && r.reason === 'land_manager_request')
+			.map((r) => r.created_at)
+			.sort()[0] ?? null,
+	);
+	const pendingRightsHolder = $derived(
+		detail
+			.filter((r) => r.status === 'pending' && r.reason === 'rights_holder_request')
+			.map((r) => r.created_at)
+			.sort()[0] ?? null,
+	);
+
+	const COURSE_REASON_LABELS: Record<string, MessageKey> = {
+		course_hazard: 'admin.reports.reason.courseHazard',
+		course_closure: 'admin.reports.reason.courseClosure',
+		course_off_trail: 'admin.reports.reason.courseOffTrail',
+		land_manager_request: 'admin.reports.reason.landManagerRequest',
+		rights_holder_request: 'admin.reports.reason.rightsHolderRequest',
+	};
+
+	function reasonLabel(reason: string): string {
+		const key = COURSE_REASON_LABELS[reason];
+		return key ? t(key) : reason;
+	}
+
+	function landManagerDue(receivedIso: string): { text: string; overdue: boolean } {
+		const due = landManagerDueAt(receivedIso);
+		const overdue = due.getTime() < Date.now();
+		const date = formatDate(due.toISOString());
+		return {
+			text: overdue ? t('admin.reports.course.overdue', { date }) : t('admin.reports.course.dueOn', { date }),
+			overdue,
+		};
+	}
+
+	function rightsHolderDue(receivedIso: string): { text: string; overdue: boolean } {
+		const due = rightsHolderDueAt(receivedIso);
+		const overdue = due.getTime() < Date.now();
+		const date = formatDate(due.toISOString());
+		return {
+			text: overdue ? t('admin.reports.course.overdue', { date }) : t('admin.reports.course.acknowledgeBy', { date }),
+			overdue,
+		};
+	}
+
+	async function loadCourse(courseId: string) {
+		course = await fetchAdminParkCourse(courseId);
+		courseHistory = course ? await fetchParkCourseStatusHistory(courseId) : [];
+	}
+
+	async function doCourseStatus(status: 'closed' | 'open') {
+		if (!selected || !course || courseBusy) return;
+		courseBusy = true;
+		const target = selected;
+		try {
+			await adminSetParkCourseStatus(course.id, status, courseNote.trim() || null);
+			showToast(t(status === 'closed' ? 'admin.reports.course.doneClose' : 'admin.reports.course.doneReopen'), 'success');
+			courseNote = '';
+			await loadCourse(course.id);
+			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
+			await loadQueue();
+			if (resolvedLoaded) await loadResolved();
+		} catch (e) {
+			showToast(t('admin.reports.course.failed', { error: errorCopy(e, t, 'admin.reports.course.failed') }), 'error');
+		} finally {
+			courseBusy = false;
+		}
+	}
 
 	function kindLabel(kind: ReportTargetKind): string {
 		const key = reportTargetLabelKey(kind);
@@ -104,10 +236,35 @@
 	async function openTarget(target: QueueTarget) {
 		selected = target;
 		resolution = '';
+		disputeNote = '';
+		deadlineDays = DISPUTE_DEADLINE_DEFAULT_DAYS;
+		history = [];
+		course = null;
+		courseHistory = [];
+		courseNote = '';
+		conversation = null;
+		conversationFailed = false;
 		detail = [];
 		detailLoading = true;
 		try {
 			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
+			if (target.target_kind === 'park_course') await loadCourse(target.target_id);
+			if (target.target_kind === 'direct_message') {
+				// Auxiliary: a failed lookup says so and leaves the reports and
+				// the actions on them standing (conventions.md § Layered resilience).
+				try {
+					conversation = await fetchAdminReportConversation(target.target_id);
+				} catch (e) {
+					console.warn('admin report conversation lookup failed', e);
+					conversationFailed = true;
+				}
+			}
+			if (detail.some((r) => r.reason === 'organiser_dispute') && DISPUTE_KINDS.includes(target.target_kind)) {
+				history = await fetchOrganiserDisputeHistory(
+					target.target_kind as OrganiserDisputeTargetKind,
+					target.target_id,
+				);
+			}
 		} catch (e) {
 			showToast(t('admin.reports.detailFailed', { error: errorCopy(e, t, 'admin.reports.detailFailed') }), 'error');
 		} finally {
@@ -117,7 +274,10 @@
 
 	function closeDetail() {
 		selected = null;
+		conversation = null;
 		detail = [];
+		course = null;
+		courseHistory = [];
 	}
 
 	async function doResolve(status: ReportResolution) {
@@ -140,6 +300,55 @@
 			showToast(t('admin.reports.resolveFailed', { error: errorCopy(e, t, 'admin.reports.resolveFailed') }), 'error');
 		} finally {
 			resolving = false;
+		}
+	}
+
+	async function doDisputeAction(action: DisputeAction) {
+		if (!selected || disputeBusy) return;
+		const days = deadlineDaysOrNull(deadlineDays);
+		if (action === 'rename_notice' && days === null) return;
+		disputeBusy = true;
+		const target = selected;
+		try {
+			await resolveOrganiserDispute({
+				targetKind: target.target_kind as OrganiserDisputeTargetKind,
+				targetId: target.target_id,
+				action,
+				note: disputeNote.trim() || null,
+				deadlineDays: days,
+			});
+			const key =
+				action === 'takedown'
+					? 'admin.reports.dispute.doneHide'
+					: action === 'rename_notice'
+						? 'admin.reports.dispute.doneRename'
+						: 'admin.reports.dispute.doneDismiss';
+			showToast(t(key), 'success');
+			closeDetail();
+			await loadQueue();
+			if (resolvedLoaded) await loadResolved();
+		} catch (e) {
+			showToast(
+				t('admin.reports.dispute.failed', { error: errorCopy(e, t, 'admin.reports.dispute.failed') }),
+				'error',
+			);
+		} finally {
+			disputeBusy = false;
+		}
+	}
+
+	function historyActionLabel(action: OrganiserDisputeHistoryEntry['action']): string {
+		switch (action) {
+			case 'filed':
+				return t('admin.reports.dispute.historyFiled');
+			case 'takedown':
+				return t('admin.reports.dispute.historyHide');
+			case 'rename_notice':
+				return t('admin.reports.dispute.historyRename');
+			case 'dismiss':
+				return t('admin.reports.dispute.historyDismiss');
+			case 'unhide':
+				return t('admin.reports.dispute.historyUnhide');
 		}
 	}
 
@@ -168,10 +377,25 @@
 		}
 	}
 
+	// The NPS closures sweep's flags live on their own page; the count here
+	// is how an admin working this queue learns some are waiting. A failed
+	// read leaves the link off rather than the queue.
+	let npsPending = $state(0);
+	async function loadNpsPending() {
+		try {
+			npsPending = (await fetchParkNpsAlerts('pending')).length;
+		} catch (e) {
+			console.warn('park alerts count failed', e);
+		}
+	}
+
 	onMount(async () => {
 		await auth.ready();
 		isAdmin = await amIAdmin();
-		if (isAdmin) await loadQueue();
+		if (isAdmin) {
+			void loadNpsPending();
+			await loadQueue();
+		}
 		loading = false;
 	});
 </script>
@@ -190,6 +414,13 @@
 		<header>
 			<h1>{t('admin.reports.title')}</h1>
 			<p class="muted">{t('admin.reports.subtitle')}</p>
+			{#if npsPending > 0}
+				<p class="nps-pending">
+					<a href="/admin/park-alerts" data-testid="admin-park-alerts-link">
+						{t('admin.parkAlerts.pendingLink', { count: npsPending })}
+					</a>
+				</p>
+			{/if}
 		</header>
 
 		<div class="tabs" role="group" aria-label={t('admin.reports.title')}>
@@ -213,18 +444,23 @@
 
 		{#if view === 'resolved'}
 			{#if resolvedError}
-				<div class="card-elevated empty" role="alert" data-testid="admin-resolved-error">
-					<p class="muted">{resolvedError}</p>
-					<button type="button" class="btn btn-outline btn-sm" onclick={loadResolved}>
-						{t('admin.reports.retry')}
-					</button>
-				</div>
+				<EmptyState
+					icon="error"
+					tone="danger"
+					title={resolvedError}
+					role="alert"
+					data-testid="admin-resolved-error"
+				>
+					{#snippet actions()}
+						<button type="button" class="btn btn-outline" onclick={loadResolved}>
+							{t('admin.reports.retry')}
+						</button>
+					{/snippet}
+				</EmptyState>
 			{:else if resolvedLoading || !resolvedLoaded}
 				<p class="muted">{t('admin.reports.loading')}</p>
 			{:else if resolved.length === 0}
-				<div class="card-elevated empty" data-testid="admin-resolved-empty">
-					<p class="muted">{t('admin.reports.resolvedEmpty')}</p>
-				</div>
+				<EmptyState icon="inbox" title={t('admin.reports.resolvedEmpty')} data-testid="admin-resolved-empty" />
 			{:else}
 				<div class="card-elevated">
 					<table data-testid="admin-resolved">
@@ -276,9 +512,7 @@
 				</div>
 			{/if}
 		{:else if queue.length === 0}
-			<div class="card-elevated empty" data-testid="admin-queue-empty">
-				<p class="muted">{t('admin.reports.empty')}</p>
-			</div>
+			<EmptyState icon="check_circle" title={t('admin.reports.empty')} data-testid="admin-queue-empty" />
 		{:else}
 			<div class="card-elevated">
 				<table data-testid="admin-queue">
@@ -313,13 +547,46 @@
 									{#if target.shadow_hidden}
 										<span class="hidden-badge" data-testid="admin-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 									{/if}
+									{#if target.land_manager_since}
+										{@const due = landManagerDue(target.land_manager_since)}
+										<div class="dispute-line" data-testid="admin-land-manager-row">
+											<span class="dispute-badge">{t('admin.reports.course.landManagerBadge')}</span>
+											<span class="muted">{t('admin.reports.course.receivedAgo', { when: formatRelativeTime(target.land_manager_since) })}</span>
+											<span class="muted deadline" class:overdue={due.overdue} data-testid="admin-land-manager-due">{due.text}</span>
+										</div>
+									{/if}
+									{#if target.rights_holder_since}
+										{@const due = rightsHolderDue(target.rights_holder_since)}
+										<div class="dispute-line" data-testid="admin-rights-holder-row">
+											<span class="dispute-badge">{t('admin.reports.course.rightsHolderBadge')}</span>
+											<span class="muted">{t('admin.reports.course.receivedAgo', { when: formatRelativeTime(target.rights_holder_since) })}</span>
+											<span class="muted deadline" class:overdue={due.overdue} data-testid="admin-rights-holder-due">{due.text}</span>
+										</div>
+									{/if}
+									{#if target.organiser_dispute}
+										<div class="dispute-line" data-testid="admin-dispute-row">
+											<span class="dispute-badge">{t('admin.reports.dispute.badge')}</span>
+											{#each target.organiser_clubs as c (c.id)}
+												<span class="dispute-club">
+													{c.name}{#if c.is_verified}<span class="material-symbols verified" aria-label={t('admin.reports.dispute.verified')}>verified</span>{/if}
+												</span>
+											{/each}
+											{#if target.rename_deadline_at}
+												<span class="muted deadline" class:overdue={deadlinePassed(target.rename_deadline_at)}>
+													{deadlinePassed(target.rename_deadline_at)
+														? t('admin.reports.dispute.deadlinePassed', { date: formatDate(target.rename_deadline_at) })
+														: t('admin.reports.dispute.deadlineOn', { date: formatDate(target.rename_deadline_at) })}
+												</span>
+											{/if}
+										</div>
+									{/if}
 								</td>
 								<td>{target.report_count}</td>
 								<td>{target.reporter_count}</td>
 								<td>
 									<span class="reasons">
 										{#each Object.entries(target.reasons) as [reason, n] (reason)}
-											<span class="chip">{reason} · {n}</span>
+											<span class="chip">{reasonLabel(reason)} · {n}</span>
 										{/each}
 									</span>
 								</td>
@@ -370,6 +637,20 @@
 					<span class="hidden-badge" data-testid="admin-detail-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 				{/if}
 			</div>
+			{#if selected.target_kind === 'direct_message' && !detailLoading}
+				<p class="muted" data-testid="admin-report-conversation">
+					{conversationFailed
+						? t('admin.reports.conversationFailed')
+						: conversation === null
+						? t('admin.reports.conversationGone')
+						: conversation.kind === 'group'
+							? t('admin.reports.conversationGroup', {
+									title: conversation.title ?? '',
+									count: conversation.memberCount,
+								})
+							: t('admin.reports.conversationDirect')}
+				</p>
+			{/if}
 
 			{#if selected.shadow_hidden}
 				<div class="hidden-notice" data-testid="admin-hidden-notice">
@@ -391,7 +672,7 @@
 					{#each detail as r (r.id)}
 						<li class="report">
 							<div class="report-top">
-								<span class="reason chip">{r.reason}</span>
+								<span class="reason chip">{reasonLabel(r.reason)}</span>
 								<span class="status status-{r.status}">{statusLabel(r.status)}</span>
 								<span class="muted when">{formatRelativeTime(r.created_at)}</span>
 								{#if r.legal_hold}
@@ -401,8 +682,25 @@
 							<p class="report-by muted">
 								{r.reporter_id
 									? t('admin.reports.reportBy', { id: r.reporter_id.slice(0, 8) })
-									: t('admin.reports.reporterDeleted')}
+									: r.signed_out
+										? t('admin.reports.course.signedOut')
+										: t('admin.reports.reporterDeleted')}
 							</p>
+							{#if r.contact_email}
+								<p class="report-by" data-testid="admin-report-contact">
+									<a href={courseReportMailto(r.contact_email)}>{t('admin.reports.course.contact', { email: r.contact_email })}</a>
+								</p>
+							{/if}
+							{#if r.organiser_club}
+								<p class="report-by" data-testid="admin-report-organiser">
+									{t('admin.reports.dispute.filedFor', { club: r.organiser_club.name })}
+									{#if r.organiser_club.is_verified}
+										<span class="material-symbols verified" aria-label={t('admin.reports.dispute.verified')}>verified</span>
+									{:else}
+										<span class="muted">{t('admin.reports.dispute.noLongerVerified')}</span>
+									{/if}
+								</p>
+							{/if}
 							<p class="notes">{r.notes || t('admin.reports.noNotes')}</p>
 							{#if r.snapshot_body !== null}
 								<blockquote class="snapshot" data-testid="admin-report-snapshot">
@@ -434,6 +732,163 @@
 						</li>
 					{/each}
 				</ul>
+
+				{#if selected.target_kind === 'park_course'}
+					<section class="dispute-panel" data-testid="admin-course-panel">
+						<h3>{t('admin.reports.course.panelTitle')}</h3>
+						{#if !course}
+							<p class="muted">{t('admin.reports.course.missing')}</p>
+						{:else}
+							<p>
+								<strong>{course.name}</strong>{#if course.park}&nbsp;·&nbsp;{course.park.name}{/if}
+								{#if courseHref}<a href={courseHref} class="target-link">{t('admin.reports.course.viewCourse')}</a>{/if}
+							</p>
+							<p data-testid="admin-course-status">
+								{course.status === 'closed'
+									? t('parks.statusClosed')
+									: course.status === 'seasonal'
+										? t('parks.statusSeasonal')
+										: t('parks.statusOpen')}{#if course.status_note}: {course.status_note}{/if}
+							</p>
+							<p class="muted">{t('admin.reports.course.panelHint')}</p>
+							{#if pendingLandManager}
+								{@const due = landManagerDue(pendingLandManager)}
+								<p class="deadline" class:overdue={due.overdue}>{due.text}</p>
+							{/if}
+							{#if pendingRightsHolder}
+								{@const due = rightsHolderDue(pendingRightsHolder)}
+								<p class="muted" data-testid="admin-rights-holder-hint">{t('admin.reports.course.rightsHolderHint')}</p>
+								<p class="deadline" class:overdue={due.overdue} data-testid="admin-rights-holder-panel-due">{due.text}</p>
+							{/if}
+							{#if detail.some((r) => r.contact_email)}
+								<p class="muted">{t('admin.reports.course.replyHint')}</p>
+							{/if}
+							{#if course.status === 'closed' && course.status_note === CATALOGUE_NOTE}
+								<p class="muted">{t('admin.reports.course.catalogueClosed')}</p>
+							{:else}
+								<label class="resolution">
+									<span>{course.status === 'closed' ? t('admin.reports.course.reopenNoteLabel') : t('admin.reports.course.noteLabel')}</span>
+									<textarea
+										bind:value={courseNote}
+										rows="2"
+										maxlength="500"
+										placeholder={course.status === 'closed' ? '' : t('admin.reports.course.notePlaceholder')}
+										data-testid="admin-course-note"
+									></textarea>
+								</label>
+								<div class="actions">
+									{#if course.status === 'closed'}
+										<button
+											type="button"
+											class="btn btn-secondary"
+											disabled={courseBusy}
+											data-testid="admin-course-reopen"
+											onclick={() => (confirmCourse = 'open')}
+										>{t('admin.reports.course.reopen')}</button>
+									{:else}
+										<button
+											type="button"
+											class="btn btn-danger"
+											disabled={courseBusy || courseNote.trim().length === 0 || courseNote.trim() === CATALOGUE_NOTE}
+											data-testid="admin-course-close"
+											onclick={() => (confirmCourse = 'closed')}
+										>{t('admin.reports.course.close')}</button>
+									{/if}
+								</div>
+							{/if}
+							{#if courseHistory.length > 0}
+								<h4>{t('admin.reports.course.historyTitle')}</h4>
+								<ul class="history" data-testid="admin-course-history">
+									{#each courseHistory as h (h.id)}
+										<li>
+											<strong>{h.action === 'close' ? t('admin.reports.course.historyClose') : t('admin.reports.course.historyReopen')}</strong>
+											<span class="muted">· {formatRelativeTime(h.created_at)}</span>
+											{#if h.note}<p class="notes">{h.note}</p>{/if}
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						{/if}
+					</section>
+				{/if}
+
+				{#if hasPendingDispute}
+					<section class="dispute-panel" data-testid="admin-dispute-panel">
+						<h3>{t('admin.reports.dispute.panelTitle')}</h3>
+						<p class="muted">{t('admin.reports.dispute.panelHint')}</p>
+						{#if selected.rename_deadline_at}
+							<p class="deadline" class:overdue={deadlinePassed(selected.rename_deadline_at)}>
+								{deadlinePassed(selected.rename_deadline_at)
+									? t('admin.reports.dispute.deadlinePassed', { date: formatDate(selected.rename_deadline_at) })
+									: t('admin.reports.dispute.deadlineOn', { date: formatDate(selected.rename_deadline_at) })}
+							</p>
+						{/if}
+						<label class="resolution">
+							<span>{t('admin.reports.dispute.noteLabel')}</span>
+							<textarea
+								bind:value={disputeNote}
+								rows="2"
+								maxlength="1000"
+								placeholder={t('admin.reports.dispute.notePlaceholder')}
+								data-testid="admin-dispute-note"
+							></textarea>
+						</label>
+						<label class="deadline-field">
+							<span>{t('admin.reports.dispute.deadlineLabel')}</span>
+							<input
+								type="number"
+								inputmode="numeric"
+								min={DISPUTE_DEADLINE_MIN_DAYS}
+								max={DISPUTE_DEADLINE_MAX_DAYS}
+								step="1"
+								bind:value={deadlineDays}
+								aria-invalid={!deadlineValid}
+								data-testid="admin-dispute-deadline"
+							/>
+						</label>
+						<div class="actions">
+							<button
+								type="button"
+								class="btn btn-secondary"
+								disabled={disputeBusy}
+								data-testid="admin-dispute-dismiss"
+								onclick={() => (confirmDispute = 'dismiss')}
+							>{t('admin.reports.dispute.dismiss')}</button>
+							<button
+								type="button"
+								class="btn btn-secondary"
+								disabled={disputeBusy || !deadlineValid}
+								data-testid="admin-dispute-rename"
+								onclick={() => (confirmDispute = 'rename_notice')}
+							>{t('admin.reports.dispute.rename')}</button>
+							<button
+								type="button"
+								class="btn btn-primary"
+								disabled={disputeBusy}
+								data-testid="admin-dispute-hide"
+								onclick={() => (confirmDispute = 'takedown')}
+							>{t('admin.reports.dispute.hide')}</button>
+						</div>
+						{#if history.length > 0}
+							<h4>{t('admin.reports.dispute.historyTitle')}</h4>
+							<ul class="history" data-testid="admin-dispute-history">
+								{#each history as h (h.id)}
+									<li>
+										<strong>{historyActionLabel(h.action)}</strong>
+										<span class="muted">· {h.organiser_club_name} · {formatRelativeTime(h.created_at)}</span>
+										{#if h.actor_id}
+											<span class="muted">· {t('admin.reports.reportBy', { id: h.actor_id.slice(0, 8) })}</span>
+										{/if}
+										{#if h.deadline_at}
+											<span class="muted">· {t('admin.reports.dispute.deadlineOn', { date: formatDate(h.deadline_at) })}</span>
+										{/if}
+										{#if h.note}<p class="notes">{h.note}</p>{/if}
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</section>
+				{/if}
 
 				{#if hasPending}
 					<label class="resolution">
@@ -505,6 +960,50 @@
 />
 
 <ConfirmDialog
+	open={!!confirmDispute}
+	danger={confirmDispute === 'takedown'}
+	title={confirmDispute === 'takedown'
+		? t('admin.reports.dispute.confirmHideTitle')
+		: confirmDispute === 'rename_notice'
+			? t('admin.reports.dispute.confirmRenameTitle')
+			: t('admin.reports.dispute.confirmDismissTitle')}
+	message={confirmDispute === 'takedown'
+		? t('admin.reports.dispute.confirmHideMessage')
+		: confirmDispute === 'rename_notice'
+			? t('admin.reports.dispute.confirmRenameMessage', { days: deadlineDaysOrNull(deadlineDays) ?? DISPUTE_DEADLINE_DEFAULT_DAYS })
+			: t('admin.reports.dispute.confirmDismissMessage')}
+	confirmLabel={confirmDispute === 'takedown'
+		? t('admin.reports.dispute.hide')
+		: confirmDispute === 'rename_notice'
+			? t('admin.reports.dispute.rename')
+			: t('admin.reports.dispute.dismiss')}
+	data-testid="admin-dispute-confirm"
+	onconfirm={() => {
+		const action = confirmDispute;
+		confirmDispute = null;
+		if (action) doDisputeAction(action);
+	}}
+	oncancel={() => (confirmDispute = null)}
+/>
+
+<ConfirmDialog
+	open={!!confirmCourse}
+	danger={confirmCourse === 'closed'}
+	title={confirmCourse === 'closed' ? t('admin.reports.course.confirmCloseTitle') : t('admin.reports.course.confirmReopenTitle')}
+	message={confirmCourse === 'closed'
+		? t('admin.reports.course.confirmCloseMessage')
+		: t('admin.reports.course.confirmReopenMessage')}
+	confirmLabel={confirmCourse === 'closed' ? t('admin.reports.course.close') : t('admin.reports.course.reopen')}
+	data-testid="admin-course-confirm"
+	onconfirm={() => {
+		const status = confirmCourse;
+		confirmCourse = null;
+		if (status) doCourseStatus(status);
+	}}
+	oncancel={() => (confirmCourse = null)}
+/>
+
+<ConfirmDialog
 	open={confirmUnhide}
 	title={t('admin.reports.confirmUnhideTitle')}
 	message={t('admin.reports.confirmUnhideMessage')}
@@ -532,8 +1031,7 @@
 	.muted {
 		color: var(--color-text-secondary);
 	}
-	.not-authorized,
-	.empty {
+	.not-authorized {
 		padding: var(--space-xl);
 		text-align: center;
 	}
@@ -729,7 +1227,83 @@
 	}
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: flex-end;
 		gap: 0.5rem;
+	}
+	.dispute-line {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+		margin-top: 0.3rem;
+		font-size: 0.8rem;
+	}
+	.dispute-badge {
+		display: inline-block;
+		padding: 0.1rem 0.45rem;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+	.dispute-club {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.15rem;
+	}
+	.verified {
+		font-size: 1rem;
+		color: var(--color-primary);
+		vertical-align: middle;
+	}
+	.deadline.overdue {
+		color: var(--color-danger-text);
+		font-weight: 600;
+	}
+	.dispute-panel {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		padding: var(--space-sm);
+		border: 1px solid var(--color-primary);
+		border-radius: var(--radius-sm);
+	}
+	.dispute-panel h3,
+	.dispute-panel h4,
+	.dispute-panel p {
+		margin: 0;
+	}
+	.dispute-panel h3 {
+		font-size: 1rem;
+	}
+	.dispute-panel h4 {
+		font-size: 0.85rem;
+	}
+	.deadline-field {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.84rem;
+	}
+	.deadline-field input {
+		width: 5rem;
+		padding: var(--space-xs) var(--space-sm);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		background: var(--color-bg);
+		color: var(--color-text);
+		font: inherit;
+	}
+	.history {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		font-size: 0.82rem;
 	}
 </style>

@@ -58,6 +58,12 @@ const GREAT_CIRCLE_SOURCES: { file: string; arcs: number; reason: string }[] = [
 		reason:
 			'THE canonical. Exported as `haversineMetres`, clamps `a` into [0, 1] before the arc, and is what `run_stats.dart` computes point for point — so it is the one form both platforms already agree on. Every other module in this tree that needs a great-circle distance imports it, and `apps/mobile_android/test/great_circle_sources_test.dart` asserts the same of the Dart tree — a guard on one platform only is how `route_snap` stayed divergent (§ 1524).',
 	},
+	{
+		file: 'src/lib/parks/course_run_fixture.ts',
+		arcs: 1,
+		reason:
+			'Test-fixture generator, never shipped (scripts/gen_park_course_runs.mjs and the parks suites import it). `hopM` lays synthetic runs out in the timing-line frame, on `GATE_EARTH_RADIUS_M` (6371008.8 m), the radius `private.course_end_bearing` and `gate_crossing.ts` derive and cross the lines on, so a run placed on a line sits on the line the database derives. The canonical uses 6371000 m; switching moves every generated coordinate and the boards test block, and would put the fixture in a frame the lines are not in.',
+	},
 ];
 
 function walk(dir: string, out: string[] = []): string[] {

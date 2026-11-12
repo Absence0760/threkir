@@ -8,7 +8,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow;
 import 'package:flutter/foundation.dart'
-    show ValueListenable, defaultTargetPlatform, visibleForTesting;
+    show ValueListenable, defaultTargetPlatform, kDebugMode, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
@@ -23,6 +23,9 @@ import 'package:ui_kit/ui_kit.dart'
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../mascot.dart';
+import '../widgets/grisnir_moments.dart';
+import '../fitness_surface_requests.dart';
 import '../auth_error.dart';
 import '../audio_cues.dart';
 import '../backend_timeout.dart';
@@ -56,6 +59,7 @@ import '../preferences.dart';
 import '../privacy.dart';
 import '../off_route_alert.dart';
 import '../orphaned_recording.dart';
+import '../line_calibration.dart' show LineCalibrationCapture;
 import '../race_controller.dart';
 import '../race_finish.dart';
 import '../widgets/race_banner.dart';
@@ -161,6 +165,17 @@ double idleStartButtonSize(double height) {
   if (!height.isFinite) return 140;
   return (height * 0.28).clamp(96.0, 140.0);
 }
+
+/// Height of the fade above the idle Start, where the cards scrolling behind
+/// it dissolve into the page instead of ending on a hard edge.
+const double kIdleStartFadeHeight = 32;
+
+/// Height of the area the idle Start floats in over the scrolling cards, for
+/// a Start circle [buttonSize] across above a docked bar [dockInset] tall.
+/// The scroll is padded by at least this much so its last card can scroll
+/// wholly clear of Start.
+double idleStartAreaHeight(double buttonSize, double dockInset) =>
+    kIdleStartFadeHeight + buttonSize + 16 + dockInset;
 
 /// Main run recording screen with GPS tracking, live stats, sync, audio cues,
 /// auto-pause, countdown, and optional route following.
@@ -856,6 +871,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     runStopRequests.addListener(_onDockedStopRequest);
     runSummaryDismissRequests.addListener(_onSummaryDismissRequest);
     widget.raceController?.addListener(_onRaceChange);
+    widget.raceController?.onStartLineCrossed = _onRaceStartCrossed;
     _activityType =
         ActivityType.fromName(widget.preferences.defaultActivityType);
     _selectedRoute = widget.initialRoute;
@@ -1003,6 +1019,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final rc = widget.raceController;
     if (rc == null || !mounted || _state != _ScreenState.recording) return;
     if (!_stopRequested) _attachToRunningRace();
+    // A finish the detector found replaying fixes at GO, or when the course
+    // arrived, rather than on a live fix.
+    final replayed = rc.takePendingFinish();
+    if (replayed != null) unawaited(_onRaceAutoFinish(replayed));
     if (rc.raceEnded && !_raceEndedShown) {
       _raceEndedShown = true;
       _showTopBanner(_l10n.runRaceEnded, duration: const Duration(seconds: 8));
@@ -1056,17 +1076,92 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// The runner reached the finish: stop the recorder, which submits the
-  /// auto result through [RaceController.submitResult].
+  /// The runner reached the finish. A finish-line crossing files the result
+  /// at once and holds the recording paused for [kRaceUndoWindow] behind
+  /// "Not finished? Resume" (#1307 m11), then stops; any other automatic
+  /// finish stops the recorder, which files it through
+  /// [RaceController.submitResult].
   Future<void> _onRaceAutoFinish(RaceFinish finish) async {
-    if (!mounted || _stopRequested) return;
-    final gun = widget.raceController?.gunTimeTo(finish.at);
+    if (!mounted || _stopRequested || _raceUndoOpen) return;
+    final rc = widget.raceController;
+    final gun = rc?.gunTimeTo(finish.at);
     final message = gun == null
         ? _l10n.runRaceFinishRecorded
         : _l10n.runRaceFinishedAuto(_formatDuration(Duration(seconds: gun)));
+    // L4: each cue on its own; neither may cost the runner the finish.
+    try {
+      _runHaptic(RunHapticPattern.workoutComplete);
+    } catch (e) {
+      debugPrint('race finish haptic failed: $e');
+    }
+    try {
+      if (widget.preferences.audioCues) {
+        _ttsCue('raceFinishCue',
+            () => widget.audioCues.announceGuidedCue(message));
+      }
+    } catch (e) {
+      debugPrint('race finish cue failed: $e');
+    }
     _showTopBanner(message, duration: const Duration(seconds: 6));
     _announceA11yState(message);
-    await _stop();
+    if (rc == null || finish.detection != RaceFinishDetection.gate) {
+      await _stop();
+      return;
+    }
+    if (!_manualPaused) _toggleManualPause();
+    unawaited(rc.fileOutcomeNow(
+      durationS: _elapsed.inSeconds,
+      distanceM: _distanceMetres,
+    ));
+    setState(() => _raceUndoOpen = true);
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = Timer(kRaceUndoWindow, () {
+      if (!mounted || !_raceUndoOpen) return;
+      setState(() => _raceUndoOpen = false);
+      unawaited(_stop());
+    });
+  }
+
+  bool _raceUndoOpen = false;
+  Timer? _raceUndoTimer;
+
+  /// "Not finished? Resume": void the line finish and record on. The rest of
+  /// this race finishes by hand (Stop, then Finish race).
+  Future<void> _onRaceUndo() async {
+    final rc = widget.raceController;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    if (!_raceUndoOpen || rc == null) return;
+    setState(() => _raceUndoOpen = false);
+    if (_manualPaused) _toggleManualPause();
+    _showTopBanner(_l10n.runRaceFinishUndone,
+        duration: const Duration(seconds: 6));
+    _announceA11yState(_l10n.runRaceFinishUndone);
+    await rc.voidAutoFinish();
+  }
+
+  /// The start line committed this runner's start (#1307 cues). Each cue is
+  /// its own L4 effect.
+  void _onRaceStartCrossed() {
+    if (!mounted || _state != _ScreenState.recording) return;
+    try {
+      _runHaptic(RunHapticPattern.stepWork);
+    } catch (e) {
+      debugPrint('race start haptic failed: $e');
+    }
+    try {
+      if (widget.preferences.audioCues) {
+        _ttsCue('raceStartCue',
+            () => widget.audioCues.announceGuidedCue(_l10n.runRaceStartCrossed));
+      }
+    } catch (e) {
+      debugPrint('race start cue failed: $e');
+    }
+    try {
+      _announceA11yState(_l10n.runRaceStartCrossed);
+    } catch (e) {
+      debugPrint('race start announce failed: $e');
+    }
   }
 
   /// A Log-run action over the finished summary: the same exit as its Done.
@@ -2528,6 +2623,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // is joined at GO, by [_onRaceChange].
     _raceEndedShown = false;
     _raceLateShown = false;
+    final startedAt = _runStartedAtWall;
+    if (startedAt != null) {
+      widget.raceController?.beginRecording(startedAt: startedAt);
+    }
     _attachToRunningRace();
   }
 
@@ -3092,7 +3191,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         final rc = widget.raceController;
         final pos = snapshot.currentPosition;
         if (rc != null &&
-            rc.isHosting &&
+            rc.followsRecording &&
             pos != null &&
             fixedAt != null &&
             fixedAt != _raceFixOfferedAt &&
@@ -3111,6 +3210,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         }
       } catch (e) {
         debugPrint('raceController.offerFix failed: $e');
+      }
+
+      // Debug builds only: the line-calibration capture (#1304 § 6) takes the
+      // fixes by the same rule as the race detector above, race or not.
+      try {
+        if (kDebugMode) {
+          LineCalibrationCapture.instance.offer(snapshot,
+              fresh: positionFresh, paused: _manualPaused || _stopRequested);
+        }
+      } catch (e) {
+        debugPrint('line calibration capture failed: $e');
       }
 
       // L4 — Live spectator broadcast (separate from race-mode pings).
@@ -3845,6 +3955,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   void _toggleManualPause() {
     if (_recorder == null) return;
+    // Resuming a run held open after a line finish IS "Not finished?
+    // Resume", from whichever control: a plain resume would leave the
+    // finish filed and the window's timer about to stop the run.
+    if (_manualPaused && _raceUndoOpen) {
+      unawaited(_onRaceUndo());
+      return;
+    }
     if (_manualPaused) {
       _recorder!.resume();
       setState(() {
@@ -3878,6 +3995,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final recorder = _recorder;
     if (_stopRequested || recorder == null) return;
     _stopRequested = true;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    if (_raceUndoOpen && mounted) setState(() => _raceUndoOpen = false);
     final raw = await recorder.stop();
     unawaited(_persistStride(recorder));
     _snapshotSub?.cancel();
@@ -3972,6 +4092,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // No GPS ever measured this run, so it stays out of the VDOT ceiling the
     // same way the pedometer and belt sources do.
     if (timeOnly) metadata[cm.MetadataKeys.indoor] = true;
+
+    // The line finish the runner undid, so a re-time from this track does
+    // not find it again (decisions § 2450).
+    final undoneAt = widget.raceController?.undoneFinishAt;
+    if (undoneAt != null) {
+      metadata[cm.MetadataKeys.raceUndoneFinishAt] = undoneAt.toIso8601String();
+    }
 
     // Structured-workout review trail. Three keys are registered in
     // [docs/backend/metadata.md]: plan_workout_id, workout_step_results,
@@ -4348,6 +4475,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _stopRequested = false;
     _runId = null;
     _runStartedAtWall = null;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    _raceUndoOpen = false;
+    // A discarded recording files no race result and times nothing more.
+    widget.raceController?.detachRecorder();
     // Clear the share intent + indicator so the next run starts private —
     // a sticky flag would silently re-broadcast a fresh run the runner
     // never chose to share.
@@ -4453,6 +4585,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     runStopRequests.removeListener(_onDockedStopRequest);
     runSummaryDismissRequests.removeListener(_onSummaryDismissRequest);
     widget.raceController?.removeListener(_onRaceChange);
+    if (widget.raceController?.onStartLineCrossed == _onRaceStartCrossed) {
+      widget.raceController?.onStartLineCrossed = null;
+    }
+    _raceUndoTimer?.cancel();
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);
@@ -4943,17 +5079,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final lastRun = _mostRecentRun();
-    // Start is the L0/L1 entry point, so it is pinned below the scroll
-    // rather than ending it: every card above (race, route, event, plan
-    // workout, last run) is auxiliary, and when they stacked up Start was
-    // pushed under the bottom bar and had to be scrolled to.
+    // Start is the L0/L1 entry point, so it floats over the scroll rather
+    // than ending it: every card above (race, route, event, plan workout,
+    // last run) is auxiliary, and when they stacked up Start was pushed
+    // under the bottom bar and had to be scrolled to. The cards run on
+    // behind it under a fade, so the page reads as continuing rather than
+    // cut off, and the scroll is padded so the last card clears Start.
+    final dockInset = DockedFabInset.of(context);
     return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) => Column(
+      child: LayoutBuilder(builder: (context, constraints) {
+        final startSize = idleStartButtonSize(constraints.maxHeight);
+        final startArea = idleStartAreaHeight(startSize, dockInset);
+        final page = theme.scaffoldBackgroundColor;
+        return Stack(
           children: [
-            Expanded(
+            Positioned.fill(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                key: const ValueKey('run-idle-scroll'),
+                padding: EdgeInsets.fromLTRB(24, 16, 24, 8 + startArea),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -5056,12 +5199,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                                   ),
                                 );
                               } else {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => PlansScreen(
-                                      training: widget.training,
-                                      apiClient: widget.apiClient,
-                                    ),
+                                await openFitnessSurface(
+                                  context,
+                                  FitnessTab.plans,
+                                  fallback: () => PlansScreen(
+                                    training: widget.training,
+                                    apiClient: widget.apiClient,
                                   ),
                                 );
                               }
@@ -5171,18 +5314,48 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.only(
-                  top: 8, bottom: 16 + DockedFabInset.of(context)),
-              child: _buildIdleStartButton(
-                theme,
-                l10n,
-                idleStartButtonSize(constraints.maxHeight),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: startArea,
+              child: Stack(
+                children: [
+                  // Only the circle takes taps; a tap on the fade or
+                  // beside Start reaches the card underneath it.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      key: const ValueKey('run-idle-start-scrim'),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              page.withValues(alpha: 0),
+                              page.withValues(alpha: 0.7),
+                              page,
+                            ],
+                            stops: const [0, 0.5, 1],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 16 + dockInset,
+                    child: Center(
+                      child: _buildIdleStartButton(theme, l10n, startSize),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -5517,7 +5690,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         // treadmill live-mode toggle compose in one Column so their real
         // heights stack — fixed per-widget offsets overlapped the moment a
         // card grew (a11y text scaling, long labels).
-        if (_phasePlan.isNotEmpty || _cutoffLegs.isNotEmpty || _treadmillPaired)
+        if (_phasePlan.isNotEmpty ||
+            _cutoffLegs.isNotEmpty ||
+            _treadmillPaired ||
+            widget.raceController != null)
           Positioned(
             left: 12,
             right: 12,
@@ -5526,6 +5702,58 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // A line finish, held open: "Not finished? Resume" (#1307).
+                if (_raceUndoOpen)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Card(
+                      key: const ValueKey('race-undo'),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l10n.runRaceFinishRecorded,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              key: const ValueKey('race-undo-resume'),
+                              onPressed: () => unawaited(_onRaceUndo()),
+                              child: Text(l10n.runRaceUndoResume),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                // How far the start line is, until the start commits.
+                if (widget.raceController != null)
+                  ValueListenableBuilder<double?>(
+                    valueListenable: widget.raceController!.distanceToStartM,
+                    builder: (context, toStart, _) {
+                      if (toStart == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Center(
+                          child: Card(
+                            key: const ValueKey('race-to-start'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              child: Text(
+                                l10n.runRaceToStartLine(
+                                    UnitFormat.distance(toStart, _unit)),
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 // Current phase + intent (+ the phase's target pace when a
                 // goal time was set).
                 if (_phasePlan.isNotEmpty)
@@ -5729,6 +5957,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final track = cm.trackLine(_finishedRun?.track ?? <cm.Waypoint>[]);
     // Over every stored fix, as the live tile, run detail and web fold it.
     final movingTime = movingTimeOf(_finishedRun?.track ?? <cm.Waypoint>[]);
+    final finished = _finishedRun;
+    // Grisnir only on a clean finish: never beside a failed sync or a DNF.
+    final milestone = finished != null &&
+            _syncError == null &&
+            finished.metadata?[cm.MetadataKeys.isDnf] != true &&
+            mascotShown()
+        ? localMilestone(finished, widget.runStore.runs)
+        : null;
 
     return Column(
       children: [
@@ -5755,6 +5991,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             synced: _synced,
             syncError: _syncError,
             onDone: _discard,
+            milestone: milestone,
           ),
         ),
       ],
@@ -5780,7 +6017,12 @@ class FinishedSummary extends StatelessWidget {
     required this.synced,
     required this.syncError,
     required this.onDone,
+    this.milestone,
   });
+
+  /// Grisnir's milestone for this run, or null; the caller passes null on a
+  /// failed sync, a DNF and when the runner hides him.
+  final MilestoneKind? milestone;
 
   final String distanceValue;
   final String distanceUnit;
@@ -5815,6 +6057,11 @@ class FinishedSummary extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(l10n.runComplete, style: theme.textTheme.headlineSmall),
+                // A sync that fails after the summary opened takes him away.
+                if (milestone != null && syncError == null) ...[
+                  const SizedBox(height: 12),
+                  GrisnirMilestone(kind: milestone!),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [

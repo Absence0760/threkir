@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,22 +17,28 @@ import '../training_service.dart';
 import '../widgets/error_state.dart';
 import '../widgets/help_button.dart';
 import '../widgets/provenance_badge.dart';
+import '../widgets/run_any_time_section.dart';
 import '../widgets/top_banner.dart';
-import '../widgets/ultrasignup_link.dart';
 import 'plan_new_screen.dart';
 import 'race_detail_screen.dart';
 
-/// Race calendar discovery (race_calendar.md). Mirrors the web `/races` page:
-/// a name search + distance-band chips + "near a place" geocode over the
-/// `search_race_listings` RPC, with a race-page link per result, a name that
-/// opens the race detail screen, and an
-/// "Import my result" affordance from race day on (manual paste always; a provider pull when
-/// that listing's provider has a leg and its key is configured). A "Add a
-/// race" action submits a crowd listing.
+/// Races & courses (issue #1352): the race calendar under **Upcoming races**,
+/// and the park courses that can be run on any day under **Run any time**.
+/// Mirrors the web `/races` page.
 ///
-/// Reached from the run surface's labelled peer strip (Train → Runs →
-/// **Races**, decisions § 488) and, as a secondary deep link, from the
-/// race-provider tiles under Settings → Integrations. NOT a bottom-nav
+/// Upcoming races is the race calendar discovery of race_calendar.md: a name
+/// search + distance-band chips + "near a place" geocode over the
+/// `search_race_listings` RPC, with a race-page link per result, a name that
+/// opens the race detail screen, and an "Import my result" affordance from
+/// race day on (manual paste always; a provider pull when that listing's
+/// provider has a leg and its key is configured). An "Add a race" action
+/// submits a crowd listing.
+///
+/// Run any time is [RunAnyTimeSection], which loads and fails on its own; it
+/// needs a client, so a mount without one shows the races alone.
+///
+/// A tab of the Fitness hub (decisions § 2437), and pushed as itself only
+/// where no shell is listening (`openFitnessSurface`). NOT a bottom-nav
 /// destination (the 5-slot ceiling holds, decisions §63).
 ///
 /// Nothing gates reaching it: the search is a public RPC, and
@@ -42,6 +49,10 @@ class RacesScreen extends StatefulWidget {
   final RaceService service;
   final String? mapTilerKey;
 
+  /// The client the Run any time section reads park courses through. Null
+  /// leaves the section out.
+  final ApiClient? api;
+
   /// Test-only DI seam for the plan wizard the "train for this race" action
   /// opens; production callsites let the screen build its own.
   final TrainingService? training;
@@ -50,6 +61,7 @@ class RacesScreen extends StatefulWidget {
     super.key,
     required this.service,
     this.mapTilerKey,
+    this.api,
     this.training,
   });
 
@@ -199,9 +211,11 @@ class _RacesScreenState extends State<RacesScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final api = widget.api;
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.racesTitle),
+        title: Text(l.runSurfaceTabRacesCourses),
         actions: const [HelpButton(routes: ['/races'])],
       ),
       floatingActionButtonLocation: pageFabLocation(context),
@@ -210,52 +224,73 @@ class _RacesScreenState extends State<RacesScreen> {
         icon: const Icon(Icons.add),
         label: Text(l.racesSubmitRace),
       ),
-      body: Column(
-        children: [
-          // One row: the list is what the screen is for, so only the search
-          // stays out here and every other filter waits behind Filters.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtl,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: l.racesSearchPlaceholder,
-                      isDense: true,
-                    ),
-                    onChanged: (v) {
-                      _query = v;
-                      _schedule();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  key: const Key('races-filters-button'),
-                  onPressed: _openFilters,
-                  icon: ExcludeSemantics(
-                    child: Badge(
-                      isLabelVisible: _activeCount > 0,
-                      label: Text('$_activeCount'),
-                      child: const Icon(Icons.tune),
-                    ),
-                  ),
-                  label: Semantics(
-                    label: _activeCount > 0
-                        ? l.racesFiltersCount(_activeCount)
-                        : l.racesFilters,
-                    excludeSemantics: true,
-                    child: Text(l.racesFilters),
-                  ),
-                ),
-              ],
+      // One scroll for both sections: Upcoming races first, as on web, then
+      // Run any time below the results.
+      body: CustomScrollView(
+        key: const Key('races-scroll'),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Semantics(
+                header: true,
+                child: Text(l.racesSectionUpcoming,
+                    style: theme.textTheme.titleMedium),
+              ),
             ),
           ),
-          if (_activeCount > 0) _buildActiveFilters(l),
-          Expanded(child: _buildResults(l)),
+          // One row: the list is what the section is for, so only the search
+          // stays out here and every other filter waits behind Filters.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchCtl,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        hintText: l.racesSearchPlaceholder,
+                        isDense: true,
+                      ),
+                      onChanged: (v) {
+                        _query = v;
+                        _schedule();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    key: const Key('races-filters-button'),
+                    onPressed: _openFilters,
+                    icon: ExcludeSemantics(
+                      child: Badge(
+                        isLabelVisible: _activeCount > 0,
+                        label: Text('$_activeCount'),
+                        child: const Icon(Icons.tune),
+                      ),
+                    ),
+                    label: Semantics(
+                      label: _activeCount > 0
+                          ? l.racesFiltersCount(_activeCount)
+                          : l.racesFilters,
+                      excludeSemantics: true,
+                      child: Text(l.racesFilters),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_activeCount > 0)
+            SliverToBoxAdapter(child: _buildActiveFilters(l)),
+          _buildResults(l),
+          if (api != null)
+            SliverToBoxAdapter(child: RunAnyTimeSection(api: api)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: fabScrollClearance(context)),
+          ),
         ],
       ),
     );
@@ -419,19 +454,28 @@ class _RacesScreenState extends State<RacesScreen> {
 
   Widget _buildResults(AppLocalizations l) {
     if (_loading) {
-      return ListSkeleton(label: l.commonLoading, hasLeading: false);
-    }
-    if (_error) {
-      return ErrorState(message: l.racesSearchFailed, onRetry: _run);
-    }
-    if (_results.isEmpty) {
-      return EmptyState(
-        icon: Icons.flag_outlined,
-        title: _recent ? l.racesEmptyRecent(recentWindowDays) : l.racesEmpty,
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        sliver: SliverToBoxAdapter(
+          child: ListSkeleton.section(
+              label: l.commonLoading, rows: 3, hasLeading: false),
+        ),
       );
     }
-    return ListView.builder(
-      padding: EdgeInsets.only(bottom: fabScrollClearance(context)),
+    if (_error) {
+      return SliverToBoxAdapter(
+        child: ErrorState(message: l.racesSearchFailed, onRetry: _run),
+      );
+    }
+    if (_results.isEmpty) {
+      return SliverToBoxAdapter(
+        child: EmptyState(
+          icon: Icons.flag_outlined,
+          title: _recent ? l.racesEmptyRecent(recentWindowDays) : l.racesEmpty,
+        ),
+      );
+    }
+    return SliverList.builder(
       itemCount: _results.length,
       itemBuilder: (context, i) => _RaceCard(
         race: _results[i],
@@ -777,7 +821,7 @@ class _RaceImportFormState extends State<_RaceImportForm> {
   final _place = TextEditingController();
   bool _busy = false;
 
-  /// Null for a listing whose provider has no import leg at all (parkrun,
+  /// Null for a listing whose provider has no import leg at all (ultrasignup,
   /// manual, raceresult) — manual paste still applies to every one of them.
   late final RaceImportProvider? _provider =
       raceImportProviderFor(widget.race.provider);
@@ -787,24 +831,10 @@ class _RaceImportFormState extends State<_RaceImportForm> {
   /// on it — paste is offered throughout.
   bool? _available;
 
-  /// Who an UltraSignup import is for: the person the runner picked in
-  /// Settings (decisions § 1841). Read only for a listing whose leg is scoped
-  /// that way, and shared with the finder this sheet can open, so a link made
-  /// from here is the one the import sends.
-  final _person = UltraSignUpLinkModel();
-
   @override
   void initState() {
     super.initState();
     _probe();
-    if (_provider?.scope == RaceImportScope.linkedPerson) {
-      _person.addListener(_onPerson);
-      _person.load(widget.service);
-    }
-  }
-
-  void _onPerson() {
-    if (mounted) setState(() {});
   }
 
   /// A probe is a network call (L4): a failure degrades this listing's
@@ -823,8 +853,6 @@ class _RaceImportFormState extends State<_RaceImportForm> {
 
   @override
   void dispose() {
-    _person.removeListener(_onPerson);
-    _person.dispose();
     _bib.dispose();
     _chip.dispose();
     _gun.dispose();
@@ -835,21 +863,12 @@ class _RaceImportFormState extends State<_RaceImportForm> {
   bool get _canPaste =>
       !_busy && (_chip.text.trim().isNotEmpty || _gun.text.trim().isNotEmpty);
 
-  /// Whether this runner's pull is scoped. Every leg refuses without it
-  /// client-side, mirroring the Edge Function's own pre-fetch gate (issue
-  /// #360): a bib typed per race, or the person picked once in Settings. The
-  /// person-scoped leg deliberately has no fallback onto the listing's
-  /// `provider_race_id`, which holds a RACE id.
-  bool get _scoped => switch (_provider?.scope) {
-        RaceImportScope.bib => _blank(_bib.text) != null,
-        RaceImportScope.linkedPerson => _person.link != null,
-        null => false,
-      };
+  /// Whether this runner's pull is scoped by their bib. Every leg refuses
+  /// without one client-side, mirroring the Edge Function's own pre-fetch gate
+  /// (issue #360).
+  bool get _scoped => _provider != null && _blank(_bib.text) != null;
 
   bool get _canProviderImport => !_busy && _available == true && _scoped;
-
-  Future<void> _findPerson() =>
-      showUltraSignUpLink(context, service: widget.service, model: _person);
 
   Future<void> _providerImport() async {
     final spec = _provider;
@@ -860,9 +879,7 @@ class _RaceImportFormState extends State<_RaceImportForm> {
       final outcome = await widget.service.importRaceResult(
         provider: spec.provider,
         listingId: widget.race.id,
-        bib: spec.scope == RaceImportScope.bib ? _blank(_bib.text) : null,
-        ultraSignUpPerson:
-            spec.scope == RaceImportScope.linkedPerson ? _person.link : null,
+        bib: _blank(_bib.text),
         matchRunId: widget.matchRunId,
       );
       if (!mounted) return;
@@ -876,15 +893,6 @@ class _RaceImportFormState extends State<_RaceImportForm> {
       if (!mounted) return;
       setState(() => _busy = false);
       showTopBanner(context, l.integrationsImportTruncated);
-    } on UltraSignUpNotLinked {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      _person.set(null);
-      showTopBanner(context, l.racesUltraSignUpNotLinked);
-    } on UltraSignUpPersonNotFound {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      showTopBanner(context, l.racesUltraSignUpPersonNotFound);
     } catch (e) {
       if (!mounted) return;
       // The service throws the catalogue's own const instance, so identity is
@@ -932,36 +940,6 @@ class _RaceImportFormState extends State<_RaceImportForm> {
 
   String? _blank(String s) => s.trim().isEmpty ? null : s.trim();
 
-  /// Nothing until the stored link has been read, so the finder is never
-  /// offered to a runner who is already linked; then either who the import is
-  /// for, or the way to say so.
-  List<Widget> _personScope(AppLocalizations l, RaceImportProvider spec) {
-    final small = Theme.of(context).textTheme.bodySmall;
-    if (!_person.loaded) return const [];
-    final link = _person.link;
-    if (link != null) {
-      return [
-        Text(
-          l.racesUltraSignUpImportingAs(
-              '${link.firstName} ${link.lastName}', link.personId),
-          key: Key('${spec.provider}-linked-person'),
-        ),
-        Text(l.racesUltraSignUpLinkedHint, style: small),
-      ];
-    }
-    return [
-      Text(l.racesUltraSignUpNotLinked,
-          key: Key('${spec.provider}-not-linked'), style: small),
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: TextButton(
-          onPressed: _busy ? null : _findPerson,
-          child: Text(l.integrationsUltrasignupFindLabel),
-        ),
-      ),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -974,16 +952,8 @@ class _RaceImportFormState extends State<_RaceImportForm> {
           children: [
             if (_provider case final spec?) ...[
               if (_available == true) ...[
-                // Exhaustive on purpose: a scope added to the catalogue must
-                // fail to compile here rather than inherit a hint about a
-                // field it does not have.
-                ...switch (spec.scope) {
-                  RaceImportScope.bib => [
-                      Text(l.racesRunSignUpBibHint,
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  RaceImportScope.linkedPerson => _personScope(l, spec),
-                },
+                Text(l.racesRunSignUpBibHint,
+                    style: Theme.of(context).textTheme.bodySmall),
                 FilledButton(
                   onPressed: _canProviderImport ? _providerImport : null,
                   child: Text(l.racesImportResult),

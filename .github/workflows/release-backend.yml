@@ -30,7 +30,12 @@ name: Release Backend
 # set, compared by digest, so it needs the CLI, SUPABASE_ACCESS_TOKEN and
 # SUPABASE_PROJECT_REF), cron URL entries in Vault (invoked once when armed,
 # 2xx required), and the one-off tasks in apps/backend/ops/tasks/. An entry
-# absent from the file is left untouched.
+# absent from the file is left untouched. Last, it publishes the official
+# content catalogue (scripts/official/, issue #1190, decisions § 2446) through
+# private.load_official_catalogue: library plans, gym routines and challenge
+# boards as the official club, reported created / updated / unchanged /
+# retired. Its race courses stay `gated` until the official_race_courses flag
+# is turned on in prod_config.json.
 #
 # There is no "internal track" for a backend — once migrations and
 # functions deploy they're live for every client. Roll forward with a

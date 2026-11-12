@@ -36,7 +36,7 @@ export const guide: Guide = {
 					type: 'steps',
 					items: [
 						'On the web open [[route:/settings/privacy|Privacy & sharing]] in Settings and pick a **Default Visibility for New Runs**. In the phone app, it is **Default run privacy** under **Preferences** in the **You** tab.',
-						'To change a single run later, open it and use **Make public** or **Make private**.',
+						'To change a single run later, open it and tap the **Private** or **Public** chip under its title. Making a run public asks first, and shows what your privacy zones will hide.',
 					],
 				},
 				{

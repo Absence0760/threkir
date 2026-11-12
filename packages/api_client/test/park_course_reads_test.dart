@@ -23,6 +23,11 @@ void main() {
     expect(await api.fetchRecapParkCourses(DateTime(2027), DateTime(2028)), isEmpty);
   });
 
+  test('fetchParkCourseBySlugs throws on a failed read', () async {
+    final api = ApiClient.withClient(signedOut);
+    await expectLater(api.fetchParkCourseBySlugs('pocahontas', 'beaver-lake-trail'), throwsA(anything));
+  });
+
   test('fetchRunParkCourseTimes throws on a failed read', () async {
     final api = ApiClient.withClient(signedOut);
     await expectLater(api.fetchRunParkCourseTimes('run-1'), throwsA(anything));

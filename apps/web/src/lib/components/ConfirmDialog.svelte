@@ -89,64 +89,68 @@
 	onclose={() => {
 		if (!busy) oncancel();
 	}}
-	bodyClass="confirm-body"
 	data-testid={testId}
 >
-	<p>{message}</p>
-	{#if requireText}
-		<label class="challenge">
-			<span class="challenge-label">
-				{requireTextLabel ?? `Type "${requireText}" to confirm`}
-			</span>
-			<input
-				type="text"
-				class="challenge-input"
-				bind:value={challenge}
-				autocomplete="off"
-				autocapitalize="off"
-				spellcheck="false"
-				data-testid="confirm-challenge-input"
-			/>
-		</label>
-	{/if}
-	<div class="actions">
-		<button type="button" class="btn btn-secondary" onclick={oncancel} disabled={busy}>
-			{cancelLabel ?? m('common.cancel')}
-		</button>
-		{#if altLabel && onalt}
+	<div class="confirm-content">
+		<p>{message}</p>
+		{#if requireText}
+			<label class="challenge">
+				<span class="challenge-label">
+					{requireTextLabel ?? `Type "${requireText}" to confirm`}
+				</span>
+				<input
+					type="text"
+					class="challenge-input"
+					bind:value={challenge}
+					autocomplete="off"
+					autocapitalize="off"
+					spellcheck="false"
+					data-testid="confirm-challenge-input"
+				/>
+			</label>
+		{/if}
+		<div class="actions">
+			<button type="button" class="btn btn-secondary" onclick={oncancel} disabled={busy}>
+				{cancelLabel ?? m('common.cancel')}
+			</button>
+			{#if altLabel && onalt}
+				<button
+					type="button"
+					class="btn btn-outline"
+					disabled={!challengeMet || busy}
+					aria-busy={busy}
+					onclick={() => run(onalt)}
+				>
+					{altLabel}
+				</button>
+			{/if}
 			<button
 				type="button"
-				class="btn btn-outline"
+				class="btn"
+				class:btn-primary={!danger}
+				class:btn-danger={danger}
 				disabled={!challengeMet || busy}
 				aria-busy={busy}
-				onclick={() => run(onalt)}
+				onclick={handleConfirm}
 			>
-				{altLabel}
+				{#if busy}<span class="confirm-spinner" aria-hidden="true"></span>{/if}
+				{confirmLabel ?? m('common.confirm')}
 			</button>
-		{/if}
-		<button
-			type="button"
-			class="btn"
-			class:btn-primary={!danger}
-			class:btn-danger={danger}
-			disabled={!challengeMet || busy}
-			aria-busy={busy}
-			onclick={handleConfirm}
-		>
-			{#if busy}<span class="confirm-spinner" aria-hidden="true"></span>{/if}
-			{confirmLabel ?? m('common.confirm')}
-		</button>
+		</div>
 	</div>
 </Modal>
 
 <style>
-	/* Canonical .modal-* classes live in app.css. */
-	.confirm-body {
+	/* Canonical .modal-* classes live in app.css. The spacing lives on this
+	   component's own wrapper: a class handed to Modal's body is outside this
+	   style block's scope, so Svelte dropped the rule and the actions sat flush
+	   under the message in every confirm. */
+	.confirm-content {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
-	.confirm-body p {
+	.confirm-content p {
 		font-size: 0.88rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;

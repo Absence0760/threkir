@@ -16,6 +16,8 @@
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { planEditHandoff } from '#lib/coach/plan_edit_link.ts';
 	import CoachPlanEditCard from '#lib/components/CoachPlanEditCard.svelte';
+	import CoachShareDialog from '#lib/components/CoachShareDialog.svelte';
+	import { fetchCoachShareEnabled, fetchMyCoaches, type CoachAthleteLink } from '#lib/core/data.ts';
 	import { currentSeason, pickCurrentPlan } from '#lib/training/plan_current.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
@@ -336,10 +338,25 @@
 
 	let cachedUserId = $state<string | null>(null);
 
+	// Share with coach (issue #1215 Phase 3): offered on an answer only while
+	// the server gate is open and the runner has an active coach. Both reads
+	// fail closed to "not offered"; neither blocks the chat.
+	let shareCoaches = $state<CoachAthleteLink[]>([]);
+	let shareTarget = $state<{ id: string; content: string } | null>(null);
+	async function loadShareCoaches() {
+		try {
+			const [enabled, coaches] = await Promise.all([fetchCoachShareEnabled(), fetchMyCoaches()]);
+			shareCoaches = enabled ? coaches : [];
+		} catch (e) {
+			console.error('[coach] share-with-coach lookup failed', thrownMessage(e));
+		}
+	}
+
 	onMount(async () => {
 		const { data: { session } } = await supabase.auth.getSession();
 		if (!session) return;
 		cachedUserId = session.user.id;
+		void loadShareCoaches();
 		await loadThread(session.user.id);
 		await loadArchives();
 		const [usageRes, proRes] = await Promise.all([
@@ -1238,6 +1255,18 @@
 									>
 										<span class="material-symbols">thumb_down</span>
 									</button>
+									{#if shareCoaches.length > 0}
+										<button
+											type="button"
+											class="bubble-action"
+											title={t('coachShare.action')}
+											aria-label={t('coachShare.action')}
+											data-testid="coach-share-action"
+											onclick={() => (shareTarget = { id: m.id!, content: m.content })}
+										>
+											<span class="material-symbols">forward</span>
+										</button>
+									{/if}
 								{:else}
 									<button
 										type="button"
@@ -1334,6 +1363,16 @@
 			<AiTag />
 		</div>
 	{/snippet}
+
+	{#if shareTarget}
+		<CoachShareDialog
+			open={shareTarget !== null}
+			messageId={shareTarget.id}
+			content={shareTarget.content}
+			coaches={shareCoaches}
+			onclose={() => (shareTarget = null)}
+		/>
+	{/if}
 
 	<ConfirmDialog
 		open={showArchiveConfirm}

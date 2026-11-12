@@ -21,6 +21,7 @@ const ORDER_BY_TABLE: Record<string, string> = {
 	challenge_participants: 'challenge_id,user_id',
 	club_members: 'club_id,user_id',
 	conversation_participants: 'conversation_id,user_id',
+	direct_message_reactions: 'message_id,user_id',
 	event_attendees: 'event_id,user_id,instance_start',
 	event_exceptions: 'event_id,instance_start',
 	event_pricing: 'event_id,instance_start',
@@ -46,7 +47,7 @@ export function orderForTable(table: string): string {
 
 /** Every direct_messages column but read_at (see the sent spec below). */
 export const DIRECT_MESSAGES_SENT_SELECT =
-	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body';
+	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id,is_group';
 
 /// Build the full table-spec list. Pure — only takes the caller's
 /// user id. Mirrors the Go worker's `FetchExportPersonalDataTables`
@@ -78,7 +79,7 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			// `20261004_001` introduced these columns; GDPR Art 15
 			// requires the export to reflect them.
 			select:
-				'id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,external_first_name,external_last_name,created_at,updated_at',
+				'id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,created_at,updated_at',
 		},
 		{ entry: 'run_kudos.json', table: 'run_kudos', filter: uidEq, select: '*' },
 		{
@@ -249,6 +250,10 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		// seen_at is what the recipient chose to share. edited_at and
 		// original_body (the text before an edit, 20271114000210) are the
 		// subject's own words, so they ship on both sides.
+		// Group messages (20271216000003, decisions § 2461) ship on the sent
+		// side only: a group message has no recipient, so the received filter
+		// never matches one, and other members' group messages are their data,
+		// not the subject's (Art 20(1)/(4), owner decision D5).
 		{
 			entry: 'direct_messages_sent.json',
 			table: 'direct_messages',
@@ -261,17 +266,38 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `recipient_id=eq.${uid}`,
 			select: '*',
 		},
+		// direct_message_reactions — the reactions the subject put on
+		// messages (migration 20271213121602). Only their own: the partner's
+		// reactions are the partner's data.
+		{
+			entry: 'direct_message_reactions.json',
+			table: 'direct_message_reactions',
+			filter: uidEq,
+			select: 'message_id,reaction,created_at',
+		},
+		// direct_message_images — the photos the subject sent (migration
+		// 20271213121604). The re-encoded bytes ship under
+		// storage/dm-images/; the paths are left out because the object keys
+		// already carry them.
+		{
+			entry: 'direct_message_images.json',
+			table: 'direct_message_images',
+			filter: `owner_id=eq.${uid}`,
+			select: 'id,message_id,status,width,height,created_at,processed_at',
+		},
 		// conversation_participants — the subject's own view of each
 		// conversation: when they joined, and whether they deleted it for
 		// themselves, muted it, archived it, marked it unread, and where a
 		// message request to or from them stands (migrations 20271105000010,
-		// 20271109000020, 20271115002384). Only their own row: the other
-		// participant's state is theirs.
+		// 20271109000020, 20271115002384), and their group memberships: state,
+		// role, who invited and who removed them, when they were invited and
+		// left, and their read position (20271216000002). Only their own row:
+		// the other participants' state is theirs.
 		{
 			entry: 'conversation_settings.json',
 			table: 'conversation_participants',
 			filter: uidEq,
-			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at',
+			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at,membership_state,role,invited_by,invited_at,left_at,removed_by,last_read_at',
 		},
 		// coach_athletes — coaching relationships as coach + as athlete.
 		// `invite_token` is a redeemable credential; the narrow select
@@ -281,13 +307,13 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'coaching_as_coach.json',
 			table: 'coach_athletes',
 			filter: `coach_id=eq.${uid}`,
-			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at',
+			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at',
 		},
 		{
 			entry: 'coaching_as_athlete.json',
 			table: 'coach_athletes',
 			filter: `athlete_id=eq.${uid}`,
-			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at',
+			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at',
 		},
 		// plan_change_requests — changes to a coach-assigned plan the subject
 		// sent as athlete or decided as coach (issue #1215 Phase 2). The
@@ -363,6 +389,25 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			table: 'club_verification_audit',
 			filter: `actor_id=eq.${uid}`,
 			select: '*',
+		},
+		// organiser_dispute_actions — the naming disputes the subject filed
+		// for a verified club and, as a site admin, the reviews they made
+		// (migration 20271202000003).
+		{
+			entry: 'organiser_dispute_actions.json',
+			table: 'organiser_dispute_actions',
+			filter: `actor_id=eq.${uid}`,
+			select: '*',
+		},
+		// organiser_dispute_notices — the reviewed disputes about content the
+		// subject owns. The reviewer is not theirs to know, so actor_id is
+		// projected away.
+		{
+			entry: 'organiser_dispute_notices.json',
+			table: 'organiser_dispute_actions',
+			// A filing alone is not the owner's to read: only reviewed actions.
+			filter: `target_owner_id=eq.${uid}&action=neq.filed`,
+			select: 'id,target_kind,target_id,organiser_club_id,organiser_club_name,action,deadline_at,note,created_at',
 		},
 		// course_alerts — the course alerts the subject posted as a verified
 		// organiser club's admin (migration 20271124002407). The alert speaks
@@ -676,9 +721,12 @@ export function isSafeStoragePath(p: string): boolean {
 /// under `{userId}/` that the row-driven loops did NOT already ship —
 /// CAS-orphaned matched tracks, legacy tracks whose run row is gone, the
 /// worker's smoothed-position sidecars (no column names them),
-/// worker-generated photo thumbnails. `{userId}/exports/` is skipped in
-/// the runs bucket (prior export artifacts — self-referential). Mirrors
-/// the Go builder's walk filter so both backup paths sweep the same set.
+/// worker-generated photo thumbnails, the re-encoded direct-message photos
+/// the subject sent. `{userId}/exports/` is skipped in the runs bucket
+/// (prior export artifacts — self-referential), and anything in a
+/// subfolder of dm-images (`{userId}/{image}/upload`, the raw client upload
+/// only the worker reads, issue #1216). Mirrors the Go builder's walk
+/// filter so both backup paths sweep the same set.
 export function orphanStorageEntries(input: {
 	bucket: string;
 	keys: string[];
@@ -692,6 +740,7 @@ export function orphanStorageEntries(input: {
 		const rel = key.slice(prefix.length);
 		if (rel === '') continue;
 		if (input.bucket === 'runs' && rel.startsWith('exports/')) continue;
+		if (input.bucket === 'dm-images' && rel.includes('/')) continue;
 		if (input.archived.has(key)) continue;
 		if (!isSafeStoragePath(key)) continue;
 		out.push({ key, entry: `storage/${input.bucket}/${rel}` });

@@ -22,6 +22,11 @@ const ANON_REACHABLE = [
   // A subscribed calendar app sends no header at all; the 96-hex URL token
   // is checked in-handler against a stored SHA-256 (plan-calendar/handler.ts).
   'plan-calendar',
+  // A signed-out land manager or runner reporting a park course; the handler
+  // verifies a JWT when sent and files through a service-role-only RPC.
+  'park-course-report',
+  // pg_cron's daily NPS alerts read, authorised in-handler by the CRON_SECRET bearer.
+  'park-closures-sweep',
   'race-listings-sweep',
   'refresh-tokens',
   'revenuecat-webhook',

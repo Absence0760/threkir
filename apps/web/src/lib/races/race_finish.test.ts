@@ -9,6 +9,7 @@ import {
 	RACE_FINISH_MIN_COVERAGE_WITH_START,
 	RACE_FINISH_ZONE_M,
 	RACE_LATE_START_AFTER_MS,
+	RACE_LAP_SHORT_SHARE,
 	RACE_LATE_START_FAR_M,
 	RACE_START_COMMIT_M,
 	RaceFinishDetector,
@@ -173,6 +174,7 @@ test('the constants match the file', () => {
 	assert.equal(RACE_FINISH_MIN_COVERAGE, num(constants.MIN_COVERAGE));
 	assert.equal(RACE_FINISH_MIN_COVERAGE_WITH_START, num(constants.MIN_COVERAGE_WITH_START));
 	assert.equal(RACE_START_COMMIT_M, num(constants.START_COMMIT_M));
+	assert.equal(RACE_LAP_SHORT_SHARE, num(constants.LAP_SHORT_SHARE));
 	assert.equal(RACE_LATE_START_AFTER_MS, num(constants.LATE_START_AFTER_MS));
 	assert.equal(RACE_LATE_START_FAR_M, num(constants.LATE_START_FAR_M));
 	assert.equal(GATE_EARTH_RADIUS_M, num(constants.GATE_EARTH_RADIUS_M));
@@ -297,6 +299,7 @@ for (const c of section('stopOutcome')) {
 			num(c.coveredM),
 			numOrNull(c, 'courseDistanceM'),
 			t0 + num(c.nowMs),
+			req(c, 'lapsMet') as boolean | null,
 		);
 		const e = c.expect as Obj;
 		assert.equal(o.finisherStatus, e.finisherStatus);
@@ -345,6 +348,7 @@ for (const c of section('lines')) {
 			finishGate: gateOf(req(c, 'finishGate')),
 			mode: c.mode === 'selfTimed' ? 'selfTimed' : 'gun',
 			goAtMs: goS !== null && goAfter === null ? t0 + goS * 1000 : null,
+			lapCount: numOrNull(c, 'lapCount'),
 		});
 		let finalisedAt: number | null = null;
 		let finish: RaceFinish | null = null;
@@ -358,6 +362,8 @@ for (const c of section('lines')) {
 		assert.equal(finalisedAt, req(e, 'finalisesAtFix'));
 		assertFinish(finish, req(e, 'finish'), 'finish');
 		assertStart(d.start, req(e, 'start'), 'start');
+		const fixes = c.fixes as Obj[];
+		assert.equal(d.lapsMet(num(fixes[fixes.length - 1].coveredM)), req(e, 'lapsMet'), 'lapsMet');
 		const candidateAtS = req(e, 'candidateAtS');
 		assert.equal(d.candidate === null ? null : (d.candidate.atMs - t0) / 1000, candidateAtS);
 

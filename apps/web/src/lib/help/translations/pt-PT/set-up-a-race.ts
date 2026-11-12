@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Uma prova é um evento de clube normal com percursos associados. Os proprietários e administradores do clube e os organizadores de eventos podem criar eventos. Gerir a prova no dia (preparar, dar a partida, terminar) exige um proprietário, um administrador ou um **Diretor de prova** — consulte [[guide:race-day-for-hosts|Dia de prova para organizadores]].',
+					text: 'Uma prova é um evento de clube normal com percursos associados. Os proprietários e administradores do clube e os organizadores de eventos podem criar eventos. Gerir a prova no dia (preparar, dar o GO, encerrar) exige um proprietário, um administrador ou um **Diretor de prova** — consulte [[guide:race-day-for-hosts|Dia de prova para organizadores]].',
 				},
 				{
 					type: 'p',
@@ -35,7 +35,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'A linha de meta em que os corredores são cronometrados é o último ponto da rota do percurso. Desenhe a rota de modo a que termine exatamente onde vai ficar o seu pórtico de meta.',
+					text: 'Cada percurso recebe uma linha de partida no primeiro ponto da sua rota e uma linha de chegada no último. Desenhe a rota de modo a que termine exatamente onde vai ficar o seu pórtico de meta, ou mova as linhas depois; consulte [[guide:start-and-finish-lines|Linhas de partida e chegada]].',
+				},
+				{
+					type: 'p',
+					text: 'Em **Como a prova começa**, escolha **GO do organizador**, **GO agendado** ou **Janela de tempo próprio**. Consulte [[guide:choose-how-your-race-starts|Escolher como começa a sua prova]].',
 				},
 			],
 		},
@@ -68,6 +72,10 @@ export const translation: GuideTranslation = {
 					tone: 'caution',
 					text: 'Associar uma rota mostra o respetivo ponto de chegada a todos os que podem ver o evento, mesmo que a rota em si seja privada. Só pode associar rotas que tem permissão para ver.',
 				},
+				{
+					type: 'p',
+					text: 'Um percurso sem rota não recebe linha de partida nem de chegada a partir de uma rota, mas, depois de o evento ser guardado, pode colocar as duas linhas manualmente.',
+				},
 			],
 		},
 		{
@@ -94,6 +102,10 @@ export const translation: GuideTranslation = {
 				{
 					type: 'p',
 					text: 'Mesmo antes de preparar a prova, escolha se os resultados vão diretamente para a classificação. **Aprovar automaticamente os resultados enviados** vem assinalado por predefinição. Desmarque-o se quiser verificar cada resultado primeiro; cada um aparece então como **PENDENTE** até o aprovar.',
+				},
+				{
+					type: 'p',
+					text: 'Numa prova com **GO agendado** ou **Janela de tempo próprio**, defina-o em vez disso no editor do evento, em **Como a prova começa**. Numa prova de tempo próprio, começa desmarcado.',
 				},
 			],
 		},
@@ -129,7 +141,8 @@ export const translation: GuideTranslation = {
 		's1.b0.i3': '66dae8991279459e',
 		's1.b0.i4': '5dc3211a9d733e18',
 		's1.b0.i5': '9b013cf91adfef1d',
-		's1.b1': '4dedb854832fabbb',
+		's1.b1': '3902a06ca97028f7',
+		's1.b2': '424a050508e905e9',
 		's2.heading': 'aa02687fee3b093f',
 		's2.b0': '1e44be9c1cbe6aa5',
 		's2.b1.i0': '59ec7388c26ff153',
@@ -140,6 +153,7 @@ export const translation: GuideTranslation = {
 		's2.b2.i1': '614d8a4a47ff46c0',
 		's2.b2.i2': '6ba6f0661b9e166a',
 		's2.b3': '47950903add3bde2',
+		's2.b4': 'ee2f7ff41e59b09f',
 		's3.heading': '8b4ed9e415e501f7',
 		's3.b0.i0': '7366e2c6f9eafeb3',
 		's3.b0.i1': '76dc29eb1e584662',
@@ -148,6 +162,7 @@ export const translation: GuideTranslation = {
 		's3.b1': 'd636d4186f153c0f',
 		's4.heading': 'ff04ee128bd05b1f',
 		's4.b0': '8887aff2546f155b',
+		's4.b1': '4f8df39f54f69616',
 		's5.heading': '05127d2bcbe7e55c',
 		's5.b0': '632ca275dd6dbc2e',
 		's5.b1': 'd81f08a86fd29b85',

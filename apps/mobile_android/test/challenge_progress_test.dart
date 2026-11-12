@@ -47,9 +47,10 @@ void main() {
     expect(metricFromActivity({'duration_s': 1800}, ChallengeMetric.duration, null), 1800);
   });
 
-  test('metricFromActivity duration past the ten-day bound is 0, as the SQL aggregate skips it', () {
+  test('metricFromActivity duration at or past the ten-day bound is 0, as the SQL aggregate skips it', () {
     expect(metricFromActivity({'duration_s': 44400094}, ChallengeMetric.duration, null), 0);
-    expect(metricFromActivity({'duration_s': 864000}, ChallengeMetric.duration, null), 864000);
+    expect(metricFromActivity({'duration_s': 864000}, ChallengeMetric.duration, null), 0);
+    expect(metricFromActivity({'duration_s': 863999}, ChallengeMetric.duration, null), 863999);
   });
 
   test('metricFromActivity vert reads elevation_gain_m (number or string, missing → 0)', () {

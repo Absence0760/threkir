@@ -1,3 +1,5 @@
+import '../mascot.dart';
+import '../widgets/grisnir_moments.dart';
 import '../activity_type_labels.dart';
 import '../elevation_profile.dart';
 import 'dart:async';
@@ -24,13 +26,14 @@ import '../distance_recompute.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
-import '../l10n/number_format.dart';
 import '../hr_zones.dart';
+import '../route_history.dart';
 import '../run_intensity.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../manual_duration_input.dart';
 import '../metrics.dart';
+import '../widgets/metric_label.dart';
 import '../pace_analysis.dart';
 import '../preferences.dart';
 import '../privacy.dart';
@@ -48,6 +51,7 @@ import '../typed_decimal.dart';
 import 'guided_runs_screen.dart';
 import 'settings_preferences_screen.dart';
 import '../widgets/confirm_destructive.dart';
+import '../widgets/elevation_chart.dart';
 import '../widgets/fundraiser_section.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/live_run_map.dart';
@@ -58,9 +62,11 @@ import '../training_service.dart';
 import '../widgets/run_gear_chips.dart';
 import '../widgets/run_plan_link_prompt.dart';
 import '../widgets/run_race_section.dart';
+import '../widgets/run_park_course_chips.dart';
 import '../widgets/run_photos.dart';
 import '../widgets/run_segment_efforts.dart';
 import '../widgets/audience_sheet.dart';
+import '../audience_level.dart';
 import '../pr_card.dart';
 import '../widgets/run_share_card.dart';
 import '../park_courses.dart' show RunParkCourseTime, pickShareCourse;
@@ -197,7 +203,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   bool _linkingRoute = false;
   bool _sharing = false;
 
-  /// Linked-cursor index — fed by `_ElevationChart.onHoverIdx`,
+  /// Linked-cursor index — fed by `ElevationChart.onHoverIdx`,
   /// consumed by `LiveRunMap.hoverIdx`. Null when the chart pointer
   /// is released. Mirrors the web `chartHoverIdx` on /runs/[id].
   int? _chartHoverIdx;
@@ -297,10 +303,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   /// Whether the run is public, read from the server because the mobile Run
-  /// model does not carry `is_public`. Null until known; "Make private" is
-  /// offered only on a known-public run, as on web. L4: a failed read leaves
-  /// the item hidden and nothing else.
+  /// model does not carry `is_public`. Null until known; the visibility chip
+  /// and the overflow's Make public / Make private wait for a known value, as
+  /// on web. L4: a failed read leaves them hidden and nothing else.
   bool? _isPublic;
+  bool _followersOnly = false;
+  int _shareCount = 0;
+
+  /// Whether audience sharing is live (decisions § 1874). When it is, the
+  /// visibility chip opens the "Who can see this" sheet instead of flipping
+  /// public / private itself.
+  bool _audienceOn = false;
 
   Future<void> _loadVisibility() async {
     final api = widget.apiClient;
@@ -308,11 +321,37 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     try {
       final cols = await api.fetchAudienceColumns(ShareableKind.run, run.id);
       if (!mounted) return;
-      setState(() => _isPublic = cols?.isPublic ?? false);
+      setState(() {
+        _isPublic = cols?.isPublic ?? false;
+        _followersOnly = cols?.followersOnly ?? false;
+      });
     } catch (e) {
       debugPrint('run visibility fetch failed: $e');
+      return;
     }
+    final audienceOn = await api.audienceSharingEnabled();
+    var shareCount = 0;
+    if (audienceOn) {
+      try {
+        shareCount = (await api.fetchShares(ShareableKind.run, run.id)).length;
+      } catch (e) {
+        debugPrint('run shares fetch failed: $e');
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _audienceOn = audienceOn;
+      _shareCount = shareCount;
+    });
   }
+
+  AudienceLevel? get _visibility => _isPublic == null
+      ? null
+      : audienceOf(
+          isPublic: _isPublic,
+          followersOnly: _followersOnly,
+          shareCount: _shareCount,
+        );
 
   /// The personal records this run set, for the PR card. L4: a failed read
   /// leaves the PR card unoffered and nothing else.
@@ -333,8 +372,38 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (!mounted) return;
       setState(() => _runRecords = entries);
       if (widget.openPrCard && entries.isNotEmpty) unawaited(_sharePrCard());
+      unawaited(_loadMilestone(api, entries));
     } catch (e) {
       debugPrint('run personal records fetch failed: $e');
+    }
+  }
+
+  /// The one milestone this run earned, for Grisnir's hop above the stats.
+  MilestoneKind? _milestone;
+
+  /// L4: the milestone is decoration; a failed badge read shows none. The
+  /// run counts come from the local store, which holds every run the phone
+  /// has synced.
+  Future<void> _loadMilestone(ApiClient api, List<PrCardEntry> entries) async {
+    try {
+      final runId = run.id;
+      final badges = await api.fetchMyBadges();
+      final runs = widget.runStore.runs;
+      var longest = 0.0;
+      for (final r in runs) {
+        if (r.distanceMetres > longest) longest = r.distanceMetres;
+      }
+      final kind = pickMilestone(
+        totalRuns: runs.length,
+        runDistanceM: run.distanceMetres,
+        longestRunM: longest,
+        records: [for (final e in entries) (e.distance, e.kind)],
+        badgeEarned: badges.any((b) => b.sourceId == runId),
+      );
+      if (!mounted || run.id != runId) return;
+      setState(() => _milestone = kind);
+    } catch (e) {
+      debugPrint('run milestone read failed: $e');
     }
   }
 
@@ -1154,6 +1223,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               switch (action) {
                 case 'save_as_route':
                   _saveAsRoute();
+                case 'make_public':
+                  _makePublicFromControl();
                 case 'make_private':
                   _makePrivate();
                 case 'recalculate_distance':
@@ -1171,6 +1242,15 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   title: Text(l10n.runDetailSaveAsRoute),
                 ),
               ),
+              if (widget.apiClient?.userId != null && _isPublic == false)
+                PopupMenuItem(
+                  value: 'make_public',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.public),
+                    title: Text(l10n.runDetailMakePublic),
+                  ),
+                ),
               if (widget.apiClient?.userId != null && _isPublic == true)
                 PopupMenuItem(
                   value: 'make_private',
@@ -1466,7 +1546,18 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     final blockedReason = widget.runStore.blockedReason(run.id);
     final secondaryStats = _secondaryStatCells(l10n, unit);
+    final milestone = _milestone;
     return [
+      // Never beside a blocked sync or a DNF: Grisnir stays out of every
+      // failure state.
+      if (milestone != null &&
+          blockedReason == null &&
+          !_isDnf &&
+          mascotShown())
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: GrisnirMilestone(kind: milestone),
+        ),
       if (blockedReason != null)
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -1526,6 +1617,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           ],
         ),
       ),
+      ?_buildVisibilityChip(theme, l10n),
+
       if (_notes.isNotEmpty)
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -1604,7 +1697,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _ElevationChart(
+          child: ElevationChart(
             track: _altitudeTrack,
             theme: theme,
             unit: unit,
@@ -1699,6 +1792,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           startedAt: run.startedAt.toIso8601String(),
           distanceM: run.distanceMetres,
         ),
+        RunParkCourseChips(api: widget.apiClient!, runId: run.id),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: RunGearChips(
@@ -1941,26 +2035,22 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final rd = _runningDynamics;
     if (rd == null) return const [];
     final rows = <Widget>[];
-    // `decimals` flags the stride-length row, the only metric formatted
-    // with two decimal places — the rest read as whole numbers.
-    void addRow(String label, Object? value, String suffix,
-        {bool decimals = false}) {
+    void addRow(String label, Object? value, String Function(num) format) {
       if (value is! num) return;
-      final formatted = decimals
-          ? formatFixed(value.toDouble(), 2, activeLocaleTag)
-          : value.toString();
       rows.add(ListTile(
         dense: true,
         title: Text(label),
-        trailing: Text('$formatted $suffix', style: theme.textTheme.titleMedium),
+        trailing: Text(format(value), style: theme.textTheme.titleMedium),
       ));
     }
 
-    addRow(l10n.runDetailDynVerticalOsc, rd['vertical_oscillation_mm'], 'mm');
-    addRow(l10n.runDetailDynGroundContact, rd['gct_ms'], 'ms');
-    addRow(l10n.runDetailDynStrideLength, rd['stride_length_m'], 'm',
-        decimals: true);
-    addRow(l10n.runDetailDynAvgPower, rd['power_w'], 'W');
+    addRow(l10n.runDetailDynVerticalOsc, rd['vertical_oscillation_mm'],
+        (v) => '$v mm');
+    addRow(l10n.runDetailDynGroundContact, rd['gct_ms'], (v) => '$v ms');
+    addRow(l10n.runDetailDynStrideLength, rd['stride_length_m'],
+        (v) => UnitFormat.strideLength(
+            v.toDouble(), widget.preferences.unit));
+    addRow(l10n.runDetailDynAvgPower, rd['power_w'], (v) => '$v W');
     return rows;
   }
 
@@ -2121,8 +2211,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     return (d * 100).round();
   }
 
-  /// Age grade shown on the secondary-stat tile. Prefers the parkrun importer's
-  /// scraped metadata.age_grade string; otherwise computes it for any standard
+  /// Age grade shown on the secondary-stat tile. Prefers a metadata.age_grade
+  /// string a run from the retired parkrun import still carries; otherwise
+  /// computes it for any standard
   /// race distance from the runner's DOB + sex + distance + duration via the
   /// shared age_grade helper (twin of web). Null when neither is available.
   /// See metadata.md + docs/features/age_grade.md.
@@ -2202,32 +2293,32 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     if (run.routeId == null) return const [];
 
-    final thisActivity = run.metadata?[MetadataKeys.activityType] as String? ?? 'run';
+    final me = RouteHistoryRun.fromRun(run);
+    final thisActivity = me.activityType ?? 'run';
     // Reads the full-history index so the route PB isn't lost once the run
     // store windows — only routeId / distance / activityType / duration / id
     // are used, all carried by the summary (no track, no detail nav here).
-    final attempts = widget.runStore.summaryRuns
-        .where((r) =>
-            r.routeId == run.routeId &&
-            r.distanceMetres > 100 &&
-            (r.metadata?[MetadataKeys.activityType] as String? ?? 'run') == thisActivity)
-        .toList()
-      ..sort((a, b) => a.duration.compareTo(b.duration));
+    final attempts = qualifyingAttempts(
+        me, widget.runStore.summaryRuns.map(RouteHistoryRun.fromRun));
+    final summary = summariseHistory(run.id, attempts);
+    if (summary == null) return const [];
 
-    if (attempts.length < 2) return const [];
-
-    final best = attempts.first;
-    final isBest = best.id == run.id;
-    final delta = run.duration - best.duration;
-    final rank = attempts.indexWhere((r) => r.id == run.id) + 1;
+    final isBest = summary.isPb;
 
     final routeName = _linkedRoute?.name ?? l10n.runDetailThisRoute;
 
     return [
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        child: Text(l10n.runDetailSectionRouteHistory,
-            style: theme.textTheme.titleMedium),
+        padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(metricText(l10n, Metric.routeHistory),
+                  style: theme.textTheme.titleMedium),
+            ),
+            const MetricInfoButton(metric: Metric.routeHistory),
+          ],
+        ),
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -2252,7 +2343,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                         isBest
                             ? l10n.runDetailPersonalBest(routeName)
                             : l10n.runDetailBehindPb(
-                                _formatDeltaDuration(delta)),
+                                formatSignedDelta(summary.deltaSeconds)),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: isBest
@@ -2265,8 +2356,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  l10n.runDetailAttemptOf(
-                      rank, attempts.length, _formatDuration(best.duration)),
+                  l10n.runDetailAttemptOf(summary.rank, summary.total,
+                      _formatDuration(Duration(seconds: summary.pb.durationS))),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -2294,17 +2385,6 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       const SizedBox(height: 8),
       const Divider(),
     ];
-  }
-
-  static String _formatDeltaDuration(Duration d) {
-    final total = d.abs();
-    final h = total.inHours;
-    final m = total.inMinutes % 60;
-    final s = total.inSeconds % 60;
-    final prefix = d.isNegative ? '-' : '+';
-    if (h > 0) return '$prefix${h}h ${m}m';
-    if (m > 0) return '$prefix${m}m ${s}s';
-    return '$prefix${s}s';
   }
 
   List<Widget> _buildHrZoneBreakdown(ThemeData theme, AppLocalizations l10n) {
@@ -3049,16 +3129,158 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// the audience sheet when it is on (decisions § 1879), otherwise the
   /// make-public confirm, skipped when the run is already public.
   Future<void> _shareRunLink(ApiClient api) async {
-    if (_sharingLink) return;
-    _sharingLink = true;
+    if (_visibilityBusy) return;
+    _visibilityBusy = true;
     try {
       await _shareRunLinkOnce(api);
     } finally {
-      _sharingLink = false;
+      _visibilityBusy = false;
     }
   }
 
-  bool _sharingLink = false;
+  /// One visibility change at a time, whichever control started it: Share
+  /// link, the visibility chip or the overflow menu.
+  bool _visibilityBusy = false;
+
+  /// The visibility chip under the title. It is the control for who can see
+  /// the run, not a label: the owner could not find how to make a run public
+  /// when the only path was the Share sheet's link action.
+  Widget? _buildVisibilityChip(ThemeData theme, AppLocalizations l10n) {
+    final level = _visibility;
+    if (level == null || widget.apiClient?.userId == null) return null;
+    final isPublic = level == AudienceLevel.public;
+    final label = switch (level) {
+      AudienceLevel.public => l10n.runDetailVisibilityPublic,
+      AudienceLevel.followers => l10n.runDetailVisibilityFollowers,
+      AudienceLevel.specific => l10n.runDetailVisibilityShared,
+      AudienceLevel.private => l10n.runDetailVisibilityPrivate,
+    };
+    final icon = switch (level) {
+      AudienceLevel.public => Icons.public,
+      AudienceLevel.followers => Icons.group,
+      AudienceLevel.specific => Icons.person_add_alt,
+      AudienceLevel.private => Icons.lock_outline,
+    };
+    final semantics = _audienceOn
+        ? l10n.runDetailVisibilityAudienceSemantics(label)
+        : isPublic
+            ? l10n.runDetailVisibilityPublicSemantics
+            : l10n.runDetailVisibilityPrivateSemantics;
+    final fg = isPublic
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: Semantics(
+          button: true,
+          label: semantics,
+          excludeSemantics: true,
+          child: ActionChip(
+            key: const ValueKey('run-visibility-chip'),
+            avatar: Icon(icon, size: 18, color: fg),
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label),
+                Icon(Icons.expand_more, size: 18, color: fg),
+              ],
+            ),
+            labelStyle: theme.textTheme.labelLarge?.copyWith(color: fg),
+            onPressed: _visibilityBusy ? null : _changeVisibility,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The chip's action: the audience sheet when audience sharing is on,
+  /// otherwise Make private on a public run and Make public on a private one,
+  /// each through the confirm the other controls use.
+  Future<void> _changeVisibility() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    if (!_audienceOn) {
+      return _isPublic == true ? _makePrivate() : _makePublicFromControl();
+    }
+    if (_visibilityBusy) return;
+    _visibilityBusy = true;
+    setState(() {});
+    try {
+      final choice = await showAudienceSheet(
+        context,
+        backend: ApiAudienceBackend(api, ShareableKind.run, run.id),
+      );
+      if (!mounted) return;
+      unawaited(_loadVisibility());
+      if (choice == AudienceSheetResult.shareLink) {
+        await shareTextFrom(context,
+            text: audienceLinkUrl(ShareableKind.run, run.id), subject: _title);
+        return;
+      }
+      if (choice != AudienceSheetResult.requestPublic) return;
+      if (await _publish(api) && mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).runDetailMadePublic);
+      }
+    } finally {
+      _visibilityBusy = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// Make public from the chip or the overflow menu. Unlike Share link it
+  /// hands no link to the share sheet: changing who can see the run is not
+  /// sharing it.
+  Future<void> _makePublicFromControl() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null || _visibilityBusy) return;
+    _visibilityBusy = true;
+    setState(() {});
+    try {
+      if (await _publish(api) && mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).runDetailMadePublic);
+      }
+    } finally {
+      _visibilityBusy = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// The privacy-zone consent and the public flip, shared by every control
+  /// that makes the run public. True once the run is public.
+  Future<bool> _publish(ApiClient api) async {
+    final zones = await _knownPrivacyZones(fromServer: true);
+    if (!mounted) return false;
+    if (zones == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+      return false;
+    }
+    final ok = await _confirmMakePublic(zones);
+    if (!ok) return false;
+    try {
+      await api.makeRunPublic(run.id);
+    } catch (e) {
+      debugPrint('makeRunPublic failed: $e');
+      if (!mounted) return false;
+      showTopBanner(
+        context,
+        AppLocalizations.of(context).runDetailMakePublicFailed(
+          friendlyError(AppLocalizations.of(context), e),
+        ),
+      );
+      return false;
+    }
+    if (!mounted) return false;
+    setState(() {
+      _isPublic = true;
+      _followersOnly = false;
+    });
+    return true;
+  }
 
   Future<void> _shareRunLinkOnce(ApiClient api) async {
     final link = audienceLinkUrl(ShareableKind.run, run.id);
@@ -3092,30 +3314,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         return;
       }
     }
-    final zones = await _knownPrivacyZones(fromServer: true);
-    if (!mounted) return;
-    if (zones == null) {
-      showTopBanner(
-          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
-      return;
-    }
-    final ok = await _confirmMakePublic(zones);
-    if (!ok) return;
-    try {
-      await api.makeRunPublic(run.id);
-    } catch (e) {
-      debugPrint('makeRunPublic failed: $e');
-      if (!mounted) return;
-      showTopBanner(
-        context,
-        AppLocalizations.of(context).runDetailMakePublicFailed(
-          friendlyError(AppLocalizations.of(context), e),
-        ),
-      );
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _isPublic = true);
+    if (!await _publish(api) || !mounted) return;
     await shareTextFrom(context, text: link, subject: _title);
   }
 
@@ -3183,7 +3382,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// is_public past the stop). Offered only once [_isPublic] reads true.
   Future<void> _makePrivate() async {
     final api = widget.apiClient;
-    if (api == null || api.userId == null) return;
+    if (api == null || api.userId == null || _visibilityBusy) return;
     final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
@@ -3357,246 +3556,6 @@ class _Split {
   const _Split(this.tick, this.duration);
 }
 
-/// Interactive elevation chart. Drag or tap to read distance, elevation and
-/// pace at any point along the run. One smoothed line over one gradient
-/// fill, plotted against distance on a y-axis at least
-/// [elevationMinSpanM] tall, so a flat run looks flat.
-class _ElevationChart extends StatefulWidget {
-  final List<Waypoint> track;
-  final ThemeData theme;
-  final DistanceUnit unit;
-  /// Linked-cursor: fires with the track-index currently under the
-  /// pointer (null on touch release). Lets `run_detail_screen` paint
-  /// the matching marker on `LiveRunMap` — Nike/Strava-style brushing.
-  final ValueChanged<int?>? onHoverIdx;
-  const _ElevationChart({
-    required this.track,
-    required this.theme,
-    required this.unit,
-    this.onHoverIdx,
-  });
-
-  @override
-  State<_ElevationChart> createState() => _ElevationChartState();
-}
-
-/// The chart's derived series, computed once per track rather than per
-/// frame of a drag.
-class _ElevationProfile {
-  final List<double> smoothed;
-  final double dataMin;
-  final double dataMax;
-  final ({double lo, double hi}) domain;
-  const _ElevationProfile(this.smoothed, this.dataMin, this.dataMax, this.domain);
-}
-
-class _ElevationChartState extends State<_ElevationChart> {
-  static const double _chartHeight = 140;
-  static const double _minGutter = 40;
-
-  /// Wide enough for the longer of the two gutter labels in the runner's
-  /// unit: "8,848 m" fits the old fixed 40 px, "5,577 ft" does not.
-  double _gutter = _minGutter;
-
-  int? _touchIdx;
-  int? _lastEmittedIdx;
-  late List<double> _cum;
-  _ElevationProfile? _profile;
-
-  @override
-  void initState() {
-    super.initState();
-    _derive();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ElevationChart old) {
-    super.didUpdateWidget(old);
-    if (!identical(old.track, widget.track)) _derive();
-  }
-
-  void _derive() {
-    _cum = cumulativeMetres(widget.track);
-    final series = elevationSeries(widget.track);
-    if (series == null) {
-      _profile = null;
-      return;
-    }
-    final smoothed = smoothElevation(series, _cum);
-    var lo = smoothed.first, hi = smoothed.first;
-    for (final v in smoothed) {
-      if (v < lo) lo = v;
-      if (v > hi) hi = v;
-    }
-    _profile = _ElevationProfile(smoothed, lo, hi, elevationDomain(lo, hi));
-  }
-
-  void _emitHover() {
-    if (widget.onHoverIdx == null) return;
-    if (_touchIdx != _lastEmittedIdx) {
-      _lastEmittedIdx = _touchIdx;
-      widget.onHoverIdx!(_touchIdx);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final profile = _profile;
-    if (profile == null) return const SizedBox.shrink();
-    final theme = widget.theme;
-    final labelStyle = theme.textTheme.labelSmall
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    final total = _cum.isEmpty ? 0.0 : _cum.last;
-    final textScaler = MediaQuery.textScalerOf(context);
-    var widest = 0.0;
-    for (final ele in [profile.dataMin, profile.dataMax]) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: UnitFormat.elevation(ele, widget.unit),
-          style: theme.textTheme.labelSmall,
-        ),
-        textDirection: TextDirection.ltr,
-        textScaler: textScaler,
-      )..layout();
-      if (tp.width > widest) widest = tp.width;
-    }
-    _gutter = math.max(_minGutter, (widest + 8).ceilToDouble());
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          height: textScaler.scale(20),
-          child: _touchIdx != null ? _buildCrosshairLabel() : null,
-        ),
-        SizedBox(
-          height: _chartHeight,
-          child: GestureDetector(
-            onPanStart: (d) => _onTouch(d.localPosition),
-            onPanUpdate: (d) => _onTouch(d.localPosition),
-            onPanEnd: (_) => _clearTouch(),
-            onTapDown: (d) => _onTouch(d.localPosition),
-            onTapUp: (_) => _clearTouch(),
-            onTapCancel: _clearTouch,
-            child: CustomPaint(
-              painter: _ElevationPainter(
-                smoothed: profile.smoothed,
-                cumulativeM: _cum,
-                dataMin: profile.dataMin,
-                dataMax: profile.dataMax,
-                domain: profile.domain,
-                theme: theme,
-                gutter: _gutter,
-                unit: widget.unit,
-                textScaler: textScaler,
-                touchIdx: _touchIdx,
-              ),
-              size: const Size(double.infinity, _chartHeight),
-            ),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.only(left: _gutter, top: 4),
-          child: Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            children: [
-              Text(UnitFormat.distance(0, widget.unit), style: labelStyle),
-              Text(UnitFormat.distance(total, widget.unit), style: labelStyle),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _clearTouch() {
-    setState(() => _touchIdx = null);
-    _emitHover();
-  }
-
-  void _onTouch(Offset local) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || _cum.length < 2) return;
-    final plotWidth = box.size.width - _gutter;
-    if (plotWidth <= 0) return;
-    final frac = ((local.dx - _gutter) / plotWidth).clamp(0.0, 1.0);
-    final target = frac * _cum.last;
-    var lo = 0, hi = _cum.length - 1;
-    while (lo < hi) {
-      final mid = (lo + hi) >> 1;
-      if (_cum[mid] < target) {
-        lo = mid + 1;
-      } else {
-        hi = mid;
-      }
-    }
-    setState(() => _touchIdx = lo);
-    _emitHover();
-  }
-
-  Widget _buildCrosshairLabel() {
-    final idx = _touchIdx!;
-    final ele = _profile?.smoothed[idx];
-    final cumDist = _cum[idx];
-
-    // Local pace: compute from a ~200m window around this point.
-    String paceStr = '--';
-    if (idx >= 2 && idx < widget.track.length - 1) {
-      final windowStart = (idx - 5).clamp(0, widget.track.length - 1);
-      final windowEnd = (idx + 5).clamp(0, widget.track.length - 1);
-      final a = widget.track[windowStart];
-      final b = widget.track[windowEnd];
-      if (a.timestamp != null && b.timestamp != null) {
-        double segDist = 0;
-        for (var i = windowStart + 1; i <= windowEnd; i++) {
-          segDist += haversineMetres(
-            widget.track[i - 1].lineLat, widget.track[i - 1].lineLng,
-            widget.track[i].lineLat, widget.track[i].lineLng,
-          );
-        }
-        if (segDist > 10) {
-          final dtSec =
-              b.timestamp!.difference(a.timestamp!).inMilliseconds / 1000.0;
-          if (dtSec > 0) {
-            final secPerKm = dtSec / segDist * 1000;
-            paceStr = UnitFormat.pace(secPerKm, widget.unit);
-          }
-        }
-      }
-    }
-
-    final theme = widget.theme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            UnitFormat.distance(cumDist, widget.unit),
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 16),
-          if (ele != null)
-            Text(
-              UnitFormat.elevation(ele, widget.unit),
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          const SizedBox(width: 16),
-          Text(
-            '$paceStr ${UnitFormat.paceLabel(widget.unit)}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Key for the map's pace colours: the slow → fast ramp as one bar between
 /// its two end labels.
 class _MapPaceLegend extends StatelessWidget {
@@ -3633,163 +3592,6 @@ class _MapPaceLegend extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The elevations the run-detail chart labels in its gutter: the data's
-/// rounded low and high, or a single label at the rounded middle when those
-/// two would sit closer than [minGapPx] on a [plotHeight]-tall plot of
-/// [domain]. A flat run's domain is padded to 36 m, so a 100-102 m run put
-/// its two labels 7.8 px apart on the 140 px chart and painted them over
-/// each other.
-@visibleForTesting
-List<double> elevationGutterLabels({
-  required double dataMin,
-  required double dataMax,
-  required ({double lo, double hi}) domain,
-  required double plotHeight,
-  required double minGapPx,
-}) {
-  final lo = dataMin.roundToDouble();
-  final hi = dataMax.roundToDouble();
-  final range = domain.hi - domain.lo;
-  final gapPx = (hi - lo).abs() / range * plotHeight;
-  if (lo != hi && gapPx >= minGapPx) return [lo, hi];
-  return [((dataMin + dataMax) / 2).roundToDouble()];
-}
-
-class _ElevationPainter extends CustomPainter {
-  final List<double> smoothed;
-  final List<double> cumulativeM;
-  final double dataMin;
-  final double dataMax;
-  final ({double lo, double hi}) domain;
-  final ThemeData theme;
-  final double gutter;
-  final DistanceUnit unit;
-  final TextScaler textScaler;
-  final int? touchIdx;
-
-  _ElevationPainter({
-    required this.smoothed,
-    required this.cumulativeM,
-    required this.dataMin,
-    required this.dataMax,
-    required this.domain,
-    required this.theme,
-    required this.gutter,
-    required this.unit,
-    required this.textScaler,
-    this.touchIdx,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final n = smoothed.length;
-    final total = cumulativeM.last;
-    if (n < 2 || total <= 0) return;
-    final plotLeft = gutter;
-    final plotWidth = size.width - gutter;
-    final range = domain.hi - domain.lo;
-    double xAt(int i) => plotLeft + cumulativeM[i] / total * plotWidth;
-    double yAt(double ele) => size.height - (ele - domain.lo) / range * size.height;
-
-    final colour = ChartPalette.ofTheme(theme).series.first;
-    final labelStyle = theme.textTheme.labelSmall!
-        .copyWith(color: theme.colorScheme.onSurfaceVariant);
-    // Gridlines and labels at the data's own low and high points, in the
-    // gutter rather than on the plot, so neither ever sits on the line.
-    final labelHeight = (TextPainter(
-      text: TextSpan(text: '0 m', style: labelStyle),
-      textDirection: TextDirection.ltr,
-      textScaler: textScaler,
-    )..layout())
-        .height;
-    for (final ele in elevationGutterLabels(
-      dataMin: dataMin,
-      dataMax: dataMax,
-      domain: domain,
-      plotHeight: size.height,
-      minGapPx: labelHeight,
-    )) {
-      final y = yAt(ele);
-      canvas.drawLine(
-        Offset(plotLeft, y),
-        Offset(size.width, y),
-        Paint()
-          ..color = theme.dividerColor
-          ..strokeWidth = 1,
-      );
-      final tp = TextPainter(
-        text: TextSpan(
-          text: UnitFormat.elevation(ele, unit),
-          style: labelStyle,
-        ),
-        textDirection: TextDirection.ltr,
-        textScaler: textScaler,
-      )..layout(maxWidth: gutter - 4);
-      tp.paint(canvas, Offset(gutter - 4 - tp.width, y - tp.height / 2));
-    }
-
-    final line = Path()..moveTo(xAt(0), yAt(smoothed[0]));
-    for (var i = 1; i < n; i++) {
-      line.lineTo(xAt(i), yAt(smoothed[i]));
-    }
-    final fill = Path.from(line)
-      ..lineTo(xAt(n - 1), size.height)
-      ..lineTo(xAt(0), size.height)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            colour.withValues(alpha: 0.35),
-            colour.withValues(alpha: 0.04),
-          ],
-        ).createShader(Rect.fromLTWH(plotLeft, 0, plotWidth, size.height)),
-    );
-    canvas.drawPath(
-      line,
-      Paint()
-        ..color = colour
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke
-        ..strokeJoin = StrokeJoin.round,
-    );
-
-    final idx = touchIdx;
-    if (idx != null && idx >= 0 && idx < n) {
-      final tx = xAt(idx);
-      final ty = yAt(smoothed[idx]);
-      canvas.drawLine(
-        Offset(tx, 0),
-        Offset(tx, size.height),
-        Paint()
-          ..color = theme.colorScheme.outline
-          ..strokeWidth = 1,
-      );
-      canvas.drawCircle(Offset(tx, ty), 5, Paint()..color = colour);
-      canvas.drawCircle(
-        Offset(tx, ty),
-        5,
-        Paint()
-          ..color = theme.colorScheme.surface
-          ..strokeWidth = 2
-          ..style = PaintingStyle.stroke,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ElevationPainter old) =>
-      !identical(old.smoothed, smoothed) ||
-      old.touchIdx != touchIdx ||
-      old.gutter != gutter ||
-      old.unit != unit ||
-      old.textScaler != textScaler ||
-      old.theme != theme;
 }
 
 /// Auto-link prompt: "Looks like you ran *X*". Mirrors the web

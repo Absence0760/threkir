@@ -3,8 +3,8 @@
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import {
 		submitReport,
-		type ReportReason,
-		type ReportTargetKind,
+		type GeneralReportReason,
+		type GeneralReportTargetKind,
 	} from '#lib/core/data.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -12,7 +12,7 @@
 
 	interface Props {
 		open: boolean;
-		targetKind: ReportTargetKind;
+		targetKind: GeneralReportTargetKind;
 		targetId: string;
 		/// Human-readable name of the thing being reported. Surfaced
 		/// in the dialog body so the user can sanity-check what they're
@@ -29,7 +29,7 @@
 	/// so a slot rendered "Denunciar este rota" in Portuguese and Spanish,
 	/// "Signaler ce course" in French, and put a feminine "Diese" on four
 	/// masculine German nouns (decisions § 1060).
-	const TITLES: Record<ReportTargetKind, MessageKey> = {
+	const TITLES: Record<GeneralReportTargetKind, MessageKey> = {
 		user: 'reportDialog.titleProfile',
 		club: 'reportDialog.titleClub',
 		route: 'reportDialog.titleRoute',
@@ -38,9 +38,13 @@
 		run: 'reportDialog.titleRun',
 		route_review: 'reportDialog.titleReview',
 		direct_message: 'reportDialog.titleMessage',
+		group_invite: 'reportDialog.titleGroupInvite',
 	};
 
-	const REASONS: { value: ReportReason; label: MessageKey; hint: MessageKey }[] = [
+	// The organiser dispute reason is filed through OrganiserDisputeDialog,
+	// for a verified club's owner or admin only; the course reasons through
+	// ParkCourseReportDialog, on a park course only.
+	const REASONS: { value: GeneralReportReason; label: MessageKey; hint: MessageKey }[] = [
 		{
 			value: 'spam',
 			label: 'reportDialog.reasonSpamLabel',
@@ -68,7 +72,7 @@
 		},
 	];
 
-	let reason = $state<ReportReason>('spam');
+	let reason = $state<GeneralReportReason>('spam');
 	let notes = $state('');
 	let busy = $state(false);
 	let error = $state<string | null>(null);
@@ -158,7 +162,7 @@
 
 <style>
 	/* Canonical .modal-* classes live in app.css. */
-	.report-body {
+	:global(.report-body) {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;

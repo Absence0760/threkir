@@ -18,6 +18,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import DateRangePicker from '#lib/components/DateRangePicker.svelte';
 	import TimelineDayList, { type TimelineItem } from '#lib/components/TimelineDayList.svelte';
 	import { groupByLocalDay, type DayGroup } from '#lib/timeline/day_groups.ts';
@@ -888,11 +889,15 @@
 			{@render listSkeleton()}
 		{/if}
 	{:else if loadError}
-		<div class="card-elevated empty load-error" role="alert" data-testid="runs-load-error">
-			<span class="material-symbols empty-icon" aria-hidden="true">error</span>
-			<h2 class="empty-text">{m('runs.loadFailed')}</h2>
-			<p class="empty-hint load-error-detail">{loadError}</p>
-			<div class="empty-actions">
+		<EmptyState
+			icon="error"
+			tone="danger"
+			title={m('runs.loadFailed')}
+			text={loadError}
+			role="alert"
+			data-testid="runs-load-error"
+		>
+			{#snippet actions()}
 				<button
 					type="button"
 					class="btn btn-primary"
@@ -901,8 +906,8 @@
 				>
 					{m('runs.retry')}
 				</button>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		{#if view === 'list'}
 			<div class="run-list-view" data-testid="runs-list-view">
@@ -1086,14 +1091,19 @@
 
 		{#if filteredRuns.length === 0}
 			{#if runs.length === 0}
-				<div class="card-elevated empty" data-testid="runs-empty-no-data">
-					<span class="material-symbols empty-icon" aria-hidden="true">directions_run</span>
-					<h2 class="empty-text">{m('runs.emptyNoData')}</h2>
-					<p class="empty-hint">
-						{m('runs.emptyNoDataHintPrefix')}
-						<a href="/settings/integrations">{m('runs.emptyNoDataHintLink')}</a>{m('runs.emptyNoDataHintSuffix')}
-					</p>
-					<div class="empty-actions">
+				<EmptyState
+					icon="directions_run"
+					title={m('runs.emptyNoData')}
+					mascot
+					data-testid="runs-empty-no-data"
+				>
+					{#snippet body()}
+						<p>
+							{m('runs.emptyNoDataHintPrefix')}
+							<a href="/settings/integrations">{m('runs.emptyNoDataHintLink')}</a>{m('runs.emptyNoDataHintSuffix')}
+						</p>
+					{/snippet}
+					{#snippet actions()}
 						<button
 							type="button"
 							class="btn btn-primary"
@@ -1101,16 +1111,16 @@
 						>
 							{m('runs.addRun')}
 						</button>
-					</div>
-				</div>
+					{/snippet}
+				</EmptyState>
 			{:else}
-				<div class="card-elevated empty" data-testid="runs-empty-filtered">
-					<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-					<h2 class="empty-text">{m('runs.emptyFiltered')}</h2>
-					<p class="empty-hint">
-						{m('runs.emptyFilteredHint')}
-					</p>
-					<div class="empty-actions">
+				<EmptyState
+					icon="filter_alt_off"
+					title={m('runs.emptyFiltered')}
+					text={m('runs.emptyFilteredHint')}
+					data-testid="runs-empty-filtered"
+				>
+					{#snippet actions()}
 						<button
 							type="button"
 							class="btn btn-outline"
@@ -1126,8 +1136,8 @@
 						<button type="button" class="btn btn-primary" onclick={() => (showRunModal = true)}>
 							{m('runs.addRun')}
 						</button>
-					</div>
-				</div>
+					{/snippet}
+				</EmptyState>
 			{/if}
 		{/if}
 	{/if}
@@ -1488,60 +1498,6 @@
 		white-space: nowrap;
 	}
 
-	.empty {
-		grid-column: 1 / -1;
-		text-align: center;
-		padding: var(--space-2xl) var(--space-md);
-		color: var(--color-text-tertiary);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		/* Cap so the card doesn't stretch the full canvas; centred in the
-		   grid cell (run-list empties span 1 / -1). */
-		max-width: 32rem;
-		margin-inline: auto;
-	}
-	.empty-icon {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 3.25rem;
-		height: 3.25rem;
-		border-radius: 50%;
-		background: var(--color-bg-tertiary);
-		font-size: 1.75rem;
-		color: var(--color-text-secondary);
-		margin-bottom: var(--space-2xs);
-	}
-	.empty .empty-text {
-		margin: 0;
-		font-size: 1.05rem;
-		font-weight: 600;
-		color: var(--color-text);
-		padding: 0;
-	}
-	.empty-hint {
-		font-size: 0.85rem;
-		color: var(--color-text-tertiary);
-		max-width: 28rem;
-	}
-	.empty-actions {
-		display: flex;
-		gap: var(--space-sm);
-		flex-wrap: wrap;
-		justify-content: center;
-		margin-top: var(--space-md);
-	}
-	.load-error .empty-icon {
-		background: rgba(239, 68, 68, 0.12);
-		color: var(--color-danger-text);
-	}
-	.load-error-detail {
-		font-size: 0.78rem;
-		color: var(--color-text-tertiary);
-		word-break: break-word;
-	}
 
 	.load-more-row {
 		display: flex;

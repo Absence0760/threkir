@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 import { resolveBaseUrl } from './fixtures/base-url';
+import { viteCommand } from './fixtures/vite-command';
 
 /**
  * Playwright e2e config for apps/web.
@@ -113,11 +114,11 @@ export default defineConfig({
 	// Auto-start the dev server. `reuseExistingServer` lets a manually
 	// started server (e.g. for `playwright test --ui`) take precedence.
 	webServer: {
-		// `pnpm exec` (not `pnpm run dev`, which pins --port 7777) so the
-		// port follows PLAYWRIGHT_BASE_URL. `pnpm exec` does not move cwd
-		// the way `pnpm run` does, hence the explicit WEB_DIR — same shape
-		// as the livehub / exporthub / sso configs.
-		command: `pnpm exec vite dev --port ${DEV_PORT}`,
+		// vite's bin run directly (not `pnpm run dev`, which pins --port
+		// 7777) so the port follows PLAYWRIGHT_BASE_URL, and not through
+		// any package-manager wrapper, which leaves vite outside the process
+		// group Playwright kills at teardown (fixtures/vite-command.ts).
+		command: viteCommand(`dev --port ${DEV_PORT}`),
 		cwd: WEB_DIR,
 		url: BASE_URL,
 		reuseExistingServer: !process.env.CI,

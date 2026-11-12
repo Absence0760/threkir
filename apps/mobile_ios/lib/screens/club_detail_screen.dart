@@ -15,6 +15,7 @@ import '../column_limits.dart';
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../race_service.dart';
 import '../l10n/locale_support.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
@@ -546,6 +547,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               api: ApiClient(),
               targetKind: 'club',
               targetId: c.row.id,
+              organiserClubs: (c.row.isPublic ?? true)
+                  ? () => RaceService().fetchMyOrganiserClubs()
+                  : null,
+              targetClubId: c.row.id,
             ),
           ),
         ],

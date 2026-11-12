@@ -27,12 +27,21 @@ Set<String> _messageKeys(Map<String, dynamic> arb) =>
 /// as a placeholder named `Filters` and failed every faithful translation.
 Set<String> _placeholders(String value) => _IcuArgs(value).parse();
 
+/// Whether [value] uses ICU's `#` shorthand inside a plural branch. Flutter's
+/// gen-l10n does not implement `#`: it emits the branch text verbatim, so
+/// `{n, plural, other {# weeks}}` renders a literal "# weeks". Branches must
+/// name the argument instead (`other {{n} weeks}`). Web's catalogue runtime
+/// does support `#`, which is how the shorthand keeps arriving in ports.
+bool _hashInPlural(String value) => (_IcuArgs(value)..parse()).hashInPlural;
+
 class _IcuArgs {
   _IcuArgs(this.s);
 
   final String s;
   final Set<String> names = {};
   var i = 0;
+  var _pluralDepth = 0;
+  var hashInPlural = false;
 
   static final _word = RegExp(r'\w+');
   static const _branching = {'plural', 'select', 'selectordinal'};
@@ -47,6 +56,7 @@ class _IcuArgs {
       final c = s[i];
       if (c == '}' && nested) return;
       i++;
+      if (c == '#' && _pluralDepth > 0) hashInPlural = true;
       if (c == '{') _argument();
     }
   }
@@ -87,6 +97,16 @@ class _IcuArgs {
     i++;
     final type = _token(_word);
     if (!_branching.contains(type)) return _skipToClose();
+    final counts = type != 'select';
+    if (counts) _pluralDepth++;
+    try {
+      _branches();
+    } finally {
+      if (counts) _pluralDepth--;
+    }
+  }
+
+  void _branches() {
     _ws();
     if (i < s.length && s[i] == ',') i++;
     while (true) {
@@ -157,6 +177,21 @@ void main() {
     });
     expect(_placeholders('{kind, select, a{A, {x}} other{B}}'), {'kind', 'x'});
     expect(_placeholders('{d, date, yMMMd}'), {'d'});
+  });
+
+  test('the plural-# scan finds # only inside a plural branch', () {
+    expect(_hashInPlural('{n, plural, one {# week} other {# weeks}}'), isTrue);
+    expect(_hashInPlural('{n, selectordinal, other {#th}}'), isTrue);
+    expect(
+      _hashInPlural('{n, plural, other {{k, select, a {# x} other {y}}}}'),
+      isTrue,
+    );
+    expect(
+      _hashInPlural('{n, plural, one {{n} week} other {{n} weeks}}'),
+      isFalse,
+    );
+    expect(_hashInPlural('Lap #3 {n}'), isFalse);
+    expect(_hashInPlural('{k, select, a {#1} other {x}}'), isFalse);
   });
 
   test('no catalogue declares the same key twice', () {
@@ -234,6 +269,20 @@ void main() {
             reason: '$key placeholders differ in app_$tag.arb',
           );
         }
+      });
+
+      test('no plural branch uses the # shorthand gen-l10n cannot render', () {
+        final offenders = [
+          for (final key in keys)
+            if (_hashInPlural(arb[key] as String)) key,
+        ]..sort();
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'app_$tag.arb uses # inside a plural; gen-l10n prints it '
+              'literally. Name the argument instead: other {{n} weeks}',
+        );
       });
 
       // `profileNotifYourRun` is the {dist} fallback for a notification whose

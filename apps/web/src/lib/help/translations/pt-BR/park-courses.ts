@@ -8,16 +8,17 @@ export const translation: GuideTranslation = {
 		{
 			heading: "O que é um percurso de parque",
 			blocks: [
-				{ type: 'p', text: "Um percurso de parque é um percurso fixo de contrarrelógio em uma trilha de um parque estadual ou nacional. Não há organizador nem dia de prova: corra quando o parque estiver aberto, e uma corrida que cobre o percurso inteiro é cronometrada. Encontre-os em [[route:/parks|Percursos de parques]]." },
+				{ type: 'p', text: "Um percurso de parque é um percurso fixo de contrarrelógio em uma trilha de um parque estadual ou nacional. Não há organizador nem dia de prova: corra quando o parque estiver aberto, e uma corrida que cobre o percurso inteiro é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando você define um local, ou veja todos em [[route:/parks|Percursos de parques]]." },
 				{
 					type: 'list',
 					items: [
 						"É um contrarrelógio, não uma corrida. A trilha continua aberta a todos e ninguém faz o controle, então siga as regras do parque e dê passagem às outras pessoas na trilha.",
 						"Cada página de percurso mostra a distância, o ganho de elevação, o formato, o piso e a dificuldade, de onde veio a linha do percurso e se ele está aberto.",
 						"Selecione **Navegar neste percurso** para seguir o percurso como uma rota. A opção não aparece enquanto o percurso estiver fechado.",
+						"O **Guia do percurso** na página do percurso mostra onde estacionar e cada conversão na ordem, com o nome da trilha, além das pontes, vaus, mudanças de piso e subidas. Ele é feito a partir de dados do mapa; enquanto ninguém o conferir no parque, isso aparece acima da lista. O mesmo guia vai no arquivo GPX do percurso.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Um percurso fechado mantém os tempos e rankings, mas não corra nele até que reabra. A página mostra quando o status foi verificado pela última vez." },
+				{ type: 'note', tone: 'caution', text: "Um percurso fechado não recebe tempos novos: uma corrida nele enquanto está fechado não é cronometrada, e os tempos que ele já tem continuam nos rankings. Não corra nele até que reabra. A página mostra quando o status foi verificado pela última vez." },
 			],
 		},
 		{
@@ -72,11 +73,12 @@ export const translation: GuideTranslation = {
 		title: "c0967d2bf224e3d2",
 		summary: "6a173631b44944bc",
 		"s0.heading": "216fc084817bfda9",
-		"s0.b0": "b14392ecc1ced0da",
+		"s0.b0": "a96a5717c602367f",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",
-		"s0.b2": "6a9e63c1eec9c80f",
+		"s0.b1.i3": "a75477f7d5a5a5bc",
+		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",
 		"s1.b0": "f00cd3cca5bfc92f",
 		"s1.b1": "36e6dc7fd586b7d7",

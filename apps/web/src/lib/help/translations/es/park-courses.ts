@@ -8,16 +8,17 @@ export const translation: GuideTranslation = {
 		{
 			heading: "Qué es un recorrido de parque",
 			blocks: [
-				{ type: 'p', text: "Un recorrido de parque es un recorrido fijo de contrarreloj por un sendero de un parque estatal o nacional. No hay organizador ni día de carrera: córrelo cuando el parque esté abierto y una carrera que cubra todo el recorrido se cronometra. Los encontrarás en [[route:/parks|Recorridos de parques]]." },
+				{ type: 'p', text: "Un recorrido de parque es un recorrido fijo de contrarreloj por un sendero de un parque estatal o nacional. No hay organizador ni día de carrera: córrelo cuando el parque esté abierto y una carrera que cubra todo el recorrido se cronometra. Los encontrarás en **Corre cuando quieras**, dentro de [[route:/races|Pruebas y recorridos]], con los más cercanos primero cuando indicas un lugar, o todos en [[route:/parks|Recorridos de parques]]." },
 				{
 					type: 'list',
 					items: [
 						"Es una contrarreloj, no una carrera. El sendero sigue abierto para todos y nadie lo controla, así que respeta las normas del parque y cede el paso a los demás en el sendero.",
 						"Cada página de recorrido muestra la distancia, el desnivel positivo, la forma, la superficie y la dificultad, de dónde viene la línea del recorrido y si está abierto.",
 						"Selecciona **Navegar este recorrido** para seguir el recorrido como una ruta. No se ofrece mientras el recorrido está cerrado.",
+						"La **Guía del recorrido** de la página del recorrido indica dónde aparcar y cada giro en orden, con el nombre del sendero, además de los puentes, vados, cambios de superficie y subidas. Está redactada con datos del mapa; hasta que alguien la recorra en el parque, lo indica encima de la lista. La misma guía va en el archivo GPX del recorrido.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Un recorrido cerrado conserva sus tiempos y clasificaciones, pero no lo corras hasta que vuelva a abrir. La página muestra cuándo se comprobó su estado por última vez." },
+				{ type: 'note', tone: 'caution', text: "Un recorrido cerrado no admite tiempos nuevos: una carrera por él mientras está cerrado no se cronometra, y los tiempos que ya tiene siguen en sus clasificaciones. No lo corras hasta que vuelva a abrir. La página muestra cuándo se comprobó su estado por última vez." },
 			],
 		},
 		{
@@ -72,11 +73,12 @@ export const translation: GuideTranslation = {
 		title: "c0967d2bf224e3d2",
 		summary: "6a173631b44944bc",
 		"s0.heading": "216fc084817bfda9",
-		"s0.b0": "b14392ecc1ced0da",
+		"s0.b0": "a96a5717c602367f",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",
-		"s0.b2": "6a9e63c1eec9c80f",
+		"s0.b1.i3": "a75477f7d5a5a5bc",
+		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",
 		"s1.b0": "f00cd3cca5bfc92f",
 		"s1.b1": "36e6dc7fd586b7d7",

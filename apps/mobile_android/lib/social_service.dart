@@ -294,6 +294,44 @@ class EventCourseView {
   }
 }
 
+/// The crossing columns of a race result (#1307): the start and finish
+/// instants on the server clock (the device's own instant plus its server
+/// offset), how each was detected, and that offset.
+///
+/// Every result write carries the four crossing columns, null included: an
+/// upsert keeps an omitted column, and the server derives the gun and chip
+/// time from `finish_at` when it is set, so a time filed without crossings
+/// must clear any left from an earlier write. The offset is a device fact a
+/// re-time needs, so a write without crossings leaves it alone.
+class RaceCrossings {
+  const RaceCrossings({
+    this.startAt,
+    this.finishAt,
+    this.startDetection,
+    this.finishDetection,
+    this.clockOffsetMs,
+  });
+
+  static const none = RaceCrossings();
+
+  final DateTime? startAt;
+  final DateTime? finishAt;
+  final String? startDetection;
+  final String? finishDetection;
+  final int? clockOffsetMs;
+
+  Map<String, dynamic> toRow() => <String, dynamic>{
+        'start_at': startAt?.toUtc().toIso8601String(),
+        'finish_at': finishAt?.toUtc().toIso8601String(),
+        'start_detection': startDetection,
+        'finish_detection': finishDetection,
+        // The offset belongs to the crossings it converted: written beside
+        // them (null included), never cleared by a write that has none.
+        if (startAt != null || finishAt != null || clockOffsetMs != null)
+          'clock_offset_ms': clockOffsetMs,
+      };
+}
+
 /// One `race_session_courses` row: a course as it was frozen when its race
 /// session was created (Arm, for Host GO; decisions § 2391). Devices and the
 /// race screen read this rather than the live course row, so a route or zone
@@ -306,6 +344,11 @@ class FrozenRaceCourse {
   final double? finishLng;
   final double? distanceM;
   final bool finishLineSelfCross;
+
+  /// The lap count the race froze (`finish_lap_count`, decisions § 2472):
+  /// the line finish is this many finish passes from the start. Null when
+  /// the course is not a lap course, or has no route.
+  final int? finishLapCount;
   const FrozenRaceCourse({
     required this.courseId,
     this.startGate,
@@ -314,6 +357,7 @@ class FrozenRaceCourse {
     this.finishLng,
     this.distanceM,
     this.finishLineSelfCross = false,
+    this.finishLapCount,
   });
 
   static FrozenRaceCourse? fromJson(Map<String, dynamic> m) {
@@ -323,6 +367,7 @@ class FrozenRaceCourse {
     final lng = m['finish_lng'];
     final hasFinish = lat is num && lng is num;
     final distance = m['distance_m'];
+    final laps = m['finish_lap_count'];
     return FrozenRaceCourse(
       courseId: id,
       startGate: courseGate(m, GateWhich.start),
@@ -331,6 +376,7 @@ class FrozenRaceCourse {
       finishLng: hasFinish ? lng.toDouble() : null,
       distanceM: distance is num ? distance.toDouble() : null,
       finishLineSelfCross: m['finish_line_self_cross'] == true,
+      finishLapCount: laps is int && laps >= 2 ? laps : null,
     );
   }
 }
@@ -2225,7 +2271,9 @@ class SocialService extends ChangeNotifier {
       String eventId, DateTime instance) async {
     final rows = await _c
         .from('race_session_courses')
-        .select('course_id, finish_lat, finish_lng, distance_m, $kCourseGateColumns')
+        .select(
+            'course_id, finish_lat, finish_lng, distance_m, finish_lap_count, '
+            '$kCourseGateColumns')
         .eq('event_id', eventId)
         .eq('instance_start', instanceStartKey(instance));
     return {
@@ -2358,14 +2406,19 @@ class SocialService extends ChangeNotifier {
     int? gunTimeS,
     int? chipTimeS,
     String? finishMethod,
+    RaceCrossings crossings = RaceCrossings.none,
   }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
     final noteTrimmed = note?.trim();
     final normalisedNote =
         (noteTrimmed == null || noteTrimmed.isEmpty) ? null : noteTrimmed;
-    await _c.from('event_results').upsert(
-      {
+    // An upsert on `event_results` reads every column it writes back from
+    // EXCLUDED, which needs SELECT on columns being withdrawn from signed-in
+    // readers (decisions § 2474); `file_event_result` files the same row
+    // without it, and an omitted key still keeps its stored value.
+    await _c.rpc('file_event_result', params: {
+      'p_result': {
         'event_id': eventId,
         'instance_start': instanceStartKey(instance),
         'user_id': uid,
@@ -2378,14 +2431,14 @@ class SocialService extends ChangeNotifier {
         if (gunTimeS != null) 'gun_time_s': gunTimeS,
         if (chipTimeS != null) 'chip_time_s': chipTimeS,
         if (finishMethod != null) 'finish_method': finishMethod,
+        ...crossings.toRow(),
         // Trim + collapse empty-after-trim to null. Matches web's
         // submitEventResult and the trim-and-null contract used
         // across createClub / createEvent / saveRoute / etc.
         'note': normalisedNote,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
-      onConflict: 'event_id,instance_start,user_id',
-    );
+    });
     if (runId != null) {
       // Best-effort back-link. If the run isn't owned by this user
       // (shouldn't happen via this UI path, but RLS would block it
@@ -2400,6 +2453,26 @@ class SocialService extends ChangeNotifier {
         debugPrint('[SocialService.submitEventResult backlink] $e');
       }
     }
+    notifyListeners();
+  }
+
+  /// Withdraw this runner's automatic finish on [eventId] at [instance]: the
+  /// "Not finished? Resume" undo (#1307 m11). Only a row that is still theirs
+  /// to write goes — their own, and still `auto`, so a time the host has
+  /// since edited (`host`) stays.
+  Future<void> deleteOwnAutoEventResult({
+    required String eventId,
+    required DateTime instance,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw Exception('Not authenticated');
+    await _c
+        .from('event_results')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('instance_start', instanceStartKey(instance))
+        .eq('user_id', uid)
+        .eq('finish_method', 'auto');
     notifyListeners();
   }
 

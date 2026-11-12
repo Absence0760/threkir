@@ -68,6 +68,14 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitCreateOverlayLink(wait);
     case 'open_message_request':
       return l10n.rateLimitOpenMessageRequest(wait);
+    case 'dm_reaction':
+      return l10n.rateLimitReaction(wait);
+    case 'dm_image_upload':
+      return l10n.rateLimitPhotoUpload(wait);
+    case 'create_group_conversation':
+      return l10n.rateLimitCreateGroup(wait);
+    case 'invite_to_group':
+      return l10n.rateLimitInviteToGroup(wait);
     case 'send_direct_message':
     case 'send_direct_message_burst':
       return l10n.rateLimitSendMessage(wait);

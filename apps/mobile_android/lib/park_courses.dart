@@ -8,6 +8,7 @@
 library;
 
 import 'route_gpx.dart';
+import 'route_guide.dart';
 
 const List<String> kParkAgencies = ['nps', 'state', 'county', 'other'];
 
@@ -18,6 +19,16 @@ const List<String> kCourseStatuses = ['open', 'closed', 'seasonal'];
 const List<String> kGeometrySources = ['osm', 'nps', 'agency', 'traced'];
 
 const List<String> kCourseDifficulties = ['easy', 'moderate', 'hard'];
+
+/// When an organised group regularly uses a course's paths
+/// (`park_courses.shared_use`, decisions § 2460). A key, never free text, so
+/// the give-way note rendered from it names no one.
+const List<String> kSharedUses = ['saturday_morning_group'];
+
+/// Reads `park_courses.shared_use`; null for no shared use or a value this
+/// client does not know.
+String? parseSharedUse(Object? raw) =>
+    raw is String && kSharedUses.contains(raw) ? raw : null;
 
 class CourseCheckpoint {
   final double lat;
@@ -130,6 +141,11 @@ String regionName(String regionCode) => kRegionNames[regionCode] ?? regionCode;
 bool courseIsCountable(String status) =>
     status == 'open' || status == 'seasonal';
 
+/// Whether the course page offers the way round: Navigate, the GPX and the
+/// route guide. A closed course offers none of them, so nothing reads as an
+/// invitation to run it while the park has it shut.
+bool courseOffersWayfinding(String status) => status != 'closed';
+
 /// Courses longer than this carry the long-course notice.
 const double kLongCourseThresholdM = 15000;
 
@@ -231,15 +247,18 @@ GpxAttribution? courseAttribution(
 }
 
 /// The GPX a course screen shares: the course line, one `<wpt>` per
-/// checkpoint in order (so a watch shows the points a run must pass), and the
-/// geometry credit in `<metadata>`. A checkpoint list that could not be read
-/// (null) writes no waypoints rather than a partial set. [waypoints] are
-/// `(lat, lng, ele)` triples.
+/// checkpoint in order (so a watch shows the points a run must pass), the
+/// geometry credit in `<metadata>`, and the route guide as the track's
+/// `<desc>`, in canonical English and led by whether it has been checked on
+/// the ground. A checkpoint list that could not be read (null) writes no
+/// waypoints rather than a partial set. [waypoints] are `(lat, lng, ele)`
+/// triples.
 String parkCourseGpx({
   required String name,
   required List<({double lat, double lng, double? ele})> waypoints,
   required List<CourseCheckpoint>? checkpoints,
   required GpxAttribution? attribution,
+  ({RouteGuide guide, String? checkedAt})? guide,
 }) {
   final cps = checkpoints ?? const <CourseCheckpoint>[];
   return toRouteGpxWithMarkers(
@@ -257,6 +276,9 @@ String parkCourseGpx({
         ),
     ],
     attribution,
+    guide == null
+        ? null
+        : routeGuideEnglish(guide.guide, guide.checkedAt).join('\n'),
   );
 }
 
@@ -332,22 +354,34 @@ RecapParkSummary recapParkSummary(List<RecapParkRow> rows) {
 
 /// One row of `run_park_course_times`: a park course the run completed.
 class RunParkCourseTime {
+  final String effortId;
   final String courseName;
+  final String courseSlug;
   final String parkName;
+  final String parkSlug;
+  final String regionCode;
   final int timeSeconds;
   final int season;
   final int? seasonRank;
   const RunParkCourseTime({
+    required this.effortId,
     required this.courseName,
+    required this.courseSlug,
     required this.parkName,
+    required this.parkSlug,
+    required this.regionCode,
     required this.timeSeconds,
     required this.season,
     required this.seasonRank,
   });
 
   factory RunParkCourseTime.fromRow(Map<String, dynamic> row) => RunParkCourseTime(
+        effortId: row['effort_id'] as String,
         courseName: row['course_name'] as String,
+        courseSlug: row['course_slug'] as String,
         parkName: row['park_name'] as String,
+        parkSlug: row['park_slug'] as String,
+        regionCode: row['region_code'] as String,
         timeSeconds: (row['time_seconds'] as num).round(),
         season: (row['season'] as num).toInt(),
         seasonRank: (row['season_rank'] as num?)?.toInt(),

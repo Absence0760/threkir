@@ -137,6 +137,7 @@ void main() {
     expect(kRaceFinishMinCoverageWithStart,
         _num(c['MIN_COVERAGE_WITH_START']));
     expect(kRaceStartCommitM, _num(c['START_COMMIT_M']));
+    expect(kRaceLapShortShare, _num(c['LAP_SHORT_SHARE']));
     expect(kGateEarthRadiusM, _num(c['GATE_EARTH_RADIUS_M']));
     expect(kRaceLateStartAfter.inMilliseconds, c['LATE_START_AFTER_MS']);
     expect(kRaceLateStartFarM, _num(c['LATE_START_FAR_M']));
@@ -308,6 +309,7 @@ void main() {
           coveredM: _num(c['coveredM']),
           courseDistanceM: _numOrNull(c['courseDistanceM']),
           now: _ms(c['nowMs']),
+          lapsMet: _req(c, 'lapsMet') as bool?,
         );
         expect(o.finisherStatus, expected['finisherStatus']);
         expect(o.method?.wire, expected['method']);
@@ -345,7 +347,7 @@ void main() {
     }
   });
 
-  group('RaceFinishDetector with lines (race_finish v2)', () {
+  group('RaceFinishDetector with lines (race_finish v3)', () {
     for (final c in _section('lines')) {
       test(c['name'], () {
         final expected = c['expect'] as Map<String, dynamic>;
@@ -361,6 +363,7 @@ void main() {
               ? RaceStartMode.selfTimed
               : RaceStartMode.gun,
           goAt: goS != null && goAfter == null ? _s(goS) : null,
+          lapCount: _req(c, 'lapCount') as int?,
         );
         int? finalisedAt;
         RaceFinish? finish;
@@ -375,6 +378,9 @@ void main() {
         expect(finalisedAt, expected['finalisesAtFix']);
         _expectFinish(finish, _req(expected, 'finish'), 'finish');
         _expectStart(d.start, _req(expected, 'start'), 'start');
+        expect(d.lapsMet(_num(fixes.last['coveredM'])),
+            _req(expected, 'lapsMet'),
+            reason: 'lapsMet');
         final candidateAtS = _req(expected, 'candidateAtS');
         expect(d.candidate?.at, candidateAtS == null ? null : _s(candidateAtS));
 

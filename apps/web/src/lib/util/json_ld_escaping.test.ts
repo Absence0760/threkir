@@ -37,6 +37,7 @@ import { buildRouteJsonLd, buildRunJsonLd } from '../share/share_meta';
 import { buildProfileJsonLd } from '../share/share_profile_meta';
 import { buildRaceJsonLd } from '../share/share_race_meta';
 import { buildCourseJsonLd } from '../share/share_course_meta';
+import { parseRouteGuide } from '../parks/route_guide';
 import { buildSessionJsonLd } from '../share/share_session_meta';
 import { buildWorkoutJsonLd } from '../share/share_workout_meta';
 import { buildPlanJsonLd } from '../share/share_plan_meta';
@@ -135,6 +136,19 @@ const REGISTER: Record<string, Record<string, () => string>> = {
 					status_note: INJ,
 					geometry_source: 'osm',
 					difficulty: null,
+					laps: null,
+					attribution: INJ,
+					route_guide: parseRouteGuide({
+						version: 1,
+						lang: 'en',
+						getting_there: INJ,
+						steps: [
+							{ kind: 'start', at_m: 0, name: INJ },
+							{ kind: 'finish', at_m: 5000 },
+						],
+					}),
+					route_guide_checked_at: '2026-12-01',
+					shared_use: null,
 					segment: {
 						name: INJ,
 						description: INJ,

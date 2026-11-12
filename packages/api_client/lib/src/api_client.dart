@@ -16,7 +16,6 @@ import 'live_overlay.dart';
 import 'route_delete.dart';
 import 'segments_rank.dart';
 import 'smoothed_sidecar.dart';
-import 'ultrasignup_person.dart';
 
 // Column-level grant lockdowns: see migrations 20260801_001 +
 // 20260818_001 (clubs.invite_token) and 20260723_001 + 20260806_001 +
@@ -283,6 +282,57 @@ class ApiClient {
         'p_target_kind': targetKind,
         'p_target_id': targetId,
         'p_reason': reason,
+        'p_notes':
+            (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+      },
+    );
+    return result as String;
+  }
+
+  /// Report a problem with a park course (issue #1346, decisions § 2449)
+  /// through the `park-course-report` Edge Function, which files it as the
+  /// signed-in user (or signed out, with no session). A refusal throws the
+  /// [FunctionException] the function answered with; its `details` carry
+  /// `{error: code}`. Mirrors web `submitParkCourseReport`.
+  Future<void> submitParkCourseReport({
+    required String courseId,
+    required String reason,
+    required String notes,
+    String? contactEmail,
+  }) async {
+    final email = contactEmail?.trim();
+    await _client.functions.invoke(
+      'park-course-report',
+      body: {
+        'course_id': courseId,
+        'reason': reason,
+        'notes': notes.trim(),
+        'contact_email': (email == null || email.isEmpty) ? null : email,
+      },
+    );
+  }
+
+  /// File an organiser name dispute (issue #1363, decisions § 2441): the
+  /// caller, an active owner or admin of the verified club [clubId], reports
+  /// [targetKind] / [targetId] as impersonating that organisation or copying
+  /// its content. `submit_organiser_dispute` is the gate and raises 42501 for
+  /// anyone else; 23505 and P0001 mean the same as for [submitReport], whose
+  /// rate-limit bucket it shares.
+  ///
+  /// Mirrors `apps/web/src/lib/core/data.ts:submitOrganiserDispute`.
+  Future<String> submitOrganiserDispute({
+    required String targetKind,
+    required String targetId,
+    required String clubId,
+    String? notes,
+  }) async {
+    final trimmed = notes?.trim();
+    final result = await _client.rpc(
+      'submit_organiser_dispute',
+      params: {
+        'p_target_kind': targetKind,
+        'p_target_id': targetId,
+        'p_club_id': clubId,
         'p_notes':
             (trimmed == null || trimmed.isEmpty) ? null : trimmed,
       },
@@ -2352,6 +2402,7 @@ class ApiClient {
         if (w.cumulativeDistanceMetres != null)
           'distM': w.cumulativeDistanceMetres,
         if (w.offTrack) 'offTrack': true,
+        if (w.segmentStart) 'segmentStart': true,
       };
 
   static Waypoint _waypointFromJson(Map<String, dynamic> m) => Waypoint(
@@ -2369,6 +2420,7 @@ class ApiClient {
         baroElevationMetres: (m['baroEle'] as num?)?.toDouble(),
         cumulativeDistanceMetres: (m['distM'] as num?)?.toDouble(),
         offTrack: m['offTrack'] == true,
+        segmentStart: m['segmentStart'] == true,
       );
 
   /// Auto-link helper: ask the DB which of the user's saved routes
@@ -5377,11 +5429,10 @@ class ApiClient {
     return SegmentRow.fromJson(inserted);
   }
 
-  // ──────────────────── parkrun import ────────────────────
+  // ──────────────────── parkrun athlete number ────────────────────
 
   /// Persist the user's parkrun athlete number on their `user_profiles`
-  /// row (matches web). The Edge Function reads this field if no
-  /// override is passed; we still pass it explicitly on import.
+  /// row (matches web), which is what the parkrun barcode draws.
   Future<void> setParkrunAthleteNumber(String? athleteNumber) async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) throw Exception('Not authenticated');
@@ -5389,27 +5440,6 @@ class ApiClient {
         .from(UserProfileRow.table)
         .update({UserProfileRow.colParkrunNumber: athleteNumber})
         .eq(UserProfileRow.colId, viewerId);
-  }
-
-  /// Trigger the `parkrun-import` Edge Function.
-  ///
-  /// Returns the graded answer rather than a bare count: the function bounds
-  /// the result set at `MAX_PARKRUN_ROWS` and says so with `complete`, and a
-  /// caller reading only `imported` presents a capped history as a whole one.
-  /// Fail-closed via [parseImportCompleteness] — a body this build cannot read
-  /// is partial.
-  Future<ImportCompleteness> importParkrunResults(String athleteNumber) async {
-    final res = await _client.functions.invoke(
-      'parkrun-import',
-      body: {'athleteNumber': athleteNumber.trim()},
-    );
-    if (res.status >= 400) {
-      final err = res.data is Map<String, dynamic>
-          ? res.data['error'] as String?
-          : null;
-      throw Exception(err ?? 'parkrun-import failed (HTTP ${res.status})');
-    }
-    return parseImportCompleteness(res.data);
   }
 
   // ──────────────────── Device list (user_device_settings) ─────────
@@ -5872,6 +5902,41 @@ class ApiClient {
     ];
   }
 
+  /// One park course by its park's slug and its own slug, with the park and
+  /// its current season, for opening a course from a run's park course chip
+  /// (the run only knows the slugs). Null when RLS hides either (a pulled park
+  /// or segment) or it is gone. Throws on a failed read.
+  Future<({ParkListing park, ParkCourseListing course})?> fetchParkCourseBySlugs(
+    String parkSlug,
+    String courseSlug,
+  ) async {
+    final park = await _client
+        .from(ParkRow.table)
+        .select('*, park_season')
+        .eq(ParkRow.colSlug, parkSlug)
+        .maybeSingle();
+    if (park == null) return null;
+    final course = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colParkId, park[ParkRow.colId] as String)
+        .eq(ParkCourseRow.colSlug, courseSlug)
+        .maybeSingle();
+    if (course == null || course['global_segments'] is! Map) return null;
+    return (
+      park: ParkListing(
+        park: ParkRow.fromJson(park),
+        season: (park['park_season'] as num).toInt(),
+      ),
+      course: ParkCourseListing(
+        course: ParkCourseRow.fromJson(course),
+        segment: GlobalSegmentRow.fromJson(
+          (course['global_segments'] as Map).cast<String, dynamic>(),
+        ),
+      ),
+    );
+  }
+
   /// A park's courses with their catalogue segment, by slug. A course whose
   /// segment was pulled is dropped (RLS hides the segment). Throws on a
   /// failed read.
@@ -5891,6 +5956,48 @@ class ApiClient {
             ),
           ),
     ];
+  }
+
+  /// Every listed park course with its catalogue segment, across all parks,
+  /// for the "Run any time" section of Races & courses. One read where a
+  /// [fetchParkCourses] call per park would be a round trip each; the same
+  /// RLS hides an inactive park's courses and a pulled segment. Throws on a
+  /// failed read.
+  Future<List<ParkCourseListing>> fetchAllParkCourses() async {
+    final rows = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .order(ParkCourseRow.colSlug, ascending: true);
+    return [
+      for (final r in rows)
+        if (r['global_segments'] is Map)
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson(r),
+            segment: GlobalSegmentRow.fromJson(
+              (r['global_segments'] as Map).cast<String, dynamic>(),
+            ),
+          ),
+    ];
+  }
+
+  /// This season's record on every park course the caller can see, keyed by
+  /// course id (`park_course_records`, migration 20271129002436). A course
+  /// with no visible effort this season has no entry. Signed-in only: the
+  /// board it wraps refuses an anonymous caller. Throws on a failed read.
+  Future<Map<String, ParkCourseRecord>> fetchParkCourseRecords() async {
+    final rows = await _client.rpc('park_course_records', params: const {}, get: true);
+    if (rows is! List) return const {};
+    return {
+      for (final r in rows)
+        if (r is Map &&
+            r['course_id'] is String &&
+            r['time_seconds'] is num)
+          r['course_id'] as String: ParkCourseRecord(
+            season: (r['season'] as num).toInt(),
+            timeSeconds: (r['time_seconds'] as num).toDouble(),
+            displayName: r['display_name'] as String?,
+          ),
+    };
   }
 
   /// Which of [routeIds] are a park course's official route, so their
@@ -5935,6 +6042,34 @@ class ApiClient {
       parkName: park?['name'] as String?,
       parkWebsiteUrl: park?['website_url'] as String?,
     );
+  }
+
+  /// The source credit of the park course built on this official route or
+  /// catalogue segment (`park_courses.attribution`, decisions § 2438), for
+  /// the route and segment screens, which show the course outside its own
+  /// screen. Pass exactly one of [routeId] and [segmentId]. Null when it is
+  /// no park course's, or the course predates the column. Mirrors web
+  /// `fetchParkCourseCredit`. Throws on a failed read.
+  Future<String?> fetchParkCourseCredit({
+    String? routeId,
+    String? segmentId,
+  }) async {
+    if ((routeId == null) == (segmentId == null)) {
+      throw ArgumentError('pass exactly one of routeId and segmentId');
+    }
+    final row = await _client
+        .from(ParkCourseRow.table)
+        .select(ParkCourseRow.colAttribution)
+        .eq(
+          routeId != null
+              ? ParkCourseRow.colRouteId
+              : ParkCourseRow.colGlobalSegmentId,
+          (routeId ?? segmentId)!,
+        )
+        .limit(1)
+        .maybeSingle();
+    final credit = (row?[ParkCourseRow.colAttribution] as String?)?.trim();
+    return credit == null || credit.isEmpty ? null : credit;
   }
 
   /// The most-completions board on a catalogue segment
@@ -7379,77 +7514,6 @@ class ApiClient {
         .eq(IntegrationRow.colProvider, provider);
   }
 
-  /// The runner's stored UltraSignup person, or null when they have not linked
-  /// one (or are signed out). Owner-only by RLS, like every `integrations`
-  /// row, and scoped to the caller here as well. Mirrors web
-  /// `fetchUltraSignUpLink` (decisions § 1841).
-  Future<UltraSignUpPersonLink?> fetchUltraSignUpLink() async {
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) return null;
-    final row = await _client
-        .from(IntegrationRow.table)
-        .select('${IntegrationRow.colId}, ${IntegrationRow.colUserId}, '
-            '${IntegrationRow.colProvider}, ${IntegrationRow.colExternalId}, '
-            '${IntegrationRow.colExternalFirstName}, '
-            '${IntegrationRow.colExternalLastName}')
-        .eq(IntegrationRow.colUserId, viewerId)
-        .eq(IntegrationRow.colProvider, ultraSignUpProvider)
-        .maybeSingle();
-    return ultraSignUpLinkFromRow(
-        row == null ? null : IntegrationRow.fromJson(row));
-  }
-
-  /// Store the person the runner picked. One row per runner per provider, so
-  /// a re-pick replaces the last one. Mirrors web `linkUltraSignUpPerson`.
-  Future<void> linkUltraSignUpPerson(UltraSignUpPersonLink link) async {
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) throw Exception('Not authenticated');
-    await _client.from(IntegrationRow.table).upsert(
-      {
-        IntegrationRow.colUserId: viewerId,
-        IntegrationRow.colProvider: ultraSignUpProvider,
-        IntegrationRow.colExternalId: link.personId,
-        IntegrationRow.colExternalFirstName: link.firstName,
-        IntegrationRow.colExternalLastName: link.lastName,
-      },
-      onConflict: '${IntegrationRow.colUserId},${IntegrationRow.colProvider}',
-    );
-  }
-
-  /// Forget the stored person. Results already imported stay — they are the
-  /// runner's runs, not the link's. Mirrors web `unlinkUltraSignUpPerson`.
-  Future<void> unlinkUltraSignUpPerson() async {
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) throw Exception('Not authenticated');
-    await _client
-        .from(IntegrationRow.table)
-        .delete()
-        .eq(IntegrationRow.colUserId, viewerId)
-        .eq(IntegrationRow.colProvider, ultraSignUpProvider);
-  }
-
-  /// The people UltraSignup knows by this name, for the runner to pick
-  /// themselves from — `race-results-import`'s `lookup` mode, which reads
-  /// nothing of ours and writes nothing. A refusal surfaces as the
-  /// [FunctionException] the function answered with (503
-  /// `provider_not_configured` when the leg is off on this deployment), so the
-  /// caller decides what each one means. Mirrors web `lookupUltraSignUpPeople`.
-  Future<List<UltraSignUpCandidate>> lookupUltraSignUpPeople(
-    String firstName,
-    String lastName,
-  ) async {
-    final res = await _client.functions.invoke(
-      'race-results-import',
-      body: {
-        'provider': ultraSignUpProvider,
-        'lookup': true,
-        'ultraSignUpFirstName': firstName.trim(),
-        'ultraSignUpLastName': lastName.trim(),
-      },
-    );
-    return parseUltraSignUpCandidates(res.data);
-  }
-
   /// Trigger a manual Strava backfill via the `strava-import` Edge
   /// Function. Mirrors the web `syncStrava` helper.
   ///
@@ -8557,9 +8621,10 @@ class ApiClient {
   /// Optional case-insensitive title search, every character matched
   /// literally (`literalSubstringPattern`, decisions § 1937). Each entry
   /// carries the author's public display name (handle) joined from
-  /// user_profiles; no other author data is exposed. Mirrors web
-  /// `data.ts#fetchPublicGymRoutineLibrary`.
-  Future<List<({GymRoutineRow routine, String? authorHandle})>>
+  /// user_profiles; no other author data is exposed, and `isOfficial` is the
+  /// view's derived flag (published by a verified organiser, migration
+  /// 20271211000002). Mirrors web `data.ts#fetchPublicGymRoutineLibrary`.
+  Future<List<({GymRoutineRow routine, String? authorHandle, bool isOfficial})>>
       fetchPublicGymRoutineLibrary({String query = ''}) async {
     // public_gym_routines redacts external_id + last_modified_at (migration
     // 20270319_001); created_at stands in for the model's required field.
@@ -8574,8 +8639,12 @@ class ApiClient {
     final rows = await sel
         .order(GymRoutineRow.colCreatedAt, ascending: false)
         .limit(100);
-    final routines = (rows as List)
-        .cast<Map<String, dynamic>>()
+    final raw = (rows as List).cast<Map<String, dynamic>>();
+    final officialIds = {
+      for (final r in raw)
+        if (r['is_official'] == true) r[GymRoutineRow.colId] as String,
+    };
+    final routines = raw
         .map((r) => GymRoutineRow.fromJson({
               ...r,
               GymRoutineRow.colLastModifiedAt: r[GymRoutineRow.colCreatedAt],
@@ -8595,7 +8664,11 @@ class ApiClient {
     }
     return [
       for (final r in routines)
-        (routine: r, authorHandle: byId[r.authorId]),
+        (
+          routine: r,
+          authorHandle: byId[r.authorId],
+          isOfficial: officialIds.contains(r.id),
+        ),
     ];
   }
 
@@ -9258,7 +9331,8 @@ class ApiClient {
     if (uid == null) return const [];
     final rows = await _client
         .from(CoachAthleteRow.table)
-        .select('id, status, note, created_at, accepted_at, athlete_id')
+        .select(
+            'id, status, note, created_at, accepted_at, athlete_id, ai_assist_consent_version')
         .eq(CoachAthleteRow.colCoachId, uid)
         .eq(CoachAthleteRow.colStatus, 'active')
         .order(CoachAthleteRow.colAcceptedAt, ascending: false);
@@ -9272,7 +9346,8 @@ class ApiClient {
     if (uid == null) return const [];
     final rows = await _client
         .from(CoachAthleteRow.table)
-        .select('id, status, note, created_at, accepted_at, coach_id')
+        .select(
+            'id, status, note, created_at, accepted_at, coach_id, ai_assist_consent_version')
         .eq(CoachAthleteRow.colAthleteId, uid)
         .eq(CoachAthleteRow.colStatus, 'active')
         .order(CoachAthleteRow.colAcceptedAt, ascending: false);
@@ -9429,9 +9504,13 @@ class ApiClient {
         userId: otherId,
         displayName: prof?.displayName,
         avatarUrl: prof?.avatarUrl,
+        aiAssistConsentVersion: _consentVersion(r['ai_assist_consent_version']),
       );
     }).toList();
   }
+
+  static int? _consentVersion(Object? raw) =>
+      raw is int && raw >= 1 ? raw : null;
 
   /// Unredeemed invites the signed-in coach has minted, newest first.
   Future<List<PendingCoachInvite>> fetchPendingCoachInvites() async {
@@ -9459,6 +9538,29 @@ class ApiClient {
   Future<String> redeemCoachInvite(String token) async {
     final res = await _client.rpc('redeem_coach_invite', params: {'token': token});
     return res as String;
+  }
+
+  /// The athlete allows ([version]) or withdraws (null) the coach assistant
+  /// on one of their active coaching links, through the
+  /// `set_coach_ai_assist_consent` RPC (issue #1215 Phase 4, migration
+  /// 20271210001217). Returns the version the server stored. A link that is
+  /// not the caller's as athlete or not active (P0002) and a version the
+  /// server does not know (22023) throw [CoachAssistConsentRefused]; anything
+  /// else is rethrown as it is. Mirrors web `setCoachAiAssistConsent`.
+  Future<int?> setCoachAiAssistConsent(String linkId, int? version) async {
+    try {
+      final row = await _client.rpc('set_coach_ai_assist_consent', params: {
+        'p_link_id': linkId,
+        'p_version': version,
+      });
+      if (row is! Map) throw const CoachAssistConsentRefused();
+      return _consentVersion(row['ai_assist_consent_version']);
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0002' || e.code == '22023') {
+        throw const CoachAssistConsentRefused();
+      }
+      rethrow;
+    }
   }
 
   /// End an active link (either party may call). Goes through the
@@ -9805,6 +9907,12 @@ class ApiClient {
               profileById[r['partner_id']]?['avatar_url'] as String?,
           lastBody: r['last_body'] as String?,
           lastUnsent: r['last_unsent'] == true,
+          lastKind: switch (r['last_kind']) {
+            'coach_share' => 'coach_share',
+            'ai_assisted' => 'ai_assisted',
+            'group_renamed' => 'group_renamed',
+            _ => 'text',
+          },
           lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
           lastFromMe: r['last_from_me'] == true,
           unread: (r['unread'] as num?)?.toInt() ?? 0,
@@ -9812,6 +9920,15 @@ class ApiClient {
           archived: r['archived'] == true,
           markedUnread: r['marked_unread'] == true,
           request: r['request'] == true,
+          lastImage: r['last_image'] == true,
+          kind: r['kind'] == 'group' ? 'group' : 'direct',
+          title: r['title'] as String?,
+          memberCount: (r['member_count'] as num?)?.toInt(),
+          membershipState: switch (r['membership_state']) {
+            'active' => 'active',
+            'left' => 'left',
+            _ => null,
+          },
         ),
     ];
   }
@@ -9970,7 +10087,8 @@ class ApiClient {
   /// `DM_COLUMNS`.
   static const String dmColumns =
       'id, sender_id, recipient_id, body, created_at, seen_at, route_id, '
-      'unsent_at, deleted_partner_key, conversation_id, edited_at';
+      'unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id, '
+      'image_id';
 
   /// One page of a conversation, oldest message first. A partner thread is
   /// both directions between the viewer and the partner; a deleted-partner
@@ -10038,15 +10156,25 @@ class ApiClient {
   /// [routeId] is the typed route attachment (route_direct_share.md v2). The
   /// same INSERT policy refuses an id the sender cannot see
   /// (`private.is_route_visible_to`), as the same 42501.
+  ///
+  /// [imageId] is a photo from [uploadDmImage] (migration 20271213121604);
+  /// with one the body may be empty and is sent as null. The INSERT policy
+  /// admits a photo only into a conversation with a follow edge or one the
+  /// recipient accepted, and refuses anything else as the same 42501.
   Future<DirectMessageRow> sendDm(
     String recipientId,
     String body, {
     String? routeId,
+    String? imageId,
   }) async {
     final me = _client.auth.currentUser?.id;
     if (me == null) throw StateError('not signed in');
     final trimmed = body.trim();
-    if (trimmed.isEmpty) throw ArgumentError.value(body, 'body', 'is empty');
+    final image = imageId?.trim();
+    final hasImage = image != null && image.isNotEmpty;
+    if (trimmed.isEmpty && !hasImage) {
+      throw ArgumentError.value(body, 'body', 'is empty');
+    }
     final attached = routeId?.trim();
     try {
       final row = await _client
@@ -10054,9 +10182,10 @@ class ApiClient {
           .insert({
             DirectMessageRow.colSenderId: me,
             DirectMessageRow.colRecipientId: recipientId,
-            DirectMessageRow.colBody: trimmed,
+            DirectMessageRow.colBody: trimmed.isEmpty ? null : trimmed,
             DirectMessageRow.colRouteId:
                 attached == null || attached.isEmpty ? null : attached,
+            if (hasImage) DirectMessageRow.colImageId: image,
           })
           .select(dmColumns)
           .single();
@@ -10101,6 +10230,65 @@ class ApiClient {
       if (e.code == '55000' || e.code == 'P0002') throw const DmEditClosed();
       rethrow;
     }
+  }
+
+  /// Share the picked paragraphs of one of the viewer's own AI Coach answers
+  /// with one of their active coaches, as a `coach_share` direct message
+  /// (issue #1215 Phase 3, migration 20271210001215). The server copies the
+  /// text by paragraph index, so the card's AI label always sits on AI text.
+  /// Mirrors web `shareCoachMessage`.
+  ///
+  /// Not their coach, a block, or a declined request is the same 42501 a
+  /// refused send is, and throws [DmSendNotPermitted]; the gate being closed
+  /// (0A000) is [CoachShareUnavailable]; the request cap (54000) is
+  /// [DmRequestCapReached]. The send throttle's P0001, an answer that is gone
+  /// (P0002) and an excerpt the server refuses (22023 / 22001) are rethrown
+  /// as the `PostgrestException` they are.
+  Future<DirectMessageRow> shareCoachMessage(
+    String coachMessageId,
+    String coachId,
+    List<int> paragraphs,
+  ) async {
+    try {
+      final row = await _client.rpc('share_coach_message', params: {
+        'p_coach_message_id': coachMessageId,
+        'p_coach_id': coachId,
+        'p_paragraphs': paragraphs,
+      });
+      return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      if (e.code == '42501') throw const DmSendNotPermitted();
+      if (e.code == '0A000') throw const CoachShareUnavailable();
+      if (e.code == '54000') throw const DmRequestCapReached();
+      rethrow;
+    }
+  }
+
+  /// Whether sharing an AI Coach answer with a coach is live (the server's
+  /// `coach_share` gate). Mirrors web `fetchCoachShareEnabled`. Fail closed:
+  /// any read failure is "off", and the caller hides the action.
+  Future<bool> fetchCoachShareEnabled() async {
+    try {
+      final result = await _client
+          .rpc('coach_share_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('coach_share_enabled failed: ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  /// The plan a Coach answer belongs to, for the link back from a card the
+  /// viewer shared. Owner-only by RLS, so it answers only for the sender;
+  /// null for an answer outside a plan or one that is gone. Mirrors web
+  /// `fetchCoachMessagePlanId`.
+  Future<String?> fetchCoachMessagePlanId(String coachMessageId) async {
+    final row = await _client
+        .from(CoachMessageRow.table)
+        .select(CoachMessageRow.colPlanId)
+        .eq(CoachMessageRow.colId, coachMessageId)
+        .maybeSingle();
+    return row?[CoachMessageRow.colPlanId] as String?;
   }
 
   /// Mark the messages [otherId] sent the viewer as read, up to and including
@@ -10153,6 +10341,578 @@ class ApiClient {
       },
       onConflict: UserSettingRow.colUserId,
     );
+  }
+
+  /// The viewer's message-requests setting (`user_settings.dm_requests`,
+  /// migration 20271213121601). Off: nobody without a follow edge can message
+  /// them first. No row reads as the default, on. Mirrors web
+  /// `fetchMyDmRequests`.
+  Future<bool> fetchMyDmRequests() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return true;
+    final row = await _client
+        .from(UserSettingRow.table)
+        .select(UserSettingRow.colDmRequests)
+        .eq(UserSettingRow.colUserId, viewerId)
+        .maybeSingle();
+    return row?[UserSettingRow.colDmRequests] != false;
+  }
+
+  /// Mirrors web `setDmRequests`.
+  Future<void> setDmRequests(bool on) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    await _client.from(UserSettingRow.table).upsert(
+      {
+        UserSettingRow.colUserId: viewerId,
+        UserSettingRow.colDmRequests: on,
+      },
+      onConflict: UserSettingRow.colUserId,
+    );
+  }
+
+  /// The reactions on [messageIds] the viewer can see (migration
+  /// 20271213121602): the SELECT policy admits only reactions on live
+  /// messages the viewer can read. Throws on a failed read so the caller
+  /// keeps what it shows. Mirrors web `fetchDmReactions`.
+  Future<List<DmReactionRecord>> fetchDmReactions(
+    List<String> messageIds,
+  ) async {
+    if (messageIds.isEmpty || _client.auth.currentUser == null) {
+      return const [];
+    }
+    final rows = await readChunked(
+      messageIds.toSet().toList(),
+      (chunk) => _client
+          .from(DirectMessageReactionRow.table)
+          .select('message_id, user_id, reaction')
+          .inFilter(DirectMessageReactionRow.colMessageId, chunk),
+    );
+    return [
+      for (final r in rows)
+        (
+          messageId: r[DirectMessageReactionRow.colMessageId] as String,
+          userId: r[DirectMessageReactionRow.colUserId] as String,
+          reaction: r[DirectMessageReactionRow.colReaction] as String,
+        ),
+    ];
+  }
+
+  /// Sets the viewer's reaction on a message, or clears it with null. Every
+  /// refusal (55000 and P0002) is [DmReactionRefused], so a block is never
+  /// told apart; the reaction throttle's P0001 is rethrown as the
+  /// `PostgrestException` it is, for the shared `rateLimitErrorMessage`
+  /// parser. Mirrors web `setDmReaction`.
+  Future<void> setDmReaction(String messageId, String? reaction) async {
+    try {
+      await _client.rpc('set_direct_message_reaction', params: {
+        'p_message_id': messageId,
+        'p_reaction': reaction,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == '55000' || e.code == 'P0002') {
+        throw const DmReactionRefused();
+      }
+      rethrow;
+    }
+  }
+
+  /// Searches the viewer's own conversations (migration 20271213121603). The
+  /// RPC runs SECURITY INVOKER under the viewer's RLS and column grants, so
+  /// it returns nothing the viewer could not read row by row, and leaves out
+  /// unanswered requests and people the viewer blocked. The caller passes a
+  /// query already normalised to the 2-100 characters the server accepts.
+  /// Partner names are a second read; a failure there leaves them null.
+  /// Throws on a failed search. Mirrors web `searchDms`.
+  Future<List<DmSearchHit>> searchDms(String query) async {
+    final me = _client.auth.currentUser?.id;
+    final q = query.trim();
+    if (me == null || q.isEmpty) return const [];
+    final res = await _client.rpc(
+      'search_direct_messages',
+      params: {'p_query': q, 'p_limit': 50},
+      get: true,
+    );
+    final hits = <DmSearchHit>[
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        if (r['body'] is String) _searchHit(r, me),
+    ];
+    final partnerIds = <String>{
+      for (final h in hits)
+        if (h.partnerId != null) h.partnerId!,
+    }.toList();
+    final groupIds = <String>{
+      for (final h in hits)
+        if (h.isGroup) h.conversationId,
+    }.toList();
+    if (partnerIds.isEmpty && groupIds.isEmpty) return hits;
+    final names = <String, String?>{};
+    if (partnerIds.isNotEmpty) {
+      try {
+        final profiles = await readChunked(
+          partnerIds,
+          (chunk) => _client
+              .from(UserProfileRow.table)
+              .select('id, display_name')
+              .inFilter(UserProfileRow.colId, chunk),
+        );
+        for (final p in profiles) {
+          names[p['id'] as String] = p['display_name'] as String?;
+        }
+      } catch (e) {
+        debugPrint('searchDms profile read failed: ${safeErrorLabel(e)}');
+      }
+    }
+    // A group's title is readable to its active members only (migration
+    // 20271216000009), exactly who search can return another member's
+    // message to; a leaver's own hit keeps a null title.
+    final titles = <String, String?>{};
+    if (groupIds.isNotEmpty) {
+      try {
+        final groups = await readChunked(
+          groupIds,
+          (chunk) => _client
+              .from('conversations')
+              .select('id, title')
+              .inFilter('id', chunk),
+        );
+        for (final g in groups) {
+          titles[g['id'] as String] = g['title'] as String?;
+        }
+      } catch (e) {
+        debugPrint('searchDms group title read failed: ${safeErrorLabel(e)}');
+      }
+    }
+    return [
+      for (final h in hits)
+        DmSearchHit(
+          id: h.id,
+          conversationId: h.conversationId,
+          partnerId: h.partnerId,
+          deletedPartnerKey: h.deletedPartnerKey,
+          partnerName: names[h.partnerId],
+          body: h.body,
+          createdAt: h.createdAt,
+          fromMe: h.fromMe,
+          isGroup: h.isGroup,
+          groupTitle: h.isGroup ? titles[h.conversationId] : null,
+        ),
+    ];
+  }
+
+  /// One `search_direct_messages` row as a hit. A group message has neither
+  /// a recipient nor a deleted-partner key, so it names no partner.
+  static DmSearchHit _searchHit(Map<String, dynamic> r, String me) {
+    final recipient = r['recipient_id'] as String?;
+    final deletedKey = r['deleted_partner_key'] as String?;
+    final isGroup = recipient == null && deletedKey == null;
+    return DmSearchHit(
+      id: r['id'] as String,
+      conversationId: r['conversation_id'] as String,
+      partnerId: isGroup
+          ? null
+          : (r['sender_id'] == me ? recipient : r['sender_id'] as String?),
+      deletedPartnerKey: deletedKey,
+      body: r['body'] as String,
+      createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+      fromMe: r['sender_id'] == me,
+      isGroup: isGroup,
+    );
+  }
+
+  // --- Group conversations (issue #1365 slice 3, decisions § 2468) ---------
+  //
+  // A group's messages are direct_messages rows with no recipient, read
+  // through the same SELECT policy as a 1:1 thread (private.can_read_message,
+  // migration 20271216000006): the window, the leave and the block filter
+  // are the server's, so a read here only ever returns what the viewer may
+  // read. Every group RPC answers a group the viewer is not in, one that does
+  // not exist and one they left with the same P0002. Mirrors the group half
+  // of web `core/data.ts`.
+
+  /// Whether group conversations are on for this deploy (the server's
+  /// `group_messages` flag): null when the read failed, so a caller can tell
+  /// "off" from "not known yet". Callers render a null as off (fail-closed)
+  /// and read again on their next poll; only a definite false ends that.
+  /// Mirrors web `fetchGroupMessagesEnabled`.
+  Future<bool?> fetchGroupMessagesEnabled() async {
+    try {
+      final result = await _client
+          .rpc('group_messages_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('group_messages_enabled failed: ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
+
+  /// Runs a group RPC, turning its refusals into [GroupActionRefused]. The
+  /// rate-limit P0001 is rethrown as the `PostgrestException` it is, for the
+  /// shared `rateLimitErrorMessage` parser.
+  Future<T> _groupRpc<T>(Future<T> Function() call) async {
+    try {
+      return await call();
+    } on PostgrestException catch (e) {
+      final reason = switch (e.code) {
+        '0A000' => GroupRefusal.unavailable,
+        'P0002' => GroupRefusal.notFound,
+        '42501' => GroupRefusal.refused,
+        '54000' => GroupRefusal.capReached,
+        '22023' => GroupRefusal.titleInvalid,
+        _ => null,
+      };
+      if (reason != null) throw GroupActionRefused(reason);
+      rethrow;
+    }
+  }
+
+  /// Creates a group with the viewer as its owner and invites [invitees],
+  /// who join only by accepting (D1). Returns the new conversation's id.
+  Future<String> createGroupConversation(
+    String title,
+    List<String> invitees,
+  ) =>
+      _groupRpc(() async {
+        final id = await _client.rpc('create_group_conversation', params: {
+          'p_title': title,
+          'p_invitees': invitees,
+        });
+        return id as String;
+      });
+
+  /// Invites more people (owner and admins). Returns how many new invites
+  /// were written; someone already a member or holding a live invite is
+  /// skipped.
+  Future<int> inviteToGroup(String conversationId, List<String> invitees) =>
+      _groupRpc(() async {
+        final n = await _client.rpc('invite_to_group', params: {
+          'p_conversation_id': conversationId,
+          'p_invitees': invitees,
+        });
+        return (n as num?)?.toInt() ?? 0;
+      });
+
+  /// The viewer's own live invitations, newest first. Inviter names are a
+  /// second read; a failure there leaves them null. Throws on a failed list.
+  Future<List<GroupInvite>> fetchGroupInvites() async {
+    if (_client.auth.currentUser == null) return const [];
+    final res =
+        await _client.rpc('group_invites', params: const {}, get: true);
+    final rows = (res as List).cast<Map<String, dynamic>>();
+    final inviters = <String>{
+      for (final r in rows)
+        if (r['invited_by'] is String) r['invited_by'] as String,
+    }.toList();
+    final names = await _profileNames(inviters, 'fetchGroupInvites');
+    return [
+      for (final r in rows)
+        GroupInvite(
+          conversationId: r['conversation_id'] as String,
+          title: r['title'] as String? ?? '',
+          invitedBy: r['invited_by'] as String?,
+          inviterName: names[r['invited_by']]?.name,
+          invitedAt: parseIsoStrictRequired(r['invited_at'], 'invited_at'),
+          memberCount: (r['member_count'] as num?)?.toInt() ?? 0,
+        ),
+    ];
+  }
+
+  Future<void> acceptGroupInvite(String conversationId) => _groupRpc(() =>
+      _client.rpc('accept_group_invite',
+          params: {'p_conversation_id': conversationId}));
+
+  /// Not undoable from the app: the group cannot invite the viewer back for
+  /// 14 days.
+  Future<void> declineGroupInvite(String conversationId) => _groupRpc(() =>
+      _client.rpc('decline_group_invite',
+          params: {'p_conversation_id': conversationId}));
+
+  /// Leaves a group at once: from now on the viewer reads only their own
+  /// messages in it (D12), and rejoining needs a new invitation.
+  Future<void> leaveGroup(String conversationId) => _groupRpc(() => _client
+      .rpc('leave_conversation', params: {'p_conversation_id': conversationId}));
+
+  /// Removes a member, or cancels an invitation (owner and admins, below
+  /// their own rank).
+  Future<void> removeGroupMember(String conversationId, String userId) =>
+      _groupRpc(() => _client.rpc('remove_group_member', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+          }));
+
+  /// [role] is `admin` or `member`; only the owner changes roles.
+  Future<void> setGroupMemberRole(
+    String conversationId,
+    String userId,
+    String role,
+  ) =>
+      _groupRpc(() => _client.rpc('set_group_member_role', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+            'p_role': role,
+          }));
+
+  /// Hands ownership to an active member; the viewer becomes an admin.
+  Future<void> transferGroupOwnership(String conversationId, String userId) =>
+      _groupRpc(() => _client.rpc('transfer_group_ownership', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+          }));
+
+  /// Renames a group (owner and admins); the server writes the rename line.
+  Future<void> renameGroup(String conversationId, String title) =>
+      _groupRpc(() => _client.rpc('rename_group', params: {
+            'p_conversation_id': conversationId,
+            'p_title': title,
+          }));
+
+  /// The group's active members, and its live invitations for the owner and
+  /// admins, with names and avatars. Throws [GroupActionRefused] with
+  /// [GroupRefusal.notFound] for a group the viewer is not active in.
+  Future<List<GroupMember>> fetchGroupMembers(String conversationId) async {
+    final rows = await _groupRpc(() async {
+      final res = await _client.rpc('group_members',
+          params: {'p_conversation_id': conversationId}, get: true);
+      return (res as List).cast<Map<String, dynamic>>();
+    });
+    final profiles = await fetchGroupProfiles(
+        [for (final r in rows) r['user_id'] as String]);
+    return [
+      for (final r in rows)
+        GroupMember(
+          userId: r['user_id'] as String,
+          role: switch (r['role']) {
+            'owner' => 'owner',
+            'admin' => 'admin',
+            'member' => 'member',
+            _ => null,
+          },
+          state: r['membership_state'] == 'invited' ? 'invited' : 'active',
+          name: profiles[r['user_id']]?.name,
+          avatarUrl: profiles[r['user_id']]?.avatarUrl,
+        ),
+    ];
+  }
+
+  /// Names and avatars for the people in a group thread: members, and the
+  /// senders of messages the viewer can read who have since left. A failed
+  /// read answers empty, and the thread shows the fallback name.
+  Future<Map<String, ({String? name, String? avatarUrl})>> fetchGroupProfiles(
+    List<String> userIds,
+  ) =>
+      _profileNames(userIds.toSet().toList(), 'fetchGroupProfiles');
+
+  Future<Map<String, ({String? name, String? avatarUrl})>> _profileNames(
+    List<String> ids,
+    String caller,
+  ) async {
+    final out = <String, ({String? name, String? avatarUrl})>{};
+    if (ids.isEmpty) return out;
+    try {
+      final profiles = await readChunked(
+        ids,
+        (chunk) => _client
+            .from(UserProfileRow.table)
+            .select('id, display_name, avatar_url')
+            .inFilter(UserProfileRow.colId, chunk),
+      );
+      for (final p in profiles) {
+        out[p['id'] as String] = (
+          name: p['display_name'] as String?,
+          avatarUrl: p['avatar_url'] as String?,
+        );
+      }
+    } catch (e) {
+      debugPrint('$caller profile read failed: ${safeErrorLabel(e)}');
+    }
+    return out;
+  }
+
+  /// One page of a group's messages the viewer may read, oldest first,
+  /// keyset-paged from the newest end exactly as [fetchDmThread] pages a 1:1
+  /// thread. The policy decides what is readable: an active member's window,
+  /// a leaver's own messages, minus what the viewer's own block filters out.
+  Future<DmThreadPage> fetchGroupThread(
+    String conversationId, {
+    DirectMessageRow? before,
+    int limit = 50,
+  }) async {
+    if (_client.auth.currentUser == null) {
+      return const DmThreadPage(messages: [], hasMore: false);
+    }
+    var query = _client
+        .from(DirectMessageRow.table)
+        .select(dmColumns)
+        .eq(DirectMessageRow.colConversationId, conversationId)
+        .eq(DirectMessageRow.colIsGroup, true);
+    if (before != null) {
+      final at = before.createdAt.toUtc().toIso8601String();
+      query = query.or(
+        '${DirectMessageRow.colCreatedAt}.lt."$at",'
+        'and(${DirectMessageRow.colCreatedAt}.eq."$at",'
+        '${DirectMessageRow.colId}.lt.${before.id})',
+      );
+    }
+    final rows = await query
+        .order(DirectMessageRow.colCreatedAt, ascending: false)
+        .order(DirectMessageRow.colId, ascending: false)
+        .limit(limit + 1);
+    final page = [for (final r in rows) DirectMessageRow.fromJson(r)];
+    final hasMore = page.length > limit;
+    final kept = hasMore ? page.sublist(0, limit) : page;
+    return DmThreadPage(messages: kept.reversed.toList(), hasMore: hasMore);
+  }
+
+  /// The places of messages in the group the viewer would read but for
+  /// their own block of the sender: an id and a time, never a body or a
+  /// sender (migration 20271217000006). [since] bounds them to the loaded
+  /// window. Throws on a failed read.
+  Future<List<GroupPlaceholder>> fetchGroupBlockedPlaceholders(
+    String conversationId,
+    DateTime? since,
+  ) async {
+    final res = await _client.rpc(
+      'group_blocked_placeholders',
+      params: {
+        'p_conversation_id': conversationId,
+        // A GET would send null as the string "null"; omit it instead
+        // (p_since defaults to null, migration 20271221000100).
+        if (since != null) 'p_since': since.toUtc().toIso8601String(),
+      },
+      get: true,
+    );
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        (
+          id: r['id'] as String,
+          createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+        ),
+    ];
+  }
+
+  /// Sends into a group. The INSERT policy admits it only from an active
+  /// member while the flag is on, and the send trigger re-checks membership
+  /// under the lock a removal takes, so a send racing a removal is refused
+  /// (C3). That 42501 is [GroupActionRefused] with [GroupRefusal.refused];
+  /// the send throttle's P0001 is rethrown for the rate-limit parser.
+  Future<DirectMessageRow> sendGroupMessage(
+    String conversationId,
+    String body, {
+    String? imageId,
+  }) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) throw StateError('not signed in');
+    final trimmed = body.trim();
+    final image = imageId?.trim();
+    final hasImage = image != null && image.isNotEmpty;
+    if (trimmed.isEmpty && !hasImage) {
+      throw ArgumentError.value(body, 'body', 'is empty');
+    }
+    return _groupRpc(() async {
+      final row = await _client
+          .from(DirectMessageRow.table)
+          .insert({
+            DirectMessageRow.colSenderId: me,
+            DirectMessageRow.colConversationId: conversationId,
+            DirectMessageRow.colBody: trimmed.isEmpty ? null : trimmed,
+            if (hasImage) DirectMessageRow.colImageId: image,
+          })
+          .select(dmColumns)
+          .single();
+      return DirectMessageRow.fromJson(row);
+    });
+  }
+
+  /// The viewer's read position in a group, through the newest message on
+  /// screen. No read receipts in groups (D6): nobody else learns of it.
+  Future<void> markGroupRead(String conversationId, String throughMessageId) =>
+      _client.rpc('mark_conversation_read', params: {
+        'p_conversation_id': conversationId,
+        'p_through_message_id': throughMessageId,
+      });
+
+  /// Whether photos can be sent in messages (the server's `dm_images` gate).
+  /// Mirrors web `fetchDmImagesEnabled`. Fail closed: any read failure is
+  /// "off", and the caller hides the attach button.
+  Future<bool> fetchDmImagesEnabled() async {
+    try {
+      final result =
+          await _client.rpc('dm_images_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('dm_images_enabled failed: ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  static const String _dmImagesBucket = 'dm-images';
+
+  /// How long a signed URL for a message photo lives, in seconds.
+  static const int dmImageSignedUrlSeconds = 600;
+
+  /// The dm-images bucket's file_size_limit (migration 20271213121604).
+  static const int dmImageMaxBytes = 5 * 1024 * 1024;
+
+  /// One message photo: its processing state and, only once the server has
+  /// re-encoded it, a signed URL valid for [dmImageSignedUrlSeconds]. The
+  /// bucket's SELECT policy admits only that re-encoded copy, and only to
+  /// someone who can read the message. Null when the viewer cannot see the
+  /// image row at all. Throws on a failed read. Mirrors web `fetchDmImage`.
+  Future<DmImageView?> fetchDmImage(String imageId) async {
+    final row = await _client
+        .from(DirectMessageImageRow.table)
+        .select('status, width, height, storage_path')
+        .eq(DirectMessageImageRow.colId, imageId)
+        .maybeSingle();
+    if (row == null) return null;
+    final raw = row[DirectMessageImageRow.colStatus];
+    final status = raw == 'ready' || raw == 'rejected' ? raw as String : 'pending';
+    if (status != 'ready') return DmImageView(status: status);
+    final url = await _client.storage.from(_dmImagesBucket).createSignedUrl(
+          row[DirectMessageImageRow.colStoragePath] as String,
+          dmImageSignedUrlSeconds,
+        );
+    return DmImageView(
+      status: status,
+      width: (row[DirectMessageImageRow.colWidth] as num?)?.toInt(),
+      height: (row[DirectMessageImageRow.colHeight] as num?)?.toInt(),
+      url: url,
+    );
+  }
+
+  /// Uploads a photo the caller has already re-encoded to a JPEG (which drops
+  /// its metadata) and returns the image id to send with [sendDm]. The server
+  /// re-encodes it again before anyone can read it. Anything that is not a
+  /// JPEG is refused before the wire, so an original with its camera
+  /// metadata cannot be uploaded by mistake. A closed gate (0A000) is
+  /// [DmImageUnavailable]; the upload throttle's P0001 is rethrown as the
+  /// `PostgrestException` it is. Mirrors web `uploadDmImage`.
+  Future<String> uploadDmImage(Uint8List jpeg) async {
+    if (jpeg.length < 3 ||
+        jpeg[0] != 0xFF ||
+        jpeg[1] != 0xD8 ||
+        jpeg[2] != 0xFF) {
+      throw ArgumentError.value(jpeg.length, 'jpeg', 'is not a JPEG');
+    }
+    if (jpeg.length > dmImageMaxBytes) {
+      throw ArgumentError.value(jpeg.length, 'jpeg', 'is over the 5 MiB limit');
+    }
+    final List<dynamic> rows;
+    try {
+      rows = await _client.rpc('create_dm_image_upload') as List<dynamic>;
+    } on PostgrestException catch (e) {
+      if (e.code == '0A000') throw const DmImageUnavailable();
+      rethrow;
+    }
+    if (rows.isEmpty) throw StateError('create_dm_image_upload returned nothing');
+    final row = rows.first as Map<String, dynamic>;
+    final id = row['id'] as String;
+    await _client.storage.from(_dmImagesBucket).uploadBinary(
+          row['upload_path'] as String,
+          jpeg,
+          fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: false),
+        );
+    return id;
   }
 
   static String _isoDate(DateTime d) =>
@@ -10259,6 +11019,11 @@ class CoachAthleteLink {
   final String? displayName;
   final String? avatarUrl;
 
+  /// The athlete's consent to the coach assistant on this link, at a version
+  /// of `coach_assist_consent_current_version()`'s ladder; null is no consent
+  /// (issue #1215 Phase 4).
+  final int? aiAssistConsentVersion;
+
   const CoachAthleteLink({
     required this.id,
     required this.status,
@@ -10268,7 +11033,31 @@ class CoachAthleteLink {
     required this.userId,
     required this.displayName,
     required this.avatarUrl,
+    this.aiAssistConsentVersion,
   });
+
+  CoachAthleteLink withAiAssistConsentVersion(int? version) =>
+      CoachAthleteLink(
+        id: id,
+        status: status,
+        note: note,
+        createdAt: createdAt,
+        acceptedAt: acceptedAt,
+        userId: userId,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+        aiAssistConsentVersion: version,
+      );
+}
+
+/// `set_coach_ai_assist_consent` refused: the link is not the caller's as
+/// athlete or is no longer active (P0002), or the version is one the server
+/// does not know (22023). Clients say one sentence for both.
+class CoachAssistConsentRefused implements Exception {
+  const CoachAssistConsentRefused();
+
+  @override
+  String toString() => 'CoachAssistConsentRefused';
 }
 
 /// One row of the multi-athlete coach roster (coach_roster.md) — the bespoke

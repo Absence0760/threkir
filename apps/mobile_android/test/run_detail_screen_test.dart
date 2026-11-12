@@ -258,6 +258,25 @@ class _MakePrivateApi extends ApiClient {
   }
 }
 
+/// Signed-in fake for a private run with audience sharing off (as in prod):
+/// counts makeRunPublic calls so the chip and the overflow's Make public can
+/// be driven without a backend.
+class _VisibilityApi extends _MakePrivateApi {
+  int publicCalls = 0;
+
+  _VisibilityApi({bool public = false}) {
+    isPublic = public;
+  }
+
+  @override
+  Future<bool> audienceSharingEnabled() async => false;
+
+  @override
+  Future<void> makeRunPublic(String runId) async {
+    publicCalls += 1;
+  }
+}
+
 /// Signed-in fake that records requestDistanceRecompute calls and throws
 /// [error] when set, so each refusal's banner can be driven without a
 /// backend. The track fetch answers empty so a `track_url` run never reaches
@@ -923,6 +942,158 @@ void main() {
       await tester.pump(const Duration(seconds: 4));
     });
 
+    group('visibility chip + Make public', () {
+      Future<void> pumpVisibility(WidgetTester tester, _VisibilityApi api) =>
+          _pump(
+            tester,
+            _run(title: 'Morning Tempo'),
+            apiClient: api,
+            settingsSync: _FakeSettingsSync(
+              Preferences(),
+              _FakeSettingsService({}),
+            ),
+          );
+
+      Future<void> tapAsync(WidgetTester tester, Finder finder) async {
+        await tester.runAsync(() async {
+          await tester.tap(finder);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+        });
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+
+      final consentConfirm = find.descendant(
+        of: find.byKey(const ValueKey('share-confirm-dialog')),
+        matching: find.widgetWithText(FilledButton, 'Make public'),
+      );
+
+      testWidgets('the chip states the visibility and the action',
+          (tester) async {
+        final api = _VisibilityApi();
+        await pumpVisibility(tester, api);
+        final chip = find.byKey(const ValueKey('run-visibility-chip'));
+        expect(chip, findsOneWidget);
+        expect(
+          find.descendant(of: chip, matching: find.text('Private')),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel('Private. Make this run public'),
+          findsOneWidget,
+        );
+      });
+
+      testWidgets('the chip on a private run makes it public through the '
+          'consent dialog and shares nothing', (tester) async {
+        final api = _VisibilityApi();
+        await pumpVisibility(tester, api);
+
+        await tapAsync(tester, find.byKey(const ValueKey('run-visibility-chip')));
+        await pumpUntil(
+          tester,
+          () => consentConfirm.evaluate().isNotEmpty,
+          describe: 'the make-public consent',
+        );
+        expect(api.publicCalls, 0);
+
+        await tapAsync(tester, consentConfirm);
+        await pumpUntil(
+          tester,
+          () => api.publicCalls == 1,
+          describe: 'makeRunPublic being called',
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('Run is now public'), findsOneWidget);
+        expect(_sharePlatform.calls, isEmpty);
+        expect(
+          find.bySemanticsLabel('Public. Make this run private'),
+          findsOneWidget,
+        );
+        await tester.pump(const Duration(seconds: 4));
+        await _dropTree(tester);
+      });
+
+      testWidgets('Cancel on the consent keeps the run private',
+          (tester) async {
+        final api = _VisibilityApi();
+        await pumpVisibility(tester, api);
+
+        await tapAsync(tester, find.byKey(const ValueKey('run-visibility-chip')));
+        await pumpUntil(
+          tester,
+          () => consentConfirm.evaluate().isNotEmpty,
+          describe: 'the make-public consent',
+        );
+        await tapAsync(
+          tester,
+          find.descendant(
+            of: find.byKey(const ValueKey('share-confirm-dialog')),
+            matching: find.widgetWithText(TextButton, 'Cancel'),
+          ),
+        );
+        expect(api.publicCalls, 0);
+        expect(find.text('Run is now public'), findsNothing);
+        await _dropTree(tester);
+      });
+
+      testWidgets('the chip on a public run opens the make-private confirm',
+          (tester) async {
+        final api = _VisibilityApi(public: true);
+        await pumpVisibility(tester, api);
+
+        await tester.tap(find.byKey(const ValueKey('run-visibility-chip')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.byKey(const ValueKey('make-private-confirm-dialog')),
+            findsOneWidget);
+        expect(api.calls, 0);
+      });
+
+      testWidgets('the overflow offers Make public on a private run, through '
+          'the same consent', (tester) async {
+        final api = _VisibilityApi();
+        await pumpVisibility(tester, api);
+
+        await tester.tap(find.byTooltip('More'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('Make private'), findsNothing);
+        await tapAsync(tester, find.text('Make public'));
+        await pumpUntil(
+          tester,
+          () => consentConfirm.evaluate().isNotEmpty,
+          describe: 'the make-public consent',
+        );
+        await tapAsync(tester, consentConfirm);
+        await pumpUntil(
+          tester,
+          () => api.publicCalls == 1,
+          describe: 'makeRunPublic being called',
+        );
+        expect(_sharePlatform.calls, isEmpty);
+        await tester.pump(const Duration(seconds: 4));
+        await _dropTree(tester);
+      });
+
+      testWidgets('the overflow hides Make public on a public run',
+          (tester) async {
+        final api = _VisibilityApi(public: true);
+        await pumpVisibility(tester, api);
+
+        await tester.tap(find.byTooltip('More'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('Make private'), findsOneWidget);
+        expect(find.text('Make public'), findsNothing);
+      });
+
+      testWidgets('signed out there is no chip', (tester) async {
+        await _pump(tester, _run(title: 'Morning Tempo'));
+        expect(find.byKey(const ValueKey('run-visibility-chip')), findsNothing);
+      });
+    });
+
     testWidgets('make-private is hidden when signed out', (tester) async {
       final run = _run(title: 'Morning Tempo');
       await _pump(tester, run);
@@ -1268,6 +1439,17 @@ void main() {
       expect(find.text('240 ms'), findsOneWidget);
       expect(find.text('1.18 m'), findsOneWidget);
       expect(find.text('290 W'), findsOneWidget);
+    });
+
+    testWidgets('stride length follows the miles preference', (tester) async {
+      // 1.18 m x 3.28084 = 3.871 ft.
+      final run = _run(metadata: {
+        'activity_type': 'run',
+        'running_dynamics': {'stride_length_m': 1.18},
+      });
+      await _pump(tester, run, useMiles: true);
+      expect(find.text('3.87 ft'), findsOneWidget);
+      expect(find.text('1.18 m'), findsNothing);
     });
 
     testWidgets('omits the Running Dynamics block when the key is absent',

@@ -734,11 +734,12 @@ func TestStreamExportPersonalDataTables_IntegrationsSelectIncludesDisconnectColu
 	if !strings.Contains(integrationsURL, "disconnected_reason") {
 		t.Errorf("integrations select must include disconnected_reason. Got: %q", integrationsURL)
 	}
-	// 20270726000003: the name an UltraSignup person was looked up under is
-	// the runner's own name, so the right-of-access export carries it too.
+	// 20271216170001 deleted every UltraSignup identity; both name columns are
+	// NULL everywhere and are dropped by a later migration, which would 400 an
+	// export that still selected them.
 	for _, col := range []string{"external_first_name", "external_last_name"} {
-		if !strings.Contains(integrationsURL, col) {
-			t.Errorf("integrations select must include %s. Got: %q", col, integrationsURL)
+		if strings.Contains(integrationsURL, col) {
+			t.Errorf("integrations select must not include the retired %s. Got: %q", col, integrationsURL)
 		}
 	}
 	// Vault secrets must STILL never surface — the original audit
@@ -970,6 +971,16 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 	// (20271114000210), so the sent export carries it beside edited_at.
 	if !strings.Contains(dmSentQ, "edited_at") || !strings.Contains(dmSentQ, "original_body") {
 		t.Errorf("direct_messages (sent) select must carry edited_at and original_body; got %q", dmSentQ)
+	}
+	// A shared AI Coach answer (20271210001215) says what it is and which of
+	// the sender's own Coach answers it quoted.
+	if !strings.Contains(dmSentQ, "kind") || !strings.Contains(dmSentQ, "coach_message_id") {
+		t.Errorf("direct_messages (sent) select must carry kind and coach_message_id; got %q", dmSentQ)
+	}
+	// A photo (20271213121604) is named by image_id; the image's own row and
+	// bytes are in direct_message_images.json and storage/dm-images/.
+	if !strings.Contains(dmSentQ, "image_id") {
+		t.Errorf("direct_messages (sent) select must carry image_id; got %q", dmSentQ)
 	}
 	// Where a message request to or from the subject stands is their own
 	// conversation state (20271115002384).

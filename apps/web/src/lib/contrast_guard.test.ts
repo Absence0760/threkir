@@ -1838,9 +1838,7 @@ for (const { label, marker } of THEMES) {
 // REPLACES the base `.integration-icon` background rather than tinting over it,
 // which is the ground § 526 measured against and the reason four of the six
 // figures it recorded were too pessimistic.
-const PROVIDERS = [
-	'strava', 'parkrun', 'garmin', 'healthkit', 'runsignup', 'ultrasignup', 'chronotrack',
-] as const;
+const PROVIDERS = ['strava', 'garmin', 'healthkit', 'runsignup', 'chronotrack'] as const;
 
 for (const { label, marker } of THEMES) {
 	test(`provider glyph inks clear 1.4.11 on their own brand disc — ${label}`, () => {

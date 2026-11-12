@@ -1,4 +1,4 @@
-//! GPS distance estimator, spec v1.5 forward filter — the `no_std` port of
+//! GPS distance estimator, spec v1.8 forward filter — the `no_std` port of
 //! `scripts/gps_distance/reference.py` (docs/features/gps_distance.md). The
 //! spec's smoother needs the whole run in memory and is not ported here; the
 //! phone or server re-derives a saved figure from the uploaded track.
@@ -32,6 +32,9 @@ pub const STATIONARY_SPEED_MPS: f64 = 0.4;
 pub const POS_ONLY_STATIONARY_SPEED_MPS: f64 = 0.8;
 pub const GAP_S: f64 = 10.0;
 pub const FRESH_FIX_S: f64 = 2.0;
+/// Spec v1.6: gaps a step sample can still owe a share to; past it the
+/// oldest is dropped.
+pub const MAX_OPEN_GAPS: usize = 8;
 pub const STRIDE_WINDOW_STEPS: i64 = 50;
 pub const MIN_STRIDE_M: f64 = 0.4;
 pub const MAX_STRIDE_M: f64 = 2.5;
@@ -68,7 +71,7 @@ pub const ZUPT_RELEASE_M: f64 = 40.0;
 pub const ZUPT_BATCH_MIN_CADENCE_SPS: f64 = 1.0;
 pub const ZUPT_BATCH_MARGIN: f64 = 1.5;
 pub const ZUPT_MAX_NO_STEP_S: f64 = 30.0;
-pub const SPEC_VERSION: &str = "1.5";
+pub const SPEC_VERSION: &str = "1.8";
 pub const DEFAULT_MAX_SPEED_MPS: f64 = 10.0;
 
 const DEG_TO_RAD: f64 = core::f64::consts::PI / 180.0;
@@ -186,15 +189,26 @@ pub struct GpsDistanceEstimator {
     fresh_fix_s: f64,
     gps_distance_m: f64,
     step_distance_m: f64,
+    /// v1.7: what the steps credited the gaps over their chord lower bounds.
+    step_over_chord_m: f64,
     stride_m: Option<f64>,
     origin: Option<(f64, f64)>,
     axes: Option<(Axis, Axis)>,
     t: Option<f64>,
     win_steps: i64,
     win_m: f64,
+    /// v1.6: the fix that last emptied the stride window.
+    win_from_t: f64,
+    /// v1.6: a stale step sample emptied the stride window since the last fix.
+    win_stale: bool,
     last_steps: Option<i64>,
     last_step_t: Option<f64>,
     pending_step_m: f64,
+    /// v1.6: the gaps re-anchors closed since the last step sample (start t,
+    /// end t, their GPS top-up), owed their share of the next one; the first
+    /// `open_gaps` entries are live, oldest first.
+    gaps: [(f64, f64, f64); MAX_OPEN_GAPS],
+    open_gaps: u32,
     r_scale: f64,
     rejected_fixes: u32,
     reject_streak: u32,
@@ -226,11 +240,11 @@ pub struct GpsDistanceEstimator {
 /// the pin is about noticing growth rather than a hard ceiling. Measured at
 /// spec v1.2: v1.1's 248 B plus 112 B for the gate, adaptive-R, cross-check
 /// and ZUPT state; spec v1.3 adds 88 B for the Doppler scale; spec v1.4's two
-/// stride-learning flags spill one more 8 B word; spec v1.5's step-batch span adds 8 B. The state stays `f64`: the projection and the covariance
+/// stride-learning flags spill one more 8 B word; spec v1.5's step-batch span adds 8 B; spec v1.6's eight open gaps and their `u32` count add 192 B, and the time the stride window was last emptied 8 B (its stale flag fits beside the other `bool`s); spec v1.7's step-over-chord total adds 8 B. The state stays `f64`: the projection and the covariance
 /// recursion over a run of thousands of fixes do not hold the vectors' 1e-3 m
 /// in `f32`. Identical on both targets because every field is 8-aligned
 /// scalars, `u32`s and `bool`s.
-const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 464);
+const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 672);
 
 impl Default for GpsDistanceEstimator {
     fn default() -> Self {
@@ -268,15 +282,20 @@ impl GpsDistanceEstimator {
             fresh_fix_s: FRESH_FIX_S * scale,
             gps_distance_m: 0.0,
             step_distance_m: 0.0,
+            step_over_chord_m: 0.0,
             stride_m,
             origin: None,
             axes: None,
             t: None,
             win_steps: 0,
             win_m: 0.0,
+            win_from_t: f64::NEG_INFINITY,
+            win_stale: false,
             last_steps: None,
             last_step_t: None,
             pending_step_m: 0.0,
+            gaps: [(0.0, 0.0, 0.0); MAX_OPEN_GAPS],
+            open_gaps: 0,
             r_scale: 1.0,
             rejected_fixes: 0,
             reject_streak: 0,
@@ -312,6 +331,14 @@ impl GpsDistanceEstimator {
 
     pub fn step_distance_m(&self) -> f64 {
         self.step_distance_m
+    }
+
+    /// Spec v1.7: what the steps credited the gaps over their chord lower
+    /// bounds, summed: per gap max(chord, steps) - chord, exactly what a
+    /// replay with no steps lacks. The firmware uploads no estimator stamp,
+    /// so nothing sends it; the vectors hold it in lockstep.
+    pub fn step_over_chord_m(&self) -> f64 {
+        self.step_over_chord_m
     }
 
     pub fn stride_m(&self) -> Option<f64> {
@@ -458,12 +485,21 @@ impl GpsDistanceEstimator {
                         gap_m = lower - self.pending_step_m;
                         self.gps_distance_m += gap_m;
                     }
+                    self.step_over_chord_m += (self.pending_step_m - lower.max(0.0)).max(0.0);
+                    if self.open_gaps as usize == MAX_OPEN_GAPS {
+                        self.gaps.copy_within(1.., 0);
+                        self.open_gaps -= 1;
+                    }
+                    self.gaps[self.open_gaps as usize] = (last, t, gap_m);
+                    self.open_gaps += 1;
                 }
                 self.pending_step_m = 0.0;
                 self.stride_ok = self.stride_grade(accuracy_m, doppler.map(|(_, sa)| sa));
-                if !self.stride_ok {
-                    self.win_steps = 0;
-                    self.win_m = 0.0;
+                self.win_stale = false;
+                // The first fix also starts the window: a step sample before it
+                // counted steps no fix measured metres for.
+                if !self.stride_ok || self.t.is_none() {
+                    self.empty_window(t);
                 }
                 self.axes = Some((Axis::new(zx, r), Axis::new(zy, r)));
                 self.t = Some(t);
@@ -640,18 +676,31 @@ impl GpsDistanceEstimator {
             _ => None,
         };
         self.stride_ok = self.stride_grade(accuracy_m, credit_sa);
-        if self.stride_ok {
+        // A step sample that fell stale since the last fix emptied the window
+        // inside this fix's interval, so the window no longer holds the steps its
+        // metres cover.
+        if self.stride_ok && !self.win_stale {
             self.win_m += inc;
         } else {
-            self.win_steps = 0;
-            self.win_m = 0.0;
+            self.empty_window(t);
         }
+        self.win_stale = false;
         inc
     }
 
+    /// Empty the stride window at the fix at `t`. Its metres start after `t`,
+    /// so a step sample whose interval reaches back before `t` must not refill
+    /// it.
+    fn empty_window(&mut self, t: f64) {
+        self.win_steps = 0;
+        self.win_m = 0.0;
+        self.win_from_t = t;
+    }
+
     /// Cumulative pedometer count. Learns a stride while GPS is good and
-    /// buffers steps x stride while it is not; the buffer is committed only
-    /// when the gap turns out to exceed [`GAP_S`] x the expected interval.
+    /// buffers steps x stride for the time since the last fix, dropped when
+    /// the next fix integrates it and committed only if the gap exceeds
+    /// [`GAP_S`] x the expected interval (at that fix, or at [`Self::finish`]).
     pub fn add_steps(&mut self, t: f64, cumulative_steps: i64) {
         if !t.is_finite() {
             return;
@@ -659,13 +708,31 @@ impl GpsDistanceEstimator {
         let (prev, prev_t) = (self.last_steps, self.last_step_t);
         self.last_steps = Some(cumulative_steps);
         self.last_step_t = Some(t);
-        let (Some(prev), Some(prev_t)) = (prev, prev_t) else {
-            return;
+        let (prev, prev_t) = match (prev, prev_t) {
+            (Some(prev), Some(prev_t)) if cumulative_steps >= prev && t > prev_t => (prev, prev_t),
+            _ => {
+                // A baseline counts no interval, so the stride window's metres so far
+                // have no steps: start the window here, as a learn does. A stale one
+                // also marks the window, as any stale sample does, so the next fix
+                // empties it.
+                if matches!(self.t, Some(fix_t) if t - fix_t > self.fresh_fix_s) {
+                    self.win_stale = true;
+                }
+                match self.t {
+                    // v1.7: stamped before the last fix, so the window's metres
+                    // already start after this stamp; the next sample's steps
+                    // reach back before them and must not refill it.
+                    Some(fix_t) if t < fix_t => self.empty_window(fix_t),
+                    _ => {
+                        self.win_steps = 0;
+                        self.win_m = 0.0;
+                    }
+                }
+                return;
+            }
         };
-        if cumulative_steps < prev || t <= prev_t {
-            return;
-        }
         let d = cumulative_steps - prev;
+        let in_gap = self.attribute_steps(prev_t, t, d);
         if d > 0 {
             if self.steps_seen {
                 let span = t - self.last_step_inc_t;
@@ -677,8 +744,14 @@ impl GpsDistanceEstimator {
             self.last_step_inc_t = t;
             self.zupt_released = false;
         }
+        // A sample whose interval reaches into a gap, or stamped before the last
+        // fix, holds steps GPS measured no metres for, so it must not teach stride.
         if let Some(fix_t) = self.t {
-            if t - fix_t <= self.fresh_fix_s {
+            if !in_gap
+                && prev_t >= self.win_from_t
+                && t - fix_t >= 0.0
+                && t - fix_t <= self.fresh_fix_s
+            {
                 if !self.stride_ok {
                     return;
                 }
@@ -696,13 +769,57 @@ impl GpsDistanceEstimator {
                 }
                 return;
             }
+            if t - fix_t > self.fresh_fix_s {
+                self.win_stale = true;
+            }
         }
         self.win_steps = 0;
         self.win_m = 0.0;
-        let Some(stride) = self.stride_m else {
-            return;
+    }
+
+    /// v1.6: a sample's `d` steps were taken across (prev_t, t], so each part
+    /// of that interval gets its share. The part after the last fix is
+    /// buffered; the part inside each gap a re-anchor closed since the
+    /// previous sample tops that gap's credit up to its steps. Returns whether
+    /// (prev_t, t] overlaps any open gap.
+    fn attribute_steps(&mut self, prev_t: f64, t: f64, d: i64) -> bool {
+        let open = core::mem::take(&mut self.open_gaps) as usize;
+        let in_gap = self.gaps[..open]
+            .iter()
+            .any(|&(start_t, end_t, _)| end_t.min(t) > prev_t.max(start_t));
+        let rate = match self.stride_m {
+            Some(stride) if d > 0 => (d as f64 * stride / (t - prev_t)).min(self.max_speed_mps),
+            _ => 0.0,
         };
-        self.pending_step_m += (d as f64 * stride).min(self.max_speed_mps * (t - prev_t));
+        if rate > 0.0 {
+            let lo = match self.t {
+                Some(fix_t) => prev_t.max(fix_t),
+                None => prev_t,
+            };
+            if t > lo {
+                self.pending_step_m += rate * (t - lo);
+            }
+        }
+        for i in 0..open {
+            let (start_t, end_t, top_up_m) = self.gaps[i];
+            let from = prev_t.max(start_t);
+            let to = end_t.min(t);
+            let mut take = 0.0;
+            if rate > 0.0 && to > from {
+                let late = rate * (to - from);
+                self.step_distance_m += late;
+                take = late.min(top_up_m);
+                self.gps_distance_m -= take;
+                self.step_over_chord_m += late - take;
+            }
+            // A gap ending after this sample stays open, less the credit it
+            // gave up, so the next sample shares the rest of it.
+            if end_t > t {
+                self.gaps[self.open_gaps as usize] = (start_t, end_t, top_up_m - take);
+                self.open_gaps += 1;
+            }
+        }
+        in_gap
     }
 
     /// End of run: commit buffered steps if the trailing gap exceeds [`GAP_S`]
@@ -711,6 +828,7 @@ impl GpsDistanceEstimator {
         if let Some(fix_t) = self.t {
             if t.is_finite() && t - fix_t > self.gap_s {
                 self.step_distance_m += self.pending_step_m;
+                self.step_over_chord_m += self.pending_step_m;
             }
         }
         self.pending_step_m = 0.0;
@@ -786,6 +904,11 @@ mod tests {
             let step = exp["stepDistanceM"].as_f64().expect("stepDistanceM");
             assert!((e.gps_distance_m() - gps).abs() <= tol, "{name}: gps");
             assert!((e.step_distance_m() - step).abs() <= tol, "{name}: step");
+            let over = exp["stepOverChordM"].as_f64().expect("stepOverChordM");
+            assert!(
+                (e.step_over_chord_m() - over).abs() <= tol,
+                "{name}: step over chord"
+            );
             match exp["strideM"].as_f64() {
                 Some(s) => assert!(
                     (e.stride_m().expect("stride learned") - s).abs() <= tol,
@@ -838,6 +961,7 @@ mod tests {
         );
         assert_eq!(f("GAP_S"), GAP_S);
         assert_eq!(f("FRESH_FIX_S"), FRESH_FIX_S);
+        assert_eq!(f("MAX_OPEN_GAPS"), MAX_OPEN_GAPS as f64);
         assert_eq!(f("STRIDE_WINDOW_STEPS") as i64, STRIDE_WINDOW_STEPS);
         assert_eq!(f("MIN_STRIDE_M"), MIN_STRIDE_M);
         assert_eq!(f("MAX_STRIDE_M"), MAX_STRIDE_M);
@@ -878,8 +1002,8 @@ mod tests {
     #[test]
     fn the_fixture_is_this_port_s_spec_version() {
         let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
-        assert_eq!(SPEC_VERSION, "1.5");
-        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.5"));
+        assert_eq!(SPEC_VERSION, "1.8");
+        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.8"));
     }
 
     #[test]
@@ -994,6 +1118,268 @@ mod tests {
         // chord less its uncertainty, not by Doppler x interval.
         let gap = e.add_fix(661.0, 40.02, -75.0, None, Some(3.0), None, None);
         assert!((gap - 2040.0015971).abs() < 1e-6, "{gap}");
+    }
+
+    fn east_m_per_deg() -> f64 {
+        111195.0 * libm::cos(40.0 * core::f64::consts::PI / 180.0)
+    }
+
+    fn eastward() -> GpsDistanceEstimator {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(0.5))
+            .without_stride_learning();
+        for i in 0..=25 {
+            e.add_fix(
+                i as f64,
+                40.0,
+                -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                Some(3.0),
+                Some(4.0),
+                Some(0.3),
+                Some(90.0),
+            );
+            e.add_steps(i as f64 + 0.5, 4 * i + 2);
+        }
+        e
+    }
+
+    #[test]
+    fn a_late_step_batch_tops_a_gap_up_without_counting_its_chord_twice() {
+        // Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+        // lower bound wins. The batch after the resuming fix moves 10 m of
+        // that credit from the chord to the steps and adds nothing (v1.6).
+        let mut e = eastward();
+        e.add_steps(50.0, 202);
+        e.add_fix(
+            55.0,
+            40.0,
+            -75.0 + 220.0 / east_m_per_deg(),
+            Some(3.0),
+            Some(4.0),
+            Some(0.3),
+            Some(90.0),
+        );
+        let before = e.distance_m();
+        let steps = e.step_distance_m();
+        e.add_steps(56.5, 228);
+        assert!((e.distance_m() - before).abs() < 1e-9, "{}", e.distance_m());
+        assert!(
+            (e.step_distance_m() - steps - 10.0).abs() < 1e-9,
+            "{}",
+            e.step_distance_m()
+        );
+    }
+
+    #[test]
+    fn a_late_sample_stamped_inside_a_gap_shares_only_its_own_interval() {
+        // 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest
+        // of the gap, which the fix at 55 closed before the sample arrived, at
+        // the sample's rate would credit 5 m (v1.6).
+        let mut e = eastward();
+        e.add_steps(50.0, 202);
+        e.add_fix(
+            55.0,
+            40.0,
+            -75.0 + 110.0 / east_m_per_deg(),
+            Some(3.0),
+            Some(4.0),
+            Some(0.3),
+            Some(90.0),
+        );
+        let before = e.distance_m();
+        let steps = e.step_distance_m();
+        e.add_steps(51.0, 204);
+        assert!(
+            (e.distance_m() - before - 1.0).abs() < 1e-9,
+            "{}",
+            e.distance_m()
+        );
+        assert!(
+            (e.step_distance_m() - steps - 1.0).abs() < 1e-9,
+            "{}",
+            e.step_distance_m()
+        );
+    }
+
+    #[test]
+    fn a_fix_bridging_a_short_stall_teaches_no_stride_from_its_credit() {
+        // 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+        // whose samples emptied the window; feeding its 28 m to the window
+        // learns 1.092 m, and letting the sample at 36.5 refill it 0.985 m (v1.6).
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if !(30..36).contains(&i) {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            e.add_steps(i as f64 + 0.5, 4 * i + 2);
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-9, "{stride}");
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only sets
+    /// the baseline; counting the window's metres from the first fix put 30 s of
+    /// metres against 15 s of steps and learned 2.0 m, then 1.64 m by 60.5.
+    #[test]
+    fn the_first_step_sample_of_a_stretch_starts_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            e.add_fix(
+                i as f64,
+                40.0,
+                -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                Some(3.0),
+                Some(4.0),
+                Some(0.3),
+                Some(90.0),
+            );
+            if i > 0 && i % 15 == 0 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands
+    /// inside a 7 s stall the fix at 18 bridges, so it is stale as well as the
+    /// baseline; the bridging fix must empty the window rather than feed it 28
+    /// m, which learned 1.171 m.
+    #[test]
+    fn a_stale_first_step_sample_keeps_a_bridged_stall_out_of_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if !(11..=17).contains(&i) {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            if i % 15 == 14 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// The first sample, at 0.5, and the second, at 15.5, come before the
+    /// first fix at 20; the first fix starts the window, so the sample at
+    /// 30.5, whose interval began before it, empties the window rather than
+    /// pairing 15 s of steps with 10 s of metres, which learned 0.787 m.
+    #[test]
+    fn the_first_fix_of_a_stretch_starts_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if i >= 20 {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            if i % 15 == 0 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// The baseline, stamped 15.5, arrives after the fix at 18, so the window's
+    /// metres start at 18; the sample at 30.5, whose steps start at 15.5, must
+    /// empty the window rather than pair 15 s of steps with 12 s of metres,
+    /// which learned 0.8 m (v1.7).
+    #[test]
+    fn a_step_baseline_delivered_after_a_later_fix_keeps_its_steps_out_of_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            e.add_fix(
+                i as f64,
+                40.0,
+                -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                Some(3.0),
+                Some(4.0),
+                Some(0.3),
+                Some(90.0),
+            );
+            if i == 18 {
+                e.add_steps(15.5, 62);
+            }
+            if i > 15 && i % 15 == 0 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose
+    /// 104 m of steps the resuming fix puts beside no chord (the runner looped
+    /// back), a 55.39 m one, and one longer than the steps (v1.7).
+    #[test]
+    fn step_over_chord_counts_only_the_steps_a_gap_credited_beyond_its_chord() {
+        for (east_m, want) in [(24.0, 104.0), (80.0, 48.612667), (160.0, 0.0)] {
+            let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(1.0))
+                .without_stride_learning();
+            let fix = |e: &mut GpsDistanceEstimator, t: f64, east: f64| {
+                e.add_fix(
+                    t,
+                    40.0,
+                    -75.0 + east / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            };
+            for i in 0..=30 {
+                if i <= 5 {
+                    fix(&mut e, i as f64, 4.0 * i as f64);
+                }
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+            fix(&mut e, 31.0, east_m);
+            e.add_steps(31.5, 126);
+            assert!(
+                (e.step_distance_m() - 104.0).abs() < 1e-9,
+                "{}",
+                e.step_distance_m()
+            );
+            assert!(
+                (e.step_over_chord_m() - want).abs() < 1e-6,
+                "resume {east_m} m: {}",
+                e.step_over_chord_m()
+            );
+        }
+    }
+
+    #[test]
+    fn a_stretch_credits_no_steps_taken_before_its_first_fix() {
+        let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(1.0))
+            .without_stride_learning();
+        for i in 0..30 {
+            e.add_steps(i as f64 + 0.5, 4 * i);
+        }
+        e.add_fix(30.0, 40.0, -75.0, Some(3.0), None, None, None);
+        e.finish(31.0);
+        assert_eq!(e.distance_m(), 0.0);
     }
 
     #[test]

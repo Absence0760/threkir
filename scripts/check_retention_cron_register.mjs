@@ -41,7 +41,7 @@
 // CI:  the `workflow-lint` job in .github/workflows/ci.yml.
 // Unit tests: `node --test scripts/check_retention_cron_register.test.mjs`
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -64,8 +64,16 @@ export const MIGRATIONS = 'apps/backend/supabase/migrations';
 export const EXCLUDED_JOBS = [
 	{ name: 'enqueue-token-refresh', reason: 'Enqueues integration token refreshes; deletes nothing.' },
 	{
+		name: 'build-direct-messages-body-trgm',
+		reason: 'Builds the direct-message search index online (CREATE INDEX CONCURRENTLY); a no-op once the index exists, deletes nothing.',
+	},
+	{
 		name: 'club-verification-recheck',
 		reason: "Re-checks verified clubs' domain proof and drops a lapsed badge; deletes nothing.",
+	},
+	{
+		name: 'park-closures-sweep',
+		reason: 'Flags park courses for review from NPS alerts and stamps gone alerts; deletes nothing.',
 	},
 	{ name: 'enqueue-event-reminders', reason: 'Enqueues reminder emails; deletes nothing.' },
 	{ name: 'enqueue-workout-reminders', reason: "Raises today's-workout reminders; deletes nothing." },
@@ -437,7 +445,7 @@ export function check({ state, register, excluded }) {
 	return { errors, ok };
 }
 
-const invokedDirectly = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const invokedDirectly = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
 	const state = liveCronState(readCronOps(ROOT));
 	const register = parseRegister(readFileSync(join(ROOT, REGISTER), 'utf-8'));

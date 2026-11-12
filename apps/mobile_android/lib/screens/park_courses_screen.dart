@@ -6,32 +6,49 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        AppSemanticColors,
         ChoiceChipOption,
         ChoiceChipRow,
+        EmptyState,
         IdentityAvatar,
         ListSkeleton,
         StatGrid,
         StatTile,
+        StatusPill,
+        StatusPillSize,
         TextLane;
+import 'package:url_launcher/url_launcher.dart';
 
+import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
+import '../elevation_profile.dart' show elevationSeries;
+import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart';
+import '../park_course_distance.dart';
 import '../park_courses.dart';
 import '../preferences.dart';
+import '../route_guide.dart';
 import '../route_surface_label.dart';
 import '../share_sheet.dart';
+import '../widgets/elevation_chart.dart';
 import '../widgets/error_state.dart';
 import 'help_screen.dart' show openGuide;
+import 'public_route_screen.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
+import '../widgets/live_run_map.dart' show currentBasemapIsDark;
+import '../widgets/park_course_map.dart';
+import '../widgets/park_course_report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/old_match_note.dart';
 import '../widgets/track_preview.dart';
 
-/// Park courses (issue #1313, decisions § 2383): parks by region. Mobile
-/// mirror of web `/parks`. The catalogue is world-readable, so this works
-/// signed out; only the boards on [ParkCourseScreen] need an account.
+/// Park courses (issue #1313, decisions § 2383): parks by region, each a card
+/// with its course lines, how many courses it has and their distance range.
+/// Mobile mirror of web `/parks`. The catalogue is world-readable, so this
+/// works signed out; only the boards on [ParkCourseScreen] need an account.
 class ParksScreen extends StatefulWidget {
   final ApiClient? api;
 
@@ -46,10 +63,15 @@ class _ParksScreenState extends State<ParksScreen> {
   bool _loading = true;
   bool _error = false;
 
+  /// Every listed course, by park id. A second read the cards only decorate
+  /// with, so a failure leaves the parks listed without their lines.
+  Map<String, List<ParkCourseListing>> _coursesByPark = const {};
+
   @override
   void initState() {
     super.initState();
     _load();
+    _loadCourses();
   }
 
   Future<void> _load() async {
@@ -81,6 +103,22 @@ class _ParksScreenState extends State<ParksScreen> {
     }
   }
 
+  Future<void> _loadCourses() async {
+    final api = widget.api;
+    if (api == null) return;
+    try {
+      final courses =
+          await api.fetchAllParkCourses().timeout(kBackendLoadTimeout);
+      final byPark = <String, List<ParkCourseListing>>{};
+      for (final c in courses) {
+        byPark.putIfAbsent(c.course.parkId, () => []).add(c);
+      }
+      if (mounted) setState(() => _coursesByPark = byPark);
+    } catch (e) {
+      debugPrint('parks index: course read failed: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -90,6 +128,7 @@ class _ParksScreenState extends State<ParksScreen> {
       regionCodeOf: (p) => p.park.regionCode,
       nameOf: (p) => p.park.name,
     );
+    final wide = widthClassOf(context) == WidthClass.expanded;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.parksTitle)),
       body: _loading
@@ -102,47 +141,187 @@ class _ParksScreenState extends State<ParksScreen> {
             )
           : _error
           ? ErrorState(message: l10n.parksLoadFailed, onRetry: _load)
+          : _parks.isEmpty
+          ? EmptyState(
+              key: const Key('parks-empty'),
+              icon: Icons.park_outlined,
+              title: l10n.parksEmpty,
+              body: l10n.parksIntro,
+            )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
-                Text(
-                  l10n.parksIntro,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (_parks.isEmpty)
-                  Text(l10n.parksEmpty, key: const Key('parks-empty')),
-                for (final group in groups) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 4),
-                    child: Text(
-                      regionName(group.regionCode),
-                      style: theme.textTheme.titleSmall,
-                    ),
-                  ),
-                  for (final listing in group.parks)
-                    Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.park_outlined),
-                        title: Text(listing.park.name),
-                        subtitle: Text(agencyLabel(l10n, listing.park.agency)),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) =>
-                                ParkScreen(api: widget.api, listing: listing),
-                          ),
+                contentColumn(
+                  context,
+                  maxWidth: 1080,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        l10n.parksIntro,
+                        key: const Key('parks-intro'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                    ),
-                ],
+                      for (final group in groups) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20, bottom: 8),
+                          child: Semantics(
+                            header: true,
+                            child: Text(
+                              regionName(group.regionCode),
+                              style: theme.textTheme.titleMedium,
+                            ),
+                          ),
+                        ),
+                        if (wide)
+                          _TwoColumns(
+                            children: [
+                              for (final listing in group.parks)
+                                _parkCard(listing),
+                            ],
+                          )
+                        else
+                          for (final listing in group.parks)
+                            _parkCard(listing),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
     );
   }
+
+  Widget _parkCard(ParkListing listing) => _ParkCard(
+        key: ValueKey('parks-park-${listing.park.id}'),
+        listing: listing,
+        courses: _coursesByPark[listing.park.id],
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ParkScreen(api: widget.api, listing: listing),
+          ),
+        ),
+      );
 }
+
+/// Lays [children] out two to a row, each half the width.
+class _TwoColumns extends StatelessWidget {
+  final List<Widget> children;
+  const _TwoColumns({required this.children});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          const gap = 12.0;
+          final w = (constraints.maxWidth - gap) / 2;
+          return Wrap(
+            spacing: gap,
+            children: [
+              for (final c in children) SizedBox(width: w, child: c),
+            ],
+          );
+        },
+      );
+}
+
+class _ParkCard extends StatelessWidget {
+  final ParkListing listing;
+
+  /// Null while the course read is out or after it failed.
+  final List<ParkCourseListing>? courses;
+  final VoidCallback onTap;
+
+  const _ParkCard({
+    super.key,
+    required this.listing,
+    required this.courses,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final park = listing.park;
+    final sorted = courses == null ? null : sortedParkCourses(courses!);
+    final muted = theme.textTheme.bodySmall
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final range = sorted == null
+        ? null
+        : courseDistanceRange(
+            [for (final c in sorted) c.segment.distanceM],
+            activeDistanceUnit,
+          );
+    final summary = sorted == null || sorted.isEmpty
+        ? null
+        : [l10n.parksCourseCount(sorted.length), ?range].join(' · ');
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (sorted != null && sorted.isNotEmpty)
+              ParkOverviewMap(
+                lines: [
+                  for (final c in sorted)
+                    ApiClient.globalSegmentGeometry(c.segment),
+                ],
+                aspectRatio: 2.4,
+                showStarts: false,
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(park.name, style: theme.textTheme.titleMedium),
+                        Text(agencyLabel(l10n, park.agency), style: muted),
+                        if (summary != null)
+                          Text(
+                            summary,
+                            key: ValueKey('parks-park-summary-${park.id}'),
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A park's courses in list order (shortest first, closed last).
+List<ParkCourseListing> sortedParkCourses(List<ParkCourseListing> courses) =>
+    sortParkCourses(
+      courses,
+      (c) => ParkCourseSortKey(
+        distanceM: c.segment.distanceM,
+        name: c.segment.name,
+        slug: c.course.slug,
+        status: c.course.status,
+      ),
+    );
+
+/// A course distance as a course reads it: "5 km", "21.1 km", "3.1 mi".
+String courseDistanceForPref(double metres) =>
+    courseDistanceLabel(metres, activeDistanceUnit) ??
+    formatDistanceForPref(metres);
 
 String agencyLabel(AppLocalizations l10n, String agency) => switch (agency) {
   'nps' => l10n.parksAgencyNps,
@@ -166,6 +345,14 @@ String courseStatusLabel(AppLocalizations l10n, String status) =>
       _ => status,
     };
 
+/// The give-way note for a course whose paths an organised group regularly
+/// uses (`park_courses.shared_use`, decisions § 2460). It names no one.
+String? sharedUseNotice(AppLocalizations l10n, String? sharedUse) =>
+    switch (sharedUse) {
+      'saturday_morning_group' => l10n.parksSharedUseSaturdayMorningGroup,
+      _ => null,
+    };
+
 String? courseDifficultyLabel(AppLocalizations l10n, String? difficulty) =>
     switch (difficulty) {
       'easy' => l10n.parksDifficultyEasy,
@@ -182,7 +369,98 @@ String geometryAttribution(AppLocalizations l10n, String source) =>
       _ => l10n.parksAttributionTraced,
     };
 
-/// One park and its courses. Mobile mirror of web `/parks/[region]/[park]`.
+/// The one credit line a course carries: the catalogue's own credit when it
+/// has one, else the label for where its line came from.
+String courseCredit(AppLocalizations l10n, ParkCourseRow course) {
+  final own = course.attribution?.trim();
+  return own != null && own.isNotEmpty
+      ? own
+      : geometryAttribution(l10n, course.geometrySource);
+}
+
+/// A course's status as a pill, or null for an open course.
+Widget? courseStatusPill(BuildContext context, String status) {
+  if (status == 'open') return null;
+  final l10n = AppLocalizations.of(context);
+  final semantic = AppSemanticColors.of(context);
+  final colour = status == 'closed' ? semantic.danger : semantic.warning;
+  return StatusPill(
+    label: courseStatusLabel(l10n, status),
+    foreground: colour,
+    outline: colour,
+    size: StatusPillSize.compact,
+  );
+}
+
+/// A neutral fact about a course (laps, shape, climb, difficulty) as a pill.
+Widget courseFactPill(BuildContext context, String label, {Key? key}) {
+  final scheme = Theme.of(context).colorScheme;
+  return StatusPill(
+    key: key,
+    label: label,
+    foreground: scheme.onSurfaceVariant,
+    fill: scheme.surfaceContainerHighest,
+    size: StatusPillSize.compact,
+  );
+}
+
+/// The pills a course carries beside its distance: laps when there is more
+/// than one, the shape only when it is not a loop, the climb, the difficulty
+/// and a status that is not open.
+List<Widget> courseFactPills(
+  BuildContext context,
+  ParkCourseListing c, {
+  bool includeClimb = true,
+}) {
+  final l10n = AppLocalizations.of(context);
+  final course = c.course;
+  final laps = courseLapsChip(course.laps);
+  final climb = c.segment.elevationM;
+  final difficulty = courseDifficultyLabel(l10n, course.difficulty);
+  return [
+    if (laps != null)
+      courseFactPill(
+        context,
+        l10n.parksCourseLaps(laps),
+        key: ValueKey('park-course-laps-${course.id}'),
+      ),
+    if (courseShapeShown(course.courseShape))
+      courseFactPill(context, courseShapeLabel(l10n, course.courseShape)),
+    if (includeClimb && climb != null && climb > 0)
+      courseFactPill(
+        context,
+        l10n.parksCourseClimb(formatElevationForPref(climb)),
+      ),
+    if (difficulty != null) courseFactPill(context, difficulty),
+    ?courseStatusPill(context, course.status),
+  ];
+}
+
+String _recordLine(AppLocalizations l10n, ParkCourseRecord? r) {
+  if (r == null) return l10n.racesAnyTimeNoTimeYet;
+  final name = r.displayName?.trim();
+  return name != null && name.isNotEmpty
+      ? l10n.racesAnyTimeFastestBy(
+          '${r.season}', formatEffortTime(r.timeSeconds), name)
+      : l10n.racesAnyTimeFastest('${r.season}', formatEffortTime(r.timeSeconds));
+}
+
+Future<void> _openParkWebsite(BuildContext context, String url) async {
+  final l10n = AppLocalizations.of(context);
+  var ok = false;
+  try {
+    ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  } catch (e) {
+    debugPrint('park website: launch failed for $url: $e');
+  }
+  if (!ok && context.mounted) {
+    showTopBanner(context, l10n.parksWebsiteOpenFailed);
+  }
+}
+
+/// One park: where it is and who runs it, a map of every course line, and
+/// its courses shortest first, each with its shape, climb and this season's
+/// record. Mobile mirror of web `/parks/[region]/[park]`.
 class ParkScreen extends StatefulWidget {
   final ApiClient? api;
   final ParkListing listing;
@@ -197,11 +475,14 @@ class _ParkScreenState extends State<ParkScreen> {
   List<ParkCourseListing> _courses = const [];
   bool _loading = true;
   bool _error = false;
+  Map<String, ParkCourseRecord> _records = const {};
+  bool _recordsFailed = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadRecords();
   }
 
   Future<void> _load() async {
@@ -223,7 +504,7 @@ class _ParkScreenState extends State<ParkScreen> {
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
-        _courses = courses;
+        _courses = sortedParkCourses(courses);
         _loading = false;
       });
     } catch (_) {
@@ -235,11 +516,43 @@ class _ParkScreenState extends State<ParkScreen> {
     }
   }
 
+  Future<void> _loadRecords() async {
+    // The board behind the records refuses an anonymous caller, so a
+    // signed-out reader gets the courses without the line, not a failure.
+    final api = widget.api;
+    if (api == null || api.userId == null) return;
+    setState(() => _recordsFailed = false);
+    try {
+      final records =
+          await api.fetchParkCourseRecords().timeout(kBackendLoadTimeout);
+      if (mounted) setState(() => _records = records);
+    } catch (e) {
+      debugPrint('park page: course records read failed: $e');
+      if (mounted) setState(() => _recordsFailed = true);
+    }
+  }
+
+  void _open(ParkCourseListing c) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ParkCourseScreen(
+            api: widget.api,
+            listing: widget.listing,
+            course: c,
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final park = widget.listing.park;
+    final website = park.websiteUrl;
+    final muted = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final signedIn = widget.api?.userId != null;
+    final darkBasemap = currentBasemapIsDark(context);
     return Scaffold(
       appBar: AppBar(title: Text(park.name)),
       body: _loading
@@ -255,49 +568,212 @@ class _ParkScreenState extends State<ParkScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
-                Text(
-                  '${regionName(park.regionCode)} · ${agencyLabel(l10n, park.agency)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (park.description != null &&
-                    park.description!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(park.description!),
-                ],
-                const SizedBox(height: 16),
-                if (_courses.isEmpty) Text(l10n.parksNoCourses),
-                for (final c in _courses)
-                  Card(
-                    child: ListTile(
-                      title: Text(c.segment.name),
-                      subtitle: Text(
-                        '${formatDistanceForPref(c.segment.distanceM)} · '
-                        '${courseShapeLabel(l10n, c.course.courseShape)}',
-                      ),
-                      trailing: c.course.status == 'open'
-                          ? const Icon(Icons.chevron_right)
-                          : Chip(
-                              label: Text(
-                                courseStatusLabel(l10n, c.course.status),
-                              ),
+                contentColumn(
+                  context,
+                  maxWidth: 960,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Wrap(
+                        key: const Key('park-header-meta'),
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        children: [
+                          Text(
+                            '${regionName(park.regionCode)} · '
+                            '${agencyLabel(l10n, park.agency)}',
+                            style: muted,
+                          ),
+                          if (website != null &&
+                              website.startsWith('https://'))
+                            TextButton.icon(
+                              key: const Key('park-website'),
+                              onPressed: () =>
+                                  _openParkWebsite(context, website),
+                              icon: const Icon(Icons.open_in_new, size: 18),
+                              label: Text(l10n.parksWebsite),
                             ),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => ParkCourseScreen(
-                            api: widget.api,
-                            listing: widget.listing,
-                            course: c,
+                        ],
+                      ),
+                      if (park.description != null &&
+                          park.description!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(park.description!),
+                      ],
+                      const SizedBox(height: 16),
+                      if (_courses.isEmpty)
+                        Text(l10n.parksNoCourses)
+                      else ...[
+                        ParkOverviewMap(
+                          key: const Key('park-overview-map'),
+                          lines: [
+                            for (final c in _courses)
+                              ApiClient.globalSegmentGeometry(c.segment),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20, bottom: 8),
+                          child: Semantics(
+                            header: true,
+                            child: Text(
+                              l10n.parksCourseCount(_courses.length),
+                              style: theme.textTheme.titleMedium,
+                            ),
                           ),
                         ),
+                        if (_recordsFailed)
+                          Padding(
+                            key: const Key('park-records-failed'),
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              children: [
+                                Text(l10n.racesAnyTimeFastestFailed),
+                                OutlinedButton.icon(
+                                  onPressed: _loadRecords,
+                                  icon: const Icon(Icons.refresh),
+                                  label: Text(l10n.parksRetry),
+                                ),
+                              ],
+                            ),
+                          ),
+                        for (var i = 0; i < _courses.length; i++)
+                          _ParkCourseCard(
+                            key: ValueKey(
+                              'park-course-${_courses[i].course.id}',
+                            ),
+                            course: _courses[i],
+                            colour: parkCourseLineColour(
+                              i,
+                              darkBasemap: darkBasemap,
+                            ),
+                            recordLine: signedIn && !_recordsFailed
+                                ? _recordLine(
+                                    l10n,
+                                    _records[_courses[i].course.id],
+                                  )
+                                : null,
+                            onTap: () => _open(_courses[i]),
+                          ),
+                      ],
+                      const SizedBox(height: 24),
+                      _NotAffiliatedNote(
+                        key: const Key('park-not-affiliated'),
                       ),
-                    ),
+                    ],
                   ),
-                const SizedBox(height: 16),
-                _NotAffiliatedNote(key: const Key('park-not-affiliated')),
+                ),
               ],
             ),
+    );
+  }
+}
+
+class _ParkCourseCard extends StatelessWidget {
+  final ParkCourseListing course;
+  final Color colour;
+  final String? recordLine;
+  final VoidCallback onTap;
+
+  const _ParkCourseCard({
+    super.key,
+    required this.course,
+    required this.colour,
+    required this.recordLine,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final segment = course.segment;
+    final geometry = ApiClient.globalSegmentGeometry(segment);
+    final pills = courseFactPills(context, course);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: MergeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (geometry.length >= 2) ...[
+                  SizedBox(
+                    width: 88,
+                    child: AspectRatio(
+                      aspectRatio: 4 / 3,
+                      child: TrackPreview(points: geometry),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          ExcludeSemantics(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: colour,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const SizedBox.square(dimension: 10),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              segment.name,
+                              style: theme.textTheme.titleSmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            courseDistanceForPref(segment.distanceM),
+                            key: ValueKey(
+                              'park-course-distance-${course.course.id}',
+                            ),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          ...pills,
+                        ],
+                      ),
+                      if (recordLine != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          recordLine!,
+                          key: ValueKey(
+                            'park-course-record-${course.course.id}',
+                          ),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -319,8 +795,9 @@ class _NotAffiliatedNote extends StatelessWidget {
 
 enum ParkBoardKind { fastest, completions }
 
-/// One park course: map, stats, safety notice, attribution and the fastest /
-/// most-completions boards for this season or all time. Mobile mirror of web
+/// One park course: stats, map with its legend, the elevation profile, one
+/// credit line, the notices, the actions and the fastest / most-completions
+/// boards for this season or all time. Mobile mirror of web
 /// `/parks/[region]/[park]/[course]`.
 class ParkCourseScreen extends StatefulWidget {
   final ApiClient? api;
@@ -347,7 +824,18 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
   List<GlobalSegmentCompletionsEntry>? _completions;
   bool _boardFailed = false;
 
+  /// Whether nobody has a time on this course at all, in any season. Null
+  /// until known. While true the board is an invitation and its controls stay
+  /// hidden, since there is nothing for them to sort or filter.
+  bool? _neverRun;
+
   int? get _season => _allTime ? null : widget.listing.season;
+
+  bool get _defaultSelection =>
+      _kind == ParkBoardKind.fastest &&
+      !_allTime &&
+      _gender == null &&
+      _ageBand == null;
 
   @override
   void initState() {
@@ -375,7 +863,13 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
             )
             .timeout(kBackendLoadTimeout);
         if (!mounted) return;
-        setState(() => _fastest = board);
+        setState(() {
+          _fastest = board;
+          if (board.isNotEmpty) _neverRun = false;
+        });
+        if (board.isEmpty && _defaultSelection && _neverRun == null) {
+          await _checkNeverRun();
+        }
       } else {
         final board = await api
             .fetchGlobalSegmentCompletions(segmentId, season: _season)
@@ -389,6 +883,27 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     }
   }
 
+  /// An empty board this season can still have times from earlier ones; the
+  /// all-time completions board says whether anyone has ever run the course.
+  /// A failed check keeps the controls, which still work.
+  Future<void> _checkNeverRun() async {
+    final api = widget.api;
+    if (api == null) return;
+    try {
+      final all = await api
+          .fetchGlobalSegmentCompletions(
+            widget.course.segment.id,
+            season: null,
+            limit: 1,
+          )
+          .timeout(kBackendLoadTimeout);
+      if (mounted) setState(() => _neverRun = all.isEmpty);
+    } catch (e) {
+      debugPrint('park course: all-time check failed: $e');
+      if (mounted) setState(() => _neverRun = false);
+    }
+  }
+
   /// Shares the course line as GPX with its checkpoints and the geometry
   /// credit, which has to travel with the file (OpenStreetMap's licence asks
   /// for it on the exported work).
@@ -397,6 +912,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final course = widget.course.course;
     final segment = widget.course.segment;
     final park = widget.listing.park;
+    final guide = parseRouteGuide(course.routeGuide);
     try {
       final gpx = parkCourseGpx(
         name: segment.name,
@@ -410,6 +926,9 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           parkName: park.name,
           parkWebsiteUrl: park.websiteUrl,
         ),
+        guide: guide == null
+            ? null
+            : (guide: guide, checkedAt: _isoDay(course.routeGuideCheckedAt)),
       );
       final safe = segment.name
           .replaceAll(RegExp(r'[^a-zA-Z0-9-_ ]'), '')
@@ -434,6 +953,12 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     }
   }
 
+  void _navigate(ApiClient api, String routeId) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PublicRouteScreen(api: api, routeId: routeId),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -442,8 +967,18 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final segment = widget.course.segment;
     final park = widget.listing.park;
     final geometry = ApiClient.globalSegmentGeometry(segment);
+    final checkpoints =
+        parseCourseCheckpoints(course.checkpoints) ?? const <CourseCheckpoint>[];
     final elevation = segment.elevationM;
     final difficulty = courseDifficultyLabel(l10n, course.difficulty);
+    final pills = courseFactPills(context, widget.course, includeClimb: false);
+    final description = segment.description?.trim();
+    final guide = parseRouteGuide(course.routeGuide);
+    final api = widget.api;
+    final routeId = course.routeId;
+    final wayfinding = courseOffersWayfinding(course.status);
+    final canNavigate = api != null && routeId != null && wayfinding;
+    final canShare = geometry.length >= 2 && wayfinding;
     return Scaffold(
       appBar: AppBar(
         title: Text(segment.name),
@@ -459,142 +994,176 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
-          Text(
-            '${park.name} · ${regionName(park.regionCode)}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (course.status == 'closed') ...[
-            const SizedBox(height: 12),
-            Card(
-              key: const Key('park-course-closed'),
-              color: theme.colorScheme.errorContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  l10n.parksClosedBanner,
-                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          StatGrid(
-            cells: [
-              StatTile.medium(
-                label: l10n.parksStatDistance,
-                value: formatDistanceForPref(segment.distanceM),
-              ),
-              if (elevation != null && elevation > 0)
-                StatTile.medium(
-                  label: l10n.parksStatElevation,
-                  value: formatElevationForPref(elevation),
-                ),
-              StatTile.medium(
-                label: l10n.parksStatShape,
-                value: courseShapeLabel(l10n, course.courseShape),
-              ),
-              StatTile.medium(
-                label: l10n.parksStatSurface,
-                value: routeSurfaceLabel(l10n, segment.surface),
-              ),
-              if (difficulty != null)
-                StatTile.medium(
-                  label: l10n.parksStatDifficulty,
-                  value: difficulty,
-                ),
-            ],
-          ),
-          if (course.status != 'open') ...[
-            const SizedBox(height: 8),
-            Text(
-              [
-                courseStatusLabel(l10n, course.status),
-                if (course.statusNote != null &&
-                    course.statusNote!.trim().isNotEmpty)
-                  course.statusNote!,
-              ].join(': '),
-            ),
-          ],
-          if (geometry.length >= 2) ...[
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                // TrackPreview fills whatever it is given, and a ListView
-                // gives an unbounded height.
-                aspectRatio: 2.4,
-                child: TrackPreview(points: geometry),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              geometryAttribution(l10n, course.geometrySource),
-              key: const Key('park-course-attribution'),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-          const SizedBox(height: 4),
-          _NotAffiliatedNote(key: const Key('park-course-not-affiliated')),
-          const SizedBox(height: 12),
-          Row(
-            key: const Key('park-course-safety'),
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.info_outline,
-                size: 18,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  l10n.parksSafetyNotice,
-                  style: theme.textTheme.bodySmall,
-                ),
-              ),
-            ],
-          ),
-          if (isLongCourse(segment.distanceM)) ...[
-            const SizedBox(height: 8),
-            Row(
-              key: const Key('park-course-long'),
-              crossAxisAlignment: CrossAxisAlignment.start,
+          contentColumn(
+            context,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  Icons.schedule,
-                  size: 18,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    l10n.parksLongCourseNotice,
-                    style: theme.textTheme.bodySmall,
+                Text(
+                  '${park.name} · ${regionName(park.regionCode)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (pills.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 6, runSpacing: 4, children: pills),
+                ],
+                if (course.status == 'closed') ...[
+                  const SizedBox(height: 12),
+                  Card(
+                    key: const Key('park-course-closed'),
+                    color: theme.colorScheme.errorContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        l10n.parksClosedBanner,
+                        style: TextStyle(
+                          color: theme.colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                StatGrid(
+                  cells: [
+                    StatTile.medium(
+                      label: l10n.parksStatDistance,
+                      value: courseDistanceForPref(segment.distanceM),
+                    ),
+                    if (elevation != null && elevation > 0)
+                      StatTile.medium(
+                        label: l10n.parksStatElevation,
+                        value: formatElevationForPref(elevation),
+                      ),
+                    StatTile.medium(
+                      label: l10n.parksStatSurface,
+                      value: routeSurfaceLabel(l10n, segment.surface),
+                    ),
+                    if (difficulty != null)
+                      StatTile.medium(
+                        label: l10n.parksStatDifficulty,
+                        value: difficulty,
+                      ),
+                  ],
+                ),
+                if (course.status != 'open' &&
+                    course.statusNote != null &&
+                    course.statusNote!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(course.statusNote!),
+                ],
+                if (description != null && description.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(description, key: const Key('park-course-description')),
+                ],
+                if (geometry.length >= 2) ...[
+                  const SizedBox(height: 16),
+                  ParkCourseMap(
+                    key: const Key('park-course-map'),
+                    line: geometry,
+                    checkpoints: checkpoints,
+                  ),
+                  const SizedBox(height: 8),
+                  ParkCourseMapLegend(
+                    line: geometry,
+                    checkpointCount: checkpoints.length,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    courseCredit(l10n, course),
+                    key: const Key('park-course-attribution'),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                if (elevationSeries(geometry) != null) ...[
+                  const SizedBox(height: 20),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      l10n.parksElevationProfile,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevationChart(
+                    key: const Key('park-course-elevation'),
+                    track: geometry,
+                    theme: theme,
+                    unit: activeDistanceUnit,
+                  ),
+                ],
+                if (guide != null && wayfinding) ...[
+                  const SizedBox(height: 20),
+                  _CourseRouteGuide(
+                    guide: guide,
+                    checkedAt: course.routeGuideCheckedAt,
+                  ),
+                ],
+                const SizedBox(height: 20),
+                _CourseNotices(
+                  long: isLongCourse(segment.distanceM),
+                  sharedUse: parseSharedUse(course.sharedUse),
+                ),
+                if (canNavigate || canShare) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      if (canNavigate)
+                        FilledButton.icon(
+                          key: const Key('park-course-navigate'),
+                          onPressed: () => _navigate(api, routeId),
+                          icon: const Icon(Icons.navigation_outlined),
+                          label: Text(l10n.parksNavigate),
+                        ),
+                      if (canShare)
+                        Builder(
+                          builder: (anchor) => canNavigate
+                              ? OutlinedButton.icon(
+                                  key: const Key('park-course-share-gpx'),
+                                  onPressed: () => _shareGpx(anchor),
+                                  icon: const Icon(Icons.ios_share),
+                                  label: Text(l10n.parksShareGpx),
+                                )
+                              : FilledButton.icon(
+                                  key: const Key('park-course-share-gpx'),
+                                  onPressed: () => _shareGpx(anchor),
+                                  icon: const Icon(Icons.ios_share),
+                                  label: Text(l10n.parksShareGpx),
+                                ),
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 24),
+                _buildBoards(context, l10n),
+                if (api != null) ...[
+                  const SizedBox(height: 24),
+                  // At the foot of the page, away from Navigate: it is for the
+                  // rare runner or land manager with a problem (decisions § 2449).
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      key: const Key('park-course-report'),
+                      onPressed: () => showParkCourseReportSheet(
+                        context,
+                        api: api,
+                        courseId: course.id,
+                        courseName: segment.name,
+                      ),
+                      icon: const Icon(Icons.flag_outlined),
+                      label: Text(l10n.parkCourseReportAction),
+                    ),
+                  ),
+                ],
               ],
             ),
-          ],
-          if (geometry.length >= 2 && course.status != 'closed') ...[
-            const SizedBox(height: 12),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: Builder(
-                builder: (anchor) => OutlinedButton.icon(
-                  key: const Key('park-course-share-gpx'),
-                  onPressed: () => _shareGpx(anchor),
-                  icon: const Icon(Icons.ios_share),
-                  label: Text(l10n.parksShareGpx),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 20),
-          _buildBoards(context, l10n),
+          ),
         ],
       ),
     );
@@ -613,7 +1182,29 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
       );
     }
     final theme = Theme.of(context);
+    if (_neverRun == true && !_boardFailed) {
+      return EmptyState(
+        key: const Key('park-board-invitation'),
+        icon: Icons.emoji_events_outlined,
+        title: l10n.parksBoardEmptyTitle,
+        body: l10n.parksBoardEmptyBody,
+      );
+    }
+    final settledEmptyDefault = _defaultSelection &&
+        !_boardFailed &&
+        _fastest != null &&
+        _fastest!.isEmpty &&
+        _neverRun == null;
+    if (settledEmptyDefault) {
+      return Text(
+        l10n.segmentsPanelLeaderboardLoading,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
     return Column(
+      key: const Key('park-board-controls'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ChoiceChipRow<ParkBoardKind>(
@@ -667,48 +1258,54 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           Wrap(
             spacing: 8,
             children: [
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _gender,
-                  isDense: true,
-                  hint: Text(l10n.segmentsPanelAllGenders),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.segmentsPanelAllGenders),
-                    ),
-                    DropdownMenuItem(
-                      value: 'male',
-                      child: Text(l10n.segmentsPanelGenderMen),
-                    ),
-                    DropdownMenuItem(
-                      value: 'female',
-                      child: Text(l10n.segmentsPanelGenderWomen),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    setState(() => _gender = v);
-                    _refreshBoard();
-                  },
+              IntrinsicWidth(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: _gender,
+                    isDense: true,
+                    isExpanded: true,
+                    hint: Text(l10n.segmentsPanelAllGenders),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.segmentsPanelAllGenders),
+                      ),
+                      DropdownMenuItem(
+                        value: 'male',
+                        child: Text(l10n.segmentsPanelGenderMen),
+                      ),
+                      DropdownMenuItem(
+                        value: 'female',
+                        child: Text(l10n.segmentsPanelGenderWomen),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      setState(() => _gender = v);
+                      _refreshBoard();
+                    },
+                  ),
                 ),
               ),
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _ageBand,
-                  isDense: true,
-                  hint: Text(l10n.segmentsPanelAllAges),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.segmentsPanelAllAges),
-                    ),
-                    for (final b in kSegmentAgeBands)
-                      DropdownMenuItem(value: b, child: Text(b)),
-                  ],
-                  onChanged: (v) {
-                    setState(() => _ageBand = v);
-                    _refreshBoard();
-                  },
+              IntrinsicWidth(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: _ageBand,
+                    isDense: true,
+                    isExpanded: true,
+                    hint: Text(l10n.segmentsPanelAllAges),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.segmentsPanelAllAges),
+                      ),
+                      for (final b in kSegmentAgeBands)
+                        DropdownMenuItem(value: b, child: Text(b)),
+                    ],
+                    onChanged: (v) {
+                      setState(() => _ageBand = v);
+                      _refreshBoard();
+                    },
+                  ),
                 ),
               ),
             ],
@@ -764,6 +1361,188 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           isViewer: e.athlete.id == viewerId,
         ),
     ];
+  }
+}
+
+/// `route_guide_checked_at` as the `YYYY-MM-DD` it is stored as.
+String? _isoDay(DateTime? d) => d == null
+    ? null
+    : '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+
+/// A course's route guide (#1344): its steps as a numbered list in the
+/// reader's language and unit, under a note saying whether a person has
+/// walked it at the park yet. Mirrors web's `ParkCourseRouteGuide`.
+class _CourseRouteGuide extends StatelessWidget {
+  final RouteGuide guide;
+  final DateTime? checkedAt;
+  const _CourseRouteGuide({required this.guide, required this.checkedAt});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tag = localeToTag(Localizations.localeOf(context));
+    final fmt = GuideFormat(
+      message: (key, params) => guideLineMessage(l10n, key, params),
+      distance: formatDistanceForPref,
+      short: formatElevationForPref,
+    );
+    final lines = [
+      for (final l in routeGuideLines(guide)) formatGuideLine(l, fmt),
+    ];
+    final checked = checkedAt;
+    final gettingThere = guide.gettingThere;
+    return Column(
+      key: const Key('park-course-guide'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(l10n.parkGuideTitle, style: theme.textTheme.titleMedium),
+        ),
+        const SizedBox(height: 8),
+        if (checked != null)
+          Text(
+            l10n.parkGuideChecked(formatDateMed(
+                DateTime(checked.year, checked.month, checked.day), tag)),
+            key: const Key('park-course-guide-checked'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          )
+        else
+          Container(
+            key: const Key('park-course-guide-pending'),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              border: BorderDirectional(
+                start: BorderSide(
+                  color: AppSemanticColors.of(context).warning,
+                  width: 4,
+                ),
+              ),
+            ),
+            child: Text(l10n.parkGuidePending,
+                style: theme.textTheme.bodyMedium),
+          ),
+        if (gettingThere != null) ...[
+          const SizedBox(height: 12),
+          Semantics(
+            header: true,
+            child: Text(l10n.parkGuideGettingThere,
+                style: theme.textTheme.titleSmall),
+          ),
+          const SizedBox(height: 4),
+          Text(gettingThere, key: const Key('park-course-guide-getting-there')),
+        ],
+        const SizedBox(height: 12),
+        Column(
+          key: const Key('park-course-guide-steps'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < lines.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${i + 1}.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        )),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(lines[i])),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The course page's one notices callout: the safety rules first, the
+/// give-way note when an organised group shares the paths, the long-course
+/// warning when it applies, then the times and not-affiliated notes.
+class _CourseNotices extends StatelessWidget {
+  final bool long;
+  final String? sharedUse;
+  const _CourseNotices({required this.long, required this.sharedUse});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    Widget row(Key key, IconData icon, String text, TextStyle? style) => Row(
+          key: key,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 10),
+            Expanded(child: Text(text, style: style)),
+          ],
+        );
+    return Card(
+      key: const Key('park-course-notices'),
+      color: scheme.surfaceContainerHighest,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            row(
+              const Key('park-course-safety'),
+              Icons.health_and_safety,
+              l10n.parksSafetyNotice,
+              theme.textTheme.bodyMedium,
+            ),
+            if (sharedUseNotice(l10n, sharedUse) case final note?) ...[
+              const SizedBox(height: 10),
+              row(
+                const Key('park-course-shared-use'),
+                Icons.groups_outlined,
+                note,
+                theme.textTheme.bodyMedium,
+              ),
+            ],
+            if (long) ...[
+              const SizedBox(height: 10),
+              row(
+                const Key('park-course-long'),
+                Icons.schedule,
+                l10n.parksLongCourseNotice,
+                theme.textTheme.bodyMedium,
+              ),
+            ],
+            const SizedBox(height: 10),
+            row(
+              const Key('park-course-times'),
+              Icons.timer,
+              l10n.parksTimesNotEventResults,
+              theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 10),
+            row(
+              const Key('park-course-not-affiliated'),
+              Icons.info_outline,
+              l10n.parksNotAffiliated,
+              theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

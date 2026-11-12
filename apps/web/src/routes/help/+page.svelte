@@ -6,6 +6,7 @@
 	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { AUDIENCE_LABEL, CATEGORY_LABEL, KIND_LABEL } from '#lib/help/labels.ts';
 	import HelpSearchForm from '#lib/components/help/HelpSearchForm.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 
 	// A guide for everyone is a guide for each group, so it stays listed under
@@ -67,7 +68,7 @@
 	</div>
 
 	{#if groups.length === 0}
-		<p class="empty">{m('help.noGuidesForAudience')}</p>
+		<EmptyState icon="menu_book" title={m('help.noGuidesForAudience')} />
 	{/if}
 
 	{#each groups as group (group.category)}
@@ -137,9 +138,6 @@
 	.chip:focus-visible {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
-	}
-	.empty {
-		color: var(--color-text-secondary);
 	}
 	.category {
 		margin-top: var(--space-xl);

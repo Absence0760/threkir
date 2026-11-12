@@ -91,7 +91,7 @@ test.describe('/u/[me]?tab=notifications — inbox', () => {
 
 		// Filter to Unread → should be the empty state.
 		await page.getByRole('button', { name: /Unread/ }).click();
-		await expect(page.locator('.empty', { hasText: "You're all caught up" }))
+		await expect(page.getByTestId('notifications-empty').filter({ hasText: "You're all caught up" }))
 			.toBeVisible({ timeout: 5_000 });
 
 		// Back to All → all items still listed (count unchanged), none

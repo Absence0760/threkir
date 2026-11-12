@@ -29,10 +29,12 @@ export type RecapOgInput = {
 import { OG_CARD_DARK } from './og_card_palette';
 import { OG_FONT_STACK } from './og_card_font';
 import { escapeXml } from '../util/html_escape';
+import { grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
 const PAD = 64;
+const RECAP_GRISNIR_HEIGHT = 160;
 
 const BG = OG_CARD_DARK.bg;
 const BRAND = OG_CARD_DARK.brand;
@@ -62,6 +64,10 @@ export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): 
 	parts.push(
 		`<text x="${PAD}" y="${PAD + 24}" font-family="${F}" font-size="32" font-weight="800" fill="${BRAND}">Threkir</text>`,
 	);
+
+	// Grisnir, top-right, a little smaller so the hero numeral below him keeps
+	// its full width.
+	parts.push(grisnirBadgeSvg(W - PAD - grisnirBadgeWidth(RECAP_GRISNIR_HEIGHT), PAD - 24, RECAP_GRISNIR_HEIGHT));
 
 	// Kicker.
 	const period = (input.periodLabel ?? (input.year != null ? String(input.year) : '')).trim();

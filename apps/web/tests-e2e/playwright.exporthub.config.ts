@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 
 import { defineConfig, devices } from '@playwright/test';
 
+import { viteCommand } from './fixtures/vite-command';
+
 /**
  * Dedicated Playwright config for the QUEUED Art 20 export rail
  * (decisions.md § 717 / § 724).
@@ -78,7 +80,7 @@ export default defineConfig({
 			// `localhost` (not 127.0.0.1) on purpose: vite binds to
 			// localhost (::1) by default, so a 127.0.0.1 readiness probe
 			// never connects — the main config hits the same gotcha.
-			command: `pnpm exec vite dev --port ${DEV_PORT}`,
+			command: viteCommand(`dev --port ${DEV_PORT}`),
 			cwd: WEB_DIR,
 			url: `http://localhost:${DEV_PORT}`,
 			reuseExistingServer: !process.env.CI,

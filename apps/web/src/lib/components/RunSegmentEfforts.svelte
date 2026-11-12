@@ -32,8 +32,11 @@
 		runOwnerId: string;
 		routeId: string | null;
 		track: TrackPoint[];
+		/// Called once the owner's on-view catalogue scoring has run, so a
+		/// sibling that reads the efforts it writes can read again.
+		onscored?: () => void;
 	}
-	let { runId, runOwnerId, routeId, track }: Props = $props();
+	let { runId, runOwnerId, routeId, track, onscored }: Props = $props();
 
 	let efforts = $state<SegmentEffortWithSegment[]>([]);
 	let globalEfforts = $state<GlobalSegmentEffortWithSegment[]>([]);
@@ -75,6 +78,7 @@
 				// matches end-to-end. Owner-only; RLS also gates the write.
 				if (isOwner) {
 					await computeGlobalSegmentEffortsForRun({ run_id: runId, user_id: runOwnerId, track });
+					onscored?.();
 				}
 			} catch (e) {
 				console.warn('segment effort compute failed', e);

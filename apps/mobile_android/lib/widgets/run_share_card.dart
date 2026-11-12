@@ -28,6 +28,7 @@ import '../activity_type_labels.dart';
 import '../flyover_video_flag.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../mascot.dart';
 import '../preferences.dart';
 import '../privacy.dart';
 import '../park_courses.dart' show RunParkCourseTime;
@@ -110,6 +111,9 @@ Future<void> saveShareImageToGallery(Uint8List png, String name) async {
 /// the park course time it set: with the records, the run's splits and the
 /// race stamped on it, they decide which occasion stickers the sheet offers.
 ///
+/// [showMascot] puts Grisnir beside the map card's title while the mark is
+/// on; it defaults to the runner's `show_mascot` setting ([mascotShown]).
+///
 /// [pickPhotoOverride] and [saveImageOverride] replace the gallery picker and
 /// the photo-library write so a widget test can drive both without platform
 /// channels.
@@ -129,6 +133,7 @@ Future<void> showRunShareSheet(
   @visibleForTesting RunShareUrlOpener? openUrlOverride,
   ApiClient? api,
   Future<void> Function()? onShareLink,
+  bool? showMascot,
   @visibleForTesting HeadToHeadLoader? headToHeadLoadOverride,
 }) {
   return showModalBottomSheet<void>(
@@ -151,6 +156,7 @@ Future<void> showRunShareSheet(
           : initialStyle,
       pickPhotoOverride: pickPhotoOverride,
       onShareLink: onShareLink,
+      showMascot: showMascot ?? mascotShown(),
       saveImage: saveImageOverride ?? saveShareImageToGallery,
       openUrl: openUrlOverride ?? _openExternally,
       headToHeadLoad: headToHeadLoadOverride ??
@@ -188,6 +194,7 @@ class _ShareRunSheet extends StatefulWidget {
   final RunShareUrlOpener openUrl;
   final HeadToHeadLoader? headToHeadLoad;
   final Future<void> Function()? onShareLink;
+  final bool showMascot;
 
   const _ShareRunSheet({
     required this.run,
@@ -204,6 +211,7 @@ class _ShareRunSheet extends StatefulWidget {
     this.pickPhotoOverride,
     this.headToHeadLoad,
     this.onShareLink,
+    this.showMascot = true,
   });
 
   @override
@@ -511,6 +519,18 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         runShareCardHasMap(widget.run, widget.privacyZones)) {
       await _tiles.settled();
     }
+    // Decoded before the capture so the PNG never carries an empty corner.
+    // A decode failure is reported, not thrown: the card exports without him.
+    if (_style == RunShareStyle.card &&
+        _look.mark &&
+        widget.showMascot &&
+        mounted) {
+      await precacheImage(
+        const AssetImage(kGrisnirBadgeAsset),
+        context,
+        onError: (e, _) => debugPrint('Grisnir badge failed to decode: $e'),
+      );
+    }
     await WidgetsBinding.instance.endOfFrame;
     return capturePngBytes(
       _cardKey,
@@ -652,6 +672,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
             privacyZones: widget.privacyZones,
             tileReadiness: _tiles,
             mark: _look.mark,
+            mascot: widget.showMascot,
           ),
         );
       case RunShareStyle.photo:
@@ -1340,6 +1361,11 @@ class RunShareCard extends StatelessWidget {
   /// turned it off in the sheet.
   final bool mark;
 
+  /// Whether Grisnir sits beside the title. He travels with the [mark], so
+  /// the sheet's mark switch drops him too; this is the runner's standing
+  /// `show_mascot` choice.
+  final bool mascot;
+
   const RunShareCard({
     super.key,
     required this.run,
@@ -1348,6 +1374,7 @@ class RunShareCard extends StatelessWidget {
     required this.privacyZones,
     this.tileReadiness,
     this.mark = true,
+    this.mascot = true,
   });
 
   /// Tile URL for the share card. Honours the `TILE_URL_TEMPLATE`
@@ -1505,33 +1532,52 @@ class RunShareCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
+          // Grisnir signs the top-right corner of the stats panel, beside the
+          // title, which ellipsises short of him: never on the map or a number.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  height: 1.1,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${activityTypeLabel(l10n, activity)} · ${formatDateMed(run.startedAt, activeLocaleTag)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFA9A4B6),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                '${activityTypeLabel(l10n, activity)} · ${formatDateMed(run.startedAt, activeLocaleTag)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFFA9A4B6),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  height: 1.1,
+              if (mark && mascot) ...[
+                const SizedBox(width: 10),
+                Image.asset(
+                  kGrisnirBadgeAsset,
+                  key: const ValueKey('share-card-grisnir'),
+                  height: 48,
+                  excludeFromSemantics: true,
+                  filterQuality: FilterQuality.medium,
                 ),
-              ),
+              ],
             ],
           ),
           // Each stat takes a third and scales down inside it: a long pace in

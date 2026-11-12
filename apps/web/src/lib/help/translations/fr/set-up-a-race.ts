@@ -35,7 +35,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'La ligne d\'arrivée où les coureurs sont chronométrés est le dernier point de l\'itinéraire du parcours. Tracez l\'itinéraire pour qu\'il se termine exactement à l\'emplacement de votre arche d\'arrivée.',
+					text: 'Chaque parcours reçoit une ligne de départ au premier point de son itinéraire et une ligne d\'arrivée au dernier. Tracez l\'itinéraire pour qu\'il se termine exactement à l\'emplacement de votre arche d\'arrivée, ou déplacez les lignes ensuite ; voir [[guide:start-and-finish-lines|Lignes de départ et d\'arrivée]].',
+				},
+				{
+					type: 'p',
+					text: 'Sous **Comment la course démarre**, choisissez **GO par l\'organisateur**, **GO programmé** ou **Fenêtre en chrono libre**. Voir [[guide:choose-how-your-race-starts|Choisir comment votre course démarre]].',
 				},
 			],
 		},
@@ -68,6 +72,10 @@ export const translation: GuideTranslation = {
 					tone: 'caution',
 					text: 'Rattacher un itinéraire rend son point d\'arrivée visible par toute personne qui peut voir l\'événement, même si l\'itinéraire lui-même est privé. Vous ne pouvez rattacher que des itinéraires que vous êtes autorisé à voir.',
 				},
+				{
+					type: 'p',
+					text: 'Un parcours sans itinéraire ne reçoit aucune ligne de départ ni d\'arrivée issue d\'un itinéraire, mais une fois l\'événement enregistré, vous pouvez placer vous-même ses deux lignes.',
+				},
 			],
 		},
 		{
@@ -94,6 +102,10 @@ export const translation: GuideTranslation = {
 				{
 					type: 'p',
 					text: 'Juste avant d\'armer la course, vous choisissez si les résultats vont directement au classement. **Approuver automatiquement les résultats soumis** est coché par défaut. Décochez-le si vous voulez vérifier chaque résultat d\'abord ; chacun s\'affiche alors **EN ATTENTE** jusqu\'à ce que vous l\'approuviez.',
+				},
+				{
+					type: 'p',
+					text: 'Pour une course en **GO programmé** ou en **Fenêtre en chrono libre**, réglez-le plutôt dans l\'éditeur d\'événement, sous **Comment la course démarre**. Pour une course en chrono libre, il est décoché au départ.',
 				},
 			],
 		},
@@ -129,7 +141,8 @@ export const translation: GuideTranslation = {
 		's1.b0.i3': '66dae8991279459e',
 		's1.b0.i4': '5dc3211a9d733e18',
 		's1.b0.i5': '9b013cf91adfef1d',
-		's1.b1': '4dedb854832fabbb',
+		's1.b1': '3902a06ca97028f7',
+		's1.b2': '424a050508e905e9',
 		's2.heading': 'aa02687fee3b093f',
 		's2.b0': '1e44be9c1cbe6aa5',
 		's2.b1.i0': '59ec7388c26ff153',
@@ -140,6 +153,7 @@ export const translation: GuideTranslation = {
 		's2.b2.i1': '614d8a4a47ff46c0',
 		's2.b2.i2': '6ba6f0661b9e166a',
 		's2.b3': '47950903add3bde2',
+		's2.b4': 'ee2f7ff41e59b09f',
 		's3.heading': '8b4ed9e415e501f7',
 		's3.b0.i0': '7366e2c6f9eafeb3',
 		's3.b0.i1': '76dc29eb1e584662',
@@ -148,6 +162,7 @@ export const translation: GuideTranslation = {
 		's3.b1': 'd636d4186f153c0f',
 		's4.heading': 'ff04ee128bd05b1f',
 		's4.b0': '8887aff2546f155b',
+		's4.b1': '4f8df39f54f69616',
 		's5.heading': '05127d2bcbe7e55c',
 		's5.b0': '632ca275dd6dbc2e',
 		's5.b1': 'd81f08a86fd29b85',

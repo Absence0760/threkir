@@ -50,6 +50,7 @@ pages show the listing's and the course's kind always.
 | Routes, plans, challenges, session plans | existing `OfficialBadge` placements (§ 2228) | same |
 | Club gym routine templates | club page Templates | `ClubDetailScreen` Templates |
 | Gym routine detail | `/gym/routines/[id]` | not yet (the detail reads the local store) |
+| Public gym routine library: list + preview | `/gym/routines/library`, `[id]` | `RoutinePublicLibraryScreen`, preview |
 
 ## Organiser course alerts
 

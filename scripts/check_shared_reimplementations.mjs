@@ -145,6 +145,24 @@ export const MAX_OP_HOLDERS = 3;
 export const REGISTERED = [
 	{
 		kind: 'ops',
+		key: 'apps/web/src/lib/coach/assist/context.ts:buildCoachAssistContext|apps/web/src/lib/coach/context.ts:loadPlanBlocks',
+		reason:
+			'Not a shared helper. Both read plan weeks from a starting week index and their workouts in date order, which is the plan schema\'s shape. `loadPlanBlocks` builds the AI Coach\'s season view: several plans, a lookback, a shared 20-week budget and a fallback to a finished plan\'s last weeks. The assistant reads one active plan\'s next 14 days, bounded above as well (`coachAssistWeekWindow`, at most three weeks), and gates each field on the athlete\'s per-link consent instead of the disclosure version.',
+	},
+	{
+		kind: 'ops',
+		key: 'apps/web/src/lib/coach/assist/context.ts:buildCoachAssistContext|apps/web/src/lib/core/data.ts:fetchDmThread',
+		reason:
+			'Not a shared helper. Both read one conversation by its two participants, and two `in` filters over the pair are how PostgREST spells that. `fetchDmThread` is the browser read: the signed-in client, the viewer from the auth store, a keyset page and the full message shape. `buildCoachAssistContext` runs in the coach-assist Lambda on a client the handler builds from the coach\'s bearer token, cannot import `core/data.ts` (it reaches the browser auth store), and reads a different slice: the last 20 non-shared bodies since the coaching link began.',
+	},
+	{
+		kind: 'ops',
+		key: 'apps/web/src/lib/coach/assist/handler.ts:handleCoachAssist|apps/web/src/lib/core/data.ts:isActiveCoachOf',
+		reason:
+			'Not a shared helper. Both find the active coaching link between a coach and an athlete. `isActiveCoachOf` is the browser question "am I this runner\'s coach", answered from the auth store; the assist handler runs in a Lambda with no auth store, reads the link\'s `ai_assist_consent_version` and `accepted_at` because the athlete\'s per-link consent and the thread window hang off it, and answers each failure with an HTTP status.',
+	},
+	{
+		kind: 'ops',
 		key: 'apps/web/src/lib/coach/body.ts:decodeLambdaBody|apps/web/src/lib/core/lambda_secrets.ts:kmsDecrypt',
 		reason:
 			'Not a shared helper. All they have in common is the two-call `Buffer.from(x, \'base64\').toString(\'utf8\')` idiom, which is how Node spells base64 rather than a contract either of them owns. `decodeLambdaBody` decodes a FUNCTION URL EVENT body: it takes the event\'s own `isBase64Encoded` flag, enforces `COACH_BODY_LIMIT_BYTES` and answers with an HTTP status (400 on bad encoding, 413 over the limit). `kmsDecrypt` is a signed KMS API call — SigV4 headers, `TrentService.Decrypt`, error-type extraction — whose last step happens to decode the `Plaintext` field, which KMS defines as base64 and which carries no size limit and no status. Extracting the shared two calls would leave both call sites longer than they are now and give the result a name that lies about one of them (decisions § 1671).',

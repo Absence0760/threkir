@@ -96,7 +96,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 	test('create → render → edit period + target → delete', async ({ page }) => {
 		await test.step('empty state visible on first load', async () => {
 			await page.goto('/dashboard');
-			const emptyCard = page.locator('.goals-empty-card');
+			const emptyCard = page.getByTestId('goals-empty');
 			await expect(emptyCard).toBeVisible({ timeout: 10_000 });
 			await expect(emptyCard.getByRole('heading', { name: /No goals set/ }))
 				.toBeVisible();
@@ -104,7 +104,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 		});
 
 		await test.step('open editor via empty-state Add-goal button', async () => {
-			await page.locator('.goals-empty-card').getByRole('button', { name: /Add goal/ }).click();
+			await page.getByTestId('goals-empty').getByRole('button', { name: /Add goal/ }).click();
 			await expect(page.locator('.modal-header h2', { hasText: 'Edit goal' }))
 				.toBeVisible({ timeout: 5_000 });
 		});
@@ -173,7 +173,7 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 			await expect(page.locator('.modal')).toHaveCount(0);
 
 			await expect(page.locator('.goal-card')).toHaveCount(0);
-			await expect(page.locator('.goals-empty-card')).toBeVisible();
+			await expect(page.getByTestId('goals-empty')).toBeVisible();
 		});
 	});
 
@@ -181,8 +181,8 @@ test.describe('/dashboard Goals — CRUD UI', () => {
 		page,
 	}) => {
 		await page.goto('/dashboard');
-		await expect(page.locator('.goals-empty-card')).toBeVisible({ timeout: 10_000 });
-		await page.locator('.goals-empty-card').getByRole('button', { name: /Add goal/ }).click();
+		await expect(page.getByTestId('goals-empty')).toBeVisible({ timeout: 10_000 });
+		await page.getByTestId('goals-empty').getByRole('button', { name: /Add goal/ }).click();
 
 		const modal = page.locator('.modal');
 		await expect(modal.locator('.modal-header h2', { hasText: 'Edit goal' }))

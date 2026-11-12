@@ -9,7 +9,8 @@ import { formatKmStable, normaliseSiteUrl } from './share_meta';
 import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
-import { regionName } from '../parks/park_courses';
+import { courseOffersWayfinding, regionName } from '../parks/park_courses';
+import { GUIDE_EN, routeGuideEnglish } from '../parks/route_guide';
 import { courseShareKey, type SharedCourse } from './share_course_lookup';
 
 const SITE_NAME = 'Threkir';
@@ -35,7 +36,19 @@ export function buildCourseShareDescription(course: SharedCourse | null | undefi
 	const where = `${collapseAndClip(course.park.name, 60)}, ${regionName(course.park.region_code)}`;
 	const lead = `${what.charAt(0).toUpperCase()}${what.slice(1)} at ${where}.`;
 	if (course.status === 'closed') return `${lead} Currently closed.`;
-	return `${lead} Run it any time: every run that covers it is timed on a yearly leaderboard.`;
+	const body = `${lead} Run it any time: every run that covers it is timed on a yearly leaderboard.`;
+	// A draft guide says so wherever the guide's text goes, search included.
+	return course.route_guide && !course.route_guide_checked_at
+		? `${body} Route guide: ${GUIDE_EN.pending.charAt(0).toLowerCase()}${GUIDE_EN.pending.slice(1)}`
+		: body;
+}
+
+/// The course's route guide as one canonical-English paragraph, for the
+/// JSON-LD description: the indexable text a written guide gives the page
+/// (issue #1344). Empty when the course has none, or is closed.
+export function buildCourseGuideText(course: SharedCourse | null | undefined): string {
+	if (!course?.route_guide || !courseOffersWayfinding(course.status)) return '';
+	return routeGuideEnglish(course.route_guide, course.route_guide_checked_at).join(' ');
 }
 
 export function buildCourseShareCanonical(
@@ -57,7 +70,7 @@ export function buildCourseJsonLd(
 		'@context': 'https://schema.org',
 		'@type': 'SportsActivityLocation',
 		name: collapseAndClip(course?.segment.name, 120) || 'Park course',
-		description: buildCourseShareDescription(course),
+		description: [buildCourseShareDescription(course), buildCourseGuideText(course)].filter(Boolean).join(' '),
 		url: buildCourseShareCanonical(base, opts.key),
 	};
 	const start = course?.segment.waypoints[0];

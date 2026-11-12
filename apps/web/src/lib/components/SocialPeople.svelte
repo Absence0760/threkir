@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import {
 		searchPeople,
@@ -165,13 +166,12 @@
 		{#if searching}
 			<p class="muted" role="status">{m('socialPeople.searching')}</p>
 		{:else if results.length === 0}
-			<div class="empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">search_off</span>
-				<h3>{m('socialPeople.noMatch', { query: query.trim() })}</h3>
-				<p class="empty-text">
-					{m('socialPeople.noMatchHelp')}
-				</p>
-			</div>
+			<EmptyState
+				icon="search_off"
+				headingLevel={3}
+				title={m('socialPeople.noMatch', { query: query.trim() })}
+				text={m('socialPeople.noMatchHelp')}
+			/>
 		{/if}
 	{:else}
 		<h2 class="section-title">{m('socialPeople.suggestedForYou')}</h2>
@@ -190,17 +190,19 @@
 			</div>
 			<p class="visually-hidden" role="status">{m('socialPeople.loadingSuggestions')}</p>
 		{:else if suggestions.length === 0}
-			<div class="empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">groups</span>
-				<h3>{m('socialPeople.noSuggestions')}</h3>
-				<p class="empty-text">
-					{m('socialPeople.noSuggestionsHelp')}
-				</p>
-				<a class="btn btn-primary" href="/social?tab=clubs">
-					<span class="material-symbols" aria-hidden="true">groups</span>
-					{m('socialPeople.browseClubs')}
-				</a>
-			</div>
+			<EmptyState
+				icon="groups"
+				headingLevel={3}
+				title={m('socialPeople.noSuggestions')}
+				text={m('socialPeople.noSuggestionsHelp')}
+			>
+				{#snippet actions()}
+					<a class="btn btn-primary" href="/social?tab=clubs">
+						<span class="material-symbols" aria-hidden="true">groups</span>
+						{m('socialPeople.browseClubs')}
+					</a>
+				{/snippet}
+			</EmptyState>
 		{/if}
 	{/if}
 
@@ -260,15 +262,19 @@
 			{#if loadingNearby}
 				<p class="muted" role="status">{m('socialNearby.loading')}</p>
 			{:else if nearby.length === 0}
-				<div class="empty-card">
-					<span class="material-symbols empty-icon" aria-hidden="true">near_me</span>
-					<h3>{m('socialNearby.empty')}</h3>
-					<p class="empty-text">{m('socialNearby.emptyHelp')}</p>
-					<a class="btn btn-outline" href="/settings/privacy">
-						<span class="material-symbols" aria-hidden="true">settings</span>
-						{m('shell.settings')}
-					</a>
-				</div>
+				<EmptyState
+					icon="near_me"
+					headingLevel={3}
+					title={m('socialNearby.empty')}
+					text={m('socialNearby.emptyHelp')}
+				>
+					{#snippet actions()}
+						<a class="btn btn-outline" href="/settings/privacy">
+							<span class="material-symbols" aria-hidden="true">settings</span>
+							{m('shell.settings')}
+						</a>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="grid">
 					{#each nearby as person (person.id)}
@@ -473,34 +479,6 @@
 	.follow-btn:disabled {
 		opacity: 0.6;
 		cursor: progress;
-	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
 	}
 	.material-symbols {
 		font-family: 'Material Symbols Outlined';

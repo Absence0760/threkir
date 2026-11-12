@@ -5,11 +5,12 @@ import 'package:ui_kit/ui_kit.dart' show AppTheme;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/surface_peer_strip.dart';
 
-/// The run surface's five peers, which no phone holds on one line: measured
-/// in Manrope they need 480 dp in English and 538 in French. As a sideways
-/// scroller the last one, Races, sat past the right edge with nothing saying
-/// it was there (decisions § 1954). Asserted geometrically, so it holds under
-/// the harness's fixed-advance font as well as the real one.
+/// A full peer row must wrap rather than scroll: as a sideways scroller the
+/// run surface's last peer, Races, sat past the right edge with nothing
+/// saying it was there (decisions § 1954). The run surface became the Fitness
+/// hub's tab strip (decisions § 2437), so the gym surface's four peers are
+/// the row measured now. Asserted geometrically, so it holds under the
+/// harness's fixed-advance font as well as the real one.
 void main() {
   for (final locale in const [Locale('en'), Locale('fr'), Locale('es')]) {
     for (final scale in const [1.0, 1.3]) {
@@ -31,12 +32,11 @@ void main() {
           home: Builder(builder: (context) {
             final l10n = AppLocalizations.of(context);
             return Scaffold(
-              body: SurfacePeerStrip(label: l10n.runSurfaceLabel, peers: [
-                SurfacePeer(label: l10n.fitnessTabRuns),
-                SurfacePeer(label: l10n.fitnessRunsRoutes, onTap: () {}),
-                SurfacePeer(label: l10n.runSurfaceTabSegments, onTap: () {}),
-                SurfacePeer(label: l10n.runSurfaceTabPlans, onTap: () {}),
-                SurfacePeer(label: l10n.runSurfaceTabRaces, onTap: () {}),
+              body: SurfacePeerStrip(label: l10n.gymSurfaceLabel, peers: [
+                SurfacePeer(label: l10n.gymTabLog),
+                SurfacePeer(label: l10n.gymPeerRoutines, onTap: () {}),
+                SurfacePeer(label: l10n.gymPeerSessions, onTap: () {}),
+                SurfacePeer(label: l10n.gymTabRecords, onTap: () {}),
               ]),
             );
           }),
@@ -44,7 +44,7 @@ void main() {
         await tester.pumpAndSettle();
         final screen = Offset.zero & const Size(360, 800);
         final chips = find.byType(ChoiceChip);
-        expect(chips, findsNWidgets(5));
+        expect(chips, findsNWidgets(4));
         for (final element in chips.evaluate()) {
           final rect = tester.getRect(find.byWidget(element.widget));
           expect(screen.intersect(rect), rect,

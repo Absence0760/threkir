@@ -105,7 +105,7 @@ ManualDurationResult validateManualDuration(
   if (total <= 0) {
     return const ManualDurationResult.failed(ManualDurationError.zero);
   }
-  if (total > kMaxRunDurationS) {
+  if (total >= kMaxRunDurationS) {
     return const ManualDurationResult.failed(ManualDurationError.tooLong);
   }
   return ManualDurationResult.ok(total);
@@ -113,9 +113,12 @@ ManualDurationResult validateManualDuration(
 
 /// The read-side bound: a stored duration a total may sum. A row outside it
 /// predates the CHECK (or reached the table before it was validated) and
-/// contributes nothing to a duration aggregate rather than swamping it.
+/// contributes nothing to a duration aggregate rather than swamping it. The
+/// bound itself is outside: exactly [kMaxRunDurationS] is the placeholder
+/// the 20271218000002 repair stored over such a row (decisions § 2464), so
+/// it is left out with them, and the form refuses it for the same reason.
 bool isPlausibleRunDuration(num durationS) =>
-    durationS.isFinite && durationS >= 0 && durationS <= kMaxRunDurationS;
+    durationS.isFinite && durationS >= 0 && durationS < kMaxRunDurationS;
 
 /// Whether a typed duration is slower than [kSlowPaceConfirmSecPerKm] over
 /// its distance. False with no distance — there is no pace to judge.

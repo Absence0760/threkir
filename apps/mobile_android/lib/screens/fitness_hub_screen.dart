@@ -14,55 +14,55 @@ import '../race_service.dart';
 import '../settings_sync.dart';
 import '../social_service.dart';
 import '../training_service.dart';
-import '../widgets/surface_peer_strip.dart';
 import 'global_segments_screen.dart';
 import 'gym_screen.dart';
 import 'nutrition_screen.dart';
-import 'park_courses_screen.dart';
 import 'plans_screen.dart';
 import 'races_screen.dart';
 import 'routes_screen.dart';
 import 'runs_screen.dart';
 
-/// The Fitness modality hub — the shell's one home for each modality. A top
-/// sub-tab strip switches between four surfaces:
-///   - History: the unified cross-modal activity timeline (the former
-///     standalone History tab, absorbed here) — `RunsScreen` mounted WITH the
-///     gym + food stores, with its own kind chips suppressed since the hub's
-///     TabBar owns that axis.
-///   - Runs: the dedicated offline-first run list (`RunsScreen` WITHOUT a gym
-///     store) plus a Routes entry, relocated here out of Social.
-///   - Gym: `GymScreen`.
-///   - Nutrition: `NutritionScreen`.
+/// The Fitness modality hub — the shell's one home for each modality, and
+/// the run surface's sections with it. One top tab strip (`AppTabBar` over a
+/// `TabBarView`, the shape `social_screen.dart` has) switches between:
+///   - History: the unified cross-modal activity timeline — `RunsScreen`
+///     mounted WITH the gym + food stores, with its own kind chips suppressed
+///     since the hub's strip owns that axis.
+///   - Runs: the offline-first run list (`RunsScreen` WITHOUT a gym store).
+///   - Plans, Races & courses, Routes, Segments: the run surface's planning
+///     and discovery sections, each mounted here as a tab body rather than
+///     pushed over the hub (decisions § 2437, superseding the peer strip of
+///     § 488 on mobile). Races & courses is the race calendar plus the park
+///     courses you can run any time (issue #1352).
+///   - Gym: `GymScreen`. Nutrition: `NutritionScreen`.
 ///
-/// Each sub-tab body owns its own Scaffold/AppBar/composer; the hub provides
-/// only the TabBar chrome (mirrors `social_screen.dart`'s host shape).
+/// Each tab body owns its own Scaffold, AppBar actions and FAB; the hub
+/// provides only the strip. One strip in every configuration: gym and food
+/// join the same row rather than stacking a second strip inside Runs.
 ///
 /// Gym and Nutrition are only in the strip while [modalityShown] says so: off
 /// for a runner who has logged neither until they switch them on in Settings,
 /// on for anyone who already logs them, and whatever the runner chose once
-/// they have chosen. The strip is rebuilt when that answer changes.
-///
-/// With neither shown, History goes too: a timeline of nothing but runs is
-/// the Runs tab a second time. That leaves one surface, so the hub renders
-/// Runs directly rather than a strip with a single tab in it
-/// ([fitnessHubTabs]).
+/// they have chosen. The strip is rebuilt when that answer changes. With
+/// neither shown, History goes too: a timeline of nothing but runs is the
+/// Runs tab a second time ([fitnessHubTabs]).
 ///
 /// The Gym and Nutrition tabs are also where the shell's centre Log action
 /// lands, so these are the app's only instances of those two screens rather
 /// than review copies of capture pages held elsewhere ([`selectedTab`],
-/// decisions § 1654).
+/// decisions § 1654). A link to Plans, Races, Routes or Segments from
+/// anywhere else in the app selects the tab here too
+/// (`fitness_surface_requests.dart`) instead of pushing a second copy.
 ///
-/// The Runs sub-tab additionally carries the labelled peer strip
-/// `Runs · Routes · Segments · Parks · Plans · Races` (mirroring web's
-/// `RunSurfaceTabs`), so run planning has a named destination instead of
-/// hanging off tooltip-only glyphs (decisions § 488).
-///
-/// The Fitness hub's sub-tabs, in strip order. Named + ordered rather than the
+/// The Fitness hub's tabs, in strip order. Named + ordered rather than the
 /// raw int this was, for the reason § 490 records — see `SocialTab`.
 enum FitnessTab {
   history,
   runs,
+  plans,
+  races,
+  routes,
+  segments,
   gym,
   nutrition;
 
@@ -74,6 +74,10 @@ enum FitnessTab {
         // (#666 I9).
         FitnessTab.history => l10n.navHistory,
         FitnessTab.runs => l10n.fitnessTabRuns,
+        FitnessTab.plans => l10n.runSurfaceTabPlans,
+        FitnessTab.races => l10n.runSurfaceTabRacesCourses,
+        FitnessTab.routes => l10n.fitnessRunsRoutes,
+        FitnessTab.segments => l10n.runSurfaceTabSegments,
         FitnessTab.gym => l10n.fitnessTabGym,
         FitnessTab.nutrition => l10n.fitnessTabNutrition,
       };
@@ -88,6 +92,10 @@ List<FitnessTab> fitnessHubTabs({
     [
       if (gymShown || nutritionShown) FitnessTab.history,
       FitnessTab.runs,
+      FitnessTab.plans,
+      FitnessTab.races,
+      FitnessTab.routes,
+      FitnessTab.segments,
       if (gymShown) FitnessTab.gym,
       if (nutritionShown) FitnessTab.nutrition,
     ];
@@ -141,9 +149,26 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   late bool _centreStartsRun;
   late final RaceService _raceService = RaceService();
 
-  late final ValueNotifier<FitnessTab> _tab =
-      widget.selectedTab ?? ValueNotifier(FitnessTab.history);
+  late final ValueNotifier<FitnessTab> _tab = widget.selectedTab ??
+      ValueNotifier(_storedTab() ?? FitnessTab.history);
   late final bool _ownsTab = widget.selectedTab == null;
+
+  /// The selection is also written to the enclosing [PageStorage], so a hub
+  /// mounted without a host notifier comes back on the tab it was left on
+  /// when its route is rebuilt. With a host notifier the host's value wins.
+  static const _storageId = 'fitness-hub-tab';
+
+  FitnessTab? _storedTab() {
+    final name = PageStorage.maybeOf(context)
+        ?.readState(context, identifier: _storageId);
+    for (final t in FitnessTab.values) {
+      if (t.name == name) return t;
+    }
+    return null;
+  }
+
+  void _rememberTab() => PageStorage.maybeOf(context)
+      ?.writeState(context, _tab.value.name, identifier: _storageId);
 
   @override
   void initState() {
@@ -152,7 +177,9 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     _centreStartsRun = _resolveCentreStartsRun();
     _controller = _buildController();
     _settleSelection();
-    _tab.addListener(_adoptTab);
+    _tab
+      ..addListener(_adoptTab)
+      ..addListener(_rememberTab);
     widget.preferences.addListener(_onVisibilityInputs);
     widget.gymStore.addListener(_onVisibilityInputs);
     widget.foodStore.addListener(_onVisibilityInputs);
@@ -230,70 +257,32 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     widget.foodStore.removeListener(_onVisibilityInputs);
     widget.gymStore.removeListener(_onVisibilityInputs);
     widget.preferences.removeListener(_onVisibilityInputs);
-    _tab.removeListener(_adoptTab);
+    _tab
+      ..removeListener(_rememberTab)
+      ..removeListener(_adoptTab);
     _controller.removeListener(_publishTab);
     _controller.dispose();
     if (_ownsTab) _tab.dispose();
     super.dispose();
   }
 
-  void _openRoutes() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => RoutesScreen(
-        apiClient: widget.apiClient,
-        routeStore: widget.routeStore,
-        runStore: widget.runStore,
-        preferences: widget.preferences,
-        social: widget.social,
-      ),
-    ));
-  }
-
-  void _openSegments() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => GlobalSegmentsScreen(api: widget.apiClient),
-    ));
-  }
-
-  void _openParks() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => ParksScreen(api: widget.apiClient),
-    ));
-  }
-
-  void _openPlans() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => PlansScreen(
-        training: widget.training,
-        apiClient: widget.apiClient,
-        runStore: widget.runStore,
-      ),
-    ));
-  }
-
-  void _openRaces() {
-    // The race calendar is a public search — no provider key, and no sign-in,
-    // gates reaching it (decisions § 488). The MapTiler key only powers the
-    // optional "near a place" geocode, so an uninitialised dotenv degrades to
-    // name + distance search rather than blocking the push.
-    String? key;
+  /// The race calendar is a public search — no provider key, and no sign-in,
+  /// gates reaching it (decisions § 488). The MapTiler key only powers the
+  /// optional "near a place" geocode, so an uninitialised dotenv degrades to
+  /// name + distance search rather than blocking the tab.
+  late final String? _mapTilerKey = () {
     try {
       final raw = (dotenv.env['MAPTILER_KEY'] ?? '').trim();
-      if (raw.isNotEmpty) key = raw;
+      if (raw.isNotEmpty) return raw;
     } catch (e) {
       debugPrint('fitness_hub: MAPTILER_KEY unreadable: $e');
     }
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => RacesScreen(service: _raceService, mapTilerKey: key),
-    ));
-  }
+    return null;
+  }();
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // The controller is kept at length 1 so a modality switched back on only
-    // has to grow it, the same rebuild every other visibility change takes.
-    if (_tabs.length == 1) return _body(_tabs.single, l10n);
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 0,
@@ -346,18 +335,44 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
             social: widget.social,
-            surfacePeers: [
-              SurfacePeer(label: l10n.fitnessTabRuns),
-              SurfacePeer(label: l10n.fitnessRunsRoutes, onTap: _openRoutes),
-              SurfacePeer(
-                  label: l10n.runSurfaceTabSegments, onTap: _openSegments),
-              SurfacePeer(label: l10n.runSurfaceTabParks, onTap: _openParks),
-              SurfacePeer(label: l10n.runSurfaceTabPlans, onTap: _openPlans),
-              SurfacePeer(label: l10n.runSurfaceTabRaces, onTap: _openRaces),
-            ],
             showSyncActions: _ownsSyncActions(tab),
             titleText: l10n.fitnessTabRuns,
             centreStartsRun: _centreStartsRun,
+          ),
+        // These four keep no state alive of their own, and a TabBarView page
+        // is disposed once it scrolls out of view: without the wrapper a tab
+        // switch would re-run each one's arrival fetch and drop its filters.
+        FitnessTab.plans => _KeepAliveTab(
+            child: PlansScreen(
+              key: const PageStorageKey('fitness-plans'),
+              training: widget.training,
+              apiClient: widget.apiClient,
+              runStore: widget.runStore,
+            ),
+          ),
+        FitnessTab.races => _KeepAliveTab(
+            child: RacesScreen(
+              key: const PageStorageKey('fitness-races'),
+              service: _raceService,
+              mapTilerKey: _mapTilerKey,
+              api: widget.apiClient,
+            ),
+          ),
+        FitnessTab.routes => _KeepAliveTab(
+            child: RoutesScreen(
+              key: const PageStorageKey('fitness-routes'),
+              apiClient: widget.apiClient,
+              routeStore: widget.routeStore,
+              runStore: widget.runStore,
+              preferences: widget.preferences,
+              social: widget.social,
+            ),
+          ),
+        FitnessTab.segments => _KeepAliveTab(
+            child: GlobalSegmentsScreen(
+              key: const PageStorageKey('fitness-segments'),
+              api: widget.apiClient,
+            ),
           ),
         FitnessTab.gym => GymScreen(
             key: const PageStorageKey('fitness-gym'),
@@ -372,4 +387,25 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             settingsSync: widget.settingsSync,
           ),
       };
+}
+
+class _KeepAliveTab extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAliveTab({required this.child});
+
+  @override
+  State<_KeepAliveTab> createState() => _KeepAliveTabState();
+}
+
+class _KeepAliveTabState extends State<_KeepAliveTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
 }

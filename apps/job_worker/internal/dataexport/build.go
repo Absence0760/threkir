@@ -105,9 +105,12 @@ func BuildArtifact(ctx context.Context, b Backend, log *slog.Logger, userID, for
 				return b.StreamExportPersonalDataTables(ctx, userID, emit)
 			},
 		}, BackupFetchers{
-			RawTrack:    b.DownloadRawTrackBytes,
-			Photo:       b.DownloadPhoto,
-			Avatar:      b.DownloadAvatar,
+			RawTrack: b.DownloadRawTrackBytes,
+			Photo:    b.DownloadPhoto,
+			Avatar:   b.DownloadAvatar,
+			DmImage: func(ctx context.Context, path string) ([]byte, error) {
+				return b.DownloadDmImage(ctx, path, DmImageExportMaxBytes)
+			},
 			ListObjects: b.ListStorageObjects,
 		})
 	}

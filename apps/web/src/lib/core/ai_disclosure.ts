@@ -24,6 +24,10 @@ import { thrownMessage } from './supabase_error';
 //      gym-session summaries and, with health-data consent, a 7-day
 //      nutrition summary). The Coach itself still needs only v1: those two
 //      lanes of its context are gated per lane in coach/context.ts.
+//   7  v6 plus the coach assistant, for coaches: with an athlete's own
+//      per-link consent, that athlete's messages with the coach, plan and
+//      recent runs, and what the coach types, sent to draft a message only
+//      the coach sees (issue #1215 Phase 4).
 //
 // Every AI endpoint declares its minimum. Adding the next AI feature means
 // a new version with new copy, not a new boolean column and not quietly
@@ -85,11 +89,20 @@ export const AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI = 5;
 export const AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING = 6;
 
 /**
+ * Minimum disclosure version /api/coach/assist requires of the COACH. Its own
+ * rung: the coach's request and their conversation with an athlete go to
+ * Anthropic to draft a message, a purpose no earlier copy described. The
+ * athlete's data needs the athlete's own consent on top of this
+ * (coach/assist/consent.ts).
+ */
+export const AI_DISCLOSURE_VERSION_COACH_ASSIST = 7;
+
+/**
  * The newest disclosure this build knows how to present. Must equal the
  * SQL `ai_disclosure_current_version()`; `ai_disclosure.test.ts` reads the
  * newest migration that defines it and fails if they drift.
  */
-export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING;
+export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_COACH_ASSIST;
 
 /**
  * Where every AI feature sends a runner its endpoint refused for consent.

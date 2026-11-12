@@ -1,0 +1,154 @@
+{
+	"slug": "strength-for-runners-no-equipment",
+	"title": "Strength for runners: no equipment",
+	"notes": "Bodyweight only, for home or a park. Two sessions a week on easy or rest days. Move with control and stop any exercise that hurts.",
+	"periodisation": "none",
+	"exercises": [
+		{
+			"name": "Reverse Lunge",
+			"modality": "bodyweight_reps",
+			"notes": "Reps are per leg.",
+			"sets": [
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 12,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 12,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 12,
+					"rest_s": 60
+				}
+			]
+		},
+		{
+			"name": "Glute Bridge",
+			"modality": "bodyweight_reps",
+			"sets": [
+				{
+					"target_reps_min": 12,
+					"target_reps_max": 15,
+					"rest_s": 45
+				},
+				{
+					"target_reps_min": 12,
+					"target_reps_max": 15,
+					"rest_s": 45
+				},
+				{
+					"target_reps_min": 12,
+					"target_reps_max": 15,
+					"rest_s": 45
+				}
+			]
+		},
+		{
+			"name": "Step-up",
+			"modality": "bodyweight_reps",
+			"notes": "Use a sturdy step or bench. Reps are per leg.",
+			"sets": [
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"rest_s": 60
+				}
+			]
+		},
+		{
+			"name": "Push-up",
+			"modality": "bodyweight_reps",
+			"notes": "Hands on a bench makes it easier.",
+			"sets": [
+				{
+					"target_reps_min": 6,
+					"target_reps_max": 12,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 6,
+					"target_reps_max": 12,
+					"rest_s": 60
+				},
+				{
+					"target_reps_min": 6,
+					"target_reps_max": 12,
+					"rest_s": 60
+				}
+			]
+		},
+		{
+			"name": "Single-Leg Calf Raise",
+			"modality": "bodyweight_reps",
+			"notes": "Reps are per leg. Hold a wall for balance.",
+			"sets": [
+				{
+					"target_reps_min": 10,
+					"target_reps_max": 15,
+					"rest_s": 45
+				},
+				{
+					"target_reps_min": 10,
+					"target_reps_max": 15,
+					"rest_s": 45
+				},
+				{
+					"target_reps_min": 10,
+					"target_reps_max": 15,
+					"rest_s": 45
+				}
+			]
+		},
+		{
+			"name": "Side Plank",
+			"modality": "time",
+			"notes": "Time is per side.",
+			"sets": [
+				{
+					"target_duration_s": 30,
+					"rest_s": 30
+				},
+				{
+					"target_duration_s": 30,
+					"rest_s": 30
+				}
+			]
+		},
+		{
+			"name": "Dead Bug",
+			"modality": "bodyweight_reps",
+			"notes": "Reps are per side. Keep your lower back on the floor.",
+			"sets": [
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"rest_s": 45
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"rest_s": 45
+				},
+				{
+					"target_reps_min": 8,
+					"target_reps_max": 10,
+					"rest_s": 45
+				}
+			]
+		}
+	]
+}

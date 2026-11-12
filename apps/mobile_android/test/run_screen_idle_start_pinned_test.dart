@@ -245,6 +245,78 @@ void main() {
     _expectStartClear(tester, logical);
   });
 
+  for (final textScale in const [1.0, 2.0]) {
+    testWidgets(
+      'the cards scroll on behind Start and the last one clears it '
+      '(360x640, text x$textScale)',
+      (tester) async {
+        const logical = Size(360, 640);
+        _useSurface(tester, logical);
+        await _pumpIdle(tester, textScale);
+        final scroll = find.byKey(const ValueKey('run-idle-scroll'));
+        final start = tester.getRect(find.byKey(_startKey));
+        expect(
+          tester.getRect(scroll).bottom,
+          greaterThan(start.bottom),
+          reason: 'the scroll must run on behind Start, not end above it',
+        );
+
+        final startSize = tester.getSize(find.byKey(_startKey)).height;
+        final padding = tester
+            .widget<SingleChildScrollView>(scroll)
+            .padding!
+            .resolve(TextDirection.ltr);
+        expect(
+          padding.bottom,
+          greaterThanOrEqualTo(
+            idleStartAreaHeight(startSize, kDockedFabOverhang),
+          ),
+          reason: 'the scroll must leave room for the area Start floats in',
+        );
+
+        final position = tester
+            .state<ScrollableState>(
+              find.descendant(of: scroll, matching: find.byType(Scrollable)),
+            )
+            .position;
+        position.jumpTo(position.maxScrollExtent);
+        await tester.pump();
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        final lastRun = find.text(l10n.runLastRun);
+        expect(
+          tester.getRect(lastRun).bottom,
+          lessThanOrEqualTo(tester.getRect(find.byKey(_startKey)).top),
+          reason: 'at the end of the scroll the last card sits above Start',
+        );
+        expect(lastRun.hitTestable(), findsOneWidget);
+        _expectStartClear(tester, logical);
+      },
+    );
+  }
+
+  testWidgets('the fade over the cards lets taps through', (tester) async {
+    const logical = Size(360, 640);
+    _useSurface(tester, logical);
+    await _pumpIdle(tester, 1.0);
+    final scrim = find.byKey(const ValueKey('run-idle-start-scrim'));
+    expect(tester.widget<IgnorePointer>(scrim).ignoring, isTrue);
+    final scrimRect = tester.getRect(scrim);
+    final start = tester.getRect(find.byKey(_startKey));
+    expect(scrimRect.top, lessThan(start.top));
+    expect(scrimRect.bottom, greaterThanOrEqualTo(start.bottom));
+    // A point in the fade beside Start lands on the scroll beneath it.
+    final beside = Offset(scrimRect.left + 8, scrimRect.top + 8);
+    final result = tester.hitTestOnBinding(beside);
+    final scrollBox = tester.renderObject(
+      find.byKey(const ValueKey('run-idle-scroll')),
+    );
+    expect(
+      result.path.any((entry) => entry.target == scrollBox),
+      isTrue,
+      reason: 'a tap on the fade must reach the cards behind it',
+    );
+  });
+
   testWidgets('a landscape phone still shows Start, smaller', (tester) async {
     const logical = Size(640, 360);
     _useSurface(tester, logical);

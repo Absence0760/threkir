@@ -1,4 +1,4 @@
-/// Race-result import: RunSignUp, UltraSignup, ChronoTrack, or a pasted
+/// Race-result import: RunSignUp, ChronoTrack, or a pasted
 /// result, onto the caller's own runs (docs/features/integrations.md). The
 /// handler lives in handler.ts behind injected deps, so handler.test.ts can
 /// drive it without a stack.

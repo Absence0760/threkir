@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 
 import { defineConfig, devices } from '@playwright/test';
 
+import { viteCommand } from './fixtures/vite-command';
+
 /**
  * Dedicated Playwright config for the BUILT app with error reporting on.
  *
@@ -46,7 +48,7 @@ export default defineConfig({
 	reporter: process.env.CI ? [['github'], ['list']] : 'list',
 
 	webServer: {
-		command: `pnpm exec vite build && node tests-e2e/scripts/serve-build.mjs ${DEV_PORT}`,
+		command: `${viteCommand('build')} && node tests-e2e/scripts/serve-build.mjs ${DEV_PORT}`,
 		cwd: WEB_DIR,
 		url: BASE_URL,
 		reuseExistingServer: !process.env.CI,

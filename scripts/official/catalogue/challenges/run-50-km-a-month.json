@@ -1,0 +1,9 @@
+{
+	"slug": "run-50-km-a-month",
+	"recurrence": "monthly",
+	"title": "Run 50 km in {period}",
+	"description": "An official Threkir challenge. Runs you record from the first to the last day of the month count, in UTC.",
+	"metric": "distance",
+	"goal_value": 50000,
+	"activity_type": "run"
+}

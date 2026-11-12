@@ -35,6 +35,7 @@ type vectorScenario struct {
 		DistanceAfterEachEventM []float64 `json:"distanceAfterEachEventM"`
 		GpsDistanceM            float64   `json:"gpsDistanceM"`
 		StepDistanceM           float64   `json:"stepDistanceM"`
+		StepOverChordM          float64   `json:"stepOverChordM"`
 		StrideM                 *float64  `json:"strideM"`
 		RejectedFixes           int       `json:"rejectedFixes"`
 		ZuptFixes               int       `json:"zuptFixes"`
@@ -47,6 +48,7 @@ type vectorScenario struct {
 		DistanceM               float64       `json:"distanceM"`
 		GpsDistanceM            float64       `json:"gpsDistanceM"`
 		StepDistanceM           float64       `json:"stepDistanceM"`
+		StepOverChordM          float64       `json:"stepOverChordM"`
 		StoppedFixes            int           `json:"stoppedFixes"`
 		Positions               []*[2]float64 `json:"positions"`
 	} `json:"smoothed"`
@@ -81,13 +83,14 @@ func loadVectors(t *testing.T) vectorFile {
 
 func TestConstantsMatchTheVectorFile(t *testing.T) {
 	vf := loadVectors(t)
-	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.5" {
+	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.8" {
 		t.Fatalf("vectors are for %q; this port implements v%s", vf.Spec, SpecVersion)
 	}
 	ours := map[string]float64{
 		"DEFAULT_SPEED_SIGMA_MPS":       DefaultSpeedSigmaMps,
 		"EARTH_RADIUS_M":                EarthRadiusM,
 		"FRESH_FIX_S":                   FreshFixS,
+		"MAX_OPEN_GAPS":                 MaxOpenGaps,
 		"GAP_S":                         GapS,
 		"INIT_VEL_VAR":                  InitVelVar,
 		"MAX_SPEED_SIGMA_MPS":           MaxSpeedSigmaMps,
@@ -218,6 +221,9 @@ func TestGoldenVectors(t *testing.T) {
 			if math.Abs(e.StepDistanceM-sc.Expected.StepDistanceM) > tol {
 				t.Errorf("stepDistanceM %.6f, want %.6f", e.StepDistanceM, sc.Expected.StepDistanceM)
 			}
+			if math.Abs(e.StepOverChordM-sc.Expected.StepOverChordM) > tol {
+				t.Errorf("stepOverChordM %.6f, want %.6f", e.StepOverChordM, sc.Expected.StepOverChordM)
+			}
 			switch {
 			case sc.Expected.StrideM == nil && e.StrideM != nil:
 				t.Errorf("strideM %.6f, want absent", *e.StrideM)
@@ -275,6 +281,9 @@ func TestSmoothedGoldenVectors(t *testing.T) {
 			}
 			if math.Abs(got.StepDistanceM-want.StepDistanceM) > tol {
 				t.Errorf("stepDistanceM %.6f, want %.6f", got.StepDistanceM, want.StepDistanceM)
+			}
+			if math.Abs(got.StepOverChordM-want.StepOverChordM) > tol {
+				t.Errorf("stepOverChordM %.6f, want %.6f", got.StepOverChordM, want.StepOverChordM)
 			}
 			if got.StoppedFixes != want.StoppedFixes {
 				t.Errorf("stoppedFixes %d, want %d", got.StoppedFixes, want.StoppedFixes)
@@ -401,5 +410,197 @@ func TestNoStrideLearningKeepsTheSeed(t *testing.T) {
 		if (in == nil) != (e.StrideM == nil) || (in != nil && *e.StrideM != *in) {
 			t.Errorf("seed %v: StrideM = %v", in, e.StrideM)
 		}
+	}
+}
+
+var eastMPerDeg = 111195 * math.Cos(40*math.Pi/180)
+
+func eastwardV16() *Estimator {
+	stride := 0.5
+	e := NewWithOptions(Options{InitialStrideM: &stride, NoStrideLearning: true})
+	for i := 0; i <= 25; i++ {
+		acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+		e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+			AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		e.AddSteps(float64(i)+0.5, 4*i+2)
+	}
+	return e
+}
+
+// Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord lower
+// bound wins. The batch after the resuming fix moves 10 m of that credit from
+// the chord to the steps and adds nothing (v1.6).
+func TestALateStepBatchTopsAGapUpWithoutCountingItsChordTwice(t *testing.T) {
+	e := eastwardV16()
+	e.AddSteps(50, 202)
+	acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+	e.AddFix(Fix{T: 55, Lat: 40, Lng: -75 + 220/eastMPerDeg,
+		AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+	before, steps := e.DistanceM(), e.StepDistanceM
+	e.AddSteps(56.5, 228)
+	if math.Abs(e.DistanceM()-before) > 1e-9 {
+		t.Errorf("distance %v, want %v", e.DistanceM(), before)
+	}
+	if math.Abs(e.StepDistanceM-steps-10) > 1e-9 {
+		t.Errorf("step distance grew %v, want 10", e.StepDistanceM-steps)
+	}
+}
+
+// 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest of the
+// gap, which the fix at 55 closed before the sample arrived, at the sample's
+// rate would credit 5 m (v1.6).
+func TestALateSampleStampedInsideAGapSharesOnlyItsOwnInterval(t *testing.T) {
+	e := eastwardV16()
+	e.AddSteps(50, 202)
+	acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+	e.AddFix(Fix{T: 55, Lat: 40, Lng: -75 + 110/eastMPerDeg,
+		AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+	before, steps := e.DistanceM(), e.StepDistanceM
+	e.AddSteps(51, 204)
+	if math.Abs(e.DistanceM()-before-1) > 1e-9 {
+		t.Errorf("distance grew %v, want 1", e.DistanceM()-before)
+	}
+	if math.Abs(e.StepDistanceM-steps-1) > 1e-9 {
+		t.Errorf("step distance grew %v, want 1", e.StepDistanceM-steps)
+	}
+}
+
+// 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall whose
+// samples emptied the window; feeding its 28 m to the window learns 1.092 m,
+// and letting the sample at 36.5 refill it 0.985 m (v1.6).
+func TestAFixBridgingAShortStallTeachesNoStrideFromItsCredit(t *testing.T) {
+	e := NewWithOptions(Options{})
+	for i := 0; i <= 60; i++ {
+		if i < 30 || i >= 36 {
+			acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+			e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+				AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		}
+		e.AddSteps(float64(i)+0.5, 4*i+2)
+	}
+	if e.StrideM == nil || math.Abs(*e.StrideM-1) > 1e-9 {
+		t.Errorf("stride %v, want 1", e.StrideM)
+	}
+}
+
+// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only sets the
+// baseline; counting the window's metres from the first fix put 30 s of metres
+// against 15 s of steps and learned 2.0 m, then 1.64 m by 60.5 (v1.6).
+func TestTheFirstStepSampleOfAStretchStartsTheStrideWindow(t *testing.T) {
+	e := NewWithOptions(Options{})
+	for i := 0; i <= 60; i++ {
+		acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+		e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+			AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		if i > 0 && i%15 == 0 {
+			e.AddSteps(float64(i)+0.5, 4*i+2)
+		}
+	}
+	if e.StrideM == nil || math.Abs(*e.StrideM-1) > 1e-6 {
+		t.Errorf("stride %v, want 1", e.StrideM)
+	}
+}
+
+// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands inside
+// a 7 s stall the fix at 18 bridges, so it is stale as well as the baseline;
+// the bridging fix must empty the window rather than feed it 28 m, which
+// learned 1.171 m. (v1.6)
+func TestAStaleFirstStepSampleKeepsABridgedStallOutOfTheStrideWindow(t *testing.T) {
+	e := NewWithOptions(Options{})
+	for i := 0; i <= 60; i++ {
+		if i < 11 || i > 17 {
+			acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+			e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+				AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		}
+		if i%15 == 14 {
+			e.AddSteps(float64(i)+0.5, 4*i+2)
+		}
+	}
+	if e.StrideM == nil || math.Abs(*e.StrideM-1) > 1e-6 {
+		t.Errorf("stride %v, want 1", e.StrideM)
+	}
+}
+
+// The first sample, at 0.5, and the second, at 15.5, come before the first fix
+// at 20; the first fix starts the window, so the sample at 30.5, whose
+// interval began before it, empties the window rather than pairing 15 s of
+// steps with 10 s of metres, which learned 0.787 m. (v1.6)
+func TestTheFirstFixOfAStretchStartsTheStrideWindow(t *testing.T) {
+	e := NewWithOptions(Options{})
+	for i := 0; i <= 60; i++ {
+		if i >= 20 {
+			acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+			e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+				AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		}
+		if i%15 == 0 {
+			e.AddSteps(float64(i)+0.5, 4*i+2)
+		}
+	}
+	if e.StrideM == nil || math.Abs(*e.StrideM-1) > 1e-6 {
+		t.Errorf("stride %v, want 1", e.StrideM)
+	}
+}
+
+// The baseline, stamped 15.5, is delivered after the fix at 18, so the
+// window's metres start at 18; the sample at 30.5, whose steps start at 15.5,
+// must empty the window rather than pair 15 s of steps with 12 s of metres,
+// which learned 0.8 m. (v1.7)
+func TestABaselineDeliveredAfterALaterFixKeepsItsStepsOutOfTheStrideWindow(t *testing.T) {
+	e := NewWithOptions(Options{})
+	for i := 0; i <= 60; i++ {
+		acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+		e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+			AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		if i == 18 {
+			e.AddSteps(15.5, 62)
+		}
+		if i > 15 && i%15 == 0 {
+			e.AddSteps(float64(i)+0.5, 4*i+2)
+		}
+	}
+	if e.StrideM == nil || math.Abs(*e.StrideM-1) > 1e-6 {
+		t.Errorf("stride %v, want 1", e.StrideM)
+	}
+}
+
+// A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose 104 m
+// of steps the resuming fix puts beside a chord lower bound of none (the
+// runner looped back), 55.39 m, or more than the steps: stepOverChordM is
+// what the steps credited over the chord, and none when the chord covers
+// them (v1.7).
+func TestStepOverChordCountsOnlyTheStepsBeyondTheChord(t *testing.T) {
+	stride := 1.0
+	acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+	for _, c := range []struct{ eastM, want float64 }{{24, 104}, {80, 48.612667}, {160, 0}} {
+		e := NewWithOptions(Options{InitialStrideM: &stride, NoStrideLearning: true})
+		for i := 0; i <= 30; i++ {
+			if i <= 5 {
+				e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+					AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+			}
+			e.AddSteps(float64(i)+0.5, 4*i+2)
+		}
+		e.AddFix(Fix{T: 31, Lat: 40, Lng: -75 + c.eastM/eastMPerDeg,
+			AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		e.AddSteps(31.5, 126)
+		if math.Abs(e.StepDistanceM-104) > 1e-9 || math.Abs(e.StepOverChordM-c.want) > 1e-6 {
+			t.Errorf("resume %v m east: steps %v, over chord %v; want 104, %v", c.eastM, e.StepDistanceM, e.StepOverChordM, c.want)
+		}
+	}
+}
+
+func TestAStretchCreditsNoStepsTakenBeforeItsFirstFix(t *testing.T) {
+	stride := 1.0
+	e := NewWithOptions(Options{InitialStrideM: &stride, NoStrideLearning: true})
+	for i := 0; i < 30; i++ {
+		e.AddSteps(float64(i)+0.5, 4*i)
+	}
+	acc := 3.0
+	e.AddFix(Fix{T: 30, Lat: 40, Lng: -75, AccuracyM: &acc})
+	e.Finish(31)
+	if e.DistanceM() != 0 {
+		t.Errorf("distance %v, want 0", e.DistanceM())
 	}
 }

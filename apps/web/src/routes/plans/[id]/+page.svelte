@@ -68,6 +68,7 @@
 	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
 	import PlanRecapCard from '#lib/components/PlanRecapCard.svelte';
 	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
@@ -1849,12 +1850,11 @@
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
-		<div class="empty">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('planDetail.notFoundTitle')}</h3>
-			<p>{m('planDetail.notFoundBody')}</p>
-			<a href="/plans" class="btn btn-primary">{m('planDetail.backToYourPlans')}</a>
-		</div>
+		<EmptyState icon="search_off" title={m('planDetail.notFoundTitle')} text={m('planDetail.notFoundBody')}>
+			{#snippet actions()}
+				<a href="/plans" class="btn btn-primary">{m('planDetail.backToYourPlans')}</a>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div class="page">
@@ -4063,31 +4063,6 @@
 	.hero-skel,
 	.today-skel { margin-bottom: var(--space-md); }
 	.week-skel { margin-bottom: var(--space-sm); }
-
-	.empty {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
-		max-width: 28rem;
-		margin: 0 auto;
-	}
-	.empty-mark {
-		opacity: 0.85;
-		border-radius: var(--radius-md);
-	}
-	.empty h3 {
-		font-size: 1.15rem;
-		font-weight: 700;
-		margin: 0;
-	}
-	.empty p {
-		color: var(--color-text-secondary);
-		margin: 0 0 var(--space-sm);
-		font-size: 0.95rem;
-	}
 
 	@media (max-width: 48rem) {
 		.page {

@@ -108,6 +108,9 @@ type fakeBackend struct {
 	// distance_recompute state; nil fails every call. Methods live in
 	// handler_distance_recompute_test.go.
 	distance *fakeDistanceRecompute
+	// duration_repair state; nil fails every call. Methods live in
+	// handler_duration_repair_test.go.
+	durationRepair *fakeDurationRepair
 	// map_match road-distance state; nil reads as a deleted run so the
 	// map_match tests that do not care skip the step. Methods live in
 	// road_distance_test.go.
@@ -115,6 +118,9 @@ type fakeBackend struct {
 	// segment_match state; nil fails every call. Methods live in
 	// handler_segment_match_test.go.
 	segmentMatch *fakeSegmentMatch
+	// dm_image_process / dm_image_orphan_sweep state; nil fails every
+	// call. Methods live in handler_dm_image_process_test.go.
+	dm *fakeDmImages
 
 	// downloadDelay, when non-zero, makes DownloadTrack block for
 	// that duration OR until the caller's context is cancelled.

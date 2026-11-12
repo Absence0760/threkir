@@ -28,6 +28,7 @@ type Scenario = {
 		distanceAfterEachEventM: number[];
 		gpsDistanceM: number;
 		stepDistanceM: number;
+		stepOverChordM: number;
 		strideM: number | null;
 		rejectedFixes: number;
 		zuptFixes: number;
@@ -40,6 +41,7 @@ type Scenario = {
 		distanceM: number;
 		gpsDistanceM: number;
 		stepDistanceM: number;
+		stepOverChordM: number;
 		stoppedFixes: number;
 		positions: Array<[number, number] | null>;
 	};
@@ -76,10 +78,10 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-Deno.test('the port implements the spec v1.5 fixture: version, scenario set and every constant', () => {
-	assertEquals(fixture.spec, 'gps-distance-estimator v1.5');
-	assertEquals(SPEC_VERSION, '1.5');
-	assert(fixture.scenarios.length >= 35, `only ${fixture.scenarios.length} scenarios`);
+Deno.test('the port implements the spec v1.8 fixture: version, scenario set and every constant', () => {
+	assertEquals(fixture.spec, 'gps-distance-estimator v1.8');
+	assertEquals(SPEC_VERSION, '1.8');
+	assert(fixture.scenarios.length >= 53, `only ${fixture.scenarios.length} scenarios`);
 	assert(TOL > 0 && TOL <= 0.001);
 	assert(POS_TOL > 0 && POS_TOL <= 1e-8);
 	const port = gps as unknown as Record<string, unknown>;
@@ -104,6 +106,10 @@ for (const s of fixture.scenarios) {
 		assert(
 			Math.abs(est.stepDistanceM - s.expected.stepDistanceM) <= TOL,
 			`steps ${est.stepDistanceM}`,
+		);
+		assert(
+			Math.abs(est.stepOverChordM - s.expected.stepOverChordM) <= TOL,
+			`over chord ${est.stepOverChordM}`,
 		);
 		if (s.expected.strideM === null) {
 			assertEquals(est.strideM, null);
@@ -142,6 +148,7 @@ for (const s of fixture.scenarios) {
 		assert(Math.abs(sm.distanceM - want.distanceM) <= TOL, `distance ${sm.distanceM}`);
 		assert(Math.abs(sm.gpsDistanceM - want.gpsDistanceM) <= TOL, `gps ${sm.gpsDistanceM}`);
 		assert(Math.abs(sm.stepDistanceM - want.stepDistanceM) <= TOL, `steps ${sm.stepDistanceM}`);
+		assert(Math.abs(sm.stepOverChordM - want.stepOverChordM) <= TOL, `over chord ${sm.stepOverChordM}`);
 		assertEquals(sm.stoppedFixes, want.stoppedFixes);
 		assertEquals(sm.positions.length, want.positions.length);
 		sm.positions.forEach((got, i) => {
@@ -231,4 +238,132 @@ Deno.test('learnStride false never learns a stride, and keeps a seeded one', () 
 		}
 		assertEquals(est.strideM, seed);
 	}
+});
+
+const EAST_M_PER_DEG = 111195 * Math.cos((40 * Math.PI) / 180);
+
+function eastward(): GpsDistanceEstimator {
+	const est = new GpsDistanceEstimator(10, 1, 0.5, false, false);
+	for (let i = 0; i <= 25; i++) {
+		est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	return est;
+}
+
+Deno.test('a late step batch tops a gap up without counting its chord twice (v1.6)', () => {
+	// Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+	// lower bound wins. The batch after the resuming fix moves 10 m of that
+	// credit from the chord to the steps and adds nothing.
+	const est = eastward();
+	est.addSteps(50, 202);
+	est.addFix(55, 40, -75 + 220 / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+	const before = est.distanceM;
+	const steps = est.stepDistanceM;
+	est.addSteps(56.5, 228);
+	assert(Math.abs(est.distanceM - before) < 1e-9, `distance ${est.distanceM}`);
+	assert(Math.abs(est.stepDistanceM - steps - 10) < 1e-9, `steps ${est.stepDistanceM}`);
+});
+
+Deno.test('a late sample stamped inside a gap shares only its own interval (v1.6)', () => {
+	// 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest of
+	// the gap, which the fix at 55 closed before the sample arrived, at the
+	// sample's rate would credit 5 m.
+	const est = eastward();
+	est.addSteps(50, 202);
+	est.addFix(55, 40, -75 + 110 / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+	const before = est.distanceM;
+	const steps = est.stepDistanceM;
+	est.addSteps(51, 204);
+	assert(Math.abs(est.distanceM - before - 1) < 1e-9, `distance ${est.distanceM}`);
+	assert(Math.abs(est.stepDistanceM - steps - 1) < 1e-9, `steps ${est.stepDistanceM}`);
+});
+
+Deno.test('a fix bridging a short stall teaches no stride from its credit (v1.6)', () => {
+	// 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+	// whose samples emptied the window; feeding its 28 m to the window learns
+	// 1.092 m, and letting the sample at 36.5 refill it 0.985 m.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		if (i < 30 || i >= 36) est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert(Math.abs((est.strideM ?? 0) - 1) < 1e-9, `stride ${est.strideM}`);
+});
+
+Deno.test('the first step sample of a stretch starts the stride window (v1.6)', () => {
+	// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only sets
+	// the baseline; counting the window's metres from the first fix put 30 s of
+	// metres against 15 s of steps and learned 2.0 m, then 1.64 m by 60.5.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		if (i > 0 && i % 15 === 0) est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
+});
+
+Deno.test('a stale first step sample keeps a bridged stall out of the stride window (v1.6)', () => {
+	// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands inside
+	// a 7 s stall the fix at 18 bridges, so it is stale as well as the baseline;
+	// the bridging fix must empty the window rather than feed it 28 m, which
+	// learned 1.171 m.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		if (i < 11 || i > 17) est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		if (i % 15 === 14) est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
+});
+
+Deno.test('the first fix of a stretch starts the stride window (v1.6)', () => {
+	// The first sample, at 0.5, and the second, at 15.5, come before the first
+	// fix at 20; the first fix starts the window, so the sample at 30.5, whose
+	// interval began before it, empties the window rather than pairing 15 s of
+	// steps with 10 s of metres, which learned 0.787 m.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		if (i >= 20) est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		if (i % 15 === 0) est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
+});
+
+Deno.test('a step baseline delivered after a later fix keeps its steps out of the stride window (v1.7)', () => {
+	// The baseline, stamped 15.5, arrives after the fix at 18, so the window's
+	// metres start at 18; the sample at 30.5, whose steps start at 15.5, must
+	// empty the window rather than pair 15 s of steps with 12 s of metres,
+	// which learned 0.8 m.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		if (i === 18) est.addSteps(15.5, 62);
+		if (i > 15 && i % 15 === 0) est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
+});
+
+Deno.test('stepOverChordM counts only the steps a gap credited beyond its chord (v1.7)', () => {
+	// A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose 104 m
+	// of steps the resuming fix puts beside no chord (the runner looped back), a
+	// 55.39 m one, and one longer than the steps.
+	for (const [eastM, want] of [[24, 104], [80, 48.612667], [160, 0]]) {
+		const est = new GpsDistanceEstimator(10, 1, 1.0, false, false);
+		for (let i = 0; i <= 30; i++) {
+			if (i <= 5) est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+			est.addSteps(i + 0.5, 4 * i + 2);
+		}
+		est.addFix(31, 40, -75 + eastM / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		est.addSteps(31.5, 126);
+		assert(Math.abs(est.stepDistanceM - 104) < 1e-9, `steps ${est.stepDistanceM}`);
+		assert(Math.abs(est.stepOverChordM - want) < 1e-6, `resume ${eastM} m: over chord ${est.stepOverChordM}`);
+	}
+});
+
+Deno.test('a stretch credits no steps taken before its first fix (v1.6)', () => {
+	const est = new GpsDistanceEstimator(10, 1, 1.0, false, false);
+	for (let i = 0; i < 30; i++) est.addSteps(i + 0.5, 4 * i);
+	est.addFix(30, 40, -75, 3);
+	est.finish(31);
+	assertEquals(est.distanceM, 0);
 });

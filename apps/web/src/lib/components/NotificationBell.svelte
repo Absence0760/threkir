@@ -159,6 +159,12 @@
 				return item.club_name
 					? m('notificationBell.courseAlertNamed', { club: item.club_name })
 					: m('notificationBell.courseAlert');
+			case 'organiser_dispute':
+				return item.club_name
+					? m('notificationBell.organiserDisputeNamed', { club: item.club_name })
+					: m('notificationBell.organiserDispute');
+			case 'park_course_report':
+				return m('notificationBell.parkCourseReport');
 			case 'race_starting_soon':
 				return item.event_title
 					? m('notificationBell.raceStartingSoonTitled', { title: item.event_title })
@@ -200,7 +206,11 @@
 			case 'workout_reminder':
 				return m('notificationBell.workoutReminder');
 			case 'message':
-				return m('notificationBell.message', { name });
+				return item.row.conversation_id
+					? m('notificationBell.groupMessage', { name })
+					: m('notificationBell.message', { name });
+			case 'group_invite':
+				return m('notificationBell.groupInvite', { name });
 			case 'club_post':
 				return item.club_name
 					? m('notificationBell.clubPostNamed', { name, club: item.club_name })

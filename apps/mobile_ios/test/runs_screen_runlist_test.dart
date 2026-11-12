@@ -16,7 +16,6 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/runs_screen.dart';
 import '../lib/widgets/run_list_tile.dart';
-import '../lib/widgets/surface_peer_strip.dart';
 import 'pump_until.dart';
 
 /// Signed-in fake with no remote runs — keeps `_fetchRemote` off the network
@@ -71,8 +70,7 @@ void main() {
   }
 
   /// Mount the run-list surface (no gymStore) the way the Fitness hub's Runs
-  /// sub-tab does, with the labelled peer strip wired so the screen is as
-  /// crowded as it gets in production.
+  /// sub-tab does.
   Future<void> pumpRunList(
     WidgetTester tester, {
     List<Run> runs = const [],
@@ -97,12 +95,6 @@ void main() {
         runStore: runStore,
         routeStore: LocalRouteStore(),
         preferences: prefs,
-        surfacePeers: [
-          const SurfacePeer(label: 'Runs'),
-          SurfacePeer(label: 'Routes', onTap: () {}),
-          SurfacePeer(label: 'Plans', onTap: () {}),
-          SurfacePeer(label: 'Races', onTap: () {}),
-        ],
       ),
     ));
     await tester.pumpAndSettle();

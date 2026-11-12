@@ -121,9 +121,9 @@ Deno.test('every rate-limit call site is fail-closed', () => {
   );
 });
 
-Deno.test('the four importers that spend a third-party resource are among them', () => {
+Deno.test('the three importers that spend a third-party resource are among them', () => {
   // Named explicitly, because the rule above is satisfied by a tree that has
-  // lost these four functions entirely — and they are the reason it exists.
+  // lost these three functions entirely — and they are the reason it exists.
   const byFile = new Map<string, Site[]>();
   for (const s of callSites()) {
     byFile.set(s.file, [...(byFile.get(s.file) ?? []), s]);
@@ -131,7 +131,6 @@ Deno.test('the four importers that spend a third-party resource are among them',
   for (
     const file of [
       'strava-import/index.ts',
-      'parkrun-import/index.ts',
       'race-results-import/handler.ts',
       'race-listings-sync/index.ts',
     ]

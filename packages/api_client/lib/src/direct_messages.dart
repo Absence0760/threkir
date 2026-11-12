@@ -35,13 +35,21 @@ class DmThread {
     required this.unread,
     this.deletedPartnerKey,
     this.lastUnsent = false,
+    this.lastKind = 'text',
     this.partnerName,
     this.partnerAvatarUrl,
     this.muted = false,
     this.archived = false,
     this.markedUnread = false,
     this.request = false,
-  }) : assert(partnerId != null || deletedPartnerKey != null);
+    this.lastImage = false,
+    this.kind = 'direct',
+    this.title,
+    this.memberCount,
+    this.membershipState,
+  }) : assert(partnerId != null ||
+            deletedPartnerKey != null ||
+            kind == 'group');
 
   /// The conversation the mute, archive and delete-for-me actions act on.
   final String conversationId;
@@ -56,6 +64,10 @@ class DmThread {
   /// Null when the latest message was unsent ([lastUnsent]).
   final String? lastBody;
   final bool lastUnsent;
+
+  /// The latest message's `direct_messages.kind`: `coach_share` for an AI
+  /// Coach answer the athlete shared (issue #1215 Phase 3), else `text`.
+  final String lastKind;
   final DateTime lastAt;
   final bool lastFromMe;
   final int unread;
@@ -75,9 +87,33 @@ class DmThread {
   /// requester learns nothing until it is accepted.
   final bool request;
 
-  /// Unique per conversation, for keys and the opened-at map.
-  String get threadKey => partnerId ?? deletedPartnerKey!;
+  /// The latest message carries a photo (migration 20271213121604), so a
+  /// preview with no caption can say so.
+  final bool lastImage;
 
+  /// `group` for a group conversation (migration 20271216000007): no partner,
+  /// a [title], and the viewer's own [membershipState]. Else `direct`.
+  final String kind;
+
+  /// A group's name; null for a direct conversation.
+  final String? title;
+
+  /// A group's active members, given only while the viewer is one of them.
+  final int? memberCount;
+
+  /// The viewer's membership of a group: `left` rows hold only their own
+  /// messages ("You left"). Null for a direct conversation.
+  final String? membershipState;
+
+  bool get isGroup => kind == 'group';
+
+  /// Unique per conversation, for keys and the opened-at map.
+  String get threadKey => isGroup
+      ? 'group/$conversationId'
+      : partnerId ?? deletedPartnerKey!;
+
+  /// The 1:1 thread to read. A group is read by its conversation id
+  /// (`ApiClient.fetchGroupThread`), so it has none.
   DmThreadTarget get target => partnerId != null
       ? DmPartnerThread(partnerId!)
       : DmDeletedPartnerThread(deletedPartnerKey!);
@@ -97,6 +133,7 @@ class DmThread {
     partnerAvatarUrl: partnerAvatarUrl,
     lastBody: lastBody,
     lastUnsent: lastUnsent,
+    lastKind: lastKind,
     lastAt: lastAt,
     lastFromMe: lastFromMe,
     unread: unread ?? this.unread,
@@ -104,6 +141,11 @@ class DmThread {
     archived: archived ?? this.archived,
     markedUnread: markedUnread ?? this.markedUnread,
     request: request ?? this.request,
+    lastImage: lastImage,
+    kind: kind,
+    title: title,
+    memberCount: memberCount,
+    membershipState: membershipState,
   );
 }
 
@@ -149,3 +191,175 @@ class DmEditClosed implements Exception {
   @override
   String toString() => 'DmEditClosed';
 }
+
+/// `share_coach_message` refused because sharing an AI Coach answer with a
+/// coach is not switched on (SQLSTATE 0A000, the server's `coach_share` gate,
+/// migration 20271210001215).
+class CoachShareUnavailable implements Exception {
+  const CoachShareUnavailable();
+
+  @override
+  String toString() => 'CoachShareUnavailable';
+}
+
+/// `set_direct_message_reaction` refused (migration 20271213121602): an
+/// unsent or hidden message, a block either way, an unaccepted request
+/// (55000), or a message outside the viewer's conversations (P0002). One
+/// sentence for all of them, so a block is never told apart.
+class DmReactionRefused implements Exception {
+  const DmReactionRefused();
+
+  @override
+  String toString() => 'DmReactionRefused';
+}
+
+/// `create_dm_image_upload` refused because photos in messages are not
+/// switched on (SQLSTATE 0A000, the server's `dm_images` gate, migration
+/// 20271213121604).
+class DmImageUnavailable implements Exception {
+  const DmImageUnavailable();
+
+  @override
+  String toString() => 'DmImageUnavailable';
+}
+
+/// One reaction on a direct message, as the SELECT policy hands it out.
+typedef DmReactionRecord = ({String messageId, String userId, String reaction});
+
+/// One message that matched a search of the viewer's own conversations
+/// (migration 20271213121603). Mirrors web's `DmSearchHit`.
+class DmSearchHit {
+  const DmSearchHit({
+    required this.id,
+    required this.conversationId,
+    required this.partnerId,
+    required this.deletedPartnerKey,
+    required this.body,
+    required this.createdAt,
+    required this.fromMe,
+    this.partnerName,
+    this.isGroup = false,
+    this.groupTitle,
+  });
+
+  final String id;
+  final String conversationId;
+
+  /// A hit in a group conversation (no recipient and no deleted-partner key):
+  /// it opens the group, named by [groupTitle].
+  final bool isGroup;
+
+  /// Null for a direct conversation, and for a group the viewer has left
+  /// (its title is readable to active members only).
+  final String? groupTitle;
+
+  /// Null when the partner deleted their account; [deletedPartnerKey] names
+  /// the conversation then.
+  final String? partnerId;
+  final String? deletedPartnerKey;
+  final String? partnerName;
+  final String body;
+  final DateTime createdAt;
+  final bool fromMe;
+
+  DmThreadTarget get target => partnerId != null
+      ? DmPartnerThread(partnerId!)
+      : DmDeletedPartnerThread(deletedPartnerKey!);
+}
+
+/// One message photo: its processing state and, once the server has
+/// re-encoded it, a short-lived signed URL. Mirrors web's `DmImageView`.
+class DmImageView {
+  const DmImageView({
+    required this.status,
+    this.width,
+    this.height,
+    this.url,
+  });
+
+  /// `pending`, `ready` or `rejected`; anything else reads as `pending`.
+  final String status;
+  final int? width;
+  final int? height;
+  final String? url;
+}
+
+/// Why a group RPC refused (issue #1365, migrations 20271216000007 and
+/// 20271217000006). A refused invitee, one that does not exist and a block
+/// either way are one 42501 on the server, so they are one [refused] here:
+/// the picker cannot be used to learn which it was. A group the viewer is not
+/// in, one that does not exist and one they left are one [notFound].
+enum GroupRefusal {
+  /// 0A000: the `group_messages` flag is off.
+  unavailable,
+
+  /// P0002.
+  notFound,
+
+  /// 42501.
+  refused,
+
+  /// 54000: the 32-seat cap, invitations included.
+  capReached,
+
+  /// 22023: a title outside 1 to 60 characters.
+  titleInvalid,
+}
+
+class GroupActionRefused implements Exception {
+  const GroupActionRefused(this.reason);
+  final GroupRefusal reason;
+
+  @override
+  String toString() => 'GroupActionRefused(${reason.name})';
+}
+
+/// One of the viewer's live group invitations: the title, who invited them
+/// and the size only. An invitee never sees who the members are (memo C5).
+/// Mirrors web `GroupInvite`.
+class GroupInvite {
+  const GroupInvite({
+    required this.conversationId,
+    required this.title,
+    required this.invitedAt,
+    required this.memberCount,
+    this.invitedBy,
+    this.inviterName,
+  });
+
+  final String conversationId;
+  final String title;
+  final String? invitedBy;
+  final String? inviterName;
+  final DateTime invitedAt;
+  final int memberCount;
+}
+
+/// One row of `group_members()`: an active member, or a live invitation (seen
+/// by the owner and admins only), with `role` null for an invitation.
+/// Mirrors web `GroupMember`.
+class GroupMember {
+  const GroupMember({
+    required this.userId,
+    required this.role,
+    required this.state,
+    this.name,
+    this.avatarUrl,
+  });
+
+  final String userId;
+
+  /// `owner`, `admin` or `member`; null for an invitation.
+  final String? role;
+
+  /// `active` or `invited`.
+  final String state;
+  final String? name;
+  final String? avatarUrl;
+
+  bool get invited => state == 'invited';
+}
+
+/// A blocked sender's message's place in a group thread: its id and time
+/// only, never a body or a sender (migration 20271217000006).
+typedef GroupPlaceholder = ({String id, DateTime createdAt});

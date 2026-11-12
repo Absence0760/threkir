@@ -102,6 +102,11 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | save / settings / feed | Speichern / Einstellungen / Feed | |
 | chat message | **Chatnachricht** (closed compound, Duden) | settled 2026-10-21; never "Chat-Nachricht" |
 | social | Sozial (mobile `navSocial`) / Community (web `nav.social`) | inconsistency 7 |
+| arm / armed (race control) | **scharf schalten** (closed: "Rennen scharf schalten", "Schalte das Rennen scharf", "scharf geschaltet", noun "Scharfschalten", "Trotzdem scharf schalten", "Früher scharf schalten"); state label **Bereit** / "Rennen bereit", "Nicht scharf geschaltet" | owner decision 2026-11-10, replacing "scharfstellen"; never "scharfstellen" / "scharfgestellt" / "aktivieren"; the Wear watch shows "RENNEN BEREIT" |
+| GO (the start signal) | **GO** in every string and guide: "GO durch Veranstalter", "Geplanter GO", "nach GO", "bei GO"; the button is **GO** on the web and in the phone app (English renamed the phone's *Fire Go* to *GO*); the action in prose is "GO geben" ("Sobald du GO gegeben hast"), the signal is masculine, *der GO* ("einen GO", "derselbe GO-Zeitpunkt") | settled 2026-11-10; never "LOS" / "Los" / "START" / "Startschuss" / "GO geben" as the button label. The Wear pause screen's "Los" (resume) is a different control |
+| self-timed (race) | **selbstgestoppt** ("selbstgestopptes Rennen", "Selbstgestoppter Zeitraum") | settled 2026-11-10; never "selbst gezeitet" / "selbst gestoppt" |
+| gun time / chip time | **Bruttozeit** / **Nettozeit** (closed compounds); coordinated "Brutto- und Nettozeit"; short split "Brutto {gun} · Netto {chip}" | settled 2026-11-10; never "Brutto-Zeit" / "Netto-Zeit" |
+| set up (a race created automatically before its start) | **angelegt** ("Das Rennen wird einen Tag vor dem Start angelegt") | keeps it apart from *arm* |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

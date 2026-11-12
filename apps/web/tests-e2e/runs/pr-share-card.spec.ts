@@ -148,10 +148,10 @@ test.describe('PR share card', () => {
 		});
 		try {
 			await page.goto(`/runs/${slow}?share=pr`);
-			await expect(page.locator('button[title="Share as image"]')).toBeVisible({ timeout: 15_000 });
+			await expect(page.locator('button[title="Share image"]')).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByTestId('run-share-pr')).toHaveCount(0);
 			await expect(page.getByTestId('run-share-image-dialog')).toBeHidden();
-			await page.locator('button[title="Share as image"]').click();
+			await page.locator('button[title="Share image"]').click();
 			const dialog = page.getByTestId('run-share-image-dialog');
 			await expect(dialog.getByTestId('share-style-card')).toHaveAttribute('aria-checked', 'true');
 			await expect(dialog.getByTestId('share-style-pr')).toHaveCount(0);
@@ -168,9 +168,9 @@ test.describe('PR share card', () => {
 			route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' }),
 		);
 		await page.goto(`/runs/${improved}`);
-		await expect(page.locator('button[title="Share as image"]')).toBeVisible({ timeout: 15_000 });
+		await expect(page.locator('button[title="Share image"]')).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('run-share-pr')).toHaveCount(0);
-		await page.locator('button[title="Share as image"]').click();
+		await page.locator('button[title="Share image"]').click();
 		const dialog = page.getByTestId('run-share-image-dialog');
 		await expect(dialog.getByTestId('share-image-preview')).toBeVisible({ timeout: 15_000 });
 		await expect(dialog.getByTestId('share-style-pr')).toHaveCount(0);

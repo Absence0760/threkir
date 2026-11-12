@@ -4,6 +4,8 @@
 	import { onMount, tick } from 'svelte';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
+	import GrisnirArt from '#lib/components/GrisnirArt.svelte';
+	import { loadMascotShown, peekMascotShown } from '#lib/mascot/mascot_pref.ts';
 	import { browser } from '$app/env';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -19,7 +21,6 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { updateUniversal } from '#lib/settings/settings.ts';
-	import { isParkrunConfigured } from '#lib/core/data.ts';
 	import type { PrefsBag } from '#lib/settings/settings.ts';
 	import type { Updatable } from '#lib/core/database.ts';
 	import {
@@ -29,11 +30,11 @@
 		getCurrentSubscription,
 	} from '#lib/util/push.ts';
 	import {
+		ONBOARDING_IMPORT_SOURCES,
 		ONBOARDING_STEPS,
 		PRIMARY_GOAL_KEY,
 		PRIMARY_GOAL_VALUES,
 		visibleOnboardingSteps,
-		visibleImportSources,
 		type OnboardingImportSource,
 		type OnboardingStep,
 		type PrimaryGoal,
@@ -128,9 +129,6 @@
 	// back here from every other page, so a row finishes setup first (the same
 	// save Open dashboard does) and then goes, exactly as the done step's
 	// create-plan CTA does — there is no half-finished wizard to resume.
-	// parkrun waits on its probe; until it answers, its row stays hidden.
-	let parkrunAvailable = $state(false);
-	const importSources = $derived(visibleImportSources(parkrunAvailable));
 
 	let saving = $state(false);
 
@@ -141,6 +139,18 @@
 	// a value typed into the gap. Rendering the wizard only once `ready` is
 	// true means it exists only client-side, post-hydration, fully wired.
 	let ready = $state(false);
+
+	// Grisnir waits by the trail sign in the side panel, hidden until the
+	// runner's show_mascot is known. A settings read that succeeds with no
+	// value is known and on (a new account); one that fails with nothing
+	// cached is unknown and keeps him hidden, as EmptyState and the flyover do.
+	// The read waits for auth, since a hard reload mounts with no user yet.
+	let mascotShown = $state<boolean | null>(null);
+	onMount(async () => {
+		await auth.ready();
+		mascotShown = peekMascotShown();
+		mascotShown = await loadMascotShown();
+	});
 
 	onMount(async () => {
 		// `auth.svelte.ts` flips loading=false before the async
@@ -163,11 +173,6 @@
 			subscribed: pushSubscribed,
 		});
 		ready = true;
-		// Not awaited: the import step is near the end, and a probe that never
-		// answers must not hold the wizard's first paint.
-		isParkrunConfigured()
-			.then((ok) => (parkrunAvailable = ok))
-			.catch(() => (parkrunAvailable = false));
 	});
 
 	// Which way the last step change went, so the incoming step slides in
@@ -231,7 +236,6 @@
 	const IMPORT_SOURCE = {
 		strava: { name: 'Strava', icon: 'directions_run', desc: 'onboarding.importStravaDesc' },
 		garmin: { name: 'Garmin', icon: 'watch', desc: 'onboarding.importGarminDesc' },
-		parkrun: { name: 'parkrun', icon: 'emoji_events', desc: 'onboarding.importParkrunDesc' },
 	} as const satisfies Record<OnboardingImportSource, { name: string; icon: string; desc: string }>;
 
 	// Skip means "leave this one unanswered", so it discards the step's
@@ -471,6 +475,12 @@
 				</li>
 			{/each}
 		</ol>
+		{#if mascotShown}
+			<div class="panel-grisnir">
+				<GrisnirArt pose="wait" width="10rem" testid="onboarding-grisnir" />
+				<p>{m('mascot.onboardingLine')}</p>
+			</div>
+		{/if}
 	{/snippet}
 
 	<main class="auth-card onboarding-card" id="main-content" bind:this={card}>
@@ -749,7 +759,7 @@
 				<h1 id="step-import-title" tabindex="-1">{m('onboarding.importTitle')}</h1>
 				<p class="hint" id="onboarding-import-hint">{m('onboarding.importHint')}</p>
 				<ul class="privacy-list import-list" aria-labelledby="step-import-title" aria-describedby="onboarding-import-hint">
-					{#each importSources as option (option.source)}
+					{#each ONBOARDING_IMPORT_SOURCES as option (option.source)}
 						{@const src = IMPORT_SOURCE[option.source]}
 						<li>
 							<button
@@ -872,6 +882,19 @@
 		color: rgba(255, 255, 255, 0.85);
 	}
 
+	.panel-grisnir {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-xs);
+		margin-top: var(--space-lg);
+	}
+	.panel-grisnir p {
+		margin: 0;
+		font-size: 0.9rem;
+		font-style: italic;
+		color: var(--color-on-primary);
+	}
 	.rail {
 		list-style: none;
 		margin: 0;

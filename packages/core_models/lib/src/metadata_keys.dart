@@ -27,6 +27,8 @@ class MetadataKeys {
   static const String distanceRecordedM = 'distance_recorded_m';
   static const String distanceSource = 'distance_source';
   static const String distanceStepFilledM = 'distance_step_filled_m';
+  static const String distanceStepOverChordM = 'distance_step_over_chord_m';
+  static const String distanceSegments = 'distance_segments';
   static const String elevationM = 'elevation_m';
   static const String event = 'event';
   static const String eventId = 'event_id';
@@ -63,6 +65,7 @@ class MetadataKeys {
   static const String planWorkoutId = 'plan_workout_id';
   static const String position = 'position';
   static const String raceName = 'race_name';
+  static const String raceUndoneFinishAt = 'race_undone_finish_at';
   static const String recoveredFromCrash = 'recovered_from_crash';
   static const String recoveredUnfinished = 'recovered_unfinished';
   static const String routineId = 'routine_id';

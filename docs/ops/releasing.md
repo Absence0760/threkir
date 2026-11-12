@@ -142,7 +142,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 
 | Release tag | Runs | Signs | Publishes to | Attaches back to the Release |
 |---|---|---|---|---|
-| `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track, then Production for review as a staged rollout at 1%; `play-rollout.yml` widens it daily to 100% ([§ 2433](../architecture/decisions.md)) | `.aab` |
+| `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track, then Production for review as a staged rollout at 1%; `play-rollout.yml` widens it daily to 100% ([§ 2478](../architecture/decisions.md)) | `.aab` |
 | `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
 | `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight, then App Store review; on approval it releases itself as a 7-day phased release ([§ 2040](../architecture/decisions.md)) | — |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
@@ -194,7 +194,20 @@ An unchanged catalogue writes nothing. The rest apply
 Edge Function toggles (`supabase secrets set`, compared by digest), cron URL
 entries in Vault (each newly armed one invoked once and required to answer
 2xx), and the one-off tasks in `apps/backend/ops/tasks/`, each run once
-against the `private.ops_task_runs` ledger. The file's `web_env` flags are
+against the `private.ops_task_runs` ledger (after the functions deploy, which
+is what `20271219001313_rematch_segments_matcher_v3` relies on: it re-matches
+every open park segment under matcher v3 and fails, staying pending, if the
+migration that defines `private.global_segment_course_closed` has not
+applied; [decisions § 2465](../architecture/decisions.md)). The same stage
+retires the Edge Functions and secrets listed under `retired_functions` /
+`retired_function_env`; the one-time `parkrun-import` retirement and its
+check are in [deployment.md § Retired scraper functions and secrets](deployment.md)
+([decisions § 2467](../architecture/decisions.md)). Last, it publishes the official
+content catalogue (`scripts/official/`, [decisions § 2446](../architecture/decisions.md),
+[official_content.md](../features/official_content.md)) through
+`private.load_official_catalogue`: library plans, gym routines and challenge
+boards as the official club, a created / updated / unchanged / retired / held
+row each, race courses `gated` while `official_race_courses` is off. The file's `web_env` flags are
 applied by the next `web@*` release instead, when `release-web.yml` writes
 `apps/web/.env`. An entry absent from the file is left untouched, so a release
 with nothing declared changes nothing. The config is guarded before any stage
@@ -217,7 +230,7 @@ production track with the Release's `## What's New` (at most 500 characters,
 never truncated, no fallback to generated notes) as its en-US notes, as a
 staged rollout at 1%, and commits the edit, which sends it for review. The
 `production` environment approval the job already waits on is the human gate,
-as on iOS ([decisions § 2433](../architecture/decisions.md), [§ 2040](../architecture/decisions.md)).
+as on iOS ([decisions § 2478](../architecture/decisions.md), [§ 2040](../architecture/decisions.md)).
 Re-running is safe: an upload Play already holds is skipped, and production
 already carrying the build is a no-op. It fails the job, changing nothing,
 when a different build is still rolling out on production (complete or halt
@@ -445,6 +458,89 @@ and install from there.
 - The app compiles locally — don't rely on CI to catch build breakage.
 - Schema changes: if you deployed `backend@X`, apps that depend on the
   new schema should tag after (or at least not ahead of) `backend@X`.
+- **The job_worker that reads `distance_step_over_chord_m` ships before the
+  first watch build that writes it** (GPS distance spec v1.7, [decisions
+  § 2444](../architecture/decisions.md)). A `watch_wear@*` or `watch_ios@*`
+  release from v1.7 on is recomputed on arrival; a worker that predates the
+  key credits the run's gaps by the run-total rule, stamps it, and the run is
+  never queued again. Check the deployed worker carries `gapStepCreditM`
+  before tagging the first such watch release; after that, nothing to do.
+- **GPS distance spec v1.8 ships in three steps: the job_worker that reads
+  the segment marks, then the phone builds that keep them, then the watch
+  builds that write them** (issue #1361, [decisions
+  § 2466](../architecture/decisions.md)). A v1.8 watch marks each segment's
+  first stored fix `segmentStart`, saves the count as
+  `metadata.distance_segments`, and banks each segment's
+  `distance_step_over_chord_m` whole, which is exact only when the replay
+  ends each segment at its own last fix.
+  1. **`worker@*` first.** A worker that predates the marks replays the
+     track as one stream and ignores the count, so it credits the chord of a
+     gap still open at a pause or a Wear OS source switch on top of those
+     steps (a handover in a gap: 285.52 m against the wrist's 238.00 m),
+     stamps the run, and it is never queued again. Confirm the deployed
+     worker's `replayRecordedTrack` reads `SegmentStart` and its
+     `gapStepCreditM` reads `distance_segments`.
+  2. **Then the phones** (`mobile_android@*`, `mobile_ios@*`) whose watch
+     ingest keeps `segmentStart` and forwards `distance_segments`. A watch run
+     that reaches Storage through an older phone loses both, and the worker
+     keeps the run-total rule for it: never long, but short of the wrist where
+     its gaps fall on both sides of their chords, and stamped. `mobile_ios@*`
+     carries the Apple Watch app too, so the watchOS half of step 3 can ship
+     in the same release.
+  3. **Then the watches** (`watch_wear@*`, and the watchOS app). Wear OS
+     uploads directly, so only step 1 gates it.
+
+  After the first release of each, nothing to do.
+- **`race_finish v3` and the result course lock ship with the `backend@*`
+  release before any client build that reads them** (migrations
+  `20271222002471`, `20271222002472` + `…012472`, decisions § 2471 / § 2472).
+  A v3 client reads `race_session_courses.finish_lap_count`, which exists
+  only after the migration; the migration backfills sessions still `armed`
+  whose live lines match the frozen copy, and any other race without a
+  count falls back to scaling by the runner's own measured lap on the
+  device. An older client keeps working against the
+  new database: it never reads the column, and the only change it meets is
+  the course/distance refusal after the 24 h window, which it surfaces as
+  the window-closed error it already handles. Order: `backend@*`, then
+  `web@*`, the store builds and the Wear build in any order.
+- **`file_event_result` ships with the `backend@*` release before any
+  client build that calls it, and the last `event_results` column revoke
+  waits for the minimum supported builds** (migration `20271225000100`,
+  [decisions § 2474](../architecture/decisions.md)). A web, phone or Wear
+  build that files a result through the RPC gets PostgREST's `PGRST202`
+  (404) against a database without it, so the order is `backend@*`, then
+  `web@*`, the store builds and the Wear build in any order. If a phone or
+  Wear build reaches runners first anyway, a queued finisher time is kept,
+  not lost: both clients treat `PGRST202` as retryable (unlike every other
+  404) and replay it once the backend release lands. Web keeps no queue, so
+  a web result filed in that gap fails in front of the runner. Released builds
+  still file with the merge upsert, which needs SELECT on the eight columns
+  it writes back from `EXCLUDED`, so those stay granted to `authenticated`.
+  **Trigger for the revoke:** once the minimum supported `mobile_android@*`,
+  `mobile_ios@*` and `watch_wear@*` builds (the force-update floor, or the
+  oldest build still reporting in) all call `file_event_result` — watchOS
+  relays its finish to the phone and needs nothing of its own — ship a
+  migration with exactly:
+  `revoke select (age_grade_pct, note, run_id, start_at, finish_at, start_detection, finish_detection, clock_offset_ms) on public.event_results from authenticated;`
+  and in the same change move those eight into the `authenticated` withheld
+  set of `column_grant_lockdown_registry_test.sql` and flip
+  `event_results_column_lock_test.sql`'s upsert case to a refusal. A build
+  older than that floor then fails every result it files with
+  `42501 permission denied for table event_results`.
+- **The job_worker that handles `duration_repair` ships before the
+  `backend@*` release carrying `20271218000001`–`…03`** (issue #1300 § 5,
+  [decisions § 2464](../architecture/decisions.md)). `…02` caps every run
+  stored above ten days and enqueues one `duration_repair` job per capped run
+  that has a track; a worker without the handler fails each one as an unknown
+  kind, and nothing enqueues them again. Order: tag `worker@*` (the
+  job_worker's release tag, `release-worker.yml`), confirm the deployed
+  worker's dispatch has `case "duration_repair"`, then tag `backend@*`. `…03` validates `runs_duration_s_max_check` in the same
+  release; it does not wait for the jobs, because the cap alone satisfies
+  it. After the release, a capped run with no usable track keeps the cap and
+  `metadata.duration_repaired` until its owner edits the duration; to see
+  which remain:
+  `select id, user_id, metadata->>'duration_s_original' from runs where metadata ? 'duration_repaired';`
+  (read-only).
 - **Health Connect permission changes block the Android release.** If the
   diff since the last `mobile_android@*` tag adds or removes an
   `android.permission.health.*` entry in `AndroidManifest.xml` /

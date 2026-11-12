@@ -1,5 +1,5 @@
 // Package gpsdistance is the Go port of the GPS distance estimator,
-// spec v1.5 (docs/features/gps_distance.md). The reference implementation
+// spec v1.8 (docs/features/gps_distance.md). The reference implementation
 // is scripts/gps_distance/reference.py and this file follows it
 // operation for operation; every port replays
 // fixtures/gps_distance_vectors.json to 1e-3 m, so a change here without
@@ -15,7 +15,7 @@ package gpsdistance
 import "math"
 
 // SpecVersion is the spec this port implements.
-const SpecVersion = "1.5"
+const SpecVersion = "1.8"
 
 const (
 	EarthRadiusM              = 6371008.8
@@ -30,6 +30,7 @@ const (
 	PosOnlyStationarySpeedMps = 0.8
 	GapS                      = 10.0
 	FreshFixS                 = 2.0
+	MaxOpenGaps               = 8 // v1.6: gaps a step sample can still owe a share to; past it the oldest is dropped
 	StrideWindowSteps         = 50
 	MinStrideM                = 0.4
 	MaxStrideM                = 2.5
@@ -190,6 +191,11 @@ type Fix struct {
 }
 
 // record is what the smoother needs from one forward-pass fix.
+type closedGap struct {
+	startT, endT, topUpM float64
+	record               int // index into records, or -1 when not recording
+}
+
 type record struct {
 	anchor, chainBreak bool
 	dt                 float64
@@ -209,6 +215,10 @@ type Estimator struct {
 	MaxSpeedMps   float64
 	GpsDistanceM  float64
 	StepDistanceM float64
+	// StepOverChordM is what the steps credited the gaps beyond their chord
+	// lower bounds, summed (spec v1.7): per gap max(chord, steps) - chord,
+	// exactly what a replay with no steps lacks.
+	StepOverChordM float64
 	// StrideM is nil until a stride has been learned.
 	StrideM *float64
 	// Diagnostics (spec v1.2 and v1.3).
@@ -233,10 +243,15 @@ type Estimator struct {
 
 	winSteps     int
 	winM         float64
+	winFromT     float64 // v1.6: the fix that last emptied the stride window
+	winStale     bool    // v1.6: a stale step sample emptied the window since the last fix
 	hasLastSteps bool
 	lastSteps    int
 	lastStepT    float64
 	pendingStepM float64
+	// v1.6: the gaps re-anchors closed since the last step sample, owed
+	// their share of the next one.
+	gaps []closedGap
 
 	rejectStreak       int
 	xcDoppler, xcPos   float64
@@ -303,6 +318,7 @@ func NewWithOptions(o Options) *Estimator {
 	e := &Estimator{
 		MaxSpeedMps: maxSpeedMps, gapS: GapS * scale, freshFixS: FreshFixS * scale,
 		RScale: 1.0, DopplerTrusted: true, DopplerScale: 1.0, learnStride: !o.NoStrideLearning,
+		winFromT: math.Inf(-1),
 	}
 	if validPtr(o.InitialStrideM) && *o.InitialStrideM >= MinStrideM && *o.InitialStrideM <= MaxStrideM {
 		stride := *o.InitialStrideM
@@ -391,11 +407,23 @@ func (e *Estimator) AddFix(f Fix) float64 {
 				hasGap, gapM = true, lower-e.pendingStepM
 				e.GpsDistanceM += gapM
 			}
+			e.StepOverChordM += math.Max(0, e.pendingStepM-math.Max(lower, 0))
+			rec := -1
+			if e.recording {
+				rec = len(e.records)
+			}
+			e.gaps = append(e.gaps, closedGap{startT: e.t, endT: f.T, topUpM: gapM, record: rec})
+			if len(e.gaps) > MaxOpenGaps {
+				e.gaps = e.gaps[1:]
+			}
 		}
 		e.pendingStepM = 0
 		e.strideOK = e.strideGrade(f.AccuracyM, dopOK, sa)
-		if !e.strideOK {
-			e.winSteps, e.winM = 0, 0
+		e.winStale = false
+		// The first fix also starts the window: a step sample before it counted
+		// steps no fix measured metres for.
+		if !e.strideOK || !e.hasT {
+			e.emptyWindow(f.T)
 		}
 		e.x, e.y = newAxis(zx, r), newAxis(zy, r)
 		e.t, e.hasT = f.T, true
@@ -561,11 +589,15 @@ func (e *Estimator) AddFix(f Fix) float64 {
 	}
 	e.GpsDistanceM += inc
 	e.strideOK = e.strideGrade(f.AccuracyM, useDop && !hasChord, sa)
-	if e.strideOK {
+	// A step sample that fell stale since the last fix emptied the window
+	// inside this fix's interval, so the window no longer holds the steps its
+	// metres cover.
+	if e.strideOK && !e.winStale {
 		e.winM += inc
 	} else {
-		e.winSteps, e.winM = 0, 0
+		e.emptyWindow(f.T)
 	}
+	e.winStale = false
 	e.record(record{dt: dt, chainBreak: chainBreak, predX: predX, predY: predY, zupt: zupt,
 		hasDop: useDop, dop: sdop, hasChord: hasChord, chord: chord})
 	return inc
@@ -578,6 +610,14 @@ func (e *Estimator) setDsLast(x, y, t float64, hasDop bool, dop float64, bearing
 	if e.dsLastHasBearing {
 		e.dsLastBearing = *bearing
 	}
+}
+
+// emptyWindow empties the stride window at the fix at t. Its metres start
+// after t, so a step sample whose interval reaches back before t must not
+// refill it.
+func (e *Estimator) emptyWindow(t float64) {
+	e.winSteps, e.winM = 0, 0
+	e.winFromT = t
 }
 
 // strideGrade says whether a fix may teach stride: by its Doppler sigma sa
@@ -593,8 +633,9 @@ func (e *Estimator) strideGrade(accuracyM *float64, fromDoppler bool, sa float64
 }
 
 // AddSteps feeds a cumulative pedometer count. Learns a stride while GPS
-// is good; buffers steps x stride while it is not (committed only if the
-// gap exceeds the gap window).
+// is good; buffers steps x stride for the time since the last fix, dropped
+// when the next fix integrates it and committed only if the gap exceeds the
+// gap window (at that fix, or at Finish).
 func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 	if !finite(t) {
 		return
@@ -602,9 +643,25 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 	hadPrev, prev, prevT := e.hasLastSteps, e.lastSteps, e.lastStepT
 	e.hasLastSteps, e.lastSteps, e.lastStepT = true, cumulativeSteps, t
 	if !hadPrev || cumulativeSteps < prev || t <= prevT {
+		// A baseline counts no interval, so the stride window's metres so far
+		// have no steps: start the window here, as a learn does. A stale one
+		// also marks the window, as any stale sample does, so the next fix
+		// empties it.
+		if e.hasT && t-e.t > e.freshFixS {
+			e.winStale = true
+		}
+		if e.hasT && t < e.t {
+			// v1.7: stamped before the last fix, so the window's metres
+			// already start after this stamp; the next sample's steps reach
+			// back before them and must not refill it.
+			e.emptyWindow(e.t)
+		} else {
+			e.winSteps, e.winM = 0, 0
+		}
 		return
 	}
 	d := cumulativeSteps - prev
+	inGap := e.attributeSteps(prevT, t, d)
 	if d > 0 {
 		if e.stepsSeen {
 			span := t - e.lastStepIncT
@@ -616,7 +673,9 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		e.lastStepIncT = t
 		e.zuptReleased = false
 	}
-	if e.hasT && t-e.t <= e.freshFixS {
+	// A sample whose interval reaches into a gap, or stamped before the last
+	// fix, holds steps GPS measured no metres for, so it must not teach stride.
+	if e.hasT && !inGap && prevT >= e.winFromT && t-e.t >= 0 && t-e.t <= e.freshFixS {
 		if !e.strideOK {
 			return
 		}
@@ -634,11 +693,69 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		}
 		return
 	}
-	e.winSteps, e.winM = 0, 0
-	if e.StrideM == nil {
-		return
+	if e.hasT && t-e.t > e.freshFixS {
+		e.winStale = true
 	}
-	e.pendingStepM += math.Min(float64(d)*(*e.StrideM), e.MaxSpeedMps*(t-prevT))
+	e.winSteps, e.winM = 0, 0
+}
+
+// attributeSteps (v1.6): a sample's d steps were taken across (prevT, t],
+// so each part of that interval gets its share. The part after the last fix
+// is buffered; the part inside each gap a re-anchor closed since the
+// previous sample tops that gap's credit up to its steps. A gap that ends
+// after t stays open, less what this sample took from its GPS credit, so the
+// next sample shares the rest of it. It reports whether (prevT, t] overlaps
+// any open gap.
+func (e *Estimator) attributeSteps(prevT, t float64, d int) bool {
+	gaps := e.gaps
+	e.gaps = nil
+	inGap := false
+	for _, gap := range gaps {
+		if math.Min(gap.endT, t) > math.Max(prevT, gap.startT) {
+			inGap = true
+		}
+	}
+	if d <= 0 || e.StrideM == nil {
+		for _, gap := range gaps {
+			if gap.endT > t {
+				e.gaps = append(e.gaps, gap)
+			}
+		}
+		return inGap
+	}
+	rate := math.Min(float64(d)*(*e.StrideM)/(t-prevT), e.MaxSpeedMps)
+	lo := prevT
+	if e.hasT {
+		lo = math.Max(prevT, e.t)
+	}
+	if t > lo {
+		e.pendingStepM += rate * (t - lo)
+	}
+	for _, gap := range gaps {
+		from := math.Max(prevT, gap.startT)
+		to := math.Min(gap.endT, t)
+		take := 0.0
+		if to > from {
+			late := rate * (to - from)
+			e.StepDistanceM += late
+			take = math.Min(late, gap.topUpM)
+			e.GpsDistanceM -= take
+			e.StepOverChordM += late - take
+			if gap.record >= 0 {
+				if take > 0 {
+					e.records[gap.record].chord -= take
+				}
+				for k := gap.record; k < len(e.records); k++ {
+					e.records[k].stepDistanceM += late
+				}
+			}
+		}
+		if gap.endT > t {
+			gap.topUpM -= take
+			e.gaps = append(e.gaps, gap)
+		}
+	}
+	return inGap
 }
 
 // Finish ends the run: commits buffered steps if the trailing gap
@@ -646,6 +763,7 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 func (e *Estimator) Finish(t float64) {
 	if e.hasT && finite(t) && t-e.t > e.gapS {
 		e.StepDistanceM += e.pendingStepM
+		e.StepOverChordM += e.pendingStepM
 	}
 	e.pendingStepM = 0
 }

@@ -1,6 +1,8 @@
 // Turns a park's built `manifest.json` and course GeoJSON into the payload
 // `private.load_park_catalogue` takes (migration 20271126002425, decisions
-// § 2425), and that payload into the one SQL statement the operator runs.
+// § 2425; laps and the credit's own column, 20271130002438, § 2438; the route
+// guide, 20271212001344, § 2448), and that payload into the one SQL statement
+// the operator runs.
 // Pure: the CLI in ../load.mjs does the file reads.
 //
 // Everything the database would refuse is refused here first, with the course
@@ -8,6 +10,8 @@
 // through a production transaction.
 
 import { RACE_DISTANCES_M, haversineM, pathLengthM } from './course_geometry.mjs';
+import { routeGuideRefusal } from './route_guide.mjs';
+import { assertNoThirdPartyMarks } from './third_party_marks.mjs';
 
 /** @typedef {import('./course_geometry.mjs').LatLng} LatLng */
 
@@ -16,9 +20,13 @@ export const COURSE_SHAPES = ['loop', 'out_and_back', 'point_to_point'];
 export const GEOMETRY_SOURCES = ['osm', 'nps', 'agency', 'traced'];
 export const COURSE_DIFFICULTIES = ['easy', 'moderate', 'hard'];
 export const ROUTE_SURFACES = ['road', 'trail', 'mixed'];
+/** When an organised group uses a course's paths; each client renders a give-way note naming no one (`park_courses.shared_use`). */
+export const SHARED_USES = ['saturday_morning_group'];
 
 export const MAX_CHECKPOINTS = 50;
 export const MAX_SOURCE_REF_LENGTH = 8000;
+export const MAX_ATTRIBUTION_LENGTH = 300;
+export const MAX_LAPS = 1000;
 
 /** A loop's line must close within this; the build closes it exactly. */
 export const LOOP_CLOSE_M = 25;
@@ -61,8 +69,9 @@ const RACE_DISTANCE_WORDS = Object.freeze({
  *   slug: string, name: string, course_shape: string, surface: string, difficulty: string | null,
  *   geometry_source: string, source_ref: string | null, source_checked_at: string | null,
  *   distance_m: number, elevation_m: number | null, official_distance_m: number | null,
- *   description: string | null, checkpoints: { lat: number, lng: number }[], waypoints: LatLng[],
+ *   description: string | null, laps: number | null, checkpoints: { lat: number, lng: number }[], waypoints: LatLng[],
  *   start_gate: PayloadGate | null, end_gate: PayloadGate | null,
+ *   route_guide: object | null, route_guide_checked_at: string | null, shared_use: string | null,
  * }} PayloadCourse
  * @typedef {{ lat: number, lng: number, bearing_deg: number, half_width_m: number }} PayloadGate
  * @typedef {{
@@ -134,7 +143,7 @@ function curatedGate(gate, end, where) {
 /**
  * @param {any} entry
  * @param {LatLng[]} line
- * @param {{ course_shape: string, difficulty: string | null, official_distance_m: number | null, description: string | null }} shape
+ * @param {{ course_shape: string, difficulty: string | null, official_distance_m: number | null, description: string | null, laps: number | null }} shape
  * @returns {PayloadCourse}
  */
 function payloadCourse(entry, line, shape) {
@@ -154,6 +163,22 @@ function payloadCourse(entry, line, shape) {
 	check(entry.source_checked_at == null || DATE.test(entry.source_checked_at), `${slug}: source_checked_at must be YYYY-MM-DD`);
 	check(isFiniteNumber(entry.distance_m) && entry.distance_m >= 100, `${slug}: distance_m must be at least 100`);
 	check(entry.elevation_m == null || (isFiniteNumber(entry.elevation_m) && entry.elevation_m >= 0), `${slug}: elevation_m must be a non-negative number`);
+	check(
+		shape.laps === null || (Number.isInteger(shape.laps) && shape.laps >= 1 && shape.laps <= MAX_LAPS),
+		`${slug}: laps must be a whole number from 1 to ${MAX_LAPS}`,
+	);
+
+	const sharedUse = entry.shared_use ?? null;
+	check(sharedUse === null || SHARED_USES.includes(sharedUse), `${slug}: shared_use ${sharedUse} is not one of ${SHARED_USES.join(', ')}`);
+
+	const guide = entry.route_guide ?? null;
+	const guideRefusal = guide === null ? null : routeGuideRefusal(guide);
+	check(guideRefusal === null, `${slug}: route_guide is not valid: ${guideRefusal}; rebuild it`);
+	const guideCheckedAt = entry.route_guide_checked_at ?? null;
+	check(
+		guideCheckedAt === null || (typeof guideCheckedAt === 'string' && DATE.test(guideCheckedAt) && guide !== null),
+		`${slug}: route_guide_checked_at must be YYYY-MM-DD, and only beside a route_guide`,
+	);
 
 	const checkpoints = entry.checkpoints ?? [];
 	check(Array.isArray(checkpoints) && checkpoints.length <= MAX_CHECKPOINTS, `${slug}: at most ${MAX_CHECKPOINTS} checkpoints`);
@@ -187,11 +212,28 @@ function payloadCourse(entry, line, shape) {
 		elevation_m: entry.elevation_m ?? null,
 		official_distance_m: shape.official_distance_m,
 		description: shape.description,
+		laps: shape.laps,
 		checkpoints: checkpoints.map((/** @type {{ lat: number, lng: number }} */ c) => ({ lat: c.lat, lng: c.lng })),
 		waypoints: line,
 		start_gate: curatedGate(entry.start_gate, line[0], `${slug}: start_gate`),
 		end_gate: curatedGate(entry.end_gate, line[line.length - 1], `${slug}: end_gate`),
+		route_guide: guide,
+		route_guide_checked_at: guideCheckedAt,
+		shared_use: sharedUse,
 	};
+}
+
+/**
+ * A trail course's laps: what its manifest entry says, else 1 for a loop
+ * (the build traces a trail loop once round) and null for an out-and-back or
+ * point-to-point course, where a lap count says nothing.
+ *
+ * @param {any} entry
+ * @returns {number | null}
+ */
+function trailLaps(entry) {
+	if (entry.laps != null) return entry.laps;
+	return entry.course_shape === 'loop' ? 1 : null;
 }
 
 /**
@@ -202,6 +244,7 @@ function payloadCourse(entry, line, shape) {
 export function cataloguePayload(manifest, readGeojson) {
 	const park = manifest?.park;
 	check(park && typeof park === 'object', 'the manifest has no park');
+	assertNoThirdPartyMarks(manifest, `${park.slug} manifest.json`);
 	check(typeof park.slug === 'string' && SLUG.test(park.slug) && park.slug.length <= 80, `park slug ${park.slug} is not a lower-case hyphenated slug`);
 	check(typeof park.name === 'string' && park.name.length >= 1 && park.name.length <= 120, 'park name must be 1-120 characters');
 	check(PARK_AGENCIES.includes(park.agency), `park agency ${park.agency} is not one of ${PARK_AGENCIES.join(', ')}`);
@@ -209,7 +252,19 @@ export function cataloguePayload(manifest, readGeojson) {
 	check(typeof park.country_code === 'string' && /^[A-Z]{2}$/.test(park.country_code), `park country_code ${park.country_code} is not ISO 3166-1 alpha-2`);
 	check(typeof park.timezone === 'string' && park.timezone.length >= 1, 'park timezone is missing');
 	check(park.website_url == null || /^https:\/\//.test(park.website_url), 'park website_url must be https');
+	if (park.agency === 'nps') {
+		check(
+			typeof park.nps_park_code === 'string' && /^[a-z]{4,10}$/.test(park.nps_park_code),
+			'an nps park needs its nps_park_code (the NPS Data API parkCode, e.g. shen), which the closures sweep reads',
+		);
+	} else {
+		check(park.nps_park_code == null, `only an nps park takes an nps_park_code, not a ${park.agency} park`);
+	}
 	check(typeof manifest.attribution === 'string' && manifest.attribution.trim().length > 0, 'the manifest carries no attribution');
+	check(
+		manifest.attribution.trim().length <= MAX_ATTRIBUTION_LENGTH,
+		`the attribution is longer than ${MAX_ATTRIBUTION_LENGTH} characters`,
+	);
 
 	/** @type {PayloadCourse[]} */
 	const courses = [];
@@ -221,6 +276,7 @@ export function cataloguePayload(manifest, readGeojson) {
 				difficulty: entry.difficulty ?? null,
 				official_distance_m: null,
 				description: entry.direction ? `Run it ${entry.direction}.` : null,
+				laps: trailLaps(entry),
 			}),
 		);
 	}
@@ -236,6 +292,7 @@ export function cataloguePayload(manifest, readGeojson) {
 				course_shape: 'loop',
 				difficulty: null,
 				official_distance_m: raceM,
+				laps: entry.laps,
 				description: `Measures exactly ${RACE_DISTANCE_WORDS[entry.race_distance]}: ${laps} of the loop, starting and finishing on one line on the lead-in.`,
 			}),
 		);
@@ -257,6 +314,7 @@ export function cataloguePayload(manifest, readGeojson) {
 			country_code: park.country_code,
 			timezone: park.timezone,
 			website_url: park.website_url ?? null,
+			nps_park_code: park.nps_park_code ?? null,
 		},
 		region: subdivision ? `${park.name}, ${subdivision}` : park.name,
 		attribution: manifest.attribution.trim(),

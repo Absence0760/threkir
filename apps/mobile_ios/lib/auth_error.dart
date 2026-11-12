@@ -188,14 +188,15 @@ bool isSignedOutError(Object error) {
 /// SQLSTATE classes a database error can carry: every class Postgres and
 /// PL/pgSQL define, plus the classes this project's own RPCs raise (`RR`
 /// restart_training_plan, `RW` the recurrence dry run, `TR`
-/// trim_training_plan, `PC` the propose_plan_change dry run). A test reads every `errcode` in the migrations and
+/// trim_training_plan, `PC` the propose_plan_change dry run), and `PT`, PostgREST's
+/// escape for a chosen HTTP status (`PT429`, park-course reports). A test reads every `errcode` in the migrations and
 /// fails when a new one is not covered here.
 const _sqlstateClasses = {
   '00', '01', '02', '03', '08', '09', '0A', '0B', '0F', '0L', '0P', '0Z', //
   '20', '21', '22', '23', '24', '25', '26', '27', '28', '2B', '2D', '2F', //
   '34', '38', '39', '3B', '3D', '3F', '40', '42', '44', '53', '54', '55', //
   '57', '58', '72', 'F0', 'HV', 'P0', 'XX', //
-  'RR', 'RW', 'TR', 'PC',
+  'RR', 'RW', 'TR', 'PC', 'PT',
 };
 
 final _pgrst = RegExp(r'^PGRST\d{3}$');

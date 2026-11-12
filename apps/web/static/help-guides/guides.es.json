@@ -417,7 +417,7 @@
             "type": "steps",
             "items": [
               "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Preferencias** de la pestaña **Tú**.",
-              "Para cambiar una sola carrera más tarde, ábrela y usa **Hacer pública** o **Hacer privada**."
+              "Para cambiar una sola carrera más tarde, ábrela y toca **Privado** o **Público** debajo de su título. Antes de hacer pública una carrera, te lo preguntamos y te mostramos lo que ocultarán tus zonas de privacidad."
             ]
           },
           {
@@ -591,6 +591,7 @@
       "invite-members-and-roles",
       "recurring-events",
       "set-up-a-race",
+      "choose-how-your-race-starts",
       "import-your-history"
     ]
   },
@@ -1799,6 +1800,155 @@
     ]
   },
   {
+    "id": "choose-how-your-race-starts",
+    "lang": "es",
+    "title": "Elegir cómo empieza tu carrera",
+    "summary": "GO del organizador, GO programado o Ventana de cronometraje propio: cuándo usar cada uno, qué haces el día de la carrera y cómo se aprueban los resultados.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Tres formas de dar la salida",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**GO del organizador**: preparas la carrera y pulsas GO en la línea. Úsalo cuando estés en la salida con todos, para una salida en masa.",
+              "**GO programado**: la carrera empieza sola a la hora que fijes. Úsalo cuando la hora de salida sea fija pero quizá no estés en la línea, o quieras correr tú también. Hasta entonces puedes retrasarla o cancelarla.",
+              "**Ventana de cronometraje propio**: no hay salida común. Cada corredor cronometra su propio intento entre la línea de salida y la línea de meta, en cualquier momento mientras la ventana esté abierta. Úsala para una contrarreloj semanal o para un recorrido que la gente corre cuando puede. No hay tiempo de pistola."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Se elige en **Cómo empieza la carrera**, en el editor del evento en la web, para un evento de salida en grupo o de ciclismo. La app del móvil puede dirigir la carrera el día (prepararla antes, retrasarla, ampliarla o finalizarla), pero la forma de salida se elige en la web."
+          }
+        ]
+      },
+      {
+        "heading": "Fijar los horarios",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "GO programado: fija la **Hora de salida** y el **Día de salida** (el mismo día, el día anterior o el día posterior al evento). En **Termina después de, días** y **Horas**, indica cuánto tiempo después del GO termina la carrera sola, salvo que la finalices antes.",
+              "Ventana de cronometraje propio: fija **La ventana abre a las** y **Abre el** (desde el día anterior al evento hasta una semana después) y cuánto tiempo permanece abierta en **Duración de la ventana, días** y **Horas**, de 1 minuto a 7 días."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Los horarios se escriben y se ven en el reloj del propio evento, en su zona horaria. En la página del evento, el panel de carrera muestra esa zona horaria y, cuando la tuya es distinta, tu propia hora al lado."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Los horarios se guardan relativos a cada ocurrencia del evento. Si mueves el evento, o una de sus ocurrencias, sus horarios de carrera se mueven con él. Si cambias los horarios en el editor, todas las ocurrencias que aún no han empezado toman los nuevos horarios."
+          }
+        ]
+      },
+      {
+        "heading": "El día de la carrera: GO del organizador",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Preparas la carrera, das el GO y la finalizas tú mismo. Consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]]."
+          }
+        ]
+      },
+      {
+        "heading": "El día de la carrera: GO programado",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "No tienes que hacer nada. La carrera se configura aproximadamente un día antes de la salida y empieza sola a la hora programada.",
+              "Para revisar antes las líneas del recorrido, elige **Preparar antes**.",
+              "Antes de la salida, el panel de carrera muestra **Salida a las** con la hora y una cuenta atrás. Para retrasar la salida, introduce los minutos y elige **Retrasar salida**; se avisa a todos los apuntados de que la salida ha cambiado. Elige **Cancelar** para suspender la carrera.",
+              "Una vez pasada la hora de salida, la carrera ya no se puede cancelar. Termina sola cuando se acaba su tiempo, o elige **Finalizar carrera** para terminarla antes.",
+              "Los móviles de los corredores hacen la cuenta atrás hasta la salida con el reloj del servidor y dicen en voz alta los últimos segundos, para que todos salgan a la vez."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "El día de la carrera: cronometraje propio",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "No hay que pulsar nada. La ventana se abre y se cierra sola.",
+              "Antes de que se abra puedes elegir **Retrasar salida** o **Cancelar**, como en una carrera programada.",
+              "Mientras está abierta, introduce las horas y elige **Ampliar ventana** para mantenerla abierta más tiempo (hasta 7 días desde que se abrió), o elige **Cerrar la ventana ahora** para cerrarla antes.",
+              "Cuando se cierra la ventana, un corredor que empezó un intento pero no envió resultado se marca como DNF, igual que cuando finalizas cualquier carrera."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Cada recorrido necesita una línea de salida y una de meta, y se fijan para la carrera cuando se abre la ventana. Consulta [[guide:start-and-finish-lines|Líneas de salida y meta]]."
+          }
+        ]
+      },
+      {
+        "heading": "Aprobar resultados con cronometraje propio",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "En una carrera con cronometraje propio nadie está en la línea, así que por defecto sus resultados esperan tu aprobación: **Aprobar automáticamente los resultados enviados** empieza desmarcada. Cada resultado se muestra como **PENDIENTE** hasta que elijas **Aprobar**."
+          },
+          {
+            "type": "p",
+            "text": "Algunos resultados se retienen para tu revisión aunque la aprobación automática esté activada: uno sin cruce de la línea de salida (de una versión antigua de la app o de un Apple Watch), uno que empieza fuera de la ventana y uno cuyos cruces no quedan respaldados por las propias posiciones en directo del corredor. Un corredor que cambia su propio tiempo también vuelve a pendiente."
+          },
+          {
+            "type": "p",
+            "text": "Un corredor puede hacer varios intentos. Cuenta su mejor llegada cronometrada por las dos líneas, y un intento más lento no la sustituye."
+          }
+        ]
+      },
+      {
+        "heading": "Avisos de salida inminente",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Unos 10 minutos antes de un GO programado, todos los apuntados reciben una notificación push de que la carrera está a punto de empezar, salvo que les haya llegado un recordatorio del evento en la última hora. Cuando retrasas una salida, reciben otra que dice que ha cambiado. Estos avisos nunca se envían por correo electrónico."
+          },
+          {
+            "type": "p",
+            "text": "Los corredores desactivan ambos con **Carrera a punto de empezar**: en la web, en [[route:/settings/notifications|Notificaciones]]; en la app del móvil, en **Preferencias**, dentro de la pestaña **Tú**."
+          }
+        ]
+      },
+      {
+        "heading": "Los corredores necesitan una app reciente",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Las carreras programadas y con cronometraje propio necesitan la última versión de la app en el móvil o el reloj Wear OS. Los resultados de versiones antiguas y del Apple Watch se guardan para tu revisión en lugar de rechazarse."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "start-and-finish-lines",
+      "race-day-for-hosts",
+      "run-a-self-timed-race"
+    ]
+  },
+  {
     "id": "drive-a-course",
     "lang": "es",
     "title": "Recorrer en coche el recorrido de una carrera antes del día",
@@ -1914,11 +2064,15 @@
             "type": "list",
             "items": [
               "**Antes de la carrera**: el organizador todavía no ha preparado el cronómetro de la carrera.",
-              "**Listo**: el cronómetro está preparado y esperando la salida.",
+              "**Preparada**: el cronómetro está preparado y esperando la salida.",
               "**En curso**: la carrera está en marcha, con el tiempo transcurrido.",
-              "**Finalizado**: la carrera ha terminado.",
-              "**Cancelado**: el organizador ha cancelado la carrera."
+              "**Finalizada**: la carrera ha terminado.",
+              "**Cancelada**: el organizador ha cancelado la carrera."
             ]
+          },
+          {
+            "type": "p",
+            "text": "Una carrera con salida programada muestra **Preparada** con la hora a la que empieza sola. Una carrera con cronometraje propio muestra **Ventana de cronometraje propio** con cuándo se abre y después **Ventana de cronometraje propio abierta** con cuándo se cierra: cada corredor sale cuando cruza la línea de salida."
           }
         ]
       },
@@ -1933,6 +2087,10 @@
             "type": "illustration",
             "id": "follow-a-race-live",
             "alt": "Un recorrido en un mapa con corredores, cada uno un punto de color con un breve rastro de su trayecto reciente, y una bandera en la meta."
+          },
+          {
+            "type": "p",
+            "text": "El mapa también dibuja las líneas de salida y meta de cada recorrido, las que tenía la carrera cuando se preparó."
           }
         ]
       },
@@ -1946,6 +2104,10 @@
           {
             "type": "p",
             "text": "No hay una etiqueta aparte de «en pausa». Un corredor que se ha detenido (para atarse un cordón, en un avituallamiento o porque ha pausado su grabación) o que ha perdido la señal simplemente deja de actualizarse. Tras unos 90 segundos sin actualización, su fila se marca como **RETRASADO**. Eso no significa que pase algo malo; a menudo solo indica que no hay señal."
+          },
+          {
+            "type": "p",
+            "text": "En una carrera con cronometraje propio, los corredores se ordenan según cuánto hace que cruzaron la línea de salida, primero quien lleva más tiempo. Los corredores que aún no tienen tiempo desde la línea de salida aparecen después, en **Aún sin tiempo desde la línea de salida**."
           }
         ]
       },
@@ -1984,6 +2146,7 @@
     "related": [
       "race-results-explained",
       "racing-in-a-race",
+      "run-a-self-timed-race",
       "race-day-for-hosts"
     ]
   },
@@ -1991,7 +2154,7 @@
     "id": "race-day-for-hosts",
     "lang": "es",
     "title": "El día de la carrera para organizadores",
-    "summary": "Prepara la carrera, da la salida, síguela en directo, finalízala y después aprueba y corrige los resultados.",
+    "summary": "Prepara la carrera, da el GO, síguela en directo, finalízala y después aprueba y corrige los resultados.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2023,7 +2186,11 @@
           {
             "type": "illustration",
             "id": "race-day-for-hosts",
-            "alt": "El día de la carrera en cuatro pasos, de izquierda a derecha: preparar la carrera, dar la salida, seguirla en directo y finalizarla en la meta."
+            "alt": "El día de la carrera en cuatro pasos, de izquierda a derecha: preparar la carrera, dar el GO, seguirla en directo y finalizarla en la meta."
+          },
+          {
+            "type": "p",
+            "text": "Estos pasos son para una carrera con **GO del organizador**. Una carrera con **GO programado** empieza sola y una **Ventana de cronometraje propio** no requiere nada de ti el día de la carrera; consulta [[guide:choose-how-your-race-starts|Elegir cómo empieza tu carrera]]."
           }
         ]
       },
@@ -2040,21 +2207,25 @@
           },
           {
             "type": "p",
-            "text": "Los corredores que dijeron **Voy** ven ahora **Carrera lista** en la pestaña Correr de su móvil y «CARRERA LISTA» en su reloj Wear OS."
+            "text": "Los corredores que dijeron **Voy** ven ahora **Carrera preparada** en la pestaña Correr de su móvil y «CARRERA PREPARADA» en su reloj Wear OS."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Preparada es un estado de espera. No se cronometra nada ni se pueden guardar resultados hasta que des la salida."
+            "text": "Preparada es un estado de espera. No se cronometra nada ni se pueden guardar resultados hasta que des el GO."
+          },
+          {
+            "type": "p",
+            "text": "Antes de preparar la carrera, se comprueban las líneas de salida y meta de cada recorrido, y lo que merezca un vistazo aparece en **Antes de preparar la carrera**. Un aviso te deja elegir **Preparar de todos modos**; consulta [[guide:start-and-finish-lines|Líneas de salida y meta]]. Preparar la carrera también fija las líneas para esta carrera."
           }
         ]
       },
       {
-        "heading": "2. Dar la salida",
+        "heading": "2. Dar el GO",
         "blocks": [
           {
             "type": "p",
-            "text": "Pulsa **YA** en la web (**Dar la salida** en la app del móvil) en el momento en que empieza la carrera."
+            "text": "Pulsa **GO** en la web o en la app del móvil en el momento en que empieza la carrera."
           },
           {
             "type": "p",
@@ -2063,7 +2234,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Dar la salida no inicia la grabación de nadie. Los corredores pulsan Iniciar en su propio móvil o reloj, ya sea en la línea de salida mientras la carrera está preparada (la grabación se une a la carrera en la salida) o después de ver **Carrera EN VIVO**. Recuérdales que inicien la grabación."
+            "text": "El GO no inicia la grabación de nadie. Los corredores pulsan Iniciar en su propio móvil o reloj, ya sea en la línea de salida mientras la carrera está preparada (la grabación se une a la carrera en el GO) o después de ver **Carrera EN VIVO**. Recuérdales que inicien la grabación."
           }
         ]
       },
@@ -2111,7 +2282,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Solo puedes cancelar mientras la carrera está preparada: elige **Cancelar** junto a **YA** (**Dar la salida** en la app del móvil) y luego **Cancelar carrera**. Una vez dada la salida, la carrera solo se puede finalizar."
+            "text": "Solo puedes cancelar mientras la carrera está preparada: elige **Cancelar** junto a **GO** y luego **Cancelar carrera**. Una vez dado el GO, la carrera solo se puede finalizar."
           },
           {
             "type": "p",
@@ -2139,12 +2310,18 @@
               "Un resultado editado se marca como **Editado por el organizador** para que todos vean que lo cambió el organizador. La edición mueve también el tiempo oficial del corredor.",
               "**Descargar resultados CSV** exporta los paneles."
             ]
+          },
+          {
+            "type": "p",
+            "text": "En una carrera con cronometraje propio, los resultados esperan tu aprobación por defecto, y algunos se retienen para revisión aunque la aprobación automática esté activada. Consulta [[guide:choose-how-your-race-starts|Elegir cómo empieza tu carrera]]."
           }
         ]
       }
     ],
     "related": [
       "set-up-a-race",
+      "choose-how-your-race-starts",
+      "start-and-finish-lines",
       "follow-a-race-live",
       "race-results-explained",
       "racing-in-a-race"
@@ -2154,7 +2331,7 @@
     "id": "race-results-explained",
     "lang": "es",
     "title": "Los resultados de carrera, explicados",
-    "summary": "Qué significan el tiempo oficial y el tiempo chip, cómo se calculan los puestos por recorrido y qué indican las marcas Manual, Organizador, DNF, DNS y pendiente.",
+    "summary": "Qué significan el tiempo bruto y el tiempo chip, cómo se calculan los puestos, qué indican las marcas Manual, Organizador, DNF, DNS y pendiente, y cómo recalcular el tiempo con tu traza.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -2167,23 +2344,25 @@
     ],
     "routes": [
       "/clubs/[slug]/events/[id]",
-      "/live/event/[id]/[instance]"
+      "/live/event/[id]/[instance]",
+      "/runs/[id]"
     ],
     "sections": [
       {
-        "heading": "Tiempo oficial y tiempo chip",
+        "heading": "Tiempo bruto y tiempo chip",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "El **Tiempo oficial** se mide desde el momento en que el organizador dio la salida hasta el momento en que cruzaste la meta. La salida la marca nuestro servidor, así que todos los participantes comparten la misma salida.",
-              "El **Tiempo chip** se mide desde que pulsaste Iniciar en tu propio dispositivo hasta tu llegada, incluidas las pausas.",
-              "El tiempo grande del panel es tu tiempo oficial cuando la carrera tuvo salida, y si no, tu tiempo chip. Los puestos se calculan a partir de ese tiempo grande."
+              "El **Tiempo bruto** se mide desde el momento en que el organizador dio el GO hasta el momento en que cruzaste la meta. El GO lo marca nuestro servidor, así que todos los participantes comparten la misma salida.",
+              "El **Tiempo chip** se mide desde que cruzaste la línea de salida del recorrido hasta tu llegada. Si tu móvil o tu reloj no detectó ningún cruce de la línea de salida, cuenta desde que pulsaste Iniciar en tu propio dispositivo, incluidas las pausas.",
+              "Una carrera con cronometraje propio no tiene GO, así que no tiene tiempo bruto: su panel muestra tu tiempo chip, desde la línea de salida hasta la línea de meta.",
+              "El tiempo grande del panel es tu tiempo bruto cuando la carrera tuvo un GO, y si no, tu tiempo chip. Los puestos se calculan a partir de ese tiempo grande."
             ]
           },
           {
             "type": "p",
-            "text": "En la web, la línea pequeña bajo un tiempo dice algo como «oficial 41:58 · chip 41:20». En la app del móvil, bajo el tiempo principal aparece un tiempo «chip» cuando es distinto. Si saliste tarde, tu tiempo oficial es más largo que tu tiempo chip."
+            "text": "En la web, la línea pequeña bajo un tiempo dice algo como «oficial 41:58 · chip 41:20». En la app del móvil, bajo el tiempo principal aparece un tiempo «chip» cuando es distinto. Si saliste tarde, tu tiempo bruto es más largo que tu tiempo chip."
           }
         ]
       },
@@ -2206,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Sin insignia**: el móvil o el reloj del corredor detectó la línea de meta. Es el caso normal, así que ni la web ni la app del móvil lo marcan.",
+              "**Sin insignia**: el móvil o el reloj del corredor cronometró la llegada, en el momento en que cruzó la línea de meta o, en un recorrido sin línea de meta, al entrar en el círculo de 30 m alrededor de la meta. Es el caso normal, así que ni la web ni la app del móvil lo marcan.",
               "**Manual**: el corredor terminó a mano, ya sea con **Terminar carrera** tras cubrir al menos el 90 % del recorrido o con **Enviar mi tiempo** en la web durante la carrera.",
               "**Organizador** (en la web, **Editado por el organizador**): el organizador introdujo o corrigió este resultado, o el corredor quedó marcado como DNF al finalizar el organizador la carrera."
             ]
@@ -2241,12 +2420,37 @@
         ]
       },
       {
+        "heading": "Recalcular el tiempo con tu traza",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Si tu móvil no detectó una línea, tu resultado es un DNF que no esperabas o competiste con un Apple Watch, puedes volver a cronometrar tu resultado con la carrera que grabaste. Abre la carrera en la web: si pertenece a una competición, muestra **Recalcular el tiempo con mi traza** con tu resultado actual junto al que da tu traza."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Revisa las dos columnas: tiempo bruto, tiempo chip y si la salida y la llegada se cronometraron por la línea.",
+              "Elige **Recalcular resultado** y luego **Sustituir resultado**."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "Cronometra tu traza por las líneas de salida y de meta con las que se corrió la carrera, con el mismo reloj que usó tu móvil o tu reloj durante la carrera.",
+              "Puedes recalcularlo hasta 24 horas después de que termine la carrera. Pasado ese plazo, tu tiempo, tu recorrido y tu distancia quedan bloqueados, y solo el organizador puede cambiar tu tiempo.",
+              "Sustituye un DNF, un tiempo terminado a mano y un resultado pendiente de revisión. Nunca sustituye un tiempo que fijó el organizador ni un resultado ya cronometrado por las dos líneas; en una carrera con cronometraje propio, solo lo sustituye un intento más rápido cronometrado por las dos líneas.",
+              "Si el organizador aprueba los resultados a mano, un resultado recalculado vuelve a él para que lo apruebe."
+            ]
+          }
+        ]
+      },
+      {
         "heading": "Algo no cuadra",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "¿No aparece ningún resultado? Si tu dispositivo no tenía señal en la meta, envía el resultado cuando se vuelve a conectar, dentro de las 24 horas siguientes al final de la carrera.",
+              "¿No aparece ningún resultado? Si tu dispositivo no tenía señal en la meta, envía el resultado cuando se vuelve a conectar, dentro de las 24 horas siguientes al final de la carrera. En esas mismas 24 horas también puedes recalcularlo con tu traza.",
               "¿Un DNF que crees que es un error, o un tiempo que no cuadra? Pregunta al organizador. Puede corregirlo en la web, y entonces el resultado mostrará la marca del organizador."
             ]
           },
@@ -2268,7 +2472,7 @@
     "id": "racing-in-a-race",
     "lang": "es",
     "title": "Competir en una carrera en directo",
-    "summary": "Apúntate, elige tu recorrido, empieza a grabar en la línea de salida o después de la salida y deja que tu móvil o tu reloj te cronometre al cruzar la meta.",
+    "summary": "Apúntate, elige tu recorrido, empieza a grabar antes de la línea de salida y deja que tu móvil o tu reloj te cronometre desde la línea de salida hasta la línea de meta.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2292,11 +2496,11 @@
           {
             "type": "list",
             "items": [
-              "App de Android: compatibilidad completa. Muestra el aviso de carrera, envía tu posición en directo y registra tu llegada automáticamente.",
+              "App de Android: compatibilidad completa. Muestra el aviso de carrera, envía tu posición en directo y te cronometra por las líneas de salida y de meta.",
               "App de iPhone: usa el mismo código que la de Android, pero todavía no se ha probado en un iPhone en una carrera real.",
-              "Reloj Wear OS: compatibilidad completa en la muñeca, incluida la llegada automática. Aun así, te apuntas y eliges tu recorrido en la web o en el móvil.",
-              "Apple Watch: solo compatibilidad inicial. Muestra el aviso de carrera, envía tu posición y comunica tu tiempo a través de tu iPhone, pero no tiene llegada automática y no se ha probado en una carrera real. Lleva el móvil como respaldo.",
-              "Web: úsala para apuntarte, elegir un recorrido y ver los resultados. Un navegador no puede grabar una carrera."
+              "Reloj Wear OS: compatibilidad completa en la muñeca, incluido el cronometraje por las líneas. Aun así, te apuntas y eliges tu recorrido en la web o en el móvil.",
+              "Apple Watch: solo compatibilidad inicial. Muestra el aviso de carrera, envía tu posición y comunica tu tiempo a través de tu iPhone, pero no detecta las líneas de salida y de meta, así que no tiene llegada automática, y no se ha probado en una carrera real. Lleva el móvil como respaldo, o vuelve a cronometrar tu resultado con tu traza en la web después.",
+              "Web: úsala para apuntarte, elegir un recorrido, ver los resultados y volver a cronometrar un resultado con la traza de una carrera. Un navegador no puede grabar una carrera."
             ]
           }
         ]
@@ -2308,8 +2512,8 @@
             "type": "steps",
             "items": [
               "Abre el evento de la carrera.",
-              "Si hay más de un recorrido, elige el tuyo en **Tu recorrido** en la web. En la app del móvil se te pide **Elige tu recorrido** cuando tocas **Voy**.",
-              "Toca **Voy**. Solo una inscripción con **Voy** recibe los avisos de carrera en tu dispositivo; **Quizás** no."
+              "Si hay más de un recorrido, elige el tuyo en **Tu recorrido** en la web. En la app del móvil se te pide **Elige tu recorrido** cuando tocas **Me apunto**.",
+              "Toca **Me apunto**. Solo una inscripción con **Me apunto** recibe los avisos de carrera en tu dispositivo; **Quizás** no."
             ]
           },
           {
@@ -2319,20 +2523,37 @@
         ]
       },
       {
-        "heading": "Carrera lista y Carrera EN VIVO",
+        "heading": "Carrera preparada y Carrera EN VIVO",
         "blocks": [
           {
             "type": "p",
-            "text": "Cuando el organizador prepara la carrera, la pestaña Correr de la app del móvil muestra **Carrera lista** con «esperando la salida». El reloj Wear OS muestra «CARRERA LISTA» encima de su botón Empezar. Cuando el organizador da la salida, cambia a **Carrera EN VIVO** («CARRERA EN VIVO» en el reloj) con el tiempo transcurrido y «toca Iniciar»."
+            "text": "Cuando el organizador prepara la carrera, la pestaña Correr de la app del móvil muestra **Carrera preparada** con «esperando el GO». El reloj Wear OS muestra «CARRERA PREPARADA» encima de su botón Empezar. Cuando el organizador da el GO, cambia a **Carrera EN VIVO** («CARRERA EN VIVO» en el reloj) con el tiempo transcurrido y «toca Iniciar»."
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera lista**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar."
+            "text": "Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo, antes de llegar a la línea de salida. Puedes empezar mientras la carrera muestra **Carrera preparada**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en el GO, en el móvil y en un reloj Wear OS."
           },
           {
             "type": "p",
-            "text": "La app del móvil busca las carreras en las que dijiste **Voy** que empiezan en el próximo día. Si el aviso tarda en aparecer, deja la app abierta en la pestaña Correr durante un minuto."
+            "text": "La app del móvil busca las carreras en las que dijiste **Me apunto** que empiezan en el próximo día. Si el aviso tarda en aparecer, deja la app abierta en la pestaña Correr durante un minuto."
+          }
+        ]
+      },
+      {
+        "heading": "Cruzar la línea de salida",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cuando tu recorrido tiene línea de salida, la pantalla Correr muestra a qué distancia está, por ejemplo «120 m hasta la línea de salida». Crúzala en el sentido del recorrido. Después del GO, tu móvil o tu reloj Wear OS vibra, dice «Línea de salida cruzada, cronometrando» si tienes activados los avisos de voz, y tu tiempo chip empieza a contar desde ese momento."
+          },
+          {
+            "type": "list",
+            "items": [
+              "¿Ya habías pasado la línea de salida cuando suena el GO? Tu salida es el propio GO.",
+              "Cruzar la línea antes del GO, por ejemplo mientras calientas, no cuenta. Después del GO, tu salida cuenta cuando llevas unos 50 m de recorrido sin volver a cruzar la línea.",
+              "Si tu móvil o tu reloj nunca detecta que cruzas la línea de salida, tu tiempo chip cuenta desde que pulsaste Iniciar."
+            ]
           }
         ]
       },
@@ -2341,23 +2562,33 @@
         "blocks": [
           {
             "type": "p",
-            "text": "No tienes que pulsar nada en la meta. Tu móvil o tu reloj Wear OS registra tu llegada cuando se cumplen estas dos condiciones:"
-          },
-          {
-            "type": "list",
-            "items": [
-              "estás a menos de 30 m de la línea de meta, y",
-              "has cubierto al menos el 90 % de la distancia de tu recorrido."
-            ]
+            "text": "No tienes que pulsar nada en la meta. Cuando tu recorrido tiene línea de meta, tu móvil o tu reloj Wear OS registra tu llegada en el momento en que la cruzas en el sentido del recorrido, siempre que hayas cubierto lo suficiente: el 60 % de su distancia desde que cruzaste la línea de salida, o el 90 % si no se detectó ese cruce. Así, un recorrido circular, que empieza donde termina, no te da por llegado nada más salir."
           },
           {
             "type": "p",
-            "text": "Tu tiempo se toma en el momento en que estuviste más cerca de la meta, no en el primer momento en que entraste en los 30 m. La regla del 90 % evita que un recorrido circular, que empieza donde termina, te dé por llegado en el primer segundo. El móvil muestra «¡Meta!» con tu tiempo oficial, y tu grabación se detiene."
+            "text": "Pasar junto a la línea de meta por un camino paralelo no cuenta, porque no llegas a cruzarla. Tu tiempo se toma en el momento en que cruzaste la línea. El móvil vibra y muestra «¡Meta!» con tu tiempo bruto."
+          },
+          {
+            "type": "p",
+            "text": "Un recorrido con punto de meta pero sin línea de meta mantiene la regla anterior: llegas cuando estás a menos de 30 m de la meta y has cubierto el 90 % del recorrido, cronometrado en el momento en que estuviste más cerca. En un recorrido con línea de meta, ese círculo de 30 m solo cuenta si pulsas Detener o **Terminar carrera** dentro de él."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Si tu recorrido no tiene ruta o no tiene distancia, no hay llegada automática. Usa Detener y luego **Terminar carrera** cuando cruces la línea."
+            "text": "No hay llegada automática si tu recorrido no tiene distancia, no tiene ni línea ni punto de meta, o tiene una ruta que cruza su propia línea de meta antes del final, como un recorrido de vueltas. Usa Detener y luego **Terminar carrera** cuando cruces la línea."
+          }
+        ]
+      },
+      {
+        "heading": "¿No has terminado? Reanudar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Una llegada por la línea se envía al instante y tu grabación se pausa. Durante los 60 segundos siguientes, la pantalla Correr ofrece **¿No has terminado? Reanudar**, en el móvil y en un reloj Wear OS. Si no has terminado, por ejemplo porque cruzaste la línea antes de tiempo en una vuelta, tócalo: tu resultado se retira y la grabación continúa. Si no haces nada, la grabación se detiene y el resultado se mantiene."
+          },
+          {
+            "type": "p",
+            "text": "Después de anular una llegada, termina el resto de la carrera a mano: toca Detener y luego **Terminar carrera** cuando termines de verdad. Si la app se reinicia antes, vuelve a vigilar la línea de meta, pero nunca cuenta la llegada que anulaste."
           }
         ]
       },
@@ -2397,14 +2628,14 @@
         ]
       },
       {
-        "heading": "Tiempo oficial, tiempo chip y salidas tardías",
+        "heading": "Tiempo bruto, tiempo chip y salidas tardías",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "El **Tiempo oficial** va desde el momento en que el organizador dio la salida hasta tu llegada. Es el tiempo por el que se te clasifica.",
-              "El **Tiempo chip** va desde que pulsaste Iniciar hasta tu llegada, incluidas las pausas. Si pulsaste Iniciar antes de la salida, cuenta desde la salida, así que nunca es más largo que tu tiempo oficial.",
-              "Si empiezas más de 5 minutos después de la salida, o tu primera posición está a más de 200 m del inicio del recorrido, la app del móvil muestra un aviso de salida tardía y un reloj Wear OS mantiene **Salida tardía** bajo el reloj de carrera. Tu tiempo oficial sigue contando desde la salida, así que una salida tardía lo hace más largo que tu tiempo chip."
+              "El **Tiempo bruto** va desde el momento en que el organizador dio el GO hasta tu llegada. Es el tiempo por el que se te clasifica.",
+              "El **Tiempo chip** va desde que cruzas la línea de salida hasta tu llegada. Si no se detectó ese cruce, cuenta desde que pulsaste Iniciar, o desde el GO si pulsaste Iniciar antes. Nunca es más largo que tu tiempo bruto.",
+              "Si empiezas más de 5 minutos después del GO, o tu primera posición está a más de 200 m del inicio del recorrido, la app del móvil muestra un aviso de salida tardía y un reloj Wear OS mantiene **Salida tardía** bajo el reloj de carrera. Tu tiempo bruto sigue contando desde el GO, así que una salida tardía lo hace más largo que tu tiempo chip."
             ]
           },
           {
@@ -2418,7 +2649,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Si el organizador finaliza la carrera antes de que llegues, tu móvil te lo indica y tu reloj muestra «Carrera terminada». Tu carrera sigue grabándose como una carrera normal, pero tu dispositivo no envía ningún resultado de competición. Si ya habías enviado una posición en directo, la carrera te marca como DNF."
+            "text": "Si el organizador finaliza la carrera antes de que llegues, tu móvil te lo indica y tu reloj muestra «Carrera finalizada». Tu carrera sigue grabándose como una carrera normal, pero tu dispositivo no envía ningún resultado de competición. Si ya habías enviado una posición en directo, la carrera te marca como DNF."
           }
         ]
       }
@@ -2427,7 +2658,124 @@
       "set-up-a-race",
       "race-results-explained",
       "follow-a-race-live",
+      "run-a-self-timed-race",
       "using-help"
+    ]
+  },
+  {
+    "id": "run-a-self-timed-race",
+    "lang": "es",
+    "title": "Correr una carrera con cronometraje propio",
+    "summary": "Únete a una carrera abierta durante una ventana de tiempo, marca tu carrera como tu intento y corre de la línea de salida a la línea de meta cuando mejor te venga.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "participant",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "wear"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Qué es una carrera con cronometraje propio",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Una carrera con cronometraje propio no tiene salida en grupo. El organizador abre una ventana, que puede durar hasta una semana, y corres el recorrido cuando quieras mientras esté abierta. Tu tiempo cuenta desde que cruzas la línea de salida hasta que cruzas la línea de meta, así que no hay tiempo bruto."
+          },
+          {
+            "type": "p",
+            "text": "Grabas tu intento con la app del móvil o con un reloj Wear OS. La web sirve para unirte y para ver los resultados; un navegador no puede grabar una carrera."
+          }
+        ]
+      },
+      {
+        "heading": "Antes de salir",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abre el evento de la carrera, en la web o en la app del móvil.",
+              "Si hay más de un recorrido, elige primero el tuyo.",
+              "Elige **Unirme e intentarlo**. Si ya has dicho **Me apunto**, ya estás dentro.",
+              "Abre la app una vez mientras tengas señal, antes de salir. Así conoce la carrera, y el aviso de carrera y tu intento siguen funcionando donde no haya señal."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Empezar tu intento",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "En la pestaña Correr de la app del móvil, el aviso de carrera muestra **Cronometraje propio** y cuándo se cierra la ventana.",
+              "Toca **Esta carrera es mi intento**. Cambia a **Intento listo: toca Iniciar**; vuelve a tocarlo si cambias de idea.",
+              "Pulsa Iniciar antes de llegar a la línea de salida y luego cruza la línea de salida en el sentido del recorrido."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "En un reloj Wear OS, la pantalla previa a la salida muestra CRONO PROPIO. Toca **Esta carrera es mi intento** y luego Empezar."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Una carrera que no marques como tu intento nunca se une a la competición: no envía posición en directo ni obtiene resultado. Así, una carrera con la que no pretendías competir nunca acaba en la clasificación."
+          }
+        ]
+      },
+      {
+        "heading": "Los intentos y tu resultado",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Puedes hacer más de un intento mientras la ventana esté abierta. Toca **Esta carrera es mi intento** antes de cada uno.",
+              "Cuenta tu mejor llegada cronometrada por las dos líneas. Un intento más lento no la sustituye.",
+              "Puede que tu resultado tenga que esperar a que el organizador lo apruebe. Hasta entonces se muestra como pendiente y no tiene puesto.",
+              "Un resultado sin cruce de la línea de salida, como uno enviado desde un Apple Watch o desde una versión antigua de la app, se conserva, pero el organizador lo revisa antes de que cuente."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Qué significan los tiempos de la clasificación se explica en [[guide:race-results-explained|Los resultados de carrera, explicados]]."
+          }
+        ]
+      },
+      {
+        "heading": "Si tu móvil no detectó una línea",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Tu móvil o tu reloj dice «Línea de salida cruzada, cronometrando» cuando detecta que cruzas la línea de salida, y registra tu llegada en la línea de meta. Si no detecta alguna, por ejemplo bajo los árboles o cuando sales un poco al lado de la línea:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "En la meta, toca Detener y luego **Terminar carrera**. Si has cubierto el 90 % del recorrido, eso envía tu tiempo, y el organizador lo revisa antes de que cuente.",
+              "O vuelve a cronometrar tu intento con su traza después: abre la carrera en la web y elige **Recalcular el tiempo con mi traza**. Cronometra la traza por las líneas de la carrera y sustituye un resultado pendiente de revisión, o uno más lento. Puedes hacerlo hasta 24 horas después de que se cierre la ventana.",
+              "¿Competiste con un Apple Watch? No detecta las líneas, así que volver a cronometrar con tu traza es la forma de que tu intento obtenga un resultado cronometrado por las líneas."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Más sobre recalcular el tiempo en [[guide:race-results-explained|Los resultados de carrera, explicados]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "racing-in-a-race",
+      "race-results-explained",
+      "follow-a-race-live"
     ]
   },
   {
@@ -2455,7 +2803,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Una carrera es un evento de club normal con recorridos asociados. Los propietarios, los administradores y los organizadores de eventos del club pueden crear eventos. Dirigir la carrera el día (preparar, dar la salida, finalizar) requiere un propietario, un administrador o un **Director de carrera**: consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]]."
+            "text": "Una carrera es un evento de club normal con recorridos asociados. Los propietarios, los administradores y los organizadores de eventos del club pueden crear eventos. Dirigir la carrera el día (preparar, dar el GO, finalizar) requiere un propietario, un administrador o un **Director de carrera**: consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]]."
           },
           {
             "type": "p",
@@ -2480,7 +2828,11 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "La línea de meta en la que se cronometra a los corredores es el último punto de la ruta del recorrido. Dibuja la ruta para que termine exactamente donde estará tu arco de meta."
+            "text": "Cada recorrido recibe una línea de salida en el primer punto de su ruta y una línea de meta en el último. Dibuja la ruta para que termine exactamente donde estará tu arco de meta, o mueve las líneas después; consulta [[guide:start-and-finish-lines|Líneas de salida y meta]]."
+          },
+          {
+            "type": "p",
+            "text": "En **Cómo empieza la carrera**, elige **GO del organizador**, **GO programado** o **Ventana de cronometraje propio**. Consulta [[guide:choose-how-your-race-starts|Elegir cómo empieza tu carrera]]."
           }
         ]
       },
@@ -2512,6 +2864,10 @@
             "type": "note",
             "tone": "caution",
             "text": "Al asociar una ruta, su punto de meta se muestra a todos los que pueden ver el evento, aunque la ruta en sí sea privada. Solo puedes asociar rutas que tienes permiso para ver."
+          },
+          {
+            "type": "p",
+            "text": "Un recorrido sin ruta no recibe de una ruta línea de salida ni de meta, pero, una vez guardado el evento, puedes colocar tú mismo las dos líneas."
           }
         ]
       },
@@ -2539,6 +2895,10 @@
           {
             "type": "p",
             "text": "Justo antes de preparar la carrera eliges si los resultados pasan directamente a la clasificación. **Aprobar automáticamente los resultados enviados** está marcada por defecto. Desmárcala si quieres revisar cada resultado primero; cada uno se muestra entonces como **PENDIENTE** hasta que lo apruebes."
+          },
+          {
+            "type": "p",
+            "text": "En una carrera con **GO programado** o **Ventana de cronometraje propio**, esta casilla se configura en el editor del evento, en **Cómo empieza la carrera**. En una carrera con cronometraje propio empieza desmarcada."
           }
         ]
       },
@@ -2562,10 +2922,145 @@
       }
     ],
     "related": [
+      "start-and-finish-lines",
+      "choose-how-your-race-starts",
       "race-day-for-hosts",
       "racing-in-a-race",
       "follow-a-race-live",
       "race-results-explained"
+    ]
+  },
+  {
+    "id": "start-and-finish-lines",
+    "lang": "es",
+    "title": "Líneas de salida y meta",
+    "summary": "Qué son las líneas de salida y meta de un recorrido, cómo se colocan automáticamente y cómo moverlas, girarlas, ensancharlas o colocarlas tú mismo.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Qué es una línea",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cada recorrido de una carrera tiene una línea de salida y una línea de meta. Una línea atraviesa el recorrido en un punto, está orientada en el sentido en que avanzan los corredores y se extiende una distancia fija a cada lado. Un corredor solo la cruza si pasa a través de ella en ese sentido y dentro de su alcance."
+          },
+          {
+            "type": "p",
+            "text": "Esa es la diferencia con un punto de meta rodeado por un círculo de 30 m. Un círculo cuenta a cualquiera que se acerque: un corredor que va por un camino paralelo, o que está en la ida de un recorrido de ida y vuelta que regresa por el mismo camino. Una línea no los cuenta, porque nunca la cruzan en el sentido correcto."
+          }
+        ]
+      },
+      {
+        "heading": "Líneas colocadas automáticamente",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cuando un recorrido tiene ruta, recibe de ella las dos líneas. La línea de salida está en el primer punto de la ruta, orientada a lo largo de la ruta. La línea de meta está en su último punto, orientada en el sentido en que llega la ruta. Cada una se extiende 15 m a cada lado. Siguen a la ruta: si cambias la ruta, se mueven con ella."
+          },
+          {
+            "type": "p",
+            "text": "Las líneas aparecen en cuanto el evento se guarda con al menos un recorrido. Abre el evento, elige **Editar evento** y busca **Líneas de salida y meta**. Cada recorrido tiene un mapa y una fila por línea, que indica de dónde viene la línea: **De la ruta**, **Colocada por un organizador** o **Ninguna**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Si el propietario de la ruta tiene una zona de privacidad sobre el inicio o el final de la ruta, ese extremo queda oculto para todos los demás, así que no recibe línea. Coloca esa línea tú mismo."
+          }
+        ]
+      },
+      {
+        "heading": "Mover, girar o ensanchar una línea",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Junto a **Línea de salida** o **Línea de meta**, elige **Editar**.",
+              "En el mapa, arrastra el centro de la línea para moverla y arrastra su tirador para girarla. Si el mapa está desactivado, elige **Cargar mapa**, o prescinde del mapa y escribe los valores.",
+              "O escribe la **Latitud**, la **Longitud** y la **Dirección (grados)**. La dirección es el sentido en que cruzan los corredores, en sentido horario desde el norte: 0 es norte, 90 este, 180 sur y 270 oeste.",
+              "Ajusta el **Alcance a cada lado**, de 5 a 100 m. Hazlo lo bastante ancho para cubrir toda la carretera o el camino, y un poco más.",
+              "Elige **Guardar la línea**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Cada línea se guarda por separado, al instante; no hace falta guardar el evento. Una línea que has movido muestra **Colocada por un organizador**. Elige **Restablecer a la ruta** para devolverla adonde la coloca la ruta."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Una línea que has colocado se queda exactamente donde la pusiste, aunque después cambies la ruta del recorrido. Después de cambiar una ruta, revisa los avisos que aparecen bajo cada línea."
+          }
+        ]
+      },
+      {
+        "heading": "Avisos en el editor",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "La línea está a más de 100 m de la ruta del recorrido. Comprueba que esté en el lugar correcto.",
+              "La línea apunta en contra de la ruta, así que quien siga la ruta la cruzaría al revés. Dale la vuelta.",
+              "La ruta cruza su propia línea de meta antes del final, como hace un recorrido de vueltas o una pista. Entonces la llegada por la línea se desactiva en ese recorrido, y los corredores terminan pulsando Detener o Terminar."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Recorridos sin ruta",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Un recorrido sin ruta no tiene líneas hasta que las colocas. Elige **Colocar la línea de salida** o **Colocar la línea de meta**. Si antes has movido el mapa hasta el lugar, la línea empieza en el centro del mapa; si no, escribe su posición. Después ajusta su dirección y su alcance y elige **Guardar la línea**. **Quitar la línea** elimina de nuevo una línea que hayas colocado."
+          }
+        ]
+      },
+      {
+        "heading": "Las líneas se fijan cuando empieza una carrera",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cuando preparas una carrera (en una carrera con cronometraje propio, cuando se abre su ventana), las líneas de cada recorrido se copian para esa carrera. Así todos sus corredores cruzan las mismas líneas, cambie lo que cambie durante la carrera. Un cambio que hagas después se aplica desde la siguiente carrera. La página del evento y la página de carrera en directo muestran las líneas con las que se preparó la carrera."
+          }
+        ]
+      },
+      {
+        "heading": "Comprobaciones antes de una carrera",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Antes de preparar una carrera, se comprueban las líneas de todos los recorridos, en la web y en la app del móvil. Un aviso te deja elegir **Preparar de todos modos**; un problema marcado con **Hay que corregir:** impide preparar la carrera hasta que lo corrijas en el editor del evento en la web."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Un recorrido sin línea de meta ni punto de meta: un aviso, porque sus corredores terminan a mano. Una carrera con cronometraje propio tiene que corregirlo.",
+              "Un recorrido sin línea de salida: una carrera con cronometraje propio tiene que corregirlo. Las demás carreras pueden empezar sin ella.",
+              "Una ruta que cruza su propia línea de meta antes del final: un aviso, porque la llegada por la línea está desactivada en ese recorrido. Una carrera con cronometraje propio tiene que corregirlo.",
+              "Una línea a más de 100 m de la ruta: un aviso en cualquier tipo de carrera."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "El tipo de carrera que organizas se elige en **Cómo empieza la carrera**; consulta [[guide:choose-how-your-race-starts|Elegir cómo empieza tu carrera]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "choose-how-your-race-starts",
+      "race-day-for-hosts"
     ]
   },
   {
@@ -2653,6 +3148,99 @@
     "related": [
       "what-pro-includes",
       "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "how-segment-times-are-measured",
+    "lang": "es",
+    "title": "Cómo se miden los tiempos de segmento",
+    "summary": "Los tiempos de segmento y de recorrido de parque van de una línea de salida a una línea final, cruzadas en el sentido correcto, y cuenta tu paso más rápido.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/segments/[id]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "Líneas de salida y final",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cada segmento tiene una línea de salida y una línea final, una atravesando el camino en cada extremo, mirando en el sentido del segmento y extendiéndose 15 m a cada lado. Un recorrido de parque también es un segmento, así que se cronometra igual."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Tu tiempo cuenta desde el momento en que tu carrera cruza la línea de salida hasta el momento en que cruza la línea final.",
+              "Cada cruce se calcula entre los dos puntos GPS situados a ambos lados de la línea, en lugar de tomarse en el punto que quedara más cerca, así que el tiempo se acerca más al real.",
+              "Las dos líneas deben cruzarse en el sentido del segmento. Cruzar una al revés no cuenta.",
+              "La distancia que recorres entre los dos cruces no debe diferir en más de un 25 % de la longitud del segmento y, en un recorrido de parque, debes pasar por todos los puntos de control, en orden, entre ambos cruces."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Por qué no cuenta un camino paralelo",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Una carrera por un camino paralelo al segmento, a 20 m, se acerca a los dos extremos sin pasar nunca a través de las líneas, así que no obtiene tiempo. Tampoco la ida de una ruta de ida y vuelta que solo pasa cerca del final."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Empieza a grabar un poco antes de la línea de salida. Una carrera cuya grabación empieza en la línea, o después de ella, nunca la cruza y no obtiene tiempo en ese segmento."
+          }
+        ]
+      },
+      {
+        "heading": "Más de un paso",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Si tu carrera pasa por el segmento más de una vez, cuenta tu paso más rápido.",
+              "Un calentamiento que vuelve a pasar por la línea de salida no alarga tu tiempo: el tiempo empieza en tu último cruce de la línea de salida antes del final.",
+              "En un circuito se cronometra cada vuelta completa y cuenta tu vuelta más rápida. Cuando la salida y el final son la misma línea, el cruce que cierra una vuelta abre también la siguiente."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Segmentos sin líneas",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Un segmento demasiado corto en uno de sus extremos para colocar ahí una línea no tiene líneas. Se sigue cronometrando a la manera antigua: tu carrera debe pasar a menos de 35 m de su inicio y después a menos de 35 m de su final."
+          }
+        ]
+      },
+      {
+        "heading": "Esfuerzos anteriores",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Los esfuerzos grabados antes de que los segmentos tuvieran líneas se midieron a la manera antigua, pasando cerca del inicio y del final. Cada uno se vuelve a medir con las líneas la próxima vez que su corredor abre la carrera en la web. Su tiempo puede cambiar, y puede desaparecer si la carrera nunca cruzó las líneas."
+          },
+          {
+            "type": "p",
+            "text": "Hasta que todos los esfuerzos de un segmento se hayan vuelto a medir, su clasificación indica que algunos esfuerzos anteriores se midieron a la manera antigua."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "park-courses",
+      "import-your-history"
     ]
   },
   {
@@ -2766,96 +3354,6 @@
     ],
     "related": [
       "record-your-first-run",
-      "link-ultrasignup-results",
-      "your-data-and-privacy"
-    ]
-  },
-  {
-    "id": "link-ultrasignup-results",
-    "lang": "es",
-    "title": "Vincular tus resultados de UltraSignup",
-    "summary": "Busca tu perfil de UltraSignup por nombre, confirma cuál de esas personas eres tú e importa un resultado de ultra o trail desde el calendario de carreras.",
-    "kind": "how-to",
-    "category": "running",
-    "audience": [
-      "runner"
-    ],
-    "platforms": [
-      "web"
-    ],
-    "routes": [
-      "/settings/integrations",
-      "/races",
-      "/runs/[id]"
-    ],
-    "sections": [
-      {
-        "heading": "Antes de empezar",
-        "blocks": [
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "La importación de UltraSignup solo está en la web y permanece desactivada hasta que se habilite. Si la tarjeta de UltraSignup no aparece en Integraciones, o dice **La importación de UltraSignup aún no está disponible. parkrun y el pegado manual siguen funcionando.**, aún puedes añadir un resultado pegándolo en el calendario de carreras."
-          },
-          {
-            "type": "p",
-            "text": "UltraSignup gestiona las inscripciones y los resultados de muchas carreras de trail y ultra. Si vinculas tu perfil una vez, no tendrás que volver a escribir tu nombre ni tu dorsal al importar un resultado."
-          }
-        ]
-      },
-      {
-        "heading": "Vincular tu perfil",
-        "blocks": [
-          {
-            "type": "steps",
-            "items": [
-              "Abre [[route:/settings/integrations|Integraciones]] en Configuración y busca la tarjeta de UltraSignup.",
-              "En **Encuentra tu perfil de UltraSignup**, introduce tu **Nombre** y tu **Apellido** tal como los escribes al inscribirte en carreras y selecciona **Buscarme**.",
-              "UltraSignup muestra a todas las personas con ese nombre. Usa la edad, el número de resultados y las carreras más recientes de cada una para reconocerte.",
-              "En **¿Cuál de estas personas eres tú?**, selecciona **Soy yo** en tu entrada."
-            ]
-          },
-          {
-            "type": "p",
-            "text": "La tarjeta muestra ahora **Vinculado como** con tu nombre y tu número de UltraSignup. Si elegiste a la persona equivocada, selecciona **Desvincular** y vuelve a buscar. Las carreras que ya importaste se conservan al desvincular."
-          },
-          {
-            "type": "note",
-            "tone": "tip",
-            "text": "Si ves **UltraSignup no tiene a nadie con ese nombre. Revisa cómo lo escribes al inscribirte.**, prueba con la grafía exacta de tus inscripciones, incluido cualquier segundo nombre o guion."
-          }
-        ]
-      },
-      {
-        "heading": "Importar un resultado desde el calendario de carreras",
-        "blocks": [
-          {
-            "type": "steps",
-            "items": [
-              "Abre [[route:/races|Carreras]] y busca la carrera en la que corriste.",
-              "Selecciona **Importar mi resultado**. El importador muestra con qué identidad está importando.",
-              "Confirma la importación. Solo se trae tu propio resultado de esa carrera, emparejado por el id de carrera de UltraSignup y la fecha de la carrera."
-            ]
-          },
-          {
-            "type": "p",
-            "text": "El resultado llega como una carrera con tu tiempo oficial y tus puestos. Si grabaste tú la carrera, abre esa carrera en su lugar: cuando coincide con una carrera del calendario, te pregunta si era esa carrera, y al seleccionar **Importar resultado** se añade el resultado oficial a la carrera que ya tienes en vez de crear una segunda."
-          },
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "Solo se importan resultados de carreras terminadas, y una carrera cuyo id o fecha no coincide se omite en lugar de adivinarse. Todavía hay muy pocas carreras de UltraSignup en el calendario, así que puede que la tuya no aparezca; en ese caso, usa **Pegar tu resultado** en el calendario de carreras."
-          },
-          {
-            "type": "p",
-            "text": "Si ves **Primero vincula tu perfil de UltraSignup en Ajustes y luego importa desde aquí.**, vincula tu perfil como se explica arriba y vuelve."
-          }
-        ]
-      }
-    ],
-    "related": [
-      "import-your-history",
-      "racing-in-a-race",
       "your-data-and-privacy"
     ]
   },
@@ -3267,6 +3765,7 @@
       "ios"
     ],
     "routes": [
+      "/races",
       "/parks",
       "/parks/[region]/[park]",
       "/parks/[region]/[park]/[course]"
@@ -3277,20 +3776,21 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Un recorrido de parque es un recorrido fijo de contrarreloj por un sendero de un parque estatal o nacional. No hay organizador ni día de carrera: córrelo cuando el parque esté abierto y una carrera que cubra todo el recorrido se cronometra. Los encontrarás en [[route:/parks|Recorridos de parques]]."
+            "text": "Un recorrido de parque es un recorrido fijo de contrarreloj por un sendero de un parque estatal o nacional. No hay organizador ni día de carrera: córrelo cuando el parque esté abierto y una carrera que cubra todo el recorrido se cronometra. Los encontrarás en **Corre cuando quieras**, dentro de [[route:/races|Pruebas y recorridos]], con los más cercanos primero cuando indicas un lugar, o todos en [[route:/parks|Recorridos de parques]]."
           },
           {
             "type": "list",
             "items": [
               "Es una contrarreloj, no una carrera. El sendero sigue abierto para todos y nadie lo controla, así que respeta las normas del parque y cede el paso a los demás en el sendero.",
               "Cada página de recorrido muestra la distancia, el desnivel positivo, la forma, la superficie y la dificultad, de dónde viene la línea del recorrido y si está abierto.",
-              "Selecciona **Navegar este recorrido** para seguir el recorrido como una ruta. No se ofrece mientras el recorrido está cerrado."
+              "Selecciona **Navegar este recorrido** para seguir el recorrido como una ruta. No se ofrece mientras el recorrido está cerrado.",
+              "La **Guía del recorrido** de la página del recorrido indica dónde aparcar y cada giro en orden, con el nombre del sendero, además de los puentes, vados, cambios de superficie y subidas. Está redactada con datos del mapa; hasta que alguien la recorra en el parque, lo indica encima de la lista. La misma guía va en el archivo GPX del recorrido."
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Un recorrido cerrado conserva sus tiempos y clasificaciones, pero no lo corras hasta que vuelva a abrir. La página muestra cuándo se comprobó su estado por última vez."
+            "text": "Un recorrido cerrado no admite tiempos nuevos: una carrera por él mientras está cerrado no se cronometra, y los tiempos que ya tiene siguen en sus clasificaciones. No lo corras hasta que vuelva a abrir. La página muestra cuándo se comprobó su estado por última vez."
           }
         ]
       },
@@ -3362,6 +3862,7 @@
       }
     ],
     "related": [
+      "how-segment-times-are-measured",
       "import-your-history",
       "record-your-first-run"
     ]

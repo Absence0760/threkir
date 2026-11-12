@@ -11,8 +11,9 @@ package com.runapp.watchwear.recording
 ///
 /// [seal] empties the window at every pause, resume and new estimator
 /// segment, and [add] seals on its own across a fix interval longer than
-/// [gapS], the span the estimator re-anchors over without crediting: a window
-/// spanning a gap whose time carries no distance would read far too slow.
+/// [gapS], the span the estimator re-anchors over: it credits such a gap only
+/// a lower bound (its chord, spec v1.4), so a window spanning one would time a
+/// floor rather than a sampled path.
 class LivePaceWindow(private val gapS: Double = ESTIMATOR_GAP_S) {
 
     private val samples = ArrayDeque<Pair<Double, Double>>()

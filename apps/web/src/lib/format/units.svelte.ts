@@ -15,7 +15,7 @@ import { currentLocale } from '../i18n/store.svelte';
 import { formatDecimal } from './number';
 import { paceMinutesSeconds, isMeaningfulPace, paceToleranceLabel } from './pace_format';
 import { formatShortDistance } from './short_distance';
-import { formatElevationIn } from './elevation';
+import { formatElevationIn, formatStrideLengthIn } from './elevation';
 import {
 	type WeightUnit,
 	parseWeightUnit,
@@ -152,6 +152,11 @@ export function fmtKm(metres: number | null | undefined, digits = 1): string {
 /// `elevation.ts`; this supplies the unit + locale signals.
 export function formatElevation(metres: number | null | undefined): string {
 	return formatElevationIn(metres, unit.value, currentLocale());
+}
+
+/// Stride length in the preferred unit, two decimals: "1.18 m" / "3.87 ft".
+export function formatStrideLength(metres: number | null | undefined): string {
+	return formatStrideLengthIn(metres, unit.value, currentLocale());
 }
 
 /// Plan-surface pace formatter. Input is always seconds-per-km (the

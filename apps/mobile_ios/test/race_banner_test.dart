@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import '../lib/course_gates.dart' show SessionStartMode;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/race_controller.dart';
+import '../lib/screens/help_screen.dart' show GuideScreen;
 import '../lib/social_service.dart';
 import '../lib/widgets/race_banner.dart';
 
@@ -118,6 +119,33 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('a self-timed banner links the self-timed race guide', (tester) async {
+    final controller = RaceController(SocialService());
+    final race = ActiveRace(
+      eventId: 'tt',
+      instanceStart: t0,
+      status: 'armed',
+      startedAt: null,
+      eventTitle: 'Park trial',
+      startMode: SessionStartMode.selfTimed,
+      windowOpensAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+      windowClosesAt: DateTime.now().toUtc().add(const Duration(days: 1)),
+    );
+    await _pump(tester, race: race, controller: controller, now: DateTime.now);
+    await tester.pump();
+    expect(find.text('Self-timed window'), findsOneWidget);
+    final link = find.byKey(const ValueKey('race-banner-self-timed-guide'));
+    expect(link, findsOneWidget, reason: 'the guide is linked before the window opens');
+
+    await tester.tap(link);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    final guide = tester.widget<GuideScreen>(find.byType(GuideScreen));
+    expect(guide.guideId, 'run-a-self-timed-race');
+    await tester.pumpWidget(const SizedBox());
+    controller.dispose();
+  });
+
   testWidgets('the distance to the start line comes from the runner position', (tester) async {
     final controller = RaceController(SocialService());
     final race = ActiveRace(
@@ -158,6 +186,7 @@ void main() {
     expect(find.text('Race armed'), findsOneWidget);
     expect(find.textContaining('waiting for GO'), findsOneWidget);
     expect(find.byKey(const ValueKey('race-attempt')), findsNothing);
+    expect(find.byKey(const ValueKey('race-banner-self-timed-guide')), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 }

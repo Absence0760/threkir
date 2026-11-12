@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
+import { pngPixels } from '../fixtures/png-pixels';
 
 /**
  * A static-map outage must not break the card it decorates (issue #902).
@@ -126,6 +127,18 @@ test.describe('static map outage falls back to the SVG track preview', () => {
 			await expect.poll(outage.aborted).toBeGreaterThan(before);
 			await expect(page.locator('[data-testid="share-card-map"]')).toHaveCount(0);
 			await expect.poll(() => brokenImages(page, '.share-card')).toBe(0);
+
+			// The editor still draws the card, stats-only, rather than a blank
+			// box: the failed map is an L3 layer over the card it decorates.
+			await page.locator('button[title="Share image"]').click();
+			const dialog = page.getByTestId('run-share-image-dialog');
+			await expect(dialog.getByTestId('share-image-preview')).toBeVisible({ timeout: 15_000 });
+			await expect(dialog.getByTestId('share-image-error')).toHaveCount(0);
+			const pending = page.waitForEvent('download');
+			await dialog.getByTestId('share-image-download').click();
+			const png = await pngPixels(page, await pending);
+			expect(png.width).toBe(1080);
+			expect(png.opaque).toBeGreaterThanOrEqual(0.99);
 		} finally {
 			await deleteRun(runId);
 		}

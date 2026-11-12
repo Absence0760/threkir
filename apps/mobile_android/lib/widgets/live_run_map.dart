@@ -318,7 +318,6 @@ TileLayer basemapTileLayer({
 /// fixed `#1E1B4B` casing computes to 1.08:1 — it did nothing at all on
 /// the dark basemap every map was locked to. Flipped by basemap it reads
 /// 15.5:1 (white on dark) and 13.9:1 (`#1E1B4B` on an OSM light fill).
-@visibleForTesting
 Color mapOverlayOutline({required bool darkBasemap}) =>
     darkBasemap ? Colors.white : const Color(0xFF1E1B4B);
 

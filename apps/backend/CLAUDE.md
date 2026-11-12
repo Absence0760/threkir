@@ -41,7 +41,7 @@ apps/backend/
         ├── clip-public-track/index.ts
         ├── delete-account/index.ts
         ├── export-data/index.ts
-        ├── parkrun-import/index.ts
+        ├── park-course-report/{index,handler,lib}.ts   # signed-in or signed-out park course reports (§ 2449)
         ├── plan-calendar/{index,handler,lib}.ts   # subscribable plan .ics behind a revocable URL token
         ├── refresh-tokens/index.ts
         ├── revenuecat-webhook/index.ts
@@ -81,7 +81,7 @@ kudos, blocks, club membership) have a second and third party to act as.
 
 - Email: `runner@test.com`
 - Password: `testtest`
-- Runs and routes across five `source` values (`app`, `strava`, `parkrun`, `healthkit`, `race`).
+- Runs and routes across five `source` values (`app`, `strava`, `parkrun`, `healthkit`, `race`). The `parkrun` runs stand for history imported before the parkrun import was removed (decisions § 2467); nothing writes that source now.
   **No count is stated here on purpose.** `seed.sql` carries a dozen-plus separate
   `insert into runs` statements — several `insert … select` that fan out a range —
   each staged for one e2e scenario, so any figure a reader could carry away would be
@@ -141,7 +141,7 @@ supabase db reset    # replays everything from scratch, including the new one
 - **Test data / fixtures**: in `seed.sql`, not a migration. `supabase db reset` runs `seed.sql` after migrations.
 - **Functions / views**: in a migration (`create or replace function ...`). See `20260406_001_database_functions.sql` for `weekly_mileage` and `personal_records`.
 - **Real park courses** (parks, their catalogue segments, `park_courses` rows, official routes): in neither. Every `backend@*` release loads them: the "Sync production state" step (`scripts/sync-production-state.sh` → `scripts/prod_sync/run.mjs`) runs each committed `scripts/parks/catalogue/*/*/manifest.json` through the service-role-only `private.load_park_catalogue`, which upserts in place, reports `unchanged` and writes nothing when a course already matches, and closes a course the manifest drops (decisions § 2425, § 2429, [park_courses.md § Loading courses](../../docs/features/park_courses.md#loading-courses)). Don't hand-insert those rows. New production-state concerns go in as another stage of that runner, not as a second step.
-- **Production switches and one-off operator calls** (a `private.feature_flags` flip, a cron sweep's Vault URL entry, `PARKRUN_EVENTS_ENABLED`, a backfill call): in neither either. They are entries in `apps/backend/ops/prod_config.json` or files in `apps/backend/ops/tasks/`, applied by the same sync ([ops/README.md](ops/README.md), decisions § 2430). A migration that adds a gate ships it closed and leaves the flip to that file; a new `invoke_<fn>()` that reads `<fn>_url` is armable from it with no other change.
+- **Production switches and one-off operator calls** (a `private.feature_flags` flip, a cron sweep's Vault URL entry, a `function_env` toggle, a retired Edge Function, a backfill call): in neither either. They are entries in `apps/backend/ops/prod_config.json` or files in `apps/backend/ops/tasks/`, applied by the same sync ([ops/README.md](ops/README.md), decisions § 2430). A migration that adds a gate ships it closed and leaves the flip to that file; a new `invoke_<fn>()` that reads `<fn>_url` is armable from it with no other change.
 
 ### Online-safety: NOT VALID on high-volume tables
 
@@ -516,7 +516,7 @@ User-facing functions guard with `check_rate_limit` via the shared helper:
 ```ts
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 // ...after auth.getUser():
-const denied = await checkRateLimit(supabase, user.id, 'parkrun-import', 4, 3600);
+const denied = await checkRateLimit(supabase, user.id, 'delete-account', 3, 3600);
 if (denied) return denied; // 429 with Retry-After header
 ```
 
@@ -525,8 +525,8 @@ Backed by `rate_limits (user_id, bucket, window_start, count)` (migration `20260
 For paywalled paths use the tiered variant (migration `20260605_001`):
 
 ```ts
-const denied = await checkRateLimitTiered(supabase, user.id, 'parkrun-import',
-  /* free */ 4, /* pro */ 16, 3600);
+const denied = await checkRateLimitTiered(supabase, user.id, 'race-results-import',
+  /* free */ 8, /* pro */ 32, 3600);
 ```
 
 The SQL function reads `user_profiles.subscription_tier` and the rate-limit row in one transaction, so EF latency stays constant. Lifetime is treated as pro; missing or unknown tier values fall back to free as the conservative default.
@@ -569,10 +569,10 @@ supabase start
 supabase functions serve --env-file .env.development   # or .env.local for your real keys
 
 # Hit one
-curl -X POST http://127.0.0.1:24321/functions/v1/parkrun-import \
+curl -X POST http://127.0.0.1:24321/functions/v1/race-results-import \
   -H "Authorization: Bearer ${USER_JWT}" \
   -H "Content-Type: application/json" \
-  -d '{"athleteNumber": "A123456"}'
+  -d '{"provider": "runsignup", "probe": true}'
 ```
 
 Getting a JWT for the seed user:
@@ -589,14 +589,14 @@ curl -X POST "http://127.0.0.1:24321/auth/v1/token?grant_type=password" \
 
 ### Testing without real credentials
 
-Strava, parkrun, and Google each require real API credentials to test their happy paths. Options:
+Strava and Google each require real API credentials to test their happy paths. Options:
 
 1. **Mock the upstream HTTP call.** Deno's `fetch` can be stubbed — wrap it in a helper, import from a conditional module. Fiddly for a 40-line function; usually not worth it.
 2. **Point at a local fixture server.** Drop a tiny `python -m http.server` in a fixtures directory and override `STRAVA_OAUTH_URL` (doesn't exist yet — the functions hardcode `https://www.strava.com/...`). Would need a small refactor to make URLs injectable.
 3. **Use a sandbox Strava account.** Strava has a real sandbox but registration is a multi-day process.
 4. **Don't test the happy path locally; test only the auth rejection branch.** Send a request with a bogus JWT and assert 401. Covers the common shape; skips the integration detail.
 
-The `edge-functions` CI job now exercises the five handler envelopes (refresh-tokens / strava-webhook / revenuecat-webhook / stripe-events-webhook / auth-email) end-to-end on every PR — see the "Edge Functions" section above. The four JWT-gated handlers (delete-account / export-data / parkrun-import / strava-import) are 401'd by the platform gateway before the handler body runs, so option 4 is degenerate for them and there's no equivalent CI coverage. (clip-public-track left this set with the §280 key migration: it now runs `verify_jwt = false` and authorizes in-handler, since logged-out spectators send the non-JWT publishable key as the bearer.) The happy paths (valid HMACs / fresh event timestamps / real OAuth) still fall through to options 1-3 above when you need them.
+The `edge-functions` CI job now exercises the five handler envelopes (refresh-tokens / strava-webhook / revenuecat-webhook / stripe-events-webhook / auth-email) end-to-end on every PR — see the "Edge Functions" section above. The three JWT-gated handlers (delete-account / export-data / strava-import) are 401'd by the platform gateway before the handler body runs, so option 4 is degenerate for them and there's no equivalent CI coverage. (clip-public-track left this set with the §280 key migration: it now runs `verify_jwt = false` and authorizes in-handler, since logged-out spectators send the non-JWT publishable key as the bearer.) The happy paths (valid HMACs / fresh event timestamps / real OAuth) still fall through to options 1-3 above when you need them.
 
 ### Deploying functions to production
 
@@ -607,7 +607,7 @@ Handled by CI in `.github/workflows/ci.yml`'s `deploy-functions` job on GitHub r
 Manual deploy syntax (for reference):
 
 ```bash
-supabase functions deploy parkrun-import --project-ref "${SUPABASE_PROJECT_REF}"
+supabase functions deploy race-results-import --project-ref "${SUPABASE_PROJECT_REF}"
 # Requires SUPABASE_ACCESS_TOKEN in the env.
 ```
 
@@ -625,13 +625,10 @@ Variables currently used:
 - `STRAVA_WEBHOOK_SECRET` — shared secret the caller presents in the `X-Webhook-Secret` header (preferred) or the callback URL's query string (`?secret=...`). Strava's subscription API only accepts a URL, so the query path is the only one Strava itself can use — and it writes the secret into every function log line, which is why the header wins when present and why moving Strava off the query path is an owed ops item (`docs/ops/deployment.md` § Owed, decisions §567). Either way it is the only auth available on POST events (Strava doesn't sign payloads). Required: function fails closed without it; also refuses below a 32-char floor.
 - `CRON_SECRET` — shared bearer token the pg_cron schedule passes to `refresh-tokens` so an unauthenticated caller can't trigger Strava token-refresh churn on every integration in the table. Required: function fails closed without it. `events-refund-sweep` reads the same secret ([decisions § 1839](../../docs/architecture/decisions.md)), and so does `race-listings-sweep` (decisions § 1902; schedule `invoke_race_listings_sweep`, migration `20270805000002`); its schedule is in a migration (`invoke_event_refund_sweep`, pg_cron + pg_net) and takes the bearer from the Vault secret `cron_secret` and the URL from `event_refund_sweep_url`, sending nothing until both exist.
 - `TRUSTED_CLIENT_IP_HEADER` — names the ONE request header the deployment's own edge overwrites, and therefore the only one `_shared/rate_limit.ts`'s `ipBucketKey` will read to identify an anon caller. Optional; defaults to `cf-connecting-ip`, which is correct for hosted Supabase (it runs behind Cloudflare, which overwrites the header on every request). **Set it on any self-hosted / non-Cloudflare deployment** to whatever the front proxy overwrites (`x-real-ip` for a typical nginx). Unset on such a topology is fail-closed, not open: every anon caller collapses into one shared bucket and contends for the same window, because keying off a header the caller controls is not a rate limit at all.
-- `PARKRUN_USER_AGENT` — identifies us to parkrun's server. Be polite.
 - `RUNSIGNUP_API_KEY` / `RUNSIGNUP_API_SECRET` — optional RunSignUp partner credential. **Not a gate:** both RunSignUp feeds are public, so `race-results-import`, `race-listings-sync` and `race-listings-sweep` run keyless and append the pair only when both halves are set (decisions § 1899, § 1903). **The RunSignUp import is scoped by bib alone (issue #360):** the keyless feed ignores `user_id`, so `runSignUpScopeGate` rejects a request without a bib `400 runsignup_bib_required` before any fetch, the bib narrows upstream (`bib_num`) and again over the mapped rows, and the `matchRunId` enrich path rejects `400 ambiguous_match` unless exactly one result maps.
-- `ULTRASIGNUP_API_KEY` / `ULTRASIGNUP_API_SECRET` — UltraSignup partner credential, read by `race-listings-sync` only. **The `race-results-import` UltraSignup leg does not read them**: it uses UltraSignup's keyless `historybyname` feed (decisions § 1841).
-- `ULTRASIGNUP_RESULTS_ENABLED` — opt-in for the `race-results-import` UltraSignup leg; only the literal `true` enables it, anything else answers `503 provider_not_configured` on the probe, the lookup and the import. The leg sends the runner's name to UltraSignup from our egress IP, so turning it on in prod is gated on CISO/counsel sign-off (decisions § 1841). The probe additionally answers `reason: 'client_unsupported'` to a client that does not send `ultraSignUpFlow: 'person'` — a build still on the old athlete-id shape stays dark rather than offering an import that 400s.
-- `PARKRUN_EVENTS_ENABLED` — opt-in for the parkrun leg of `race-listings-sync` and `race-listings-sweep`, which lists parkrun's public events file in the race calendar; only the literal `true` enables it. Off, the sweep makes no parkrun request (its body says `parkrun: { enabled: false }`) and the sync answers `503 provider_not_configured`. Turning it on in prod is gated on parkrun's written permission (issue #1148, decisions § 1958). The leg sends `PARKRUN_USER_AGENT` when set.
-- `CHRONOTRACK_CLIENT_ID`, `CHRONOTRACK_USER_ID`, `CHRONOTRACK_PASSWORD` — ChronoTrack Live (CTLive) credentials for the `race-results-import` `provider:'chronotrack'` leg. All three required together: any unset → `503 provider_not_configured` (fail-closed; parkrun + manual paste still work).
-- `RACE_IMPORT_USER_AGENT` — polite identifier for the RunSignUp / UltraSignup / ChronoTrack results fetch (defaults to `RunApp/1.0`).
+- `ULTRASIGNUP_API_KEY` / `ULTRASIGNUP_API_SECRET` — UltraSignup partner credential, read by `race-listings-sync`'s listings leg only. There is no UltraSignup results leg: it read UltraSignup's internal `historybyname` feed and was removed with `ULTRASIGNUP_RESULTS_ENABLED`, `PARKRUN_USER_AGENT` and `PARKRUN_EVENTS_ENABLED` (decisions § 2467; all three are in `ops/prod_config.json`'s `retired_function_env`).
+- `CHRONOTRACK_CLIENT_ID`, `CHRONOTRACK_USER_ID`, `CHRONOTRACK_PASSWORD` — ChronoTrack Live (CTLive) credentials for the `race-results-import` `provider:'chronotrack'` leg. All three required together: any unset → `503 provider_not_configured` (fail-closed; manual paste still works).
+- `RACE_IMPORT_USER_AGENT` — polite identifier for the RunSignUp / ChronoTrack results fetch and the race-listings sync + sweep (defaults to `RunApp/1.0`).
 - `REVENUECAT_WEBHOOK_SECRET` — the RevenueCat webhook's HMAC signing secret; `revenuecat-webhook` verifies `X-RevenueCat-Webhook-Signature` (`t=,v1=` over `<t>.<body>`) against it. Required: function fails closed without it.
 - `STRIPE_SECRET_KEY` — Stripe platform secret key (sk_test_ in P1 — **TEST MODE ONLY, never a live key**). Used by `events-connect-onboard` (account + Account Link create), `events-checkout` (destination-charge Checkout Session), `events-cancel` (refund create / Checkout Session expire — slice P2 buyer self-cancel), and `delete-account` (Connect Express account DELETE on erasure — unset with an account present → `stripe_connect_delete: 'failed'`, never a false `skipped`). Required for the events functions: all fail closed (503 `stripe_not_configured`) without it. Server-only; never client-readable.
 - `STRIPE_CONNECT_CLIENT_ID` — Stripe Connect application id (ca_…). Configured on the platform account for Express + Account Links; held as an env var for any future Standard-OAuth path (open question #4). Not passed per-call in P1.

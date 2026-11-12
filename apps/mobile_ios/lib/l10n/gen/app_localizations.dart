@@ -1325,6 +1325,48 @@ abstract class AppLocalizations {
   /// **'Nothing on the plan today.'**
   String get dashboardHeroRestDayBody;
 
+  /// Grisnir the mascot's one dry line beside his resting art on a plan rest day; Norse lore: Thor's goats are eaten every night and are back by morning
+  ///
+  /// In en, this message translates to:
+  /// **'Back by morning, like Thor\'s goats.'**
+  String get dashboardHeroRestDayGrisnir;
+
+  /// Grisnir the mascot's one dry line beside his hop when a run is the runner's first ever
+  ///
+  /// In en, this message translates to:
+  /// **'First run in. That\'s the hard one.'**
+  String get mascotMilestoneFirstRun;
+
+  /// Grisnir's line when a run is the runner's first 5 km; never a nag
+  ///
+  /// In en, this message translates to:
+  /// **'Your first 5K. That counts.'**
+  String get mascotMilestoneFirst5k;
+
+  /// Grisnir's line when a run unlocked a badge
+  ///
+  /// In en, this message translates to:
+  /// **'Badge earned. Worth a hop.'**
+  String get mascotMilestoneBadge;
+
+  /// Grisnir's line when a run set a new best time at a personal-record distance
+  ///
+  /// In en, this message translates to:
+  /// **'A new best. Worth a hop.'**
+  String get mascotMilestoneBest;
+
+  /// Grisnir's line when a run is the runner's longest so far
+  ///
+  /// In en, this message translates to:
+  /// **'Your longest run yet.'**
+  String get mascotMilestoneLongest;
+
+  /// Line under Grisnir waiting by a trail sign on the onboarding screen; Grisnir is the mascot's name, keep it
+  ///
+  /// In en, this message translates to:
+  /// **'Grisnir waits at the trailhead.'**
+  String get mascotOnboardingLine;
+
   /// One-line readiness score in the Today hero; {score} is 0-100
   ///
   /// In en, this message translates to:
@@ -1607,7 +1649,7 @@ abstract class AppLocalizations {
   /// **'Nutrition'**
   String get fitnessTabNutrition;
 
-  /// Label for the Routes entry on the Fitness hub's Runs sub-tab
+  /// Fitness hub tab, and that screen's title, for the route library
   ///
   /// In en, this message translates to:
   /// **'Routes'**
@@ -1619,23 +1661,17 @@ abstract class AppLocalizations {
   /// **'Training plans'**
   String get fitnessRunsPlans;
 
-  /// Accessibility label for the labelled peer strip on the run surface
-  ///
-  /// In en, this message translates to:
-  /// **'Run surface sections'**
-  String get runSurfaceLabel;
-
-  /// Run surface peer strip entry opening the training plan library
+  /// Fitness hub tab holding the training plan library
   ///
   /// In en, this message translates to:
   /// **'Plans'**
   String get runSurfaceTabPlans;
 
-  /// Run surface peer strip entry opening the race calendar
+  /// Fitness hub tab, and that screen's title, holding the race calendar (Upcoming races) and the park courses runnable on any day (Run any time). Mirrors web runSurface.tabRacesCourses
   ///
   /// In en, this message translates to:
-  /// **'Races'**
-  String get runSurfaceTabRaces;
+  /// **'Races & courses'**
+  String get runSurfaceTabRacesCourses;
 
   /// Accessibility label for the labelled peer strip on the gym surface
   ///
@@ -3172,12 +3208,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upload the archive Strava emails you, with every activity you\'ve logged'**
   String get setupImportStravaDesc;
-
-  /// Setup wizard import step: subtitle under the parkrun row. parkrun is a brand name, always lowercase; athlete number is the parkrun ID such as A123456
-  ///
-  /// In en, this message translates to:
-  /// **'Pull in every parkrun result with your athlete number'**
-  String get setupImportParkrunDesc;
 
   /// Setup wizard final step title
   ///
@@ -5555,6 +5585,30 @@ abstract class AppLocalizations {
   /// **'Segments'**
   String get runDetailSectionSegments;
 
+  /// Accessibility label for the owner's park course chips on run detail (runDetail.parkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses on this run'**
+  String get runDetailParkCourses;
+
+  /// A park course chip's place on that season's fastest board, e.g. #3 in 2027 (runDetail.parkCourseRank)
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank} in {season}'**
+  String runDetailParkCourseRank(String rank, String season);
+
+  /// Quiet line on run detail when the park course chips could not be read; a Retry button follows (runDetail.parkCoursesLoadFailed)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your park course times.'**
+  String get runDetailParkCoursesLoadFailed;
+
+  /// Banner when tapping a park course chip on run detail could not load the course
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open this course.'**
+  String get runDetailParkCourseOpenFailed;
+
   /// Title of the save-as-route dialog
   ///
   /// In en, this message translates to:
@@ -5705,7 +5759,7 @@ abstract class AppLocalizations {
   /// **'Sharing flips this run to public so anyone with the link can view it — including the start and end points of your run. You have no privacy zones set up. Consider adding one around your home before sharing.'**
   String get runDetailMakePublicBodyNoZones;
 
-  /// Confirm action in the make-run-public dialog
+  /// Confirm action in the make-run-public dialog, and the run-detail overflow-menu item that opens it
   ///
   /// In en, this message translates to:
   /// **'Make public'**
@@ -5740,6 +5794,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run is now private'**
   String get runDetailMadePrivate;
+
+  /// Banner shown after a run was made public from the visibility chip or the overflow menu
+  ///
+  /// In en, this message translates to:
+  /// **'Run is now public'**
+  String get runDetailMadePublic;
+
+  /// Run-detail visibility chip label for a public run
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get runDetailVisibilityPublic;
+
+  /// Run-detail visibility chip label for a private run
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get runDetailVisibilityPrivate;
+
+  /// Run-detail visibility chip label for a followers-only run
+  ///
+  /// In en, this message translates to:
+  /// **'Followers'**
+  String get runDetailVisibilityFollowers;
+
+  /// Run-detail visibility chip label for a run shared with named people
+  ///
+  /// In en, this message translates to:
+  /// **'Shared'**
+  String get runDetailVisibilityShared;
+
+  /// Screen-reader label of the run-detail visibility chip on a private run: the state, then what tapping does
+  ///
+  /// In en, this message translates to:
+  /// **'Private. Make this run public'**
+  String get runDetailVisibilityPrivateSemantics;
+
+  /// Screen-reader label of the run-detail visibility chip on a public run: the state, then what tapping does
+  ///
+  /// In en, this message translates to:
+  /// **'Public. Make this run private'**
+  String get runDetailVisibilityPublicSemantics;
+
+  /// Screen-reader label of the run-detail visibility chip when audience sharing is on; tapping opens Who can see this
+  ///
+  /// In en, this message translates to:
+  /// **'{level}. Change who can see this run'**
+  String runDetailVisibilityAudienceSemantics(String level);
 
   /// Title of the single-run delete confirmation dialog
   ///
@@ -10063,13 +10165,13 @@ abstract class AppLocalizations {
   /// Hint shown when the race is armed
   ///
   /// In en, this message translates to:
-  /// **'Tap Fire Go when the race begins. Participants\' watches show the armed banner now.'**
+  /// **'Tap GO when the race begins. Participants\' watches show the armed banner now.'**
   String get eventRaceArmedHint;
 
   /// Button to start the race
   ///
   /// In en, this message translates to:
-  /// **'Fire Go'**
+  /// **'GO'**
   String get eventRaceFireGo;
 
   /// Button to cancel the race while armed
@@ -11971,7 +12073,7 @@ abstract class AppLocalizations {
   /// Home plan card body: back after n weeks away from the plan (comeback ramp)
   ///
   /// In en, this message translates to:
-  /// **'You\'ve been away from the plan for {n, plural, one {# week} other {# weeks}}. There\'s a suggested change so the weeks ahead build back up from what you last ran.'**
+  /// **'You\'ve been away from the plan for {n, plural, one {{n} week} other {{n} weeks}}. There\'s a suggested change so the weeks ahead build back up from what you last ran.'**
   String planNudgeAnchorReturnBody(int n);
 
   /// Home plan card title: last week well over plan
@@ -12061,7 +12163,7 @@ abstract class AppLocalizations {
   /// Plan-detail re-plan preview note after weeks away from the plan: n weeks away, km is the last week run
   ///
   /// In en, this message translates to:
-  /// **'You\'ve been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.'**
+  /// **'You\'ve been away from the plan for {n, plural, one {{n} week} other {{n} weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.'**
   String planDetailAnchorReturnNote(int n, String km);
 
   /// Plan-detail adherence/replan/duplicate
@@ -13978,18 +14080,6 @@ abstract class AppLocalizations {
   /// **'Disconnect failed: {error}'**
   String integrationsDisconnectFailed(Object error);
 
-  /// Title of the parkrun import dialog
-  ///
-  /// In en, this message translates to:
-  /// **'Import parkrun results'**
-  String get integrationsParkrunTitle;
-
-  /// Body of the parkrun import dialog
-  ///
-  /// In en, this message translates to:
-  /// **'Enter your parkrun athlete number (e.g. A123456). We\'ll fetch your finish history and add any new results to your runs list.'**
-  String get integrationsParkrunBody;
-
   /// Label for the parkrun athlete-number field
   ///
   /// In en, this message translates to:
@@ -14086,30 +14176,6 @@ abstract class AppLocalizations {
   /// **'Showing the copy saved on this phone.'**
   String get parkrunBarcodeOfflineCopy;
 
-  /// Import button on the parkrun dialog
-  ///
-  /// In en, this message translates to:
-  /// **'Import'**
-  String get integrationsImport;
-
-  /// Progress text while parkrun results are imported
-  ///
-  /// In en, this message translates to:
-  /// **'Importing parkrun results…'**
-  String get integrationsParkrunImporting;
-
-  /// Banner summarising imported parkrun results
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{Imported {count} parkrun result.} other{Imported {count} parkrun results.}}'**
-  String integrationsParkrunImported(int count);
-
-  /// Banner when an importer read only part of a history and knows the total
-  ///
-  /// In en, this message translates to:
-  /// **'Only part of your history could be imported: {n} of {total}.'**
-  String integrationsImportPartialOf(int n, int total);
-
   /// Banner when an importer read only part of a history and does not know the total
   ///
   /// In en, this message translates to:
@@ -14121,18 +14187,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The results list was too long to read to the end, so your result could not be confirmed. Enter it manually instead.'**
   String get integrationsImportTruncated;
-
-  /// Banner shown when no new parkrun results were found
-  ///
-  /// In en, this message translates to:
-  /// **'No new parkrun results since last import.'**
-  String get integrationsParkrunNoneNew;
-
-  /// Banner shown when the parkrun import fails
-  ///
-  /// In en, this message translates to:
-  /// **'Import failed: {error}'**
-  String integrationsImportFailed(Object error);
 
   /// Strava integration tile title (brand name)
   ///
@@ -14206,24 +14260,6 @@ abstract class AppLocalizations {
   /// **'Sync now'**
   String get integrationsSyncNow;
 
-  /// parkrun integration tile title (brand name)
-  ///
-  /// In en, this message translates to:
-  /// **'parkrun'**
-  String get integrationsParkrunName;
-
-  /// parkrun tile subtitle
-  ///
-  /// In en, this message translates to:
-  /// **'Import results by athlete number'**
-  String get integrationsParkrunTileSubtitle;
-
-  /// parkrun tile subtitle shown when the device region is outside the parkrun footprint
-  ///
-  /// In en, this message translates to:
-  /// **'parkrun runs in a limited set of countries and may not have events near you — you can still import results with a parkrun athlete ID.'**
-  String get integrationsParkrunRegionNote;
-
   /// Tile title shown when signed out
   ///
   /// In en, this message translates to:
@@ -14233,7 +14269,7 @@ abstract class AppLocalizations {
   /// Tile subtitle shown when signed out
   ///
   /// In en, this message translates to:
-  /// **'Strava + parkrun require an account so synced activities land in your history.'**
+  /// **'Strava requires an account so synced activities land in your history.'**
   String get integrationsSignInSubtitle;
 
   /// Toggle title for writing runs to Health Connect (Android)
@@ -15993,6 +16029,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.'**
   String get prefsShowCaloriesHint;
+
+  /// Title of the switch that shows or hides Grisnir, the Threkir mascot
+  ///
+  /// In en, this message translates to:
+  /// **'Show Grisnir'**
+  String get prefsShowMascot;
+
+  /// Subtitle of the show-Grisnir switch: where the mascot appears
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir\'s goat. He rests with you on rest days and sits in a corner of your share images.'**
+  String get prefsShowMascotHint;
 
   /// Tile title for the default run privacy
   ///
@@ -18069,6 +18117,12 @@ abstract class AppLocalizations {
   /// **'Report message'**
   String get reportTitleMessage;
 
+  /// Report sheet title when reporting a group invitation from the Requests list, before joining the group
+  ///
+  /// In en, this message translates to:
+  /// **'Report group invitation'**
+  String get reportTitleGroupInvite;
+
   /// Report sheet title fallback for generic content
   ///
   /// In en, this message translates to:
@@ -19794,7 +19848,7 @@ abstract class AppLocalizations {
   /// Settings landing: Integrations tile subtitle
   ///
   /// In en, this message translates to:
-  /// **'Strava, parkrun, race calendar, heart-rate strap, treadmill, watch'**
+  /// **'Strava, race calendar, heart-rate strap, treadmill, watch'**
   String get settingsTabIntegrationsSubtitle;
 
   /// Settings landing: Devices tile subtitle when signed in
@@ -22671,6 +22725,12 @@ abstract class AppLocalizations {
   /// **'Planned workouts in a row, counting back from yesterday, that passed with no run logged. A skipped workout or a rest day doesn\'t count and doesn\'t break the run; a done workout ends it.'**
   String get metricMissStreakDefinition;
 
+  /// Definition behind the run-detail Route History heading: what counts as an attempt on the route and how tied times rank
+  ///
+  /// In en, this message translates to:
+  /// **'An attempt is a run on this route with the same activity type that covered more than 100 m and has a recorded time (above zero, under ten days). Attempts rank fastest first; equal times share a rank, so a run that ties the best time is a PB too.'**
+  String get metricRouteHistoryDefinition;
+
   /// Injury-risk band: low
   ///
   /// In en, this message translates to:
@@ -24332,11 +24392,53 @@ abstract class AppLocalizations {
   /// **'Donate on web'**
   String get fundraiserDonateOnWeb;
 
-  /// Title of the race calendar / discovery screen
+  /// Fallback title of a race whose name has not loaded, and the label of a run's race row
   ///
   /// In en, this message translates to:
   /// **'Race calendar'**
   String get racesTitle;
+
+  /// Heading of the race-calendar section on Races & courses. Mirrors web races.sectionUpcoming
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming races'**
+  String get racesSectionUpcoming;
+
+  /// Heading of the park-courses section on Races & courses: standing courses that can be run on any day, unlike a race. Mirrors web races.sectionAnyTime
+  ///
+  /// In en, this message translates to:
+  /// **'Run any time'**
+  String get racesSectionAnyTime;
+
+  /// A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest in {year}: {time}'**
+  String racesAnyTimeFastest(String year, String time);
+
+  /// A park course's fastest time this season and who ran it. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastestBy
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest in {year}: {time} by {name}'**
+  String racesAnyTimeFastestBy(String year, String time, String name);
+
+  /// A park course with no recorded time this season. Mirrors web races.anyTimeNoTimeYet
+  ///
+  /// In en, this message translates to:
+  /// **'No time yet this season. Yours could be the first.'**
+  String get racesAnyTimeNoTimeYet;
+
+  /// How far a park course's start is from the runner. Mirrors web races.anyTimeAway
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} away'**
+  String racesAnyTimeAway(String distance);
+
+  /// Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this season\'s fastest times.'**
+  String get racesAnyTimeFastestFailed;
 
   /// Placeholder for the race name search field
   ///
@@ -24998,30 +25100,6 @@ abstract class AppLocalizations {
   /// **'Enter your bib number so we import only your result, not the whole field.'**
   String get racesRunSignUpBibHint;
 
-  /// Line in the race import sheet naming the UltraSignup person the import will use
-  ///
-  /// In en, this message translates to:
-  /// **'Importing as {name} (UltraSignup #{id})'**
-  String racesUltraSignUpImportingAs(String name, String id);
-
-  /// Hint under the UltraSignup importing-as line: only this race's result is imported
-  ///
-  /// In en, this message translates to:
-  /// **'Only your result for this race comes across, matched on UltraSignup\'s own race id and date.'**
-  String get racesUltraSignUpLinkedHint;
-
-  /// Race import sheet, UltraSignup listing, when the runner has not linked an UltraSignup person; the find action sits beside it
-  ///
-  /// In en, this message translates to:
-  /// **'Link your UltraSignup profile first, then import from here.'**
-  String get racesUltraSignUpNotLinked;
-
-  /// Banner when the import could not find the linked UltraSignup person under their name any more
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup no longer lists your linked profile under that name. Link it again in Settings.'**
-  String get racesUltraSignUpPersonNotFound;
-
   /// Hint above the manual result paste form
   ///
   /// In en, this message translates to:
@@ -25130,23 +25208,11 @@ abstract class AppLocalizations {
   /// **'Strava is a popular app for recording and sharing runs. Connecting it copies your Strava activities across — the last 90 days first, then each new one as it appears. You\'ll sign in to Strava and approve access, and you can disconnect at any time.'**
   String get integrationsStravaInfo;
 
-  /// Info-tip body for the parkrun tile: what parkrun is and where the athlete number comes from
-  ///
-  /// In en, this message translates to:
-  /// **'parkrun is a free, weekly, timed 5k held in parks around the world. Tap this tile and enter the athlete number from your parkrun barcode (the one starting with A) to pull in every parkrun you\'ve finished, with your time and age grade.'**
-  String get integrationsParkrunInfo;
-
   /// Info-tip body for the RunSignUp tile: what RunSignUp is and how to import a result
   ///
   /// In en, this message translates to:
   /// **'RunSignUp handles entries and results for thousands of road races. If you ran one, find the race in the race calendar and enter the bib number you wore — your official time and splits are attached to that run.'**
   String get integrationsRunsignupInfo;
-
-  /// Info-tip body for the UltraSignup tile: what UltraSignup is and how to import a result
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup handles entries and results for trail and ultra races. Link your UltraSignup profile here once, then import a race\'s result from the race calendar.'**
-  String get integrationsUltrasignupInfo;
 
   /// Info-tip body for the ChronoTrack tile: what ChronoTrack is and how to import a result
   ///
@@ -25157,140 +25223,8 @@ abstract class AppLocalizations {
   /// Explainer when the RunSignUp key is unconfigured
   ///
   /// In en, this message translates to:
-  /// **'RunSignUp import isn\'t available yet. parkrun and manual paste still work.'**
+  /// **'RunSignUp import isn\'t available yet. Manual paste still works.'**
   String get integrationsRunsignupUnavailable;
-
-  /// UltraSignup integration name
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup'**
-  String get integrationsUltrasignup;
-
-  /// UltraSignup integration description
-  ///
-  /// In en, this message translates to:
-  /// **'Import trail and ultra results from UltraSignup.'**
-  String get integrationsUltrasignupConnect;
-
-  /// Action linking to the race calendar from the UltraSignup tile
-  ///
-  /// In en, this message translates to:
-  /// **'Open the race calendar'**
-  String get integrationsUltrasignupOpen;
-
-  /// Explainer when the UltraSignup key is unconfigured
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup import isn\'t available yet. parkrun and manual paste still work.'**
-  String get integrationsUltrasignupUnavailable;
-
-  /// Heading of the UltraSignup person finder, and the action that opens it
-  ///
-  /// In en, this message translates to:
-  /// **'Find your UltraSignup profile'**
-  String get integrationsUltrasignupFindLabel;
-
-  /// First-name field in the UltraSignup person finder
-  ///
-  /// In en, this message translates to:
-  /// **'First name'**
-  String get integrationsUltrasignupFirstName;
-
-  /// Last-name field in the UltraSignup person finder
-  ///
-  /// In en, this message translates to:
-  /// **'Last name'**
-  String get integrationsUltrasignupLastName;
-
-  /// Hint under the UltraSignup person finder heading
-  ///
-  /// In en, this message translates to:
-  /// **'Use the name you enter races under. UltraSignup lists everyone with that name, and you pick which one is you.'**
-  String get integrationsUltrasignupNameHint;
-
-  /// Button that looks the typed name up on UltraSignup
-  ///
-  /// In en, this message translates to:
-  /// **'Find me'**
-  String get integrationsUltrasignupFind;
-
-  /// Find button label while the UltraSignup lookup runs
-  ///
-  /// In en, this message translates to:
-  /// **'Searching UltraSignup…'**
-  String get integrationsUltrasignupSearching;
-
-  /// Shown when UltraSignup knows nobody by the typed name
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup has nobody by that name. Check the spelling you race under.'**
-  String get integrationsUltrasignupNoMatches;
-
-  /// Prompt above the list of UltraSignup people matching the name
-  ///
-  /// In en, this message translates to:
-  /// **'Which of these is you?'**
-  String get integrationsUltrasignupPickPrompt;
-
-  /// An UltraSignup candidate's age
-  ///
-  /// In en, this message translates to:
-  /// **'Age {age}'**
-  String integrationsUltrasignupCandidateAge(int age);
-
-  /// How many results UltraSignup holds for a candidate
-  ///
-  /// In en, this message translates to:
-  /// **'{n, plural, one{{n} result} other{{n} results}}'**
-  String integrationsUltrasignupCandidateResults(int n);
-
-  /// Button that links the runner to one UltraSignup candidate
-  ///
-  /// In en, this message translates to:
-  /// **'This is me'**
-  String get integrationsUltrasignupThisIsMe;
-
-  /// The UltraSignup person the runner has linked
-  ///
-  /// In en, this message translates to:
-  /// **'Linked as {name} (UltraSignup #{id})'**
-  String integrationsUltrasignupLinkedAs(String name, String id);
-
-  /// Button that forgets the linked UltraSignup person
-  ///
-  /// In en, this message translates to:
-  /// **'Unlink'**
-  String get integrationsUltrasignupUnlink;
-
-  /// Banner after an UltraSignup person was linked
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup profile linked.'**
-  String get integrationsUltrasignupLinked;
-
-  /// Banner when storing the UltraSignup person failed
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t link your UltraSignup profile. Try again.'**
-  String get integrationsUltrasignupLinkFailed;
-
-  /// Banner when the UltraSignup name lookup failed
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t search UltraSignup. Try again in a moment.'**
-  String get integrationsUltrasignupLookupFailed;
-
-  /// Undo-bar message after the UltraSignup person was unlinked
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup profile unlinked. Runs you already imported stay.'**
-  String get integrationsUltrasignupUnlinked;
-
-  /// Banner when unlinking the UltraSignup person failed
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t unlink your UltraSignup profile. Try again.'**
-  String get integrationsUltrasignupUnlinkFailed;
 
   /// ChronoTrack integration name
   ///
@@ -25313,7 +25247,7 @@ abstract class AppLocalizations {
   /// Explainer when the ChronoTrack credentials are unconfigured
   ///
   /// In en, this message translates to:
-  /// **'ChronoTrack import isn\'t available yet. parkrun and manual paste still work.'**
+  /// **'ChronoTrack import isn\'t available yet. Manual paste still works.'**
   String get integrationsChronotrackUnavailable;
 
   /// Header for the route condition-reports panel
@@ -27782,17 +27716,11 @@ abstract class AppLocalizations {
   /// **'Leaderboard'**
   String get segmentCatalogueLeaderboard;
 
-  /// Run-surface peer strip entry for the famous-segment catalogue
+  /// Fitness hub tab holding the famous-segment catalogue
   ///
   /// In en, this message translates to:
   /// **'Segments'**
   String get runSurfaceTabSegments;
-
-  /// Run-surface peer strip entry for the park-course index (park time-trial courses with season boards)
-  ///
-  /// In en, this message translates to:
-  /// **'Parks'**
-  String get runSurfaceTabParks;
 
   /// Rate-limit refusal when the create_club bucket is spent
   ///
@@ -31375,6 +31303,12 @@ abstract class AppLocalizations {
   /// **'Starts {date}'**
   String plansStarterStarts(String date);
 
+  /// Call to action at the foot of each built-in starter-plan tile on the empty plans list; tapping the tile creates the plan. Same wording as web plansNew.createStarter
+  ///
+  /// In en, this message translates to:
+  /// **'Start this plan'**
+  String get plansStarterStart;
+
   /// Helper under the start date: why only Sundays can be picked
   ///
   /// In en, this message translates to:
@@ -34259,6 +34193,18 @@ abstract class AppLocalizations {
   /// **'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.'**
   String get parksLongCourseNotice;
 
+  /// Park course page notice, on every course: the times on its boards are Threkir's own, never the results of an organised event (a weekly community run, say) that uses the same paths. Names no event.
+  ///
+  /// In en, this message translates to:
+  /// **'Times here are Threkir times on these paths. They are not results of any event held on them.'**
+  String get parksTimesNotEventResults;
+
+  /// Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation.
+  ///
+  /// In en, this message translates to:
+  /// **'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.'**
+  String get parksSharedUseSaturdayMorningGroup;
+
   /// Park courses (#1313): web key parks.attributionOsm.
   ///
   /// In en, this message translates to:
@@ -34300,6 +34246,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Park courses'**
   String get parksBrowseLink;
+
+  /// Laps chip on a park course (#1352): a course run more than once round its loop for one time.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} lap} other {{n} laps}}'**
+  String parksCourseLaps(int n);
+
+  /// Pill on a park course card (#1352): its elevation gain, already formatted with its unit.
+  ///
+  /// In en, this message translates to:
+  /// **'{elevation} climb'**
+  String parksCourseClimb(String elevation);
+
+  /// Banner when the park website link cannot be opened (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the park website.'**
+  String get parksWebsiteOpenFailed;
+
+  /// Heading over a park course's elevation chart (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Elevation profile'**
+  String get parksElevationProfile;
+
+  /// Title of a park course board nobody has a time on yet; replaces the filters (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'No times yet. Yours could be the first.'**
+  String get parksBoardEmptyTitle;
+
+  /// Body under parksBoardEmptyTitle: how a time gets onto the board (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.'**
+  String get parksBoardEmptyBody;
+
+  /// Screen-reader name of the key under a park course map (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Map key'**
+  String get parksLegendTitle;
+
+  /// Map key item: the green start marker (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get parksLegendStart;
+
+  /// Map key item: the red finish marker (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get parksLegendFinish;
+
+  /// Map key item: one marker for a course that starts and finishes in the same place (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Start and finish'**
+  String get parksLegendStartFinish;
+
+  /// Map key item: the numbered checkpoint markers (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Checkpoint: your run must pass it'**
+  String get parksLegendCheckpoints;
+
+  /// Map key item: the arrows along the course line (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Direction to run'**
+  String get parksLegendDirection;
+
+  /// Screen-reader label of a park course map (#1352); n is its checkpoint count.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =0 {Course map. The key below names each mark.} one {Course map with 1 checkpoint. The key below names each mark.} other {Course map with {n} checkpoints. The key below names each mark.}}'**
+  String parksMapCourseLabel(int n);
+
+  /// Screen-reader label of the map of every course line in a park (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {Map of the park\'s course} other {Map of the park\'s {n} courses}}'**
+  String parksMapParkLabel(int n);
 
   /// Accessible label of the event course map showing start and finish timing lines (#1305)
   ///
@@ -34415,11 +34445,29 @@ abstract class AppLocalizations {
   /// **'{label} opens at {time}'**
   String runRaceSelfTimedOpens(String label, String time);
 
-  /// Run screen race banner: how far the runner is from a self-timed race's start line
+  /// Run screen: how far the runner is from a race's start line, on the idle banner for a self-timed race and while recording until the start is timed
   ///
   /// In en, this message translates to:
   /// **'{distance} to the start line'**
   String runRaceToStartLine(String distance);
+
+  /// Voice cue and screen-reader announcement when a racer crosses the course's start line and their race clock starts
+  ///
+  /// In en, this message translates to:
+  /// **'Start line crossed, timing'**
+  String get runRaceStartCrossed;
+
+  /// Run screen button, offered for 60 seconds after the app finished a race automatically at the finish line: cancels that finish and resumes recording
+  ///
+  /// In en, this message translates to:
+  /// **'Not finished? Resume'**
+  String get runRaceUndoResume;
+
+  /// Run screen banner after the runner cancelled an automatic race finish; the rest of the race is finished by hand
+  ///
+  /// In en, this message translates to:
+  /// **'Finish undone. When you finish, tap Stop, then Finish race.'**
+  String get runRaceFinishUndone;
 
   /// Run screen race banner button: bind the next recording to a self-timed race as the runner's attempt
   ///
@@ -34804,6 +34852,1278 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{club} posted a course alert'**
   String profileNotifCourseAlertNamed(String club);
+
+  /// Report reason label, shown only to an owner or admin of a verified club: the content impersonates their organisation or copies its content (organiser name dispute, decisions § 2441)
+  ///
+  /// In en, this message translates to:
+  /// **'Impersonates or copies my organisation'**
+  String get reportReasonOrganiserDispute;
+
+  /// Hint under the organiser dispute reason in the report sheet
+  ///
+  /// In en, this message translates to:
+  /// **'For owners and admins of a verified club. A reviewer decides; nothing is hidden automatically.'**
+  String get reportReasonOrganiserDisputeHint;
+
+  /// Line in the report sheet naming the verified club the organiser dispute is filed for
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re reporting for {club}.'**
+  String reportOrganiserDisputeFor(String club);
+
+  /// Label of the picker choosing which verified club an organiser dispute is filed for
+  ///
+  /// In en, this message translates to:
+  /// **'Report for'**
+  String get reportOrganiserDisputeClubLabel;
+
+  /// Report sheet error: the server refused an organiser dispute because the caller is not an owner or admin of a verified club
+  ///
+  /// In en, this message translates to:
+  /// **'Only an owner or admin of a verified club can report this.'**
+  String get reportErrNotOrganiser;
+
+  /// Notification text: a reviewer acted on a naming dispute about content the recipient owns, or one their verified club filed
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s an update on a naming dispute'**
+  String get profileNotifOrganiserDispute;
+
+  /// Notification text: a reviewer acted on a naming dispute involving the named verified club
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s an update on a naming dispute with {club}'**
+  String profileNotifOrganiserDisputeNamed(String club);
+
+  /// Tooltip on the button under an AI Coach answer that opens the sheet to send parts of it to the runner's human coach
+  ///
+  /// In en, this message translates to:
+  /// **'Share with coach'**
+  String get coachShareAction;
+
+  /// Title of the sheet where the runner picks parts of an AI Coach answer to send to their human coach
+  ///
+  /// In en, this message translates to:
+  /// **'Share with your coach'**
+  String get coachShareTitle;
+
+  /// Intro text at the top of the share-with-coach sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the parts of this answer to send. Your coach sees them as a quote from your AI Coach, not as your own words.'**
+  String get coachShareIntro;
+
+  /// Heading above the list of the runner's coaches to choose from, when they have more than one
+  ///
+  /// In en, this message translates to:
+  /// **'Send to'**
+  String get coachShareCoachLegend;
+
+  /// Shown in the share sheet when the runner has exactly one coach. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Sending to {name}'**
+  String coachShareTo(String name);
+
+  /// Heading above the checkboxes, one per paragraph of the AI Coach answer
+  ///
+  /// In en, this message translates to:
+  /// **'Parts to share'**
+  String get coachShareParagraphsLegend;
+
+  /// Error when the picked paragraphs are longer than a message may be. {max} is the character limit
+  ///
+  /// In en, this message translates to:
+  /// **'That is more than {max} characters. Leave a part out.'**
+  String coachShareTooLong(int max);
+
+  /// Small note above the Share button explaining the shared text is marked as AI output and the AI is not called again
+  ///
+  /// In en, this message translates to:
+  /// **'It is labelled as AI in the conversation. Nothing new is sent to the AI.'**
+  String get coachShareLabelNote;
+
+  /// Button that sends the picked paragraphs to the coach
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get coachShareSend;
+
+  /// Share button label while the share is being sent
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing…'**
+  String get coachShareSending;
+
+  /// Confirmation after the share went. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with {name}.'**
+  String coachShareSent(String name);
+
+  /// Button after a successful share that opens the direct-message conversation with the coach
+  ///
+  /// In en, this message translates to:
+  /// **'Open conversation'**
+  String get coachShareOpenThread;
+
+  /// Button that closes the share sheet after a successful share
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get coachShareDone;
+
+  /// Label at the top of a shared AI Coach answer inside a direct-message conversation, next to the AI tag
+  ///
+  /// In en, this message translates to:
+  /// **'AI Coach answer'**
+  String get coachShareCardLabel;
+
+  /// Line on a shared AI Coach answer, seen by the runner who shared it
+  ///
+  /// In en, this message translates to:
+  /// **'You shared this from your AI Coach'**
+  String get coachShareCardFromMe;
+
+  /// Line on a shared AI Coach answer, seen by the coach who received it. {name} is the runner's display name
+  ///
+  /// In en, this message translates to:
+  /// **'{name} shared this from their AI Coach'**
+  String coachShareCardFromAthlete(String name);
+
+  /// Link under a shared AI Coach answer, seen only by the runner who shared it, that opens the original answer in the AI Coach
+  ///
+  /// In en, this message translates to:
+  /// **'Open in AI Coach'**
+  String get coachShareOpenSource;
+
+  /// Error when sharing an AI Coach answer with a coach is switched off on the server
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing with your coach is not available yet.'**
+  String get coachShareUnavailable;
+
+  /// AI-disclosure bullet (v7) describing what the coach assistant sends to the AI provider when a coach uses it
+  ///
+  /// In en, this message translates to:
+  /// **'For coaches using the coach assistant: what you ask it, and, only for an athlete who has allowed it on your coaching link, their recent messages with you, their plan and upcoming workouts, and their recent runs, used only to draft a message only you see. You edit and send it yourself, and it is marked AI-assisted.'**
+  String get coachConsentBulletCoachAssist;
+
+  /// Marker in a direct message's meta row when the coach wrote it with help from an AI draft
+  ///
+  /// In en, this message translates to:
+  /// **'AI-assisted'**
+  String get coachAssistMarker;
+
+  /// Accessibility label for the AI-assisted message marker
+  ///
+  /// In en, this message translates to:
+  /// **'Written by the coach with help from an AI draft'**
+  String get coachAssistMarkerTitle;
+
+  /// Athlete's per-coach switch on the coaching screen allowing that coach to use the AI coach assistant. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Let {name} use AI assistance'**
+  String coachAssistConsentToggle(String name);
+
+  /// Expandable heading under the coach-assist switch listing what data the coach assistant sends
+  ///
+  /// In en, this message translates to:
+  /// **'What this shares'**
+  String get coachAssistConsentWhat;
+
+  /// Intro to the list of what the coach assistant shares. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'When {name} asks the coach assistant for a draft, Threkir sends this to Anthropic, the AI provider, to write it:'**
+  String coachAssistConsentIntro(String name);
+
+  /// Coach-assist consent bullet: the message thread
+  ///
+  /// In en, this message translates to:
+  /// **'Your recent messages with this coach (the text and when it was sent).'**
+  String get coachAssistConsentBulletThread;
+
+  /// Coach-assist consent bullet: the training plan
+  ///
+  /// In en, this message translates to:
+  /// **'The plan you are on: its name, goal race and target time, its dates, and your workouts for the next two weeks (date, type, distance or time, pace, and whether you did or skipped them).'**
+  String get coachAssistConsentBulletPlan;
+
+  /// Coach-assist consent bullet: recent activities
+  ///
+  /// In en, this message translates to:
+  /// **'Your 10 most recent activities: the date, distance, time and activity type. Never your heart rate, your route or anything you wrote about a run.'**
+  String get coachAssistConsentBulletRuns;
+
+  /// Closing note under the coach-assist consent bullets. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Only {name} sees the drafts. They edit and send any message themselves, and it is marked AI-assisted. Nothing is sent while this is off, and you can turn it off at any time.'**
+  String coachAssistConsentOutro(String name);
+
+  /// Error when saving the coach-assist consent switch fails; the switch reverts
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save that. Try again.'**
+  String get coachAssistConsentFailed;
+
+  /// Park course route guide (#1344, web parks.guide.title).
+  ///
+  /// In en, this message translates to:
+  /// **'Route guide'**
+  String get parkGuideTitle;
+
+  /// Park course route guide (#1344, web parks.guide.pending).
+  ///
+  /// In en, this message translates to:
+  /// **'Drafted from map data, not yet checked on the ground.'**
+  String get parkGuidePending;
+
+  /// Park course route guide (#1344, web parks.guide.checked).
+  ///
+  /// In en, this message translates to:
+  /// **'Checked on the ground on {date}.'**
+  String parkGuideChecked(String date);
+
+  /// Park course route guide (#1344, web parks.guide.gettingThere).
+  ///
+  /// In en, this message translates to:
+  /// **'Getting there'**
+  String get parkGuideGettingThere;
+
+  /// Park course route guide (#1344, web parks.guide.startNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on {name}.'**
+  String parkGuideStartNamed(String name);
+
+  /// Park course route guide (#1344, web parks.guide.startFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the fire road.'**
+  String get parkGuideStartFireRoad;
+
+  /// Park course route guide (#1344, web parks.guide.startRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the park road.'**
+  String get parkGuideStartRoad;
+
+  /// Park course route guide (#1344, web parks.guide.startPath).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the path.'**
+  String get parkGuideStartPath;
+
+  /// Park course route guide (#1344, web parks.guide.clockwise).
+  ///
+  /// In en, this message translates to:
+  /// **'Run the loop clockwise.'**
+  String get parkGuideClockwise;
+
+  /// Park course route guide (#1344, web parks.guide.counterclockwise).
+  ///
+  /// In en, this message translates to:
+  /// **'Run the loop counterclockwise.'**
+  String get parkGuideCounterclockwise;
+
+  /// Park course route guide (#1344, web parks.guide.keepLeft).
+  ///
+  /// In en, this message translates to:
+  /// **'Keep {landmark} on your left.'**
+  String parkGuideKeepLeft(String landmark);
+
+  /// Park course route guide (#1344, web parks.guide.keepRight).
+  ///
+  /// In en, this message translates to:
+  /// **'Keep {landmark} on your right.'**
+  String parkGuideKeepRight(String landmark);
+
+  /// Park course route guide (#1344, web parks.guide.passCheckpoints).
+  ///
+  /// In en, this message translates to:
+  /// **'Pass every checkpoint in order, or the run is not timed.'**
+  String get parkGuidePassCheckpoints;
+
+  /// Park course route guide (#1344, web parks.guide.leftNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto {name}.'**
+  String parkGuideLeftNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.rightNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto {name}.'**
+  String parkGuideRightNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.straightNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight onto {name}.'**
+  String parkGuideStraightNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.leftFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the fire road.'**
+  String parkGuideLeftFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the fire road.'**
+  String parkGuideRightFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the fire road.'**
+  String parkGuideStraightFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.leftRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the park road.'**
+  String parkGuideLeftRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the park road.'**
+  String parkGuideRightRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the park road.'**
+  String parkGuideStraightRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.leftPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the path.'**
+  String parkGuideLeftPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the path.'**
+  String parkGuideRightPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the path.'**
+  String parkGuideStraightPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.bridge).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross the bridge.'**
+  String parkGuideBridge(String at);
+
+  /// Park course route guide (#1344, web parks.guide.ford).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross the ford. There is no bridge, so expect water.'**
+  String parkGuideFord(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfacePaved).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: paved from here.'**
+  String parkGuideSurfacePaved(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceGravel).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: gravel from here.'**
+  String parkGuideSurfaceGravel(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceDirt).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: dirt trail from here.'**
+  String parkGuideSurfaceDirt(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceUnpaved).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: unpaved from here.'**
+  String parkGuideSurfaceUnpaved(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceBoardwalk).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: boardwalk from here.'**
+  String parkGuideSurfaceBoardwalk(String at);
+
+  /// Park course route guide (#1344, web parks.guide.climb).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: a climb of {gain} over {length}.'**
+  String parkGuideClimb(String at, String gain, String length);
+
+  /// Park course route guide (#1344, web parks.guide.checkpoint).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: checkpoint {n} of {total}.'**
+  String parkGuideCheckpoint(String at, int n, int total);
+
+  /// Park course route guide (#1344, web parks.guide.lap).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: start lap {n} of {total} and repeat the loop.'**
+  String parkGuideLap(String at, int n, int total);
+
+  /// Park course route guide (#1344, web parks.guide.finish).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: finish.'**
+  String parkGuideFinish(String at);
+
+  /// Park course page: opens the sheet to report a hazard, closure, off-trail line or land-manager request (also the sheet title)
+  ///
+  /// In en, this message translates to:
+  /// **'Report a problem with this course'**
+  String get parkCourseReportAction;
+
+  /// Report sheet: what a report is for and that a person reviews it; a report never closes the course by itself
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us about a hazard, a closure or a line that leaves the trail. A person at Threkir reviews every report. A report does not close the course by itself.'**
+  String get parkCourseReportExplainer;
+
+  /// Report sheet: heading over the reason choices
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s the problem?'**
+  String get parkCourseReportReasonLegend;
+
+  /// Report reason: a hazard on the course
+  ///
+  /// In en, this message translates to:
+  /// **'A hazard on the course'**
+  String get parkCourseReportReasonHazard;
+
+  /// Report reason: the course or trail is closed
+  ///
+  /// In en, this message translates to:
+  /// **'The course or trail is closed'**
+  String get parkCourseReportReasonClosure;
+
+  /// Report reason: the published line leaves the designated trail
+  ///
+  /// In en, this message translates to:
+  /// **'The line leaves the designated trail'**
+  String get parkCourseReportReasonOffTrail;
+
+  /// Report reason: the park or agency managing the land asks for the course to come down
+  ///
+  /// In en, this message translates to:
+  /// **'A request from the land manager'**
+  String get parkCourseReportReasonLandManager;
+
+  /// Hint under the land-manager reason: the two-business-day promise
+  ///
+  /// In en, this message translates to:
+  /// **'For park or agency staff. Ask us to take the course down and we close it within two business days.'**
+  String get parkCourseReportReasonLandManagerHint;
+
+  /// Report sheet: the rights-holder reason, for the owner of a name, trade mark or course data a park course may use (decisions § 2469). Mirrors web parks.report.reasonRightsHolder
+  ///
+  /// In en, this message translates to:
+  /// **'A request from a rights holder'**
+  String get parkCourseReportReasonRightsHolder;
+
+  /// Hint under the rights-holder reason: who it is for and the two-business-day acknowledgement. Mirrors web parks.report.reasonRightsHolderHint
+  ///
+  /// In en, this message translates to:
+  /// **'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We acknowledge your request within two business days.'**
+  String get parkCourseReportReasonRightsHolderHint;
+
+  /// Report reason: anything else
+  ///
+  /// In en, this message translates to:
+  /// **'Something else'**
+  String get parkCourseReportReasonOther;
+
+  /// Report sheet: label of the required free-text note
+  ///
+  /// In en, this message translates to:
+  /// **'What should we know?'**
+  String get parkCourseReportNotesLabel;
+
+  /// Report sheet: hint inside the note field
+  ///
+  /// In en, this message translates to:
+  /// **'Where on the course, what you saw and when.'**
+  String get parkCourseReportNotesHint;
+
+  /// Report sheet: label of the optional contact email field
+  ///
+  /// In en, this message translates to:
+  /// **'Your email (optional)'**
+  String get parkCourseReportEmailLabel;
+
+  /// Report sheet: the contact email label when the reason needs an address (a rights-holder request). Mirrors web parks.report.emailLabelRequired
+  ///
+  /// In en, this message translates to:
+  /// **'Your email'**
+  String get parkCourseReportEmailLabelRequired;
+
+  /// Report sheet: what the contact email is used for and when it is deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Only if you\'d like a reply. We use it to answer this report and delete it 30 days after we resolve it.'**
+  String get parkCourseReportEmailHint;
+
+  /// Report sheet: why a rights-holder request needs the email and when it is deleted. Mirrors web parks.report.emailHintRequired
+  ///
+  /// In en, this message translates to:
+  /// **'Needed for a rights-holder request so we can answer it. We delete it 30 days after we resolve the request.'**
+  String get parkCourseReportEmailHintRequired;
+
+  /// Report sheet: cancel button
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get parkCourseReportCancel;
+
+  /// Report sheet: send button
+  ///
+  /// In en, this message translates to:
+  /// **'Send report'**
+  String get parkCourseReportSubmit;
+
+  /// Banner after a report was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks. Your report is with the Threkir team.'**
+  String get parkCourseReportSent;
+
+  /// Report sheet error: sending failed for an unknown reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the report. Try again.'**
+  String get parkCourseReportErrorFailed;
+
+  /// Report sheet error: too many reports right now
+  ///
+  /// In en, this message translates to:
+  /// **'Too many reports right now. Try again later.'**
+  String get parkCourseReportErrorRateLimited;
+
+  /// Report sheet error: this person already has an open report on this course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve already reported this course, and that report is still open.'**
+  String get parkCourseReportErrorAlreadyReported;
+
+  /// Report sheet error: the course is no longer listed
+  ///
+  /// In en, this message translates to:
+  /// **'This course is no longer listed.'**
+  String get parkCourseReportErrorNotFound;
+
+  /// Report sheet error: the server refused the report as invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Check the report and try again.'**
+  String get parkCourseReportErrorInvalid;
+
+  /// Report sheet: the contact email is not shaped like an address
+  ///
+  /// In en, this message translates to:
+  /// **'That email address doesn\'t look right.'**
+  String get parkCourseReportErrorEmail;
+
+  /// Report sheet: a rights-holder request was sent with no email. Mirrors web parks.report.errorEmailRequired
+  ///
+  /// In en, this message translates to:
+  /// **'A rights-holder request needs an email address so we can answer it.'**
+  String get parkCourseReportErrorEmailRequired;
+
+  /// Notification text, app admins only: someone reported a problem with a park course
+  ///
+  /// In en, this message translates to:
+  /// **'A park course was reported'**
+  String get profileNotifParkCourseReport;
+
+  /// Rate-limit refusal when the direct-message reaction bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re reacting too quickly — please wait {wait} and try again.'**
+  String rateLimitReaction(String wait);
+
+  /// Rate-limit refusal when the direct-message photo upload bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve sent a lot of photos — please wait {wait} and try again.'**
+  String rateLimitPhotoUpload(String wait);
+
+  /// Rate-limit refusal when the create_group_conversation bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re creating groups too quickly — please wait {wait} and try again.'**
+  String rateLimitCreateGroup(String wait);
+
+  /// Rate-limit refusal when the invite_to_group bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve sent a lot of group invitations today — please wait {wait} and try again.'**
+  String rateLimitInviteToGroup(String wait);
+
+  /// Settings switch: let people you share a club or an event with message you first
+  ///
+  /// In en, this message translates to:
+  /// **'Message requests'**
+  String get prefsMessageRequests;
+
+  /// Subtitle of the message requests switch
+  ///
+  /// In en, this message translates to:
+  /// **'Let people you share a club or an event with message you first. Turn this off and only people you follow, or who follow you, can start a conversation with you.'**
+  String get prefsMessageRequestsHint;
+
+  /// Banner when the message requests switch could not be saved; the switch reverts
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update message requests.'**
+  String get prefsMessageRequestsFailed;
+
+  /// Option in a message's long-press menu that opens the reaction picker
+  ///
+  /// In en, this message translates to:
+  /// **'React'**
+  String get messagesReact;
+
+  /// Title of the sheet listing the six reactions a message can take
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a reaction'**
+  String get messagesReactPickerLabel;
+
+  /// Accessible label of a reaction chip under a message: the reaction's name and how many people chose it
+  ///
+  /// In en, this message translates to:
+  /// **'{reaction}, {count}'**
+  String messagesReactionChipLabel(String reaction, int count);
+
+  /// Name of the thumbs-up reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Thumbs up'**
+  String get messagesReactionThumbsUp;
+
+  /// Name of the heart reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Heart'**
+  String get messagesReactionHeart;
+
+  /// Name of the laughing-face reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Laughing'**
+  String get messagesReactionLaugh;
+
+  /// Name of the surprised-face reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Surprised'**
+  String get messagesReactionSurprised;
+
+  /// Name of the sad-face reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Sad'**
+  String get messagesReactionSad;
+
+  /// Name of the fire reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Fire'**
+  String get messagesReactionFire;
+
+  /// Banner when a reaction was refused; the same sentence for every reason so a block is not revealed
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t react to this message.'**
+  String get messagesReactionRefused;
+
+  /// Hint text in the search field above the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages'**
+  String get messagesSearchPlaceholder;
+
+  /// Accessible label of the search field above the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Search your messages'**
+  String get messagesSearchLabel;
+
+  /// Shown when a search of the viewer's messages finds nothing
+  ///
+  /// In en, this message translates to:
+  /// **'No messages match.'**
+  String get messagesSearchEmpty;
+
+  /// Shown when a search of the viewer's messages failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t search your messages. Try again.'**
+  String get messagesSearchFailed;
+
+  /// Tooltip of the composer button that picks a photo to send
+  ///
+  /// In en, this message translates to:
+  /// **'Attach a photo'**
+  String get messagesPhotoAttach;
+
+  /// Tooltip of the button that removes the picked photo from the composer
+  ///
+  /// In en, this message translates to:
+  /// **'Remove photo'**
+  String get messagesPhotoRemove;
+
+  /// Accessible label of the picked photo shown above the composer
+  ///
+  /// In en, this message translates to:
+  /// **'Photo to send'**
+  String get messagesPhotoDraftAlt;
+
+  /// Accessible label of a photo sent in a message
+  ///
+  /// In en, this message translates to:
+  /// **'Photo in the message'**
+  String get messagesPhotoAlt;
+
+  /// Shown in place of a sent photo while the server is still preparing it
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing photo…'**
+  String get messagesPhotoProcessing;
+
+  /// Shown in place of a photo the server could not process
+  ///
+  /// In en, this message translates to:
+  /// **'This photo couldn\'t be sent.'**
+  String get messagesPhotoRejected;
+
+  /// Shown in place of a photo that could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Photo unavailable'**
+  String get messagesPhotoUnavailableToView;
+
+  /// Inbox preview of a latest message that is a photo with no caption
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get messagesPhotoPreview;
+
+  /// Shown when a picked photo is still too large after it was shrunk
+  ///
+  /// In en, this message translates to:
+  /// **'That photo is too large to send.'**
+  String get messagesPhotoTooLarge;
+
+  /// Shown when a picked file could not be decoded as a photo
+  ///
+  /// In en, this message translates to:
+  /// **'That file couldn\'t be read as a photo.'**
+  String get messagesPhotoUnreadable;
+
+  /// Shown when the server has photos in messages switched off
+  ///
+  /// In en, this message translates to:
+  /// **'Photos in messages aren\'t available yet.'**
+  String get messagesPhotoUnavailable;
+
+  /// Shown when uploading a photo for a message failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t upload the photo. Try again.'**
+  String get messagesPhotoUploadFailed;
+
+  /// Shown when a message with a photo was refused; deliberately does not say which rule refused it
+  ///
+  /// In en, this message translates to:
+  /// **'Photos can go to people you follow or who follow you, or into a conversation they\'ve accepted, unless either of you has blocked the other.'**
+  String get messagesPhotoSendNotAllowed;
+
+  /// Banner when a link in a message could not be opened in the browser
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open that link.'**
+  String get messagesLinkOpenFailed;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.newGroup
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get groupsNewGroup;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.groupFallback
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get groupsGroupFallback;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.memberCount
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} member} other {{count} members}}'**
+  String groupsMemberCount(int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.membersTitle
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} member} other {{count} members}}'**
+  String groupsMembersTitle(int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.membersButton
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get groupsMembersButton;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.youLeftPreview
+  ///
+  /// In en, this message translates to:
+  /// **'You left this group'**
+  String get groupsYouLeftPreview;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renamedPreview
+  ///
+  /// In en, this message translates to:
+  /// **'Group renamed to {title}'**
+  String groupsRenamedPreview(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.noMessagesYet
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get groupsNoMessagesYet;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.invitesHeading
+  ///
+  /// In en, this message translates to:
+  /// **'Group invitations'**
+  String get groupsInvitesHeading;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteLine
+  ///
+  /// In en, this message translates to:
+  /// **'{name} invited you · {count, plural, one {{count} member} other {{count} members}}'**
+  String groupsInviteLine(String name, int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteAccept
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get groupsInviteAccept;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteDecline
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get groupsInviteDecline;
+
+  /// Button on a group invitation row under Requests that opens the report sheet for the invite (its title and who sent it)
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get groupsInviteReport;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteAcceptedToast
+  ///
+  /// In en, this message translates to:
+  /// **'You joined {title}'**
+  String groupsInviteAcceptedToast(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteDeclinedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation declined'**
+  String get groupsInviteDeclinedToast;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteActionFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t answer the invitation: {error}'**
+  String groupsInviteActionFailed(String error);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteDeclineConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Decline the invitation to {title}?'**
+  String groupsInviteDeclineConfirmTitle(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteDeclineConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'You won\'t join the group, and it can\'t invite you again for 14 days. Nobody is told why.'**
+  String get groupsInviteDeclineConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createTitle
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get groupsCreateTitle;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.titleLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Group name'**
+  String get groupsTitleLabel;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createHint
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least two people. Each gets an invitation and joins only if they accept. People see messages from the moment they join.'**
+  String get groupsCreateHint;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createSubmit
+  ///
+  /// In en, this message translates to:
+  /// **'Create group'**
+  String get groupsCreateSubmit;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.creating
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get groupsCreating;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createdToast
+  ///
+  /// In en, this message translates to:
+  /// **'{title} created. Invitations sent.'**
+  String groupsCreatedToast(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create the group.'**
+  String get groupsCreateFailed;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleLoadFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the people you can invite.'**
+  String get groupsPeopleLoadFailed;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody to invite yet. You can invite people you follow or who follow you.'**
+  String get groupsPeopleEmpty;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleSearch
+  ///
+  /// In en, this message translates to:
+  /// **'Search people'**
+  String get groupsPeopleSearch;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleSelected
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {max} selected'**
+  String groupsPeopleSelected(int count, int max);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleNoMatches
+  ///
+  /// In en, this message translates to:
+  /// **'No one matches that name.'**
+  String get groupsPeopleNoMatches;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleFull
+  ///
+  /// In en, this message translates to:
+  /// **'A group holds at most 32 people, invitations included. {max} more can be invited.'**
+  String groupsPeopleFull(int max);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Group conversations aren\'t available right now.'**
+  String get groupsUnavailable;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.notFound
+  ///
+  /// In en, this message translates to:
+  /// **'This group isn\'t available.'**
+  String get groupsNotFound;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.notAvailable
+  ///
+  /// In en, this message translates to:
+  /// **'This group isn\'t available.'**
+  String get groupsNotAvailable;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.actionRefused
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t do that in this group.'**
+  String get groupsActionRefused;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteRefused
+  ///
+  /// In en, this message translates to:
+  /// **'One of these people can\'t be invited.'**
+  String get groupsInviteRefused;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.capReached
+  ///
+  /// In en, this message translates to:
+  /// **'A group holds at most 32 people, invitations included.'**
+  String get groupsCapReached;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.titleInvalid
+  ///
+  /// In en, this message translates to:
+  /// **'A group name is 1 to 60 characters.'**
+  String get groupsTitleInvalid;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.sendNotAllowed
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t send to this group.'**
+  String get groupsSendNotAllowed;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.actionFailed
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work: {error}'**
+  String groupsActionFailed(String error);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.historyNote
+  ///
+  /// In en, this message translates to:
+  /// **'Messages from before you joined aren\'t shown.'**
+  String get groupsHistoryNote;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.emptyThread
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet. Say hello.'**
+  String get groupsEmptyThread;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.blockedPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Message from someone you blocked'**
+  String get groupsBlockedPlaceholder;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renamedLine
+  ///
+  /// In en, this message translates to:
+  /// **'{name} renamed the group to {title}'**
+  String groupsRenamedLine(String name, String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renamedLineYou
+  ///
+  /// In en, this message translates to:
+  /// **'You renamed the group to {title}'**
+  String groupsRenamedLineYou(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leftNotice
+  ///
+  /// In en, this message translates to:
+  /// **'You left this group. You can still unsend your own messages.'**
+  String get groupsLeftNotice;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.composerLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Message {title}'**
+  String groupsComposerLabel(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leave
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get groupsLeave;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leaveConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Leave {title}?'**
+  String groupsLeaveConfirmTitle(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leaveConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll stop seeing the group\'s messages at once, and you need a new invitation to come back. Your own messages stay in the group until you unsend them. Anything already on other members\' devices stays there.'**
+  String get groupsLeaveConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leftToast
+  ///
+  /// In en, this message translates to:
+  /// **'You left {title}'**
+  String groupsLeftToast(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.rename
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get groupsRename;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renameSave
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get groupsRenameSave;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renamedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Group renamed'**
+  String get groupsRenamedToast;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteMore
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get groupsInviteMore;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteSend
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Invite {count} person} other {Invite {count} people}}'**
+  String groupsInviteSend(int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.invitedToast
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Invitation sent} other {{count} invitations sent}}'**
+  String groupsInvitedToast(int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.roleInvited
+  ///
+  /// In en, this message translates to:
+  /// **'Invited'**
+  String get groupsRoleInvited;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.youSuffix
+  ///
+  /// In en, this message translates to:
+  /// **'(you)'**
+  String get groupsYouSuffix;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.makeAdmin
+  ///
+  /// In en, this message translates to:
+  /// **'Make admin'**
+  String get groupsMakeAdmin;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removeAdmin
+  ///
+  /// In en, this message translates to:
+  /// **'Remove as admin'**
+  String get groupsRemoveAdmin;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.madeAdminToast
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now an admin'**
+  String groupsMadeAdminToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removedAdminToast
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is no longer an admin'**
+  String groupsRemovedAdminToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.makeOwner
+  ///
+  /// In en, this message translates to:
+  /// **'Make owner'**
+  String get groupsMakeOwner;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.transferConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Make {name} the owner?'**
+  String groupsTransferConfirmTitle(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.transferConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'You become an admin. Only the new owner can give ownership back.'**
+  String get groupsTransferConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.transferredToast
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now the owner'**
+  String groupsTransferredToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.remove
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get groupsRemove;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removeConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from the group?'**
+  String groupsRemoveConfirmTitle(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removeConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'They stop seeing the group\'s messages at once and need a new invitation to come back. Their own messages stay. They aren\'t told who removed them.'**
+  String get groupsRemoveConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removedToast
+  ///
+  /// In en, this message translates to:
+  /// **'{name} was removed'**
+  String groupsRemovedToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.cancelInvite
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel invitation'**
+  String get groupsCancelInvite;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.cancelInviteConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel the invitation to {name}?'**
+  String groupsCancelInviteConfirmTitle(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.cancelInviteConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'They won\'t be able to join with it. You can invite them again later.'**
+  String get groupsCancelInviteConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteCancelledToast
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation to {name} cancelled'**
+  String groupsInviteCancelledToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's notificationsList.verbGroupMessage
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wrote in a group'**
+  String profileNotifGroupMessage(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's notificationsList.verbGroupInvite
+  ///
+  /// In en, this message translates to:
+  /// **'{name} invited you to a group'**
+  String profileNotifGroupInvite(String name);
 }
 
 class _AppLocalizationsDelegate

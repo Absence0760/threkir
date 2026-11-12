@@ -19,16 +19,22 @@
 // Function env toggles, web flags and cron URL entries, then the one-off
 // tasks in apps/backend/ops/tasks/. The config is guarded before any stage
 // runs.
+//
+// The official content catalogue comes last (issue #1190, decisions § 2446),
+// after the config, so a flag the same release turns on (official_race_courses)
+// is the one its load reads.
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
+import { officialCatalogueStage } from '../official/sync.mjs';
 import { parkCatalogueStage } from '../parks/sync.mjs';
 import { prodConfigStages } from './config.mjs';
 import { runStages } from './lib/stages.mjs';
 
 /** @type {(() => import('./lib/stages.mjs').Stage | import('./lib/stages.mjs').Stage[])[]} */
-export const STAGES = [parkCatalogueStage, prodConfigStages];
+export const STAGES = [parkCatalogueStage, prodConfigStages, officialCatalogueStage];
 
 function main() {
 	const args = process.argv.slice(2);
@@ -80,4 +86,4 @@ function main() {
 	}
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

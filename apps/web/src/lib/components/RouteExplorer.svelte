@@ -4,6 +4,7 @@
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { ParkCourseRouteLookup } from '#lib/parks/park_course_routes.svelte.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
@@ -312,29 +313,24 @@
 	{/if}
 
 	{#if searchError && routes.length === 0}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">error_outline</span>
-			<h3>{t('routeExplorer.searchErrorTitle')}</h3>
-			<div class="empty-actions">
+		<EmptyState icon="error_outline" tone="danger" title={t('routeExplorer.searchErrorTitle')} role="alert">
+			{#snippet actions()}
 				<button class="btn btn-primary" onclick={search}>{t('routeExplorer.searchErrorRetry')}</button>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	{/if}
 
 	{#if routes.length === 0 && !loading && !searchError}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">explore</span>
-			<h3>{query ? t('routeExplorer.emptyNoMatch') : t('routeExplorer.emptyNone')}</h3>
-			<p class="empty-text">
-				{#if query}
-					{t('routeExplorer.emptyQueryHint')}
-				{:else if mode === 'nearby'}
-					{t('routeExplorer.emptyNearbyHint')}
-				{:else}
-					{t('routeExplorer.emptyDefaultHint')}
-				{/if}
-			</p>
-			<div class="empty-actions">
+		<EmptyState
+			icon="explore"
+			title={query ? t('routeExplorer.emptyNoMatch') : t('routeExplorer.emptyNone')}
+			text={query
+				? t('routeExplorer.emptyQueryHint')
+				: mode === 'nearby'
+					? t('routeExplorer.emptyNearbyHint')
+					: t('routeExplorer.emptyDefaultHint')}
+		>
+			{#snippet actions()}
 				<a href="/routes/new" class="btn btn-primary">
 					<span class="material-symbols" aria-hidden="true">add</span>
 					{t('routeExplorer.buildRoute')}
@@ -355,8 +351,8 @@
 						{t('routeExplorer.clearFilters')}
 					</button>
 				{/if}
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<div class="route-grid">
 			{#each routes as route}
@@ -592,47 +588,6 @@
 	.filters select:focus-visible {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
-	}
-
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-	.empty-actions .material-symbols {
-		font-size: 1.1rem;
 	}
 
 	/* Skeleton (SkeletonBlock). Card layout mirrors the real route-card so

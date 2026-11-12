@@ -6,6 +6,7 @@
 	import ChallengeProgressBar from '#lib/components/ChallengeProgressBar.svelte';
 	import { myProgressView } from '#lib/social/challenge_list.ts';
 	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { goto } from '$app/navigation';
@@ -147,10 +148,7 @@
 		{:else if mine === null}
 			<p class="muted">…</p>
 		{:else if mine.length === 0}
-			<div class="empty-state">
-				<span class="material-symbols" aria-hidden="true">trophy</span>
-				<p>{m('challenges.empty')}</p>
-			</div>
+			<EmptyState icon="trophy" headingLevel={3} title={m('challenges.empty')} />
 		{:else}
 			<ul class="list">
 				{#each mine as c (c.id)}
@@ -228,10 +226,7 @@
 		{:else if browse === null}
 			<p class="muted">…</p>
 		{:else if browse.length === 0}
-			<div class="empty-state">
-				<span class="material-symbols" aria-hidden="true">search</span>
-				<p>{m('challenges.browseEmpty')}</p>
-			</div>
+			<EmptyState icon="search" headingLevel={3} title={m('challenges.browseEmpty')} />
 		{:else}
 			<ul class="list">
 				{#each browse as c (c.id)}
@@ -450,26 +445,6 @@
 	}
 	.muted {
 		color: var(--color-text-secondary);
-	}
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-lg);
-		color: var(--color-text-secondary);
-		text-align: center;
-	}
-	.empty-state .material-symbols {
-		font-size: 2rem;
-		width: 2rem;
-		height: 2rem;
-		color: var(--color-text-tertiary);
-	}
-	.empty-state p {
-		margin: 0;
 	}
 	.error-banner {
 		display: flex;

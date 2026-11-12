@@ -148,8 +148,10 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
     // Each of these holds the scale (or one entry of it) in a local and paints
     // bars, strokes, dots or a cell edge with it — no `TextStyle` in any.
     'lib/widgets/activity_heatmap.dart': 1,
-    // The HR-zone bar, and the elevation chart's line + fill colour.
-    'lib/screens/run_detail_screen.dart': 2,
+    // The HR-zone bar.
+    'lib/screens/run_detail_screen.dart': 1,
+    // The elevation chart's line + fill colour.
+    'lib/widgets/elevation_chart.dart': 1,
     'lib/widgets/intensity_card.dart': 1,
     'lib/widgets/mileage_trend_card.dart': 1,
     'lib/widgets/this_week_strip.dart': 1,

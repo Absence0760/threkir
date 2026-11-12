@@ -447,17 +447,23 @@ class CheckpointSerializationTest {
         val decoded = json.decodeFromString(Checkpoint.serializer(), preEstimator)
         assertNull(decoded.distanceEstimator)
         assertNull(decoded.distanceStepFilledM)
+        assertNull(decoded.distanceStepOverChordM)
     }
 
     @Test
     fun `distance estimator fields round-trip through JSON`() {
-        val cp = sample.copy(distanceEstimator = GpsDistanceEstimator.SPEC_ID, distanceStepFilledM = 78.4)
+        val cp = sample.copy(
+            distanceEstimator = GpsDistanceEstimator.SPEC_ID,
+            distanceStepFilledM = 78.4,
+            distanceStepOverChordM = 12.5,
+        )
         val decoded = json.decodeFromString(
             Checkpoint.serializer(),
             json.encodeToString(Checkpoint.serializer(), cp),
         )
         assertEquals("kalman_v1", decoded.distanceEstimator)
         assertEquals(78.4, decoded.distanceStepFilledM!!, 0.0)
+        assertEquals(12.5, decoded.distanceStepOverChordM!!, 0.0)
     }
 
     @Test

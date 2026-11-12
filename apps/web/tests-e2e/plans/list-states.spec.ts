@@ -88,10 +88,20 @@ test.describe('/plans card states', () => {
 		await expect(c25k).toHaveAccessibleDescription(
 			/^9 weeks · 3 days a week · \d+–\d+ min a session · Starts /
 		);
-		await expect(starters.getByRole('button')).toHaveText([
+		// Each starter is one tile whose accessible name is the plan alone, so
+		// its summary and "Start this plan" call to action don't pad what a
+		// screen reader announces for it.
+		const tiles = starters.getByRole('button');
+		await expect(tiles).toHaveCount(3);
+		for (const [i, name] of [
 			'Couch to 5K (beginner walk-run)',
 			'Half Marathon — 12 weeks',
 			'Marathon — 16 weeks'
-		]);
+		].entries()) {
+			await expect(tiles.nth(i)).toHaveAccessibleName(name);
+			await expect(tiles.nth(i)).toContainText('Start this plan');
+		}
+		// No plans means nothing to filter, so the status filter is withheld.
+		await expect(page.getByRole('group', { name: /Filter plans by status/ })).toHaveCount(0);
 	});
 });

@@ -130,7 +130,7 @@ The map auto-centres on the user's position during the run (follow mode). Users 
 
 **Spec:**
 
-A chronological list of all runs, newest first. Each row shows: date, distance, duration, pace, and source badge (if imported from Strava, parkrun, etc.).
+A chronological list of all runs, newest first. Each row shows: date, distance, duration, pace, and source badge (if imported from Strava, a health platform, etc.; runs imported from parkrun before its import was removed keep their parkrun badge).
 
 Tapping a run opens the detail view:
 - Full-screen map showing the GPS trace
@@ -160,7 +160,7 @@ Auth providers: Apple Sign-In (required on iOS per App Store guidelines) and Goo
 
 On first launch, users see a sign-in screen. After auth, all subsequent app opens check for a valid session silently — no login screen unless the session has expired (30 days).
 
-After sign-up, the setup wizard ends with an optional "Bring your running history" step that opens the existing Strava, Garmin export, parkrun and (on mobile) Health Connect / Apple Health imports, so the dashboard, PRs and badges can fill on day one — see [integrations.md § Onboarding entry point](../features/integrations.md#onboarding-entry-point).
+After sign-up, the setup wizard ends with an optional "Bring your running history" step that opens the existing Strava, Garmin export and (on mobile) Health Connect / Apple Health imports, so the dashboard, PRs and badges can fill on day one — see [integrations.md § Onboarding entry point](../features/integrations.md#onboarding-entry-point).
 
 Sync strategy: write-to-local-first, sync-in-background. Runs are written to JSON files on disk (`LocalRunStore`) immediately on save. A background sync process (foreground triggers + connectivity change + hourly WorkManager on Android) uploads pending runs to Supabase. Conflicts (same run modified on two devices) resolve via `metadata.last_modified_at` — last-write-wins.
 
@@ -673,7 +673,7 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 **Stub:** plan → weeks → workouts data model (already partially sketched in `roadmap.md § Premium tier`); web plan editor; "today's workout" dashboard card; execution loop in the run screen; auto-match planned vs actual.
 
 ### External platform sync (OAuth)
-**Closes:** Strava, Garmin Connect, Apple Health, Health Connect, parkrun, RunSignUp.
+**Closes:** Strava, Garmin Connect, Apple Health, Health Connect, RunSignUp. (parkrun was here until its scraped import was removed, [decisions § 2467](../architecture/decisions.md).)
 **Stub:** one OAuth Edge Function per provider with token refresh, webhook or polling ingest, bidirectional for Strava. Garmin Connect is gated on business approval — do not block on it.
 
 ### Segments + leaderboards
@@ -695,6 +695,8 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 **Stub:** `follows` table; activity feed of people you follow; kudos (one-tap); threaded comments on runs; per-user privacy zones that blur start/end within radius.
 **Shipped (web, Android + iOS):** 1:1 **direct messages** (persona #55) — `/messages` on web, the Messages inbox + conversation screens on mobile (decisions § 1916), gated on the follow graph + blocks, with a `message` notification. Either side can block from inside the conversation. Realtime delivery + a non-follower "message requests" inbox are deferred; both platforms poll an open inbox (30 s) and conversation (10 s) instead ([direct_messages.md](../features/direct_messages.md)).
 
+**Shipped behind the default-off `group_messages` flag (web, Android + iOS):** group conversations (issue #1365, [group_messages.md](../features/group_messages.md), decisions § 2461 / § 2463 / § 2468): invite-only groups of up to 32 people from your follow graph, invitations under Requests, a thread with sender names, rename lines, mute, leave and per-group drafts, and a members sheet for invites, roles, ownership hand-over and removal. The 1:1 tools (edit, unsend, reactions, photos, report) work inside a group. Realtime and club channels are later slices.
+
 ### Gear tracking
 **Closes:** Strava, Garmin.
 **Stub:** shoes and bikes as `gear` rows; `run_gear` link table; auto-compute total mileage; retirement reminder at user-chosen threshold (default 500 mi for shoes).
@@ -709,7 +711,7 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 
 ### Race calendar + results import
 **Closes:** Garmin, Runna.
-**Stub:** `races` table seeded from RunSignUp + parkrun imports; discovery by location; "register" deep-links to the organiser's page; auto-match recorded runs on race day to produce a result entry.
+**Stub:** `races` table seeded from RunSignUp listings; discovery by location; "register" deep-links to the organiser's page; auto-match recorded runs on race day to produce a result entry.
 
 ### Advanced analytics
 **Closes:** Garmin, Runna.

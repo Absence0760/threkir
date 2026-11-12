@@ -3,7 +3,7 @@ name: Advance the Play production rollout
 # Walks a staged production rollout of com.threkir.app up the ramp in
 # scripts/play_release.mjs (1%, 2%, 5%, 10%, 20%, 50%, then completed), one
 # step a day, the Android counterpart of the App Store's 7-day phased release
-# (decisions § 2433). release-android.yml starts the rollout at 1%; this only
+# (decisions § 2478). release-android.yml starts the rollout at 1%; this only
 # moves one already published. It does nothing while the release is in review
 # or waiting to be published, while other changes are in review, or when the
 # rollout is halted: a halt in Play Console is the brake, and only Play

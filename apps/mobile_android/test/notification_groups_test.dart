@@ -18,6 +18,7 @@ NotificationRow n({
   String? planId,
   String? achievementId,
   String? challengeId,
+  String? conversationId,
   DateTime? readAt,
   DateTime? createdAt,
 }) {
@@ -33,6 +34,7 @@ NotificationRow n({
     planId: planId,
     achievementId: achievementId,
     challengeId: challengeId,
+    conversationId: conversationId,
     readAt: readAt,
     createdAt: createdAt ?? ago(0),
     refunded: false,
@@ -213,6 +215,53 @@ void main() {
       expect(u1.otherCount, 1);
     });
 
+    test('group messages collapse per group, never per sender', () {
+      final groups = groupNotifications([
+        n(
+            id: 'g1',
+            kind: 'message',
+            actorId: 'u1',
+            conversationId: 'c1',
+            createdAt: ago(1000)),
+        n(
+            id: 'g2',
+            kind: 'message',
+            actorId: 'u2',
+            conversationId: 'c1',
+            createdAt: ago(2000)),
+        n(
+            id: 'g3',
+            kind: 'message',
+            actorId: 'u1',
+            conversationId: 'c2',
+            createdAt: ago(1500)),
+        n(id: 'd1', kind: 'message', actorId: 'u1', createdAt: ago(1200)),
+      ], nowMs: now);
+      expect(groups.length, 3);
+      final c1 = groups.firstWhere((g) => g.lead.id == 'g1');
+      expect(c1.others.map((o) => o.id).toList(), ['g2']);
+      expect(groups.firstWhere((g) => g.lead.id == 'd1').otherCount, 0,
+          reason: 'a 1:1 message stays apart from a group');
+    });
+
+    test('group invitations never collapse, even into one group', () {
+      final groups = groupNotifications([
+        n(
+            id: 'i1',
+            kind: 'group_invite',
+            actorId: 'u1',
+            conversationId: 'c1',
+            createdAt: ago(1000)),
+        n(
+            id: 'i2',
+            kind: 'group_invite',
+            actorId: 'u1',
+            conversationId: 'c2',
+            createdAt: ago(2000)),
+      ], nowMs: now);
+      expect(groups.map((g) => g.otherCount).toList(), [0, 0]);
+    });
+
     test('a null target never merges two rows', () {
       final groups = groupNotifications([
         n(id: 'a', kind: 'kudos', runId: null, createdAt: ago(1000)),
@@ -283,6 +332,21 @@ void main() {
           ['m1', 0],
           ['l1', 0],
           ['r2', 1],
+        ],
+      );
+    });
+
+    test('race start notices collapse per event', () {
+      final groups = groupNotifications([
+        n(id: 'm1', kind: 'race_start_moved', eventId: 'ev1', createdAt: ago(1000)),
+        n(id: 'm2', kind: 'race_start_moved', eventId: 'ev1', createdAt: ago(2000)),
+        n(id: 's1', kind: 'race_starting_soon', eventId: 'ev2', createdAt: ago(3000)),
+      ], nowMs: now);
+      expect(
+        groups.map((g) => [g.lead.id, g.otherCount]).toList(),
+        [
+          ['m1', 1],
+          ['s1', 0],
         ],
       );
     });

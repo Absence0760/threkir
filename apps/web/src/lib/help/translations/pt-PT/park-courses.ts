@@ -8,16 +8,17 @@ export const translation: GuideTranslation = {
 		{
 			heading: "O que é um percurso de parque",
 			blocks: [
-				{ type: 'p', text: "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em [[route:/parks|Percursos de parques]]." },
+				{ type: 'p', text: "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando indica um local, ou veja todos em [[route:/parks|Percursos de parques]]." },
 				{
 					type: 'list',
 					items: [
 						"É um contrarrelógio, não uma prova. O trilho continua aberto a todos e ninguém o controla, por isso cumpra as regras do parque e dê passagem às outras pessoas no trilho.",
 						"Cada página de percurso mostra a distância, o desnível positivo, o formato, o piso e a dificuldade, de onde vem a linha do percurso e se está aberto.",
 						"Selecione **Navegar neste percurso** para seguir o percurso como uma rota. A opção não aparece enquanto o percurso estiver fechado.",
+						"O **Guia do percurso** na página do percurso indica onde estacionar e cada mudança de direção pela ordem, com o nome do trilho, além das pontes, vaus, mudanças de piso e subidas. É elaborado a partir de dados do mapa; enquanto ninguém o tiver verificado no parque, isso aparece acima da lista. O mesmo guia vem no ficheiro GPX do percurso.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Um percurso fechado mantém os tempos e as classificações, mas não o corra até reabrir. A página mostra quando o estado foi verificado pela última vez." },
+				{ type: 'note', tone: 'caution', text: "Um percurso fechado não aceita tempos novos: uma corrida nele enquanto está fechado não é cronometrada, e os tempos que já tem mantêm-se nas classificações. Não o corra até reabrir. A página mostra quando o estado foi verificado pela última vez." },
 			],
 		},
 		{
@@ -72,11 +73,12 @@ export const translation: GuideTranslation = {
 		title: "c0967d2bf224e3d2",
 		summary: "6a173631b44944bc",
 		"s0.heading": "216fc084817bfda9",
-		"s0.b0": "b14392ecc1ced0da",
+		"s0.b0": "a96a5717c602367f",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",
-		"s0.b2": "6a9e63c1eec9c80f",
+		"s0.b1.i3": "a75477f7d5a5a5bc",
+		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",
 		"s1.b0": "f00cd3cca5bfc92f",
 		"s1.b1": "36e6dc7fd586b7d7",

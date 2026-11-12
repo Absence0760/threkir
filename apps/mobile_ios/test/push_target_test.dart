@@ -40,6 +40,18 @@ void main() {
           const PushTarget(PushTargetKind.messages, 'user-4'));
     });
 
+    test('/messages/group/{id} opens the group, not a partner named group', () {
+      expect(pushTargetFromUrl('$_base/messages/group/c-9'),
+          const PushTarget(PushTargetKind.groupThread, 'c-9'));
+      expect(pushTargetFromUrl('$_base/messages/group'),
+          const PushTarget(PushTargetKind.messages));
+    });
+
+    test('a group invitation opens the inbox on its Requests list', () {
+      expect(pushTargetFromUrl('$_base/messages?view=requests'),
+          const PushTarget(PushTargetKind.messageRequests));
+    });
+
     test('run family → /runs/{id}', () {
       expect(pushTargetFromUrl('$_base/runs/run-9'),
           const PushTarget(PushTargetKind.run, 'run-9'));

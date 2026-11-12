@@ -171,8 +171,11 @@ class RunRecorder {
   static const _uuid = Uuid();
 
   /// `metadata.distance_estimator` on a GPS-distance run whose saved distance
-  /// is the spec v1.4 smoother's ([smoothDistance]). The live screen reads the
-  /// forward filter; [stop] replays every stretch through the smoother.
+  /// is the smoother's ([smoothDistance]), spec v1.6 since the live save
+  /// shares step samples across gaps. The marker is unchanged from v1.4: no
+  /// rule reads it to tell v1.4-v1.6 saves apart, and no server path feeds
+  /// steps. The live screen reads the forward filter; [stop] replays every
+  /// stretch through the smoother.
   static const distanceEstimatorVersion = 'kalman_v4';
 
   /// How often [prepare] retries opening the position stream when it is
@@ -1486,8 +1489,9 @@ class RunRecorder {
   }
 
   // The estimator re-anchors across a fix interval longer than this, crediting
-  // none of it, so the pace window must not span it either. Mirrors the
-  // estimator's own scaling of [GpsDistanceEstimator.gapS].
+  // only a lower bound for it (its chord, or the steps), so the pace window
+  // must not span it either. Mirrors the estimator's own scaling of
+  // [GpsDistanceEstimator.gapS].
   static final double _estimatorGapS = GpsDistanceEstimator.gapS *
       max(1.0, _fixInterval.inMilliseconds / 1000);
 
@@ -1521,15 +1525,24 @@ class RunRecorder {
   static double _seconds(Duration d) =>
       (d.inMicroseconds * 1024 / 1e6).roundToDouble() / 1024;
 
+  static final double _fixIntervalS = _seconds(_fixInterval);
+
   /// Estimator time for a fix, seconds, strictly monotonic within a stretch.
   ///
   /// Advances by the GPS-reported interval when it is positive and no longer
-  /// than the real elapsed time or [GpsDistanceEstimator.gapS], whichever is
-  /// larger, and by the [_stopwatch] interval otherwise. The GPS interval is
-  /// what keeps a burst of queued fixes (Android Doze batching, a CPU stall)
-  /// one second apart instead of crediting them nothing; the stopwatch is
-  /// what a backwards, stalled or leaping device clock falls back to, so a
-  /// wall-clock jump can neither freeze the distance nor credit an hour.
+  /// than the largest of: the real time since the previous fix arrived,
+  /// [GpsDistanceEstimator.gapS], and the interval that would put this fix's
+  /// time at its own arrival plus one [_fixInterval] of delivery jitter. By
+  /// the [_stopwatch] interval otherwise.
+  ///
+  /// The GPS interval keeps a burst of queued fixes (a delivery stall) one
+  /// second apart instead of crediting them nothing. The arrival bound times
+  /// a gap INSIDE such a burst: its fixes arrive microseconds apart, so the
+  /// time since the previous delivery says nothing about how far apart they
+  /// were taken, while a fix cannot have been taken after it arrived
+  /// (decisions § 2434). The stopwatch is what a backwards, stalled or
+  /// leaping device clock falls back to, so a wall-clock jump can neither
+  /// freeze the distance nor credit an hour.
   double _estimatorFixTime(DateTime gpsTime) {
     final mono = _stopwatch.elapsed;
     final lastT = _estFixT;
@@ -1541,8 +1554,10 @@ class RunRecorder {
     } else {
       final monoGap = _seconds(mono - lastMono);
       final gpsGap = _seconds(gpsTime.difference(lastGps));
-      final useGps =
-          gpsGap > 0 && gpsGap <= max(monoGap, GpsDistanceEstimator.gapS);
+      final arrivalBoundS = _seconds(mono) + _fixIntervalS - lastT;
+      final useGps = gpsGap > 0 &&
+          gpsGap <=
+              max(max(monoGap, GpsDistanceEstimator.gapS), arrivalBoundS);
       t = lastT + (useGps ? gpsGap : monoGap);
     }
     _estFixT = t;
@@ -1955,23 +1970,23 @@ class RunRecorder {
             monotonicGapSec >= _gpsReanchorAfterSeconds) {
           // Real GPS gap: the hop failed the < 100 m cap (the runner genuinely
           // moved away while fixes were dropped) but a genuine interval has
-          // elapsed. Rebase the anchor to this fresh fix WITHOUT crediting the
-          // un-sampled gap distance — exactly how resume() nulls the anchor so
-          // the first post-resume fix re-anchors. Without this the anchor stays
-          // stale, every later delta only grows past 100 m, and distance is
-          // frozen for the rest of the run (#330). Both gates must agree the
-          // gap is short for a hop to fail closed, so a zero/near-zero-dt
-          // duplicate arriving immediately is still rejected as a teleport.
+          // elapsed. Rebase the track anchor to this fresh fix, exactly how
+          // resume() nulls the anchor so the first post-resume fix
+          // re-anchors. Without this the anchor stays stale, every later
+          // delta only grows past 100 m, and the line is frozen for the rest
+          // of the run (#330). The rebase credits nothing: the estimator
+          // re-anchors on its own gap rule and credits the gap its chord lower
+          // bound (spec v1.4). Both gates must agree the gap is short for a
+          // hop to fail closed, so a zero/near-zero-dt duplicate arriving
+          // immediately is still rejected as a teleport.
           //
           // Seal the pace window at the same time, exactly as resume() and
-          // _beginResumed() do — this branch creates the identical
-          // discontinuity. A window spanning a gap whose metres were not
-          // credited times the wrong distance against the gap's clock: when
-          // pace was the track hop-sum, 5 clean fixes at 200 s/km followed by
-          // a 12 s Doze batch 150 m on measured 128 s/km. That value feeds the
-          // pace-alert and cut-off catch-up voice cues and live_cutoff_eta's
-          // projection, so the error ran in the direction that SUPPRESSES a
-          // safety warning.
+          // _beginResumed() do. Across the gap there is no sampled path to
+          // time, only a lower bound: when pace was the track hop-sum, 5 clean
+          // fixes at 200 s/km followed by a 12 s Doze batch 150 m on measured
+          // 128 s/km. That value feeds the pace-alert and cut-off catch-up
+          // voice cues and live_cutoff_eta's projection, so the error ran in
+          // the direction that SUPPRESSES a safety warning.
           _sealPaceWindow();
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
@@ -2267,11 +2282,12 @@ class RunRecorder {
   /// workout band share.
   ///
   /// The window never reaches back across a pause, a process-kill resume or a
-  /// re-anchored GPS gap (see [_sealPaceWindow]): those gaps' wall-clock time
-  /// carries no credited distance, so a window spanning one read a pace
-  /// hundreds of times too slow after a resume, and one spanning the #330 gap
-  /// re-anchor read far too fast. The run screen feeds this to the pace-alert
-  /// and cut-off catch-up voice cues and to the cut-off ETA projection.
+  /// re-anchored GPS gap (see [_sealPaceWindow]): none of those has a sampled
+  /// path to time (a pause and a kill credit nothing, a gap only a lower
+  /// bound), so a window spanning a resume read a pace hundreds of times too
+  /// slow, and one spanning the #330 gap re-anchor read far too fast. The run
+  /// screen feeds this to the pace-alert and cut-off catch-up voice cues and
+  /// to the cut-off ETA projection.
   double? _calculatePace() {
     if (_paceSamplesSinceSeal < _paceMinSamples || _paceSamples.length < 2) {
       return null;

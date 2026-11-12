@@ -3,6 +3,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { findGuidedRun } from '#lib/training/guided_runs.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 
 	let id = $derived(page.params.id ?? '');
 	// findGuidedRun reads the catalogue via `t`, so the $derived re-runs
@@ -45,13 +46,16 @@
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('guidedDetail.backToLibrary')}
 		</a>
-		<div class="empty">
-			<p class="empty-eyebrow">{t('guidedDetail.unknownRun')}</p>
-			<p class="empty-sub">
-				{t('guidedDetail.unknownRunSub')}
-			</p>
-			<a href="/guided" class="btn btn-primary">{t('guidedDetail.backToLibrary')}</a>
-		</div>
+		<EmptyState
+			icon="search_off"
+			title={t('guidedDetail.unknownRun')}
+			text={t('guidedDetail.unknownRunSub')}
+			data-testid="guided-unknown"
+		>
+			{#snippet actions()}
+				<a href="/guided" class="btn btn-primary">{t('guidedDetail.backToLibrary')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<a href="/guided" class="back-link" onclick={handleBack}>
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
@@ -112,30 +116,6 @@
 	}
 	.back-link .material-symbols {
 		font-size: 1.1rem;
-	}
-
-	.empty {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-md);
-		text-align: center;
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-	}
-	.empty-eyebrow {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 700;
-		color: var(--color-text);
-	}
-	.empty-sub {
-		margin: 0;
-		max-width: 28rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
 	}
 
 	.hero {

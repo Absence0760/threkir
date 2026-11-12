@@ -1,4 +1,3 @@
-import 'package:api_client/api_client.dart' show UltraSignUpPersonLink;
 import 'package:core_models/core_models.dart'
     show RouteMarkerRow, TrainingPlanRow, Waypoint;
 import 'package:flutter/material.dart';
@@ -165,7 +164,6 @@ class _FakeRaceService extends RaceService {
     required String provider,
     required String listingId,
     String? bib,
-    UltraSignUpPersonLink? ultraSignUpPerson,
     String? matchRunId,
     PastedRaceResult? result,
   }) async {

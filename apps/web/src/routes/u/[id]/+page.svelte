@@ -5,6 +5,7 @@
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { formatDuration, formatRelativeTime, activeFormatLocale } from '#lib/format/time.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -704,14 +705,11 @@
 			<button class="btn btn-outline" onclick={load}>{m('profile.retry')}</button>
 		</div>
 	{:else if !profile}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">person_off</span>
-			<h3>{m('profile.notFoundTitle')}</h3>
-			<p class="empty-text">
-				{m('profile.notFoundText')}
-			</p>
-			<a href="/dashboard" class="btn btn-primary">{m('profile.backToDashboard')}</a>
-		</div>
+		<EmptyState icon="person_off" title={m('profile.notFoundTitle')} text={m('profile.notFoundText')}>
+			{#snippet actions()}
+				<a href="/dashboard" class="btn btn-primary">{m('profile.backToDashboard')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<header class="profile-head">
 			<div class="avatar-xl" aria-hidden="true">
@@ -893,15 +891,14 @@
 		</div>
 
 		{#if !profile.content_visible && tab !== 'notifications'}
-			<div class="empty-card" data-testid="profile-private-panel">
-				<span class="material-symbols empty-icon" aria-hidden="true">lock</span>
-				<h3>{m('profile.privateTitle')}</h3>
-				<p class="empty-text">
-					{profile.viewer_requested
-						? m('profile.privateRequestedText')
-						: m('profile.privateText', { name: profile.display_name ?? m('profile.thisRunner') })}
-				</p>
-			</div>
+			<EmptyState
+				icon="lock"
+				title={m('profile.privateTitle')}
+				text={profile.viewer_requested
+					? m('profile.privateRequestedText')
+					: m('profile.privateText', { name: profile.display_name ?? m('profile.thisRunner') })}
+				data-testid="profile-private-panel"
+			/>
 		{:else if tab === 'runs'}
 			{#if isSelf && runCounts?.privateCount}
 				<p class="private-runs-note" data-testid="profile-private-runs-note">
@@ -919,14 +916,13 @@
 			{:else if runsLoading}
 				{@render sectionLoading()}
 			{:else if runs.length === 0}
-				<div class="empty-card">
-					{#if isSelf}
-						<img src="/logo-mark.svg" alt="" width="64" height="64" class="empty-mark" />
-						<h3>{m('profile.runsEmptySelfTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.runsEmptySelfText')}
-						</p>
-						<div class="empty-actions">
+				{#if isSelf}
+					<EmptyState
+						icon="directions_run"
+						title={m('profile.runsEmptySelfTitle')}
+						text={m('profile.runsEmptySelfText')}
+					>
+						{#snippet actions()}
 							<a href="/runs" class="btn btn-primary">
 								<span class="material-symbols" aria-hidden="true">history</span>
 								{m('profile.openRunHistory')}
@@ -935,15 +931,15 @@
 								<span class="material-symbols" aria-hidden="true">sync</span>
 								{m('profile.connectIntegration')}
 							</a>
-						</div>
-					{:else}
-						<span class="material-symbols empty-icon" aria-hidden="true">directions_run</span>
-						<h3>{m('profile.runsEmptyTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.runsEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
-						</p>
-					{/if}
-				</div>
+						{/snippet}
+					</EmptyState>
+				{:else}
+					<EmptyState
+						icon="directions_run"
+						title={m('profile.runsEmptyTitle')}
+						text={m('profile.runsEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+					/>
+				{/if}
 			{:else}
 				<div class="run-grid">
 					{#each runs as r (r.id)}
@@ -1006,23 +1002,22 @@
 			{:else if followersLoading}
 				{@render sectionLoading()}
 			{:else if followers.length === 0}
-				<div class="empty-card">
-					<span class="material-symbols empty-icon" aria-hidden="true">group_add</span>
-					<h3>{m('profile.followersEmptyTitle')}</h3>
-					<p class="empty-text">
+				<EmptyState
+					icon="group_add"
+					title={m('profile.followersEmptyTitle')}
+					text={isSelf
+						? m('profile.followersEmptySelfText')
+						: m('profile.followersEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+				>
+					{#snippet actions()}
 						{#if isSelf}
-							{m('profile.followersEmptySelfText')}
-						{:else}
-							{m('profile.followersEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+							<a href="/clubs" class="btn btn-primary">
+								<span class="material-symbols" aria-hidden="true">groups</span>
+								{m('profile.findClub')}
+							</a>
 						{/if}
-					</p>
-					{#if isSelf}
-						<a href="/clubs" class="btn btn-primary">
-							<span class="material-symbols" aria-hidden="true">groups</span>
-							{m('profile.findClub')}
-						</a>
-					{/if}
-				</div>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="people-list">
 					{#each followers as p (p.id)}
@@ -1068,25 +1063,22 @@
 			{:else if followingLoading}
 				{@render sectionLoading()}
 			{:else if following.length === 0}
-				<div class="empty-card">
-					<span class="material-symbols empty-icon" aria-hidden="true">person_search</span>
-					<h3>
-						{isSelf ? m('profile.followingEmptySelfTitle') : m('profile.followingEmptyTitle')}
-					</h3>
-					<p class="empty-text">
+				<EmptyState
+					icon="person_search"
+					title={isSelf ? m('profile.followingEmptySelfTitle') : m('profile.followingEmptyTitle')}
+					text={isSelf
+						? m('profile.followingEmptySelfText')
+						: m('profile.followingEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+				>
+					{#snippet actions()}
 						{#if isSelf}
-							{m('profile.followingEmptySelfText')}
-						{:else}
-							{m('profile.followingEmptyTextPrefix', { name: profile.display_name ?? m('profile.thisRunnerCap') })}
+							<a href="/clubs" class="btn btn-primary">
+								<span class="material-symbols" aria-hidden="true">groups</span>
+								{m('profile.browseClubs')}
+							</a>
 						{/if}
-					</p>
-					{#if isSelf}
-						<a href="/clubs" class="btn btn-primary">
-							<span class="material-symbols" aria-hidden="true">groups</span>
-							{m('profile.browseClubs')}
-						</a>
-					{/if}
-				</div>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="people-list">
 					{#each following as p (p.id)}
@@ -1177,38 +1169,38 @@
 				</div>
 				<p class="visually-hidden" role="status">{m('profile.loadingFeed')}</p>
 			{:else if feedEntries.length === 0}
-				<div class="empty-card">
-					{#if !followsAnyone}
-						<img src="/logo-mark.svg" alt="" width="64" height="64" class="empty-mark" />
-						<h3>{m('profile.feedEmptyTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.feedEmptyText')}
-						</p>
-						<a href="/clubs" class="btn btn-primary">
-							<span class="material-symbols" aria-hidden="true">groups</span>
-							{m('profile.browseClubs')}
-						</a>
-					{:else if activityFilter !== 'all'}
-						<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-						<h3>{m('profile.feedNoMatchesTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.feedNoMatchesText', { days: FEED_WINDOW_DAYS })}
-						</p>
-						<button
-							class="btn btn-primary"
-							type="button"
-							onclick={() => (activityFilter = 'all')}
-						>
-							{m('profile.clearFilters')}
-						</button>
-					{:else}
-						<span class="material-symbols empty-icon" aria-hidden="true">schedule</span>
-						<h3>{m('profile.feedNoActivityTitle')}</h3>
-						<p class="empty-text">
-							{m('profile.feedNoActivityText', { days: FEED_WINDOW_DAYS })}
-						</p>
-					{/if}
-				</div>
+				{#if !followsAnyone}
+					<EmptyState icon="dynamic_feed" title={m('profile.feedEmptyTitle')} text={m('profile.feedEmptyText')}>
+						{#snippet actions()}
+							<a href="/clubs" class="btn btn-primary">
+								<span class="material-symbols" aria-hidden="true">groups</span>
+								{m('profile.browseClubs')}
+							</a>
+						{/snippet}
+					</EmptyState>
+				{:else if activityFilter !== 'all'}
+					<EmptyState
+						icon="filter_alt_off"
+						title={m('profile.feedNoMatchesTitle')}
+						text={m('profile.feedNoMatchesText', { days: FEED_WINDOW_DAYS })}
+					>
+						{#snippet actions()}
+							<button
+								class="btn btn-primary"
+								type="button"
+								onclick={() => (activityFilter = 'all')}
+							>
+								{m('profile.clearFilters')}
+							</button>
+						{/snippet}
+					</EmptyState>
+				{:else}
+					<EmptyState
+						icon="schedule"
+						title={m('profile.feedNoActivityTitle')}
+						text={m('profile.feedNoActivityText', { days: FEED_WINDOW_DAYS })}
+					/>
+				{/if}
 			{:else}
 				<div class="feed">
 					{#each feedEntries as entry (entry.id)}
@@ -1688,59 +1680,6 @@
 		font-size: 1.1rem;
 		line-height: 1.4;
 		color: var(--color-text-tertiary);
-	}
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-
-	.empty-actions .material-symbols,
-	.empty-card .btn .material-symbols {
-		font-size: 1.1rem;
 	}
 
 	/* ── Feed tab (self-only) ─────────────────────────────────────

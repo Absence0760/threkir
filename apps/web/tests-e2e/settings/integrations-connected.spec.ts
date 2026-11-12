@@ -15,13 +15,13 @@ import { setStorageOnLoad } from '../fixtures/helpers';
  * can't reach: connected-state badges, Sync-now affordance, the
  * disconnect ConfirmDialog round-trip, and the DB-side delete.
  *
- * USER_B is used (not USER_A) because USER_A has Strava + parkrun
+ * USER_B is used (not USER_A) because USER_A has Strava
  * pre-seeded, so planting + sweeping would clash with other specs
  * that depend on the seed state. USER_B starts with zero rows in
  * `integrations` and is restored to that state in afterEach.
  */
 
-const PROVIDERS = ['strava', 'parkrun', 'garmin'] as const;
+const PROVIDERS = ['strava', 'garmin'] as const;
 
 async function clearUserBIntegrations() {
 	const admin = getAdminClient();
@@ -124,7 +124,9 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		// offering Connect would be an invitation to the error toast the gate
 		// exists to precede.
 		await expect(stravaCard).toHaveCount(0, { timeout: 5_000 });
-		await expect(page.getByTestId('integration-parkrun')).toBeVisible();
+		await expect(
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Strava export' })
+		).toBeVisible();
 
 		// audit/strava May 2026 High #1 — the disconnect flow now
 		// STAMPS `disconnected_at` rather than DELETEing the row.
@@ -348,32 +350,6 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		await expect(page.locator('.toast-info')).toHaveCount(0);
 	});
 
-	test('Connect failure surfaces an error toast', async ({ page }) => {
-		// parkrun is the one provider left on the placeholder upsert-connect
-		// path: Strava goes through OAuth, and Garmin / HealthKit are no longer
-		// offered a Connect button at all.
-		await page.route('**/rest/v1/integrations**', async (route) => {
-			const m = route.request().method();
-			if (m === 'POST' || m === 'PATCH') {
-				await route.fulfill({
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify({ message: 'simulated failure' }),
-				});
-				return;
-			}
-			await route.fallback();
-		});
-
-		await page.goto('/settings/integrations');
-		const parkrunCard = page.getByTestId('integration-parkrun');
-		await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
-		await parkrunCard.getByRole('button', { name: 'Connect' }).click();
-
-		await expect(page.locator('.toast-error')).toBeVisible({ timeout: 5_000 });
-		await expect(parkrunCard).not.toHaveClass(/connected/);
-	});
-
 	test('Disconnect cancel keeps the integration connected', async ({ page }) => {
 		await plantIntegration({
 			provider: 'strava',
@@ -455,37 +431,36 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 		// USER_B starts with zero `integrations` rows and afterEach keeps it
 		// that way, so nothing needs planting or clearing here.
 		await page.goto('/settings/integrations');
-		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
+		// The Garmin path that DOES work on this deployment is still offered,
+		// and is the proof the page rendered before the absences below.
+		await expect(
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Garmin export' })
+		).toBeVisible({ timeout: 10_000 });
 
 		await expect(page.getByTestId('integration-garmin')).toHaveCount(0);
 		await expect(page.getByTestId('integration-healthkit')).toHaveCount(0);
-		// The Garmin path that DOES work on this deployment is still offered.
-		await expect(
-			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Garmin export' })
-		).toBeVisible();
 	});
 
-	test('already-connected parkrun + disconnect round-trip', async ({ page }) => {
+	test('a stranded Garmin row disconnects, and the card leaves with it', async ({ page }) => {
+		// The non-Strava disconnect is a bare DELETE of the row. Garmin is gated
+		// `unbuilt`, so once the row is gone nothing keeps the card on screen.
 		await plantIntegration({
-			provider: 'parkrun',
+			provider: 'garmin',
 			lastSyncAt: '2026-05-08T07:00:00Z',
 		});
 
 		await page.goto('/settings/integrations');
 
-		const parkrunCard = page.locator('.integration-card', { hasText: 'parkrun' });
-		await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
-		await expect(parkrunCard).toHaveClass(/connected/);
-		await expect(parkrunCard.getByText(/Last synced/i)).toBeVisible();
+		const garminCard = page.getByTestId('integration-garmin');
+		await expect(garminCard).toHaveClass(/connected/, { timeout: 10_000 });
 
-		await parkrunCard.getByRole('button', { name: 'Disconnect' }).click();
+		await garminCard.getByRole('button', { name: 'Disconnect' }).click();
 		const confirm = page.locator('.modal', { hasText: 'Disconnect integration?' });
 		await expect(confirm).toBeVisible({ timeout: 5_000 });
-		await expect(confirm.getByText(/parkrun/)).toBeVisible();
+		await expect(confirm.getByText(/Garmin/)).toBeVisible();
 		await confirm.getByRole('button', { name: 'Disconnect' }).click();
 
-		await expect(parkrunCard).not.toHaveClass(/connected/, { timeout: 5_000 });
-		await expect(parkrunCard.getByRole('button', { name: 'Connect' })).toBeVisible();
+		await expect(garminCard).toHaveCount(0, { timeout: 5_000 });
 
 		const admin = getAdminClient();
 		const data = await readRows(
@@ -494,7 +469,7 @@ test.describe('/settings/integrations — connected-state UI (planted rows)', ()
 				.from('integrations')
 				.select('id')
 				.eq('user_id', USER_B.id)
-				.eq('provider', 'parkrun')
+				.eq('provider', 'garmin')
 		);
 		expect(data).toHaveLength(0);
 	});

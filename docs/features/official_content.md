@@ -1,6 +1,6 @@
 # Official content: verified organisers
 
-The spec for issue #1190, "Official content". This document covers the **verified organiser** model and the **verification request flow** that has shipped. The race-course slice (claiming a race listing, linking its course) is in [race_calendar.md](race_calendar.md) (#1297, decisions § 2381); heatmap and discovery ranking is in [api_database.md § Discovery RPCs](../backend/api_database.md); seeding and the onboarding import step are tracked on the issue.
+The spec for issue #1190, "Official content". This document covers the **verified organiser** model and the **verification request flow** that has shipped. The race-course slice (claiming a race listing, linking its course) is in [race_calendar.md](race_calendar.md) (#1297, decisions § 2381); heatmap and discovery ranking is in [api_database.md § Discovery RPCs](../backend/api_database.md); the seeded official content is under *Seeded official content* below; the onboarding import step is tracked on the issue.
 
 ## The trust model
 
@@ -67,7 +67,90 @@ Web is the whole flow. Mobile (Android and the iOS twin) shows the owner and adm
 
 The provenance labels (official / verified source / traced / community) on content, race listings and their courses, and organiser course alerts, are specified in [provenance.md](provenance.md) (decisions § 2406 / § 2407).
 
+## Name disputes (migrations `20271202000001`..`004`, decisions § 2441)
+
+A fan club can take "Comrades Marathon" and keep it, and a copied plan or course can sit beside the real one. The verified organiser now has a way to say so, through the existing report flow.
+
+### Filing
+
+An active owner or admin of a verified, public, unhidden club opens **Report as your organisation** on a club, a public route, a plan or routine in the public library, a public challenge, or a race listing another club has claimed. They pick the club they speak for (when they run more than one), say what is copied, and send. `submit_organiser_dispute` is the gate (`private.is_official_publisher`, the same derivation as "official"), so an unverified club, a plain member or anon is refused at the database, not just hidden in the UI. The report lands in `reports` with reason `organiser_dispute` and `organiser_club_id`. The general `submit_report` refuses that reason. An organiser cannot dispute its own club, its own content, or content it cannot have seen (a private plan, an unclaimed race, which it can simply claim). Filing shares the general report's rate limit (10 an hour) and its one-pending-report-per-target rule, and notifies nobody.
+
+### No automation
+
+A dispute never hides anything by itself, however many verified organisers file one: the auto-hide trigger skips it and the vetted-reporter count leaves it out, so disputes never tip a general report over the threshold either. A person decides, as in the verification review (§ 2398).
+
+### Review
+
+Disputed targets sort first on `/admin/reports`, with an **Organiser dispute** badge, the reporting clubs (and whether each is still verified), and any rename deadline. The detail panel offers, each behind a confirm:
+
+| Action | What happens |
+|---|---|
+| **Hide** (`takedown`) | A club or route gets `shadow_hidden`, the same hide auto-hide uses. A library plan or routine and a challenge are unpublished, and a trigger refuses republishing that row until an admin restores it. A race listing's claim is released (organiser club, course link and course stamps cleared) so the rightful organiser can claim it. The dispute reports are marked reviewed. |
+| **Send rename notice** | The owner is asked to rename or change it within a deadline (14 days by default, 1 to 60). The reports stay pending and the target stays at the top of the queue showing the deadline. Nothing happens automatically at the deadline; the reviewer then hides or dismisses. |
+| **Dismiss dispute** | The dispute reports are dismissed and nothing changes. |
+
+Only the dispute reports are touched, and the general Dismiss / Mark reviewed buttons now leave dispute reports alone, so a dispute closes only with its log entry and its notices. **Restore** (`admin_unhide_target`) lifts a plan, routine or challenge takedown; the owner republishes when they choose. A library plan is published as a new copy, so while a copy's takedown stands its source plan cannot be published again either; content rebuilt from scratch under the same name is a new target, and the organiser files again.
+
+### Audit and notices
+
+Every filing and action is a row in the append-only `organiser_dispute_actions` with the reviewer's id, readable only through admin RPCs. Both sides get an `organiser_dispute` notification (in-app, push and email) naming the reporting club, never the reviewer, and read the outcome on `/disputes`: the owner sees reviewed disputes about their content (with the deadline and the reviewer's note), and the reporting club's owner and admins see their filings and what became of them. Both legs are in the data export.
+
+### Platforms
+
+Web is the whole flow. On Android and iOS the report sheet on a club or a route adds the dispute reason for a verified organiser, and the notice opens the web disputes page. Plans, routines, challenges and race listings have no report menu on mobile, so they are disputed from the web.
+
+## Seeded official content (migrations `20271211000001`..`004`, decisions § 2446)
+
+A day-one runner finds the shared libraries nearly empty. The official Threkir club (`threkir`, committed in `scripts/parks/publisher.json`) publishes a starter set through a catalogue in the repo, loaded on every backend release the way park courses are ([park_courses.md § Loading courses](park_courses.md)).
+
+### The catalogue
+
+`scripts/official/catalogue/<kind>/<slug>.json`, one file per item, named by its slug:
+
+| Kind | Starter set | Published as |
+|---|---|---|
+| `plans` | Walk-run to 5K (9 weeks) | a public library plan owned by the club, read as official |
+| `gym_routines` | Strength for runners: lower body; Strength for runners: no equipment; Mobility for runners | a public library routine owned by the club |
+| `challenges` | Run 50 km / Run 100 km / 12 runs / Climb 1,000 m running, each month; Run 1,000 km, each year | one public individual board per month or year |
+| `race_courses` | none (see the gate below) | a public club route, the race claimed and linked as `traced` |
+
+There are no standalone segments: a catalogue segment needs reviewed geometry, and the park pipeline (`scripts/parks/`) is the one place that builds and reviews it, so official segments keep arriving as park courses.
+
+- **The 10K and half-marathon plans are held back.** Built with no goal time or recent race, `generatePlan` peaks the half's long run at 8 km and makes every interval day 10 km, longer than that week's long run; the 10K plan has the same shape. Official plans wait for the generator's no-anchor progression to be fixed; adding them is then a preset each.
+- **Plans are generated, not hand-written.** Each plan file carries the `preset` it was built from (goal, weeks, days per week, walk-run) and its weeks are what `generatePlan` builds from it, projected the way the library stores a copy (§ 2340): no paces, notes, race names or HR targets, a duration beside a distance dropped, on the reference week of 2001-01-01 so a clone shifts it to the runner's start. A timed walk-run session keeps its time rather than the distance the fallback pace estimates. `apps/web/src/lib/training/official_plan_catalogue.test.ts` fails when the weeks no longer match the generator; regenerate with `OFFICIAL_PLANS_WRITE=1` (the command is in its header) and review the diff.
+- **Routines** use the exercise catalogue's names where it has the lift and plain names otherwise, with no loads: the notes say to pick a load that leaves two or three reps in reserve and to stop anything that hurts. No item makes a health claim.
+- **Challenges recur.** The schema has no recurring challenge, so each item names a `recurrence` (`monthly` or `yearly`, in UTC) and a title with `{period}`; every load publishes the current period and every period starting within the next 45 days as its own board (`<slug>@2026-12`, `<slug>@2027`), so a quiet month between releases loses nothing. A period more than half over is not opened late. Once a board's window has started its terms (title, metric, goal) are frozen, so nobody's goal moves mid-month; a change reaches the next board. An official board stays in Browse before anyone joins it (§ 2228's derivation, exempt from the seven-day dead-board rule).
+- **Park passport boards** (`metric: "park_courses"`) carry a `park_region_code`, an ISO 3166-2 code such as `US-VA`: required for that metric and refused on every other, by the catalogue check and again by the load (migration `20271214131301`). The board counts distinct park courses completed in that region's active parks. A region is part of a board's terms, so it freezes with them once the window opens. **None is committed yet:** Virginia has only the six Pocahontas courses loaded, so "Run 10 Virginia park courses" could not be finished. When enough courses are loaded for an honest goal, add `challenges/virginia-park-passport.json` (the shape is in `scripts/official/lib/fixtures/virginia-park-passport.json`, which the catalogue tests read) with a goal no higher than the number of open courses in the region, and preview the release with `dry_run`.
+
+`scripts/official/lib/official_catalogue.mjs` checks every item against the database's constraints (its value lists are rails of `check_constraint_unions.mjs`; the plan enums are compared with `database.types.ts`), so a bad item fails the PR, not the release.
+
+### The load
+
+The "Sync production state" step of `release-backend.yml` runs `scripts/official/sync.mjs`'s stage last, after the park catalogue and the prod config (so a flag the same release turns on is the one it reads). It resolves the author with `private.resolve_club_publisher` and calls `private.load_official_catalogue` once, which:
+
+- refuses unless the author is an active owner or admin of the verified, public, visible club;
+- keys every item by `private.official_catalogue_items (kind, slug)`, a service-role-only crosswalk, so no client can forge a slug onto its own row; a row deleted in the app is recreated on the next load;
+- compares before it writes (a plan's weeks and a routine's exercises as a whole design), so an unchanged catalogue reports every item `unchanged` and writes nothing;
+- **retires, never deletes**: a plan or routine the catalogue drops is unpublished and detached from the club (author-private, so it leaves the club's templates as well); a dropped challenge's open boards are made private, so their entrants keep them; each is reported `retired` once, and naming it again republishes it;
+- leaves a row taken down after a naming dispute (§ 2441) alone and reports it `held`;
+- re-authors every live row when the club's owner changes, so it stays official.
+
+Preview a change with a Release Backend `workflow_dispatch` (`dry_run` on): the step summary lists each item's action and rolls back. Fallback if the workflow cannot run: `node scripts/official/sync.mjs [--dry-run] > official.sql`, then `psql` on the service-role connection.
+
+The public gym routine library could not hold an official row before this: a public template had to be club-free (`gym_routines_public_not_club`). That rule is now a trigger that holds it for client writes only, `public_gym_routines` carries `is_official`, and both platforms show the badge in the library list and preview. A club admin publishing their own club's plan or routine to the library from the app is still not built.
+
+### Race courses: off until counsel and real geometry
+
+The catalogue format takes a race course (`race_courses/<slug>.json`): the race by `listing` (`provider` + `provider_race_id`) or `listing_id`, the traced line (`waypoints`), `distance_m`, `surface`, a `description` that says what it was traced from, and `source_ref`, the https URL of the published course map. The load creates or updates a public club route, claims the race if no club has (one another club has claimed reports `claimed_elsewhere`; an unlisted race reports `missing_listing`), and links it as `traced`, so the race page reads "Course drawn by Threkir from the race's published map". A race whose organiser already linked its own `official` course is left alone (`course_exists`). A dropped course's route is made private and unlinked.
+
+None of that runs while the `official_race_courses` flag is off, which is how `20271211000001` seeds it: each course item reports `gated`. Turning the flag off after courses have loaded retires them (route private, race unlinked), so the gate also takes them down. The catalogue holds no course, and none may be invented: the line must be a reviewed trace.
+
+**Pre-deploy checklist (race courses):**
+
+- [ ] Owner's counsel check that tracing a course from an organiser's published map, and claiming the race as the Threkir club, is acceptable (issue #1190).
+- [ ] A real, reviewed GPX per course, committed as its `race_courses/<slug>.json` with the map's URL in `source_ref`.
+- [ ] Then turn the flag on in `apps/backend/ops/prod_config.json` (`feature_flags.official_race_courses`, with the sign-off link), and preview the release with `dry_run` first.
+
 ## Not built yet
 
-- Name dispute / takedown path tied to the report flow.
 - Trusted verifiers (a federation verifying its member races) — later, not v1.

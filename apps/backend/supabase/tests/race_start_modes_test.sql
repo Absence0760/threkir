@@ -345,7 +345,7 @@ select ok(
 );
 
 select ok(
-  (select needs_review from event_results
+  (select needs_review from event_results_redacted
     where event_id = 'e7306000-0000-0000-0000-0000000000e4'
       and user_id = 'e7306000-0000-0000-0000-000000000002'),
   'a Self-timed result without a gate start needs review'
@@ -381,7 +381,7 @@ update event_results
 
 select ok(
   (select not needs_review and organiser_approved
-     from event_results where event_id = 'e7306000-0000-0000-0000-0000000000e4'
+     from event_results_redacted where event_id = 'e7306000-0000-0000-0000-0000000000e4'
                           and user_id = 'e7306000-0000-0000-0000-000000000002'),
   'a gate-timed attempt inside the window that the pings support is clean'
 );
@@ -451,7 +451,7 @@ select is(
 );
 
 select ok(
-  (select needs_review from event_results where event_id = 'e7306000-0000-0000-0000-0000000000e4'
+  (select needs_review from event_results_redacted where event_id = 'e7306000-0000-0000-0000-0000000000e4'
                                            and user_id = 'e7306000-0000-0000-0000-000000000003'),
   'a start-line crossing before the window opened needs review'
 );
@@ -462,7 +462,7 @@ update event_results
    and user_id = 'e7306000-0000-0000-0000-000000000003';
 
 select ok(
-  (select needs_review from event_results where event_id = 'e7306000-0000-0000-0000-0000000000e4'
+  (select needs_review from event_results_redacted where event_id = 'e7306000-0000-0000-0000-0000000000e4'
                                            and user_id = 'e7306000-0000-0000-0000-000000000003'),
   'crossings the runner''s pings do not support need review'
 );
@@ -503,7 +503,7 @@ update event_results set duration_s = 1800
    and user_id = 'e7306000-0000-0000-0000-000000000002';
 
 select ok(
-  (select not organiser_approved and needs_review from event_results
+  (select not organiser_approved and needs_review from event_results_redacted
     where event_id = 'e7306000-0000-0000-0000-0000000000e6'
       and user_id = 'e7306000-0000-0000-0000-000000000002'),
   'editing your own time on a race that is not auto-approved resets approval and flags review'

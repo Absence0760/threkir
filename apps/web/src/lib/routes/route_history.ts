@@ -1,11 +1,14 @@
 /// Pure helpers for the "Route History" panel on `/runs/[id]`.
 ///
-/// Mirrors `_buildRouteComparison` in
-/// `apps/mobile_android/lib/screens/run_detail_screen.dart`: filter to
+/// TS↔Dart parity pair with `apps/mobile_android/lib/route_history.dart` —
+/// keep the two in lockstep: algorithm, edge cases, outputs, test counts.
+/// Filter to
 /// runs on the same route + same activity_type with > 100 m of
 /// movement, sort by duration ascending, then summarise the current
 /// run's standing (PB / behind PB / rank). Kept pure so the component
 /// stays a thin presenter and the logic is unit-testable without DOM.
+
+import { isPlausibleRunDuration } from '../runs/run_duration';
 
 export interface RouteHistoryRun {
 	id: string;
@@ -24,9 +27,10 @@ export interface RouteHistorySummary {
 }
 
 /// Filter to qualifying attempts on the same route + activity type
-/// and sort by duration ascending. Returns the trimmed list.
+/// and sort by duration ascending. Returns the trimmed list. Tied times are
+/// decided in `summariseHistory`, not by where the sort leaves them.
 ///
-/// Match rules (mirroring mobile):
+/// Match rules:
 ///  - Same `route_id` (a run with no route is excluded — the panel
 ///    doesn't render in that case anyway).
 ///  - `distance_m > 100` — guards against accidental starts that
@@ -34,6 +38,11 @@ export interface RouteHistorySummary {
 ///    incredible PBs.
 ///  - Same `activity_type` column (default `'run'`). A walk on
 ///    the same route shouldn't compete with a run.
+///  - A real time, `0 < duration_s < 864000`: a run with distance and no
+///    time (0 s, allowed on purpose by
+///    `20270706000003_personal_records_positive_times.sql`) would be a
+///    permanent PB, and one still holding the ten-day repair placeholder
+///    (`isPlausibleRunDuration`) has no time to rank either.
 export function qualifyingAttempts(
 	currentRun: RouteHistoryRun,
 	allRuns: readonly RouteHistoryRun[],
@@ -45,6 +54,8 @@ export function qualifyingAttempts(
 			(r) =>
 				r.route_id === currentRun.route_id &&
 				r.distance_m > 100 &&
+				r.duration_s > 0 &&
+				isPlausibleRunDuration(r.duration_s) &&
 				(r.activity_type ?? 'run') === thisActivity,
 		)
 		.sort((a, b) => a.duration_s - b.duration_s);
@@ -53,6 +64,12 @@ export function qualifyingAttempts(
 /// Build the summary row the component renders. Returns `null` when
 /// there's nothing meaningful to show — caller should hide the card
 /// rather than render an empty state.
+///
+/// Ties take standard competition ranking: rank is one plus the attempts
+/// strictly faster, so 1500 / 1600 / 1600 / 1700 rank 1, 2, 2, 4, and a run
+/// tied with the fastest time is a PB rather than "+0:00 behind" it. The
+/// input order of tied rows is not stable on either platform, so it decides
+/// nothing.
 export function summariseHistory(
 	currentRunId: string,
 	attempts: readonly RouteHistoryRun[],
@@ -62,12 +79,13 @@ export function summariseHistory(
 	const idx = attempts.findIndex((r) => r.id === currentRunId);
 	if (idx < 0) return null;
 	const current = attempts[idx];
+	const deltaSeconds = current.duration_s - pb.duration_s;
 	return {
-		rank: idx + 1,
+		rank: 1 + attempts.filter((r) => r.duration_s < current.duration_s).length,
 		total: attempts.length,
 		pb,
-		isPb: pb.id === currentRunId,
-		deltaSeconds: current.duration_s - pb.duration_s,
+		isPb: deltaSeconds === 0,
+		deltaSeconds,
 	};
 }
 

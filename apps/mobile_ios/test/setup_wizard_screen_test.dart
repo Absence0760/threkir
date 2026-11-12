@@ -66,8 +66,6 @@ Future<void> _pump(
   String? initialPreferredUnit,
   SettingsSyncService? settingsSync,
   WidgetBuilder? importScreenBuilder,
-  WidgetBuilder? integrationsScreenBuilder,
-  Future<bool> Function()? probeParkrun,
   bool? isIOS,
 }) async {
   // Host under a Navigator with a base route so the wizard's pop-on-finish
@@ -90,8 +88,6 @@ Future<void> _pump(
                     initialPreferredUnit: initialPreferredUnit,
                     importScreenBuilder:
                         importScreenBuilder ?? (_) => const _StubScreen('import'),
-                    integrationsScreenBuilder: integrationsScreenBuilder,
-                    probeParkrun: probeParkrun,
                     isIOS: isIOS,
                   ),
                 ),
@@ -841,7 +837,6 @@ void main() {
         expect(find.text('Apple Health'), findsNothing);
         expect(row('strava'), findsOneWidget);
         expect(find.text(l10n.setupImportStravaDesc), findsOneWidget);
-        // No probe was handed in, so parkrun has nothing behind it here.
         expect(row('parkrun'), findsNothing);
       });
 
@@ -928,47 +923,6 @@ void main() {
         expect(find.text('stub-import'), findsOneWidget);
         expect(opened, greaterThan(0));
       });
-
-      testWidgets('parkrun appears once its probe says yes, and opens '
-          'Integrations, where its import lives', (tester) async {
-        await _pump(
-          tester,
-          _FakeApi(),
-          await _prefs(),
-          probeParkrun: () async => true,
-          integrationsScreenBuilder: (_) => const _StubScreen('integrations'),
-        );
-        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-        await walkToImport(tester, l10n);
-
-        expect(row('parkrun'), findsOneWidget);
-        expect(find.text(l10n.setupImportParkrunDesc), findsOneWidget);
-        await tester.tap(row('parkrun'));
-        await tester.pumpAndSettle();
-        expect(find.text('stub-integrations'), findsOneWidget);
-      });
-
-      for (final (why, probe) in <(String, Future<bool> Function())>[
-        ('refused', () async => false),
-        ('failing', () async => throw Exception('function not deployed')),
-      ]) {
-        testWidgets('a $why parkrun probe keeps the row hidden',
-            (tester) async {
-          await _pump(
-            tester,
-            _FakeApi(),
-            await _prefs(),
-            probeParkrun: probe,
-            integrationsScreenBuilder: (_) =>
-                const _StubScreen('integrations'),
-          );
-          final l10n =
-              await AppLocalizations.delegate.load(const Locale('en'));
-          await walkToImport(tester, l10n);
-          expect(row('parkrun'), findsNothing);
-          expect(row('strava'), findsOneWidget);
-        });
-      }
     });
 
     group('preferences bag (the answers with no local mirror)', () {

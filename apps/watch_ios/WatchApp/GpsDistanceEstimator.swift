@@ -1,6 +1,6 @@
 import Foundation
 
-/// GPS distance estimator, spec v1.5 forward filter — the watchOS port of
+/// GPS distance estimator, spec v1.8 forward filter — the watchOS port of
 /// `scripts/gps_distance/reference.py`. See `docs/features/gps_distance.md`.
 /// The watch runs only the causal filter; the spec's smoother is ported where
 /// a whole run's saved figure is computed (phone, web, server).
@@ -21,6 +21,7 @@ final class GpsDistanceEstimator {
     static let posOnlyStationarySpeedMps = 0.8
     static let gapS = 10.0
     static let freshFixS = 2.0
+    static let maxOpenGaps = 8
     static let strideWindowSteps = 50
     static let minStrideM = 0.4
     static let maxStrideM = 2.5
@@ -56,7 +57,7 @@ final class GpsDistanceEstimator {
     static let zuptBatchMinCadenceSps = 1.0
     static let zuptBatchMargin = 1.5
     static let zuptMaxNoStepS = 30.0
-    static let specVersion = "1.5"
+    static let specVersion = "1.8"
 
     /// Every constant by its reference name, so the vector test can hold each
     /// one to the fixture's `constants` block.
@@ -65,7 +66,7 @@ final class GpsDistanceEstimator {
         "INIT_VEL_VAR": initVelVar, "MIN_SPEED_SIGMA_MPS": minSpeedSigmaMps,
         "DEFAULT_SPEED_SIGMA_MPS": defaultSpeedSigmaMps, "MAX_SPEED_SIGMA_MPS": maxSpeedSigmaMps,
         "STATIONARY_SPEED_MPS": stationarySpeedMps, "POS_ONLY_STATIONARY_SPEED_MPS": posOnlyStationarySpeedMps,
-        "GAP_S": gapS, "FRESH_FIX_S": freshFixS, "STRIDE_WINDOW_STEPS": Double(strideWindowSteps),
+        "GAP_S": gapS, "FRESH_FIX_S": freshFixS, "MAX_OPEN_GAPS": Double(maxOpenGaps), "STRIDE_WINDOW_STEPS": Double(strideWindowSteps),
         "MIN_STRIDE_M": minStrideM, "MAX_STRIDE_M": maxStrideM, "STRIDE_EMA_ALPHA": strideEmaAlpha,
         "MAX_POS_SIGMA_M": maxPosSigmaM, "STRIDE_MAX_SPEED_SIGMA_MPS": strideMaxSpeedSigmaMps,
         "STRIDE_MAX_POS_SIGMA_M": strideMaxPosSigmaM, "CHECK_MAX_POS_SIGMA_M": checkMaxPosSigmaM,
@@ -155,6 +156,10 @@ final class GpsDistanceEstimator {
     let freshFixWindowS: Double
     private(set) var gpsDistanceM: Double = 0
     private(set) var stepDistanceM: Double = 0
+    /// v1.7: what the steps credited the gaps over their chord lower bounds,
+    /// summed: per gap max(chord, steps) - chord, exactly what a replay with
+    /// no steps lacks. Saved as `metadata.distance_step_over_chord_m`.
+    private(set) var stepOverChordM: Double = 0
     private(set) var strideM: Double?
     private(set) var rScale: Double = 1
     private(set) var rejectedFixes = 0
@@ -171,10 +176,17 @@ final class GpsDistanceEstimator {
     private var t: Double?
     private var winSteps = 0
     private var winM: Double = 0
+    /// v1.6: the fix that last emptied the stride window.
+    private var winFromT = -Double.infinity
+    /// v1.6: a stale step sample emptied the stride window since the last fix.
+    private var winStale = false
     private var lastSteps: Int?
     private var lastStepT: Double?
     private var pendingStepM: Double = 0
     private var strideOk = false
+    // v1.6: the gaps re-anchors closed since the last step sample, owed their
+    // share of the next one.
+    private var gaps: [(startT: Double, endT: Double, topUpM: Double)] = []
     private var rejectStreak = 0
     private var xcDoppler: Double = 0
     private var xcPos: Double = 0
@@ -307,13 +319,16 @@ final class GpsDistanceEstimator {
                     gapM = lower - pendingStepM
                     gpsDistanceM += gapM
                 }
+                stepOverChordM += max(0, pendingStepM - max(lower, 0))
+                gaps.append((startT: last, endT: t, topUpM: gapM))
+                if gaps.count > Self.maxOpenGaps { gaps.removeFirst() }
             }
             pendingStepM = 0
             strideOk = strideGrade(accuracyM, doppler?.sa)
-            if !strideOk {
-                winSteps = 0
-                winM = 0
-            }
+            winStale = false
+            // The first fix also starts the window: a step sample before it counted
+            // steps no fix measured metres for.
+            if !strideOk || self.t == nil { emptyWindow(at: t) }
             x = Axis(p: zx, posVar: r)
             y = Axis(p: zy, posVar: r)
             self.t = t
@@ -475,13 +490,24 @@ final class GpsDistanceEstimator {
         }
         gpsDistanceM += inc
         strideOk = strideGrade(accuracyM, chord == nil ? useDop?.sa : nil)
-        if strideOk {
+        // A step sample that fell stale since the last fix emptied the window
+        // inside this fix's interval, so the window no longer holds the steps its
+        // metres cover.
+        if strideOk && !winStale {
             winM += inc
         } else {
-            winSteps = 0
-            winM = 0
+            emptyWindow(at: t)
         }
+        winStale = false
         return inc
+    }
+
+    /// Empty the stride window at the fix at `t`. Its metres start after `t`, so
+    /// a step sample whose interval reaches back before `t` must not refill it.
+    private func emptyWindow(at t: Double) {
+        winSteps = 0
+        winM = 0
+        winFromT = t
     }
 
     /// Whether a fix may teach stride: by its Doppler sigma when its credit
@@ -494,16 +520,34 @@ final class GpsDistanceEstimator {
     }
 
     /// Cumulative pedometer count. Learns a stride while GPS is good and
-    /// buffers steps x stride while it is not; the buffer is committed only
-    /// when the gap turns out to exceed `gapWindowS`.
+    /// buffers steps x stride for the time since the last fix, dropped when
+    /// the next fix integrates it and committed only if the gap exceeds
+    /// `gapWindowS` (at that fix, or at `finish`).
     func addSteps(t: Double, cumulativeSteps: Int) {
         guard t.isFinite else { return }
         let prev = lastSteps
         let prevT = lastStepT
         lastSteps = cumulativeSteps
         lastStepT = t
-        guard let prev, let prevT, cumulativeSteps >= prev, t > prevT else { return }
+        guard let prev, let prevT, cumulativeSteps >= prev, t > prevT else {
+            // A baseline counts no interval, so the stride window's metres so far
+            // have no steps: start the window here, as a learn does. A stale one
+            // also marks the window, as any stale sample does, so the next fix
+            // empties it.
+            if let fixT = self.t, t - fixT > freshFixWindowS { winStale = true }
+            if let fixT = self.t, t < fixT {
+                // v1.7: stamped before the last fix, so the window's metres
+                // already start after this stamp; the next sample's steps reach
+                // back before them and must not refill it.
+                emptyWindow(at: fixT)
+            } else {
+                winSteps = 0
+                winM = 0
+            }
+            return
+        }
         let d = cumulativeSteps - prev
+        let inGap = attributeSteps(prevT: prevT, t: t, d: d)
         if d > 0 {
             if stepsSeen {
                 let span = t - lastStepIncT
@@ -513,7 +557,9 @@ final class GpsDistanceEstimator {
             lastStepIncT = t
             zuptReleased = false
         }
-        if let fixT = self.t, t - fixT <= freshFixWindowS {
+        // A sample whose interval reaches into a gap, or stamped before the last
+        // fix, holds steps GPS measured no metres for, so it must not teach stride.
+        if let fixT = self.t, !inGap, prevT >= winFromT, t - fixT >= 0, t - fixT <= freshFixWindowS {
             if !strideOk { return }
             winSteps += d
             if winSteps >= Self.strideWindowSteps {
@@ -530,16 +576,50 @@ final class GpsDistanceEstimator {
             }
             return
         }
+        if let fixT = self.t, t - fixT > freshFixWindowS { winStale = true }
         winSteps = 0
         winM = 0
-        guard let stride = strideM else { return }
-        pendingStepM += min(Double(d) * stride, maxSpeedMps * (t - prevT))
+    }
+
+    /// v1.6: a sample's `d` steps were taken across (prevT, t], so each part
+    /// of that interval gets its share. The part after the last fix is
+    /// buffered; the part inside each gap a re-anchor closed since the
+    /// previous sample tops that gap's credit up to its steps. A gap that
+    /// ends after t stays open, less what this sample took from its GPS
+    /// credit, so the next sample shares the rest of it. Returns whether
+    /// (prevT, t] overlaps any open gap.
+    private func attributeSteps(prevT: Double, t: Double, d: Int) -> Bool {
+        let closed = gaps
+        gaps.removeAll()
+        let inGap = closed.contains { min($0.endT, t) > max(prevT, $0.startT) }
+        guard d > 0, let stride = strideM else {
+            gaps = closed.filter { $0.endT > t }
+            return inGap
+        }
+        let rate = min(Double(d) * stride / (t - prevT), maxSpeedMps)
+        let lo = self.t.map { max(prevT, $0) } ?? prevT
+        if t > lo { pendingStepM += rate * (t - lo) }
+        for gap in closed {
+            let from = max(prevT, gap.startT)
+            let to = min(gap.endT, t)
+            var take = 0.0
+            if to > from {
+                let late = rate * (to - from)
+                stepDistanceM += late
+                take = min(late, gap.topUpM)
+                gpsDistanceM -= take
+                stepOverChordM += late - take
+            }
+            if gap.endT > t { gaps.append((startT: gap.startT, endT: gap.endT, topUpM: gap.topUpM - take)) }
+        }
+        return inGap
     }
 
     /// End of run: commit buffered steps if the trailing gap exceeds `gapWindowS`.
     func finish(t: Double) {
         if let fixT = self.t, t.isFinite, t - fixT > gapWindowS {
             stepDistanceM += pendingStepM
+            stepOverChordM += pendingStepM
         }
         pendingStepM = 0
     }

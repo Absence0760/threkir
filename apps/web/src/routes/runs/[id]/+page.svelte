@@ -6,7 +6,7 @@
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { MetricId } from '#lib/metrics/metric_registry.ts';
 	import { onMount, tick } from 'svelte';
-	import { fmtPace, getUnit, formatPaceNoSuffix } from '#lib/format/units.svelte.ts';
+	import { fmtPace, getUnit, formatPaceNoSuffix, formatElevation, formatStrideLength } from '#lib/format/units.svelte.ts';
 
 	const METRES_PER_MILE = 1609.344;
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_SITE_URL, PUBLIC_TILE_STYLE_URL as PUBLIC_TILE_STYLE_URL_ENV } from '$app/env/public';
@@ -29,6 +29,8 @@
 	import RunShareImageDialog from '#lib/components/RunShareImageDialog.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import type { PrCardEntry } from '#lib/share/pr_card.ts';
+	import GrisnirMilestone from '#lib/components/GrisnirMilestone.svelte';
+	import { pickMilestone, type MilestoneKind } from '#lib/mascot/mascot.ts';
 	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
@@ -36,6 +38,8 @@
 	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
 	import RunGearChips from '#lib/components/RunGearChips.svelte';
 	import RunRaceResult from '#lib/components/RunRaceResult.svelte';
+	import RunParkCourseChips from '#lib/components/RunParkCourseChips.svelte';
+	import RunRaceRetime from '#lib/components/RunRaceRetime.svelte';
 	import RunPlanWorkoutPrompt from '#lib/components/RunPlanWorkoutPrompt.svelte';
 	import RunSegmentEfforts from '#lib/components/RunSegmentEfforts.svelte';
 	import RouteHistory from '#lib/components/RouteHistory.svelte';
@@ -47,6 +51,8 @@
 	import {
 		fetchRunById,
 		fetchRunPersonalRecords,
+		fetchRunAllTimeStats,
+		fetchRunEarnedBadge,
 		fetchPublicRunAttribution,
 		type PublicRunAttribution,
 		deleteRun,
@@ -117,6 +123,7 @@
 	} from '#lib/routes/privacy.ts';
 	import { knownEffective, type LoadedSettings } from '#lib/settings/settings_overlay.ts';
 	import { SHARE_CARD_MAP, shareCardTrack } from '#lib/share/share_card_track.ts';
+	import { isCompleteCardCapture } from '#lib/share/share_card_capture.ts';
 	import {
 		estimateRunCalories,
 		ACTIVITY_KCAL_PER_KG_PER_KM,
@@ -236,6 +243,9 @@
 	let savingRoute = $state(false);
 	let shareConfirmIntersectsZone = $state(false);
 	let shareConfirmHasZones = $state(false);
+	// Whether confirming make-public also copies the share link: true from
+	// Share, false from the visibility chip.
+	let shareConfirmCopiesLink = $state(true);
 	let shareBusy = $state(false);
 	/// Audience sharing (followers level + named people, decisions
 	/// § 1874) is a server-gated feature; the control and the narrower
@@ -244,10 +254,44 @@
 	let shareCount = $state(0);
 	let showAudience = $state(false);
 	let audienceLevel = $derived(run ? audienceOf(run, shareCount) : 'private');
+	let visibilityIcon = $derived(
+		audienceLevel === 'public'
+			? 'public'
+			: audienceLevel === 'followers'
+				? 'group'
+				: audienceLevel === 'specific'
+					? 'person_add'
+					: 'lock'
+	);
+	let visibilityLabel = $derived(
+		audienceLevel === 'public'
+			? m('runDetail.public')
+			: audienceLevel === 'followers'
+				? m('audience.chipFollowers')
+				: audienceLevel === 'specific'
+					? m('audience.chipShared')
+					: m('runDetail.private')
+	);
+	let visibilityChipAria = $derived(
+		audienceSharingOn
+			? m('runDetail.visibilityChipAudienceAria', { level: visibilityLabel })
+			: run?.is_public
+				? m('runDetail.visibilityChipPublicAria')
+				: m('runDetail.visibilityChipPrivateAria')
+	);
 	let bodyWeightKg = $state<number | null>(null);
 	// Hide-calories opt-out (universal `show_calories` pref, default on) —
 	// hunt-newrunner: a weight-conscious runner can suppress the estimate.
 	let showCalories = $state(true);
+	// Universal `show_mascot` (default on): off drops Grisnir from the map
+	// share card whatever the editor's mark switch says.
+	let showMascot = $state(true);
+	/// Whether the settings read has landed, so the milestone Grisnir never
+	/// flashes for a runner who hid him (the share card's default-on
+	/// `showMascot` is only read at capture time).
+	let mascotKnown = $state(false);
+	/// The one milestone this run earned, for Grisnir's hop under the header.
+	let milestone = $state<MilestoneKind | null>(null);
 	// HR-zone fallback inputs, read from the universal settings bag on
 	// mount. Used only when explicit `hr_zones` is unset (Older #8).
 	let maxHrBpm = $state<number | null>(null);
@@ -385,6 +429,8 @@
 				const bw = effective<number>(settings, 'body_weight_kg');
 				if (typeof bw === 'number' && bw > 0) bodyWeightKg = bw;
 				showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
+				showMascot = effective<boolean>(settings, 'show_mascot', true) !== false;
+				mascotKnown = true;
 			}
 			// Read viewer gender for the calorie cross-formula
 			// calibration (persona-hunt Round 3 finding Woman #5).
@@ -752,7 +798,24 @@
 
 	function requestPublicFromAudience() {
 		showAudience = false;
-		void requestMakePublic();
+		void requestMakePublic(true);
+	}
+
+	/// The visibility chip is the control for who can see the run, not a
+	/// label: with audience sharing on it opens the audience sheet, otherwise
+	/// it flips public / private through the same confirms Share and the lock
+	/// button use. Going public from here copies nothing; that is Share's job.
+	function handleVisibilityChip() {
+		if (!run || shareBusy) return;
+		if (audienceSharingOn) {
+			showAudience = true;
+			return;
+		}
+		if (run.is_public) {
+			showMakePrivateConfirm = true;
+			return;
+		}
+		void requestMakePublic(false);
 	}
 
 	async function handleShare() {
@@ -781,10 +844,10 @@
 			showAudience = true;
 			return;
 		}
-		await requestMakePublic();
+		await requestMakePublic(true);
 	}
 
-	async function requestMakePublic() {
+	async function requestMakePublic(copyLink: boolean) {
 		if (!run || !auth.user || shareBusy) return;
 		// Visibility-change consent: making a previously-private run
 		// public is a non-trivial state change. A first-time / casual
@@ -806,6 +869,7 @@
 		shareConfirmIntersectsZone =
 			zones.length > 0 && !!run.track && trackEntersAnyZone(trackLine(run.track), zones);
 		shareConfirmHasZones = zones.length > 0;
+		shareConfirmCopiesLink = copyLink;
 		showShareConfirm = true;
 	}
 
@@ -819,6 +883,10 @@
 			// the share button both read `run.is_public` and would otherwise
 			// keep showing "Private" / "Make public" until a reload.
 			run = { ...run, is_public: true, followers_only: false } as Run;
+			if (!shareConfirmCopiesLink) {
+				showToast(m('runDetail.madePublic'), 'success');
+				return;
+			}
 			const url = buildRunShareCanonical(window.location.origin, run.id);
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
@@ -911,12 +979,34 @@
 		if (runRecords.length > 0 && page.url.searchParams.get('share') === 'pr') {
 			void handleShareImage('pr');
 		}
+		void loadMilestone();
+	}
+
+	/// L4: the milestone is decoration; a failed read shows none.
+	async function loadMilestone() {
+		if (!run) return;
+		const runId = run.id;
+		const distanceM = run.distance_m ?? 0;
+		try {
+			const [stats, badgeEarned] = await Promise.all([fetchRunAllTimeStats(), fetchRunEarnedBadge(runId)]);
+			if (run?.id !== runId) return;
+			milestone = pickMilestone({
+				totalRuns: stats.totalRuns,
+				runDistanceM: distanceM,
+				longestRunM: stats.longestRunM,
+				records: runRecords,
+				badgeEarned,
+			});
+		} catch (e) {
+			console.warn('run milestone read failed', e);
+		}
 	}
 
 	/// The streak day this run was, counted as of the run's own local day from
 	/// every run up to it, so last month's run does not print today's streak.
 	let shareStreakDays = $state(0);
 	let shareBadge = $state<{ badgeKey: string; tier: AchievementTier } | null>(null);
+	let parkCourseRefresh = $state(0);
 	let shareCourse = $state<{ name: string; park: string; timeS: number; season: number; rank: number | null } | null>(null);
 	/// The race the run is linked to, from the result stamped on it: the
 	/// official chip time when there is one.
@@ -996,9 +1086,14 @@
 		await tick();
 		// Dynamic import keeps the 30 KB lib out of the initial
 		// bundle for users who never open the share editor.
-		const { toBlob } = await import('html-to-image');
+		const { toCanvas } = await import('html-to-image');
 		if (!shareCardEl) throw new Error('share card not ready');
-		const blob = await toBlob(shareCardEl, { pixelRatio: 1, cacheBust: true });
+		const canvas = await toCanvas(shareCardEl, { pixelRatio: 1, cacheBust: true });
+		// A card drawn outside its own frame rasterises transparent without
+		// throwing; refuse it so the editor shows an error, not a blank PNG.
+		const pixels = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
+		if (!pixels || !isCompleteCardCapture(pixels)) throw new Error('share card rendered blank');
+		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
 		if (!blob) throw new Error('share card produced no image');
 		return blob;
 	}
@@ -1240,7 +1335,7 @@
 			});
 		}
 		if (elevationGainM != null) {
-			cells.push({ label: m('runDetail.elevation'), value: `${elevationGainM} m` });
+			cells.push({ label: m('runDetail.elevation'), value: formatElevation(elevationGainM) });
 		}
 		if (showCalories && estimatedCalories > 0) {
 			cells.push({ label: calorieLabel, value: String(estimatedCalories) });
@@ -1913,11 +2008,11 @@
 						<div class="segment-stat">
 							<span class="segment-stat-label">{m('runDetail.elev')}</span>
 							<span class="segment-stat-value">
-								{#if selectedSegment.ele_gain_m > 0}+{selectedSegment.ele_gain_m}m{/if}
+								{#if selectedSegment.ele_gain_m > 0}+{formatElevation(selectedSegment.ele_gain_m)}{/if}
 								{#if selectedSegment.ele_gain_m > 0 && selectedSegment.ele_loss_m > 0}
 									·
 								{/if}
-								{#if selectedSegment.ele_loss_m > 0}−{selectedSegment.ele_loss_m}m{/if}
+								{#if selectedSegment.ele_loss_m > 0}−{formatElevation(selectedSegment.ele_loss_m)}{/if}
 							</span>
 						</div>
 					{/if}
@@ -1962,20 +2057,20 @@
 							<span class="meta-source-dot"></span>
 							{sourceLabel(run.source)}
 						</span>
-						<span
+						<button
+							type="button"
 							class="meta-item visibility-chip"
 							class:is-public={run.is_public}
+							aria-label={visibilityChipAria}
+							aria-haspopup="dialog"
+							onclick={handleVisibilityChip}
+							disabled={shareBusy}
 							data-testid="run-visibility-chip"
 						>
-							<span class="material-symbols">{audienceLevel === 'public' ? 'public' : audienceLevel === 'followers' ? 'group' : audienceLevel === 'specific' ? 'person_add' : 'lock'}</span>
-							{audienceLevel === 'public'
-								? m('runDetail.public')
-								: audienceLevel === 'followers'
-									? m('audience.chipFollowers')
-									: audienceLevel === 'specific'
-										? m('audience.chipShared')
-										: m('runDetail.private')}
-						</span>
+							<span class="material-symbols" aria-hidden="true">{visibilityIcon}</span>
+							{visibilityLabel}
+							<span class="material-symbols chip-caret" aria-hidden="true">expand_more</span>
+						</button>
 						{#if runRecords.length > 0}
 							<button
 								type="button"
@@ -2046,7 +2141,9 @@
 								? m('runDetail.copyShareLink')
 								: audienceSharingOn && audienceLevel !== 'private'
 									? m('audience.copyLink')
-									: m('runDetail.shareLink')}
+									: audienceSharingOn
+										? m('runDetail.shareLink')
+										: m('runDetail.makePublicCopyLink')}
 							onclick={handleShare}
 							disabled={shareBusy}
 							data-testid="run-share-btn"
@@ -2095,8 +2192,8 @@
 						</button>
 						<button
 							class="icon-btn"
-							aria-label={m('runDetail.shareAsImage')}
-							title={m('runDetail.shareAsImage')}
+							aria-label={m('runDetail.shareImageAria')}
+							title={m('runDetail.shareImage')}
 							onclick={() => handleShareImage()}
 							disabled={generatingImage}
 						>
@@ -2127,6 +2224,9 @@
 			</div>
 			{#if runNotes}
 				<p class="run-notes">{runNotes}</p>
+			{/if}
+			{#if milestone && mascotKnown && showMascot && !isDnf && !recoveredUnfinished && auth.user?.id === run.user_id}
+				<GrisnirMilestone kind={milestone} />
 			{/if}
 		</header>
 
@@ -2307,6 +2407,20 @@
 			onlisting={(id) => (publicRaceListingId = id)}
 		/>
 
+		<RunParkCourseChips runId={run.id} runOwnerId={run.user_id} refresh={parkCourseRefresh} />
+
+		<RunRaceRetime
+			runId={run.id}
+			runOwnerId={run.user_id}
+			eventId={run.event_id}
+			startedAt={run.started_at}
+			distanceM={run.distance_m}
+			track={run.track}
+			undoneFinishAt={typeof run.metadata?.race_undone_finish_at === 'string'
+				? run.metadata.race_undone_finish_at
+				: null}
+		/>
+
 		<RunPhotos
 			runId={run.id}
 			runOwnerId={run.user_id}
@@ -2329,11 +2443,12 @@
 				runOwnerId={run.user_id}
 				routeId={run.route_id}
 				track={trackLine(run.track ?? [])}
+				onscored={() => parkCourseRefresh++}
 			/>
 		</section>
 		{#if run.route_id}
 			<section class="section">
-				<h2>{m('runDetail.routeHistory')}</h2>
+				<h2><MetricLabel metric="routeHistory" /></h2>
 				<RouteHistory
 					currentRunId={run.id}
 					routeId={run.route_id}
@@ -2569,7 +2684,7 @@
 					{/if}
 					{#if runningDynamics.stride_length_m != null}
 						<div class="key-stat">
-							<span class="key-stat-value">{runningDynamics.stride_length_m.toFixed(2)} m</span>
+							<span class="key-stat-value">{formatStrideLength(runningDynamics.stride_length_m)}</span>
 							<span class="key-stat-label">{m('runDetail.strideLength')}</span>
 						</div>
 					{/if}
@@ -2645,7 +2760,9 @@
 								{/if}
 								{#if hasElevation}
 									<td class="split-elev" class:positive={(split.elevation_m ?? 0) > 0} class:negative={(split.elevation_m ?? 0) < 0}>
-										{(split.elevation_m ?? 0) > 0 ? '+' : ''}{split.elevation_m ?? '—'} m
+										{split.elevation_m == null
+											? '—'
+											: `${split.elevation_m > 0 ? '+' : ''}${formatElevation(split.elevation_m)}`}
 									</td>
 								{/if}
 							</tr>
@@ -2799,7 +2916,7 @@
 		: shareConfirmHasZones
 			? m('runDetail.shareDialogMessageNoIntersect')
 			: m('runDetail.shareDialogMessageNoZones')}
-	confirmLabel={m('runDetail.makePublicConfirm')}
+	confirmLabel={shareConfirmCopiesLink ? m('runDetail.makePublicConfirm') : m('runDetail.makePublic')}
 	onconfirm={proceedShare}
 	oncancel={() => (showShareConfirm = false)}
 	data-testid="share-confirm-dialog"
@@ -2844,6 +2961,7 @@
 		open={showShareImage}
 		onclose={() => (showShareImage = false)}
 		run={run}
+		linkHint={run.is_public ? null : m('runShare.linkHint')}
 		title={shareImageTitle}
 		line={shareCardLine}
 		captureCard={captureShareCard}
@@ -2870,16 +2988,19 @@
 {/if}
 
 <!-- Off-screen share card. 1080 square, rendered to PNG by
-     `html-to-image` when the user taps Share-as-image. Lives outside
-     the main layout so it doesn't affect scrolling; positioned
-     `fixed` at top:-9999px so it still has real layout dimensions
-     (pure `display:none` would zero them out and break the canvas
-     capture). Background tint + gradient matches the dashboard
-     primary, independent of the active theme. -->
+     `html-to-image` when the user taps Share-as-image. The HOST is what
+     sits `fixed` at -9999px, so the card keeps real layout dimensions
+     (pure `display:none` would zero them out) while the captured node
+     itself carries no offset: html-to-image copies the node's computed
+     style onto its clone, and a card offset by its own top/left was drawn
+     -9999px outside the PNG, which came out fully transparent. Background
+     tint + gradient matches the dashboard primary, independent of the
+     active theme. -->
+<div class="share-card-host" aria-hidden="true">
 <div
 	bind:this={shareCardEl}
 	class="share-card"
-	aria-hidden="true"
+	data-testid="share-card"
 >
 	<div class="share-card-inner">
 		{#if shareCardMark}
@@ -2930,10 +3051,25 @@
 				</div>
 			</div>
 		</div>
-		<div class="share-card-date">
-			{formatDate(run.started_at)}
+		<div class="share-card-foot">
+			<div class="share-card-date">
+				{formatDate(run.started_at)}
+			</div>
+			<!-- Grisnir signs the bottom-right corner, beside the date and under
+				 the stats, so he never sits on the map or a number. He travels
+				 with the mark: the editor's mark switch drops both, and the
+				 runner's show_mascot setting drops him on every card. -->
+			{#if shareCardMark && showMascot}
+				<img
+					src="/brand/grisnir/grisnir-badge-256.png"
+					alt=""
+					class="share-card-grisnir"
+					data-testid="share-card-grisnir"
+				/>
+			{/if}
 		</div>
 	</div>
+</div>
 </div>
 {/if}
 
@@ -3470,12 +3606,24 @@
 	}
 
 	.visibility-chip {
+		min-height: 1.75rem;
 		padding: 0.2rem 0.55rem;
 		border-radius: 9999px;
 		background: var(--color-bg-tertiary);
 		border: 1px solid var(--color-border);
+		font: inherit;
 		font-weight: 600;
 		font-size: 0.72rem;
+		cursor: pointer;
+	}
+
+	.visibility-chip:hover:not(:disabled) {
+		border-color: var(--color-primary);
+	}
+
+	.visibility-chip:disabled {
+		cursor: progress;
+		opacity: 0.6;
 	}
 
 	.visibility-chip.is-public {
@@ -3486,6 +3634,10 @@
 
 	.visibility-chip.is-public .material-symbols {
 		color: var(--color-success-text);
+	}
+
+	.visibility-chip .chip-caret {
+		margin-inline-start: -0.15rem;
 	}
 
 	.dnf-chip {
@@ -3604,12 +3756,16 @@
 	 *     stats line up vertically + don't jitter when the underlying
 	 *     value ticks (`12:34` vs `12:36` was visually shifting).
 	 */
+	/* The separators are each cell's own right and bottom edge, not a
+	   border-coloured background showing through a 1px gap: that background
+	   also filled the empty slots of a short last row, which read as a grey
+	   placeholder tile. The outer ones fall under the border and are clipped,
+	   and an empty slot is plain panel. */
 	.key-stats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr));
-		gap: 1px;
 		margin-bottom: var(--space-xl);
-		background: var(--color-border);
+		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
@@ -3642,7 +3798,9 @@
 		gap: 0.25rem;
 		min-width: 0;
 		padding: var(--space-md) var(--space-lg);
-		background: var(--color-bg-secondary);
+		box-shadow:
+			1px 0 0 var(--color-border),
+			0 1px 0 var(--color-border);
 		container-type: inline-size;
 	}
 
@@ -4231,10 +4389,13 @@
 		color: var(--color-primary);
 	}
 
-	.share-card {
+	.share-card-host {
 		position: fixed;
 		top: -9999px;
 		left: -9999px;
+		pointer-events: none;
+	}
+	.share-card {
 		width: 1080px;
 		height: 1080px;
 		/* Rasterised to a PNG that leaves the device, so the ramp is a fixed
@@ -4273,7 +4434,7 @@
 		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
 	}
 	.share-card-credit {
-		margin-top: 12px;
+		margin-top: 8px;
 		font-size: 22px;
 		opacity: 0.85;
 		text-align: end;
@@ -4293,7 +4454,7 @@
 	.share-card-stats {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 28px 48px;
+		gap: 20px 48px;
 	}
 	.share-stat.hero {
 		grid-column: 1 / -1;
@@ -4322,5 +4483,19 @@
 		font-size: 42px;
 		font-weight: 600;
 		opacity: 0.75;
+	}
+	/* The foot row is as tall as Grisnir, so the map, the stats and the foot
+	   still fit the card's 888 px of content height: 64 + 394 + 312 + 112. */
+	.share-card-foot {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 24px;
+	}
+	.share-card-grisnir {
+		display: block;
+		height: 112px;
+		width: auto;
+		flex: none;
 	}
 </style>

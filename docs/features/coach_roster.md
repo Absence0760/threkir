@@ -201,6 +201,21 @@ Built 2026-10-15 (issue #1168 item 8), after the roster above. The coach review 
 
 The roster note below ("raw GPS track stays owner-only … do not add a track read here") still holds for the roster: the map lives on the per-athlete review page only.
 
+## Coach assistant (issue #1215 Phase 4)
+
+Built on web, off everywhere. In a conversation with an athlete they actively coach, a coach can open **Draft with AI** (`CoachAssistPanel.svelte`), pick a reply or plan changes to suggest, optionally say what it should say, and get a draft only they see. **Use draft** puts it in the composer to edit; the message it becomes is stored as `kind = 'ai_assisted'` and marked "AI-assisted" on both sides. Drafts are never stored. Plan changes are suggested in words: nothing edits the athlete's plan (the athlete can apply a change, or send one for approval, as § 2382 describes).
+
+- **Consent, per link.** The athlete turns "Let {coach} use AI assistance" on for one coach on `/coaching` (web `CoachAssistConsent.svelte`; mobile `coaching_screen.dart`), which writes `coach_athletes.ai_assist_consent_version` through `set_coach_ai_assist_consent`. Off by default; withdrawing is one tap; ending the link clears it; a coach can never set it. The copy names every lane, and the lanes are `COACH_ASSIST_REGISTRY` in `apps/web/src/lib/coach/assist/context.ts`: the athlete's last 20 messages with this coach since the link began (shared AI Coach answers left out), the current plan with 14 days of workouts, and 10 recent activities. No heart rate, metadata, location, nutrition or date of birth.
+- **Gates, all server-side** (`assist/handler.ts`): `COACH_ASSIST_ENABLED` → the coach's AI disclosure v7 → an active link with the athlete's consent → no block either way → Pro (fail-closed) → a `coach-assist` rate slot (30/hour). Reached at `/api/coach/assist` (dev `+server.ts`, prod the coach Lambda's `assist` sub-path).
+- **Mobile.** The athlete's consent toggle (behind `/app-capabilities.json` `coach_assist`), the marker and the v7 disclosure bullet. The drafting panel is web-canonical (decisions § 24).
+- **Pre-deploy checklist:**
+  - [ ] **Before the release that carries migration `20271210001219`**: counsel / CISO sign-off on the v7 AI-disclosure copy, which every user is asked to accept whatever the flags say.
+  - [ ] **CISO + counsel sign-off** on the athlete's consent copy, the Art. 9 question for free-text messages, and the v7 coach bullet.
+  - [ ] **DPIA** section completed and signed ([dpia.md](../compliance/dpia.md#coach-assistant-issue-1215-phase-4)).
+  - [ ] Sub-processor changelog entry published and its 30-day notice run.
+  - [ ] Then set `PUBLIC_COACH_ASSIST_ENABLED` and `COACH_ASSIST_ENABLED` together ([deployment.md § Coach assistant](../ops/deployment.md#coach-assistant--after-the-ciso--counsel-sign-off-and-the-dpia-update)).
+- **Tests:** unit `src/lib/coach/assist/assist.test.ts` (consent ladder, registry, every gate, refunds); `src/lib/coach/assist/client_request.test.ts` (what the panel receives for every answer: each 4xx, the athlete-consent refusal, the 401 refresh-and-retry, a 5xx, a network failure, an empty draft); pgtap `coach_assist_test.sql`; Playwright `tests-e2e/messages/coach-assist-off.spec.ts` (gate off) and `tests-e2e/configured/coach-assist.spec.ts` (gate on, endpoint mocked); Flutter coaching screen and thread marker tests.
+
 ## Effort targets, roster flags and the medication flag (decisions § 2092)
 
 Built 2026-10-17 (issue #1186, persona "coach, and an older athlete on beta-blockers").

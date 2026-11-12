@@ -28,6 +28,7 @@
 		type SessionStartMode
 	} from '#lib/races/course_gates.ts';
 	import type { DrawnGate } from '#lib/races/course_gate_layers.ts';
+	import { gateFormSeed, shouldReseed, widthFromEntry, type GateFormSync } from '#lib/races/course_gate_form.ts';
 	import type { Gate } from '#lib/geo/gate_crossing.ts';
 
 	interface Props {
@@ -54,6 +55,12 @@
 	let formLng = $state<number | null>(null);
 	let formBearing = $state<number | null>(null);
 	let formWidth = $state<number>(COURSE_GATE_DEFAULT_HALF_WIDTH_M);
+	// The number field's own entry, so clearing it to type a new width leaves
+	// formWidth (and the slider) on the last valid value.
+	let widthEntry = $state<number | null>(COURSE_GATE_DEFAULT_HALF_WIDTH_M);
+	// Not reactive: the reseed effect reads it and must not re-run on it.
+	let sync: GateFormSync = { which: null, seededFrom: null, dirty: false };
+	let editSeq = 0;
 
 	const start = $derived(lines ? courseGate(lines, 'start') : null);
 	const finish = $derived(lines ? courseGate(lines, 'finish') : null);
@@ -89,25 +96,44 @@
 			});
 	});
 
-	// The inputs follow the line being edited whenever the server's copy moves.
+	// The inputs follow the line being edited when the server's copy actually
+	// moves, never over what the organiser has typed and not applied (#1358).
 	$effect(() => {
 		const g = edited;
+		const which = editing;
 		if (placing && !g) return;
-		formLat = g ? round(g.lat, 6) : null;
-		formLng = g ? round(g.lng, 6) : null;
-		formBearing = g ? round(g.bearingDeg, 1) : null;
-		formWidth = g ? g.halfWidthM : COURSE_GATE_DEFAULT_HALF_WIDTH_M;
+		if (!shouldReseed(sync, which, g)) return;
+		seedForm(which, g);
 	});
 
-	function round(v: number, places: number): number {
-		const f = 10 ** places;
-		return Math.round(v * f) / f;
+	function seedForm(which: GateWhich, g: CourseGate | null) {
+		const v = gateFormSeed(g);
+		formLat = v.lat;
+		formLng = v.lng;
+		formBearing = v.bearingDeg;
+		formWidth = v.halfWidthM;
+		widthEntry = v.halfWidthM;
+		sync = { which, seededFrom: g, dirty: false };
+	}
+
+	function onFormInput() {
+		editSeq++;
+		sync = { ...sync, dirty: true };
+	}
+
+	/// After a save or reset of the edited line the form shows the server's
+	/// copy, which may differ from what was typed (a bearing of 360 is stored
+	/// as 0), unless more was typed while the write was in flight. A write to
+	/// the other line leaves this one's unapplied edits alone.
+	function settle(which: GateWhich, seqAtStart: number) {
+		if (which === editing && editSeq === seqAtStart) seedForm(editing, edited);
 	}
 
 	async function save(which: GateWhich, gate: Gate) {
 		if (busy) return;
 		busy = true;
 		error = null;
+		const seq = editSeq;
 		try {
 			await setEventCourseGate(courseId, which, {
 				lat: gate.lat,
@@ -117,6 +143,7 @@
 			});
 			placing = false;
 			await onchanged();
+			settle(which, seq);
 		} catch (e) {
 			error = errorCopy(e, m, 'courseLines.saveFailed', 'courseLines.saveFailed');
 		} finally {
@@ -128,9 +155,11 @@
 		if (busy) return;
 		busy = true;
 		error = null;
+		const seq = editSeq;
 		try {
 			await resetEventCourseGate(courseId, which);
 			await onchanged();
+			settle(which, seq);
 		} catch (e) {
 			error = errorCopy(e, m, 'courseLines.saveFailed', 'courseLines.saveFailed');
 		} finally {
@@ -161,6 +190,7 @@
 			error = m('courseLines.positionInvalid');
 			return;
 		}
+		widthEntry = formWidth;
 		void save(editing, { lat: formLat, lng: formLng, bearingDeg: formBearing, halfWidthM: formWidth });
 	}
 
@@ -183,10 +213,8 @@
 			// Nowhere to put it yet (no map, no route, no other line): open the
 			// inputs empty so the position can be typed.
 			placing = true;
-			formLat = null;
-			formLng = null;
+			seedForm(which, null);
 			formBearing = 0;
-			formWidth = COURSE_GATE_DEFAULT_HALF_WIDTH_M;
 			return;
 		}
 		const other = which === 'start' ? finish : start;
@@ -295,6 +323,7 @@
 			role="group"
 			aria-label={editing === 'start' ? m('courseLines.editingStart') : m('courseLines.editingFinish')}
 			onkeydown={onFormKey}
+			oninput={onFormInput}
 			data-testid="course-gate-form"
 		>
 			<p class="muted small">
@@ -325,7 +354,7 @@
 						min={COURSE_GATE_HALF_WIDTH_MIN_M}
 						max={COURSE_GATE_HALF_WIDTH_MAX_M}
 						step="1"
-						bind:value={formWidth}
+						bind:value={() => formWidth, (v) => (formWidth = widthEntry = widthFromEntry(v, formWidth))}
 						data-testid="course-gate-width"
 					/>
 					<input
@@ -334,7 +363,11 @@
 						min={COURSE_GATE_HALF_WIDTH_MIN_M}
 						max={COURSE_GATE_HALF_WIDTH_MAX_M}
 						step="1"
-						bind:value={formWidth}
+						bind:value={() => widthEntry, (v) => {
+							widthEntry = v;
+							formWidth = widthFromEntry(v, formWidth);
+						}}
+						onblur={() => (widthEntry = formWidth)}
 						aria-label={m('courseLines.halfWidthMetres')}
 						data-testid="course-gate-width-number"
 					/>

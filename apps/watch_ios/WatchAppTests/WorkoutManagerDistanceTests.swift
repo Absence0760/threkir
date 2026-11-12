@@ -228,6 +228,30 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertEqual(wm.finishedRun?.distanceMetres ?? -1, live, accuracy: 0.0001)
         XCTAssertEqual(wm.finishedRun?.distanceEstimator, WorkoutManager.distanceEstimatorTag)
         XCTAssertEqual(wm.finishedRun?.distanceStepFilledMetres ?? -1, 0)
+        XCTAssertEqual(wm.finishedRun?.distanceStepOverChordMetres, 0)
+        XCTAssertEqual(wm.finishedRun?.distanceSegments, 1)
+    }
+
+    /// A pause with no fix after it opens no segment: the next mark rides the
+    /// next stored fix, and the server's replay counts a segment only where a
+    /// fix starts one.
+    func testTheSegmentCountIsTheStoredTracks() {
+        let wm = WorkoutManager()
+        wm.state = .recording
+        feed(wm, run(from: 51.5, at: 0, seconds: 10))
+        wm.pause()
+        wm.resume()
+        wm.pause()
+        wm.resume()
+        feed(wm, run(from: 51.6, at: 60, seconds: 10))
+        wm.pause()
+        wm.stop()
+        XCTAssertEqual(wm.finishedRun?.distanceSegments, 2)
+
+        let none = WorkoutManager()
+        none.state = .recording
+        none.stop()
+        XCTAssertNil(none.finishedRun?.distanceSegments, "a run with no stored fix claims no segment")
     }
 
     /// `fixtures/activity_speed_caps.json` is the phone's

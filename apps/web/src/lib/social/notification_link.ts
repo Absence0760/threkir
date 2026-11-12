@@ -20,6 +20,8 @@ export interface NotificationLinkInput {
 		achievement_id: string | null;
 		challenge_id: string | null;
 		course_alert_id?: string | null;
+		/// The group a message or invite is about (migration 20271217000001).
+		conversation_id?: string | null;
 	};
 	event_club_slug: string | null;
 	club_slug: string | null;
@@ -71,7 +73,13 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'workout_reminder':
 			return r.plan_id ? `/plans/${r.plan_id}` : null;
 		case 'message':
+			// A group message opens its group, never a 1:1 thread with the sender.
+			if (r.conversation_id) return `/messages/group/${r.conversation_id}`;
 			return r.actor_id ? `/messages/${r.actor_id}` : null;
+		case 'group_invite':
+			// Accept and decline sit in the inbox's Requests list; the group itself
+			// opens only once accepted (decisions § 2463).
+			return '/messages?view=requests';
 		case 'club_post':
 		case 'club_join_approved':
 		case 'club_join_request':
@@ -111,6 +119,14 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			// The stable-id resolver opens the race or route the alert is on
 			// (decisions § 2407); the row carries only the alert's id.
 			return r.course_alert_id ? `/course-alerts/${r.course_alert_id}` : null;
+		case 'park_course_report':
+			// Sent to app admins only; the queue sorts land-manager requests by
+			// their deadline (decisions § 2449).
+			return '/admin/reports';
+		case 'organiser_dispute':
+			// Both sides read the decision, and any rename deadline, on the
+			// disputes page; the row names only the reporting club.
+			return '/disputes';
 		case 'content_hidden':
 			return null;
 		default:

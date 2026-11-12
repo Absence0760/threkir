@@ -124,6 +124,12 @@ const NOT_SPENT_BY_SPECS: Record<string, string> = {
 		'so the 20-a-day bucket it spends is its own and cannot reach another spec.',
 	send_direct_message_burst:
 		'The per-minute companion to send_direct_message, spent by the same saga-user sends.',
+	dm_reaction:
+		'messages/dm-reactions.spec.ts reacts only as ephemeral saga users minted per test, so the ' +
+		'bucket it spends is its own and cannot reach another spec.',
+	dm_image_upload:
+		'messages/dm-photos-links.spec.ts uploads only as ephemeral saga users minted per test, so ' +
+		'the bucket it spends is its own and cannot reach another spec.',
 	edit_direct_message:
 		'messages/dm-edit.spec.ts edits only as ephemeral saga users minted per test, so the ' +
 		'bucket it spends is its own; dm_edit_test.sql covers the RPC.',
@@ -143,6 +149,12 @@ const NOT_SPENT_BY_SPECS: Record<string, string> = {
 	plan_calendar_rotate:
 		'settings/plan-calendar-feed.spec.ts mints and replaces the link only as an ephemeral ' +
 		'saga user, so the bucket it spends is its own; pgtap covers the cap itself.',
+	create_group_conversation:
+		'messages/group-*.spec.ts create groups only as ephemeral saga users minted per test, so ' +
+		'the 10-a-day bucket they spend is their own; group_messages_membership_test.sql covers the cap.',
+	invite_to_group:
+		'messages/group-*.spec.ts invite (through create_group_conversation and invite_to_group) ' +
+		'only as ephemeral saga users minted per test, so the 50-a-day bucket is their own.',
 	create_live_overlay_token:
 		'live/overlay.spec.ts makes and replaces overlay tokens only as an ephemeral saga ' +
 		'user, so the bucket it spends is its own; pgtap covers the cap itself.'

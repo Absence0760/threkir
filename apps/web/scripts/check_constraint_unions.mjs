@@ -43,7 +43,7 @@
 // CI:  invoked from the parity-types job alongside gen:types:check.
 // Unit tests: `node --test apps/web/scripts/check_constraint_unions.test.mjs`
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -127,13 +127,24 @@ export const PAIRS = [
 		note: 'message requests (migration 20271115002384): written only by the direct_messages_request_state trigger and the accept/decline RPCs; clients read the derived dm_threads().request boolean and never name a state.',
 	},
 	{
+		tableColumn: 'conversation_participants.membership_state',
+		clients: [],
+		note: 'group lifecycle (migration 20271216000002, decisions § 2461): written only by the group RPCs and the purge; clients read dm_threads().membership_state and group_members(), and no client enumerates the set until the slice 2 surfaces do.',
+	},
+	{
+		tableColumn: 'conversation_participants.role',
+		clients: [],
+		note: 'group roles (migration 20271216000002, decisions § 2461): written only by create_group_conversation, accept_group_invite, set_group_member_role and transfer_group_ownership; no client enumerates the set until the slice 2 member sheet does.',
+	},
+	{
 		tableColumn: 'conversations.kind',
 		clients: [],
-		note: 'only direct exists (migration 20271105000010); written by the direct_messages_set_conversation trigger and never named by a client.',
+		note: 'direct (migration 20271105000010) and group (20271216000001, decisions § 2461); written by the direct_messages_set_conversation trigger and create_group_conversation, never by a client. Clients read the dm_threads().kind text and no client enumerates the set until slice 2.',
 	},
 	{
 		tableColumn: 'challenges.activity_type',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'CHALLENGE_ACTIVITY_TYPES', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'ActivityType', shape: 'union' },
 			{ file: 'apps/web/src/lib/runs/activity_type.ts', decl: 'ACTIVITY_TYPES', shape: 'strings' },
 			{ file: 'packages/core_models/lib/src/activity_type.dart', decl: 'ActivityType', shape: 'enum' },
@@ -142,6 +153,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'challenges.metric',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'CHALLENGE_METRICS', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'ChallengeMetric', shape: 'union' },
 			{
 				file: 'apps/web/src/lib/social/challenge_progress.ts',
@@ -512,6 +524,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'gym_routine_exercises.modality',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'MODALITIES', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'GymExerciseModality', shape: 'union' },
 			{
 				file: 'apps/web/src/lib/components/RoutineEditor.svelte',
@@ -533,6 +546,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'gym_routine_exercises.progression',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'PROGRESSIONS', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'GymProgressionScheme', shape: 'union' },
 			{
 				file: 'apps/web/src/lib/gym/gym_progression.ts',
@@ -578,6 +592,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'gym_routine_sets.set_type',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'SET_TYPES', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'GymSetType', shape: 'union' },
 			{
 				file: 'apps/web/src/lib/components/RoutineEditor.svelte',
@@ -603,7 +618,10 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'gym_routines.periodisation',
-		clients: [{ file: TS_TYPES, decl: 'GymPeriodisation', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'GymPeriodisation', shape: 'union' },
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'PERIODISATIONS', shape: 'strings' },
+		],
 	},
 	{
 		// `_setTypeChip` returns null for `working` BEFORE its switch — the common
@@ -712,6 +730,32 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'direct_messages.kind',
+		clients: [
+			{ file: 'apps/web/src/lib/social/coach_share.ts', decl: 'DmKind', shape: 'union' },
+			{ file: 'apps/web/src/lib/social/coach_share.ts', decl: 'DM_KINDS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/coach_share.dart', decl: 'kDmKinds', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'direct_message_reactions.reaction',
+		clients: [
+			{ file: 'apps/web/src/lib/social/dm_reactions.ts', decl: 'DmReaction', shape: 'union' },
+			{ file: 'apps/web/src/lib/social/dm_reactions.ts', decl: 'DM_REACTIONS', shape: 'strings' },
+			{ file: 'apps/web/src/lib/social/dm_reactions.ts', decl: 'DM_REACTION_CODEPOINTS', shape: 'keys' },
+			{ file: 'apps/mobile_android/lib/dm_reactions.dart', decl: 'kDmReactions', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/widgets/dm_reaction_chips.dart', decl: 'dmReactionName', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'direct_message_images.status',
+		clients: [
+			{ file: 'apps/web/src/lib/social/dm_image.ts', decl: 'DmImageStatus', shape: 'union' },
+			{ file: 'apps/web/src/lib/social/dm_image.ts', decl: 'DM_IMAGE_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/dm_image.dart', decl: 'kDmImageStatuses', shape: 'strings' },
+		],
+	},
+	{
 		tableColumn: 'plan_change_requests.status',
 		clients: [
 			{ file: 'apps/web/src/lib/training/plan_change.ts', decl: 'PLAN_CHANGE_STATUSES', shape: 'strings' },
@@ -749,6 +793,15 @@ export const PAIRS = [
 				// The `_` branch is the traced-against-the-park-map credit.
 				allowMissing: ['traced'],
 			},
+		],
+	},
+	{
+		tableColumn: 'park_courses.shared_use',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'SHARED_USES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kSharedUses', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'sharedUseNotice', shape: 'switch' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'SHARED_USES', shape: 'strings' },
 		],
 	},
 	{
@@ -839,7 +892,10 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'race_listings.provider',
-		clients: [{ file: TS_TYPES, decl: 'RaceProvider', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'RaceProvider', shape: 'union' },
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'RACE_PROVIDERS', shape: 'strings' },
+		],
 	},
 	{
 		tableColumn: 'race_listings.course_source',
@@ -923,13 +979,15 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'event_results.start_detection',
-		clients: [],
-		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+		clients: [
+			{ file: 'apps/mobile_android/lib/race_controller.dart', decl: 'RaceStartDetection', shape: 'enum' },
+		],
 	},
 	{
 		tableColumn: 'event_results.finish_detection',
-		clients: [],
-		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+		clients: [
+			{ file: 'apps/mobile_android/lib/race_finish.dart', decl: 'RaceFinishDetection', shape: 'enum' },
+		],
 	},
 	{
 		tableColumn: 'recipes.meal_slot',
@@ -948,19 +1006,84 @@ export const PAIRS = [
 				decl: 'REASONS',
 				shape: 'records',
 				field: 'value',
+				// Filed through OrganiserDisputeAction by a verified club's owner or
+				// admin only; submit_report refuses it (decisions § 2441). The five
+				// course reasons are a park course's only, filed through
+				// ParkCourseReportDialog (decisions § 2449, § 2469).
+				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request', 'rights_holder_request'],
 			},
 			{
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
 				decl: '_reasonKeys',
 				shape: 'strings',
+				// kOrganiserDisputeReason, offered below the general reasons to a
+				// verified club's owner or admin only (decisions § 2441). The course
+				// reasons are offered by the park course report sheet only (§ 2449).
+				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request', 'rights_holder_request'],
 			},
 			{
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
 				decl: '_reasonLabel',
 				shape: 'switch',
-				allowMissing: ['other'],
+				// The dispute reason has its own label next to its own radio; the
+				// course reasons are labelled by courseReportReasonLabel.
+				allowMissing: ['other', 'organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request', 'rights_holder_request'],
+			},
+			// A park course takes the five course reasons or 'other' only
+			// (reports_park_course_check, decisions § 2449, § 2469).
+			{
+				file: 'apps/web/src/lib/parks/course_report.ts',
+				decl: 'COURSE_REPORT_REASONS',
+				shape: 'strings',
+				allowMissing: ['spam', 'harassment', 'inappropriate', 'impersonation', 'organiser_dispute'],
+			},
+			{
+				file: 'apps/backend/supabase/functions/park-course-report/lib.ts',
+				decl: 'COURSE_REPORT_REASONS',
+				shape: 'strings',
+				allowMissing: ['spam', 'harassment', 'inappropriate', 'impersonation', 'organiser_dispute'],
+			},
+			{
+				file: 'apps/mobile_android/lib/park_course_report.dart',
+				decl: 'kCourseReportReasons',
+				shape: 'strings',
+				allowMissing: ['spam', 'harassment', 'inappropriate', 'impersonation', 'organiser_dispute'],
+			},
+			{
+				file: 'apps/mobile_android/lib/widgets/park_course_report_sheet.dart',
+				decl: 'courseReportReasonLabel',
+				shape: 'switch',
+				allowMissing: ['spam', 'harassment', 'inappropriate', 'impersonation', 'organiser_dispute'],
 			},
 		],
+	},
+	{
+		tableColumn: 'organiser_dispute_actions.target_kind',
+		clients: [{ file: TS_TYPES, decl: 'OrganiserDisputeTargetKind', shape: 'union' }],
+	},
+	{
+		tableColumn: 'organiser_dispute_actions.action',
+		clients: [{ file: DATA_TS, decl: 'OrganiserDisputeAction', shape: 'union' }],
+	},
+	{
+		tableColumn: 'park_course_nps_alerts.match',
+		clients: [
+			{ file: DATA_TS, decl: 'ParkNpsAlertMatch', shape: 'union' },
+			{ file: 'apps/backend/supabase/functions/park-closures-sweep/lib.ts', decl: 'AlertMatch', shape: 'union' },
+		],
+	},
+	{
+		tableColumn: 'park_course_nps_alerts.review_status',
+		clients: [{ file: DATA_TS, decl: 'ParkNpsAlertStatus', shape: 'union' }],
+	},
+	{
+		tableColumn: 'park_course_status_actions.action',
+		clients: [{ file: DATA_TS, decl: 'ParkCourseStatusAction', shape: 'union' }],
+	},
+	{
+		tableColumn: 'park_course_status_actions.status_before',
+		clients: [],
+		note: 'admin_set_park_course_status copies park_courses.status into it (migration 20271215000001); the web history reads it as a string and no client names a value.',
 	},
 	{
 		// `pending` is the insert default every report starts at, and the
@@ -981,6 +1104,10 @@ export const PAIRS = [
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
 				decl: '_title',
 				shape: 'switch',
+				// These four take only an organiser dispute, and mobile has no
+				// report menu on them; they are reported from the web (§ 2441). A
+				// park course has its own sheet, park_course_report_sheet.dart (§ 2449).
+				allowMissing: ['training_plan', 'gym_routine', 'challenge', 'race_listing', 'park_course'],
 			},
 		],
 	},
@@ -1073,6 +1200,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'routes.surface',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'ROUTE_SURFACES', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'RouteSurface', shape: 'union' },
 			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'ROUTE_SURFACES', shape: 'strings' },
 			{
@@ -1197,8 +1325,7 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'training_plans.source',
-		clients: [],
-		note: 'each creation path stamps its own literal (`generated` from the wizard, `manual` otherwise); no client enumerates the three.',
+		clients: [{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'PLAN_SOURCES', shape: 'strings' }],
 	},
 	{
 		tableColumn: 'training_plans.status',
@@ -2162,4 +2289,4 @@ function main() {
 	return errors.length > 0 ? 1 : 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(main());
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());

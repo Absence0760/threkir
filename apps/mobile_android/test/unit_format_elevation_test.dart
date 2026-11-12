@@ -62,4 +62,11 @@ void main() {
       expect(UnitFormat.elevationToMetres(ft, mi), closeTo(m, 1e-9));
     }
   });
+
+  test('stride length reads two decimals in metres or feet', () {
+    // 1.18 m x 3.28084 = 3.871 ft.
+    expect(UnitFormat.strideLength(1.18, km, 'en'), '1.18 m');
+    expect(UnitFormat.strideLength(1.18, mi, 'en'), '3.87 ft');
+    expect(UnitFormat.strideLength(1.18, km, 'de'), '1,18 m');
+  });
 }

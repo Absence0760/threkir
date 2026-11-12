@@ -1,5 +1,6 @@
 package com.runapp.watchwear
 
+import kotlinx.serialization.Serializable
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -23,6 +24,8 @@ const val GATE_HALF_WIDTH_SEGMENT_M = 15.0
 
 /// A line through ([lat], [lng]), perpendicular to the direction of travel
 /// [bearingDeg] (clockwise from north), reaching [halfWidthM] either side.
+/// Serializable so a race's frozen lines can be cached on the watch.
+@Serializable
 data class Gate(
     val lat: Double,
     val lng: Double,

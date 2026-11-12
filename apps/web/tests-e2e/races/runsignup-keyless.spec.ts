@@ -18,9 +18,9 @@ test.describe('RunSignUp is keyless', () => {
 
 	const stamp = Date.now();
 	const raceName = `E2E RunSignUp Keyless ${stamp}`;
-	const parkrunName = `E2E parkrun Keyless ${stamp}`;
+	const pasteOnlyName = `E2E RaceResult Keyless ${stamp}`;
 	let listingId: string | null = null;
-	let parkrunListingId: string | null = null;
+	let pasteOnlyListingId: string | null = null;
 
 	test.beforeAll(async () => {
 		listingId = await insertRaceListing({
@@ -29,9 +29,9 @@ test.describe('RunSignUp is keyless', () => {
 			race_date: browserDate(0),
 			provider_race_id: 'e2e-runsignup-1'
 		});
-		parkrunListingId = await insertRaceListing({
-			provider: 'parkrun',
-			name: parkrunName,
+		pasteOnlyListingId = await insertRaceListing({
+			provider: 'raceresult',
+			name: pasteOnlyName,
 			race_date: browserDate(0),
 			distance_m: 5000
 		});
@@ -39,12 +39,11 @@ test.describe('RunSignUp is keyless', () => {
 
 	test.afterAll(async () => {
 		if (listingId) await deleteRaceListing(listingId);
-		if (parkrunListingId) await deleteRaceListing(parkrunListingId);
+		if (pasteOnlyListingId) await deleteRaceListing(pasteOnlyListingId);
 	});
 
 	test('the settings card is offered on a deployment with no RunSignUp key', async ({ page }) => {
 		await page.goto('/settings/integrations');
-		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
 
 		await expect(page.getByTestId('runsignup-card')).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('runsignup-open')).toHaveAttribute('href', '/races');
@@ -84,20 +83,19 @@ test.describe('RunSignUp is keyless', () => {
 		await expect(page.getByTestId('paste-save')).toBeVisible();
 	});
 
-	test('a parkrun listing offers paste only — it has no bib-import leg', async ({ page }) => {
-		// parkrun / manual / raceresult listings are not a gap: the Edge Function
+	test('a RaceResult listing offers paste only — it has no bib-import leg', async ({ page }) => {
+		// ultrasignup / manual / raceresult listings are not a gap: the Edge Function
 		// has no leg for them, so falling through to the paste form with no
 		// provider block at all is the correct answer.
 		await page.goto('/races');
-		await page.getByTestId('races-search').fill(parkrunName);
+		await page.getByTestId('races-search').fill(pasteOnlyName);
 
-		const card = page.getByTestId('race-card').filter({ hasText: parkrunName });
+		const card = page.getByTestId('race-card').filter({ hasText: pasteOnlyName });
 		await expect(card).toBeVisible({ timeout: 15_000 });
 		await card.getByTestId('race-import').click();
 
 		await expect(page.getByTestId('paste-save')).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('race-runsignup-unavailable')).toHaveCount(0);
 		await expect(page.getByTestId('race-chronotrack-unavailable')).toHaveCount(0);
-		await expect(page.getByTestId('race-ultrasignup-unavailable')).toHaveCount(0);
 	});
 });

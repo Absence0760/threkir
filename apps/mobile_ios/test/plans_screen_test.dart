@@ -42,6 +42,9 @@ class _FakeTraining extends TrainingService {
   final deleted = <String>[];
   ({String name, DateTime start, int days, GoalEvent goal})? created;
 
+  /// Holds the starter create open until completed, when set.
+  Completer<void>? createGate;
+
   @override
   Future<List<TrainingPlanRow>> fetchMyPlans() async {
     fetchCalls++;
@@ -87,6 +90,7 @@ class _FakeTraining extends TrainingService {
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     created = (name: name, start: startDate, days: daysPerWeek, goal: goalEvent);
+    await createGate?.future;
     return _plan('new', name, 'active', startDate, generated.endDate);
   }
 
@@ -584,6 +588,102 @@ void main() {
       expect(find.text('Couch to 5K (beginner walk-run)'), findsOneWidget);
       expect(find.text('Half Marathon — 12 weeks'), findsOneWidget);
       expect(find.text('Marathon — 16 weeks'), findsOneWidget);
+    });
+
+    testWidgets('each starter is one tile: name, summary, start date, prompt',
+        (tester) async {
+      final training = _FakeTraining([]);
+      await _pumpSignedIn(tester, training);
+      for (final id in ['c25k', 'half_12wk', 'marathon_16wk']) {
+        final tile = find.byKey(Key('planStarter-$id'));
+        expect(tile, findsOneWidget);
+        expect(
+            find.descendant(
+                of: tile, matching: find.byKey(Key('planStarterSummary-$id'))),
+            findsOneWidget);
+        expect(find.descendant(of: tile, matching: find.text('Start this plan')),
+            findsOneWidget);
+      }
+      expect(
+          find.descendant(
+              of: find.byType(EmptyState),
+              matching: find.byType(OutlinedButton)),
+          findsNothing);
+      final half = tester
+          .widget<Text>(find.byKey(const Key('planStarterSummary-half_12wk')))
+          .data!;
+      expect(half, startsWith('12 weeks · 4 days a week · Starts '));
+    });
+
+    testWidgets('a screen reader hears the plan name, with the summary as hint',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      final training = _FakeTraining([]);
+      await _pumpSignedIn(tester, training);
+      final summary = tester
+          .widget<Text>(find.byKey(const Key('planStarterSummary-half_12wk')))
+          .data!;
+      expect(
+        find.bySemanticsLabel('Half Marathon — 12 weeks'),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Half Marathon — 12 weeks')),
+        matchesSemantics(
+          label: 'Half Marathon — 12 weeks',
+          hint: summary,
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+          isFocusable: true,
+          hasFocusAction: true,
+        ),
+      );
+      expect(find.bySemanticsLabel('Start this plan'), findsNothing);
+      handle.dispose();
+    });
+
+    testWidgets('a create in flight holds every tile and says so on its own',
+        (tester) async {
+      final training = _FakeTraining([])..createGate = Completer<void>();
+      await _pumpSignedIn(tester, training);
+      await tester.tap(find.byKey(const Key('planStarter-half_12wk')));
+      await tester.pump();
+      await tester.pump();
+      expect(training.created, isNotNull);
+      InkWell tile(String id) =>
+          tester.widget<InkWell>(find.byKey(Key('planStarter-$id')));
+      for (final id in ['c25k', 'half_12wk', 'marathon_16wk']) {
+        expect(tile(id).onTap, isNull, reason: id);
+      }
+      final busy = find.byKey(const Key('planStarter-half_12wk'));
+      expect(find.descendant(of: busy, matching: find.text('Creating…')),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: busy, matching: find.byType(CircularProgressIndicator)),
+          findsOneWidget);
+      expect(find.text('Start this plan'), findsNWidgets(2));
+      final first = training.created;
+      await tester.tap(find.byKey(const Key('planStarter-c25k')),
+          warnIfMissed: false);
+      await tester.pump();
+      expect(training.created, same(first));
+      training.createGate!.complete();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('the tiles do not overflow at 2.0x text on a 360 px phone',
+        (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final training = _FakeTraining([]);
+      await _pumpSignedIn(tester, training, textScale: 2.0);
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('planStarter-c25k')), findsOneWidget);
     });
 
     testWidgets('a starter creates that plan on a Sunday at least a week out',

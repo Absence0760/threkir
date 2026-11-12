@@ -8,16 +8,17 @@ export const translation: GuideTranslation = {
 		{
 			heading: "Qu'est-ce qu'un parcours de parc",
 			blocks: [
-				{ type: 'p', text: "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les dans [[route:/parks|Parcours des parcs]]." },
+				{ type: 'p', text: "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]." },
 				{
 					type: 'list',
 					items: [
 						"C'est un contre-la-montre, pas une course. Le sentier reste ouvert à tous et personne ne l'encadre : respectez le règlement du parc et cédez le passage aux autres usagers du sentier.",
 						"Chaque page de parcours indique la distance, le dénivelé positif, la forme, le revêtement et la difficulté, l'origine du tracé et si le parcours est ouvert.",
 						"Sélectionnez **Suivre ce parcours** pour suivre le parcours comme un itinéraire. Cette option n'est pas proposée tant que le parcours est fermé.",
+						"La rubrique **Description du parcours** de la page du parcours indique où se garer et chaque changement de direction dans l'ordre, par nom de sentier, avec les ponts, les gués, les changements de revêtement et les montées. Elle est rédigée à partir des données cartographiques ; tant que personne ne l'a vérifiée sur place, c'est indiqué au-dessus de la liste. La même description figure dans le fichier GPX du parcours.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Un parcours fermé garde ses temps et ses classements, mais merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois." },
+				{ type: 'note', tone: 'caution', text: "Un parcours fermé ne prend aucun nouveau temps : une sortie dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois." },
 			],
 		},
 		{
@@ -72,11 +73,12 @@ export const translation: GuideTranslation = {
 		title: "c0967d2bf224e3d2",
 		summary: "6a173631b44944bc",
 		"s0.heading": "216fc084817bfda9",
-		"s0.b0": "b14392ecc1ced0da",
+		"s0.b0": "a96a5717c602367f",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",
-		"s0.b2": "6a9e63c1eec9c80f",
+		"s0.b1.i3": "a75477f7d5a5a5bc",
+		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",
 		"s1.b0": "f00cd3cca5bfc92f",
 		"s1.b1": "36e6dc7fd586b7d7",

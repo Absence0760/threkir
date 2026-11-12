@@ -381,7 +381,7 @@ class RaceRunStateTest {
         val src = File("src/main/kotlin/com/runapp/watchwear/RunViewModel.kt").readText()
         assertTrue(src.contains("maybeNoteRaceFirstFix(m)"))
         assertTrue(src.contains("raceLateStart("))
-        val courseLands = src.substringAfter("RaceFinishDetector.forCourse(course.finishLat, course.finishLng, course.distanceM)")
+        val courseLands = src.substringAfter("boundRace = bound.copy(course = course)")
             .substringBefore("}")
         assertTrue("the course landing re-runs the check", courseLands.contains("evaluateRaceLateStart()"))
         val ui = File("src/main/kotlin/com/runapp/watchwear/ui/RunWatchApp.kt").readText()

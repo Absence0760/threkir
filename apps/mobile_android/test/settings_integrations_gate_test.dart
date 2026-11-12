@@ -30,21 +30,19 @@ class _FakeApi extends ApiClient {
 }
 
 class _FakeRaceService extends RaceService {
-  _FakeRaceService({this.parkrun = true});
+  _FakeRaceService({this.configured = const {}});
 
-  final bool parkrun;
-
-  @override
-  Future<bool> isParkrunConfigured() async => parkrun;
+  final Set<String> configured;
 
   @override
-  Future<bool> isProviderConfigured(String provider) async => false;
+  Future<bool> isProviderConfigured(String provider) async =>
+      configured.contains(provider);
 }
 
 Future<AppLocalizations> _pump(
   WidgetTester tester, {
   List<IntegrationRow> rows = const [],
-  bool parkrun = true,
+  Set<String> configured = const {},
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = Preferences();
@@ -59,7 +57,7 @@ Future<AppLocalizations> _pump(
         heartRate: BleHeartRate(),
         treadmill: BleTreadmill(),
         preferences: prefs,
-        raceService: _FakeRaceService(parkrun: parkrun),
+        raceService: _FakeRaceService(configured: configured),
       ),
     ),
   );
@@ -79,8 +77,10 @@ void main() {
       (tester) async {
     final l10n = await _pump(tester);
     expect(find.text(l10n.integrationsStravaName), findsNothing);
-    // parkrun is the proof the screen rendered rather than failing to build.
-    expect(find.text(l10n.integrationsParkrunName), findsOneWidget);
+    // The barcode tile is the proof the screen rendered rather than failing
+    // to build.
+    expect(find.byKey(const ValueKey('integrations-parkrun-barcode')),
+        findsOneWidget);
   });
 
   testWidgets('a connected Strava is still shown on a deployment that cannot start a new grant',
@@ -93,16 +93,11 @@ void main() {
     expect(find.text(l10n.integrationsStravaName), findsOneWidget);
   });
 
-  testWidgets('an unreachable parkrun leg gets no tile', (tester) async {
-    final l10n = await _pump(tester, parkrun: false);
-    expect(find.text(l10n.integrationsParkrunName), findsNothing);
-  });
-
-  testWidgets('a connected parkrun is shown even when its leg is unreachable',
+  testWidgets('parkrun offers its barcode and no results import',
       (tester) async {
-    final l10n =
-        await _pump(tester, rows: [_row('parkrun')], parkrun: false);
-    expect(find.text(l10n.integrationsParkrunName), findsOneWidget);
+    final l10n = await _pump(tester, rows: [_row('parkrun')]);
+    expect(find.text(l10n.parkrunBarcodeTitle), findsOneWidget);
+    expect(find.text('parkrun'), findsNothing);
   });
 
   testWidgets('the device-capability tiles are never gated on a deployment',
@@ -111,24 +106,24 @@ void main() {
     // no credential and no Edge Function, so they must survive a deployment
     // that configured nothing. They are the counterpart to web's bulk
     // importers — the part a minimal deployment always has.
-    final l10n = await _pump(tester, parkrun: false);
+    final l10n = await _pump(tester);
     expect(find.text(l10n.watchLiveTitle), findsOneWidget);
   });
 
   testWidgets('every offered tile carries an info tip that explains the feature',
       (tester) async {
-    final l10n = await _pump(tester);
-    final label = l10n.integrationsInfoAbout(l10n.integrationsParkrunName);
+    final l10n = await _pump(tester, configured: const {'runsignup'});
+    final label = l10n.integrationsInfoAbout(l10n.integrationsRunsignup);
 
     expect(find.byTooltip(label), findsOneWidget);
-    expect(find.text(l10n.integrationsParkrunInfo), findsNothing);
+    expect(find.text(l10n.integrationsRunsignupInfo), findsNothing);
 
     await tester.tap(find.byTooltip(label));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.integrationsParkrunInfo), findsOneWidget);
+    expect(find.text(l10n.integrationsRunsignupInfo), findsOneWidget);
 
     await tester.tap(find.text(l10n.commonDismiss));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.integrationsParkrunInfo), findsNothing);
+    expect(find.text(l10n.integrationsRunsignupInfo), findsNothing);
   });
 }

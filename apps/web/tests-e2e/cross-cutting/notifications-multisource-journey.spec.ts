@@ -334,7 +334,7 @@ test.describe('notifications multi-source journey — four triggers → one inbo
 				// Unread tab → the "all caught up" empty state.
 				await page.getByRole('button', { name: /Unread/ }).click();
 				await expect(
-					page.locator('.empty', { hasText: "You're all caught up" })
+					page.getByTestId('notifications-empty').filter({ hasText: "You're all caught up" })
 				).toBeVisible({ timeout: 5_000 });
 
 				// The three surviving rows stay under All but lose the unread class.

@@ -52,7 +52,6 @@ export const KNOWN_DOMAIN_SUBSTRINGS = [
 	'revenuecat',
 	'stripe',
 	'strava',
-	'parkrun',
 	'garmin',
 	'open-meteo',
 	'apple.com',
@@ -242,11 +241,14 @@ function main() {
 	/**
 	 * `execFileSync` rather than a shell string: a path is one argument here,
 	 * where `git diff … -- ${path}` splits a filename containing a space into
-	 * two pathspecs and reads a diff of neither.
+	 * two pathspecs and reads a diff of neither. The buffer is raised from
+	 * execFileSync's 1 MiB default: one generated or geometry file's diff passes
+	 * that, and the overflow is an ENOBUFS throw, not a truncated read.
 	 * @param {string[]} args
 	 * @returns {string}
 	 */
-	const git = (args) => execFileSync('git', args, { encoding: 'utf8' });
+	const git = (args) =>
+		execFileSync('git', args, { encoding: 'utf8', maxBuffer: 512 * 1024 * 1024 });
 
 	/** @type {string[] | null} */
 	let files = null;

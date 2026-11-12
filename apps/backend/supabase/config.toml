@@ -151,7 +151,7 @@ url = "env(SSO_MOCK_OIDC_URL)"
 # JWT — the platform gate would 401 the hook before the signature
 # check runs. The function fails closed without the secret.
 #
-# The other functions (strava-import, parkrun-import, export-data,
+# The other functions (strava-import, export-data,
 # delete-account, events-connect-onboard, events-checkout,
 # events-cancel) all need a user-scoped Supabase JWT and are correct on
 # the default verify_jwt = true. That default does not block the browser's
@@ -225,4 +225,18 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.clip-public-track]
+verify_jwt = false
+
+# park-course-report takes a report from a signed-out land manager or runner,
+# whose supabase-js sends the publishable key as the bearer; the platform gate
+# would 401 it. The handler verifies a user JWT when one is sent, rate-limits
+# per user or per hashed client address (fail closed), and calls a filing RPC
+# only the service role may execute (decisions § 2449).
+[functions.park-course-report]
+verify_jwt = false
+
+# park-closures-sweep is invoked daily by pg_cron (invoke_park_closures_sweep,
+# through pg_net) with the CRON_SECRET bearer; the platform gate would 401 it
+# before the bearer check runs (decisions § 2454).
+[functions.park-closures-sweep]
 verify_jwt = false

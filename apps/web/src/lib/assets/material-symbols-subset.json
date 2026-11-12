@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 73924,
-		"sha256": "ebe6817fe55ec0c71247aef9737a483c665d993471779f5995e31a345f1e4687",
-		"glyphs": 332,
-		"ligatures": 449
+		"bytes": 74956,
+		"sha256": "b14d592f64225a1ef92c97b246b0e66711164479bfb1cb0de7b617dc7e9391dc",
+		"glyphs": 335,
+		"ligatures": 452
 	},
 	"icons": [
 		"10k",
@@ -43,6 +43,7 @@
 		"altitude",
 		"anchor",
 		"android",
+		"animation",
 		"apps",
 		"archive",
 		"arrow_back",
@@ -321,11 +322,13 @@
 		"straighten",
 		"stroller",
 		"swap_horiz",
+		"switch",
 		"sync",
 		"tab",
 		"table",
 		"table_chart",
 		"tabs",
+		"tag",
 		"target",
 		"terrain",
 		"thermometer",

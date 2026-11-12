@@ -14,11 +14,16 @@ import { OG_FONT_STACK } from './og_card_font';
 import { clipToWidthPx } from './svg_text_width';
 import { challengeGoalStable, challengeWindowStable } from './share_challenge_meta';
 import type { SharedChallenge } from './share_challenge_lookup';
+import { OG_GRISNIR_HEIGHT, grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
 const PAD = 56;
 const FONT = OG_FONT_STACK;
+/// Grisnir holds the bottom-right corner (the kicker has the top-right), so
+/// the two attribution lines beside him stop short of him.
+const GRISNIR_W = grisnirBadgeWidth(OG_GRISNIR_HEIGHT);
+const FOOT_W = W - PAD * 2 - GRISNIR_W - 24;
 
 export type ChallengeImageInput = {
 	challenge: SharedChallenge | null;
@@ -55,16 +60,17 @@ export function buildChallengeOgSvg(input: ChallengeImageInput): string {
 	const by = c && input.creatorName?.trim() ? `by ${input.creatorName.trim()}` : '';
 	if (by) {
 		parts.push(
-			`<text x="${PAD}" y="${H - PAD - 48}" font-family="${FONT}" font-size="32" font-weight="600" fill="${OG_CARD_LIGHT.ink}">${escapeXml(clipToWidthPx(by, W - PAD * 2, 32))}</text>`,
+			`<text x="${PAD}" y="${H - PAD - 48}" font-family="${FONT}" font-size="32" font-weight="600" fill="${OG_CARD_LIGHT.ink}">${escapeXml(clipToWidthPx(by, FOOT_W, 32))}</text>`,
 		);
 	}
 
 	const sub = buildChallengeSubline(input);
 	if (sub) {
 		parts.push(
-			`<text x="${PAD}" y="${H - PAD}" font-family="${FONT}" font-size="32" font-weight="500" fill="${OG_CARD_LIGHT.muted}">${escapeXml(clipToWidthPx(sub, W - PAD * 2, 32))}</text>`,
+			`<text x="${PAD}" y="${H - PAD}" font-family="${FONT}" font-size="32" font-weight="500" fill="${OG_CARD_LIGHT.muted}">${escapeXml(clipToWidthPx(sub, FOOT_W, 32))}</text>`,
 		);
 	}
+	parts.push(grisnirBadgeSvg(W - PAD - GRISNIR_W, H - PAD - OG_GRISNIR_HEIGHT + 8));
 	parts.push('</svg>');
 	return parts.join('');
 }

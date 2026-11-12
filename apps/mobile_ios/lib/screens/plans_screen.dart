@@ -469,50 +469,36 @@ class _Starters extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final tag = localeToTag(Localizations.localeOf(context));
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Semantics(
-          header: true,
-          child: Text(l10n.planNewStarterTitle,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleSmall),
-        ),
-        const SizedBox(height: 12),
-        for (final s in starterPlans)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                OutlinedButton.icon(
-                  key: Key('planStarter-${s.id}'),
-                  onPressed: creatingId == null ? () => onPick(s) : null,
-                  icon: creatingId == s.id
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.event_note),
-                  label: Text(starterPlanName(l10n, s.id)),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  [
-                    ?starterSummaryText(l10n, s.id),
-                    l10n.plansStarterStarts(
-                        formatDateShort(starterStartDate(s.id, today), tag)),
-                  ].join(' · '),
-                  key: Key('planStarterSummary-${s.id}'),
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ],
-            ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 480),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(l10n.planNewStarterTitle,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleSmall),
           ),
-      ],
+          const SizedBox(height: 12),
+          for (final s in starterPlans)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _StarterTile(
+                name: starterPlanName(l10n, s.id),
+                summary: [
+                  ?starterSummaryText(l10n, s.id),
+                  l10n.plansStarterStarts(
+                      formatDateShort(starterStartDate(s.id, today), tag)),
+                ].join(' · '),
+                id: s.id,
+                creating: creatingId == s.id,
+                onTap: creatingId == null ? () => onPick(s) : null,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -523,6 +509,92 @@ class _Starters extends StatelessWidget {
 /// sits in it. Mirrors web `plans/+page.svelte`'s card. Exactly one action:
 /// Abandon while the plan is still live (active or paused), Delete once it is
 /// over.
+/// One built-in starter as a single tappable card. A screen reader hears the
+/// plan's name as the button and its summary as the hint, not the visual
+/// "Start this plan" prompt, which would read the same on all three.
+class _StarterTile extends StatelessWidget {
+  final String id;
+  final String name;
+  final String summary;
+  final bool creating;
+  final VoidCallback? onTap;
+
+  const _StarterTile({
+    required this.id,
+    required this.name,
+    required this.summary,
+    required this.creating,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final enabled = onTap != null;
+    final accent = enabled || creating
+        ? theme.colorScheme.primary
+        : theme.disabledColor;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Semantics(
+        button: true,
+        enabled: enabled,
+        label: name,
+        hint: summary,
+        child: InkWell(
+          key: Key('planStarter-$id'),
+          onTap: onTap,
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text(
+                    summary,
+                    key: Key('planStarterSummary-$id'),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          creating
+                              ? l10n.planNewStarterCreating
+                              : l10n.plansStarterStart,
+                          style: theme.textTheme.labelLarge
+                              ?.copyWith(color: accent),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      if (creating)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        Icon(Icons.arrow_forward, size: 18, color: accent),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class PlanListCard extends StatelessWidget {
   final TrainingPlanRow plan;
   final DateTime now;

@@ -13,16 +13,17 @@ class SurfacePeer {
 }
 
 /// The labelled in-body strip of sibling surfaces a screen sits beside — the
-/// mobile mirror of web's `RunSurfaceTabs.svelte` and the `/gym` header links.
+/// mobile mirror of the `/gym` header links. The run surface had one too until
+/// its sections became tabs of the Fitness hub (decisions § 2437).
 ///
 /// Planning tools used to hang off icon-only AppBar actions whose names existed
 /// only as tooltips, which is undiscoverable on a touch device (the same field
 /// finding that produced `routes_screen.dart`'s labelled Discover strip — that
 /// one fans out to sub-surfaces of Routes and has no current-peer concept, so
 /// it stays its own thing). The strip WRAPS rather than scrolling sideways:
-/// measured in Manrope, the five run-surface peers need 480 dp in English and
-/// 538 dp in French against a 360-412 dp phone, so a scrolling row always hid
-/// the last peer (Races) past the edge with nothing saying it was there. A
+/// measured in Manrope, the run surface's five peers needed 480 dp in English
+/// and 538 dp in French against a 360-412 dp phone, so a scrolling row always
+/// hid the last peer (Races) past the edge with nothing saying it was there. A
 /// second line keeps every destination on screen (decisions § 1954).
 class SurfacePeerStrip extends StatelessWidget {
   const SurfacePeerStrip({

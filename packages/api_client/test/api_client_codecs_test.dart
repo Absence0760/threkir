@@ -247,6 +247,29 @@ void main() {
       expect(points[0].containsKey('offTrack'), isFalse);
     });
 
+    test('a segment-start fix round-trips as segmentStart: true and the blob keeps it',
+        () {
+      const w = Waypoint(
+          lat: 47.37, lng: 8.54, cumulativeDistanceMetres: 90, segmentStart: true);
+      final json = ApiClient.debugWaypointToJson(w);
+      expect(json['segmentStart'], isTrue);
+      final back = ApiClient.debugWaypointFromJson(
+          jsonDecode(jsonEncode(json)) as Map<String, dynamic>);
+      expect(back.segmentStart, isTrue);
+      expect(
+        ApiClient.debugWaypointFromJson(const {'lat': 1, 'lng': 2}).segmentStart,
+        isFalse,
+      );
+      final blob = ApiClient.debugTrackBlobJson(const [
+        Waypoint(lat: 47.37, lng: 8.54),
+        Waypoint(lat: 47.371, lng: 8.54, segmentStart: true),
+        Waypoint(lat: 47.3713, lng: 8.54),
+      ]);
+      final points = (jsonDecode(blob) as List).cast<Map<String, dynamic>>();
+      expect(points.map((p) => p['segmentStart']), [null, true, null]);
+      expect(points[0].containsKey('segmentStart'), isFalse);
+    });
+
     test('the uploaded track blob carries baroEle on every fix that has one',
         () {
       final blob = ApiClient.debugTrackBlobJson(const [

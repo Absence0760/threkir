@@ -3,6 +3,7 @@
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, onDestroy, untrack } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -2257,16 +2258,11 @@
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{m('clubEvent.backToClubs')}
 		</a>
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('clubEvent.notFoundTitle')}</h3>
-			<p class="empty-text">
-				{m('clubEvent.notFoundBody')}
-			</p>
-			<div class="empty-actions">
+		<EmptyState icon="event_busy" title={m('clubEvent.notFoundTitle')} text={m('clubEvent.notFoundBody')}>
+			{#snippet actions()}
 				<a href="/clubs/{slug}" class="btn btn-primary">{m('clubEvent.backToClub')}</a>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div
@@ -4745,42 +4741,6 @@
 	}
 	.instance-error {
 		margin-block-end: var(--space-md);
-	}
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
 	}
 
 	.attendees-empty {

@@ -24,6 +24,10 @@
 ///      gym-session summaries and, with health-data consent, a 7-day
 ///      nutrition summary). The Coach itself still needs only v1: the server
 ///      withholds those two lanes of its context below v6.
+///   7  v6 plus the coach assistant, for coaches: with an athlete's own
+///      per-link consent, that athlete's messages with the coach, plan and
+///      recent runs, and what the coach types, sent to draft a message only
+///      the coach sees (issue #1215 Phase 4).
 ///
 /// Adding the next AI feature means a new version with new copy, not a new
 /// boolean and not quietly widening what an existing acceptance covers.
@@ -72,9 +76,16 @@ const int kAiDisclosureVersionFoodPhotoAi = 5;
 /// as the version a new acceptance records.
 const int kAiDisclosureVersionCoachCrossTraining = 6;
 
+/// Minimum disclosure version the coach assistant (`/api/coach/assist`,
+/// web-only) requires of the COACH. Its own rung: the coach's request and
+/// their conversation with an athlete go to Anthropic to draft a message, a
+/// purpose no earlier copy described. The athlete's data needs the athlete's
+/// own per-link consent on top of this (`coach_assist_consent.dart`).
+const int kAiDisclosureVersionCoachAssist = 7;
+
 /// The newest disclosure this build knows how to present. Must equal the SQL
 /// `ai_disclosure_current_version()` and web's `AI_DISCLOSURE_CURRENT_VERSION`.
-const int kAiDisclosureCurrentVersion = kAiDisclosureVersionCoachCrossTraining;
+const int kAiDisclosureCurrentVersion = kAiDisclosureVersionCoachAssist;
 
 /// Machine-readable marker on every AI-consent denial. It rides a `code`
 /// field rather than `error` because the endpoints already use `error` for

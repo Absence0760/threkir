@@ -4,6 +4,7 @@ import { coachEnabled } from '#lib/coach/coach_flag.ts';
 import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
 import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
+import { coachAssistEnabled } from '#lib/coach/coach_assist_flag.ts';
 
 // Build-time capability manifest for the native clients. `adapter-static`
 // prerenders this once (like /sitemap.xml) into a plain file in `build/`,
@@ -36,6 +37,11 @@ import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
 // `coachEnabled() && platePhotoEnabled()` /nutrition/log renders it under. The
 // endpoint is a Pro perk checked per call; this answer sells nothing.
 //
+// `coach_assist` is whether the coach assistant is live (issue #1215 Phase 4),
+// the same `coachAssistEnabled()` the web /coaching consent toggle renders
+// under. A native client reads it to decide whether to offer an athlete the
+// per-link consent toggle; the endpoint checks every consent on each call.
+//
 // Public by construction: every value derives from a PUBLIC_ var present in
 // the client bundle every visitor downloads. Nothing here is a secret.
 //
@@ -51,6 +57,7 @@ export const GET: RequestHandler = () =>
 			web_checkout: webCheckoutAvailable(),
 			ai_plan: coachEnabled() && aiPlanEnabled(),
 			plate_photo: coachEnabled() && platePhotoEnabled(),
+			coach_assist: coachAssistEnabled(),
 		}),
 		{
 			headers: {

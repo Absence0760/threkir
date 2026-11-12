@@ -55,6 +55,8 @@
 	// limit entirely, so reaching Undo never means beating a countdown.
 	let undoWindowS = $state<number>(DEFAULT_UNDO_WINDOW_S);
 	let showCalories = $state(true);
+	/// Grisnir on rest days and share cards (`show_mascot`, default on).
+	let showMascot = $state(true);
 	// Where the AI Coach sits in Messages (decisions § 2227). Offered only
 	// while the Coach is on for this deploy, as the inbox row is.
 	const coachOn = coachEnabled();
@@ -114,6 +116,7 @@
 		undoWindowS = undoWindowSFromPref(effective<number>(settings, 'undo_window_s'));
 		setUndoWindowS(undoWindowS);
 		showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
+		showMascot = effective<boolean>(settings, 'show_mascot', true) !== false;
 		coachRow = parseCoachInboxPlacement(effective(settings, MESSAGES_COACH_ROW_KEY));
 		hiddenCards = parseHiddenCards(effective<unknown>(settings, DASHBOARD_HIDDEN_CARDS_KEY));
 		const storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
@@ -340,6 +343,18 @@
 			<span>
 				{m('prefs.showCalories')}
 				<span class="hint">{m('prefs.showCaloriesHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={showMascot}
+				data-testid="show-mascot"
+				onchange={() => prefs.save({ show_mascot: showMascot })}
+			/>
+			<span>
+				{m('prefs.showMascot')}
+				<span class="hint">{m('prefs.showMascotHint')}</span>
 			</span>
 		</label>
 	</section>

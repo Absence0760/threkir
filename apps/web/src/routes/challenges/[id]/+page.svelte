@@ -13,6 +13,7 @@
 	import type { ChallengeWithMeta, ChallengeLeaderboardRow, ClubWithMeta } from '#lib/types.ts';
 	import ChallengeProgressBar from '#lib/components/ChallengeProgressBar.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import ChallengeLeaderboard from '#lib/components/ChallengeLeaderboard.svelte';
 	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -190,6 +191,17 @@
 			{#if challenge.description}
 				<p class="desc">{challenge.description}</p>
 			{/if}
+			{#if challenge.is_public && !isCreator}
+				<div class="dispute-row">
+					<OrganiserDisputeAction
+						targetKind="challenge"
+						targetId={challenge.id}
+						targetLabel={challenge.title}
+						targetClubId={challenge.club_id ?? null}
+						ownerId={challenge.creator_id}
+					/>
+				</div>
+			{/if}
 			{#if challenge.metric === 'park_courses' && challenge.park_region_code}
 				<p class="desc" data-testid="challenge-park-region">
 					{m('challenges.parkRegion', { region: challenge.park_region_code })}
@@ -298,6 +310,9 @@
 />
 
 <style>
+	.dispute-row {
+		margin-top: 0.5rem;
+	}
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}

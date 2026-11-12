@@ -897,8 +897,8 @@
    "geometry": {
     "type": "Point",
     "coordinates": [
-     -77.585804,
-     37.384173
+     -77.585807,
+     37.384171
     ]
    }
   },
@@ -911,8 +911,8 @@
    "geometry": {
     "type": "Point",
     "coordinates": [
-     -77.591165,
-     37.38116
+     -77.590548,
+     37.382147
     ]
    }
   },
@@ -925,7 +925,21 @@
    "geometry": {
     "type": "Point",
     "coordinates": [
-     -77.590445,
+     -77.590315,
+     37.380315
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "kind": "checkpoint",
+    "order": 4
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -77.590446,
      37.383646
     ]
    }

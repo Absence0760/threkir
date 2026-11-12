@@ -33,10 +33,13 @@ fun buildRunMetadata(
     lastModifiedAtIso: String,
     distanceEstimator: String? = null,
     distanceStepFilledM: Double? = null,
+    distanceStepOverChordM: Double? = null,
+    distanceSegments: Int? = null,
     locationProvider: String? = null,
     gnssSignal: GnssSignalSummary? = null,
     trackComplete: Boolean = false,
     workout: WorkoutReview? = null,
+    raceUndoneFinishAt: String? = null,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
@@ -55,6 +58,18 @@ fun buildRunMetadata(
     if (distanceEstimator != null) put("distance_estimator", distanceEstimator)
     if (distanceEstimator != null && distanceStepFilledM != null && distanceStepFilledM > 0) {
         put("distance_step_filled_m", distanceStepFilledM)
+        // The part of those metres the gaps' chords would not have credited,
+        // which the server's stepless replay needs per run to match the watch
+        // (docs/features/gps_distance.md § Server recompute).
+        if (distanceStepOverChordM != null && distanceStepOverChordM.isFinite() && distanceStepOverChordM >= 0) {
+            put("distance_step_over_chord_m", distanceStepOverChordM)
+        }
+    }
+    // How many estimator segments the track holds; the server reads the key
+    // above only when its replay finds as many, so a track that lost its
+    // `segmentStart` marks keeps the run-total rule.
+    if (distanceEstimator != null && distanceSegments != null && distanceSegments >= 1) {
+        put("distance_segments", distanceSegments)
     }
     if (locationProvider != null) put("location_provider", locationProvider)
     if (gnssSignal != null) put("gnss_signal", gnssSignal.toJson())
@@ -68,6 +83,8 @@ fun buildRunMetadata(
     if (workout != null) {
         for ((key, value) in workout.metadataEntries()) put(key, value)
     }
+    // The finish the runner undid, so a later re-time does not find it again.
+    if (raceUndoneFinishAt != null) put("race_undone_finish_at", raceUndoneFinishAt)
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

@@ -86,6 +86,36 @@ void main() {
     });
   });
 
+  group('coach_assist capability', () {
+    test('reads coach_assist, available only alongside the coach', () {
+      final p = parseProPerks('{"coach":true,"coach_assist":true}');
+      expect(p.coachAssist, isTrue);
+      expect(p.coachAssistAvailable, isTrue);
+      expect(
+          parseProPerks('{"coach":false,"coach_assist":true}')
+              .coachAssistAvailable,
+          isFalse);
+      expect(
+          parseProPerks('{"coach":true,"coach_assist":false}')
+              .coachAssistAvailable,
+          isFalse);
+    });
+
+    test('missing, non-boolean and camelCase values read as off, and it sells nothing', () {
+      for (final body in [
+        '{"coach":true}',
+        '{"coach":true,"coach_assist":"true"}',
+        '{"coach":true,"coach_assist":1}',
+        '{"coach":true,"coachAssist":true}',
+        'not json',
+      ]) {
+        expect(parseProPerks(body).coachAssistAvailable, isFalse,
+            reason: body);
+      }
+      expect(parseProPerks('{"coach_assist":true}').sellable, isFalse);
+    });
+  });
+
   group('ai_plan capability', () {
     test('reads ai_plan, available only alongside the coach', () {
       final p = parseProPerks('{"coach":true,"ai_plan":true}');

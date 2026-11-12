@@ -17,10 +17,12 @@ import { formatDateStable, formatKmStable } from './share_meta';
 import { OG_CARD_LIGHT } from './og_card_palette';
 import { OG_FONT_STACK } from './og_card_font';
 import { escapeXml } from '../util/html_escape';
+import { grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
 const PAD = 40;
+const RUN_GRISNIR_HEIGHT = 168;
 
 const BG = OG_CARD_LIGHT.bg;
 const BRAND = OG_CARD_LIGHT.brand;
@@ -50,6 +52,11 @@ export function buildRunOgSvg(input: RunImageInput): string {
 	parts.push(
 		`<text x="${PAD}" y="${PAD + 24}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="700" fill="${BRAND}">Threkir</text>`,
 	);
+
+	// Grisnir, top-right: the hero is centred below him and the source tag
+	// holds the bottom-right corner. A little under the shared height, so he
+	// ends above the numeral's glyphs (y 205) however wide it runs.
+	parts.push(grisnirBadgeSvg(W - PAD - grisnirBadgeWidth(RUN_GRISNIR_HEIGHT), PAD - 8, RUN_GRISNIR_HEIGHT));
 
 	// Main stat — distance, centred horizontally. The 1200×630 canvas
 	// scales to ~600 px for a confident, unfurl-card-style hero.

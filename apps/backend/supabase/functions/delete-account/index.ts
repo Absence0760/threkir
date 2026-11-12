@@ -733,6 +733,17 @@ Deno.serve(withCors(withSentry('delete-account', async (req: Request) => {
   // drained. A partial drain followed by the auth-row cascade orphans
   // blobs with no row to point at them, so we abort before deleting
   // the auth user — the user can retry once Storage recovers.
+  //
+  // `dm-images` is deliberately NOT prefix-drained: a direct-message photo
+  // a report holds is moderation evidence that must outlive its sender's
+  // account (issue #1216, decisions § 2231), and a prefix drain cannot tell
+  // it apart without a check-then-delete race against a report filed
+  // meanwhile. Erasure is row-driven instead: the auth-user cascade
+  // deletes the sender's messages, which detaches and deletes every image
+  // row no report names (migration 20271213121604), each delete queues a
+  // dm_image_orphan_sweep job for its two objects, and the worker erases
+  // them; dm_image_orphan_paths never returns an object a row still
+  // names, and the nightly backstop sweeps anything left over.
   try {
     for (const bucket of ['runs', 'exports', 'run-photos', 'route-photos', 'club-photos']) {
       deletedCounts[`storage_${bucket}`] = await deletePrefix(

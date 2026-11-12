@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, AppTheme, StatusPill;
 
+import '../fitness_surface_requests.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../screens/global_segments_screen.dart';
@@ -89,9 +90,11 @@ class _RunSegmentEffortsState extends State<RunSegmentEfforts> {
   }
 
   void _openCatalogue() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => GlobalSegmentsScreen(api: widget.api),
-    ));
+    openFitnessSurface(
+      context,
+      FitnessTab.segments,
+      fallback: () => GlobalSegmentsScreen(api: widget.api),
+    );
   }
 
   void _openCatalogueSegment(String segmentId) {

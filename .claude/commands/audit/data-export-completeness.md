@@ -16,7 +16,7 @@ GDPR Art 20 (portability) and CCPA right-to-know both require the export to be *
 4. **Third-party-linked state.**
    - Strava tokens → not user content, but the *fact* of the integration is. Include `integrations` row (sans the encrypted token).
    - RevenueCat subscriber id + tier → include.
-   - parkrun athlete number → include.
+   - parkrun athlete number (`user_profiles.parkrun_number`, kept for the barcode) → include.
    - Coach chat history → `coach_messages` is the largest under-the-radar PII pile. Verify.
    - Notifications, kudos, comments (both as author and as recipient) — confirm both halves of the relation appear.
 5. **Derived data.** Personal records, fitness snapshots, training-load curves are derived. GDPR doesn't strictly require derived data in the export, but UX-wise it's expected. Note any gap.
@@ -24,6 +24,7 @@ GDPR Art 20 (portability) and CCPA right-to-know both require the export to be *
 7. **Authentication.** Exporter must use JWT-verified `user.id`; never trust a caller-supplied `user_id` field. Confirm the Go handler.
 8. **Rate limit + size.** At >5 years of daily runs (~1,800 runs * ~50 KB tracks = 90 MB compressed) the request needs to be async with signed-URL pickup. Confirm that's how it's structured.
 9. **Joining tables.** `run_kudos`, `run_comments`, `run_photos`, `segment_efforts`, `event_attendees`, `club_members`, `user_follows`, `run_gear`, `route_reviews` — confirm coverage. Each is small but losing it leaves the export incomplete.
+9a. **Messages and conversations.** `direct_messages_sent.json` (every message the subject sent, group ones included, with `is_group`), `direct_messages_received.json` (1:1 only: a group message has no recipient), `direct_message_reactions.json`, `direct_message_images.json`, and `conversation_settings.json` (the subject's own participant row, group membership columns included: `membership_state`, `role`, `invited_by`, `invited_at`, `left_at`, `removed_by`, `last_read_at`). Other members' group messages are deliberately not exported (owner decision D5, decisions § 2461). Both rails (`backup_spec.ts`, `supabase.go`) must agree.
 10. **Two-direction relations.** A run that the user commented on but didn't author: should it appear? Strictly the user's own data is their comment row only. Be explicit about what we ship vs not.
 
 ## Report

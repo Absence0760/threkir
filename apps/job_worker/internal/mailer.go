@@ -356,6 +356,12 @@ var importantKinds = map[string]bool{
 	// A verified organiser's reroute or closure on a race the recipient is
 	// training for changes their race day (decisions § 2407).
 	"course_alert": true,
+	// A reviewer acted on a naming dispute: the owner may have a deadline to
+	// rename, and the organiser is waiting on the outcome (decisions § 2441).
+	"organiser_dispute": true,
+	// A park course was reported to the app admins; a land manager's request
+	// is due within two business days (decisions § 2449).
+	"park_course_report": true,
 }
 
 // pushImportantKinds are carried by the default "important" PUSH mode but not
@@ -606,6 +612,14 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// coach_plan_access) see the request with its approve and decline
 		// (decisions § 2382).
 		return planPath(base, n)
+	case "park_course_report":
+		// The admins' moderation queue, where course reports sort by the
+		// land-manager deadline; the row carries no target (decisions § 2449).
+		return base + "/admin/reports"
+	case "organiser_dispute":
+		// Both sides read the decision and any rename deadline on the disputes
+		// page; the row carries only the reporting club (decisions § 2441).
+		return base + "/disputes"
 	case "course_alert":
 		// The stable-id resolver, which opens the race or route the alert is
 		// on; the projection carries only the alert's id (decisions § 2407).
@@ -619,7 +633,16 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// recipient owns the plan.
 		return planPath(base, n)
 	case "message":
+		// A group message opens its group; a 1:1 one the inbox, as the row
+		// names no partner route of its own.
+		if n.ConversationID != nil {
+			return base + "/messages/group/" + *n.ConversationID
+		}
 		return base + "/messages"
+	case "group_invite":
+		// Accept and decline sit in the inbox's Requests list; the invitee
+		// cannot open the group itself until they accept (decisions § 2463).
+		return base + "/messages?view=requests"
 	case "club_post":
 		return clubPath(base, n)
 	case "kudos", "comment", "comment_reply", "reaction":

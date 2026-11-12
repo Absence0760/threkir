@@ -50,3 +50,18 @@ export function labelKey<T extends string>(
 	if (value == null) return null;
 	return Object.prototype.hasOwnProperty.call(table, value) ? table[value as T] : null;
 }
+
+/**
+ * The one credit line a course shows (issue #1352): the course's own
+ * `attribution` text when it has one, else the label for its geometry
+ * source; null when there is neither.
+ */
+export function courseCredit(
+	attribution: string | null | undefined,
+	geometrySource: string | null | undefined,
+): { text: string } | { key: MessageKey } | null {
+	const text = attribution?.trim();
+	if (text) return { text };
+	const key = labelKey(ATTRIBUTION_LABEL, geometrySource);
+	return key ? { key } : null;
+}

@@ -25,7 +25,7 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 - [Segments](#segments)
 - [Photos on runs](#photos-on-runs)
 - [Live race spectator + race mode](#live-race-spectator--race-mode)
-- [Imports — Strava, Garmin, parkrun, Health Connect, HealthKit](#imports--strava-garmin-parkrun-health-connect-healthkit)
+- [Imports — Strava, Garmin, Health Connect, HealthKit](#imports--strava-garmin-health-connect-healthkit)
 - [Settings — preference pages](#settings--preference-pages)
 - [Privacy zones](#privacy-zones)
 - [Paywall and RevenueCat](#paywall-and-revenuecat)
@@ -393,12 +393,101 @@ See [decisions.md §36](../architecture/decisions.md#36-photos-on-runs-own-table
 | Race mode start | Race director on `/clubs/[slug]/events/[id]` → Start race | `race_sessions.status` transitions `armed → running`; pings start flowing from connected watches. |
 | Race mode finish | Director or auto-finalize | `running → finished`; `event_results` rows are created for finishers; `recompute_event_ranks` orders them. |
 | Cleanup | Wait or trigger | `cleanup-stale-live-run-pings` cron purges `race_pings` older than the configured window. |
+| Set up a Self-timed race (organiser) | Web, as a club owner or admin: `/clubs/[slug]` → New event, Group run, a route and distance; under How the race starts pick **Self-timed window**, set Window opens at / Opens on and a window length; Create event. Reopen it → Edit event → Start and finish lines; check each course shows a start and a finish line (From the route), drag or retype one and Save line | The editor shows the self-timed hints (lines required, latest app, auto-approve off by default), and saving an existing self-timed race whose course lacks a line is refused (a new one is created, then says which course needs one). Each line saves on its own and reads "Placed by an organiser"; Reset to route puts it back. The event page's race panel reads **Self-timed window** with Arm early before the server creates the session, then Opens / Open until with Delay start and Cancel (before) or Extend window and End window now (while open). Arm early with a course missing a start line shows the preflight with "Must fix:" and no Arm anyway. "How this works" in the lines section, the start-mode picker and the race panel opens `start-and-finish-lines` / `choose-how-your-race-starts`; a runner's panel opens `run-a-self-timed-race`. |
+| Self-timed attempt (runner) | Another account, phone app: open the event while the window is open → Join and attempt (choose a course first on a multi-course race); Run tab → **This run is my attempt** → Start | The Run tab banner reads Self-timed with the close time; the button becomes "Attempt ready: tap Start" and a second tap takes it back. A run started without it never joins the race. The submitted result shows PENDING on the event page until the organiser approves it (auto-approve off), and the live page lists the runner under the self-timed board. |
+
+### Field test: timing by the lines (#1307)
+
+Not yet run. Needs a real park, a course whose start and finish lines are placed on the web event editor, an organiser account and one runner account on the phone and on a Wear OS watch (run each row on both; on the watch the undo is the paused screen's resume button and the distance to the start line sits under the race clock). Record each row's result here with the date, devices and OS versions.
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| 90° crossing | Arm a Host GO race, GO, run straight through the start line and later the finish line at right angles | Voice "Start line crossed, timing" and a haptic about 50 m past the start; the finish line cues and pauses the run behind Not finished? Resume; the result shows `start_detection = gate`, `finish_detection = gate`, and the server's gun time matches the organiser's stopwatch within a second or two. |
+| 30° crossing | Same, crossing both lines at about 30° | Same as above. |
+| Parallel path | Run past the finish line on a path about 20 m beside it, then on | No finish; a Stop afterwards opens Resume race / Finish race. |
+| Loop with warm-up | A course whose start and finish lines coincide; jog a warm-up lap through both before GO, then race | No early finish: the warm-up crossings are before GO, and the race finishes only after the course's distance. |
+| Lap course | A route drawn as one lap whose start and finish lines coincide, the course distance set to 3 laps; Arm (Host GO), GO, run 3 laps | `race_session_courses.finish_lap_count` is 3; no finish on laps 1 and 2; the finish line at the end of lap 3 cues and files (decisions § 2472). Stop after lap 2 and choose Finish race: a DNF. Run it again weaving the lap 2 pass 20 m wide of the line's end: no line finish at lap 3, but stopping on the line finishes. Repeat with a routeless course whose two organiser lines coincide: the same, the floor measured from the runner's laps. |
+| Self-timed laps | A Self-timed window on the same 3-lap course; turn on This run is my attempt and run 3 laps | The start cues once, about 50 m past the line on lap 1; the later laps' start-line crossings change nothing; the finish files at the end of lap 3 with the chip time from lap 1's crossing. |
+| Self-timed out-and-back | A Self-timed window on an out-and-back whose finish line sits 5 to 20 m beyond the start line on the way home | Coming home across the start line does not cancel the start; the finish line files the finish, timed from the outward start crossing. |
+| On the start line at GO | Stand on or just past the start line when GO fires | No start cue (nobody crossed); the result's `start_at` is GO and `start_detection = gate`. |
+| Phone in a pocket | Run the whole race with the screen off and the phone in a pocket | Cues heard and felt; the finish files; the run saves after 60 s. |
+| Undo after a false finish | Trigger a finish (for example cross the finish line before the end on a course whose distance is set well short of the route), tap Not finished? Resume | The result disappears from the event's results; recording continues; Stop then Finish race files a manual finish. |
+| Offline | Open the race once with signal, then turn on airplane mode before the start | Distance to the start line shows, the start and finish are detected and cued, and the result is queued and lands when signal returns. |
+| Undo, then restart | After Not finished? Resume, kill the app (phone) or let the activity be recreated while the service records (Wear), reopen, run on and cross the finish line again after 90% of the course from the start | The undone crossing is not filed again; the later crossing finishes, timed from the original start-line crossing; the saved run carries `metadata.race_undone_finish_at`. |
+| Clock offset across a restart | Start a race recording with signal, kill the app, turn on airplane mode, reopen and finish | The gun time still matches the stopwatch within a second or two (the offset is remembered for 24 h). |
+| Web re-time | Within 24 h of the race finishing, open one of these runs on the web as its owner | **Re-time from my track** shows the track's result beside the current one; on a run whose finish was undone it refuses the undone finish; replacing a DNF or a hand finish files `gate` / `gate` and the board updates. Note how far the re-timed gun time sits from the live one (fix delivery latency, § 2462). |
 
 (Live race recording on the watch is roadmap-pending in some cells; see [parity.md "Live race mode"](../product/parity.md).)
 
+### Timing-line calibration (#1304 § 6)
+
+Not yet run. Measures the error of the timing lines on the production fix feed, so the provisional constants (`halfWidthM`, `maxGapS`, `maxHopM`, `rejectGapS`, `startCommitM`, the with-start coverage threshold) can be replaced by measured ones ([decisions § 2453](../architecture/decisions.md)). Record the date, devices and OS versions, and the per-cell median and p95 |error|, missed and false counts, in a new decisions entry.
+
+**Kit.** A debug build of the phone app (`flutter run` or a debug APK; the screen does not exist in a release build), a Wear OS watch with a debug build of the Wear app (`./gradlew installDebug` from `apps/watch_wear/android`; the entry does not exist in a release build) and `adb` connected to it, a line marked on the ground with two cones, a camera filming the line with an NTP-synced clock in frame (a second phone showing time.is, say) and signal for the clock measurement.
+
+**The matrix (about 120 crossings).** Ten crossings per cell:
+
+| Approach | Pace | Carry |
+|---|---|---|
+| 90° to the line | walk, run | phone in hand, phone in pocket, Wear |
+| 30° to the line | walk, run | phone in hand, phone in pocket, Wear |
+
+Plus passes along parallel paths 20 m and 40 m beside the line (none should cross it), and standing still on the line for a few minutes (no crossing at all). The phone scores the phone cells and the watch scores the Wear cells, each on its own fix feed, into the same CSV format.
+
+**Per cell.**
+1. Phone: Settings > Line calibration. Stand at the centre of the line and tap Centre at my position (or type the centre), type the bearing of travel through it and the half-width (15 m today). Tap Measure server clock (10 round trips); the offset's uncertainty is half the round trip shown with each result.
+2. Pick the cell (approach, pace, carry) and tap Start capture.
+3. Run tab: Start a recording (no race needed) and make the cell's ten crossings, then Stop. Each recording is kept apart, so several in one capture are fine.
+4. Line calibration: Stop capture. From the video, write down each crossing's instant on the NTP clock (the frame where the runner's chest crosses the line) as `HH:MM:SS.fff` in the phone's zone, or as an ISO instant with its zone when the clock shows UTC or the session crosses midnight. Paste them one per line and tap Score this capture.
+5. Read the line it adds: matched of true, missed, false, near misses, median error and |error| p50 / p95. Nothing matched while detections sit about an hour away means a time-zone slip in the typed instants, not a detector failure.
+
+**Per Wear cell.** The same steps on the watch, wrist-worn:
+1. Pre-run screen, scrolled to the end: **Line calibration (debug)**. Type the line centre (or **Centre at my position**, the watch's last known fix), the bearing of travel and the half-width, and tap **Measure server clock** (10 round trips; it needs signal, or type the offset).
+2. Cycle **Approach** and **Pace** to the cell (carry is always `wear_wrist`) and tap **Start capture**, then **Close**.
+3. Pre-run Start, make the cell's crossings, Stop. Each recording is kept apart.
+4. Back in Line calibration: **Stop capture**, type the video-timed instants into **True crossing instants**, separated by commas (`HH:MM:SS.fff` in the watch's zone, or an ISO instant with its zone), and tap **Score this capture**. The line it adds reads as the phone's.
+5. **Save CSV** writes `files/line_calibration.csv` in the app's private storage (each save replaces it with every capture scored this session). Take it off the watch with `adb exec-out run-as com.threkir.watchwear cat files/line_calibration.csv > wear_calibration.csv`; it never leaves by sync or share.
+
+**Export.** Share CSV (or Copy CSV) sends one row per crossing (outcome, error in ms, lateral offset from the line's centre, gapped, why a miss was missed) and one summary row per capture. It holds no position and no instant: nothing in it says where the session was.
+
+### Replay regression: old circle vs new lines (#1304 § 6, step 2)
+
+Checks that the lines do not miss finishes the old 30 m circle caught, on the owner's own stored tracks. Run locally only; real tracks must never be committed (this repository is public).
+
+1. Download your own tracks: web Settings > Account > Download full backup, then unzip it into a directory outside the repo (for example `~/race-replay/`). Its `tracks/<run id>.json.gz` are what the replay reads.
+2. Optional, for the races you actually ran: in the Supabase SQL editor of the project you own, run the query below with your user id and save the result as `cases.json` beside `tracks/`. Without it every track is replayed over a course laid over the track itself (a start line 20 m in, a finish line 50 m before the end).
+
+   ```sql
+   select coalesce(json_agg(json_build_object(
+     'run_id', r.run_id, 'start_mode', s.start_mode, 'started_at', s.started_at,
+     'distance_m', coalesce(f.distance_m, c.distance_m),
+     'finish_lat', coalesce(f.finish_lat, c.finish_lat),
+     'finish_lng', coalesce(f.finish_lng, c.finish_lng),
+     'finish_line_self_cross', coalesce(f.finish_line_self_cross, c.finish_line_self_cross),
+     'finish_lap_count', f.finish_lap_count,
+     'start_gate_lat', coalesce(f.start_gate_lat, c.start_gate_lat),
+     'start_gate_lng', coalesce(f.start_gate_lng, c.start_gate_lng),
+     'start_gate_bearing_deg', coalesce(f.start_gate_bearing_deg, c.start_gate_bearing_deg),
+     'start_gate_half_width_m', coalesce(f.start_gate_half_width_m, c.start_gate_half_width_m),
+     'finish_gate_lat', coalesce(f.finish_gate_lat, c.finish_gate_lat),
+     'finish_gate_lng', coalesce(f.finish_gate_lng, c.finish_gate_lng),
+     'finish_gate_bearing_deg', coalesce(f.finish_gate_bearing_deg, c.finish_gate_bearing_deg),
+     'finish_gate_half_width_m', coalesce(f.finish_gate_half_width_m, c.finish_gate_half_width_m))), '[]')
+   from event_results r
+   join event_courses c on c.id = r.course_id
+   left join race_sessions s on s.event_id = r.event_id and s.instance_start = r.instance_start
+   left join race_session_courses f on f.event_id = r.event_id
+     and f.instance_start = r.instance_start and f.course_id = r.course_id
+   where r.user_id = '<your user id>' and r.run_id is not null;
+   ```
+
+3. From `apps/mobile_android`: `RACE_REPLAY_DIR=~/race-replay RACE_REPLAY_OUT=~/race-replay/report.csv flutter test test/race_finish_replay_test.dart`. Set `RACE_REPLAY_SYNTH=0` to replay only the `cases.json` races.
+
+It prints how many tracks it replayed, how many both detectors finished and how many the lines lost, and fails naming each lost run. `report.csv` has one row per track (`case,course,v1_finished,v2_finished,v2_detection,delta_s,regression`), with run ids and no coordinates; keep it with the tracks, outside the repo.
+
 ---
 
-## Imports — Strava, Garmin, parkrun, Health Connect, HealthKit
+## Imports — Strava, Garmin, Health Connect, HealthKit
 
 | Source | Surface | Steps | Pass |
 |---|---|---|---|
@@ -406,7 +495,6 @@ See [decisions.md §36](../architecture/decisions.md#36-photos-on-runs-own-table
 | Strava OAuth (Edge Function) | OAuth flow then `strava-import` EF | `{action: 'connect', code, scope}` after redirect, then `{action: 'sync'}` for backfill | Activities import; tokens land in Vault via `set_integration_tokens`; `metadata.title` + `metadata.elevation_m` populated when present (recently-fixed bug — these used to be written as columns that don't exist). |
 | Strava webhook | `strava-webhook` EF | Pass the secret as `X-Webhook-Secret: <STRAVA_WEBHOOK_SECRET>` — the query-string form still works (Strava can only be configured with a URL) but logs the secret on every call, so manual pokes should use the header. (a) send a `GET ?hub.mode=subscribe&hub.verify_token=<STRAVA_VERIFY_TOKEN>&hub.challenge=ping`; (b) send a `POST` event with `{object_type:'activity',aspect_type:'create',owner_id,object_id}` | (a) responds 200 with `{"hub.challenge":"ping"}`; (b) returns 200 (always — Strava retries on non-2xx) and an authed Run row appears for `owner_id` with `metadata.strava_id == object_id`. Replay the same POST → no duplicate (dedupe via `metadata.strava_id`). Activity types other than run/walk/hike are silently ignored. |
 | Garmin ZIP (web) | `/settings/integrations` → Garmin bulk | Upload either a single `.fit` or the Account Data `.zip` | Activities import via `garmin-zip.ts`; `metadata.garmin_id` set; routed inner GPX/TCX go through `parseRouteFile`. |
-| parkrun (mobile) | Settings → Import parkrun results → enter athlete number | Calls `parkrun-import` EF | New results land as runs with `source='parkrun'`; `metadata.event` + `metadata.position` + `metadata.age_grade` set. |
 | Health Connect (Android) | Settings → Import from Health Connect | Pick a date range | Workouts come in via `health_connect_importer.dart`; `metadata.health_connect_type` preserves the original enum. |
 | HealthKit (iOS) | Settings → Import from HealthKit | Same | Same shape via the `health` package's HealthKit backend. |
 

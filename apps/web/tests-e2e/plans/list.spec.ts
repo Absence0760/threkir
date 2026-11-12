@@ -91,7 +91,7 @@ test.describe('/plans', () => {
 	test('Plans is reachable from the /runs run-surface tab strip', async ({
 		page
 	}) => {
-		// /plans is nested under the run surface (Runs · Routes · Plans),
+		// /plans is nested under the run surface (Runs · Plans · Races & courses · Routes · Segments),
 		// reached from the same RunSurfaceTabs strip /runs + /routes render.
 		// Pin (a) the strip shows all three links, (b) clicking Plans lands
 		// on /plans with the Plans tab marked aria-current=page.
@@ -101,9 +101,9 @@ test.describe('/plans', () => {
 		await expect(strip).toBeVisible({ timeout: 10_000 });
 		await expect(strip.getByRole('link', { name: 'Runs' })).toBeVisible();
 		await expect(strip.getByRole('link', { name: 'Routes' })).toBeVisible();
-		// Park courses sit on the strip too (issue #1342), so the index is
-		// one tap from every run surface rather than only from /segments.
-		await expect(strip.getByRole('link', { name: 'Parks' })).toHaveAttribute('href', '/parks');
+		// Park courses are the "Run any time" half of Races & courses (issue
+		// #1352), so the strip carries no Parks tab of its own.
+		await expect(strip.locator('a[href="/parks"]')).toHaveCount(0);
 		const plansLink = strip.getByRole('link', { name: 'Plans' });
 		await expect(plansLink).toBeVisible();
 

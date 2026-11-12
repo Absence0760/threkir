@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 
 import { defineConfig, devices } from '@playwright/test';
 
+import { viteCommand } from './fixtures/vite-command';
+
 /**
  * Dedicated Playwright config for surfaces that render only on a build with an
  * optional integration's public id set.
@@ -24,6 +26,7 @@ import { defineConfig, devices } from '@playwright/test';
  * The same holds for a surface behind a fail-closed deploy gate whose off
  * state the sharded lane pins: `PUBLIC_ADAPTIVE_FITNESS_GATE` is on here for
  * the comeback ramp (decisions § 2207), and off everywhere else. The
+ * coach assistant is on here and off everywhere else (issue #1215). The
  * flyover video export is offered only with a basemap a video may record
  * (decisions § 2259), so `PUBLIC_TILE_STYLE_URL` is set here to the OSM
  * fallback style the keyless build already draws: the other specs' maps are
@@ -57,7 +60,7 @@ export default defineConfig({
 	reporter: process.env.CI ? [['github'], ['list']] : 'list',
 
 	webServer: {
-		command: `pnpm exec vite dev --port ${DEV_PORT}`,
+		command: viteCommand(`dev --port ${DEV_PORT}`),
 		cwd: WEB_DIR,
 		url: `http://localhost:${DEV_PORT}`,
 		reuseExistingServer: !process.env.CI,
@@ -73,6 +76,11 @@ export default defineConfig({
 			// The comeback ramp (plan-volume-anchor.spec.ts) ships behind this
 			// fail-closed gate; the sharded lane runs with it off and pins that.
 			PUBLIC_ADAPTIVE_FITNESS_GATE: 'true',
+			// The coach assistant (issue #1215 Phase 4) ships behind this gate,
+			// off in every environment; coach-assist.spec.ts drives it against a
+			// mocked /api/coach/assist, and messages/coach-assist-off.spec.ts pins
+			// the off state in the sharded lane.
+			PUBLIC_COACH_ASSIST_ENABLED: 'true',
 			PUBLIC_TILE_STYLE_URL: '/osm-fallback-style.json',
 			OSRM_URL: ''
 		}

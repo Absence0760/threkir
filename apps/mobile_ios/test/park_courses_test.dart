@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_android/park_courses.dart';
+import 'package:mobile_android/route_guide.dart';
 
 class _Park {
   final String regionCode;
@@ -104,6 +105,15 @@ void main() {
       expect(courseIsCountable('open'), isTrue);
       expect(courseIsCountable('seasonal'), isTrue);
       expect(courseIsCountable('closed'), isFalse);
+    },
+  );
+
+  test(
+    'courseOffersWayfinding: a closed course offers no Navigate, GPX or route guide',
+    () {
+      expect(courseOffersWayfinding('open'), isTrue);
+      expect(courseOffersWayfinding('seasonal'), isTrue);
+      expect(courseOffersWayfinding('closed'), isFalse);
     },
   );
 
@@ -233,6 +243,32 @@ void main() {
     expect(xml, contains('<copyright author="OpenStreetMap contributors">'));
   });
 
+  test('parkCourseGpx: the route guide is the track desc, in English, led by its ground-check status', () {
+    final guide = parseRouteGuide({
+      'version': 1,
+      'lang': 'en',
+      'getting_there': 'Park by the boathouse.',
+      'steps': [
+        {'kind': 'start', 'at_m': 0, 'name': 'Lake Trail'},
+        {'kind': 'junction', 'at_m': 400, 'turn': 'left', 'name': 'Ridge Trail'},
+        {'kind': 'finish', 'at_m': 1990},
+      ],
+    });
+    expect(guide, isNotNull);
+    final xml = parkCourseGpx(
+      name: 'Lake Loop',
+      waypoints: const [(lat: 37.1, lng: -77.5, ele: null)],
+      checkpoints: const [],
+      attribution: null,
+      guide: (guide: guide!, checkedAt: null),
+    );
+    expect(
+      xml,
+      contains('<desc>Drafted from map data, not yet checked on the ground.\nPark by the boathouse.\nStart on Lake Trail.\n'
+          '400 m: turn left onto Ridge Trail.\n2.0 km: finish.</desc>'),
+    );
+  });
+
   test('parkCourseGpx: an unreadable checkpoint list writes no waypoints, never a partial set', () {
     final xml = parkCourseGpx(
       name: 'Lake Loop',
@@ -272,7 +308,17 @@ void main() {
   });
 
   RunParkCourseTime time(String name, int? rank) =>
-      RunParkCourseTime(courseName: name, parkName: 'Park', timeSeconds: 600, season: 2027, seasonRank: rank);
+      RunParkCourseTime(
+        effortId: 'e-$name',
+        courseName: name,
+        courseSlug: 'lake-loop',
+        parkName: 'Park',
+        parkSlug: 'park',
+        regionCode: 'US-VA',
+        timeSeconds: 600,
+        season: 2027,
+        seasonRank: rank,
+      );
 
   test('pickShareCourse: no course is null', () {
     expect(pickShareCourse(const []), isNull);
@@ -284,5 +330,13 @@ void main() {
 
   test('pickShareCourse: with no ranked course the first one is printed', () {
     expect(pickShareCourse([time('A', null), time('B', null)])?.courseName, 'A');
+  });
+
+  test('parseSharedUse: reads a known key and nothing else', () {
+    expect(kSharedUses, ['saturday_morning_group']);
+    expect(parseSharedUse('saturday_morning_group'), 'saturday_morning_group');
+    for (final raw in <Object?>[null, '', 'Saturday group', 'SATURDAY_MORNING_GROUP', 1, <String, Object>{}]) {
+      expect(parseSharedUse(raw), isNull, reason: '$raw');
+    }
   });
 }

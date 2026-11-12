@@ -47,6 +47,7 @@ import '../widgets/finisher_certificate_card.dart';
 import '../widgets/gym_compose_sheet.dart';
 import '../widgets/gym_routine_picker.dart';
 import '../widgets/help_button.dart';
+import 'help_screen.dart' show openGuide;
 import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
@@ -1195,7 +1196,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
-  /// Arm / Fire Go / End dispatcher. Uses the current `_raceSession`
+  /// Arm / GO / End dispatcher. Uses the current `_raceSession`
   /// state to decide which mutation to run. Errors surface as a
   /// snackbar; successful writes leave the realtime channel to push
   /// the UI back into sync (belt-and-suspenders: we also reload on
@@ -1245,7 +1246,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   /// End / Cancel are irreversible and affect every participant, so they
   /// confirm before firing (mirrors the web ConfirmDialog gate). Arm and
-  /// Fire Go stay one-tap.
+  /// GO stay one-tap.
   Future<void> _confirmRaceAction(_RaceAction action) async {
     final isCancel = action == _RaceAction.cancel;
     final e = _event;
@@ -2520,6 +2521,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 label: Text(l10n.eventRaceJoinAttempt),
               ),
             ],
+            TextButton(
+              key: const ValueKey('self-timed-guide'),
+              onPressed: () => openGuide(context, 'run-a-self-timed-race'),
+              child: Text(l10n.infoTipReadGuide),
+            ),
           ],
         ),
       ),
@@ -2671,12 +2677,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.eventRaceControlLabel,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                letterSpacing: 0.8,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.eventRaceControlLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  key: const ValueKey('race-mode-guide'),
+                  onPressed: () =>
+                      openGuide(context, 'choose-how-your-race-starts'),
+                  child: Text(l10n.infoTipReadGuide),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             if (race == null || status == 'idle') ...[

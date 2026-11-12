@@ -362,6 +362,18 @@ jobs:
             echo "Reproduce with: node --test scripts/check_cache_keys.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      # A script that decides it is the entry point by building a file:// URL
+      # from argv[1] by hand misses on a path needing URL-encoding or reached
+      # through a symlink, and exits 0 having done nothing: a guard run that way
+      # passes vacuously.
+      - name: Script entry-point checks compare paths, not hand-built URLs
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/script_entry_points.test.mjs; then
+            echo "::error::A tracked script decides it is the entry point with import.meta.url === \`file://\${process.argv[1]}\`, or a script reached through a symlinked, URL-encoded path did nothing. Use realpathSync(process.argv[1]) === fileURLToPath(import.meta.url). Nothing here is about workflow syntax, the toolchain pins, the CI diagnoses or the cache keys."
+            echo "Reproduce with: node --test scripts/script_entry_points.test.mjs (stdlib + git ls-files)."
+            exit 1
+          fi
       # The Edge Functions are a Deno program, so no tsconfig root covers them
       # and `scripts/tsconfig_coverage.test.mjs` exempts the tree. What covers
       # it is the `deno check` step in `edge-functions`; this asserts that step
@@ -457,7 +469,7 @@ jobs:
       # mobile_android release and on play-rollout.yml's cron, against Google
       # Play. This drives both against an in-memory Edits API and pins the
       # wiring in both workflows, so a regression fails a PR instead of a
-      # release (decisions.md § 2433).
+      # release (decisions.md § 2478).
       - name: The Android release still goes to Play production as a staged rollout
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
@@ -484,12 +496,26 @@ jobs:
       # course no longer matches what its spec and snapshot build, and pins the
       # load payload the operator's SQL carries (issue #1342), and the
       # production sync that loads it on every backend release (issue #1349).
+      # The parks suites are globbed so a new one under scripts/parks/lib/ runs
+      # without anyone remembering to list it here.
       - name: Park course geometry still builds to the committed courses
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
-          if ! node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs scripts/parks/lib/catalogue_payload.test.mjs scripts/parks/lib/catalogue_sync.test.mjs scripts/prod_sync/lib/stages.test.mjs || ! node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/; then
-            echo "::error::The park course pipeline regressed: a geometry rule in scripts/parks/lib/course_geometry.mjs (loop tracing, distance, gain, checkpoints), the load payload in scripts/parks/lib/catalogue_payload.mjs (mapping, validation, the printed SQL), the release sync in scripts/parks/lib/catalogue_sync.mjs or scripts/prod_sync/ (publisher config, the stage SQL, the transaction and step summary, the password kept off psql's command line), or a committed course under scripts/parks/catalogue/ no longer matches what its park.json and snapshot.json build. Nothing here touches the network."
-            echo "Reproduce with: node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs scripts/parks/lib/catalogue_payload.test.mjs scripts/parks/lib/catalogue_sync.test.mjs scripts/prod_sync/lib/stages.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
+          if ! node --test scripts/parks/lib/*.test.mjs scripts/prod_sync/lib/stages.test.mjs || ! node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/; then
+            echo "::error::The park course pipeline regressed: a geometry rule in scripts/parks/lib/course_geometry.mjs (loop tracing, distance, gain, checkpoints), the load payload in scripts/parks/lib/catalogue_payload.mjs (mapping, validation, the printed SQL), the route guide in scripts/parks/lib/route_guide.mjs, the release sync in scripts/parks/lib/catalogue_sync.mjs or scripts/prod_sync/ (publisher config, the stage SQL, the transaction and step summary, the password kept off psql's command line), or a committed course under scripts/parks/catalogue/ no longer matches what its park.json and snapshot.json build. Nothing here touches the network."
+            echo "Reproduce with: node --test scripts/parks/lib/*.test.mjs scripts/prod_sync/lib/stages.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
+            exit 1
+          fi
+      # The official content catalogue (issue #1190): the plans, gym routines
+      # and challenges every backend release publishes as the official club.
+      # This pins each item to the database's constraints and the stage SQL
+      # the release runs, so a bad item fails here rather than mid-release.
+      - name: Official content catalogue is well-formed
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/official/lib/official_catalogue.test.mjs || ! dry_run=$(node scripts/official/sync.mjs --dry-run) || [ -z "$dry_run" ]; then
+            echo "::error::scripts/official/ regressed: the dry run printed no SQL (its entry-point check did not fire), or a committed catalogue item under scripts/official/catalogue/ breaks a database constraint, names a file other than its slug, or carries a field the library drops; or the release stage (scripts/official/sync.mjs, scripts/official/lib/official_catalogue.mjs) or its place after the prod config in scripts/prod_sync/run.mjs changed. The plans' weeks are pinned to the generator by apps/web/src/lib/training/official_plan_catalogue.test.ts. Nothing here touches the network."
+            echo "Reproduce with: node --test scripts/official/lib/official_catalogue.test.mjs && node scripts/official/sync.mjs --dry-run | head"
             exit 1
           fi
       # Production config as code (issue #1350): the release applies
@@ -514,6 +540,18 @@ jobs:
           if ! node --test .github/actions/start-supabase/wait_for_sidecars.test.mjs; then
             echo "::error::The start-supabase composite action's wait loop regressed — its deadline accounting or its failure forensics. That shell runs inside a composite action, so it is in no job's test suite and this is the only thing that reads it. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
             echo "Reproduce with: node --test .github/actions/start-supabase/wait_for_sidecars.test.mjs (drives the loop with stub curl/docker on PATH)."
+            exit 1
+          fi
+      # Same action, same reason: the kong keep-alive reload is shell no job's
+      # suite reaches. Its test also holds the idle timeout under every
+      # upstream's measured idle-close, which is the property that keeps a
+      # POST through kong from 502ing on a reset connection (run 35655765654).
+      - name: Supabase stack kong keep-alive reload
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test .github/actions/start-supabase/tune_kong_keepalive.test.mjs; then
+            echo "::error::The start-supabase composite action's kong keep-alive reload regressed: it no longer reloads the one kong container with the CLI's template, no longer confirms the setting took, or its idle timeout is no longer below every upstream's idle-close (then an upstream can reset a connection kong reuses, and a POST 502s). Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
+            echo "Reproduce with: node --test .github/actions/start-supabase/tune_kong_keepalive.test.mjs (drives the script with a stub docker on PATH)."
             exit 1
           fi
       # Same shape as the step above, one action over. install-playwright's
@@ -2361,6 +2399,90 @@ jobs:
           node scripts/check_lambda_alias_sync.mjs
           node --test scripts/check_lambda_alias_sync.test.mjs
 
+  dependency-advisories:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Dependency advisories (PR-introduced)
+    # Issue #1366, decisions.md § 2457. osv-scanner in supply-chain-scan.yml
+    # cannot gate through the code-scanning ruleset: its alerts carry no line,
+    # so merge protection never attributes them to a PR (§ 2452). This job
+    # asks what merging the PR adds instead. On a pull_request the checkout is
+    # the merge commit and HEAD^1 is the base tip; the script scans both with
+    # the same pinned binary and database, and fails only on an advisory
+    # present at HEAD and absent at HEAD^1 at CVSS 7.0 or higher. A PR that
+    # changes no dependency input is not scanned at all, so an OSV outage
+    # cannot redden it. On push to main it is report-only (there is no base to
+    # diff against); a scanner failure is red either way, with a re-run note.
+    # The scanner pin must equal supply-chain-scan.yml's; the unit suite
+    # fails when they differ.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read # check out the tree and its first parent
+    env:
+      OSV_SCANNER_VERSION: 2.7.0
+      OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
+        with:
+          node-version: 24.20.0
+      - name: Install osv-scanner (pinned release binary, sha256-verified)
+        id: install
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/osv-scanner"
+          bin="$RUNNER_TEMP/osv-scanner/osv-scanner"
+          url="https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          if ! curl -fsSL --retry 3 --retry-all-errors -o "$bin" "$url"; then
+            echo "::error::Could not download osv-scanner ${OSV_SCANNER_VERSION} from GitHub releases. This is an outage, not a finding: re-run the job."
+            exit 1
+          fi
+          if ! echo "${OSV_SCANNER_SHA256}  $bin" | sha256sum -c -; then
+            echo "::error::The osv-scanner ${OSV_SCANNER_VERSION} binary does not match its pinned sha256. Do not re-run past this; find out why the release changed."
+            exit 1
+          fi
+          chmod +x "$bin"
+          "$bin" --version
+      - name: Unit tests for the advisory diff and severity rule
+        id: unit
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/check_dependency_advisories.test.mjs; then
+            echo "::error::check_dependency_advisories.test.mjs failed: the diff, severity or waiver rule changed. Fix the script or the test."
+            exit 1
+          fi
+      - name: Fail on advisories this PR introduces (report only on main)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          EVENT: ${{ github.event_name }}
+          OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: ${{ runner.temp }}/osv-db
+        run: |
+          set -uo pipefail
+          bin="$RUNNER_TEMP/osv-scanner/osv-scanner"
+          if [ "$EVENT" = pull_request ]; then
+            mode=(--mode pr --base-ref HEAD^1)
+          else
+            mode=(--mode report)
+          fi
+          rc=0
+          node scripts/check_dependency_advisories.mjs --scanner "$bin" "${mode[@]}" || rc=$?
+          case "$rc" in
+            0) ;;
+            2)
+              echo "::error::The dependency scan did not complete (scanner or OSV database outage, see above). Not a finding: re-run the job."
+              exit 1
+              ;;
+            *)
+              echo "::error::Dependency advisories failed: see the errors above and the job summary for the advisory, its score and the lockfile."
+              exit 1
+              ;;
+          esac
+
   infra-guards:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -3955,8 +4077,8 @@ jobs:
       # runs, and fail loudly + early if the deps genuinely can't be had.
       #
       # Every `.ts`, not only the test files: the typecheck below reads the
-      # whole tree, and several non-test deps (cheerio in parkrun-import) are
-      # reachable from no test file at all.
+      # whole tree, and some non-test deps are reachable from no test file at
+      # all.
       #
       # `--no-check` skips TYPECHECKING, not type RESOLUTION — this step walks
       # the declaration graph and fetches it, so the typecheck below adds no
@@ -4094,7 +4216,6 @@ jobs:
           # webhook/index.ts`). 24-char placeholder hit the 503
           # webhook_not_configured branch on CI run 26473953318.
           STRAVA_WEBHOOK_SECRET=ci-strava-webhook-secret-32chars-ok
-          PARKRUN_USER_AGENT=ci-parkrun-ua
           REVENUECAT_WEBHOOK_SECRET=ci-revenuecat-secret
           CRON_SECRET=ci-cron-secret-at-least-32-chars-ok
           STRIPE_EVENTS_WEBHOOK_SECRET=ci-stripe-events-secret
@@ -4243,7 +4364,7 @@ jobs:
         # picks up every `*.test.ts` file. Self-audit (May 2026) caught
         # that the prior shape hardcoded three test paths and silently
         # missed any new *.test.ts file added under supabase/functions/
-        # (parkrun-import/lib.test.ts, export-data/decode_track.test.ts,
+        # (export-data/decode_track.test.ts,
         # delete-account/lib.test.ts, delete-account/wiring.test.ts).
         #
         # Permissions:
@@ -5128,6 +5249,7 @@ jobs:
       - watch-ios-locale-parity
       - watch-garmin-source
       - lambda-alias-coverage
+      - dependency-advisories
       - infra-guards
       - terraform
       - gitleaks

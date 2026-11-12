@@ -3,6 +3,7 @@
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		fetchNotificationsWithError,
@@ -216,6 +217,12 @@
 				return item.club_name
 					? m('notificationsList.verbCourseAlertNamed', { club: item.club_name })
 					: m('notificationsList.verbCourseAlert');
+			case 'organiser_dispute':
+				return item.club_name
+					? m('notificationsList.verbOrganiserDisputeNamed', { club: item.club_name })
+					: m('notificationsList.verbOrganiserDispute');
+			case 'park_course_report':
+				return m('notificationsList.verbParkCourseReport');
 			case 'race_starting_soon':
 				return item.event_title
 					? m('notificationsList.verbRaceStartingSoonTitled', { title: item.event_title })
@@ -257,7 +264,11 @@
 			case 'workout_reminder':
 				return m('notificationsList.verbWorkoutReminder');
 			case 'message':
-				return m('notificationsList.verbMessage', { name });
+				return item.row.conversation_id
+					? m('notificationsList.verbGroupMessage', { name })
+					: m('notificationsList.verbMessage', { name });
+			case 'group_invite':
+				return m('notificationsList.verbGroupInvite', { name });
 			case 'club_post':
 				return item.club_name
 					? m('notificationsList.verbClubPostNamed', { name, club: item.club_name })
@@ -328,14 +339,15 @@
 			<button class="btn btn-outline" onclick={load}>{m('profile.retry')}</button>
 		</div>
 	{:else if visible.length === 0}
-		<div class="empty">
-			{#if filter === 'unread'}
-				<p>{m('notificationsList.allCaughtUp')}</p>
-			{:else}
-				<p>{m('notificationsList.emptyAll')}</p>
-				<a href="/social?tab=people" class="btn btn-primary">{m('notificationsList.findPeople')}</a>
-			{/if}
-		</div>
+		{#if filter === 'unread'}
+			<EmptyState icon="check_circle" title={m('notificationsList.allCaughtUp')} data-testid="notifications-empty" />
+		{:else}
+			<EmptyState icon="notifications" title={m('notificationsList.emptyAll')} data-testid="notifications-empty">
+				{#snippet actions()}
+					<a href="/social?tab=people" class="btn btn-primary">{m('notificationsList.findPeople')}</a>
+				{/snippet}
+			</EmptyState>
+		{/if}
 	{:else}
 		<ul class="list">
 			{#each groups as group (group.key + group.lead.id)}
@@ -487,15 +499,6 @@
 		color: var(--color-text-tertiary);
 		font-size: 0.95rem;
 		margin: 0;
-	}
-	.empty {
-		text-align: center;
-		padding: var(--space-2xl);
-		color: var(--color-text-tertiary);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-md);
 	}
 	.error-banner {
 		display: flex;

@@ -41,8 +41,12 @@ const _embeddedBestDistances = <String, double>{
 /// stored smoothed position.
 ///
 /// Lockstep with `estimatorCumulativeMetres` in
-/// `apps/web/src/lib/integrations/garmin-fit.ts` and
-/// `apps/job_worker/internal/embedded_bests.go`.
+/// `apps/web/src/lib/integrations/garmin-fit.ts`, and with
+/// `replayRecordedTrack` in `apps/job_worker/internal/embedded_bests.go` on a
+/// track that marks no `segmentStart`. The Go replay also splits a watch
+/// track into its marked segments (spec v1.8); this one replays one stream,
+/// which is right for every track it is given: phone recordings and imports
+/// carry no marks.
 List<double> estimatorCumulativeMetres(
   List<Waypoint> track, {
   double maxSpeedMps = 10.0,

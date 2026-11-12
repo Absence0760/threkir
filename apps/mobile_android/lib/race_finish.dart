@@ -6,7 +6,7 @@
 /// controller turns the detected instant into a gun time with
 /// [raceGunTimeS] and a [ServerClockOffset].
 ///
-/// Spec `race_finish v2` (issue #1304): with a start or finish line
+/// Spec `race_finish v3` (issue #1304, decisions § 2472): with a start or finish line
 /// ([Gate]) the start and finish are line crossings from `gate_crossing`;
 /// a course with neither line, in a gun mode, behaves exactly as v1.
 ///
@@ -40,6 +40,14 @@ const double kRaceFinishMinCoverageWithStart = 0.6;
 /// distance, not distance past the line, so a course turning within it still
 /// commits. Provisional until the #1304 calibration session.
 const double kRaceStartCommitM = 50;
+
+/// Share of one lap a lap course's last lap must show when its count is one
+/// pass short (a crossing dropped by a wide pass or a fix gap), and the share
+/// of a lap a gun runner must cover after GO before their first start
+/// crossing is taken for a missed one. Between the honest pass a lap early,
+/// a whole lap short, and the finish, with three quarters of a lap of GPS
+/// margin.
+const double kRaceLapShortShare = 0.75;
 
 /// A recording that starts this long after GO is flagged as a late start.
 const Duration kRaceLateStartAfter = Duration(minutes: 5);
@@ -175,8 +183,16 @@ bool raceCoverageMet(double coveredM, double? courseDistanceM) {
 ///   held and replayed by [setGo], so a late GO gives the same answer; a
 ///   race whose GO never comes holds the whole recording until [settle]
 ///   drops it and finishes nothing.
-/// - Start, self-timed: the last forward start-line crossing with no
-///   backward crossing after it. No such crossing, no finish.
+/// - Start, self-timed: a forward start-line crossing commits as a gun
+///   one does, with no GO. Once committed, a later forward crossing (the
+///   next lap) changes nothing, and a backward one (an out-and-back coming
+///   home) re-arms it without clearing it: the committed start stays the
+///   start until a new forward crossing commits and replaces it. Once the
+///   runner has passed the finish line forward since the start, or covered
+///   [kRaceFinishMinCoverage] of the course from it, a backward crossing is
+///   ignored (a GPS wobble at a lap pass must not restart the clock). A
+///   backward crossing inside the commit distance voids the crossing as in
+///   a gun race. No committed start, no finish.
 /// - Start, no start line (gun mode): the Start press, coverage counted from
 ///   it as in v1.
 /// - Coverage is the covered distance since the start. A gun-mode runner
@@ -187,6 +203,19 @@ bool raceCoverageMet(double coveredM, double? courseDistanceM) {
 ///   [kRaceFinishMinCoverageWithStart] from a committed start, or
 ///   [kRaceFinishMinCoverage] without one. Once GO is known nothing before
 ///   it finishes, with or without a start line.
+/// - Laps: a lap pass is a forward finish crossing from a committed start
+///   at least the lines' separation (centre to centre) plus
+///   [kRaceStartCommitM] past it, and [kRaceStartCommitM] past the previous
+///   pass. With the lap count the race froze for a lap course ([lapCount],
+///   `race_session_courses.finish_lap_count`) the line finish is the pass
+///   that brings the count to it, the share kept as a floor. With none, from
+///   the second pass on the share's floor rises to the course distance less
+///   half the lap just run. [lapsMet] is the lap rule for a stop and the
+///   zone: every pass, or one short with the course within
+///   [kRaceLapShortShare] of a lap (a dropped crossing); with none frozen,
+///   the course less [kRaceLapShortShare] of the lap just run. A gun runner
+///   who covers [kRaceLapShortShare] of a lap after GO before a start
+///   crossing missed one, and starts at GO.
 /// - The zone with a finish line decides only on [settle], and only for a
 ///   runner inside it at that moment; leaving it finishes nobody. Without a
 ///   finish line the zone is v1's closest approach. The zone always needs
@@ -207,10 +236,16 @@ class RaceFinishDetector {
     Gate? finishGate,
     this.mode = RaceStartMode.gun,
     DateTime? goAt,
+    int? lapCount,
   })  : startGate = raceLineUsable(startGate) ? startGate : null,
-        finishGate = raceLineUsable(finishGate) ? finishGate : null {
+        finishGate = raceLineUsable(finishGate) ? finishGate : null,
+        lapCount = raceLineUsable(finishGate) && lapCount != null && lapCount >= 2
+            ? lapCount
+            : null {
+    if (mode == RaceStartMode.selfTimed) _state = _StartState.seeking;
     final s = this.startGate;
     final f = this.finishGate;
+    _sepM = s != null && f != null ? raceDistanceM(s.lat, s.lng, f.lat, f.lng) : 0;
     _startLine = s == null ? null : GateCrossingDetector(s);
     _finishLine = f == null ? null : GateCrossingDetector(f);
     if (goAt != null) setGo(goAt);
@@ -227,6 +262,11 @@ class RaceFinishDetector {
   final Gate? finishGate;
   final RaceStartMode mode;
 
+  /// The course's lap count, or null when the race froze none.
+  final int? lapCount;
+
+  /// Metres between the two lines' centres; 0 without both.
+  late final double _sepM;
   late final GateCrossingDetector? _startLine;
   late final GateCrossingDetector? _finishLine;
 
@@ -244,7 +284,10 @@ class RaceFinishDetector {
   GateCrossing? _pending;
   RaceStart? _committed;
   double _goCoveredM = 0;
-  GateCrossing? _lastForward;
+  int _passes = 0;
+  double? _lastPassM;
+  double? _lapM;
+  bool _finishSeen = false;
   bool _utc = false;
 
   bool get _v1 =>
@@ -268,16 +311,10 @@ class RaceFinishDetector {
   }
 
   /// The start a finish would be measured from right now: the committed
-  /// start in a gun mode, the last unreversed start crossing in a self-timed
-  /// one. Null for the Start press, and while a crossing is still
-  /// committing.
-  RaceStart? get start {
-    if (mode == RaceStartMode.selfTimed) {
-      final lf = _lastForward;
-      return lf == null ? null : _lineStart(lf);
-    }
-    return _state == _StartState.committed ? _committed : null;
-  }
+  /// start. A self-timed start a backward crossing has re-armed stays it
+  /// until a new forward crossing commits. Null for the Start press, and
+  /// while the first crossing is still committing.
+  RaceStart? get start => _committed;
 
   /// Feed one fix. Returns the finish on the call that finalises it, and
   /// null on every other call, including every call after it.
@@ -332,8 +369,8 @@ class RaceFinishDetector {
       return null;
     }
     final d = raceDistanceM(fix.lat, fix.lng, finishLat, finishLng);
-    final qualifies =
-        raceInFinishZone(d) && raceCoverageMet(fix.coveredM, courseDistanceM);
+    final qualifies = raceInFinishZone(d) &&
+        _covers(0, fix.coveredM, kRaceFinishMinCoverage);
     final best = _best;
     if (best != null && (!qualifies || d > _bestD)) return _finalise(best);
     if (qualifies && (best == null || d < _bestD)) {
@@ -408,6 +445,7 @@ class RaceFinishDetector {
     final p = _pending;
     if (_state != _StartState.pending || p == null) return;
     if (coveredM >= p.coveredM + kRaceStartCommitM) {
+      if (_committed != null) _forgetLaps();
       _committed = _lineStart(p);
       _pending = null;
       _state = _StartState.committed;
@@ -415,15 +453,29 @@ class RaceFinishDetector {
   }
 
   void _onStartCrossing(GateCrossing x) {
+    _advanceCommit(x.coveredM);
     if (mode == RaceStartMode.selfTimed) {
-      _lastForward = x.direction == GateDirection.forward ? x : null;
+      if (x.direction == GateDirection.forward) {
+        if (_state == _StartState.committed) return;
+        _pending = x;
+        _state = _StartState.pending;
+      } else {
+        if (_startHeld(x.coveredM)) return;
+        _pending = null;
+        _state = _StartState.seeking;
+      }
       return;
     }
-    _advanceCommit(x.coveredM);
     switch (_state) {
       case _StartState.seeking:
       case _StartState.pending:
-        if (x.direction == GateDirection.forward) {
+        if (x.direction == GateDirection.forward &&
+            _missedStart(x.coveredM)) {
+          _committed = RaceStart(
+              at: _goAt!, coveredM: _goCoveredM, kind: RaceStartKind.go);
+          _pending = null;
+          _state = _StartState.committed;
+        } else if (x.direction == GateDirection.forward) {
           _pending = x;
           _state = _StartState.pending;
         } else {
@@ -438,9 +490,13 @@ class RaceFinishDetector {
 
   void _onFinishCrossing(GateCrossing x) {
     if (x.direction != GateDirection.forward) return;
-    if (mode == RaceStartMode.gun) _advanceCommit(x.coveredM);
+    _advanceCommit(x.coveredM);
     final base = _base(x.tMs);
     if (base == null) return;
+    if (base.start != null) _finishSeen = true;
+    final pass = _countPass(base, x.coveredM);
+    final k = lapCount;
+    if (k != null && base.start != null && (!pass || _passes < k)) return;
     final threshold = base.start != null
         ? kRaceFinishMinCoverageWithStart
         : kRaceFinishMinCoverage;
@@ -460,7 +516,8 @@ class RaceFinishDetector {
     final base = _base(t);
     final qualifies = raceInFinishZone(d) &&
         base != null &&
-        _covers(base.fromM, fix.coveredM, kRaceFinishMinCoverage);
+        _coversShare(base.fromM, fix.coveredM, kRaceFinishMinCoverage) &&
+        lapsMet(fix.coveredM) != false;
     final best = _best;
     if (finishGate != null) {
       if (!qualifies) {
@@ -489,8 +546,8 @@ class RaceFinishDetector {
   /// null when no finish can count then.
   ({double fromM, RaceStart? start})? _base(double tMs) {
     if (mode == RaceStartMode.selfTimed) {
-      final lf = _lastForward;
-      return lf == null ? null : (fromM: lf.coveredM, start: _lineStart(lf));
+      final c = _committed;
+      return c == null ? null : (fromM: c.coveredM, start: c);
     }
     final go = _goMs;
     if (go != null && tMs < go) return null;
@@ -508,10 +565,120 @@ class RaceFinishDetector {
     }
   }
 
-  bool _covers(double fromM, double coveredM, double share) {
+  /// A self-timed start a backward crossing may no longer re-arm: the
+  /// runner has passed the finish line forward since it, or covered the
+  /// no-start share of the course, so they are on a later lap or coming home.
+  bool _startHeld(double coveredM) {
+    final c = _committed;
+    if (c == null) return false;
+    if (_finishSeen) return true;
     final d = courseDistanceM;
-    if (!d.isFinite || d <= 0) return true;
-    return coveredM - fromM >= d * share;
+    return d.isFinite &&
+        d > 0 &&
+        coveredM - c.coveredM >= d * kRaceFinishMinCoverage;
+  }
+
+  /// Whether a forward finish crossing at [coveredM] is a lap pass: from a
+  /// committed start, at least the lines' separation plus
+  /// [kRaceStartCommitM] past it (so the start's own pass is not one), and
+  /// [kRaceStartCommitM] past the last pass (so a wobble across the line is
+  /// one pass). Records it.
+  bool _countPass(({double fromM, RaceStart? start}) base, double coveredM) {
+    if (base.start == null) return false;
+    if (coveredM - base.fromM < _sepM + kRaceStartCommitM) return false;
+    final last = _lastPassM;
+    if (last != null && coveredM - last < kRaceStartCommitM) return false;
+    _lapM = last == null ? coveredM - base.fromM - _sepM : coveredM - last;
+    _lastPassM = coveredM;
+    _passes += 1;
+    return true;
+  }
+
+  void _forgetLaps() {
+    _passes = 0;
+    _lastPassM = null;
+    _lapM = null;
+    _finishSeen = false;
+  }
+
+  /// Whether [coveredM] completes the laps, for a stop or a zone finish:
+  /// with a lap count, [_lapsCounted]; with none, from the second pass on,
+  /// the course less [kRaceLapShortShare] of the lap just run (a wider
+  /// margin than the line's half lap, so a GPS that under-reads is not a DNF
+  /// at the stop). Null when no lap rule applies (no lap known, or no
+  /// committed start to count from).
+  bool? lapsMet(double coveredM) {
+    final b = _base(double.infinity);
+    if (b == null) return null;
+    if (lapCount != null) {
+      return b.start == null ? null : _lapsCounted(b.fromM, coveredM);
+    }
+    final d = courseDistanceM;
+    final lap = _lapM;
+    if (_passes < 2 || lap == null || !d.isFinite || d <= 0) return null;
+    return coveredM - b.fromM >= d - kRaceLapShortShare * lap;
+  }
+
+  /// Every lap counted, or one short (a crossing dropped by a wide pass or a
+  /// fix gap) with the course, less the lines' separation, covered within
+  /// [kRaceLapShortShare] of a lap of the frozen count's own (D / k): an
+  /// honest pass a lap early is a whole lap short, so it is not taken. Only
+  /// a stop and the zone use the one-short path; the line finish needs every
+  /// pass, because against a GPS that over-reads the path's margin is
+  /// 0.25 / (k - 1) of the course (2.8 % at 10 laps, 1 % at 25), too thin
+  /// for a finish nobody asked for.
+  bool _lapsCounted(double fromM, double coveredM) {
+    final k = lapCount;
+    if (k == null) return false;
+    if (_passes >= k) return true;
+    final d = courseDistanceM;
+    if (_passes < k - 1 || !d.isFinite || d <= 0) return false;
+    return coveredM - fromM - _sepM >= d - kRaceLapShortShare * d / k;
+  }
+
+  /// A gun runner on a counted lap course whose first forward start crossing
+  /// comes [kRaceLapShortShare] of a lap or more after GO crossed the line
+  /// once already unseen: their start is GO, so the lap is not lost.
+  bool _missedStart(double coveredM) {
+    final k = lapCount;
+    final d = courseDistanceM;
+    if (mode != RaceStartMode.gun ||
+        k == null ||
+        _goAt == null ||
+        _committed != null) {
+      return false;
+    }
+    if (!d.isFinite || d <= 0) return false;
+    return coveredM - _goCoveredM >= kRaceLapShortShare * d / k;
+  }
+
+  /// Covered distance from the base a finish needs at [share]; null when
+  /// nothing can gate. With no lap count frozen, from the second pass on,
+  /// the lap just run raises it to the course less half that lap (the
+  /// runner's own lap, so a course whose laps differ is judged by the
+  /// latest one). A first pass needs no floor: on a course of two or more
+  /// laps it is at most half the course, under the share, and a single loop
+  /// keeps the share's margin.
+  double? _required(double share) {
+    final d = courseDistanceM;
+    if (!d.isFinite || d <= 0) return null;
+    final lap = lapCount == null && _passes >= 2 ? _lapM : null;
+    final need = d * share;
+    if (lap == null) return need;
+    final floor = d - lap / 2;
+    return floor > need ? floor : need;
+  }
+
+  bool _covers(double fromM, double coveredM, double share) {
+    final need = _required(share);
+    return need == null || coveredM - fromM >= need;
+  }
+
+  /// The share alone, without the line's lap floor: the zone's distance
+  /// gate, beside [lapsMet].
+  bool _coversShare(double fromM, double coveredM, double share) {
+    final d = courseDistanceM;
+    return !d.isFinite || d <= 0 || coveredM - fromM >= d * share;
   }
 
   RaceFinish _finalise(RaceFix best) => _result = RaceFinish(
@@ -648,12 +815,16 @@ class RaceOutcome {
 /// The outcome of a stop: an open in-zone approach is an automatic finish
 /// at its closest fix; otherwise a runner who covered enough finishes
 /// manually at [now], and one who did not is a DNF. [now] is the instant the
-/// runner stopped, not the later tap that confirmed it.
+/// runner stopped, not the later tap that confirmed it. [lapsMet] is the
+/// detector's [RaceFinishDetector.lapsMet] at the stop: false (a lap course
+/// not run to its last lap) is a DNF whatever the distance; null leaves the
+/// distance to decide.
 RaceOutcome raceStopOutcome({
   required RaceFinish? candidate,
   required double coveredM,
   required double? courseDistanceM,
   required DateTime now,
+  bool? lapsMet,
 }) {
   if (candidate != null) {
     return RaceOutcome(
@@ -662,7 +833,7 @@ RaceOutcome raceStopOutcome({
       finishAt: candidate.at,
     );
   }
-  if (raceCoverageMet(coveredM, courseDistanceM)) {
+  if (raceCoverageMet(coveredM, courseDistanceM) && lapsMet != false) {
     return RaceOutcome(
       finisherStatus: 'finished',
       method: RaceFinishMethod.manual,

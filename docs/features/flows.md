@@ -373,3 +373,44 @@ Athlete (web)                     Supabase                              Coach (w
 - **Fail-closed.** No active link, or no assigning coach, means no Send button. `propose_plan_change` refuses with `42501` all the same. A coach whose link has ended cannot decide.
 - **What an approval writes is what the card shows.** "Before" is read when the card renders, and the RPC re-checks every line against the rows as they stand when the coach acts. A plan that has moved on since the suggestion (a workout now in the past or done) refuses the whole approval rather than half-applying it.
 - **Nothing new goes to Anthropic.** The request holds plan ids and numbers. The only free text is the coach's own note to their athlete.
+
+### Sharing an AI answer with the coach (issue #1215 Phase 3)
+
+```
+Athlete (web or mobile)                Supabase                              Coach
+  /messages/coach → an AI answer → [Share with coach]
+    (shown only while coach_share_enabled() and an active coach link exist)
+    pick paragraphs (coachAnswerParagraphs) + coach
+      → share_coach_message(answer, coach, [indexes])
+           gate coach_share open?                 else 0A000
+           answer is the caller's assistant row?  else P0002
+           coach is active, no block, not declined? else 42501
+           copy the paragraphs server-side (private.coach_answer_paragraphs)
+           insert direct_messages kind=coach_share ──► notification message ──► bell / email / push
+                                                                            /messages/<athlete>
+                                                                            CoachShareCard: AI avatar,
+                                                                            "AI Coach answer", AI tag,
+                                                                            text drawn as typed blocks
+  card in the thread: "You shared this…", Open in AI Coach (sender only)
+```
+
+- **What is labelled AI is AI text.** The server copies the paragraphs by index out of the athlete's own assistant row; a client cannot insert a `coach_share` or edit one.
+- **Text, never HTML.** Both clients draw the card from `parseSharedMarkdown` blocks (bold, italic, code, list items, headings; a link keeps only its text), so AI output that crosses users cannot become stored XSS (decisions § 110).
+- **An active coaching link is a message edge.** The card is an ordinary message the coach is notified of and can answer, with no follow edge between the pair.
+
+### The coach assistant (issue #1215 Phase 4, built and off)
+
+```
+Athlete (/coaching)                    Supabase                      Coach (web /messages/<athlete>)
+  "Let <coach> use AI assistance" ──► set_coach_ai_assist_consent
+                                       coach_athletes.ai_assist_consent_version = 1
+                                                                       [Draft with AI] (PUBLIC_COACH_ASSIST_ENABLED,
+                                                                         active coach of the partner)
+                                                                       POST /api/coach/assist {athlete, mode, request}
+                                       COACH_ASSIST_ENABLED? coach v7 disclosure? link active + athlete consent?
+                                       Pro? rate slot? → context through COACH_ASSIST_REGISTRY → Anthropic
+                                                                       ◄── draft (not stored, coach only)
+                                                                       Use draft → edit → Send
+                                       insert direct_messages kind=ai_assisted (only from an active coach, with consent)
+  message marked "AI-assisted" ◄─────────────────────────────────────── marked on both sides
+```

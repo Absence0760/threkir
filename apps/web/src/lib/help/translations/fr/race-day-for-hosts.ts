@@ -21,6 +21,10 @@ export const translation: GuideTranslation = {
 					id: 'race-day-for-hosts',
 					alt: 'Le jour de course en quatre étapes, de gauche à droite : armer la course, donner le GO, la suivre en direct, puis la terminer à l\'arrivée.',
 				},
+				{
+					type: 'p',
+					text: 'Ces étapes concernent une course en **GO par l\'organisateur**. Une course en **GO programmé** démarre d\'elle-même et une **Fenêtre en chrono libre** ne vous demande rien le jour J ; voir [[guide:choose-how-your-race-starts|Choisir comment votre course démarre]].',
+				},
 			],
 		},
 		{
@@ -36,12 +40,16 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Les coureurs qui ont répondu **Je participe** voient alors **Course armée** dans l\'onglet Courir de leur téléphone et « COURSE PRÊTE » sur leur montre Wear OS.',
+					text: 'Les coureurs qui ont répondu **Je participe** voient alors **Course armée** dans l\'onglet Courir de leur téléphone et « COURSE ARMÉE » sur leur montre Wear OS.',
 				},
 				{
 					type: 'note',
 					tone: 'tip',
 					text: 'L\'état armé est un état d\'attente. Rien n\'est chronométré et aucun résultat ne peut être enregistré tant que vous n\'avez pas donné le GO.',
+				},
+				{
+					type: 'p',
+					text: 'Avant que la course soit armée, les lignes de départ et d\'arrivée de chaque parcours sont vérifiées, et tout ce qui mérite un coup d\'œil est listé sous **Avant d\'armer la course**. Un avertissement vous laisse **Armer quand même** ; voir [[guide:start-and-finish-lines|Lignes de départ et d\'arrivée]]. Armer la course fige aussi les lignes pour cette course.',
 				},
 			],
 		},
@@ -50,7 +58,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Appuyez sur **GO** sur le web (**Lancer le Go** dans l\'app mobile) au moment où la course part.',
+					text: 'Appuyez sur **GO**, sur le web ou dans l\'app mobile, au moment où la course part.',
 				},
 				{
 					type: 'p',
@@ -107,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Vous ne pouvez annuler que tant que la course est armée : choisissez **Annuler** à côté de **GO** (**Lancer le Go** dans l\'app mobile), puis **Annuler la course**. Une fois le GO donné, la course ne peut plus qu\'être terminée.',
+					text: 'Vous ne pouvez annuler que tant que la course est armée : choisissez **Annuler** à côté de **GO**, puis **Annuler la course**. Une fois le GO donné, la course ne peut plus qu\'être terminée.',
 				},
 				{
 					type: 'p',
@@ -136,6 +144,10 @@ export const translation: GuideTranslation = {
 						'**Télécharger les résultats (CSV)** exporte les classements.',
 					],
 				},
+				{
+					type: 'p',
+					text: 'Dans une course en chrono libre, les résultats attendent votre validation par défaut, et certains sont retenus pour vérification même avec l\'approbation automatique activée. Voir [[guide:choose-how-your-race-starts|Choisir comment votre course démarre]].',
+				},
 			],
 		},
 	],
@@ -145,14 +157,17 @@ export const translation: GuideTranslation = {
 		's0.heading': '95b8e6a62cefca57',
 		's0.b0': '7b081f765b2e73ec',
 		's0.b1': '00aa52e26fec65b0',
+		's0.b2': '043bfb92b5287252',
+		's0.b3': 'acc54eca742d3a9e',
 		's1.heading': '0f3300a60c9bfa0b',
 		's1.b0.i0': '7bdfd19fafd16a95',
 		's1.b0.i1': 'b26a53d0fd770ca6',
 		's1.b0.i2': 'db729ba4238dbf0f',
 		's1.b1': '94ec2fea3c0890dc',
 		's1.b2': '9b4a5aa61857cac1',
+		's1.b3': 'e8bb5e75119028d9',
 		's2.heading': 'bcda14674f57c276',
-		's2.b0': '933b20b503e29bac',
+		's2.b0': '7d9717e613d837c4',
 		's2.b1': '656cb122eaf287fc',
 		's2.b2': '65fce2c1be98450f',
 		's3.heading': 'c3c4743c28e9dcc0',
@@ -167,7 +182,7 @@ export const translation: GuideTranslation = {
 		's4.b2': 'eefbd14c075fb596',
 		's4.b3': 'b067bfb6142d262b',
 		's5.heading': '20d55e8c3373cb09',
-		's5.b0': 'df971b2d64e7ef15',
+		's5.b0': '262e1b926341a0a0',
 		's5.b1': 'ba1729be79f60bc4',
 		's5.b2': 'b10fb4196bd3e2ef',
 		's6.heading': '27e65c3d7a252fc5',
@@ -176,6 +191,6 @@ export const translation: GuideTranslation = {
 		's6.b1.i1': '0bada1dfb7752ded',
 		's6.b1.i2': 'dc555607c15c1ae0',
 		's6.b1.i3': '12b5ecdf863972b3',
-		's0.b2': '043bfb92b5287252',
+		's6.b2': 'f2d0c11bca104665',
 	},
 };

@@ -94,6 +94,12 @@ const ALLOWED: Record<string, number> = {
 	// capped by `.limit(COACH_LIFTS_CAP)`; both caps asserted below.
 	"src/lib/coach/context.ts :: .in('week_id', weekIds)": 1,
 	"src/lib/coach/context.ts :: .in('workout_id', ids)": 1,
+	// The coach assistant: the coach and the athlete (always two ids), and the
+	// plan weeks its 14-day window reaches, read with
+	// `.limit(COACH_ASSIST_WINDOW_WEEKS)` (asserted below).
+	"src/lib/coach/assist/context.ts :: .in('sender_id', pair)": 1,
+	"src/lib/coach/assist/context.ts :: .in('recipient_id', pair)": 1,
+	"src/lib/coach/assist/context.ts :: .in('week_id', weekIds)": 1,
 };
 
 test('every unchunked .in() in the web app carries a stated bound', () => {
@@ -164,6 +170,10 @@ test('the declared limits the allowlist leans on stay under the bound', () => {
 		assert.ok(Number(m[1]) <= FEED_FOLLOWEE_CHUNK, `${cap} is past the in-filter bound`);
 		assert.match(coach, new RegExp(`\\.limit\\(${cap}\\)`), `the coach read no longer caps on ${cap}`);
 	}
+
+	const assist = read('src/lib/coach/assist/context.ts');
+	assert.match(assist, /\.limit\(COACH_ASSIST_WINDOW_WEEKS\)/, 'the assistant plan-week read no longer caps');
+	assert.match(assist, /const pair = \[coachId, athleteId\];/, 'the assistant pair is no longer two ids');
 });
 
 /// A default only bounds the callers that take it. Every literal limit a

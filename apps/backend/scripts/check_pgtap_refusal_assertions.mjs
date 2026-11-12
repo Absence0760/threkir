@@ -59,7 +59,7 @@
 // inert. The default is the mutation run, and needs the local stack.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -1808,6 +1808,194 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'the 60th ordinary report is filed: the deadline requests this hour do not count toward its cap',
+    columns: ['reports.signed_out'],
+    readBack: 'the 60th ordinary report is stored signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'a land-manager request is filed although the ordinary bucket is spent',
+    columns: ['reports.signed_out'],
+    readBack: 'the land-manager request is stored pending, signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'neither bucket holds back a signed-in reporter',
+    columns: ['reports.signed_out'],
+    readBack: 'the signed-in report is stored with its reporter, not signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_rights_holder_test.sql',
+    description: "an ordinary report opens the course's queue",
+    columns: ['reports.signed_out'],
+    readBack: 'both filings on the course are stored signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_rights_holder_test.sql',
+    description: 'a signed-out rights-holder request with an address is filed',
+    columns: ['reports.signed_out'],
+    readBack: 'the request is stored pending, signed out, with its trimmed address',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_rights_holder_test.sql',
+    description: "a rights-holder request still gets into a full course's queue",
+    columns: ['reports.signed_out'],
+    readBack: 'the rights-holder request on the full course is stored',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: "a land-manager request still gets into a full course's queue",
+    columns: ['reports.signed_out'],
+    readBack: 'the land-manager request on the full course is stored',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'a signed-out report with a contact email is filed',
+    columns: ['reports.signed_out'],
+    readBack: 'signed out, no reporter, the email and notes trimmed, control characters removed, pending',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'a signed-in report is filed with its reporter',
+    columns: ['reports.signed_out'],
+    readBack: 'a signed-in report is not marked signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'a land-manager request is filed',
+    columns: ['reports.signed_out'],
+    readBack: 'the detail carries the contact email and the signed-out flag',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'three signed-in closure reports are filed',
+    columns: ['reports.signed_out'],
+    readBack: 'a signed-in report is not marked signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'the signed-out cap does not hold back a signed-in reporter',
+    columns: ['reports.signed_out'],
+    readBack: 'a signed-in report is not marked signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: "the verified club's owner files against the fan club",
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'the owner files against a copied plan template',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'the owner files against a copied routine',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'the owner files against a race claimed by another club',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: "a verified club's admin files too",
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'a second organiser files against the fan club',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'a third organiser files against the fan club',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'a site admin sends a rename notice',
+    columns: ['reports.status'],
+    readBack: 'a rename notice leaves the disputes pending',
+    reason:
+      'resolve_organiser_dispute derives each report\'s status from the action; the read-back counts the ' +
+      'target\'s dispute reports still pending through the admin read, so a server that resolved them on a ' +
+      'rename notice fails there.',
+  },
+  {
     file: 'segment_match_jobs_test.sql',
     description: 'an admin can start a backfill',
     columns: ['jobs.payload'],
@@ -2455,6 +2643,69 @@ export const UNOBSERVED_RPC_WRITES = [
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
   {
+    file: 'event_results_column_lock_test.sql',
+    description: "the runner's own merge upsert, reading every column it writes back from EXCLUDED, still lands",
+    columns: [
+      'event_results.duration_s',
+      'event_results.finish_at',
+      'event_results.finish_detection',
+      'event_results.start_at',
+      'event_results.start_detection',
+    ],
+    readBack: "the upsert's note is stored",
+    reason:
+      'the claim is that the column grants admit the upsert at all (an ON CONFLICT DO UPDATE needs SELECT on ' +
+      'every column it reads from EXCLUDED), not what the race guard makes of the timing columns; the read-back ' +
+      'proves the write landed, through a column the guard never rewrites.',
+  },
+  {
+    file: 'group_messages_read_matrix_test.sql',
+    description: 'an active member sends to the group by naming the conversation',
+    columns: ['direct_messages.conversation_id'],
+    readBack: "the member's send lands in the group it named",
+    reason:
+      'direct_messages_set_conversation overwrites conversation_id from the pair on a 1:1 send and keeps it ' +
+      'on a group send (20271216000006). This send names no recipient, so the named group must stand; the ' +
+      'read-back proves the stored conversation is the one supplied.',
+  },
+  {
+    file: 'group_messages_read_matrix_test.sql',
+    description: 'a message naming a recipient is a 1:1 send whatever conversation it names',
+    columns: ['direct_messages.conversation_id'],
+    readBack: "the 1:1 send lands in the pair's own conversation, not the group it named",
+    reason:
+      'the claim IS the rewrite: a send naming a recipient takes the pair\'s conversation whatever it names, ' +
+      'and the read-back proves the stored value is not the one supplied.',
+  },
+  {
+    file: 'group_messages_read_matrix_test.sql',
+    description: 'a block does not stop the blocked member posting to a group they share',
+    columns: ['direct_messages.conversation_id'],
+    readBack: "the blocked member's post lands in the group",
+    reason:
+      'a group send keeps the conversation it names (20271216000006); the read-back counts the post in that ' +
+      'group rather than relying on the fixture naming no recipient.',
+  },
+  {
+    file: 'group_messages_race_test.sql',
+    description: 'an active member sends',
+    columns: ['direct_messages.conversation_id'],
+    readBack: 'only the message that won the race is in the group',
+    reason:
+      'a group send keeps the conversation it names (20271216000006); the read-back lists the group\'s ' +
+      'messages by that conversation, so a send that landed elsewhere would leave it empty.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'once lifted, the source may be published again',
+    columns: ['training_plans.library_copy_id'],
+    readBack: 'the source points at its library copy again',
+    reason:
+      'freeze_training_plan_managed_columns keeps library_copy_id for a client role; the assertion runs ' +
+      'as the test superuser (the path publish_plan_to_library takes as definer), and the read-back ' +
+      'proves the stored link is the one written once the takedown was lifted.',
+  },
+  {
     file: 'race_start_modes_test.sql',
     description: 'a scheduled race whose start passed takes pings before the job moves it',
     columns: ['race_pings.lat', 'race_pings.lng'],
@@ -3006,4 +3257,4 @@ function main() {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

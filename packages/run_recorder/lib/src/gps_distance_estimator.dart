@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-/// GPS distance estimator, spec v1.5 — a port of
+/// GPS distance estimator, spec v1.8 — a port of
 /// `scripts/gps_distance/reference.py`, which is the spec. See
 /// `docs/features/gps_distance.md`. Every operation mirrors the reference so
 /// `fixtures/gps_distance_vectors.json` replays to 1e-3 m; do not tune a
@@ -39,7 +39,7 @@ class GpsDistanceEstimator {
            : null,
        _records = record ? <_FixRecord>[] : null;
 
-  static const String specVersion = '1.5';
+  static const String specVersion = '1.8';
 
   static const double earthRadiusM = 6371008.8;
   static const double qAccel = 0.6;
@@ -53,6 +53,7 @@ class GpsDistanceEstimator {
   static const double posOnlyStationarySpeedMps = 0.8;
   static const double gapS = 10.0;
   static const double freshFixS = 2.0;
+  static const int maxOpenGaps = 8;
   static const int strideWindowSteps = 50;
   static const double minStrideM = 0.4;
   static const double maxStrideM = 2.5;
@@ -104,6 +105,7 @@ class GpsDistanceEstimator {
 
   double _gpsDistanceM = 0.0;
   double _stepDistanceM = 0.0;
+  double _stepOverChordM = 0.0;
   double? _strideM;
   double? _lat0;
   double? _lng0;
@@ -112,10 +114,17 @@ class GpsDistanceEstimator {
   double? _t;
   int _winSteps = 0;
   double _winM = 0.0;
+  // v1.6: the fix that last emptied the stride window.
+  double _winFromT = double.negativeInfinity;
+  // v1.6: a stale step sample emptied the stride window since the last fix.
+  bool _winStale = false;
   int? _lastSteps;
   double? _lastStepT;
   double _pendingStepM = 0.0;
   bool _strideOk = false;
+  // v1.6: the gaps re-anchors closed since the last step sample, owed their
+  // share of the next one.
+  final List<_ClosedGap> _gaps = [];
 
   double _rScale = 1.0;
   int _rejectedFixes = 0;
@@ -151,6 +160,11 @@ class GpsDistanceEstimator {
   double get distanceM => _gpsDistanceM + _stepDistanceM;
   double get gpsDistanceM => _gpsDistanceM;
   double get stepDistanceM => _stepDistanceM;
+
+  /// v1.7: what the steps credited the gaps over their chord lower bounds,
+  /// summed: per gap max(chord, steps) - chord, exactly what a replay with
+  /// no steps lacks.
+  double get stepOverChordM => _stepOverChordM;
   double? get strideM => _strideM;
   double get rScale => _rScale;
   int get rejectedFixes => _rejectedFixes;
@@ -289,13 +303,22 @@ class GpsDistanceEstimator {
           gapM = lower - _pendingStepM;
           _gpsDistanceM += gapM;
         }
+        _stepOverChordM +=
+            math.max(0.0, _pendingStepM - math.max(lower, 0.0));
+        _gaps.add(_ClosedGap(
+          startT: prevT,
+          endT: t,
+          topUpM: gapM ?? 0.0,
+          record: _records?.length,
+        ));
+        if (_gaps.length > maxOpenGaps) _gaps.removeAt(0);
       }
       _pendingStepM = 0.0;
       _strideOk = _strideGrade(accuracyM, dop != null, doppler?.sa);
-      if (!_strideOk) {
-        _winSteps = 0;
-        _winM = 0.0;
-      }
+      _winStale = false;
+      // The first fix also starts the window: a step sample before it counted
+      // steps no fix measured metres for.
+      if (!_strideOk || _t == null) _emptyWindow(t);
       _x = _Axis(zx, r);
       _y = _Axis(zy, r);
       _t = t;
@@ -509,12 +532,15 @@ class GpsDistanceEstimator {
       useDop != null && chord == null,
       doppler?.sa,
     );
-    if (_strideOk) {
+    // A step sample that fell stale since the last fix emptied the window
+    // inside this fix's interval, so the window no longer holds the steps its
+    // metres cover.
+    if (_strideOk && !_winStale) {
       _winM += inc;
     } else {
-      _winSteps = 0;
-      _winM = 0.0;
+      _emptyWindow(t);
     }
+    _winStale = false;
     _record(
       anchor: false,
       chainBreak: chainBreak,
@@ -528,6 +554,15 @@ class GpsDistanceEstimator {
     return inc;
   }
 
+  /// Empty the stride window at the fix at [t]. Its metres start after [t],
+  /// so a step sample whose interval reaches back before [t] must not refill
+  /// it.
+  void _emptyWindow(double t) {
+    _winSteps = 0;
+    _winM = 0.0;
+    _winFromT = t;
+  }
+
   /// Whether a fix may teach stride: [fromDoppler] when its credit came from
   /// Doppler, whose stated sigma is [sa]; otherwise from its position.
   bool _strideGrade(double? accuracyM, bool fromDoppler, double? sa) {
@@ -537,7 +572,9 @@ class GpsDistanceEstimator {
   }
 
   /// Cumulative pedometer count. Learns a stride while GPS is good; buffers
-  /// steps x stride while it is not (committed only if the gap exceeds the gap window).
+  /// steps x stride for the time since the last fix, dropped when the next
+  /// fix integrates it and committed only if the gap exceeds the gap window
+  /// (at that fix, or at [finish]).
   void addSteps(double t, int cumulativeSteps) {
     if (!_valid(t)) return;
     final prev = _lastSteps;
@@ -545,9 +582,25 @@ class GpsDistanceEstimator {
     _lastSteps = cumulativeSteps;
     _lastStepT = t;
     if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) {
+      // A baseline counts no interval, so the stride window's metres so far
+      // have no steps: start the window here, as a learn does. A stale one
+      // also marks the window, as any stale sample does, so the next fix
+      // empties it.
+      final lastFixT = _t;
+      if (lastFixT != null && t - lastFixT > _freshFixS) _winStale = true;
+      if (lastFixT != null && t < lastFixT) {
+        // v1.7: stamped before the last fix, so the window's metres already
+        // start after this stamp; the next sample's steps reach back before
+        // them and must not refill it.
+        _emptyWindow(lastFixT);
+      } else {
+        _winSteps = 0;
+        _winM = 0.0;
+      }
       return;
     }
     final d = cumulativeSteps - prev;
+    final inGap = _attributeSteps(prevT, t, d);
     if (d > 0) {
       final lastInc = _lastStepIncT;
       if (lastInc != null) {
@@ -561,7 +614,13 @@ class GpsDistanceEstimator {
       _zuptReleased = false;
     }
     final fixT = _t;
-    if (fixT != null && t - fixT <= _freshFixS) {
+    // A sample whose interval reaches into a gap, or stamped before the last
+    // fix, holds steps GPS measured no metres for, so it must not teach stride.
+    if (fixT != null &&
+        !inGap &&
+        prevT >= _winFromT &&
+        t - fixT >= 0 &&
+        t - fixT <= _freshFixS) {
       if (!_strideOk) return;
       _winSteps += d;
       if (_winSteps >= strideWindowSteps) {
@@ -577,11 +636,62 @@ class GpsDistanceEstimator {
       }
       return;
     }
+    if (fixT != null && t - fixT > _freshFixS) _winStale = true;
     _winSteps = 0;
     _winM = 0.0;
+  }
+
+  /// v1.6: a sample's [d] steps were taken across (prevT, t], so each part
+  /// of that interval gets its share. The part after the last fix is
+  /// buffered; the part inside each gap a re-anchor closed since the
+  /// previous sample tops that gap's credit up to its steps. A gap that
+  /// ends after t stays open, less what this sample took from its GPS
+  /// credit, so the next sample shares the rest of it. Returns whether
+  /// (prevT, t] overlaps any open gap.
+  bool _attributeSteps(double prevT, double t, int d) {
+    final gaps = List.of(_gaps);
+    _gaps.clear();
+    final inGap = gaps.any(
+      (gap) => math.min(gap.endT, t) > math.max(prevT, gap.startT),
+    );
     final stride = _strideM;
-    if (stride == null) return;
-    _pendingStepM += math.min(d * stride, maxSpeedMps * (t - prevT));
+    if (d <= 0 || stride == null) {
+      _gaps.addAll(gaps.where((gap) => gap.endT > t));
+      return inGap;
+    }
+    final rate = math.min(d * stride / (t - prevT), maxSpeedMps);
+    final fixT = _t;
+    final lo = fixT == null ? prevT : math.max(prevT, fixT);
+    if (t > lo) _pendingStepM += rate * (t - lo);
+    final records = _records;
+    for (final gap in gaps) {
+      final from = math.max(prevT, gap.startT);
+      final to = math.min(gap.endT, t);
+      var take = 0.0;
+      if (to > from) {
+        final late = rate * (to - from);
+        _stepDistanceM += late;
+        take = math.min(late, gap.topUpM);
+        _gpsDistanceM -= take;
+        _stepOverChordM += late - take;
+        final k = gap.record;
+        if (records != null && k != null) {
+          if (take > 0) records[k].chord = records[k].chord! - take;
+          for (var j = k; j < records.length; j++) {
+            records[j].stepDistanceM += late;
+          }
+        }
+      }
+      if (gap.endT > t) {
+        _gaps.add(_ClosedGap(
+          startT: gap.startT,
+          endT: gap.endT,
+          topUpM: gap.topUpM - take,
+          record: gap.record,
+        ));
+      }
+    }
+    return inGap;
   }
 
   /// End of run: commit buffered steps if the trailing gap exceeds the gap window.
@@ -589,6 +699,7 @@ class GpsDistanceEstimator {
     final fixT = _t;
     if (fixT != null && _valid(t) && t - fixT > _gapS) {
       _stepDistanceM += _pendingStepM;
+      _stepOverChordM += _pendingStepM;
     }
     _pendingStepM = 0.0;
   }
@@ -664,6 +775,7 @@ class SmoothedDistance {
     required this.distanceM,
     required this.gpsDistanceM,
     required this.stepDistanceM,
+    required this.stepOverChordM,
     required this.cumulativeM,
     required this.positions,
     required this.stoppedFixes,
@@ -672,6 +784,10 @@ class SmoothedDistance {
   final double distanceM;
   final double gpsDistanceM;
   final double stepDistanceM;
+
+  /// v1.7: the estimator's [GpsDistanceEstimator.stepOverChordM] over the
+  /// same events.
+  final double stepOverChordM;
 
   /// Per event: smoothed GPS credit through it plus the step distance
   /// committed by then.
@@ -891,6 +1007,7 @@ SmoothedDistance smoothDistance(
     distanceM: gps + est.stepDistanceM,
     gpsDistanceM: gps,
     stepDistanceM: est.stepDistanceM,
+    stepOverChordM: est.stepOverChordM,
     cumulativeM: cumulative,
     positions: positions,
     stoppedFixes: hints.length,
@@ -931,9 +1048,25 @@ void _rts(
 
 typedef _AxisState = ({double p, double v, double a, double b, double c});
 
+/// A gap a re-anchor closed: when it began and ended, the GPS credit it was
+/// given, and its record.
+class _ClosedGap {
+  const _ClosedGap({
+    required this.startT,
+    required this.endT,
+    required this.topUpM,
+    required this.record,
+  });
+
+  final double startT;
+  final double endT;
+  final double topUpM;
+  final int? record;
+}
+
 /// What the backward pass needs from each fix the filter took.
 class _FixRecord {
-  const _FixRecord({
+  _FixRecord({
     required this.anchor,
     required this.chainBreak,
     required this.dt,
@@ -956,8 +1089,10 @@ class _FixRecord {
   final _AxisState y;
   final bool zupt;
   final double? dop;
-  final double? chord;
-  final double stepDistanceM;
+  // A late step sample's share of a gap lowers its anchor's chord and raises
+  // the step distance from that anchor on (v1.6).
+  double? chord;
+  double stepDistanceM;
 }
 
 /// 1-D constant-velocity Kalman filter: state [p, v], covariance

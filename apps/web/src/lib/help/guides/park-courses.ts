@@ -8,14 +8,14 @@ export const guide: Guide = {
 	category: 'running',
 	audience: ['runner'],
 	platforms: ['web', 'android', 'ios'],
-	routes: ['/parks', '/parks/[region]/[park]', '/parks/[region]/[park]/[course]'],
+	routes: ['/races', '/parks', '/parks/[region]/[park]', '/parks/[region]/[park]/[course]'],
 	sections: [
 		{
 			heading: 'What a park course is',
 			blocks: [
 				{
 					type: 'p',
-					text: 'A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under [[route:/parks|Park courses]].',
+					text: 'A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under **Run any time** on [[route:/races|Races & courses]], nearest first when you set a place, or browse every one under [[route:/parks|Park courses]].',
 				},
 				{
 					type: 'list',
@@ -23,12 +23,13 @@ export const guide: Guide = {
 						'It is a time trial, not a race. The trail stays open to everyone and nobody marshals it, so follow the park\'s rules and give way to other people on the trail.',
 						'Each course page shows the distance, elevation gain, shape, surface and difficulty, where the course line came from, and whether the course is open.',
 						'Select **Navigate this course** to follow the course as a route. It isn\'t offered while the course is closed.',
+						'The course page\'s **Route guide** lists where to park and every turn in order, by trail name, with the bridges, fords, surface changes and climbs on the way. It is drafted from map data; until someone has walked it at the park, it says so above the list. The same guide is in the course\'s GPX file.',
 					],
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'A closed course keeps its times and boards, but please don\'t run it until it reopens. The page shows when its status was last checked.',
+					text: 'A closed course takes no new times: a run over it while it is closed is not timed, and the times it already has stay on its boards. Please don\'t run it until it reopens. The page shows when its status was last checked.',
 				},
 			],
 		},
@@ -99,5 +100,5 @@ export const guide: Guide = {
 			],
 		},
 	],
-	related: ['import-your-history', 'record-your-first-run'],
+	related: ['how-segment-times-are-measured', 'import-your-history', 'record-your-first-run'],
 };

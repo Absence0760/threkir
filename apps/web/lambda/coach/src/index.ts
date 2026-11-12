@@ -25,6 +25,7 @@ import { handleRouteRequest } from '../../../src/lib/routes/route_request/handle
 import { handlePlanRequest } from '../../../src/lib/training/plan_request/handler';
 import { handlePlatePhoto } from '../../../src/lib/nutrition/plate_photo/handler';
 import { handlePlanEdit } from '../../../src/lib/training/plan_edit/handler';
+import { handleCoachAssist } from '../../../src/lib/coach/assist/handler';
 import { handleSeasonRequest } from '../../../src/lib/training/season_request/handler';
 import { isTruthyFlagValue } from '../../../src/lib/core/env_flag';
 import { methodRefusal, type MethodRefusal } from '../../../src/lib/core/method_gate';
@@ -64,6 +65,7 @@ import {
 	PLATE_PHOTO_BODY_LIMIT_BYTES,
 	PLAN_EDIT_BODY_LIMIT_BYTES,
 	SEASON_REQUEST_BODY_LIMIT_BYTES,
+	COACH_ASSIST_BODY_LIMIT_BYTES,
 } from '../../../src/lib/coach/body';
 import { reportException } from '../../../src/lib/core/lambda_sentry';
 import { loadSecrets } from '../../../src/lib/core/lambda_secrets';
@@ -88,6 +90,7 @@ const SUB_PATHS = [
 	{ segment: 'plate-photo', handle: dispatchPlatePhoto },
 	{ segment: 'plan-edit', handle: dispatchPlanEdit },
 	{ segment: 'season-request', handle: dispatchSeasonRequest },
+	{ segment: 'assist', handle: dispatchCoachAssist },
 ].map(({ segment, handle }) => ({
 	segment,
 	pattern: new RegExp(`^/api/coach/${segment}/?$`),
@@ -508,6 +511,44 @@ async function dispatchPlanEdit(
 		null;
 	const result = await handlePlanEdit(authHeader, rawBody, {
 		enabled: isTruthyFlagValue(process.env.AI_PLAN_EDIT_ENABLED),
+		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
+		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
+		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),
+		bypassPaywallEnabled: false,
+	});
+	writeResult(responseStream, result);
+}
+
+// The coach assistant (issue #1215 Phase 4): a draft for a coach, from an
+// athlete's data, only with the athlete's per-link consent. COACH_ASSIST_ENABLED
+// is the server half of the deploy gate, unset (off) until the CISO + counsel
+// sign-off. `bypassPaywallEnabled: false` is hard-coded.
+async function dispatchCoachAssist(
+	event: LambdaFunctionURLEvent,
+	responseStream: ResponseStream,
+): Promise<void> {
+	const decoded = decodeLambdaBody(
+		event.body,
+		event.isBase64Encoded === true,
+		COACH_ASSIST_BODY_LIMIT_BYTES,
+	);
+	if (!decoded.ok) {
+		writeJson(responseStream, decoded.status, { error: decoded.error });
+		return;
+	}
+	let rawBody: unknown;
+	try {
+		rawBody = decoded.body ? JSON.parse(decoded.body) : null;
+	} catch {
+		writeJson(responseStream, 400, { error: 'invalid JSON' });
+		return;
+	}
+	const authHeader =
+		event.headers?.['x-supabase-authorization'] ??
+		event.headers?.['X-Supabase-Authorization'] ??
+		null;
+	const result = await handleCoachAssist(authHeader, rawBody, {
+		enabled: isTruthyFlagValue(process.env.COACH_ASSIST_ENABLED),
 		anthropicApiKey: (await loadSecrets()).ANTHROPIC_API_KEY,
 		publicSupabaseUrl: requireEnv('PUBLIC_SUPABASE_URL'),
 		publicSupabaseAnonKey: requireEnv('PUBLIC_SUPABASE_ANON_KEY'),

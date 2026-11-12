@@ -80,7 +80,7 @@ values ('77777777-7777-7777-7777-77777777ac01',
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ac002"}';
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
 values ('88888888-8888-8888-8888-88888888ac02', '00000000-0000-0000-0000-0000000ac002',
-        now(), 10000, 1800, 'app', '{"activity_type":"run"}'::jsonb, true);
+        now() - interval '3 hours', 10000, 1800, 'app', '{"activity_type":"run"}'::jsonb, true);
 insert into segment_efforts (segment_id, run_id, user_id, time_seconds, started_at)
 values ('77777777-7777-7777-7777-77777777ac01', '88888888-8888-8888-8888-88888888ac02',
         '00000000-0000-0000-0000-0000000ac002', 100, now() - interval '3 hours');
@@ -91,7 +91,7 @@ values ('a9a9a9a9-0000-0000-0000-0000000000c1', '88888888-8888-8888-8888-8888888
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ac003"}';
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
 values ('88888888-8888-8888-8888-88888888ac03', '00000000-0000-0000-0000-0000000ac003',
-        now(), 10000, 1810, 'app', '{"activity_type":"run"}'::jsonb, true);
+        now() - interval '2 hours', 10000, 1810, 'app', '{"activity_type":"run"}'::jsonb, true);
 insert into segment_efforts (segment_id, run_id, user_id, time_seconds, started_at)
 values ('77777777-7777-7777-7777-77777777ac01', '88888888-8888-8888-8888-88888888ac03',
         '00000000-0000-0000-0000-0000000ac003', 110, now() - interval '2 hours');
@@ -102,7 +102,7 @@ values ('a9a9a9a9-0000-0000-0000-0000000000c1', '88888888-8888-8888-8888-8888888
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ac004"}';
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
 values ('88888888-8888-8888-8888-88888888ac04', '00000000-0000-0000-0000-0000000ac004',
-        now(), 10000, 1820, 'app', '{"activity_type":"run"}'::jsonb, true);
+        now() - interval '1 hours', 10000, 1820, 'app', '{"activity_type":"run"}'::jsonb, true);
 insert into segment_efforts (segment_id, run_id, user_id, time_seconds, started_at)
 values ('77777777-7777-7777-7777-77777777ac01', '88888888-8888-8888-8888-88888888ac04',
         '00000000-0000-0000-0000-0000000ac004', 120, now() - interval '1 hour');

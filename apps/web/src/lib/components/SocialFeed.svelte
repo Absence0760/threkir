@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { formatDuration, formatRelativeTime } from '#lib/format/time.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -231,38 +232,38 @@
 		</div>
 		<p class="visually-hidden" role="status">{m('socialFeed.loadingFeed')}</p>
 	{:else if entries.length === 0}
-		<div class="empty-card">
-			{#if !followsAnyone}
-				<img src="/logo-mark.svg" alt="" width="64" height="64" class="empty-mark" />
-				<h3>{m('socialFeed.emptyTitle')}</h3>
-				<p class="empty-text">
-					{m('socialFeed.emptyText')}
-				</p>
-				<a href="/social?tab=people" class="btn btn-primary">
-					<span class="material-symbols" aria-hidden="true">person_search</span>
-					{m('socialFeed.findPeople')}
-				</a>
-			{:else if activityFilter !== 'all'}
-				<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-				<h3>{m('socialFeed.noMatchesTitle')}</h3>
-				<p class="empty-text">
-					{m('socialFeed.noMatchesText', { n: FEED_WINDOW_DAYS })}
-				</p>
-				<button
-					class="btn btn-primary"
-					type="button"
-					onclick={() => (activityFilter = 'all')}
-				>
-					{m('socialFeed.clearFilters')}
-				</button>
-			{:else}
-				<span class="material-symbols empty-icon" aria-hidden="true">schedule</span>
-				<h3>{m('socialFeed.noActivityTitle')}</h3>
-				<p class="empty-text">
-					{m('socialFeed.noActivityText', { n: FEED_WINDOW_DAYS })}
-				</p>
-			{/if}
-		</div>
+		{#if !followsAnyone}
+			<EmptyState icon="dynamic_feed" title={m('socialFeed.emptyTitle')} text={m('socialFeed.emptyText')} mascot>
+				{#snippet actions()}
+					<a href="/social?tab=people" class="btn btn-primary">
+						<span class="material-symbols" aria-hidden="true">person_search</span>
+						{m('socialFeed.findPeople')}
+					</a>
+				{/snippet}
+			</EmptyState>
+		{:else if activityFilter !== 'all'}
+			<EmptyState
+				icon="filter_alt_off"
+				title={m('socialFeed.noMatchesTitle')}
+				text={m('socialFeed.noMatchesText', { n: FEED_WINDOW_DAYS })}
+			>
+				{#snippet actions()}
+					<button
+						class="btn btn-primary"
+						type="button"
+						onclick={() => (activityFilter = 'all')}
+					>
+						{m('socialFeed.clearFilters')}
+					</button>
+				{/snippet}
+			</EmptyState>
+		{:else}
+			<EmptyState
+				icon="schedule"
+				title={m('socialFeed.noActivityTitle')}
+				text={m('socialFeed.noActivityText', { n: FEED_WINDOW_DAYS })}
+			/>
+		{/if}
 	{:else}
 		{#if badgeAwards.length > 0}
 			<section class="badge-strip" aria-label={m('badges.section.title')}>
@@ -567,35 +568,6 @@
 	.load-more {
 		display: flex;
 		justify-content: center;
-	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
 	}
 	.material-symbols { font-family: 'Material Symbols Outlined'; }
 	.skel-card {

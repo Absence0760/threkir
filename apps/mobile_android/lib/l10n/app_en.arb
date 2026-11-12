@@ -1114,6 +1114,34 @@
   "@dashboardHeroRestDayBody": {
     "description": "Line under the rest-day title in the Today hero"
   },
+  "dashboardHeroRestDayGrisnir": "Back by morning, like Thor's goats.",
+  "@dashboardHeroRestDayGrisnir": {
+    "description": "Grisnir the mascot's one dry line beside his resting art on a plan rest day; Norse lore: Thor's goats are eaten every night and are back by morning"
+  },
+  "mascotMilestoneFirstRun": "First run in. That's the hard one.",
+  "@mascotMilestoneFirstRun": {
+    "description": "Grisnir the mascot's one dry line beside his hop when a run is the runner's first ever"
+  },
+  "mascotMilestoneFirst5k": "Your first 5K. That counts.",
+  "@mascotMilestoneFirst5k": {
+    "description": "Grisnir's line when a run is the runner's first 5 km; never a nag"
+  },
+  "mascotMilestoneBadge": "Badge earned. Worth a hop.",
+  "@mascotMilestoneBadge": {
+    "description": "Grisnir's line when a run unlocked a badge"
+  },
+  "mascotMilestoneBest": "A new best. Worth a hop.",
+  "@mascotMilestoneBest": {
+    "description": "Grisnir's line when a run set a new best time at a personal-record distance"
+  },
+  "mascotMilestoneLongest": "Your longest run yet.",
+  "@mascotMilestoneLongest": {
+    "description": "Grisnir's line when a run is the runner's longest so far"
+  },
+  "mascotOnboardingLine": "Grisnir waits at the trailhead.",
+  "@mascotOnboardingLine": {
+    "description": "Line under Grisnir waiting by a trail sign on the onboarding screen; Grisnir is the mascot's name, keep it"
+  },
   "dashboardHeroReadiness": "Readiness {score}",
   "@dashboardHeroReadiness": {
     "description": "One-line readiness score in the Today hero; {score} is 0-100",
@@ -1314,23 +1342,19 @@
   },
   "fitnessRunsRoutes": "Routes",
   "@fitnessRunsRoutes": {
-    "description": "Label for the Routes entry on the Fitness hub's Runs sub-tab"
+    "description": "Fitness hub tab, and that screen's title, for the route library"
   },
   "fitnessRunsPlans": "Training plans",
   "@fitnessRunsPlans": {
     "description": "Label for the Training plans entry on the Fitness hub's Runs sub-tab"
   },
-  "runSurfaceLabel": "Run surface sections",
-  "@runSurfaceLabel": {
-    "description": "Accessibility label for the labelled peer strip on the run surface"
-  },
   "runSurfaceTabPlans": "Plans",
   "@runSurfaceTabPlans": {
-    "description": "Run surface peer strip entry opening the training plan library"
+    "description": "Fitness hub tab holding the training plan library"
   },
-  "runSurfaceTabRaces": "Races",
-  "@runSurfaceTabRaces": {
-    "description": "Run surface peer strip entry opening the race calendar"
+  "runSurfaceTabRacesCourses": "Races & courses",
+  "@runSurfaceTabRacesCourses": {
+    "description": "Fitness hub tab, and that screen's title, holding the race calendar (Upcoming races) and the park courses runnable on any day (Run any time). Mirrors web runSurface.tabRacesCourses"
   },
   "gymSurfaceLabel": "Gym sections",
   "@gymSurfaceLabel": {
@@ -2444,10 +2468,6 @@
   "setupImportStravaDesc": "Upload the archive Strava emails you, with every activity you've logged",
   "@setupImportStravaDesc": {
     "description": "Setup wizard import step: subtitle under the Strava row. The archive is the ZIP export Strava emails on request. Strava is a product name"
-  },
-  "setupImportParkrunDesc": "Pull in every parkrun result with your athlete number",
-  "@setupImportParkrunDesc": {
-    "description": "Setup wizard import step: subtitle under the parkrun row. parkrun is a brand name, always lowercase; athlete number is the parkrun ID such as A123456"
   },
   "setupDoneTitle": "You're all set",
   "@setupDoneTitle": {
@@ -4402,6 +4422,30 @@
   "@runDetailSectionSegments": {
     "description": "Section header for the segment-efforts panel on run-detail"
   },
+  "runDetailParkCourses": "Park courses on this run",
+  "@runDetailParkCourses": {
+    "description": "Accessibility label for the owner's park course chips on run detail (runDetail.parkCourses)"
+  },
+  "runDetailParkCourseRank": "#{rank} in {season}",
+  "@runDetailParkCourseRank": {
+    "description": "A park course chip's place on that season's fastest board, e.g. #3 in 2027 (runDetail.parkCourseRank)",
+    "placeholders": {
+      "rank": {
+        "type": "String"
+      },
+      "season": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCoursesLoadFailed": "Couldn't load your park course times.",
+  "@runDetailParkCoursesLoadFailed": {
+    "description": "Quiet line on run detail when the park course chips could not be read; a Retry button follows (runDetail.parkCoursesLoadFailed)"
+  },
+  "runDetailParkCourseOpenFailed": "Couldn't open this course.",
+  "@runDetailParkCourseOpenFailed": {
+    "description": "Banner when tapping a park course chip on run detail could not load the course"
+  },
   "runDetailSaveAsRouteTitle": "Save as route",
   "@runDetailSaveAsRouteTitle": {
     "description": "Title of the save-as-route dialog"
@@ -4545,7 +4589,7 @@
   },
   "runDetailMakePublic": "Make public",
   "@runDetailMakePublic": {
-    "description": "Confirm action in the make-run-public dialog"
+    "description": "Confirm action in the make-run-public dialog, and the run-detail overflow-menu item that opens it"
   },
   "runDetailMakePrivate": "Make private",
   "@runDetailMakePrivate": {
@@ -4571,6 +4615,43 @@
   "runDetailMadePrivate": "Run is now private",
   "@runDetailMadePrivate": {
     "description": "Banner shown after a run was flipped back to private"
+  },
+  "runDetailMadePublic": "Run is now public",
+  "@runDetailMadePublic": {
+    "description": "Banner shown after a run was made public from the visibility chip or the overflow menu"
+  },
+  "runDetailVisibilityPublic": "Public",
+  "@runDetailVisibilityPublic": {
+    "description": "Run-detail visibility chip label for a public run"
+  },
+  "runDetailVisibilityPrivate": "Private",
+  "@runDetailVisibilityPrivate": {
+    "description": "Run-detail visibility chip label for a private run"
+  },
+  "runDetailVisibilityFollowers": "Followers",
+  "@runDetailVisibilityFollowers": {
+    "description": "Run-detail visibility chip label for a followers-only run"
+  },
+  "runDetailVisibilityShared": "Shared",
+  "@runDetailVisibilityShared": {
+    "description": "Run-detail visibility chip label for a run shared with named people"
+  },
+  "runDetailVisibilityPrivateSemantics": "Private. Make this run public",
+  "@runDetailVisibilityPrivateSemantics": {
+    "description": "Screen-reader label of the run-detail visibility chip on a private run: the state, then what tapping does"
+  },
+  "runDetailVisibilityPublicSemantics": "Public. Make this run private",
+  "@runDetailVisibilityPublicSemantics": {
+    "description": "Screen-reader label of the run-detail visibility chip on a public run: the state, then what tapping does"
+  },
+  "runDetailVisibilityAudienceSemantics": "{level}. Change who can see this run",
+  "@runDetailVisibilityAudienceSemantics": {
+    "description": "Screen-reader label of the run-detail visibility chip when audience sharing is on; tapping opens Who can see this",
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
   },
   "runDetailDeleteTitle": "Delete run?",
   "@runDetailDeleteTitle": {
@@ -8373,11 +8454,11 @@
   "@eventRaceArm": {
     "description": "Button to arm the race"
   },
-  "eventRaceArmedHint": "Tap Fire Go when the race begins. Participants' watches show the armed banner now.",
+  "eventRaceArmedHint": "Tap GO when the race begins. Participants' watches show the armed banner now.",
   "@eventRaceArmedHint": {
     "description": "Hint shown when the race is armed"
   },
-  "eventRaceFireGo": "Fire Go",
+  "eventRaceFireGo": "GO",
   "@eventRaceFireGo": {
     "description": "Button to start the race"
   },
@@ -10102,7 +10183,7 @@
   "@planNudgeAnchorReturnTitle": {
     "description": "Home plan card title: back after weeks away from the plan (comeback ramp)"
   },
-  "planNudgeAnchorReturnBody": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. There's a suggested change so the weeks ahead build back up from what you last ran.",
+  "planNudgeAnchorReturnBody": "You've been away from the plan for {n, plural, one {{n} week} other {{n} weeks}}. There's a suggested change so the weeks ahead build back up from what you last ran.",
   "@planNudgeAnchorReturnBody": {
     "description": "Home plan card body: back after n weeks away from the plan (comeback ramp)",
     "placeholders": {
@@ -10206,7 +10287,7 @@
       }
     }
   },
-  "planDetailAnchorReturnNote": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.",
+  "planDetailAnchorReturnNote": "You've been away from the plan for {n, plural, one {{n} week} other {{n} weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.",
   "@planDetailAnchorReturnNote": {
     "description": "Plan-detail re-plan preview note after weeks away from the plan: n weeks away, km is the last week run",
     "placeholders": {
@@ -11863,14 +11944,6 @@
       }
     }
   },
-  "integrationsParkrunTitle": "Import parkrun results",
-  "@integrationsParkrunTitle": {
-    "description": "Title of the parkrun import dialog"
-  },
-  "integrationsParkrunBody": "Enter your parkrun athlete number (e.g. A123456). We'll fetch your finish history and add any new results to your runs list.",
-  "@integrationsParkrunBody": {
-    "description": "Body of the parkrun import dialog"
-  },
   "integrationsParkrunFieldLabel": "Athlete number",
   "@integrationsParkrunFieldLabel": {
     "description": "Label for the parkrun athlete-number field"
@@ -11945,35 +12018,6 @@
   "@parkrunBarcodeOfflineCopy": {
     "description": "Note under the barcode when it is the device's copy because the server could not be reached"
   },
-  "integrationsImport": "Import",
-  "@integrationsImport": {
-    "description": "Import button on the parkrun dialog"
-  },
-  "integrationsParkrunImporting": "Importing parkrun results…",
-  "@integrationsParkrunImporting": {
-    "description": "Progress text while parkrun results are imported"
-  },
-  "integrationsParkrunImported": "{count, plural, one{Imported {count} parkrun result.} other{Imported {count} parkrun results.}}",
-  "@integrationsParkrunImported": {
-    "description": "Banner summarising imported parkrun results",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "integrationsImportPartialOf": "Only part of your history could be imported: {n} of {total}.",
-  "@integrationsImportPartialOf": {
-    "description": "Banner when an importer read only part of a history and knows the total",
-    "placeholders": {
-      "n": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "integrationsImportPartial": "Not all results could be read. Imported: {n}.",
   "@integrationsImportPartial": {
     "description": "Banner when an importer read only part of a history and does not know the total",
@@ -11986,19 +12030,6 @@
   "integrationsImportTruncated": "The results list was too long to read to the end, so your result could not be confirmed. Enter it manually instead.",
   "@integrationsImportTruncated": {
     "description": "Banner when the upstream results list was truncated before the runner was found"
-  },
-  "integrationsParkrunNoneNew": "No new parkrun results since last import.",
-  "@integrationsParkrunNoneNew": {
-    "description": "Banner shown when no new parkrun results were found"
-  },
-  "integrationsImportFailed": "Import failed: {error}",
-  "@integrationsImportFailed": {
-    "description": "Banner shown when the parkrun import fails",
-    "placeholders": {
-      "error": {
-        "type": "Object"
-      }
-    }
   },
   "integrationsStravaName": "Strava",
   "@integrationsStravaName": {
@@ -12053,23 +12084,11 @@
   "@integrationsSyncNow": {
     "description": "Popup-menu item to trigger a Strava sync"
   },
-  "integrationsParkrunName": "parkrun",
-  "@integrationsParkrunName": {
-    "description": "parkrun integration tile title (brand name)"
-  },
-  "integrationsParkrunTileSubtitle": "Import results by athlete number",
-  "@integrationsParkrunTileSubtitle": {
-    "description": "parkrun tile subtitle"
-  },
-  "integrationsParkrunRegionNote": "parkrun runs in a limited set of countries and may not have events near you — you can still import results with a parkrun athlete ID.",
-  "@integrationsParkrunRegionNote": {
-    "description": "parkrun tile subtitle shown when the device region is outside the parkrun footprint"
-  },
   "integrationsSignInTitle": "Sign in to connect services",
   "@integrationsSignInTitle": {
     "description": "Tile title shown when signed out"
   },
-  "integrationsSignInSubtitle": "Strava + parkrun require an account so synced activities land in your history.",
+  "integrationsSignInSubtitle": "Strava requires an account so synced activities land in your history.",
   "@integrationsSignInSubtitle": {
     "description": "Tile subtitle shown when signed out"
   },
@@ -13484,6 +13503,14 @@
   "prefsShowCaloriesHint": "Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.",
   "@prefsShowCaloriesHint": {
     "description": "Subtitle of the show-calories toggle"
+  },
+  "prefsShowMascot": "Show Grisnir",
+  "@prefsShowMascot": {
+    "description": "Title of the switch that shows or hides Grisnir, the Threkir mascot"
+  },
+  "prefsShowMascotHint": "Threkir's goat. He rests with you on rest days and sits in a corner of your share images.",
+  "@prefsShowMascotHint": {
+    "description": "Subtitle of the show-Grisnir switch: where the mascot appears"
   },
   "prefsDefaultRunPrivacy": "Default run privacy",
   "@prefsDefaultRunPrivacy": {
@@ -15101,6 +15128,10 @@
   "@reportTitleMessage": {
     "description": "Report sheet title when reporting a direct message"
   },
+  "reportTitleGroupInvite": "Report group invitation",
+  "@reportTitleGroupInvite": {
+    "description": "Report sheet title when reporting a group invitation from the Requests list, before joining the group"
+  },
   "reportTitleContent": "Report content",
   "@reportTitleContent": {
     "description": "Report sheet title fallback for generic content"
@@ -16613,7 +16644,7 @@
   "@settingsTabPreferencesSubtitle": {
     "description": "Settings landing: Preferences tile subtitle"
   },
-  "settingsTabIntegrationsSubtitle": "Strava, parkrun, race calendar, heart-rate strap, treadmill, watch",
+  "settingsTabIntegrationsSubtitle": "Strava, race calendar, heart-rate strap, treadmill, watch",
   "@settingsTabIntegrationsSubtitle": {
     "description": "Settings landing: Integrations tile subtitle"
   },
@@ -18428,6 +18459,10 @@
   "@metricMissStreakDefinition": {
     "description": "Definition of the coach roster's consecutive-missed-workouts flag"
   },
+  "metricRouteHistoryDefinition": "An attempt is a run on this route with the same activity type that covered more than 100 m and has a recorded time (above zero, under ten days). Attempts rank fastest first; equal times share a rank, so a run that ties the best time is a PB too.",
+  "@metricRouteHistoryDefinition": {
+    "description": "Definition behind the run-detail Route History heading: what counts as an attempt on the route and how tied times rank"
+  },
   "coachingRosterRiskLow": "Low",
   "@coachingRosterRiskLow": {
     "description": "Injury-risk band: low"
@@ -19850,7 +19885,65 @@
   },
   "racesTitle": "Race calendar",
   "@racesTitle": {
-    "description": "Title of the race calendar / discovery screen"
+    "description": "Fallback title of a race whose name has not loaded, and the label of a run's race row"
+  },
+  "racesSectionUpcoming": "Upcoming races",
+  "@racesSectionUpcoming": {
+    "description": "Heading of the race-calendar section on Races & courses. Mirrors web races.sectionUpcoming"
+  },
+  "racesSectionAnyTime": "Run any time",
+  "@racesSectionAnyTime": {
+    "description": "Heading of the park-courses section on Races & courses: standing courses that can be run on any day, unlike a race. Mirrors web races.sectionAnyTime"
+  },
+  "racesAnyTimeFastest": "Fastest in {year}: {time}",
+  "@racesAnyTimeFastest": {
+    "description": "A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest",
+    "placeholders": {
+      "year": {
+        "type": "String",
+        "example": "2026"
+      },
+      "time": {
+        "type": "String",
+        "example": "24:31"
+      }
+    }
+  },
+  "racesAnyTimeFastestBy": "Fastest in {year}: {time} by {name}",
+  "@racesAnyTimeFastestBy": {
+    "description": "A park course's fastest time this season and who ran it. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastestBy",
+    "placeholders": {
+      "year": {
+        "type": "String",
+        "example": "2026"
+      },
+      "time": {
+        "type": "String",
+        "example": "24:31"
+      },
+      "name": {
+        "type": "String",
+        "example": "Sam"
+      }
+    }
+  },
+  "racesAnyTimeNoTimeYet": "No time yet this season. Yours could be the first.",
+  "@racesAnyTimeNoTimeYet": {
+    "description": "A park course with no recorded time this season. Mirrors web races.anyTimeNoTimeYet"
+  },
+  "racesAnyTimeAway": "{distance} away",
+  "@racesAnyTimeAway": {
+    "description": "How far a park course's start is from the runner. Mirrors web races.anyTimeAway",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "3.2 km"
+      }
+    }
+  },
+  "racesAnyTimeFastestFailed": "Couldn't load this season's fastest times.",
+  "@racesAnyTimeFastestFailed": {
+    "description": "Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed"
   },
   "racesSearchPlaceholder": "Search races by name…",
   "@racesSearchPlaceholder": {
@@ -20393,30 +20486,6 @@
   "@racesRunSignUpBibHint": {
     "description": "Hint above the RunSignUp import action requiring a bib to scope the import"
   },
-  "racesUltraSignUpImportingAs": "Importing as {name} (UltraSignup #{id})",
-  "@racesUltraSignUpImportingAs": {
-    "description": "Line in the race import sheet naming the UltraSignup person the import will use",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "id": {
-        "type": "String"
-      }
-    }
-  },
-  "racesUltraSignUpLinkedHint": "Only your result for this race comes across, matched on UltraSignup's own race id and date.",
-  "@racesUltraSignUpLinkedHint": {
-    "description": "Hint under the UltraSignup importing-as line: only this race's result is imported"
-  },
-  "racesUltraSignUpNotLinked": "Link your UltraSignup profile first, then import from here.",
-  "@racesUltraSignUpNotLinked": {
-    "description": "Race import sheet, UltraSignup listing, when the runner has not linked an UltraSignup person; the find action sits beside it"
-  },
-  "racesUltraSignUpPersonNotFound": "UltraSignup no longer lists your linked profile under that name. Link it again in Settings.",
-  "@racesUltraSignUpPersonNotFound": {
-    "description": "Banner when the import could not find the linked UltraSignup person under their name any more"
-  },
   "racesPasteResultHint": "Enter your finishing details from the race's results page.",
   "@racesPasteResultHint": {
     "description": "Hint above the manual result paste form"
@@ -20494,131 +20563,17 @@
   "@integrationsStravaInfo": {
     "description": "Info-tip body for the Strava tile: what Strava is and what connecting it does"
   },
-  "integrationsParkrunInfo": "parkrun is a free, weekly, timed 5k held in parks around the world. Tap this tile and enter the athlete number from your parkrun barcode (the one starting with A) to pull in every parkrun you've finished, with your time and age grade.",
-  "@integrationsParkrunInfo": {
-    "description": "Info-tip body for the parkrun tile: what parkrun is and where the athlete number comes from"
-  },
   "integrationsRunsignupInfo": "RunSignUp handles entries and results for thousands of road races. If you ran one, find the race in the race calendar and enter the bib number you wore — your official time and splits are attached to that run.",
   "@integrationsRunsignupInfo": {
     "description": "Info-tip body for the RunSignUp tile: what RunSignUp is and how to import a result"
-  },
-  "integrationsUltrasignupInfo": "UltraSignup handles entries and results for trail and ultra races. Link your UltraSignup profile here once, then import a race's result from the race calendar.",
-  "@integrationsUltrasignupInfo": {
-    "description": "Info-tip body for the UltraSignup tile: what UltraSignup is and how to import a result"
   },
   "integrationsChronotrackInfo": "ChronoTrack times a lot of road races with chips and mats. If your race was ChronoTrack-timed, find it in the race calendar and enter your bib number to pull in your official result.",
   "@integrationsChronotrackInfo": {
     "description": "Info-tip body for the ChronoTrack tile: what ChronoTrack is and how to import a result"
   },
-  "integrationsRunsignupUnavailable": "RunSignUp import isn't available yet. parkrun and manual paste still work.",
+  "integrationsRunsignupUnavailable": "RunSignUp import isn't available yet. Manual paste still works.",
   "@integrationsRunsignupUnavailable": {
     "description": "Explainer when the RunSignUp key is unconfigured"
-  },
-  "integrationsUltrasignup": "UltraSignup",
-  "@integrationsUltrasignup": {
-    "description": "UltraSignup integration name"
-  },
-  "integrationsUltrasignupConnect": "Import trail and ultra results from UltraSignup.",
-  "@integrationsUltrasignupConnect": {
-    "description": "UltraSignup integration description"
-  },
-  "integrationsUltrasignupOpen": "Open the race calendar",
-  "@integrationsUltrasignupOpen": {
-    "description": "Action linking to the race calendar from the UltraSignup tile"
-  },
-  "integrationsUltrasignupUnavailable": "UltraSignup import isn't available yet. parkrun and manual paste still work.",
-  "@integrationsUltrasignupUnavailable": {
-    "description": "Explainer when the UltraSignup key is unconfigured"
-  },
-  "integrationsUltrasignupFindLabel": "Find your UltraSignup profile",
-  "@integrationsUltrasignupFindLabel": {
-    "description": "Heading of the UltraSignup person finder, and the action that opens it"
-  },
-  "integrationsUltrasignupFirstName": "First name",
-  "@integrationsUltrasignupFirstName": {
-    "description": "First-name field in the UltraSignup person finder"
-  },
-  "integrationsUltrasignupLastName": "Last name",
-  "@integrationsUltrasignupLastName": {
-    "description": "Last-name field in the UltraSignup person finder"
-  },
-  "integrationsUltrasignupNameHint": "Use the name you enter races under. UltraSignup lists everyone with that name, and you pick which one is you.",
-  "@integrationsUltrasignupNameHint": {
-    "description": "Hint under the UltraSignup person finder heading"
-  },
-  "integrationsUltrasignupFind": "Find me",
-  "@integrationsUltrasignupFind": {
-    "description": "Button that looks the typed name up on UltraSignup"
-  },
-  "integrationsUltrasignupSearching": "Searching UltraSignup…",
-  "@integrationsUltrasignupSearching": {
-    "description": "Find button label while the UltraSignup lookup runs"
-  },
-  "integrationsUltrasignupNoMatches": "UltraSignup has nobody by that name. Check the spelling you race under.",
-  "@integrationsUltrasignupNoMatches": {
-    "description": "Shown when UltraSignup knows nobody by the typed name"
-  },
-  "integrationsUltrasignupPickPrompt": "Which of these is you?",
-  "@integrationsUltrasignupPickPrompt": {
-    "description": "Prompt above the list of UltraSignup people matching the name"
-  },
-  "integrationsUltrasignupCandidateAge": "Age {age}",
-  "@integrationsUltrasignupCandidateAge": {
-    "description": "An UltraSignup candidate's age",
-    "placeholders": {
-      "age": {
-        "type": "int"
-      }
-    }
-  },
-  "integrationsUltrasignupCandidateResults": "{n, plural, one{{n} result} other{{n} results}}",
-  "@integrationsUltrasignupCandidateResults": {
-    "description": "How many results UltraSignup holds for a candidate",
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "integrationsUltrasignupThisIsMe": "This is me",
-  "@integrationsUltrasignupThisIsMe": {
-    "description": "Button that links the runner to one UltraSignup candidate"
-  },
-  "integrationsUltrasignupLinkedAs": "Linked as {name} (UltraSignup #{id})",
-  "@integrationsUltrasignupLinkedAs": {
-    "description": "The UltraSignup person the runner has linked",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "id": {
-        "type": "String"
-      }
-    }
-  },
-  "integrationsUltrasignupUnlink": "Unlink",
-  "@integrationsUltrasignupUnlink": {
-    "description": "Button that forgets the linked UltraSignup person"
-  },
-  "integrationsUltrasignupLinked": "UltraSignup profile linked.",
-  "@integrationsUltrasignupLinked": {
-    "description": "Banner after an UltraSignup person was linked"
-  },
-  "integrationsUltrasignupLinkFailed": "Couldn't link your UltraSignup profile. Try again.",
-  "@integrationsUltrasignupLinkFailed": {
-    "description": "Banner when storing the UltraSignup person failed"
-  },
-  "integrationsUltrasignupLookupFailed": "Couldn't search UltraSignup. Try again in a moment.",
-  "@integrationsUltrasignupLookupFailed": {
-    "description": "Banner when the UltraSignup name lookup failed"
-  },
-  "integrationsUltrasignupUnlinked": "UltraSignup profile unlinked. Runs you already imported stay.",
-  "@integrationsUltrasignupUnlinked": {
-    "description": "Undo-bar message after the UltraSignup person was unlinked"
-  },
-  "integrationsUltrasignupUnlinkFailed": "Couldn't unlink your UltraSignup profile. Try again.",
-  "@integrationsUltrasignupUnlinkFailed": {
-    "description": "Banner when unlinking the UltraSignup person failed"
   },
   "integrationsChronotrack": "ChronoTrack",
   "@integrationsChronotrack": {
@@ -20632,7 +20587,7 @@
   "@integrationsChronotrackOpen": {
     "description": "Action linking to the race calendar from the ChronoTrack tile"
   },
-  "integrationsChronotrackUnavailable": "ChronoTrack import isn't available yet. parkrun and manual paste still work.",
+  "integrationsChronotrackUnavailable": "ChronoTrack import isn't available yet. Manual paste still works.",
   "@integrationsChronotrackUnavailable": {
     "description": "Explainer when the ChronoTrack credentials are unconfigured"
   },
@@ -22271,11 +22226,7 @@
   },
   "runSurfaceTabSegments": "Segments",
   "@runSurfaceTabSegments": {
-    "description": "Run-surface peer strip entry for the famous-segment catalogue"
-  },
-  "runSurfaceTabParks": "Parks",
-  "@runSurfaceTabParks": {
-    "description": "Run-surface peer strip entry for the park-course index (park time-trial courses with season boards)"
+    "description": "Fitness hub tab holding the famous-segment catalogue"
   },
   "rateLimitCreateClub": "You're creating clubs too quickly — please wait {wait} and try again.",
   "@rateLimitCreateClub": {
@@ -25412,6 +25363,10 @@
       }
     }
   },
+  "plansStarterStart": "Start this plan",
+  "@plansStarterStart": {
+    "description": "Call to action at the foot of each built-in starter-plan tile on the empty plans list; tapping the tile creates the plan. Same wording as web plansNew.createStarter"
+  },
   "planNewStartDateHint": "Week 1 begins here. The plan's weeks run Sunday to Saturday, so only a Sunday can be picked.",
   "@planNewStartDateHint": {
     "description": "Helper under the start date: why only Sundays can be picked"
@@ -27893,6 +27848,15 @@
   "@parksLongCourseNotice": {
     "description": "Park courses: shown on a course over 15 km (isLongCourse); web key parks.longCourseNotice. Names no park hours on purpose."
   },
+  "parksTimesNotEventResults": "Times here are Threkir times on these paths. They are not results of any event held on them.",
+  "@parksTimesNotEventResults": {
+    "description": "Park course page notice, on every course: the times on its boards are Threkir's own, never the results of an organised event (a weekly community run, say) that uses the same paths. Names no event."
+  },
+  "parksSharedUseSaturdayMorningGroup": "Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.",
+  "@parksSharedUseSaturdayMorningGroup": {
+    "description": "Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation."
+  },
+
   "parksAttributionOsm": "Course line © OpenStreetMap contributors",
   "@parksAttributionOsm": {
     "description": "Park courses (#1313): web key parks.attributionOsm."
@@ -27920,6 +27884,82 @@
   "parksBrowseLink": "Park courses",
   "@parksBrowseLink": {
     "description": "Park courses (#1313): web key parks.browseLink."
+  },
+  "parksCourseLaps": "{n, plural, one {{n} lap} other {{n} laps}}",
+  "@parksCourseLaps": {
+    "description": "Laps chip on a park course (#1352): a course run more than once round its loop for one time.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksCourseClimb": "{elevation} climb",
+  "@parksCourseClimb": {
+    "description": "Pill on a park course card (#1352): its elevation gain, already formatted with its unit.",
+    "placeholders": {
+      "elevation": {
+        "type": "String"
+      }
+    }
+  },
+  "parksWebsiteOpenFailed": "Couldn't open the park website.",
+  "@parksWebsiteOpenFailed": {
+    "description": "Banner when the park website link cannot be opened (#1352)."
+  },
+  "parksElevationProfile": "Elevation profile",
+  "@parksElevationProfile": {
+    "description": "Heading over a park course's elevation chart (#1352)."
+  },
+  "parksBoardEmptyTitle": "No times yet. Yours could be the first.",
+  "@parksBoardEmptyTitle": {
+    "description": "Title of a park course board nobody has a time on yet; replaces the filters (#1352)."
+  },
+  "parksBoardEmptyBody": "Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.",
+  "@parksBoardEmptyBody": {
+    "description": "Body under parksBoardEmptyTitle: how a time gets onto the board (#1352)."
+  },
+  "parksLegendTitle": "Map key",
+  "@parksLegendTitle": {
+    "description": "Screen-reader name of the key under a park course map (#1352)."
+  },
+  "parksLegendStart": "Start",
+  "@parksLegendStart": {
+    "description": "Map key item: the green start marker (#1352)."
+  },
+  "parksLegendFinish": "Finish",
+  "@parksLegendFinish": {
+    "description": "Map key item: the red finish marker (#1352)."
+  },
+  "parksLegendStartFinish": "Start and finish",
+  "@parksLegendStartFinish": {
+    "description": "Map key item: one marker for a course that starts and finishes in the same place (#1352)."
+  },
+  "parksLegendCheckpoints": "Checkpoint: your run must pass it",
+  "@parksLegendCheckpoints": {
+    "description": "Map key item: the numbered checkpoint markers (#1352)."
+  },
+  "parksLegendDirection": "Direction to run",
+  "@parksLegendDirection": {
+    "description": "Map key item: the arrows along the course line (#1352)."
+  },
+  "parksMapCourseLabel": "{n, plural, =0 {Course map. The key below names each mark.} one {Course map with 1 checkpoint. The key below names each mark.} other {Course map with {n} checkpoints. The key below names each mark.}}",
+  "@parksMapCourseLabel": {
+    "description": "Screen-reader label of a park course map (#1352); n is its checkpoint count.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksMapParkLabel": "{n, plural, one {Map of the park's course} other {Map of the park's {n} courses}}",
+  "@parksMapParkLabel": {
+    "description": "Screen-reader label of the map of every course line in a park (#1352).",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "eventCourseLinesMapBoth": "Map of the course's start and finish lines",
   "@eventCourseLinesMapBoth": {
@@ -28048,12 +28088,24 @@
   },
   "runRaceToStartLine": "{distance} to the start line",
   "@runRaceToStartLine": {
-    "description": "Run screen race banner: how far the runner is from a self-timed race's start line",
+    "description": "Run screen: how far the runner is from a race's start line, on the idle banner for a self-timed race and while recording until the start is timed",
     "placeholders": {
       "distance": {
         "type": "String"
       }
     }
+  },
+  "runRaceStartCrossed": "Start line crossed, timing",
+  "@runRaceStartCrossed": {
+    "description": "Voice cue and screen-reader announcement when a racer crosses the course's start line and their race clock starts"
+  },
+  "runRaceUndoResume": "Not finished? Resume",
+  "@runRaceUndoResume": {
+    "description": "Run screen button, offered for 60 seconds after the app finished a race automatically at the finish line: cancels that finish and resumes recording"
+  },
+  "runRaceFinishUndone": "Finish undone. When you finish, tap Stop, then Finish race.",
+  "@runRaceFinishUndone": {
+    "description": "Run screen banner after the runner cancelled an automatic race finish; the rest of the race is finished by hand"
   },
   "runRaceThisIsMyAttempt": "This run is my attempt",
   "@runRaceThisIsMyAttempt": {
@@ -28395,6 +28447,1238 @@
     "description": "Notification inbox line naming the organiser club that posted a course alert",
     "placeholders": {
       "club": {
+        "type": "String"
+      }
+    }
+  },
+  "reportReasonOrganiserDispute": "Impersonates or copies my organisation",
+  "@reportReasonOrganiserDispute": {
+    "description": "Report reason label, shown only to an owner or admin of a verified club: the content impersonates their organisation or copies its content (organiser name dispute, decisions § 2441)"
+  },
+  "reportReasonOrganiserDisputeHint": "For owners and admins of a verified club. A reviewer decides; nothing is hidden automatically.",
+  "@reportReasonOrganiserDisputeHint": {
+    "description": "Hint under the organiser dispute reason in the report sheet"
+  },
+  "reportOrganiserDisputeFor": "You're reporting for {club}.",
+  "@reportOrganiserDisputeFor": {
+    "description": "Line in the report sheet naming the verified club the organiser dispute is filed for",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "reportOrganiserDisputeClubLabel": "Report for",
+  "@reportOrganiserDisputeClubLabel": {
+    "description": "Label of the picker choosing which verified club an organiser dispute is filed for"
+  },
+  "reportErrNotOrganiser": "Only an owner or admin of a verified club can report this.",
+  "@reportErrNotOrganiser": {
+    "description": "Report sheet error: the server refused an organiser dispute because the caller is not an owner or admin of a verified club"
+  },
+  "profileNotifOrganiserDispute": "There's an update on a naming dispute",
+  "@profileNotifOrganiserDispute": {
+    "description": "Notification text: a reviewer acted on a naming dispute about content the recipient owns, or one their verified club filed"
+  },
+  "profileNotifOrganiserDisputeNamed": "There's an update on a naming dispute with {club}",
+  "@profileNotifOrganiserDisputeNamed": {
+    "description": "Notification text: a reviewer acted on a naming dispute involving the named verified club",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "coachShareAction": "Share with coach",
+  "@coachShareAction": {
+    "description": "Tooltip on the button under an AI Coach answer that opens the sheet to send parts of it to the runner's human coach"
+  },
+  "coachShareTitle": "Share with your coach",
+  "@coachShareTitle": {
+    "description": "Title of the sheet where the runner picks parts of an AI Coach answer to send to their human coach"
+  },
+  "coachShareIntro": "Pick the parts of this answer to send. Your coach sees them as a quote from your AI Coach, not as your own words.",
+  "@coachShareIntro": {
+    "description": "Intro text at the top of the share-with-coach sheet"
+  },
+  "coachShareCoachLegend": "Send to",
+  "@coachShareCoachLegend": {
+    "description": "Heading above the list of the runner's coaches to choose from, when they have more than one"
+  },
+  "coachShareTo": "Sending to {name}",
+  "@coachShareTo": {
+    "description": "Shown in the share sheet when the runner has exactly one coach. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachShareParagraphsLegend": "Parts to share",
+  "@coachShareParagraphsLegend": {
+    "description": "Heading above the checkboxes, one per paragraph of the AI Coach answer"
+  },
+  "coachShareTooLong": "That is more than {max} characters. Leave a part out.",
+  "@coachShareTooLong": {
+    "description": "Error when the picked paragraphs are longer than a message may be. {max} is the character limit",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "coachShareLabelNote": "It is labelled as AI in the conversation. Nothing new is sent to the AI.",
+  "@coachShareLabelNote": {
+    "description": "Small note above the Share button explaining the shared text is marked as AI output and the AI is not called again"
+  },
+  "coachShareSend": "Share",
+  "@coachShareSend": {
+    "description": "Button that sends the picked paragraphs to the coach"
+  },
+  "coachShareSending": "Sharing…",
+  "@coachShareSending": {
+    "description": "Share button label while the share is being sent"
+  },
+  "coachShareSent": "Shared with {name}.",
+  "@coachShareSent": {
+    "description": "Confirmation after the share went. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachShareOpenThread": "Open conversation",
+  "@coachShareOpenThread": {
+    "description": "Button after a successful share that opens the direct-message conversation with the coach"
+  },
+  "coachShareDone": "Done",
+  "@coachShareDone": {
+    "description": "Button that closes the share sheet after a successful share"
+  },
+  "coachShareCardLabel": "AI Coach answer",
+  "@coachShareCardLabel": {
+    "description": "Label at the top of a shared AI Coach answer inside a direct-message conversation, next to the AI tag"
+  },
+  "coachShareCardFromMe": "You shared this from your AI Coach",
+  "@coachShareCardFromMe": {
+    "description": "Line on a shared AI Coach answer, seen by the runner who shared it"
+  },
+  "coachShareCardFromAthlete": "{name} shared this from their AI Coach",
+  "@coachShareCardFromAthlete": {
+    "description": "Line on a shared AI Coach answer, seen by the coach who received it. {name} is the runner's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachShareOpenSource": "Open in AI Coach",
+  "@coachShareOpenSource": {
+    "description": "Link under a shared AI Coach answer, seen only by the runner who shared it, that opens the original answer in the AI Coach"
+  },
+  "coachShareUnavailable": "Sharing with your coach is not available yet.",
+  "@coachShareUnavailable": {
+    "description": "Error when sharing an AI Coach answer with a coach is switched off on the server"
+  },
+  "coachConsentBulletCoachAssist": "For coaches using the coach assistant: what you ask it, and, only for an athlete who has allowed it on your coaching link, their recent messages with you, their plan and upcoming workouts, and their recent runs, used only to draft a message only you see. You edit and send it yourself, and it is marked AI-assisted.",
+  "@coachConsentBulletCoachAssist": {
+    "description": "AI-disclosure bullet (v7) describing what the coach assistant sends to the AI provider when a coach uses it"
+  },
+  "coachAssistMarker": "AI-assisted",
+  "@coachAssistMarker": {
+    "description": "Marker in a direct message's meta row when the coach wrote it with help from an AI draft"
+  },
+  "coachAssistMarkerTitle": "Written by the coach with help from an AI draft",
+  "@coachAssistMarkerTitle": {
+    "description": "Accessibility label for the AI-assisted message marker"
+  },
+  "coachAssistConsentToggle": "Let {name} use AI assistance",
+  "@coachAssistConsentToggle": {
+    "description": "Athlete's per-coach switch on the coaching screen allowing that coach to use the AI coach assistant. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachAssistConsentWhat": "What this shares",
+  "@coachAssistConsentWhat": {
+    "description": "Expandable heading under the coach-assist switch listing what data the coach assistant sends"
+  },
+  "coachAssistConsentIntro": "When {name} asks the coach assistant for a draft, Threkir sends this to Anthropic, the AI provider, to write it:",
+  "@coachAssistConsentIntro": {
+    "description": "Intro to the list of what the coach assistant shares. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachAssistConsentBulletThread": "Your recent messages with this coach (the text and when it was sent).",
+  "@coachAssistConsentBulletThread": {
+    "description": "Coach-assist consent bullet: the message thread"
+  },
+  "coachAssistConsentBulletPlan": "The plan you are on: its name, goal race and target time, its dates, and your workouts for the next two weeks (date, type, distance or time, pace, and whether you did or skipped them).",
+  "@coachAssistConsentBulletPlan": {
+    "description": "Coach-assist consent bullet: the training plan"
+  },
+  "coachAssistConsentBulletRuns": "Your 10 most recent activities: the date, distance, time and activity type. Never your heart rate, your route or anything you wrote about a run.",
+  "@coachAssistConsentBulletRuns": {
+    "description": "Coach-assist consent bullet: recent activities"
+  },
+  "coachAssistConsentOutro": "Only {name} sees the drafts. They edit and send any message themselves, and it is marked AI-assisted. Nothing is sent while this is off, and you can turn it off at any time.",
+  "@coachAssistConsentOutro": {
+    "description": "Closing note under the coach-assist consent bullets. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachAssistConsentFailed": "Could not save that. Try again.",
+  "@coachAssistConsentFailed": {
+    "description": "Error when saving the coach-assist consent switch fails; the switch reverts"
+  },
+  "parkGuideTitle": "Route guide",
+  "@parkGuideTitle": {
+    "description": "Park course route guide (#1344, web parks.guide.title)."
+  },
+  "parkGuidePending": "Drafted from map data, not yet checked on the ground.",
+  "@parkGuidePending": {
+    "description": "Park course route guide (#1344, web parks.guide.pending)."
+  },
+  "parkGuideChecked": "Checked on the ground on {date}.",
+  "@parkGuideChecked": {
+    "description": "Park course route guide (#1344, web parks.guide.checked).",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideGettingThere": "Getting there",
+  "@parkGuideGettingThere": {
+    "description": "Park course route guide (#1344, web parks.guide.gettingThere)."
+  },
+  "parkGuideStartNamed": "Start on {name}.",
+  "@parkGuideStartNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.startNamed).",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStartFireRoad": "Start on the fire road.",
+  "@parkGuideStartFireRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.startFireRoad)."
+  },
+  "parkGuideStartRoad": "Start on the park road.",
+  "@parkGuideStartRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.startRoad)."
+  },
+  "parkGuideStartPath": "Start on the path.",
+  "@parkGuideStartPath": {
+    "description": "Park course route guide (#1344, web parks.guide.startPath)."
+  },
+  "parkGuideClockwise": "Run the loop clockwise.",
+  "@parkGuideClockwise": {
+    "description": "Park course route guide (#1344, web parks.guide.clockwise)."
+  },
+  "parkGuideCounterclockwise": "Run the loop counterclockwise.",
+  "@parkGuideCounterclockwise": {
+    "description": "Park course route guide (#1344, web parks.guide.counterclockwise)."
+  },
+  "parkGuideKeepLeft": "Keep {landmark} on your left.",
+  "@parkGuideKeepLeft": {
+    "description": "Park course route guide (#1344, web parks.guide.keepLeft).",
+    "placeholders": {
+      "landmark": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideKeepRight": "Keep {landmark} on your right.",
+  "@parkGuideKeepRight": {
+    "description": "Park course route guide (#1344, web parks.guide.keepRight).",
+    "placeholders": {
+      "landmark": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuidePassCheckpoints": "Pass every checkpoint in order, or the run is not timed.",
+  "@parkGuidePassCheckpoints": {
+    "description": "Park course route guide (#1344, web parks.guide.passCheckpoints)."
+  },
+  "parkGuideLeftNamed": "{at}: turn left onto {name}.",
+  "@parkGuideLeftNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.leftNamed).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRightNamed": "{at}: turn right onto {name}.",
+  "@parkGuideRightNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.rightNamed).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStraightNamed": "{at}: continue straight onto {name}.",
+  "@parkGuideStraightNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.straightNamed).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideLeftFireRoad": "{at}: turn left onto the fire road.",
+  "@parkGuideLeftFireRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.leftFireRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRightFireRoad": "{at}: turn right onto the fire road.",
+  "@parkGuideRightFireRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.rightFireRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStraightFireRoad": "{at}: continue straight along the fire road.",
+  "@parkGuideStraightFireRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.straightFireRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideLeftRoad": "{at}: turn left onto the park road.",
+  "@parkGuideLeftRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.leftRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRightRoad": "{at}: turn right onto the park road.",
+  "@parkGuideRightRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.rightRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStraightRoad": "{at}: continue straight along the park road.",
+  "@parkGuideStraightRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.straightRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideLeftPath": "{at}: turn left onto the path.",
+  "@parkGuideLeftPath": {
+    "description": "Park course route guide (#1344, web parks.guide.leftPath).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRightPath": "{at}: turn right onto the path.",
+  "@parkGuideRightPath": {
+    "description": "Park course route guide (#1344, web parks.guide.rightPath).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStraightPath": "{at}: continue straight along the path.",
+  "@parkGuideStraightPath": {
+    "description": "Park course route guide (#1344, web parks.guide.straightPath).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideBridge": "{at}: cross the bridge.",
+  "@parkGuideBridge": {
+    "description": "Park course route guide (#1344, web parks.guide.bridge).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideFord": "{at}: cross the ford. There is no bridge, so expect water.",
+  "@parkGuideFord": {
+    "description": "Park course route guide (#1344, web parks.guide.ford).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfacePaved": "{at}: paved from here.",
+  "@parkGuideSurfacePaved": {
+    "description": "Park course route guide (#1344, web parks.guide.surfacePaved).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfaceGravel": "{at}: gravel from here.",
+  "@parkGuideSurfaceGravel": {
+    "description": "Park course route guide (#1344, web parks.guide.surfaceGravel).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfaceDirt": "{at}: dirt trail from here.",
+  "@parkGuideSurfaceDirt": {
+    "description": "Park course route guide (#1344, web parks.guide.surfaceDirt).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfaceUnpaved": "{at}: unpaved from here.",
+  "@parkGuideSurfaceUnpaved": {
+    "description": "Park course route guide (#1344, web parks.guide.surfaceUnpaved).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfaceBoardwalk": "{at}: boardwalk from here.",
+  "@parkGuideSurfaceBoardwalk": {
+    "description": "Park course route guide (#1344, web parks.guide.surfaceBoardwalk).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideClimb": "{at}: a climb of {gain} over {length}.",
+  "@parkGuideClimb": {
+    "description": "Park course route guide (#1344, web parks.guide.climb).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "gain": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCheckpoint": "{at}: checkpoint {n} of {total}.",
+  "@parkGuideCheckpoint": {
+    "description": "Park course route guide (#1344, web parks.guide.checkpoint).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideLap": "{at}: start lap {n} of {total} and repeat the loop.",
+  "@parkGuideLap": {
+    "description": "Park course route guide (#1344, web parks.guide.lap).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideFinish": "{at}: finish.",
+  "@parkGuideFinish": {
+    "description": "Park course route guide (#1344, web parks.guide.finish).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkCourseReportAction": "Report a problem with this course",
+  "@parkCourseReportAction": {
+    "description": "Park course page: opens the sheet to report a hazard, closure, off-trail line or land-manager request (also the sheet title)"
+  },
+  "parkCourseReportExplainer": "Tell us about a hazard, a closure or a line that leaves the trail. A person at Threkir reviews every report. A report does not close the course by itself.",
+  "@parkCourseReportExplainer": {
+    "description": "Report sheet: what a report is for and that a person reviews it; a report never closes the course by itself"
+  },
+  "parkCourseReportReasonLegend": "What's the problem?",
+  "@parkCourseReportReasonLegend": {
+    "description": "Report sheet: heading over the reason choices"
+  },
+  "parkCourseReportReasonHazard": "A hazard on the course",
+  "@parkCourseReportReasonHazard": {
+    "description": "Report reason: a hazard on the course"
+  },
+  "parkCourseReportReasonClosure": "The course or trail is closed",
+  "@parkCourseReportReasonClosure": {
+    "description": "Report reason: the course or trail is closed"
+  },
+  "parkCourseReportReasonOffTrail": "The line leaves the designated trail",
+  "@parkCourseReportReasonOffTrail": {
+    "description": "Report reason: the published line leaves the designated trail"
+  },
+  "parkCourseReportReasonLandManager": "A request from the land manager",
+  "@parkCourseReportReasonLandManager": {
+    "description": "Report reason: the park or agency managing the land asks for the course to come down"
+  },
+  "parkCourseReportReasonLandManagerHint": "For park or agency staff. Ask us to take the course down and we close it within two business days.",
+  "@parkCourseReportReasonLandManagerHint": {
+    "description": "Hint under the land-manager reason: the two-business-day promise"
+  },
+  "parkCourseReportReasonRightsHolder": "A request from a rights holder",
+  "@parkCourseReportReasonRightsHolder": {
+    "description": "Report sheet: the rights-holder reason, for the owner of a name, trade mark or course data a park course may use (decisions § 2469). Mirrors web parks.report.reasonRightsHolder"
+  },
+  "parkCourseReportReasonRightsHolderHint": "For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you'd like changed. We acknowledge your request within two business days.",
+  "@parkCourseReportReasonRightsHolderHint": {
+    "description": "Hint under the rights-holder reason: who it is for and the two-business-day acknowledgement. Mirrors web parks.report.reasonRightsHolderHint"
+  },
+  "parkCourseReportReasonOther": "Something else",
+  "@parkCourseReportReasonOther": {
+    "description": "Report reason: anything else"
+  },
+  "parkCourseReportNotesLabel": "What should we know?",
+  "@parkCourseReportNotesLabel": {
+    "description": "Report sheet: label of the required free-text note"
+  },
+  "parkCourseReportNotesHint": "Where on the course, what you saw and when.",
+  "@parkCourseReportNotesHint": {
+    "description": "Report sheet: hint inside the note field"
+  },
+  "parkCourseReportEmailLabel": "Your email (optional)",
+  "@parkCourseReportEmailLabel": {
+    "description": "Report sheet: label of the optional contact email field"
+  },
+  "parkCourseReportEmailLabelRequired": "Your email",
+  "@parkCourseReportEmailLabelRequired": {
+    "description": "Report sheet: the contact email label when the reason needs an address (a rights-holder request). Mirrors web parks.report.emailLabelRequired"
+  },
+  "parkCourseReportEmailHint": "Only if you'd like a reply. We use it to answer this report and delete it 30 days after we resolve it.",
+  "@parkCourseReportEmailHint": {
+    "description": "Report sheet: what the contact email is used for and when it is deleted"
+  },
+  "parkCourseReportEmailHintRequired": "Needed for a rights-holder request so we can answer it. We delete it 30 days after we resolve the request.",
+  "@parkCourseReportEmailHintRequired": {
+    "description": "Report sheet: why a rights-holder request needs the email and when it is deleted. Mirrors web parks.report.emailHintRequired"
+  },
+  "parkCourseReportCancel": "Cancel",
+  "@parkCourseReportCancel": {
+    "description": "Report sheet: cancel button"
+  },
+  "parkCourseReportSubmit": "Send report",
+  "@parkCourseReportSubmit": {
+    "description": "Report sheet: send button"
+  },
+  "parkCourseReportSent": "Thanks. Your report is with the Threkir team.",
+  "@parkCourseReportSent": {
+    "description": "Banner after a report was sent"
+  },
+  "parkCourseReportErrorFailed": "Couldn't send the report. Try again.",
+  "@parkCourseReportErrorFailed": {
+    "description": "Report sheet error: sending failed for an unknown reason"
+  },
+  "parkCourseReportErrorRateLimited": "Too many reports right now. Try again later.",
+  "@parkCourseReportErrorRateLimited": {
+    "description": "Report sheet error: too many reports right now"
+  },
+  "parkCourseReportErrorAlreadyReported": "You've already reported this course, and that report is still open.",
+  "@parkCourseReportErrorAlreadyReported": {
+    "description": "Report sheet error: this person already has an open report on this course"
+  },
+  "parkCourseReportErrorNotFound": "This course is no longer listed.",
+  "@parkCourseReportErrorNotFound": {
+    "description": "Report sheet error: the course is no longer listed"
+  },
+  "parkCourseReportErrorInvalid": "Check the report and try again.",
+  "@parkCourseReportErrorInvalid": {
+    "description": "Report sheet error: the server refused the report as invalid"
+  },
+  "parkCourseReportErrorEmail": "That email address doesn't look right.",
+  "@parkCourseReportErrorEmail": {
+    "description": "Report sheet: the contact email is not shaped like an address"
+  },
+  "parkCourseReportErrorEmailRequired": "A rights-holder request needs an email address so we can answer it.",
+  "@parkCourseReportErrorEmailRequired": {
+    "description": "Report sheet: a rights-holder request was sent with no email. Mirrors web parks.report.errorEmailRequired"
+  },
+  "profileNotifParkCourseReport": "A park course was reported",
+  "@profileNotifParkCourseReport": {
+    "description": "Notification text, app admins only: someone reported a problem with a park course"
+  },
+  "rateLimitReaction": "You're reacting too quickly — please wait {wait} and try again.",
+  "@rateLimitReaction": {
+    "description": "Rate-limit refusal when the direct-message reaction bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitPhotoUpload": "You've sent a lot of photos — please wait {wait} and try again.",
+  "@rateLimitPhotoUpload": {
+    "description": "Rate-limit refusal when the direct-message photo upload bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitCreateGroup": "You're creating groups too quickly — please wait {wait} and try again.",
+  "@rateLimitCreateGroup": {
+    "description": "Rate-limit refusal when the create_group_conversation bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitInviteToGroup": "You've sent a lot of group invitations today — please wait {wait} and try again.",
+  "@rateLimitInviteToGroup": {
+    "description": "Rate-limit refusal when the invite_to_group bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "prefsMessageRequests": "Message requests",
+  "@prefsMessageRequests": {
+    "description": "Settings switch: let people you share a club or an event with message you first"
+  },
+  "prefsMessageRequestsHint": "Let people you share a club or an event with message you first. Turn this off and only people you follow, or who follow you, can start a conversation with you.",
+  "@prefsMessageRequestsHint": {
+    "description": "Subtitle of the message requests switch"
+  },
+  "prefsMessageRequestsFailed": "Couldn't update message requests.",
+  "@prefsMessageRequestsFailed": {
+    "description": "Banner when the message requests switch could not be saved; the switch reverts"
+  },
+  "messagesReact": "React",
+  "@messagesReact": {
+    "description": "Option in a message's long-press menu that opens the reaction picker"
+  },
+  "messagesReactPickerLabel": "Choose a reaction",
+  "@messagesReactPickerLabel": {
+    "description": "Title of the sheet listing the six reactions a message can take"
+  },
+  "messagesReactionChipLabel": "{reaction}, {count}",
+  "@messagesReactionChipLabel": {
+    "description": "Accessible label of a reaction chip under a message: the reaction's name and how many people chose it",
+    "placeholders": {
+      "reaction": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesReactionThumbsUp": "Thumbs up",
+  "@messagesReactionThumbsUp": {
+    "description": "Name of the thumbs-up reaction, read by screen readers"
+  },
+  "messagesReactionHeart": "Heart",
+  "@messagesReactionHeart": {
+    "description": "Name of the heart reaction, read by screen readers"
+  },
+  "messagesReactionLaugh": "Laughing",
+  "@messagesReactionLaugh": {
+    "description": "Name of the laughing-face reaction, read by screen readers"
+  },
+  "messagesReactionSurprised": "Surprised",
+  "@messagesReactionSurprised": {
+    "description": "Name of the surprised-face reaction, read by screen readers"
+  },
+  "messagesReactionSad": "Sad",
+  "@messagesReactionSad": {
+    "description": "Name of the sad-face reaction, read by screen readers"
+  },
+  "messagesReactionFire": "Fire",
+  "@messagesReactionFire": {
+    "description": "Name of the fire reaction, read by screen readers"
+  },
+  "messagesReactionRefused": "You can't react to this message.",
+  "@messagesReactionRefused": {
+    "description": "Banner when a reaction was refused; the same sentence for every reason so a block is not revealed"
+  },
+  "messagesSearchPlaceholder": "Search messages",
+  "@messagesSearchPlaceholder": {
+    "description": "Hint text in the search field above the Messages inbox"
+  },
+  "messagesSearchLabel": "Search your messages",
+  "@messagesSearchLabel": {
+    "description": "Accessible label of the search field above the Messages inbox"
+  },
+  "messagesSearchEmpty": "No messages match.",
+  "@messagesSearchEmpty": {
+    "description": "Shown when a search of the viewer's messages finds nothing"
+  },
+  "messagesSearchFailed": "Couldn't search your messages. Try again.",
+  "@messagesSearchFailed": {
+    "description": "Shown when a search of the viewer's messages failed"
+  },
+  "messagesPhotoAttach": "Attach a photo",
+  "@messagesPhotoAttach": {
+    "description": "Tooltip of the composer button that picks a photo to send"
+  },
+  "messagesPhotoRemove": "Remove photo",
+  "@messagesPhotoRemove": {
+    "description": "Tooltip of the button that removes the picked photo from the composer"
+  },
+  "messagesPhotoDraftAlt": "Photo to send",
+  "@messagesPhotoDraftAlt": {
+    "description": "Accessible label of the picked photo shown above the composer"
+  },
+  "messagesPhotoAlt": "Photo in the message",
+  "@messagesPhotoAlt": {
+    "description": "Accessible label of a photo sent in a message"
+  },
+  "messagesPhotoProcessing": "Preparing photo…",
+  "@messagesPhotoProcessing": {
+    "description": "Shown in place of a sent photo while the server is still preparing it"
+  },
+  "messagesPhotoRejected": "This photo couldn't be sent.",
+  "@messagesPhotoRejected": {
+    "description": "Shown in place of a photo the server could not process"
+  },
+  "messagesPhotoUnavailableToView": "Photo unavailable",
+  "@messagesPhotoUnavailableToView": {
+    "description": "Shown in place of a photo that could not be loaded"
+  },
+  "messagesPhotoPreview": "Photo",
+  "@messagesPhotoPreview": {
+    "description": "Inbox preview of a latest message that is a photo with no caption"
+  },
+  "messagesPhotoTooLarge": "That photo is too large to send.",
+  "@messagesPhotoTooLarge": {
+    "description": "Shown when a picked photo is still too large after it was shrunk"
+  },
+  "messagesPhotoUnreadable": "That file couldn't be read as a photo.",
+  "@messagesPhotoUnreadable": {
+    "description": "Shown when a picked file could not be decoded as a photo"
+  },
+  "messagesPhotoUnavailable": "Photos in messages aren't available yet.",
+  "@messagesPhotoUnavailable": {
+    "description": "Shown when the server has photos in messages switched off"
+  },
+  "messagesPhotoUploadFailed": "Couldn't upload the photo. Try again.",
+  "@messagesPhotoUploadFailed": {
+    "description": "Shown when uploading a photo for a message failed"
+  },
+  "messagesPhotoSendNotAllowed": "Photos can go to people you follow or who follow you, or into a conversation they've accepted, unless either of you has blocked the other.",
+  "@messagesPhotoSendNotAllowed": {
+    "description": "Shown when a message with a photo was refused; deliberately does not say which rule refused it"
+  },
+  "messagesLinkOpenFailed": "Couldn't open that link.",
+  "@messagesLinkOpenFailed": {
+    "description": "Banner when a link in a message could not be opened in the browser"
+  },
+  "groupsNewGroup": "New group",
+  "@groupsNewGroup": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.newGroup"
+  },
+  "groupsGroupFallback": "Group",
+  "@groupsGroupFallback": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.groupFallback"
+  },
+  "groupsMemberCount": "{count, plural, one {{count} member} other {{count} members}}",
+  "@groupsMemberCount": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.memberCount",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsMembersTitle": "{count, plural, one {{count} member} other {{count} members}}",
+  "@groupsMembersTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.membersTitle",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsMembersButton": "Members",
+  "@groupsMembersButton": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.membersButton"
+  },
+  "groupsYouLeftPreview": "You left this group",
+  "@groupsYouLeftPreview": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.youLeftPreview"
+  },
+  "groupsRenamedPreview": "Group renamed to {title}",
+  "@groupsRenamedPreview": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renamedPreview",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsNoMessagesYet": "No messages yet",
+  "@groupsNoMessagesYet": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.noMessagesYet"
+  },
+  "groupsInvitesHeading": "Group invitations",
+  "@groupsInvitesHeading": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.invitesHeading"
+  },
+  "groupsInviteLine": "{name} invited you · {count, plural, one {{count} member} other {{count} members}}",
+  "@groupsInviteLine": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteLine",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsInviteAccept": "Join",
+  "@groupsInviteAccept": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteAccept"
+  },
+  "groupsInviteDecline": "Decline",
+  "@groupsInviteDecline": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDecline"
+  },
+  "groupsInviteReport": "Report",
+  "@groupsInviteReport": {
+    "description": "Button on a group invitation row under Requests that opens the report sheet for the invite (its title and who sent it)"
+  },
+  "groupsInviteAcceptedToast": "You joined {title}",
+  "@groupsInviteAcceptedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteAcceptedToast",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInviteDeclinedToast": "Invitation declined",
+  "@groupsInviteDeclinedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDeclinedToast"
+  },
+  "groupsInviteActionFailed": "Couldn't answer the invitation: {error}",
+  "@groupsInviteActionFailed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteActionFailed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInviteDeclineConfirmTitle": "Decline the invitation to {title}?",
+  "@groupsInviteDeclineConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDeclineConfirmTitle",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInviteDeclineConfirmMessage": "You won't join the group, and it can't invite you again for 14 days. Nobody is told why.",
+  "@groupsInviteDeclineConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDeclineConfirmMessage"
+  },
+  "groupsCreateTitle": "New group",
+  "@groupsCreateTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createTitle"
+  },
+  "groupsTitleLabel": "Group name",
+  "@groupsTitleLabel": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.titleLabel"
+  },
+  "groupsCreateHint": "Pick at least two people. Each gets an invitation and joins only if they accept. People see messages from the moment they join.",
+  "@groupsCreateHint": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createHint"
+  },
+  "groupsCreateSubmit": "Create group",
+  "@groupsCreateSubmit": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createSubmit"
+  },
+  "groupsCreating": "Creating…",
+  "@groupsCreating": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.creating"
+  },
+  "groupsCreatedToast": "{title} created. Invitations sent.",
+  "@groupsCreatedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createdToast",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsCreateFailed": "Couldn't create the group.",
+  "@groupsCreateFailed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createFailed"
+  },
+  "groupsPeopleLoadFailed": "Couldn't load the people you can invite.",
+  "@groupsPeopleLoadFailed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleLoadFailed"
+  },
+  "groupsPeopleEmpty": "Nobody to invite yet. You can invite people you follow or who follow you.",
+  "@groupsPeopleEmpty": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleEmpty"
+  },
+  "groupsPeopleSearch": "Search people",
+  "@groupsPeopleSearch": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleSearch"
+  },
+  "groupsPeopleSelected": "{count} of {max} selected",
+  "@groupsPeopleSelected": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleSelected",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsPeopleNoMatches": "No one matches that name.",
+  "@groupsPeopleNoMatches": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleNoMatches"
+  },
+  "groupsPeopleFull": "A group holds at most 32 people, invitations included. {max} more can be invited.",
+  "@groupsPeopleFull": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleFull",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsUnavailable": "Group conversations aren't available right now.",
+  "@groupsUnavailable": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.unavailable"
+  },
+  "groupsNotFound": "This group isn't available.",
+  "@groupsNotFound": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.notFound"
+  },
+  "groupsNotAvailable": "This group isn't available.",
+  "@groupsNotAvailable": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.notAvailable"
+  },
+  "groupsActionRefused": "You can't do that in this group.",
+  "@groupsActionRefused": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.actionRefused"
+  },
+  "groupsInviteRefused": "One of these people can't be invited.",
+  "@groupsInviteRefused": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteRefused"
+  },
+  "groupsCapReached": "A group holds at most 32 people, invitations included.",
+  "@groupsCapReached": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.capReached"
+  },
+  "groupsTitleInvalid": "A group name is 1 to 60 characters.",
+  "@groupsTitleInvalid": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.titleInvalid"
+  },
+  "groupsSendNotAllowed": "You can't send to this group.",
+  "@groupsSendNotAllowed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.sendNotAllowed"
+  },
+  "groupsActionFailed": "That didn't work: {error}",
+  "@groupsActionFailed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.actionFailed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsHistoryNote": "Messages from before you joined aren't shown.",
+  "@groupsHistoryNote": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.historyNote"
+  },
+  "groupsEmptyThread": "No messages yet. Say hello.",
+  "@groupsEmptyThread": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.emptyThread"
+  },
+  "groupsBlockedPlaceholder": "Message from someone you blocked",
+  "@groupsBlockedPlaceholder": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.blockedPlaceholder"
+  },
+  "groupsRenamedLine": "{name} renamed the group to {title}",
+  "@groupsRenamedLine": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renamedLine",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRenamedLineYou": "You renamed the group to {title}",
+  "@groupsRenamedLineYou": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renamedLineYou",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsLeftNotice": "You left this group. You can still unsend your own messages.",
+  "@groupsLeftNotice": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leftNotice"
+  },
+  "groupsComposerLabel": "Message {title}",
+  "@groupsComposerLabel": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.composerLabel",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsLeave": "Leave",
+  "@groupsLeave": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leave"
+  },
+  "groupsLeaveConfirmTitle": "Leave {title}?",
+  "@groupsLeaveConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leaveConfirmTitle",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsLeaveConfirmMessage": "You'll stop seeing the group's messages at once, and you need a new invitation to come back. Your own messages stay in the group until you unsend them. Anything already on other members' devices stays there.",
+  "@groupsLeaveConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leaveConfirmMessage"
+  },
+  "groupsLeftToast": "You left {title}",
+  "@groupsLeftToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leftToast",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRename": "Rename",
+  "@groupsRename": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.rename"
+  },
+  "groupsRenameSave": "Save",
+  "@groupsRenameSave": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renameSave"
+  },
+  "groupsRenamedToast": "Group renamed",
+  "@groupsRenamedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renamedToast"
+  },
+  "groupsInviteMore": "Invite",
+  "@groupsInviteMore": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteMore"
+  },
+  "groupsInviteSend": "{count, plural, one {Invite {count} person} other {Invite {count} people}}",
+  "@groupsInviteSend": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteSend",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsInvitedToast": "{count, plural, one {Invitation sent} other {{count} invitations sent}}",
+  "@groupsInvitedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.invitedToast",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsRoleInvited": "Invited",
+  "@groupsRoleInvited": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.roleInvited"
+  },
+  "groupsYouSuffix": "(you)",
+  "@groupsYouSuffix": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.youSuffix"
+  },
+  "groupsMakeAdmin": "Make admin",
+  "@groupsMakeAdmin": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.makeAdmin"
+  },
+  "groupsRemoveAdmin": "Remove as admin",
+  "@groupsRemoveAdmin": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removeAdmin"
+  },
+  "groupsMadeAdminToast": "{name} is now an admin",
+  "@groupsMadeAdminToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.madeAdminToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRemovedAdminToast": "{name} is no longer an admin",
+  "@groupsRemovedAdminToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removedAdminToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsMakeOwner": "Make owner",
+  "@groupsMakeOwner": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.makeOwner"
+  },
+  "groupsTransferConfirmTitle": "Make {name} the owner?",
+  "@groupsTransferConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.transferConfirmTitle",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsTransferConfirmMessage": "You become an admin. Only the new owner can give ownership back.",
+  "@groupsTransferConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.transferConfirmMessage"
+  },
+  "groupsTransferredToast": "{name} is now the owner",
+  "@groupsTransferredToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.transferredToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRemove": "Remove",
+  "@groupsRemove": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.remove"
+  },
+  "groupsRemoveConfirmTitle": "Remove {name} from the group?",
+  "@groupsRemoveConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removeConfirmTitle",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRemoveConfirmMessage": "They stop seeing the group's messages at once and need a new invitation to come back. Their own messages stay. They aren't told who removed them.",
+  "@groupsRemoveConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removeConfirmMessage"
+  },
+  "groupsRemovedToast": "{name} was removed",
+  "@groupsRemovedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removedToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsCancelInvite": "Cancel invitation",
+  "@groupsCancelInvite": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.cancelInvite"
+  },
+  "groupsCancelInviteConfirmTitle": "Cancel the invitation to {name}?",
+  "@groupsCancelInviteConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.cancelInviteConfirmTitle",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsCancelInviteConfirmMessage": "They won't be able to join with it. You can invite them again later.",
+  "@groupsCancelInviteConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.cancelInviteConfirmMessage"
+  },
+  "groupsInviteCancelledToast": "Invitation to {name} cancelled",
+  "@groupsInviteCancelledToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteCancelledToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifGroupMessage": "{name} wrote in a group",
+  "@profileNotifGroupMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's notificationsList.verbGroupMessage",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifGroupInvite": "{name} invited you to a group",
+  "@profileNotifGroupInvite": {
+    "description": "Group conversations (issue #1365): the web catalogue's notificationsList.verbGroupInvite",
+    "placeholders": {
+      "name": {
         "type": "String"
       }
     }

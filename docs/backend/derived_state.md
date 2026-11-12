@@ -29,7 +29,7 @@ retention cron referenced in a comment that was never created.
   `healthconnect`, `parkrun`, `race` — every valid `runs.source` value. `parkrun`
   (weekly certified 5K) and `race` (chip-timed official results) were added by
   `20270424_001` (#378); before that both were silently excluded, so a fastest 5K
-  run at parkrun never earned a PR. `achievement_tiers_met` (read by
+  run at parkrun never earned a PR. Nothing writes `parkrun` since the parkrun import was removed (decisions § 2467); the runs already imported still count. `achievement_tiers_met` (read by
   `award_achievements_for_user`) uses the identical source list so distance badges and PRs agree on what counts.
 - **Eligible activity types:** the **run family** — every `runs.activity_type`
   except `cycle` (`20270514_001`). A bicycle covers a PR bracket at speeds no
@@ -56,7 +56,8 @@ retention cron referenced in a comment that was never created.
   (`20260530000001`), mile bracket (`20261021_001`), the auth guard
   (`20260904_001`), consolidated by `20261009_001`, the parkrun/race source
   widening (`20270424_001`), the positive-time filters (`20270706000003`), and
-  the improvement hand-off (`20271104000002`, which changes no candidate).
+  the improvement hand-off (`20271104000002`, which changes no candidate), and
+  the whole-run duration bound (`20271218000002`).
   The live body is the **latest** migration that
   touches the function — read it, don't reconstruct from the originals.
 - **Every candidate time is positive** (`20270706000003`, decisions § 1078).
@@ -71,6 +72,14 @@ retention cron referenced in a comment that was never created.
   embedded-best branches read `>= 0` and are tightened with it. The bound
   belongs here rather than on the column — not having run 5 km in zero seconds
   is a PR-eligibility rule, not a storage rule.
+- **Every whole-run duration is inside the read-side bound** (`20271218000002`,
+  decisions § 2464). The whole-run branch also requires
+  `private.run_duration_in_bound(duration_s)` (`0 <= d < 864000`), so a run
+  holding the #1300 repair's 864000 s placeholder is no candidate: alone in a
+  bracket it would have been that bracket's PR at 240:00:00, and the cap,
+  faster than the out-of-bound value it replaced, would have been logged as an
+  improvement and notified for a run of the last seven days. The embedded-best
+  branches read their own `fastest_*_s` columns and are unaffected.
 - **Maintained by:** statement-level AFTER INSERT/UPDATE/DELETE triggers on
   `runs` (`20270315_001`; per-row until then) calling the refresher once per
   statement per affected `user_id` from the transition tables — a bulk import
@@ -82,7 +91,11 @@ retention cron referenced in a comment that was never created.
   the embedded-best promotion, `20270325_001`, and `activity_type` joined it
   with the run-family filter, `20270514_001` — a re-typed run changes what the
   authoritative query returns, so it has to re-derive), and refreshes both the
-  old and new owner on a `user_id` change. `trigger_award_achievements_runs`
+  old and new owner on a `user_id` change. The duration repair of issue #1300 § 5
+  (`20271218000002` and the job_worker's `duration_repair`, [decisions
+  § 2464](../architecture/decisions.md)) writes only `duration_s`, so both its
+  cap and its track recompute re-derive through this path with no call of
+  their own. `trigger_award_achievements_runs`
   watches `activity_type` for the same reason.
 - **Improvement log + notification:** since `20271104000002` the refresher
   reads the user's bests before its DELETE and hands them to
@@ -495,23 +508,43 @@ matcher over a stored track, which SQL cannot run (decisions § 2392).
   sidecar the run's metadata names for those bytes), scored against
   `global_segments_in_bbox(extent, 50 m)` minus courses whose checkpoints do not
   parse. For each such candidate, the effort row must exist iff the matcher
-  times the run, with that time and start.
+  times the run, with that time and start. A park course that is `closed` is
+  no candidate and its rows are frozen as they were when it closed: no writer
+  inserts, corrects or deletes one (`private.global_segment_course_closed`,
+  `20271219001313`, decisions § 2465), so the contract holds only for the
+  segments that are not closed.
 - **Writers:** the `segment-match` Edge Function, through
   `record_segment_match` (service role), for a `segment_match` job queued by
   `runs_enqueue_segment_match` (a new `track_url`) or
   `runs_track_object_enqueue_segment_match` (the bytes uploaded or rewritten).
   A result for bytes that are no longer stored is refused and the job retried.
-  The web run-detail fallback (`computeGlobalSegmentEffortsForRun`) still
-  inserts missing rows as the owner, never updating or removing one.
-- **Not recomputed on:** a segment's geometry being edited or a new segment
-  being added. That is the launch backfill below, an explicit operator step.
+  The web run-detail fallback (`computeGlobalSegmentEffortsForRun`) reconciles
+  the owner's run the same way, by delete then insert (there is no client
+  UPDATE), when the catalogue grew or the run's matcher stamp is behind. Its
+  writes meet the BEFORE INSERT OR UPDATE trigger
+  `global_segment_efforts_client_bounds` (`20271224000500`, corrected by
+  `20271225000200`), which refuses a client-written effort starting more than
+  60 s before its run or faster than the activity's cap (11 m/s on foot,
+  25 m/s on a ride); the server writer is not held to it. So the fallback can
+  diverge from the authoritative recompute: it screens each effort by the same
+  rule before deleting anything and treats a refused one as no match, and a
+  refusal it did not foresee costs only that row. `segment-match` records
+  those efforts.
+- **Not recomputed on:** a segment's geometry being edited, a new segment being
+  added, or a matcher version change. The park sync queues the backfill for a
+  created or redrawn course; a matcher change ships a one-off ops task that
+  queues it for every active segment not on a closed course
+  (`apps/backend/ops/tasks/20271219001313_rematch_segments_matcher_v3.sql`);
+  anything else is the manual rebuild below. A course reopening is not
+  re-scored either.
 - **Manual rebuild:** one run, `insert into jobs (kind, payload) values
   ('segment_match', jsonb_build_object('run_id', '<run>'))`; one segment over
   all history, `select enqueue_segment_backfill('<segment>')`.
 - **Retention:** both cascade from `runs`, so a deleted run or account takes
   them. `run_track_extents` is location-derived, has no client grant, and is
   not exported (the export carries the track it is derived from).
-- **pgtap:** `segment_match_jobs_test.sql`.
+- **pgtap:** `segment_match_jobs_test.sql`; the closed-course rule in
+  `park_course_boards_test.sql`.
 
 ## Adding a new derived cache
 

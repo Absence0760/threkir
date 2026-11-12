@@ -20,11 +20,15 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'**Antes de la carrera**: el organizador todavía no ha preparado el cronómetro de la carrera.',
-						'**Listo**: el cronómetro está preparado y esperando la salida.',
+						'**Preparada**: el cronómetro está preparado y esperando la salida.',
 						'**En curso**: la carrera está en marcha, con el tiempo transcurrido.',
-						'**Finalizado**: la carrera ha terminado.',
-						'**Cancelado**: el organizador ha cancelado la carrera.',
+						'**Finalizada**: la carrera ha terminado.',
+						'**Cancelada**: el organizador ha cancelado la carrera.',
 					],
+				},
+				{
+					type: 'p',
+					text: 'Una carrera con salida programada muestra **Preparada** con la hora a la que empieza sola. Una carrera con cronometraje propio muestra **Ventana de cronometraje propio** con cuándo se abre y después **Ventana de cronometraje propio abierta** con cuándo se cierra: cada corredor sale cuando cruza la línea de salida.',
 				},
 			],
 		},
@@ -40,6 +44,10 @@ export const translation: GuideTranslation = {
 					id: 'follow-a-race-live',
 					alt: 'Un recorrido en un mapa con corredores, cada uno un punto de color con un breve rastro de su trayecto reciente, y una bandera en la meta.',
 				},
+				{
+					type: 'p',
+					text: 'El mapa también dibuja las líneas de salida y meta de cada recorrido, las que tenía la carrera cuando se preparó.',
+				},
 			],
 		},
 		{
@@ -52,6 +60,10 @@ export const translation: GuideTranslation = {
 				{
 					type: 'p',
 					text: 'No hay una etiqueta aparte de «en pausa». Un corredor que se ha detenido (para atarse un cordón, en un avituallamiento o porque ha pausado su grabación) o que ha perdido la señal simplemente deja de actualizarse. Tras unos 90 segundos sin actualización, su fila se marca como **RETRASADO**. Eso no significa que pase algo malo; a menudo solo indica que no hay señal.',
+				},
+				{
+					type: 'p',
+					text: 'En una carrera con cronometraje propio, los corredores se ordenan según cuánto hace que cruzaron la línea de salida, primero quien lleva más tiempo. Los corredores que aún no tienen tiempo desde la línea de salida aparecen después, en **Aún sin tiempo desde la línea de salida**.',
 				},
 			],
 		},
@@ -98,11 +110,15 @@ export const translation: GuideTranslation = {
 		's0.b2.i2': '120d1d8d969ced75',
 		's0.b2.i3': 'fbe2e397efb8ef5e',
 		's0.b2.i4': '1709d9ad712d85d2',
+		's0.b3': '83dd516ddc912210',
 		's1.heading': 'dc711bb38f5066a7',
 		's1.b0': 'f40d0503826f0955',
+		's1.b1': '1afba2a8fcb03c42',
+		's1.b2': 'fb3cff758e366cf0',
 		's2.heading': '46db515d7f1689a7',
 		's2.b0': '3316e288511685d1',
 		's2.b1': 'cff7f7798a6785c9',
+		's2.b2': '6af38311559d85ee',
 		's3.heading': '7804f7a79a9eee32',
 		's3.b0': '4355700d3a60d89c',
 		's3.b1': 'ea613ba62f6ba84a',
@@ -111,6 +127,5 @@ export const translation: GuideTranslation = {
 		's4.b0.i1': '7cf40c647db03cc3',
 		's4.b0.i2': 'edbbe7f08d1cf63e',
 		's4.b1': '1bb7132a7305e850',
-		's1.b1': '1afba2a8fcb03c42',
 	},
 };

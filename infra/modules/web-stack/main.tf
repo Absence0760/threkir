@@ -98,6 +98,10 @@ locals {
     # 503 unless this is truthy (decisions § 1979), and the Coach links into
     # AI plan edits only when it is. Unset in the sops file means off.
     "AI_PLAN_EDIT_ENABLED",
+    # Server half of PUBLIC_COACH_ASSIST_ENABLED: /api/coach/assist answers 503
+    # unless this is truthy (issue #1215 Phase 4). Unset means off; set it only
+    # after the CISO + counsel sign-off and the DPIA update.
+    "COACH_ASSIST_ENABLED",
   ]
 
   # The two X-Engine-Key credentials the generate-route handler sends. Same

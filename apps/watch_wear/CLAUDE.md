@@ -80,9 +80,13 @@ apps/watch_wear/
             │   ├── SingleFlight.kt          # coalesces concurrent token refreshes (rotating refresh token)
             │   ├── RaceSessionClient.kt     # race-mode REST client: armed/running poll, chosen course, pings, `event_results` upsert
             │   ├── RaceFinish.kt            # finish detector, Kotlin half of the `race_finish` parity pair (30 m zone, 90 % gate, closest approach) + `ServerClockOffset`
-            │   ├── RaceRun.kt               # pure race-mode transitions RunViewModel acts on (Stop, Finish race, bind, host End, device-clock fix stamp, late start)
-            │   ├── RaceResultStore.kt       # DataStore queue of race results owed the server, replayed off the race poll
+            │   ├── RaceRun.kt               # pure race-mode model + transitions RunViewModel acts on (Stop, Finish race, bind, host End, device-clock fix stamp, late start, the result row with its crossings)
+            │   ├── RaceLineTimer.kt         # timing by the lines from the recording's Start (#1307): fix log, detector rebuilt at GO / course, start cue, distance to the start line, undo, the finish line re-armed after an undo and a restart
+            │   ├── RaceResultOutbox.kt      # every event_results write + undo delete for a race, in one order (bank, send, void)
+            │   ├── RaceResultStore.kt       # DataStore: race results owed the server, withdrawn finishes still to delete, the cached race and its course, the kept server clock offset (24 h) and an undone finish (decisions § 2450)
+            │   ├── LineCalibration.kt       # debug builds only: the #1304 line-calibration capture + scoring + CSV, Kotlin half of the phone's `line_calibration.dart` (decisions § 2453)
             │   ├── ui/RunWatchApp.kt        # Compose-for-Wear screens
+            │   ├── ui/LineCalibrationScreen.kt # debug builds only: the line-calibration screen, opened from the pre-run list behind `BuildConfig.DEBUG`
             │   ├── ui/RouteMiniMap.kt       # Polyline + position-dot + track-so-far + raster tiles
             │   ├── ui/TileSource.kt         # MapTiler raster tile fetcher (OkHttp + LRU)
             │   ├── ui/TileLayer.kt          # Compose composable that draws tile bitmaps
@@ -93,7 +97,7 @@ apps/watch_wear/
             │   │   ├── RecordingRepository.kt   # process-singleton StateFlow
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
             │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
-            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.5 forward Kalman distance (shared vectors)
+            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.6 forward Kalman distance (shared vectors)
             │   │   ├── LocationSourceArbiter.kt # receiver-vs-fused arbitration, mirrors the phone's RunRecorder
             │   │   ├── LivePace.kt              # live pace over the estimator's last ~200 m
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
@@ -646,7 +650,7 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   Not yet verified on a device: one run on a Wear watch beside the Garmin,
   checking it saves `location_provider: gps`.
 - **Distance is the shared estimator, not a hop sum.**
-  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.5
+  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.6
   forward filter in `scripts/gps_distance/reference.py` (gate, adaptive R,
   Doppler cross-check and debias, pedometer ZUPT; no smoother —
   [docs/features/gps_distance.md](../../docs/features/gps_distance.md)),
@@ -667,20 +671,32 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   match and the post-run map take only fixes within 30 m (`SourceVerdict.track`): a 30-50 m
   canopy fix moves distance and pace and is stored in the track file flagged
   `"offTrack":true` (`TrackWriter.append(point, distM, offTrack)`), so the
-  server's replay sees every fix the estimator took; the finished run and the
+  server's replay sees every fix the estimator took. The first fix stored
+  after a pause or a source switch closes the estimator's segment is written
+  `"segmentStart":true` (`closeDistanceSegment` sets `markSegmentStart`,
+  `onGps` writes and clears it), so the server replays each segment apart
+  (spec v1.8), and `TrackWriter.segmentCount` counts the segments the file
+  holds into `metadata.distance_segments`, which the server matches against
+  its replay before it reads the gap key; the finished run and the
   checkpoint carry `trackComplete` into `metadata.track_complete`
   (docs/features/gps_distance.md § Stored track). Each point now also carries the optional `accuracyMetres`,
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
   recompute, plus `distM`, the run's credited distance through that fix
   (`TrackWriter.append(point, distM)`, written after the estimator has
   taken it), which splits and moving time measure on (decisions § 1997). Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,
-  when > 0, `distance_step_filled_m`; a run queued or checkpointed by an
-  older hop-summing build carries neither. The stamp is what queues the
+  when > 0, `distance_step_filled_m` with, beside it,
+  `distance_step_over_chord_m` (the estimator's `stepOverChordM`, banked per
+  segment, spec v1.7); a run queued or checkpointed by an older hop-summing
+  build carries neither. The stamp is what queues the
   server's smoother: once the row has its `track_url`, the
   `runs_enqueue_watch_distance_recompute` trigger queues a
   `distance_recompute` job, which replays this track and replaces
   `distance_m` with the smoothed figure (its gaps credited the larger of
-  their chords and the step-filled metres),
+  `distance_step_over_chord_m` and the run-total rule when
+  `distance_segments` matches the replay, otherwise the run-total rule, the
+  larger of their chords and the step-filled metres; each segment is
+  replayed apart from its `segmentStart` fix, so a close's trailing steps
+  are banked whole),
   keeping the wrist's figure as `distance_recorded_m`
   ([gps_distance.md § Server recompute](../../docs/features/gps_distance.md#server-recompute),
   decisions § 1991).

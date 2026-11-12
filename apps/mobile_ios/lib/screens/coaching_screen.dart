@@ -12,8 +12,10 @@ import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
 import '../metrics.dart';
 import '../preferences.dart';
+import '../pro_sellable.dart';
 import '../share_sheet.dart';
 import '../web_base_url.dart';
+import '../widgets/coach_assist_consent_switch.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
@@ -56,11 +58,16 @@ class CoachingScreen extends StatefulWidget {
   /// deploy flag. A test passes it directly.
   final bool? hrPrescription;
 
+  /// Whether to offer the athlete the per-coach AI-assistance consent switch.
+  /// Defaults to the deploy's capability manifest; tests inject an answer.
+  final Future<bool> Function()? loadCoachAssistAvailable;
+
   const CoachingScreen({
     super.key,
     required this.api,
     required this.preferences,
     this.hrPrescription,
+    this.loadCoachAssistAvailable,
   });
 
   @override
@@ -83,11 +90,23 @@ class _CoachingScreenState extends State<CoachingScreen> {
   List<PendingCoachInvite> _pending = const [];
   List<CoachAthleteLink> _coaches = const [];
   List<CoachRosterRow> _roster = const [];
+  bool _coachAssist = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadCoachAssistAvailability();
+  }
+
+  Future<void> _loadCoachAssistAvailability() async {
+    try {
+      final available = await (widget.loadCoachAssistAvailable ??
+          fetchCoachAssistAvailable)();
+      if (mounted) setState(() => _coachAssist = available);
+    } catch (e) {
+      debugPrint('coaching_screen: capability fetch failed: $e');
+    }
   }
 
   Future<void> _load() async {
@@ -582,7 +601,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
                     )),
               )
             else
-              for (final c in _coaches)
+              for (final c in _coaches) ...[
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                   leading: IdentityAvatar(
@@ -599,6 +618,18 @@ class _CoachingScreenState extends State<CoachingScreen> {
                     child: Text(l10n.coachingLeave),
                   ),
                 ),
+                if (_coachAssist)
+                  CoachAssistConsentSwitch(
+                    key: ValueKey('coach-assist-consent-${c.id}'),
+                    api: widget.api,
+                    link: c,
+                    coachName: c.displayName ?? l10n.coachingCoach,
+                    onChanged: (v) => setState(() => _coaches = [
+                          for (final x in _coaches)
+                            x.id == c.id ? x.withAiAssistConsentVersion(v) : x,
+                        ]),
+                  ),
+              ],
           ],
         ),
       ),

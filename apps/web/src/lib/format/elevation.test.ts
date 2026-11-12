@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatElevationIn, formatElevationValue } from './elevation';
+import { formatElevationIn, formatElevationValue, formatStrideLengthIn } from './elevation';
 
 // Mirrored case for case by apps/mobile_android/test/unit_format_elevation_test.dart.
 
@@ -36,4 +36,12 @@ test('a large gain is grouped by the locale (issue #1312)', () => {
 	assert.match(formatElevationIn(3048, 'mi', 'fr'), /^10\s000 ft$/);
 	assert.match(formatElevationIn(10000, 'km', 'fr'), /^10\s000 m$/);
 	assert.equal(formatElevationIn(999, 'km', 'en'), '999 m');
+});
+
+test('stride length reads two decimals in metres or feet', () => {
+	// 1.18 m x 3.28084 = 3.871 ft.
+	assert.equal(formatStrideLengthIn(1.18, 'km', 'en'), '1.18 m');
+	assert.equal(formatStrideLengthIn(1.18, 'mi', 'en'), '3.87 ft');
+	assert.equal(formatStrideLengthIn(1.18, 'km', 'de'), '1,18 m');
+	assert.equal(formatStrideLengthIn(null, 'mi', 'en'), '—');
 });

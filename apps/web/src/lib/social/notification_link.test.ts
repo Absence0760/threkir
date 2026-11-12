@@ -13,6 +13,7 @@ function make(overrides: {
 	achievement_id?: string | null;
 	challenge_id?: string | null;
 	course_alert_id?: string | null;
+	conversation_id?: string | null;
 	event_club_slug?: string | null;
 	club_slug?: string | null;
 }): NotificationLinkInput {
@@ -27,6 +28,7 @@ function make(overrides: {
 			achievement_id: overrides.achievement_id ?? null,
 			challenge_id: overrides.challenge_id ?? null,
 			course_alert_id: overrides.course_alert_id ?? null,
+			conversation_id: overrides.conversation_id ?? null,
 		},
 		event_club_slug: overrides.event_club_slug ?? null,
 		club_slug: overrides.club_slug ?? null,
@@ -91,6 +93,15 @@ test('join requests, approvals and verification updates link to the club home', 
 	}
 });
 
+test('a naming dispute notice links to the disputes page, for either side', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'organiser_dispute', club_slug: 'road-runners' })), '/disputes');
+	assert.equal(notificationLinkFor(make({ kind: 'organiser_dispute' })), '/disputes');
+});
+
+test('a park course report notice links the admin to the report queue', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'park_course_report' })), '/admin/reports');
+});
+
 test('plan kinds link to the plan detail', () => {
 	for (const kind of ['plan_update', 'plan_assigned', 'plan_ai_edit', 'workout_reminder']) {
 		assert.equal(notificationLinkFor(make({ kind, plan_id: 'p3' })), '/plans/p3');
@@ -101,6 +112,14 @@ test('plan kinds link to the plan detail', () => {
 test('message links to the DM thread with the actor', () => {
 	assert.equal(notificationLinkFor(make({ kind: 'message', actor_id: 'u2' })), '/messages/u2');
 	assert.equal(notificationLinkFor(make({ kind: 'message' })), null);
+});
+
+test('a group message opens its group, and an invite the Requests list', () => {
+	assert.equal(
+		notificationLinkFor(make({ kind: 'message', actor_id: 'u2', conversation_id: 'g1' })),
+		'/messages/group/g1',
+	);
+	assert.equal(notificationLinkFor(make({ kind: 'group_invite', actor_id: 'u2', conversation_id: 'g1' })), '/messages?view=requests');
 });
 
 test('club_post links to the club home', () => {

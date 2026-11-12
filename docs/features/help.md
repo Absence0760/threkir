@@ -80,8 +80,9 @@ Titles, summaries, section headings and illustration alt text take no markup at 
 
 - **Account menu → Help.** The sidebar's account popover lists the secondary destinations; it serves the desktop sidebar and the narrow-viewport rail alike.
 - **`<HelpLink route="/the/route/[id]" />`** — "How this works" near a page title: one guide links straight to it, several open a short disclosure list, none renders nothing (and fails the guard). Mount it with a literal route id.
+- **`<HelpLink guide="<id>" />`** — the same link to one named guide, for a part of a page whose guide would be lost in the page's route list: the event editor's **Start and finish lines** section and its **How the race starts** picker, and the Scheduled GO / Self-timed race panel (`choose-how-your-race-starts` for a race director, `run-a-self-timed-race` for a runner). Mount it with a literal guide id.
 - **`<InfoTip guide="<id>" …>`** — adds "Read the guide" after the tip's own text.
-- **Mobile, `openGuide(context, '<id>')`** (`screens/help_screen.dart`) — opens one guide from wherever the decision it explains is made, labelled with the existing `infoTipReadGuide` string: the clubs empty state (`create-a-club`), an `InfoTipButton` with a `guideId`, and for `location-permission` both the onboarding **Location access** page and the pre-run **Allow location all the time** dialog. A guide that explains an OS permission (`location-permission`) has no `routes`, since no web page records a run, so it is reached this way rather than through a *How this works* button.
+- **Mobile, `openGuide(context, '<id>')`** (`screens/help_screen.dart`) — opens one guide from wherever the decision it explains is made, labelled with the existing `infoTipReadGuide` string: the clubs empty state (`create-a-club`), the event screen's Scheduled GO / Self-timed race control card (`choose-how-your-race-starts`) and a runner's self-timed card (`run-a-self-timed-race`), an `InfoTipButton` with a `guideId`, and for `location-permission` both the onboarding **Location access** page and the pre-run **Allow location all the time** dialog. A guide that explains an OS permission (`location-permission`) has no `routes`, since no web page records a run, so it is reached this way rather than through a *How this works* button.
 
 ### Mobile
 
@@ -134,6 +135,8 @@ Most guides are listed by their own `routes`; one is worth naming because its su
 
 - **`park-courses`** (`running`, issue #1313) covers `/parks`, `/parks/[region]/[park]` and `/parks/[region]/[park]/[course]`: what a park course is, checkpoints, seasons in the park's time zone, the Fastest and Most completions boards, and who appears on them. Its last note says a run is checked against park courses when it is opened on the website, which is true until server-side matching ([park_courses.md](park_courses.md), Phase 1) lands; that change must edit the note and re-translate that one string. Translated into all six locales.
 
+**Timing lines** (umbrella #1303, issue #1309). Four guides cover what phases 2, 3 and 5 shipped: `start-and-finish-lines` (organiser, web: derived and organiser lines, the editor, routeless courses, the freeze at Arm, the preflight), `choose-how-your-race-starts` (organiser: Host GO, Scheduled GO, Self-timed window, the times as offsets, the race panel controls, self-timed approval, the starting-soon push), `run-a-self-timed-race` (runner: joining, "This run is my attempt", attempts and approval) and `how-segment-times-are-measured` (runner: segment and park course lines, the fastest pass, alternate laps on a same-line loop, the 35 m circles for a segment without lines, older efforts re-measured on the owner's next web view). `set-up-a-race`, `race-day-for-hosts` and `follow-a-race-live` gained the matching paragraphs. With #1307, `racing-in-a-race` describes timing by the lines (the distance to the start line, the start cue, the 60 % / 90 % coverage, the circle only on Stop, "Not finished? Resume" and a restart re-arming the line) and says the Apple Watch detects no lines; `race-results-explained` covers chip time from the start line, Self-timed's missing gun time and **Re-time from my track** (with a "How this works" link from the re-time panel); `run-a-self-timed-race` ends with "If your phone missed a line" (Finish race for review, or re-time, Apple Watch included). No Learn page: Learn's categories are runner topics, and the help guides are readable signed out (§ 1866).
+
 ## Guards
 
 `apps/web/src/lib/help/help_guides_guard.test.ts` (unit job) fails when:
@@ -146,7 +149,7 @@ Most guides are listed by their own `routes`; one is worth naming because its su
 - any string has stray `*`, an unclosed or unknown `[[…]]`, a raw `<`, or an emoji;
 - a `[[guide:]]` or `related` id names no guide (or the guide itself);
 - a `[[route:]]` or `routes` entry is not a directory under `apps/web/src/routes` holding `+page.svelte`;
-- a `<HelpLink>` has a non-literal route, or a route no guide lists;
+- a `<HelpLink>` has a non-literal route or guide, both or neither, a route no guide lists, or a guide id that names no guide;
 - an `<InfoTip guide=…>` names no guide;
 - a translation's title is over 80 characters, its summary over 200 or more than one sentence, a title / summary / heading carries markup, or a string has bad markup, an emoji, different links (by target, in order) or a different number of `**labels**` from the English it translates;
 - in any shipped locale (`SUPPORTED_LOCALES`), the guide as shown — `localizeGuide`'s merge, English where no translation lines up — renders two equal section headings (the page keys its sections on them, so a duplicate throws `each_key_duplicate`) or two headings sharing an anchor, or a locale's translations directory loads nothing;

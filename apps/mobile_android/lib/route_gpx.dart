@@ -100,12 +100,14 @@ const Map<String, String> _symByKind = {
 
 /// Generate a GPX 1.1 document for a route line plus its course markers.
 /// [coordinates] are `[lng, lat]` pairs (same order as the web `toGpx`).
+/// [trackDesc], when set, is the `<trk>`'s `<desc>`, after its `<name>`.
 String toRouteGpxWithMarkers(
   String name,
   List<List<double>> coordinates,
   List<double> elevations,
   List<RouteGpxMarker> markers, [
   GpxAttribution? attribution,
+  String? trackDesc,
 ]) {
   final waypoints =
       markers.map(_renderWaypoint).whereType<String>().join('\n');
@@ -135,7 +137,7 @@ String toRouteGpxWithMarkers(
 ${gpxAttributionMetadata(attribution)}  </metadata>
 ${waypoints.isNotEmpty ? '$waypoints\n' : ''}  <trk>
     <name>${escapeXmlText(name)}</name>
-    <trkseg>
+${trackDesc != null && trackDesc.isNotEmpty ? '    <desc>${escapeXmlText(trackDesc)}</desc>\n' : ''}    <trkseg>
 ${trackpoints.join('\n')}
     </trkseg>
   </trk>

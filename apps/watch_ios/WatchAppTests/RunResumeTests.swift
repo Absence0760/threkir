@@ -34,7 +34,9 @@ final class RunResumeTests: XCTestCase {
         laps: [LapMark]? = nil,
         distance: Double = 61_000,
         trackFileURL: URL? = nil,
-        trackComplete: Bool? = nil
+        trackComplete: Bool? = nil,
+        stepFilled: Double? = nil,
+        stepOverChord: Double? = nil
     ) -> RunCheckpoint {
         RunCheckpoint(
             id: id,
@@ -49,6 +51,8 @@ final class RunResumeTests: XCTestCase {
             steps: steps,
             laps: laps,
             activityType: RunActivityType.hike.rawValue,
+            distanceStepFilledMetres: stepFilled,
+            distanceStepOverChordMetres: stepOverChord,
             pausedAt: pausedAt,
             hrMeanUngraded: hrMeanUngraded,
             hrCoveredSeconds: hrCoveredSeconds,
@@ -407,6 +411,38 @@ final class RunResumeTests: XCTestCase {
         XCTAssertEqual(wm.finishedRun?.trackComplete, true)
     }
 
+    /// The first fix stored after a continue, and after each pause, starts a
+    /// segment of the track (spec v1.8): the estimator restarted there, so the
+    /// server's replay restarts there too. Only that one fix carries the mark.
+    func testTheFirstFixOfEachSegmentIsStoredMarked() {
+        let (store, cp) = seededRun(points: 3, trackComplete: true)
+        defer { store.clear() }
+        let wm = WorkoutManager()
+        wm.announcer = silentAnnouncer()
+        wm.restoreRun(from: cp, plan: RunResumePlan.make(
+            checkpoint: cp, now: checkpointedAt(cp), workoutSessionSurvived: true
+        ))
+        let now = Date()
+        let step = 2.8 / 111_195
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [
+            fix(lat: 46.01, accuracy: 5, at: now),
+            fix(lat: 46.01 + step, accuracy: 5, at: now.addingTimeInterval(1)),
+        ])
+        wm.pause()
+        wm.resume()
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [
+            fix(lat: 46.02, accuracy: 40, at: now.addingTimeInterval(60)),
+            fix(lat: 46.02 + step, accuracy: 5, at: now.addingTimeInterval(61)),
+        ])
+        wm.stop()
+        var marks: [Bool] = []
+        store.forEachTrackPoint { marks.append($0.segmentStart == true) }
+        XCTAssertEqual(marks, [false, false, false, true, false, true, false],
+                       "the continue's first fix and the resume's, an off-track one included")
+        XCTAssertEqual(wm.finishedRun?.distanceSegments, 3,
+                       "the seeded segment, the continue's and the resume's: what the server's replay counts")
+    }
+
     func testAResumedTrailSkipsAStoredOffTrackFix() {
         let (store, cp) = seededRun(points: 5, offTrackLast: true, trackComplete: true)
         defer { store.clear() }
@@ -432,6 +468,23 @@ final class RunResumeTests: XCTestCase {
         XCTAssertFalse(wm.storedTrackComplete)
         wm.stop()
         XCTAssertEqual(wm.finishedRun?.trackComplete, false)
+    }
+
+    /// A continued run carries the checkpoint's step-over-chord metres on, and
+    /// claims none when an older checkpoint had filled a gap without saying
+    /// how much of it the chords would not have credited (v1.7).
+    func testAContinuedRunKeepsItsStepOverChordMetresOnlyWhenTheCheckpointKnewThem() {
+        for (filled, over, want) in [(104.0, 48.6, 48.6), (104.0, nil, nil), (0.0, nil, 0.0)] as [(Double, Double?, Double?)] {
+            let wm = WorkoutManager()
+            wm.announcer = silentAnnouncer()
+            let cp = checkpoint(stepFilled: filled, stepOverChord: over)
+            wm.restoreRun(from: cp, plan: RunResumePlan.make(
+                checkpoint: cp, now: checkpointedAt(cp), workoutSessionSurvived: false
+            ))
+            wm.stop()
+            XCTAssertEqual(wm.finishedRun?.distanceStepFilledMetres ?? -1, filled, accuracy: 1e-9)
+            XCTAssertEqual(wm.finishedRun?.distanceStepOverChordMetres, want, "filled \(filled), over \(String(describing: over))")
+        }
     }
 
     func testAContinuedRunStopsAsOneRun() {

@@ -136,7 +136,13 @@ For every issue the operator sends, until they say ready:
    branch (`git log origin/<branch>`) and its diff is what was asked, with
    the twin and tests in it. Add one bullet under the PR body's Changes
    (`gh pr edit <pr> --body-file …`; only the main session edits the body,
-   so updates don't race) and tick the Platforms touched boxes. Then tell
+   so updates don't race) and tick the Platforms touched boxes. When the
+   fix came from a GitHub issue, add `Closes #N` to the body in the same
+   edit if the PR fully fixes it; if items stay open, comment on the issue
+   naming the PR and add the `in-flight` label instead (the
+   `/fix-issues` rule). A `Closes #N` in a commit message does not link
+   the issue to the PR; GitHub reads the keyword from the body. Confirm
+   with `gh pr view <pr> --json closingIssuesReferences`. Then tell
    the operator in two or three lines: the cause, the fix, the commit. Relay
    a stop or a question as it is.
 

@@ -10,6 +10,7 @@
 	} from '#lib/core/data.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import RunEditor from '#lib/components/RunEditor.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import GymEditor from '#lib/components/GymEditor.svelte';
 	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -434,24 +435,27 @@
 		</div>
 
 		{#if loadError}
-			<div class="card-elevated empty load-error" role="alert" data-testid="history-load-error">
-				<span class="material-symbols empty-icon" aria-hidden="true">error</span>
-				<h2 class="empty-text">{m('history.loadFailed')}</h2>
-				<p class="empty-hint load-error-detail">{loadError}</p>
-				<button
-					type="button"
-					class="btn btn-primary"
-					data-testid="history-load-error-retry"
-					onclick={() => loadActivities()}
-				>
-					{m('history.retry')}
-				</button>
-			</div>
+			<EmptyState
+				icon="error"
+				tone="danger"
+				title={m('history.loadFailed')}
+				text={loadError}
+				role="alert"
+				data-testid="history-load-error"
+			>
+				{#snippet actions()}
+					<button
+						type="button"
+						class="btn btn-primary"
+						data-testid="history-load-error-retry"
+						onclick={() => loadActivities()}
+					>
+						{m('history.retry')}
+					</button>
+				{/snippet}
+			</EmptyState>
 		{:else if timelineRows.length === 0}
-			<div class="card-elevated empty">
-				<span class="material-symbols empty-icon" aria-hidden="true">inbox</span>
-				<h2 class="empty-text">{m('history.emptyTimeline')}</h2>
-			</div>
+			<EmptyState icon="inbox" title={m('history.emptyTimeline')} data-testid="history-empty" />
 		{:else}
 			<!-- Unified reverse-chronological timeline over the activities view.
 			     Each row taps through to its own detail route; meals have no
@@ -669,55 +673,6 @@
 		.timeline-actions {
 			margin-inline-start: 0;
 		}
-	}
-
-	/* --- Empty --- */
-	.empty {
-		text-align: center;
-		padding: var(--space-2xl) var(--space-md);
-		color: var(--color-text-tertiary);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		max-width: 32rem;
-		margin-inline: auto;
-	}
-	.empty-icon {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 3.25rem;
-		height: 3.25rem;
-		border-radius: 50%;
-		background: var(--color-bg-tertiary);
-		font-size: 1.75rem;
-		color: var(--color-text-secondary);
-		margin-bottom: var(--space-2xs);
-	}
-	.empty .empty-text {
-		margin: 0;
-		font-size: 1.05rem;
-		font-weight: 600;
-		color: var(--color-text);
-		padding: 0;
-	}
-	.empty-hint {
-		margin: 0;
-		font-size: 0.85rem;
-		color: var(--color-text-tertiary);
-		max-width: 28rem;
-	}
-	.load-error .empty-icon {
-		background: rgba(239, 68, 68, 0.12);
-		color: var(--color-danger-text);
-	}
-	.load-error-detail {
-		font-size: 0.78rem;
-		word-break: break-word;
-	}
-	.load-error .btn {
-		margin-top: var(--space-sm);
 	}
 
 	/* .modal-* + .card-elevated classes live in app.css. */

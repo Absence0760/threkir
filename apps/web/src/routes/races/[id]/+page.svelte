@@ -32,6 +32,7 @@
 	} from '#lib/core/data.ts';
 	import { raceCourseSourceLabel, raceSourceLabel } from '#lib/integrations/race_source.ts';
 	import RaceCourseTools from '#lib/components/RaceCourseTools.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import ProvenanceBadge from '#lib/components/ProvenanceBadge.svelte';
 	import CourseAlerts from '#lib/components/CourseAlerts.svelte';
 	import { raceCourseProvenance, raceListingProvenance } from '#lib/social/provenance.ts';
@@ -287,7 +288,7 @@
 	// while that club still vouches for it (decisions § 2406).
 	let courseSource = $derived(
 		race?.course && race.organiserIsOfficial
-			? raceCourseSourceLabel(race.course.source, race.organiser?.name ?? null)
+			? raceCourseSourceLabel(m, race.course.source, race.organiser?.name ?? null)
 			: null,
 	);
 
@@ -348,7 +349,7 @@
 				</p>
 			{/if}
 			<p class="source" data-testid="race-detail-source">
-				{raceSourceLabel(race.provider, race.organiser?.name ?? null)}
+				{raceSourceLabel(m, race.provider, race.organiser?.name ?? null)}
 			</p>
 			{#if !race.is_verified}
 				<span class="unverified">{m('races.unverified')}</span>
@@ -487,6 +488,17 @@
 			onhidecourse={hideCourse}
 		/>
 
+		{#if race.organiser}
+			<div class="dispute-row">
+				<OrganiserDisputeAction
+					targetKind="race_listing"
+					targetId={race.id}
+					targetLabel={race.name}
+					targetClubId={race.organiser.id}
+				/>
+			</div>
+		{/if}
+
 		<section class="section" aria-labelledby="race-runs-heading">
 			<h2 id="race-runs-heading">{m('races.detailYourRuns')}</h2>
 			{#if runsFailed}
@@ -546,6 +558,9 @@
 />
 
 <style>
+	.dispute-row {
+		margin-block: 0.5rem;
+	}
 	.race-page {
 		display: flex;
 		flex-direction: column;

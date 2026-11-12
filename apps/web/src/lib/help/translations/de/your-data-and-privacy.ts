@@ -31,7 +31,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Öffne im Web in den Einstellungen [[route:/settings/privacy|Datenschutz & Teilen]] und wähle eine **Standardsichtbarkeit für neue Läufe**. In der Handy-App ist es **Standard-Datenschutz für Läufe** unter **Voreinstellungen** im Tab **Du**.',
-						'Um einen einzelnen Lauf später zu ändern, öffne ihn und nutze **Öffentlich machen** oder **Privat machen**.',
+						'Um einen einzelnen Lauf später zu ändern, öffne ihn und tippe unter seinem Titel auf **Privat** oder **Öffentlich**. Bevor ein Lauf öffentlich wird, fragen wir nach und zeigen dir, was deine Datenschutzzonen verbergen.',
 					],
 				},
 				{
@@ -101,7 +101,7 @@ export const translation: GuideTranslation = {
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
 		's1.b0.i0': '7b3a2d8b5b822576',
-		's1.b0.i1': '1c68d368acdbf5ae',
+		's1.b0.i1': '8b40e69003586cd6',
 		's1.b1': 'bdd9bb09bf384ad6',
 		's1.b2.i0': 'aab065e45ac34e20',
 		's1.b2.i1': 'af52470fc68dc9fb',

@@ -121,7 +121,7 @@ async function blockFractions(dialog: ReturnType<Page['getByTestId']>) {
 
 async function openEditor(page: Page, runId: string) {
 	await page.goto(`/runs/${runId}`);
-	await page.locator('button[title="Share as image"]').click();
+	await page.locator('button[title="Share image"]').click();
 	const dialog = page.getByTestId('run-share-image-dialog');
 	await expect(dialog).toBeVisible({ timeout: 15_000 });
 	return dialog;

@@ -173,6 +173,21 @@ Deno.test('handler walks every user-content bucket in the mandatory drain', () =
 	);
 });
 
+Deno.test('dm-images is erased row-driven, never prefix-drained', () => {
+	// A direct-message photo a report holds is moderation evidence that
+	// outlives the sender's account (issue #1216). The rows go by cascade and
+	// the worker's dm_image_orphan_sweep erases exactly the objects no row
+	// names; a prefix drain here would erase the held evidence too.
+	assert(
+		!/deletePrefix\([^)]*'dm-images'/.test(SRC) && !/\[[^\]]*'dm-images'[^\]]*\]/.test(SRC),
+		'dm-images must not be prefix-drained: it would delete report-held evidence',
+	);
+	assert(
+		/`dm-images` is deliberately NOT prefix-drained/.test(SRC),
+		'the handler must say why dm-images is absent from the drain',
+	);
+});
+
 Deno.test('handler writes an audit row on every path that can succeed or fail', () => {
 	// Seven recordAudit call sites after the May 2026 closeouts:
 	// ok + vault + reports + jobs + segments + storage + auth.

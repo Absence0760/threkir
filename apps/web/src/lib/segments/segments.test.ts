@@ -10,6 +10,7 @@ import {
 	globalSegmentGeometry,
 	GLOBAL_SEGMENT_MATCHER_VERSION,
 	type GlobalSegmentGeometry,
+	linesChain,
 	assignCompetitionRanks,
 	crownLabel,
 	SEGMENT_AGE_BANDS,
@@ -857,12 +858,26 @@ test('globalSegmentGeometry reads a row\'s lines, and a row missing one value ha
 	assert.equal(globalSegmentGeometry({ waypoints: null, distance_m: 100 }).points.length, 0);
 });
 
-test('a circle match reports matched_by zone, and the matcher version is past the circles-only 1', () => {
+test('a circle match reports matched_by zone, and the matcher version is past the two-pass loop rule of 2', () => {
 	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
 	const eff = computeGlobalSegmentEffort(track, {
 		points: [track[10], track[100]],
 		distance_m: 450,
 	});
 	assert.equal(eff?.matched_by, 'zone');
-	assert.equal(GLOBAL_SEGMENT_MATCHER_VERSION, 2);
+	assert.equal(GLOBAL_SEGMENT_MATCHER_VERSION, 3);
 });
+
+test('linesChain: a loop finishing on its start line, facing within 90 degrees of it, chains its laps', () => {
+	const at = { lat: 37.5, lng: -77.5, halfWidthM: 15 };
+	// Beaver Lake: one point, the finish facing 38 degrees off the start.
+	assert.equal(linesChain({ ...at, bearingDeg: 153.1 }, { ...at, bearingDeg: 191.5 }), true);
+	// Across north: 350 and 20 are 30 degrees apart, not 330.
+	assert.equal(linesChain({ ...at, bearingDeg: 350 }, { ...at, bearingDeg: 20 }), true);
+	// A lollipop finishes facing back the way it started: the runner turns first.
+	assert.equal(linesChain({ ...at, bearingDeg: 48.5 }, { ...at, bearingDeg: 228.5 }), false);
+	// 14 m off is within the start line's reach, 20 m is not.
+	assert.equal(linesChain({ ...at, bearingDeg: 90 }, { ...at, lat: 37.5 + 14 / 111_195, bearingDeg: 90 }), true);
+	assert.equal(linesChain({ ...at, bearingDeg: 90 }, { ...at, lat: 37.5 + 20 / 111_195, bearingDeg: 90 }), false);
+});
+

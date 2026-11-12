@@ -212,4 +212,14 @@ void main() {
     final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [], null);
     expect(xml, contains('  <metadata>\n    <name>Loop</name>\n  </metadata>\n'));
   });
+
+  test('toRouteGpxWithMarkers — a track description is the trk desc, after its name, escaped', () {
+    final xml = toRouteGpxWithMarkers(
+        'Loop', coords3, elevs3, [], null, 'Turn left at <the> "fork" & go');
+    expect(
+        xml,
+        contains('  <trk>\n    <name>Loop</name>\n    <desc>Turn left at &lt;the&gt; &quot;fork&quot; &amp; go</desc>\n    <trkseg>\n'));
+    expect(toRouteGpxWithMarkers('Loop', coords3, elevs3, []),
+        contains('  <trk>\n    <name>Loop</name>\n    <trkseg>\n'));
+  });
 }

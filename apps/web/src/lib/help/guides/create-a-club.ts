@@ -93,5 +93,5 @@ export const guide: Guide = {
 			],
 		},
 	],
-	related: ['invite-members-and-roles', 'recurring-events', 'set-up-a-race', 'import-your-history'],
+	related: ['invite-members-and-roles', 'recurring-events', 'set-up-a-race', 'choose-how-your-race-starts', 'import-your-history'],
 };

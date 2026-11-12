@@ -115,6 +115,7 @@ class RaceFinishTest {
         assertEquals(c["EARTH_RADIUS_M"]!!.jsonPrimitive.double, RaceFinish.EARTH_RADIUS_M, 0.0)
         assertEquals(c["MIN_COVERAGE_WITH_START"]!!.jsonPrimitive.double, RaceFinish.MIN_COVERAGE_WITH_START, 0.0)
         assertEquals(c["START_COMMIT_M"]!!.jsonPrimitive.double, RaceFinish.START_COMMIT_M, 0.0)
+        assertEquals(c["LAP_SHORT_SHARE"]!!.jsonPrimitive.double, RaceFinish.LAP_SHORT_SHARE, 0.0)
         assertEquals(c["GATE_EARTH_RADIUS_M"]!!.jsonPrimitive.double, GATE_EARTH_RADIUS_M, 0.0)
     }
 
@@ -284,6 +285,7 @@ class RaceFinishTest {
                 coveredM = num(c["coveredM"]),
                 courseDistanceM = c.numOrNull("courseDistanceM"),
                 stoppedAtMs = t0 + c["nowMs"]!!.jsonPrimitive.long,
+                lapsMet = c.req("lapsMet").let { if (it is JsonNull) null else it.jsonPrimitive.boolean },
             )
             val expect = c["expect"]!!.jsonObject
             assertEquals(
@@ -411,6 +413,7 @@ class RaceFinishTest {
                 finishGate = gateOf(c.req("finishGate")),
                 mode = if (c["mode"]!!.jsonPrimitive.content == "selfTimed") RaceFinish.StartMode.SELF_TIMED else RaceFinish.StartMode.GUN,
                 goAtMs = if (goS != null && goAfter == null) t0 + goS * 1000L else null,
+                lapCount = c.intOrNull("lapCount"),
             )
             var finalisedAt: Int? = null
             var finish: RaceFinish.Finish? = null
@@ -425,6 +428,12 @@ class RaceFinishTest {
             assertEquals("$name: finalisesAtFix", expect.intOrNull("finalisesAtFix"), finalisedAt)
             assertFinish("$name: finish", expect.req("finish"), finish)
             assertStart("$name: start", expect.req("start"), d.start)
+            val lastCovered = num(c["fixes"]!!.jsonArray.last().jsonObject["coveredM"])
+            assertEquals(
+                "$name: lapsMet",
+                expect.req("lapsMet").let { if (it is JsonNull) null else it.jsonPrimitive.boolean },
+                d.lapsMet(lastCovered),
+            )
             assertEquals(
                 "$name: candidateAtS",
                 expect.longOrNull("candidateAtS"),

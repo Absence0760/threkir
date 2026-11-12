@@ -9,6 +9,9 @@
     "website_url": "https://www.dcr.virginia.gov/state-parks/pocahontas",
     "osm_boundary": "relation/3144509"
   },
+  "release": {
+    "status": "live"
+  },
   "trail_review": {
     "checked_at": "2026-11-09",
     "source_urls": [
@@ -105,7 +108,12 @@
       ],
       "start_node": 3078237896,
       "start_note": "Where the spur from the Beaver Lake trailhead (by the CCC Museum parking) meets the loop.",
-      "checkpoint_count": 3,
+      "route_guide": {
+        "getting_there": "Park at the CCC Museum lot and take the spur from the Beaver Lake trailhead. The course starts where the spur meets the loop.",
+        "ground_checked_at": null
+      },
+      "checkpoint_count": 4,
+      "checkpoint_at_m": [899, 1635, 1955, 2696],
       "published": {
         "distance_mi": 2.3,
         "source": "https://www.dcr.virginia.gov/state-parks/hiking-central",
@@ -164,6 +172,10 @@
         2911685950
       ],
       "start_note": "Start and finish on the lead-in from the boat-ramp parking lot to the Swift Creek Lake footbridge; the loop runs clockwise from the far end of the bridge on the Forest Exploration, Loop Forest and Co-op trails.",
+      "route_guide": {
+        "getting_there": "Park at the boat-ramp lot. The start line is on the path from the lot to the Swift Creek Lake footbridge.",
+        "ground_checked_at": null
+      },
       "checkpoints_per_lap": 3
     },
     {
@@ -216,6 +228,10 @@
         2911685950
       ],
       "start_note": "Start and finish on the lead-in from the boat-ramp parking lot to the Swift Creek Lake footbridge; the loop runs clockwise from the far end of the bridge on the Forest Exploration, Loop Forest and Co-op trails.",
+      "route_guide": {
+        "getting_there": "Park at the boat-ramp lot. The start line is on the path from the lot to the Swift Creek Lake footbridge.",
+        "ground_checked_at": null
+      },
       "checkpoints_per_lap": 3
     },
     {
@@ -368,6 +384,10 @@
         209417825
       ],
       "start_note": "Start and finish on the boat-ramp lot's access road. The loop crosses the Swift Creek Lake footbridge, runs the Forest Exploration, Co-op and Loop Forest trails, then the park fire roads south (Powerline, Dvorak, Bottoms) and back past Beaver Lake. Unnamed OSM connectors on it were mapped 2014-2020; check on the ground.",
+      "route_guide": {
+        "getting_there": "Park at the boat-ramp lot. The start line is on the lot's access road.",
+        "ground_checked_at": null
+      },
       "checkpoints_per_lap": 6
     },
     {
@@ -520,6 +540,10 @@
         209417825
       ],
       "start_note": "Start and finish on the boat-ramp lot's access road. The loop crosses the Swift Creek Lake footbridge, runs the Forest Exploration, Co-op and Loop Forest trails, then the park fire roads south (Powerline, Dvorak, Bottoms) and back past Beaver Lake. Unnamed OSM connectors on it were mapped 2014-2020; check on the ground.",
+      "route_guide": {
+        "getting_there": "Park at the boat-ramp lot. The start line is on the lot's access road.",
+        "ground_checked_at": null
+      },
       "checkpoints_per_lap": 6
     },
     {
@@ -710,6 +734,10 @@
         209417825
       ],
       "start_note": "Start and finish on the boat-ramp lot's access road. The loop crosses the Swift Creek Lake footbridge, runs the Forest Exploration, Co-op and Loop Forest trails, then the park fire roads south (Powerline, Dvorak, Bottoms) and back past Beaver Lake. Unnamed OSM connectors on it were mapped 2014-2020; check on the ground.",
+      "route_guide": {
+        "getting_there": "Park at the boat-ramp lot. The start line is on the lot's access road.",
+        "ground_checked_at": null
+      },
       "checkpoints_per_lap": 6
     }
   ]

@@ -87,7 +87,7 @@ void main() {
     final outcome = await api.saveRunsBatch([
       _run('ok-1', const Duration(minutes: 21, seconds: 34)),
       _run('bad', const Duration(hours: 12333, minutes: 21, seconds: 34)),
-      _run('ok-2', const Duration(hours: 240)),
+      _run('ok-2', const Duration(seconds: kMaxRunDurationS - 1)),
     ]);
 
     expect(outcome.blocked, {'bad': RunPushBlockReason.durationOutOfRange});

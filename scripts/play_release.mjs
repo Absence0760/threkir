@@ -2,7 +2,7 @@
 // Takes a `mobile_android@<version>` bundle from the Play Internal track to
 // production as a staged rollout, and walks that rollout up a fixed ramp, the
 // way an iOS release goes to App Store review and then a 7-day phased release
-// (decisions § 2040, § 2433).
+// (decisions § 2040, § 2478).
 //
 // Commands:
 //

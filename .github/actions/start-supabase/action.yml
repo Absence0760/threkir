@@ -2,8 +2,9 @@ name: Start local Supabase stack
 description: >
   Boot the local Supabase stack (applies migrations + seed.sql on the
   pinned 2.84.2 CLI, with the edge runtime alone pinned to v1.77.1 for the
-  SIGBUS fix -- start_stack.sh incident 8) with a port-clean retry, then
-  wait until its sidecars actually serve.
+  SIGBUS fix -- start_stack.sh incident 8) with a port-clean retry, shorten
+  kong's upstream keep-alive so no upstream can reset a connection kong
+  still holds, then wait until its sidecars actually serve.
 
   Why a composite action rather than six inline copies: the start step
   is duplicated across every stack-using job (parity-types, schema
@@ -44,6 +45,14 @@ runs:
       shell: bash
       working-directory: apps/backend
       run: bash "$GITHUB_ACTION_PATH/start_stack.sh"
+
+    # Before the readiness probes, so they are the first traffic through the
+    # reloaded kong. tune_kong_keepalive.sh's header has the incident (run
+    # 35655765654) and the measurements; its test drives it with a stub
+    # docker on PATH.
+    - name: Keep kong's upstream keep-alive under every upstream's
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/tune_kong_keepalive.sh"
 
     # The probe loop + its forensics live in wait_for_sidecars.sh rather
     # than inline here so they can be unit-tested (wait_for_sidecars.test.mjs

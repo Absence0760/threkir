@@ -74,4 +74,37 @@ test.describe('/messages — drafts are per conversation', () => {
 		await expect(page).toHaveURL(new RegExp(`/messages/${USER_C_PRO.id}$`));
 		await expect(composer).toHaveValue(secret);
 	});
+
+	test('text typed while a send is in flight stays in the composer', async ({ page }) => {
+		const stamp = Date.now();
+		const sent = `slow one ${stamp}`;
+		const meanwhile = `typed meanwhile ${stamp}`;
+		await page.goto(`/messages/${USER_B.id}`);
+		const composer = page.locator('.composer textarea');
+		await expect(composer).toBeVisible({ timeout: 15_000 });
+
+		let release!: () => void;
+		const held = new Promise<void>((r) => (release = r));
+		await page.route('**/rest/v1/direct_messages*', async (route) => {
+			if (route.request().method() === 'POST') await held;
+			await route.continue();
+		});
+		try {
+			await composer.fill(sent);
+			await page.getByRole('button', { name: 'Send', exact: true }).click();
+			await composer.fill(meanwhile);
+			release();
+			await expect(page.getByTestId('dm-bubble').filter({ hasText: sent })).toBeVisible({ timeout: 10_000 });
+			// The send has settled once the button is live again with text in the
+			// composer; by then its success handler has run.
+			await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeEnabled();
+			await expect(composer).toHaveValue(meanwhile);
+		} finally {
+			await getAdminClient()
+				.from('direct_messages')
+				.delete()
+				.eq('sender_id', USER_A.id)
+				.eq('body', sent);
+		}
+	});
 });

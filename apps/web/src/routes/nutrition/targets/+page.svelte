@@ -1,5 +1,6 @@
 <script lang="ts">
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -243,14 +244,18 @@
 				</ul>
 			</section>
 		{:else}
-			<section class="card-elevated empty-card" data-testid="targets-empty">
-				<span class="material-symbols empty-icon" aria-hidden="true">straighten</span>
-				<h2>{m('nutrition.targets.emptyTitle')}</h2>
-				<p>{m('nutrition.targets.emptyBody')}</p>
-				<a class="btn btn-primary" href="/settings/body#body-metrics" data-testid="targets-empty-cta">
-					{m('nutrition.addBodyMetrics')}
-				</a>
-			</section>
+			<EmptyState
+				icon="straighten"
+				title={m('nutrition.targets.emptyTitle')}
+				text={m('nutrition.targets.emptyBody')}
+				data-testid="targets-empty"
+			>
+				{#snippet actions()}
+					<a class="btn btn-primary" href="/settings/body#body-metrics" data-testid="targets-empty-cta">
+						{m('nutrition.addBodyMetrics')}
+					</a>
+				{/snippet}
+			</EmptyState>
 		{/if}
 
 		<section class="card-elevated defaults-card">
@@ -503,26 +508,6 @@
 
 	.label-text {
 		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-	}
-
-	.empty-card {
-		text-align: center;
-	}
-
-	.empty-card h2 {
-		margin: var(--space-sm) 0 0.3rem;
-		font-size: 1.1rem;
-	}
-
-	.empty-card p {
-		margin: 0 0 var(--space-md);
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-	}
-
-	.empty-icon {
-		font-size: 2rem;
 		color: var(--color-text-secondary);
 	}
 

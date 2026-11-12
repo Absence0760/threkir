@@ -9,6 +9,7 @@
  */
 
 import { toRouteGpxWithMarkers, type GpxAttribution } from '../routes/route_gpx.ts';
+import { routeGuideEnglish, type RouteGuide } from './route_guide.ts';
 
 export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'] as const;
 export type ParkAgency = (typeof PARK_AGENCIES)[number];
@@ -24,6 +25,19 @@ export type GeometrySource = (typeof GEOMETRY_SOURCES)[number];
 
 export const COURSE_DIFFICULTIES = ['easy', 'moderate', 'hard'] as const;
 export type CourseDifficulty = (typeof COURSE_DIFFICULTIES)[number];
+
+/**
+ * When an organised group regularly uses a course's paths
+ * (`park_courses.shared_use`, decisions § 2460). A key, never free text, so
+ * the give-way note rendered from it names no one.
+ */
+export const SHARED_USES = ['saturday_morning_group'] as const;
+export type SharedUse = (typeof SHARED_USES)[number];
+
+/** Reads `park_courses.shared_use`; null for no shared use or a value this client does not know. */
+export function parseSharedUse(raw: unknown): SharedUse | null {
+	return typeof raw === 'string' && (SHARED_USES as readonly string[]).includes(raw) ? (raw as SharedUse) : null;
+}
 
 export interface CourseCheckpoint {
 	lat: number;
@@ -135,6 +149,15 @@ export function courseIsCountable(status: string): boolean {
 	return status === 'open' || status === 'seasonal';
 }
 
+/**
+ * Whether the course page offers the way round: Navigate, the GPX and the
+ * route guide. A closed course offers none of them, so nothing reads as an
+ * invitation to run it while the park has it shut.
+ */
+export function courseOffersWayfinding(status: string): boolean {
+	return status !== 'closed';
+}
+
 /** Courses longer than this carry the long-course notice. */
 export const LONG_COURSE_THRESHOLD_M = 15000;
 
@@ -232,15 +255,18 @@ export function courseAttribution(
 
 /**
  * The GPX a course page downloads: the course line, one `<wpt>` per
- * checkpoint in order (so a watch shows the points a run must pass), and the
- * geometry credit in `<metadata>`. A checkpoint list that could not be read
- * (null) writes no waypoints rather than a partial set.
+ * checkpoint in order (so a watch shows the points a run must pass), the
+ * geometry credit in `<metadata>`, and the route guide as the track's
+ * `<desc>`, in canonical English and led by whether it has been checked on
+ * the ground. A checkpoint list that could not be read (null) writes no
+ * waypoints rather than a partial set.
  */
 export function parkCourseGpx(input: {
 	name: string;
 	waypoints: readonly { lat: number; lng: number; ele?: number | null }[];
 	checkpoints: readonly CourseCheckpoint[] | null;
 	attribution: GpxAttribution | null;
+	guide?: { guide: RouteGuide; checkedAt: string | null } | null;
 }): string {
 	return toRouteGpxWithMarkers(
 		input.name,
@@ -254,6 +280,7 @@ export function parkCourseGpx(input: {
 			meta: {},
 		})),
 		input.attribution,
+		input.guide ? routeGuideEnglish(input.guide.guide, input.guide.checkedAt).join('\n') : null,
 	);
 }
 
@@ -296,8 +323,12 @@ export function recapParkSummary(rows: readonly RecapParkRow[]): RecapParkSummar
 
 /** A park course time on one run, as `run_park_course_times` returns it. */
 export interface RunParkCourseTime {
+	effort_id: string;
 	course_name: string;
+	course_slug: string;
 	park_name: string;
+	park_slug: string;
+	region_code: string;
 	time_seconds: number;
 	season: number;
 	season_rank: number | null;

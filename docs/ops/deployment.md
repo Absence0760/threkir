@@ -64,7 +64,7 @@ Cross-service operator runbooks:
                    ├── Auth (email + Google + Apple)
                    ├── Storage (runs/, route-files/, run-photos/)
                    ├── Realtime
-                   ├── Edge Functions (parkrun-import, refresh-tokens,
+                   ├── Edge Functions (refresh-tokens,
                    │                   strava-import, strava-webhook,
                    │                   revenuecat-webhook, delete-account,
                    │                   export-data)
@@ -259,7 +259,7 @@ The matrix of "what lives where":
 | Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`) |
 | iOS distribution `.p12` + provisioning profile | Apple Developer | GitHub Secrets (`IOS_BUILD_CERTIFICATE_BASE64` etc.) |
 | Wear OS upload keystore | We generate once | GitHub Secrets (`WATCH_WEAR_KEYSTORE_BASE64`) |
-| Play `service-account.json` | Google Cloud | GitHub Secrets (`PLAY_SERVICE_ACCOUNT_JSON`) on `production`, and a copy on the reviewer-less `play-rollout` environment restricted to `main`, which `play-rollout.yml` reads daily to widen a staged production rollout ([decisions § 2433](../architecture/decisions.md)) |
+| Play `service-account.json` | Google Cloud | GitHub Secrets (`PLAY_SERVICE_ACCOUNT_JSON`) on `production`, and a copy on the reviewer-less `play-rollout` environment restricted to `main`, which `play-rollout.yml` reads daily to widen a staged production rollout ([decisions § 2478](../architecture/decisions.md)) |
 | App Store Connect `.p8` API key | Apple Developer | GitHub `production` environment secret `APP_STORE_CONNECT_API_PRIVATE_KEY` (the raw `.p8` text); backed up in the estate |
 | Sign-in-with-Apple `.p8` + the OAuth client secret it signs | Apple Developer | The `.p8` in the estate (`siwa_key_p8`), the Supabase EF env (`APPLE_PRIVATE_KEY`, for revocation) and the GitHub `apple-secret-rotation` environment (`APPLE_SIWA_PRIVATE_KEY`). The derived ES256 JWT lives only in the Supabase Apple provider; `rotate-apple-client-secret.yml` re-signs it on the 1st of every month, because Apple refuses one older than six months ([`apple_provisioning.md` § 9](apple_provisioning.md), [decisions § 1824](../architecture/decisions.md)) |
 
@@ -289,12 +289,12 @@ Until step 4 lands, treat the secret as compromised-if-logs-are: the channel is 
 
 ---
 
-## Merge gates — what protects `main`, and the one scanner that does not
+## Merge gates — what protects `main`, and the scanners that do not
 
 Every deploy starts with a merge, so the merge gate is the first production
 control. Branch protection on `main` requires **exactly one status context**:
 `CI gate`, the aggregator job in `.github/workflows/ci.yml`. It waits on the
-other 40 jobs in that file and fails if any of them reports anything but
+other 41 jobs in that file and fails if any of them reports anything but
 success or skipped.
 
 `build-mobile-ios` joined the required set on 2026-09-20. It compiles
@@ -367,8 +367,9 @@ way a hand-maintained duplicate does -- a name here that the register has
 dropped, or an entry there this list never mentions, fails `workflow-lint`.
 
 - `security.yml` -- CodeQL's `analyze` declares no severity threshold, so a
-  fold would gate on the analysis completing rather than on what it found. The
-  section below is entirely about this one.
+  fold would gate on the analysis completing rather than on what it found. A
+  CodeQL finding gates through the code-scanning ruleset instead, which the
+  section below is about.
 - `pr-title-lint.yml` -- it triggers on `edited`, which is how a corrected
   title re-lints. `ci.yml` carries no `types:` and deliberately not that one,
   since `edited` rebuilds every job on a description typo.
@@ -392,12 +393,20 @@ dropped, or an entry there this list never mentions, fails `workflow-lint`.
   (every lockfile) report to code scanning and the job summary and exit clean
   on a finding, so a fold would gate on the scanners completing, which an OSV
   database or GitHub API outage can stop, rather than on what they found.
-  Blocking on a finding is a later policy change, after the baseline is fixed
-  and the CISO / Security Analyst sign off, made through the code-scanning
-  ruleset ([§ 2412](../architecture/decisions.md)).
+  A **zizmor** finding gates through the code-scanning ruleset, beside CodeQL
+  (section below, [§ 2452](../architecture/decisions.md)). **osv-scanner stays
+  advisory**: its SARIF results carry no line region, so GitHub files every one
+  at line 1 of the lockfile, and merge protection counts only an alert whose
+  lines are all in the PR diff. Required, it would almost never block on a real
+  finding but would block every PR whenever its upload went missing. The
+  dependency gate is instead `ci.yml`'s `dependency-advisories` job, which
+  diffs the PR against its base (section below,
+  [§ 2412](../architecture/decisions.md), [§ 2452](../architecture/decisions.md),
+  [§ 2457](../architecture/decisions.md)).
 
 The register carries each reason in full; the list above is the operator's
-index into it. All six go red on a finding and the PR merges anyway, so a red
+index into it. Apart from the CodeQL and zizmor findings the ruleset blocks on,
+all of them go red on a finding and the PR merges anyway, so a red
 row from any of them is read rather than waited for. The root `CLAUDE.md` says
 the same about `pr-title-lint.yml`'s `lint title` in the words a contributor
 meets it in, and rule 8 pins that sentence too.
@@ -415,17 +424,109 @@ red row and fixed with a retitle; that is the trade
 ([§ 1585](../architecture/decisions.md)).
 
 
-### CodeQL is the exception, and it is a repo setting
+### `dependency-advisories`: a PR fails only on vulnerable packages it introduces
 
-`security.yml`'s four CodeQL analyses and two Trivy jobs are **not** in the
-gate. Since 2026-10-14 a CodeQL **finding** blocks the merge anyway, through the
-repository ruleset **Code scanning gate** on the default branch (id `25104920`):
-it requires code scanning results from the `CodeQL` tool and refuses the merge
-when the PR introduces a security alert of **high or higher** or any alert at
-**error** level; lower-severity notes do not block. Repository admins can
-bypass it, which is the escape hatch for a CodeQL outage -- the alternative,
-flipping the ruleset to *evaluate*, keeps the record without the lock
-([§ 1908](../architecture/decisions.md)). The required status-check set is still
+The `dependency-advisories` job in `ci.yml` is in `CI gate`'s `needs:`, so it
+blocks a merge like any other job there
+([§ 2457](../architecture/decisions.md), issue #1366). It runs
+`scripts/check_dependency_advisories.mjs` with the same sha256-pinned
+osv-scanner as `supply-chain-scan.yml` and `--offline-vulnerabilities`.
+
+**What it blocks on.** On a pull request it scans the merge commit and its
+first parent (the base branch tip) against one OSV database download, and fails
+on an advisory present at the head and absent at the base, at **CVSS 7.0 or
+higher**. The match is on ecosystem, package and advisory id, not the
+version, so an advisory already on `main` never blocks an unrelated PR, and
+bumping an advised package to a release the same advisory still covers does not
+block either. A package with no advisory at the base that carries one at the
+head is introduced, at any version. The score is the highest CVSS
+base score available: v3 vectors are scored by the script, v4 is taken from
+osv-scanner's own computed score, and a GitHub `HIGH` or `CRITICAL` label is
+the fallback. An advisory with no score at all is listed in the job summary
+and does not fail. A PR that changes no lockfile, manifest, `osv-scanner.toml`
+or the gate's own files is not scanned, and passes.
+
+**Push to `main`.** Report only: the summary lists every advisory at HEAD and
+nothing fails on a finding. It does fail if osv-scanner read a file the
+script's `DEPENDENCY_INPUT` pattern does not cover, because a PR changing only
+that file would skip the scan; add the basename there. `ci.yml` has no
+schedule; the weekly scan is `supply-chain-scan.yml`, still advisory.
+
+**Outage: re-run, never wait.** An osv-scanner failure (exit outside 0, 1 or
+128, usually an OSV database download) is retried once, then the job goes red
+with an `::error::` saying the scan did not complete and to **re-run the job**.
+A failed binary download says the same. That red is not a finding, and a
+re-run is the fix. A sha256 mismatch on the binary says not to re-run past it.
+There is no merge-box bypass: `CI gate` is a required check under branch
+protection, enforced for admins, and the ruleset bypass in condition (c) of the
+next section covers only the Code scanning gate. For a hotfix during an outage:
+
+1. A PR that changes no lockfile or manifest is not scanned, so it merges
+   normally. Most hotfixes are this case.
+2. A PR with a dependency change: re-run the job. If the outage persists, split
+   the dependency change into its own PR so the code fix merges alone.
+3. Last resort: the owner removes `CI gate` from branch protection, merges,
+   restores it immediately, and records on the PR who did it, why, the failing
+   run, and the time protection was restored.
+
+**Ignoring an advisory.** When no fixed release exists, add an
+`[[IgnoredVulns]]` entry to the `osv-scanner.toml` beside the lockfile, with
+the advisory `id` (never a package), a `reason` that states the drop
+condition, and an `ignoreUntil` review date ([§ 2422](../architecture/decisions.md)).
+The entry is part of the PR's diff, and the job summary lists it as a waiver
+the PR adds. An entry missing any of the three fails the PR that edits the
+file. Once `ignoreUntil` passes, osv-scanner reports the advisory again. A PR
+that changes a lockfile the expired entry covers then fails until someone
+re-reads the advisory and either fixes the dependency or renews the date with a
+reason. Every other PR gets a warning. Entries within 30 days of expiry warn.
+A PR that adds an entry, or changes an entry's `ignoreUntil`, fails if that
+date is more than 180 days after the run date: renew the waiver closer to its
+expiry, with a reason, rather than dating it far out. Entries the PR leaves
+unchanged or removes are not held to the cap.
+
+**Pre-merge checklist (#1359).** Making this job required changes the merge
+gate (SOC 2 CC8.1). **#1359 does not merge until the owner's sign-off on this
+gate is recorded on #1097**, through its own agent memo. The job is built and
+wired now. The sign-off is the condition on merging it, not on writing it.
+
+### CodeQL and zizmor are the exception, and it is a repo setting
+
+`security.yml`'s four CodeQL analyses and two Trivy jobs, and
+`supply-chain-scan.yml`'s zizmor job, are **not** in the gate. A **finding**
+from CodeQL (since 2026-10-14, [§ 1908](../architecture/decisions.md)) or from
+zizmor (since 2026-11-10, [§ 2452](../architecture/decisions.md)) blocks the
+merge anyway, through the repository ruleset **Code scanning gate** on the
+default branch (id `25104920`). It requires code scanning results from both the
+`CodeQL` and the `zizmor` tool, each at `alerts_threshold: errors` and
+`security_alerts_threshold: high_or_higher`, and refuses the merge when the PR
+introduces a security alert of **high or higher** or any alert at **error**
+level on lines the PR changed; lower-severity warnings and notes do not block.
+zizmor sets no `security-severity` and maps its High findings to `error`, so for
+zizmor only High findings block. osv-scanner is deliberately not in the ruleset
+(see its bullet above). Repository admins can bypass the ruleset -- the
+alternative, flipping it to *evaluate*, keeps the record without the lock.
+
+**Conditions the zizmor gate was approved under** ([§ 2452](../architecture/decisions.md)):
+
+- (a) A throwaway draft PR with a zizmor High finding in its diff shows the
+  merge as blocked; the PR is then closed and its branch deleted.
+- (b) The next real PR's merge box lists the zizmor results as satisfied.
+  A required tool whose analysis has not uploaded counts as in progress and
+  the merge waits with no timeout; fork PRs hit this, since their upload is
+  skipped.
+- (c) **If the zizmor (or CodeQL) analysis is missing, re-run the workflow.
+  Bypass only for a hotfix, and record every bypass on the PR** (who, why, and
+  the run that failed to upload).
+- (d) **Monthly, review the ruleset's version history
+  (`gh api repos/Absence0760/threkir/rulesets/25104920/history`) and its rule
+  insights for bypasses (`.../rulesets/rule-suites`)**, against the bypass
+  records on the PRs. The owner is the only admin, so this review is the
+  compensating control for the segregation-of-duties gap.
+- (e) A diff-aware dependency gate (new advisories in the head only, CVSS
+  >= 7.0) is a separate follow-up with its own sign-off. It is now the
+  `dependency-advisories` job (section above).
+
+The required status-check set is still
 exactly `CI gate`. Before that ruleset, a CodeQL alert did not block a merge,
 and the reason why is kept below because it is why the gate is a ruleset and
 not a status check. The
@@ -437,10 +538,10 @@ of them is a severity threshold (re-read against the action's own `action.yml`
 it would re-key every analysis in the Security tab, because the action derives
 its analysis key from the *run's* workflow path.
 
-What actually gates a CodeQL finding is a repo setting, and only a repo
-setting -- the ruleset above. In **Settings -> Rules -> Rulesets** it is the
-**code scanning results** requirement with the `CodeQL` tool at the thresholds
-stated there. Leave the required *status check* set at exactly
+What actually gates a CodeQL or zizmor finding is a repo setting, and only a
+repo setting -- the ruleset above. In **Settings -> Rules -> Rulesets** it is
+the **code scanning results** requirement with the `CodeQL` and `zizmor` tools
+at the thresholds stated there. Leave the required *status check* set at exactly
 `CI gate`; do **not** add the four `analyze` job names to it as a substitute,
 because that gates on the scan running rather than on what it found. Adding
 them is still worth doing if the worry is a scanner that silently stops
@@ -764,6 +865,28 @@ The server-side sweep of route-photo bytes no `route_photos` row references ([re
 
 A linked coach's clipped view of the athlete's run map ([coach_roster.md § Coach run map](../features/coach_roster.md#coach-run-map-decisions--1968), decisions § 1968) ships closed: no migration writes the `coach_run_map` row of `private.feature_flags`, so a coach keeps run rows and stats only, as before. Open it only after the CISO / Security Analyst has reviewed the `coached_runs` view and the coach branch of `clip-public-track` — then add `"coach_run_map": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR; the next `backend@*` release (or a Release Backend dispatch from `main`) applies it and reports `created` / `updated` in its step summary. Closing it again is the same edit with `"enabled": false`; both clients stop drawing the map and the view empties at once.
 
+### Group conversations — after the DPIA, the privacy notice and the owner's sign-off
+
+Group conversations (issue #1365, migrations `20271216000001`–`…10`, [group_messages.md](../features/group_messages.md)) ship closed: no migration writes the `group_messages` row of `private.feature_flags` (`seed.sql` opens it for local and CI), so `create_group_conversation`, `invite_to_group`, `accept_group_invite`, the group roles, rename and remove answer 0A000, a group send is refused, and a group message is readable only by its sender. Open it only after security memo condition C12 is met (**docs done 2026-11-10, owner sign-off pending at flag-open**): a DPIA section for group messaging in [dpia.md](../compliance/dpia.md), a `/privacy` update (groups, and that an export carries only the subject's own group messages), the group rows in [retention.md](../compliance/retention.md) (done in slice 1), both audit command lists (done in slice 1), and the owner's sign-off recorded on #1097. **A 30-day privacy-change notice comes first (owner decision, 2026-11-11):** the notice that group conversations are coming, with the `/privacy` change it brings, goes out to every user at least 30 days before the flag opens, and the flag opens no earlier than 30 days after the notice's send date, recorded with the sign-off on #1097. Then add `"group_messages": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. Closing it again hides every group message from everyone but its sender; leaving and unsending keep working. **Also before opening (slice 2, [decisions § 2463](../architecture/decisions.md)):** the mobile release carrying the group surfaces (slice 3, [decisions § 2468](../architecture/decisions.md)) must be live in both stores, since an older build has no group thread, opens a group push as a 1:1 with a partner named `group` and a group notice as a 1:1 with its sender; and the job worker running in prod must be the release that selects `notifications.conversation_id` (migration `20271217000001`), or a group message goes out with the 1:1 "direct message" copy and the inbox link. Web needs no extra step: with the flag closed `dm_threads()` and `group_invites()` list no group and `group_messages_enabled()` hides every surface.
+
+### Photos in direct messages — after the CISO / Security Analyst reviews the image path
+
+Photos in direct messages (issue #1216, migration `20271213121604`, [direct_messages.md § Photos](../features/direct_messages.md#photos)) ship closed: no migration writes the `dm_images` row of `private.feature_flags` (`seed.sql` opens it for local and CI), so `create_dm_image_upload` answers 0A000, the INSERT policy refuses an `image_id`, and neither client offers the attach button. Before opening it: (1) the CISO / Security Analyst reviews the path end to end — the client re-encode, the owner-only upload path, the worker's decode-and-re-encode (no metadata survives, 40-megapixel decode guard), the read policy that admits only the re-encoded copy, 10-minute signed URLs, and the row-driven erasure that keeps a report-held photo; (2) the job worker running in prod is the release that handles `dm_image_process` and `dm_image_orphan_sweep` (otherwise photos stay "Preparing" and deleted bytes wait for a worker that never comes); (3) the Privacy Policy names photos in messages and how long they are kept (retention.md). Then add `"dm_images": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. Closing it again is the same edit with `"enabled": false`; photos already sent stay readable and are erased on their normal schedule.
+
+### Share with coach — after the CISO / Security Analyst confirms the AI labelling
+
+An athlete sharing paragraphs of an AI Coach answer into their coach's conversation (issue #1215 Phase 3, migration `20271210001215`, [direct_messages.md](../features/direct_messages.md)) ships closed: no migration writes the `coach_share` row of `private.feature_flags` (`seed.sql` opens it for local and CI), so `share_coach_message` answers 0A000 and neither client offers "Share with coach". Nothing new goes to Anthropic. Open it only after the CISO / Security Analyst confirms that the card's labelling meets EU AI Act Art. 50 (the AI avatar, "AI Coach answer" and the AI tag on both sides and on the inbox preview; the text drawn as typed blocks, never HTML) — then add `"coach_share": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. Closing it is the same edit with `"enabled": false`; cards already sent stay in their conversations.
+
+### Coach assistant — after the CISO + counsel sign-off and the DPIA update
+
+The coach assistant (issue #1215 Phase 4, migrations `20271210001217` and `20271210001219`, [coach_roster.md](../features/coach_roster.md#coach-assistant-issue-1215-phase-4)) sends an athlete's messages with their coach, plan and recent runs to Anthropic under the coach's account. **Release gate first:** migration `20271210001219` makes AI disclosure v7 current, so the backend, web and mobile releases that carry it ask every user to accept the v7 copy (with the coach-assistant bullet) whatever the flags say; counsel / CISO sign-off on that copy gates those releases. Then the feature itself ships with both halves of its flag unset: `PUBLIC_COACH_ASSIST_ENABLED` (web build, under `web_env` in `prod_config.json`, needs `PUBLIC_COACH_ENABLED`) and `COACH_ASSIST_ENABLED` (the coach Lambda's sops `coach_config_keys`, applied by Terraform). Before either is set:
+
+1. CISO + counsel sign off on the processing: the athlete's per-link consent copy (`coachAssist.consent*`), whether that consent must also meet Art. 9(2)(a) for health mentioned in free-text messages, and the v7 AI-disclosure bullet for coaches (`coachPage.consentBulletCoachAssist`).
+2. The DPIA section ([dpia.md § Coach assistant](../compliance/dpia.md#coach-assistant-issue-1215-phase-4)) is completed and signed.
+3. The [sub-processor changelog](../compliance/sub-processor-changelog.md) entry is published and its 30-day notice has run.
+
+The v7 disclosure copy itself is **not** behind the flag: migration `20271210001219` makes v7 current, so the web and mobile releases that carry it show the new bullet and ask v1-v6 holders to accept v7 in Settings whatever the flag says. The v7 copy sign-off therefore gates those releases, as § "AI features beside the Coach" records for v3-v5.
+
 ### Safety-contacts live audience — after the CISO and counsel reviews
 
 A live share that runs on the runner's confirmed safety contacts only, with no public flip ([safety.md § Safety-contacts-only audience](../features/safety.md#safety-contacts-only-audience-2026-10-15-decisions-1964), decisions § 1964 – § 1966), ships closed: no migration writes the `safety_audience` row of `private.feature_flags` (`seed.sql` opens it for local and CI only), so every client keeps the old explicit, public live share. Opening it also turns the automatic live share on by default for a runner who armed an overdue window or the off-route alert (§ 1965), so the reviews cover that default too. Order, from safety.md's checklist:
@@ -808,9 +931,22 @@ The CTL/ATL/TSB direction gate on the adaptive re-plan (decisions § 144, § 197
 
 The "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976) is built on web and mobile and off. Off, neither surface reads a body weight, the toggle is hidden, and the flat fluid rate stands whatever `?bw=1` a link carries. Flip `PUBLIC_WEIGHT_FLUID_ENABLED` (web build, under `web_env` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md)) and `WEIGHT_FLUID_ENABLED` (the mobile dotenv, [apps/mobile_android/deployment.md](../../apps/mobile_android/deployment.md)) together, only after its [pre-deploy checklist](../features/race_fueling_plan.md) item lands: the CISO / counsel review of a new Art 9 use of body weight against the health-data consent copy. If the review finds the consent copy lists its uses exhaustively, fuelling is added to it before the flip.
 
-### Upcoming parkruns — after parkrun's written permission
+### Retired scraper functions and secrets
 
-The parkrun leg of `race-listings-sync` and `race-listings-sweep` (decisions § 1958) is off unless the function secret `PARKRUN_EVENTS_ENABLED` is the literal `true`; off, the sweep makes no parkrun request. Get parkrun's written permission to list its events (issue #1148 step 1), land whatever it asks for (attribution, link wording; see the [followups](../product/followups.md) entry), then add `"PARKRUN_EVENTS_ENABLED": { "enabled": true, "signoff": "<link to parkrun's permission>" }` to `function_env` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR; the next backend release sets the function secret with `supabase secrets set` and reports `set` / `unchanged`. It rides the RunSignUp sweep below, so that sweep must be armed first. The same edit with `"enabled": false` turns the leg off again.
+[decisions § 2467](../architecture/decisions.md) removed every integration that scraped a third party's website: the `parkrun-import` Edge Function, the parkrun events leg of `race-listings-sync` / `race-listings-sweep`, and the UltraSignup results leg of `race-results-import`. Removing the code does not remove what is deployed: `supabase functions deploy` adds and updates a function but never deletes one, and nothing unsets a secret. So [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) declares them retired — `retired_functions: ["parkrun-import"]` and `retired_function_env: ["PARKRUN_EVENTS_ENABLED", "PARKRUN_USER_AGENT", "ULTRASIGNUP_RESULTS_ENABLED"]` — and the backend release that carries this change retires them automatically: the production sync's **Retired Edge Functions and secrets** stage runs after Deploy Edge Functions in `release-backend.yml`, lists what is deployed or set, and deletes or unsets each name still present.
+
+**Operator check, once, after that release:** read the stage's table in the run's step summary. Each row should read `deleted` / `unset`, or `absent` if it was already gone (a secret that was never set reads `absent`). A dry-run dispatch reads `would delete` / `would unset` and changes nothing.
+
+**Fallback, only if the stage fails** (a `failed` row, or a non-zero `supabase … list`), run by hand against the project, then re-check:
+
+```bash
+supabase functions delete parkrun-import --project-ref <ref>
+supabase secrets unset PARKRUN_USER_AGENT PARKRUN_EVENTS_ENABLED ULTRASIGNUP_RESULTS_ENABLED --project-ref <ref>
+supabase functions list --project-ref <ref>   # no parkrun-import
+supabase secrets list --project-ref <ref>     # none of the three
+```
+
+Retiring an Edge Function in general: delete its directory and add its name to `retired_functions` in the same PR ([apps/backend/ops/README.md](../../apps/backend/ops/README.md)).
 
 ### Security emails — two auth settings, no new secret
 
@@ -832,6 +968,21 @@ Migration `20271120000004` schedules `club-verification-recheck` hourly ([decisi
 2. Add `"club_verification_recheck"` to `cron_urls` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. The next release creates `club_verification_recheck_url`, invokes the re-check once and fails the step unless it answers 2xx; its `checked` / `verified` / `failed` / `lapsed` / `skipped` counts are in the function's logs.
 
 The email proof needs no new credential: it rides the worker's existing SMTP transport and `APP_BASE_URL`.
+
+### NPS park closures — an NPS key, then arm the schedule (one Vault entry)
+
+Migration `20271214131303` schedules `park-closures-sweep` daily at 11:41 UTC ([decisions § 2454](../architecture/decisions.md)): it reads NPS alerts for every active National Park Service park with a course and flags courses for review at `/admin/park-alerts`. It never closes a course. Two gates, both fail-closed: the invoker calls nothing until its Vault URL exists, and the function asks NPS nothing (and logs `NPS_API_KEY is not set`) until the key exists.
+
+1. **Pre-deploy (going live, not the code):** request an NPS Data API key at <https://www.nps.gov/subjects/developer/get-started.htm> under the operator's account, and set it as a function secret (`supabase secrets set NPS_API_KEY=...`); it is a credential, so it stays out of `prod_config.json`. NPS allows 1,000 requests an hour per key; the sweep makes one request per ten parks a day.
+2. Add `"park_closures_sweep"` to `cron_urls` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. The next release creates `park_closures_sweep_url`, invokes the sweep once and fails the step unless it answers 2xx (it does without the key too: `{ "configured": false }`). Its `parks` / `requests` / `alerts` / `flagged` / `failed_parks` counts are in the function's logs; a 502 means NPS failed for some parks and nothing was recorded for them.
+3. Nothing reaches the sweep until a park with `agency: "nps"` and its `nps_park_code` is loaded (none is yet; Pocahontas is a state park).
+
+### Rights-holder requests and Terms § 4 — counsel reviews the Terms change before deploy
+
+A rights holder's request on a park course (`rights_holder_request`, [park_courses.md § Reports and closures](../features/park_courses.md#reports-and-closures), decisions § 2469, migrations `20271220002469` + `20271220012469`) has no flag: the reason, its required email, its exemption from the per-course cap and its two-business-day deadline on `/admin/reports` ship with the next `backend@*` and `web@*` releases and the next store build. The same web release carries the Terms change that names the channel: § 4 becomes "Copyright and trade mark complaints", takes trade mark, event-name and course-data complaints at `dmca@threkir.com` or through the course page's report form, promises to acknowledge a request within two business days (an acknowledgement, not an answer or a resolution: owner, 2026-11-11), and says park course and segment times are not any event's results.
+
+1. **Pre-deploy (counsel):** counsel reviews the Terms § 4 change on `/terms` (`apps/web/src/routes/terms/+page.svelte`, English only: the page has no catalogue) and the form copy in every locale (`parks.report.reasonRightsHolder*`, `parks.report.emailHintRequired`, the mobile `parkCourseReport*RightsHolder*` ARB keys) before the `web@*` release that carries them. Hold that release, or revert the Terms paragraph, until the sign-off is linked on #1097.
+2. **Owner:** confirm `dmca@threkir.com` is monitored for trade mark complaints as well as copyright notices, and that someone acknowledges a rights-holder request within two business days (the "Acknowledge by" date on the queue; the full answer can follow) (the queue counts Monday to Friday in UTC, holidays not counted out).
 
 ### Lambda secrets — one apply, before the next web deploy
 

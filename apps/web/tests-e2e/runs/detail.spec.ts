@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
-import { deleteRun, insertRun } from '../fixtures/simulate';
+import { deleteRun, insertRun, setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import type { TrackPoint } from '../../src/lib/types';
 import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
@@ -325,7 +325,7 @@ test.describe('/runs/[id]', () => {
 		}
 	});
 
-	test('Share and Share as image refuse when the privacy zones cannot be loaded', async ({
+	test('Share and Share image refuse when the privacy zones cannot be loaded', async ({
 		page,
 		mockRoute
 	}) => {
@@ -365,7 +365,7 @@ test.describe('/runs/[id]', () => {
 			const zonesUnknown = page.locator('.toast', {
 				hasText: /Couldn't load your privacy zones/
 			});
-			await page.locator('button[title="Share as image"]').click();
+			await page.locator('button[title="Share image"]').click();
 			await expect(zonesUnknown).toBeVisible({ timeout: 15_000 });
 			await expect(zonesUnknown).toHaveCount(0, { timeout: 10_000 });
 
@@ -497,6 +497,203 @@ test.describe('/runs/[id]', () => {
 			} finally {
 				await anonContext.close();
 			}
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('visibility chip is the control: make public through the consent dialog, then make private', async ({
+		page,
+		mockRoute
+	}) => {
+		// The owner could not find how to make a run public: the chip read
+		// "Private" like a control and did nothing, and the only path was the
+		// Share icon. With audience sharing off (as in prod today) the chip now
+		// flips visibility itself, through the same privacy-zone consent the
+		// Share path uses, and copies no link because that is Share's job.
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		const isPublic = async () =>
+			(
+				await readRow(
+					'runs by id',
+					getAdminClient().from('runs').select('is_public').eq('id', planted).single()
+				)
+			).is_public;
+
+		try {
+			await page.goto(`/runs/${planted}`);
+			const chip = page.getByRole('button', { name: 'Private. Make this run public' });
+			await expect(chip).toBeVisible({ timeout: 10_000 });
+			await chip.click();
+
+			const consent = page.getByTestId('share-confirm-dialog');
+			await expect(consent).toBeVisible({ timeout: 10_000 });
+			await expect(consent).toContainText('Make this run public?');
+			await consent.getByRole('button', { name: 'Make public', exact: true }).click();
+
+			await expect(page.locator('.toast', { hasText: 'Run is now public' })).toBeVisible({
+				timeout: 10_000
+			});
+			await expect(page.locator('.toast', { hasText: /Share link copied/ })).toHaveCount(0);
+			const publicChip = page.getByRole('button', { name: 'Public. Make this run private' });
+			await expect(publicChip).toBeVisible({ timeout: 5_000 });
+			await expect(publicChip).toHaveClass(/is-public/);
+			await expect.poll(isPublic).toBe(true);
+
+			await publicChip.click();
+			const revoke = page.getByTestId('make-private-confirm-dialog');
+			await expect(revoke).toBeVisible({ timeout: 5_000 });
+			await revoke.getByRole('button', { name: 'Make private', exact: true }).click();
+
+			await expect(page.getByRole('button', { name: 'Private. Make this run public' })).toBeVisible({
+				timeout: 10_000
+			});
+			await expect.poll(isPublic).toBe(false);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('visibility chip Cancel on the consent dialog keeps the run private', async ({
+		page,
+		mockRoute
+	}) => {
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			await page.getByRole('button', { name: 'Private. Make this run public' }).click();
+			const consent = page.getByTestId('share-confirm-dialog');
+			await expect(consent).toBeVisible({ timeout: 10_000 });
+			// The actions sat flush under the message: ConfirmDialog's spacing
+			// rule targeted a class on Modal's element and never applied.
+			const messageBox = await consent.locator('p').first().boundingBox();
+			const cancel = consent.getByRole('button', { name: 'Cancel', exact: true });
+			const cancelBox = await cancel.boundingBox();
+			expect(cancelBox!.y - (messageBox!.y + messageBox!.height)).toBeGreaterThanOrEqual(12);
+			await cancel.click();
+			await expect(consent).toHaveCount(0);
+
+			const row = await readRow(
+				'runs by id',
+				getAdminClient().from('runs').select('is_public').eq('id', planted).single()
+			);
+			expect(row.is_public).toBe(false);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('the image and link icons say which is which, and the image dialog points at the chip', async ({
+		page,
+		mockRoute
+	}) => {
+		// Two header icons both read as "share": the image one opened a dialog
+		// titled "Share run" that can neither share a link nor make the run
+		// public. The image icon and its dialog now say image, the link icon on
+		// a private run says it makes the run public, and the dialog says how.
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			await expect(page.getByTestId('run-share-btn')).toHaveAttribute(
+				'title',
+				'Make public and copy share link',
+				{ timeout: 10_000 }
+			);
+			const image = page.getByRole('button', { name: 'Make a share image' });
+			await expect(image).toHaveAttribute('title', 'Share image');
+			await image.click();
+			const dialog = page.getByTestId('run-share-image-dialog');
+			await expect(dialog).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByRole('dialog', { name: 'Share image' })).toBeVisible();
+			await expect(dialog.getByTestId('share-image-link-hint')).toContainText(
+				'An image shares no link'
+			);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('the elevation stat follows the unit preference and an odd last row has no filler tile', async ({
+		page
+	}) => {
+		// The stat grid printed "218 m" beside a distance in miles and an
+		// elevation profile reading "715 ft" for the same climb. And with a
+		// short last row the empty slot showed the border-coloured grid
+		// background as a grey tile.
+		const admin = getAdminClient();
+		const setUnit = async (unit: 'km' | 'mi') => {
+			await setUserSetting(USER_A.id, 'preferred_unit', unit);
+			await admin.from('user_profiles').update({ preferred_unit: unit }).eq('id', USER_A.id);
+		};
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 16_190,
+			duration_s: 5_400,
+			is_public: false
+		});
+		try {
+			await admin.from('runs').update({ elevation_gain_m: 218 }).eq('id', planted);
+			await setUnit('mi');
+			await page.goto(`/runs/${planted}`);
+			const elevation = page.locator('.key-stat', { hasText: 'Elevation' }).locator('.key-stat-value');
+			await expect(elevation).toHaveText('715 ft', { timeout: 10_000 });
+
+			const grid = page.locator('.key-stats').first();
+			const colours = await grid.evaluate((el) => {
+				const style = getComputedStyle(el);
+				const cell = el.querySelector('.key-stat');
+				return {
+					grid: style.backgroundColor,
+					border: style.borderTopColor,
+					cell: cell ? getComputedStyle(cell).backgroundColor : null
+				};
+			});
+			expect(colours.grid).not.toBe(colours.border);
+			expect(colours.cell).toBe('rgba(0, 0, 0, 0)');
+		} finally {
+			await setUnit('km');
+			await deleteRun(planted);
+		}
+	});
+
+	test('with audience sharing on, the visibility chip opens the audience sheet', async ({ page }) => {
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			const chip = page.getByRole('button', { name: 'Private. Change who can see this run' });
+			await expect(chip).toBeVisible({ timeout: 10_000 });
+			await chip.click();
+			await expect(page.getByTestId('audience-dialog')).toBeVisible({ timeout: 5_000 });
+			await expect(page.getByTestId('share-confirm-dialog')).toHaveCount(0);
 		} finally {
 			await deleteRun(planted);
 		}

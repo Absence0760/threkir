@@ -58,9 +58,10 @@ export function featureFlagsStage(config) {
  * allow-listed names only. Anything else in the listing is dropped unread.
  *
  * @param {string} json
+ * @param {readonly string[]} [allow]
  * @returns {Map<string, string>}
  */
-export function allowListedDigests(json) {
+export function allowListedDigests(json, allow = FUNCTION_ENV_ALLOW) {
 	/** @type {Map<string, string>} */
 	const digests = new Map();
 	let parsed;
@@ -74,7 +75,7 @@ export function allowListedDigests(json) {
 		if (!item || typeof item !== 'object') continue;
 		const name = item.name;
 		const value = item.value;
-		if (typeof name !== 'string' || !FUNCTION_ENV_ALLOW.includes(name)) continue;
+		if (typeof name !== 'string' || !allow.includes(name)) continue;
 		if (typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)) digests.set(name, value);
 	}
 	return digests;
@@ -87,9 +88,10 @@ export function allowListedDigests(json) {
  * only value it ever prints is the boolean it writes.
  *
  * @param {ProdConfig} config
+ * @param {readonly string[]} [allow]
  * @returns {Stage}
  */
-export function functionEnvStage(config) {
+export function functionEnvStage(config, allow = FUNCTION_ENV_ALLOW) {
 	const entries = Object.entries(config.function_env).sort(([a], [b]) => a.localeCompare(b));
 	const header = ['name', 'enabled', 'action', 'signoff'];
 	return {
@@ -99,14 +101,14 @@ export function functionEnvStage(config) {
 		run(ctx) {
 			if (entries.length === 0) return { table: { header, rows: [] } };
 			for (const [name] of entries) {
-				if (!FUNCTION_ENV_ALLOW.includes(name)) throw new Error(`function_env.${name} is not on the allow-list`);
+				if (!allow.includes(name)) throw new Error(`function_env.${name} is not on the allow-list`);
 			}
 			const ref = ctx.env.SUPABASE_PROJECT_REF ?? '';
 			if (!PROJECT_REF.test(ref)) throw new Error('SUPABASE_PROJECT_REF is unset or not a project ref');
 			if (!ctx.env.SUPABASE_ACCESS_TOKEN) throw new Error('SUPABASE_ACCESS_TOKEN is unset');
 
 			const listed = ctx.exec('supabase', ['secrets', 'list', '--project-ref', ref, '-o', 'json']);
-			const current = listed.ok ? allowListedDigests(listed.stdout) : new Map();
+			const current = listed.ok ? allowListedDigests(listed.stdout, allow) : new Map();
 			/** @type {string[][]} */
 			const rows = [];
 			/** @type {string[]} */
@@ -128,6 +130,106 @@ export function functionEnvStage(config) {
 						failed: `supabase secrets set exited non-zero: ${firstLine(set.stderr)}`,
 					};
 				}
+			}
+			return { table: { header, rows } };
+		},
+	};
+}
+
+/**
+ * The names a `supabase functions list` / `supabase secrets list` JSON
+ * listing carries: a function's `slug` (or `name`), a secret's `name`.
+ *
+ * @param {string} json
+ * @returns {Set<string>}
+ */
+export function listedNames(json) {
+	/** @type {Set<string>} */
+	const names = new Set();
+	let parsed;
+	try {
+		parsed = JSON.parse(json);
+	} catch {
+		return names;
+	}
+	if (!Array.isArray(parsed)) return names;
+	for (const item of parsed) {
+		if (!item || typeof item !== 'object') continue;
+		const name = typeof item.slug === 'string' ? item.slug : item.name;
+		if (typeof name === 'string') names.add(name);
+	}
+	return names;
+}
+
+/**
+ * Removes what a release no longer ships. `supabase functions deploy` adds and
+ * updates a function but never deletes one, and nothing unsets a secret, so a
+ * function whose directory was deleted keeps serving from production until it
+ * is named here (decisions § 2467). Idempotent: a name already gone
+ * reads `absent`.
+ *
+ * @param {ProdConfig} config
+ * @returns {Stage}
+ */
+export function retiredStage(config) {
+	const fns = [...config.retired_functions].sort();
+	const envs = [...config.retired_function_env].sort();
+	const header = ['kind', 'name', 'action'];
+	return {
+		id: 'retired',
+		title: 'Retired Edge Functions and secrets',
+		note: `${fns.length} function(s), ${envs.length} secret(s) declared retired; each is deleted from production when present and reported absent otherwise.`,
+		run(ctx) {
+			if (fns.length === 0 && envs.length === 0) return { table: { header, rows: [] } };
+			const ref = ctx.env.SUPABASE_PROJECT_REF ?? '';
+			if (!PROJECT_REF.test(ref)) throw new Error('SUPABASE_PROJECT_REF is unset or not a project ref');
+			if (!ctx.env.SUPABASE_ACCESS_TOKEN) throw new Error('SUPABASE_ACCESS_TOKEN is unset');
+			/** @type {string[][]} */
+			const rows = [];
+
+			if (fns.length > 0) {
+				const listed = ctx.exec('supabase', ['functions', 'list', '--project-ref', ref, '-o', 'json']);
+				if (!listed.ok) {
+					return { table: { header, rows }, failed: `supabase functions list exited non-zero: ${firstLine(listed.stderr)}` };
+				}
+				const deployed = listedNames(listed.stdout);
+				for (const fn of fns) {
+					if (!deployed.has(fn)) {
+						rows.push(['function', fn, 'absent']);
+						continue;
+					}
+					if (ctx.dryRun) {
+						rows.push(['function', fn, 'would delete']);
+						continue;
+					}
+					const del = ctx.exec('supabase', ['functions', 'delete', fn, '--project-ref', ref, '--yes']);
+					if (!del.ok) {
+						rows.push(['function', fn, 'failed']);
+						return { table: { header, rows }, failed: `supabase functions delete ${fn} exited non-zero: ${firstLine(del.stderr)}` };
+					}
+					rows.push(['function', fn, 'deleted']);
+				}
+			}
+
+			if (envs.length > 0) {
+				const listed = ctx.exec('supabase', ['secrets', 'list', '--project-ref', ref, '-o', 'json']);
+				if (!listed.ok) {
+					return { table: { header, rows }, failed: `supabase secrets list exited non-zero: ${firstLine(listed.stderr)}` };
+				}
+				const present = listedNames(listed.stdout);
+				const pending = envs.filter((name) => present.has(name));
+				let outcome = ctx.dryRun ? 'would unset' : 'unset';
+				/** @type {string | undefined} */
+				let failed;
+				if (pending.length > 0 && !ctx.dryRun) {
+					const unset = ctx.exec('supabase', ['secrets', 'unset', ...pending, '--project-ref', ref, '--yes']);
+					if (!unset.ok) {
+						outcome = 'failed';
+						failed = `supabase secrets unset exited non-zero: ${firstLine(unset.stderr)}`;
+					}
+				}
+				for (const name of envs) rows.push(['secret', name, present.has(name) ? outcome : 'absent']);
+				if (failed) return { table: { header, rows }, failed };
 			}
 			return { table: { header, rows } };
 		},

@@ -1,4 +1,4 @@
-// GPS distance estimator, spec v1.5. docs/features/gps_distance.md is the spec
+// GPS distance estimator, spec v1.8. docs/features/gps_distance.md is the spec
 // and scripts/gps_distance/reference.py the reference; every port must
 // reproduce fixtures/gps_distance_vectors.json to 1e-3 m, so keep the
 // formulas in the reference's order. A copy of apps/web/src/lib/runs/gps_distance.ts
@@ -9,7 +9,7 @@
 // screen runs; smoothDistance is the saved / recomputed figure, a forward pass
 // plus a Rauch-Tung-Striebel backward pass over the whole run.
 
-export const SPEC_VERSION = '1.5';
+export const SPEC_VERSION = '1.8';
 
 export const EARTH_RADIUS_M = 6371008.8;
 export const Q_ACCEL = 0.6;
@@ -23,6 +23,8 @@ export const STATIONARY_SPEED_MPS = 0.4;
 export const POS_ONLY_STATIONARY_SPEED_MPS = 0.8;
 export const GAP_S = 10.0;
 export const FRESH_FIX_S = 2.0;
+/** v1.6: gaps a step sample can still owe a share to; past it the oldest is dropped. */
+export const MAX_OPEN_GAPS = 8;
 export const STRIDE_WINDOW_STEPS = 50;
 export const MIN_STRIDE_M = 0.4;
 export const MAX_STRIDE_M = 2.5;
@@ -191,6 +193,12 @@ export class GpsDistanceEstimator {
 	private readonly freshFixS: number;
 	gpsDistanceM = 0;
 	stepDistanceM = 0;
+	/**
+	 * v1.7: what the steps credited the gaps over their chord lower bounds,
+	 * summed: per gap max(chord, steps) - chord, exactly what a replay with no
+	 * steps lacks.
+	 */
+	stepOverChordM = 0;
 	strideM: number | null = null;
 	rScale = 1.0;
 	rejectedFixes = 0;
@@ -207,10 +215,16 @@ export class GpsDistanceEstimator {
 	private t: number | null = null;
 	private winSteps = 0;
 	private winM = 0;
+	/** v1.6: the fix that last emptied the stride window. */
+	private winFromT = -Infinity;
+	/** v1.6: a stale step sample emptied the stride window since the last fix. */
+	private winStale = false;
 	private lastSteps: number | null = null;
 	private lastStepT: number | null = null;
 	private pendingStepM = 0;
 	private strideOk = false;
+	/** v1.6: the gaps re-anchors closed since the last step sample, owed their share of the next one. */
+	private gaps: Array<{ startT: number; endT: number; topUpM: number; record: number | null }> = [];
 	private rejectStreak = 0;
 	private xcDoppler = 0;
 	private xcPos = 0;
@@ -341,13 +355,21 @@ export class GpsDistanceEstimator {
 					gapM = lower - this.pendingStepM;
 					this.gpsDistanceM += gapM;
 				}
+				this.stepOverChordM += Math.max(0, this.pendingStepM - Math.max(lower, 0));
+				this.gaps.push({
+					startT: this.t,
+					endT: t,
+					topUpM: gapM ?? 0,
+					record: this.records === null ? null : this.records.length
+				});
+				if (this.gaps.length > MAX_OPEN_GAPS) this.gaps.shift();
 			}
 			this.pendingStepM = 0;
 			this.strideOk = this.strideGrade(accuracyM, dop !== null, doppler === null ? null : doppler.sa);
-			if (!this.strideOk) {
-				this.winSteps = 0;
-				this.winM = 0;
-			}
+			this.winStale = false;
+			// The first fix also starts the window: a step sample before it counted
+			// steps no fix measured metres for.
+			if (!this.strideOk || this.t === null) this.emptyWindow(t);
 			this.x = new Axis(zx, r);
 			this.y = new Axis(zy, r);
 			this.t = t;
@@ -544,14 +566,27 @@ export class GpsDistanceEstimator {
 			useDop !== null && chord === null,
 			doppler === null ? null : doppler.sa,
 		);
-		if (this.strideOk) {
+		// A step sample that fell stale since the last fix emptied the window
+		// inside this fix's interval, so the window no longer holds the steps its
+		// metres cover.
+		if (this.strideOk && !this.winStale) {
 			this.winM += inc;
 		} else {
-			this.winSteps = 0;
-			this.winM = 0;
+			this.emptyWindow(t);
 		}
+		this.winStale = false;
 		this.record({ anchor: false, chainBreak, dt, pred, zupt, dop: useDop, chord }, x, y);
 		return inc;
+	}
+
+	/**
+	 * Empty the stride window at the fix at t. Its metres start after t, so a
+	 * step sample whose interval reaches back before t must not refill it.
+	 */
+	private emptyWindow(t: number): void {
+		this.winSteps = 0;
+		this.winM = 0;
+		this.winFromT = t;
 	}
 
 	/** Whether a fix may teach stride: by its Doppler sigma when its credit came from Doppler, else by its position accuracy. */
@@ -563,7 +598,9 @@ export class GpsDistanceEstimator {
 
 	/**
 	 * Cumulative pedometer count. Learns stride while GPS is good; buffers
-	 * steps x stride while it is not (committed only if the gap exceeds the gap window).
+	 * steps x stride for the time since the last fix, dropped when the next fix
+	 * integrates it and committed only if the gap exceeds the gap window (at
+	 * that fix, or at finish).
 	 */
 	addSteps(t: MaybeNumber, cumulativeSteps: MaybeNumber): void {
 		if (!valid(t) || cumulativeSteps === null || cumulativeSteps === undefined) return;
@@ -571,8 +608,24 @@ export class GpsDistanceEstimator {
 		const prevT = this.lastStepT;
 		this.lastSteps = cumulativeSteps;
 		this.lastStepT = t;
-		if (prev === null || cumulativeSteps < prev || prevT === null || t <= prevT) return;
+		if (prev === null || cumulativeSteps < prev || prevT === null || t <= prevT) {
+			// A baseline counts no interval, so the stride window's metres so far
+			// have no steps: start the window here, as a learn does. A stale one also
+			// marks the window, as any stale sample does, so the next fix empties it.
+			if (this.t !== null && t - this.t > this.freshFixS) this.winStale = true;
+			if (this.t !== null && t < this.t) {
+				// v1.7: stamped before the last fix, so the window's metres already
+				// start after this stamp; the next sample's steps reach back before
+				// them and must not refill it.
+				this.emptyWindow(this.t);
+			} else {
+				this.winSteps = 0;
+				this.winM = 0;
+			}
+			return;
+		}
 		const d = cumulativeSteps - prev;
+		const inGap = this.attributeSteps(prevT, t, d);
 		if (d > 0) {
 			if (this.lastStepIncT !== null) {
 				const span = t - this.lastStepIncT;
@@ -582,7 +635,15 @@ export class GpsDistanceEstimator {
 			this.lastStepIncT = t;
 			this.zuptReleased = false;
 		}
-		if (this.t !== null && t - this.t <= this.freshFixS) {
+		// A sample whose interval reaches into a gap, or stamped before the last
+		// fix, holds steps GPS measured no metres for, so it must not teach stride.
+		if (
+			this.t !== null &&
+			!inGap &&
+			prevT >= this.winFromT &&
+			t - this.t >= 0 &&
+			t - this.t <= this.freshFixS
+		) {
 			if (!this.strideOk) return;
 			this.winSteps += d;
 			if (this.winSteps >= STRIDE_WINDOW_STEPS) {
@@ -598,16 +659,58 @@ export class GpsDistanceEstimator {
 			}
 			return;
 		}
+		if (this.t !== null && t - this.t > this.freshFixS) this.winStale = true;
 		this.winSteps = 0;
 		this.winM = 0;
-		if (this.strideM === null) return;
-		this.pendingStepM += Math.min(d * this.strideM, this.maxSpeedMps * (t - prevT));
+	}
+
+	/**
+	 * v1.6: a sample's d steps were taken across (prevT, t], so each part of
+	 * that interval gets its share. The part after the last fix is buffered;
+	 * the part inside each gap a re-anchor closed since the previous sample
+	 * tops that gap's credit up to its steps. A gap that ends after t stays
+	 * open, less what this sample took from its GPS credit, so the next sample
+	 * shares the rest of it. Returns whether (prevT, t] overlaps any open gap.
+	 */
+	private attributeSteps(prevT: number, t: number, d: number): boolean {
+		const gaps = this.gaps;
+		this.gaps = [];
+		const inGap = gaps.some((gap) => Math.min(gap.endT, t) > Math.max(prevT, gap.startT));
+		if (d <= 0 || this.strideM === null) {
+			this.gaps = gaps.filter((gap) => gap.endT > t);
+			return inGap;
+		}
+		const rate = Math.min((d * this.strideM) / (t - prevT), this.maxSpeedMps);
+		const lo = this.t === null ? prevT : Math.max(prevT, this.t);
+		if (t > lo) this.pendingStepM += rate * (t - lo);
+		for (const gap of gaps) {
+			const from = Math.max(prevT, gap.startT);
+			const to = Math.min(gap.endT, t);
+			let take = 0;
+			if (to > from) {
+				const late = rate * (to - from);
+				this.stepDistanceM += late;
+				take = Math.min(late, gap.topUpM);
+				this.gpsDistanceM -= take;
+				this.stepOverChordM += late - take;
+				if (this.records !== null && gap.record !== null) {
+					if (take > 0) {
+						const rec = this.records[gap.record];
+						rec.chord = (rec.chord as number) - take;
+					}
+					for (let k = gap.record; k < this.records.length; k++) this.records[k].stepDistanceM += late;
+				}
+			}
+			if (gap.endT > t) this.gaps.push({ ...gap, topUpM: gap.topUpM - take });
+		}
+		return inGap;
 	}
 
 	/** End of run: commit buffered steps if the trailing gap exceeds the gap window. */
 	finish(t: MaybeNumber): void {
 		if (this.t !== null && valid(t) && t - this.t > this.gapS) {
 			this.stepDistanceM += this.pendingStepM;
+			this.stepOverChordM += this.pendingStepM;
 		}
 		this.pendingStepM = 0;
 	}
@@ -632,6 +735,8 @@ export type SmoothedDistance = {
 	distanceM: number;
 	gpsDistanceM: number;
 	stepDistanceM: number;
+	/** v1.7: the estimator's stepOverChordM over the same events. */
+	stepOverChordM: number;
 	/** Per event: smoothed GPS credit through it plus the step distance committed by then. */
 	cumulativeM: number[];
 	/** Per event: the smoothed [lat, lng] of a fix the filter took, else null. */
@@ -839,6 +944,7 @@ export function smoothDistance(
 		distanceM: gps + est.stepDistanceM,
 		gpsDistanceM: gps,
 		stepDistanceM: est.stepDistanceM,
+		stepOverChordM: est.stepOverChordM,
 		cumulativeM,
 		positions,
 		stoppedFixes: hints.size,

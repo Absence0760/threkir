@@ -122,12 +122,16 @@ insert into write_lockdown_registry (role, tbl, verb, col, reason) values
   ('authenticated', 'direct_messages', 'INSERT', 'unsent_at',           'a message is not unsent when it is sent; unsending is the RPC'),
   ('authenticated', 'direct_messages', 'INSERT', 'deleted_partner_key', 'exists only once the recipient has deleted their account'),
   ('authenticated', 'direct_messages', 'INSERT', 'seen_at',             'the shared read receipt (20271113000001); only mark_direct_messages_read writes it, and only while both participants have receipts on'),
-  -- 20271105000010 (issue #1216): the direct_messages_set_conversation trigger
-  -- assigns the pair's conversation on insert.
-  ('authenticated', 'direct_messages', 'INSERT', 'conversation_id',     'set by the direct_messages_set_conversation trigger; a client-chosen one would post into a conversation the sender is not in'),
+  -- 20271216000003 (issue #1365): is_group is the direct_messages_set_conversation
+  -- trigger's verdict on the conversation's kind.
+  ('authenticated', 'direct_messages', 'INSERT', 'is_group',            'set by the direct_messages_set_conversation trigger from the conversation''s kind; a client-set one would claim or disown a group audience'),
   -- 20271114000210 (issue #1216): editing is the edit_direct_message RPC, inside its window.
   ('authenticated', 'direct_messages', 'INSERT', 'edited_at',           'a message is not edited when it is sent; only edit_direct_message stamps it'),
-  ('authenticated', 'direct_messages', 'INSERT', 'original_body',       'the text before an edit, kept for reports; only edit_direct_message writes it, and a client-set one would forge what a report shows as sent');
+  ('authenticated', 'direct_messages', 'INSERT', 'original_body',       'the text before an edit, kept for reports; only edit_direct_message writes it, and a client-set one would forge what a report shows as sent'),
+  -- 20271210001215 (issue #1215 Phase 3): a shared AI Coach answer is written
+  -- only by share_coach_message, which copies the text out of the sender's own
+  -- assistant row.
+  ('authenticated', 'direct_messages', 'INSERT', 'coach_message_id',    'only share_coach_message sets it, after checking the answer is the sender''s own');
 
 -- Columns a client may set once, at row creation, and never change. Each needs
 -- a reason why write-once is safe — this is the register assertion (5) reads.
@@ -145,7 +149,10 @@ insert into insert_only_registry (tbl, col, reason) values
   ('direct_messages',        'sender_id',    'the WITH CHECK pins it to auth.uid() at insert, and there is no client DELETE (20271021000003)'),
   ('direct_messages',        'recipient_id', 'the WITH CHECK admits only a follow-graph, unblocked recipient at insert'),
   ('direct_messages',        'body',         'the message itself — written once by definition; unsend is the only later change, through unsend_direct_message'),
-  ('direct_messages',        'route_id',     'the attachment; the WITH CHECK gates it on the sender seeing the route at insert');
+  ('direct_messages',        'kind',         'the sender''s own label at send (20271210001217): the WITH CHECK admits text, or ai_assisted from an active coach to their athlete; coach_share is RPC-only'),
+  ('direct_messages',        'route_id',     'the attachment; the WITH CHECK gates it on the sender seeing the route at insert'),
+  ('direct_messages',        'conversation_id', 'a group send names its conversation (20271216000003): direct_messages_set_conversation overwrites it from the pair on a 1:1 send, refuses a group send from anyone but an active member under the per-member lock, and the WITH CHECK admits it only through private.group_send_admitted'),
+  ('direct_messages',        'image_id',     'the photo (20271213121604): the WITH CHECK admits only the sender''s own pending, uploaded, unsent image outside a request, and a trigger links it to this one message; unsend clears it');
 
 -- Tables with NO client UPDATE grant at all — append-only by design, so every
 -- column is trivially insert-only and enumerating them would be noise.

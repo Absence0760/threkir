@@ -1710,11 +1710,13 @@ $neutralised$;`,
   [
     'dm_threads',
     {
-      why: "drops my_msgs' participant check, its delete-for-me `hidden_before` exclusion and the declined-request filter (20271115002384), the SELECT policy's two rules 20271113000001 wrote into the body when it made the function a definer; keeps the unread count's `recipient_id = auth.uid()` and the caller's own participant row for muted / archived / marked-unread, which say whose inbox the row is in",
+      why: "drops my_msgs' participant check, its delete-for-me `hidden_before` exclusion and the declined-request filter (20271115002384), the SELECT policy's two rules 20271113000001 wrote into the body when it made the function a definer, and, for a group row, the read rule (private.can_read_message) and the membership-state filter (20271216000007); keeps `not is_group` / `is_group`, the unread count's `recipient_id = auth.uid()` and the caller's own participant row for muted / archived / marked-unread, which say whose inbox the row is in",
       sql: `create or replace function public.dm_threads()
  returns table(conversation_id uuid, partner_id uuid, deleted_partner_key uuid, last_body text,
                last_unsent boolean, last_at timestamptz, last_from_me boolean, unread bigint,
-               muted boolean, archived boolean, marked_unread boolean, request boolean)
+               muted boolean, archived boolean, marked_unread boolean, request boolean,
+               last_kind text, last_image boolean,
+               kind text, title text, member_count integer, membership_state text)
  language sql stable security definer set search_path to 'public', 'pg_temp'
 as $neutralised$
   with my_msgs as (
@@ -1722,15 +1724,16 @@ as $neutralised$
       m.conversation_id,
       case when m.sender_id = (select auth.uid()) then m.recipient_id else m.sender_id end as partner_id,
       m.deleted_partner_key, m.sender_id, m.recipient_id, m.body, m.unsent_at,
-      m.created_at, m.read_at, m.id
+      m.created_at, m.read_at, m.id, m.kind, m.image_id
     from direct_messages m
-    where ${mine('m')}
+    where not m.is_group and ${mine('m')}
   ),
   latest as (
     select distinct on (conversation_id)
       conversation_id, partner_id, deleted_partner_key,
       body as last_body, (unsent_at is not null) as last_unsent, created_at as last_at,
-      (sender_id = (select auth.uid())) as last_from_me
+      (sender_id = (select auth.uid())) as last_from_me,
+      kind as last_kind, (image_id is not null) as last_image
     from my_msgs
     order by conversation_id, created_at desc, id desc
   ),
@@ -1739,21 +1742,78 @@ as $neutralised$
     from my_msgs
     where recipient_id = (select auth.uid()) and read_at is null and unsent_at is null
     group by conversation_id
+  ),
+  direct_rows as (
+    select
+      l.conversation_id, l.partner_id, l.deleted_partner_key, l.last_body, l.last_unsent,
+      l.last_at, l.last_from_me,
+      greatest(coalesce(u.cnt, 0), case when p.marked_unread_at is not null then 1 else 0 end) as unread,
+      coalesce(p.muted_at is not null, false) as muted,
+      coalesce(p.archived_at is not null and p.archived_at >= l.last_at, false) as archived,
+      coalesce(p.marked_unread_at is not null, false) as marked_unread,
+      coalesce(p.request_state = 'pending', false) as request,
+      l.last_kind, l.last_image,
+      'direct'::text as kind, null::text as title, null::integer as member_count,
+      null::text as membership_state
+    from latest l
+    left join unread u using (conversation_id)
+    left join conversation_participants p
+      on p.conversation_id = l.conversation_id
+     and p.user_id = (select auth.uid())
+  ),
+  my_groups as (
+    select g.conversation_id, g.membership_state, g.joined_at, g.last_read_at,
+           g.muted_at, g.archived_at, g.marked_unread_at, c.title
+      from conversation_participants g
+      join conversations c on c.id = g.conversation_id and c.kind = 'group'
+     where g.user_id = (select auth.uid())
+  ),
+  group_msgs as (
+    select m.conversation_id, m.id, m.sender_id, m.body, m.unsent_at, m.created_at,
+           m.kind, m.image_id
+      from my_groups g
+      join direct_messages m on m.conversation_id = g.conversation_id and m.is_group
+     where ${mine('m')}
+  ),
+  group_latest as (
+    select distinct on (conversation_id) *
+      from group_msgs
+     order by conversation_id, created_at desc, id desc
+  ),
+  group_unread as (
+    select m.conversation_id, count(*) as cnt
+      from group_msgs m
+      join my_groups g using (conversation_id)
+     where m.sender_id <> (select auth.uid())
+       and m.unsent_at is null
+       and m.created_at > coalesce(g.last_read_at, g.joined_at)
+     group by m.conversation_id
+  ),
+  group_rows as (
+    select
+      g.conversation_id, null::uuid, null::uuid, gl.body,
+      coalesce(gl.unsent_at is not null, false),
+      coalesce(gl.created_at, g.joined_at),
+      coalesce(gl.sender_id = (select auth.uid()), false),
+      greatest(coalesce(u.cnt, 0), case when g.marked_unread_at is not null then 1 else 0 end),
+      g.muted_at is not null,
+      coalesce(g.archived_at is not null and g.archived_at >= coalesce(gl.created_at, g.joined_at), false),
+      g.marked_unread_at is not null,
+      false, gl.kind, coalesce(gl.image_id is not null, false),
+      'group'::text, g.title,
+      (select count(*)::integer from conversation_participants a
+        where a.conversation_id = g.conversation_id and a.membership_state = 'active'),
+      g.membership_state
+    from my_groups g
+    left join group_latest gl using (conversation_id)
+    left join group_unread u using (conversation_id)
   )
-  select
-    l.conversation_id, l.partner_id, l.deleted_partner_key, l.last_body, l.last_unsent,
-    l.last_at, l.last_from_me,
-    greatest(coalesce(u.cnt, 0), case when p.marked_unread_at is not null then 1 else 0 end) as unread,
-    coalesce(p.muted_at is not null, false) as muted,
-    coalesce(p.archived_at is not null and p.archived_at >= l.last_at, false) as archived,
-    coalesce(p.marked_unread_at is not null, false) as marked_unread,
-    coalesce(p.request_state = 'pending', false) as request
-  from latest l
-  left join unread u using (conversation_id)
-  left join conversation_participants p
-    on p.conversation_id = l.conversation_id
-   and p.user_id = (select auth.uid())
-  order by l.last_at desc;
+  select * from (
+    select * from direct_rows
+    union all
+    select * from group_rows
+  ) t
+  order by t.last_at desc;
 $neutralised$;`,
       subject: 'direct_messages m — the messages whose participant and hidden_before rules were dropped',
       witness: {
@@ -1777,6 +1837,162 @@ $neutralised$;`,
                 select set_config('request.jwt.claims',
                   '{"sub":"00000000-0000-0000-0000-00000000c0d1","role":"authenticated"}', true);`,
         probe: `select count(*) from dm_threads() where partner_id = '00000000-0000-0000-0000-00000000c0d2';`,
+      },
+    },
+  ],
+  [
+    'search_direct_messages',
+    {
+      why: "drops the caller-is-a-party rule (`sender_id` or `recipient_id` = auth.uid()) a SECURITY INVOKER body carries beside RLS; keeps the query match, the unsent and empty-body filters, and the caller's own request-state and block exclusions, which say whose search it is",
+      sql: `create or replace function public.search_direct_messages(p_query text, p_limit integer default 30)
+ returns table(id uuid, conversation_id uuid, sender_id uuid, recipient_id uuid,
+               deleted_partner_key uuid, body text, created_at timestamptz, kind text)
+ language sql stable security invoker set search_path to 'public', 'pg_temp'
+as $neutralised$
+  with q as (
+    select btrim(coalesce(p_query, '')) as t
+  )
+  select m.id, m.conversation_id, m.sender_id, m.recipient_id,
+         m.deleted_partner_key, m.body, m.created_at, m.kind
+    from direct_messages m, q
+   where char_length(q.t) between 2 and 100
+     and m.unsent_at is null
+     and m.body is not null
+     and ${mine('m')}
+     and m.body ilike '%' || replace(replace(replace(q.t, '\\', '\\\\'), '%', '\\%'), '_', '\\_') || '%'
+     and not exists (
+       select 1 from conversation_participants p
+        where p.conversation_id = m.conversation_id
+          and p.user_id = (select auth.uid())
+          and p.request_state in ('pending', 'declined')
+     )
+     and not exists (
+       select 1 from user_blocks b
+        where b.blocker_id = (select auth.uid())
+          and b.blocked_id in (m.sender_id, m.recipient_id)
+     )
+   order by m.created_at desc, m.id desc
+   limit least(greatest(coalesce(p_limit, 30), 1), 50);
+$neutralised$;`,
+      subject: 'direct_messages m — the messages whose sender-or-recipient rule was dropped',
+      witness: {
+        // A message between two other runners, which the caller is no party to:
+        // the real search never returns it, the replacement does. Its own three
+        // users and a word no seed message carries, so nothing committed can
+        // answer the probe.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0e1', 'authenticated', 'authenticated',
+                   'pgtap-guard-dms-a@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0e2', 'authenticated', 'authenticated',
+                   'pgtap-guard-dms-b@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0e3', 'authenticated', 'authenticated',
+                   'pgtap-guard-dms-c@local', '', now(), now());
+                insert into user_follows (follower_id, followee_id)
+                  values ('00000000-0000-0000-0000-00000000c0e3', '00000000-0000-0000-0000-00000000c0e2');
+                insert into direct_messages (id, sender_id, recipient_id, body)
+                  values ('00000000-0000-0000-0000-00000000c0e4', '00000000-0000-0000-0000-00000000c0e3',
+                          '00000000-0000-0000-0000-00000000c0e2', 'pgtapguardwitness');
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c0e1","role":"authenticated"}', true);`,
+        probe: `select count(*) from search_direct_messages('pgtapguardwitness');`,
+      },
+    },
+  ],
+  [
+    'group_invites',
+    {
+      why: "drops the invitee rule (`p.user_id = auth.uid()`, 20271216000007), the only thing that decides whose invites these are; keeps the group kind, the 'invited' state and the 14-day expiry, which say which rows are invites at all",
+      sql: `create or replace function public.group_invites()
+ returns table(conversation_id uuid, title text, invited_by uuid, invited_at timestamptz, member_count integer)
+ language sql stable security definer set search_path to 'public', 'pg_temp'
+as $neutralised$
+  select p.conversation_id, c.title, p.invited_by, p.invited_at,
+         (select count(*)::integer from conversation_participants a
+           where a.conversation_id = p.conversation_id
+             and a.membership_state = 'active')
+    from conversation_participants p
+    join conversations c on c.id = p.conversation_id and c.kind = 'group'
+   where ${mine('p')}
+     and p.membership_state = 'invited'
+     and p.invited_at > now() - interval '14 days'
+   order by p.invited_at desc;
+$neutralised$;`,
+      subject: 'conversation_participants p — the invite rows whose invitee rule was dropped',
+      witness: {
+        // Someone else's live invite: the real function never lists it to a
+        // third runner, the replacement does. Its own three users and group,
+        // so no seed row can answer the probe.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0f1', 'authenticated', 'authenticated',
+                   'pgtap-guard-gi-a@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0f2', 'authenticated', 'authenticated',
+                   'pgtap-guard-gi-b@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0f3', 'authenticated', 'authenticated',
+                   'pgtap-guard-gi-c@local', '', now(), now());
+                insert into conversations (id, kind, title, created_by)
+                  values ('00000000-0000-0000-0000-00000000c0f4', 'group', 'guard witness',
+                          '00000000-0000-0000-0000-00000000c0f1');
+                insert into conversation_participants
+                    (conversation_id, user_id, membership_state, role, invited_at, invited_by)
+                  values ('00000000-0000-0000-0000-00000000c0f4', '00000000-0000-0000-0000-00000000c0f1',
+                          'active', 'owner', null, null),
+                         ('00000000-0000-0000-0000-00000000c0f4', '00000000-0000-0000-0000-00000000c0f2',
+                          'invited', null, now(), '00000000-0000-0000-0000-00000000c0f1');
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c0f3","role":"authenticated"}', true);`,
+        probe: `select count(*) from group_invites() where conversation_id = '00000000-0000-0000-0000-00000000c0f4';`,
+      },
+    },
+  ],
+  [
+    'group_blocked_placeholders',
+    {
+      why: "drops the membership gate (`private.group_my_role`), the caller's own window (`sender_id <> auth.uid()`, `joined_at`, `hidden_before`) and the blocker rule (`b.blocker_id = auth.uid()`, 20271217000006), which together decide whose placeholders these are and that the blocked sender is never told; keeps the conversation, `is_group`, `unsent_at is null`, `p_since` and that the sender is blocked by someone, which say which messages are placeholders at all",
+      sql: `create or replace function public.group_blocked_placeholders(p_conversation_id uuid, p_since timestamptz default null)
+ returns table(id uuid, created_at timestamptz)
+ language sql stable security definer set search_path to 'public', 'pg_temp'
+as $neutralised$
+  select m.id, m.created_at
+    from direct_messages m
+   where ${mine('m')}
+     and m.conversation_id = p_conversation_id
+     and m.is_group
+     and m.unsent_at is null
+     and (p_since is null or m.created_at >= p_since)
+     and exists (select 1 from user_blocks b where b.blocked_id = m.sender_id)
+   order by m.created_at desc, m.id desc
+   limit 200;
+$neutralised$;`,
+      subject: 'direct_messages m — the group messages whose blocker rule was dropped',
+      witness: {
+        // A member who blocked nobody: the real function gives them no
+        // placeholder for a message another member blocked, the replacement
+        // does. Its own three users and group, so no seed row can answer.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0e1', 'authenticated', 'authenticated',
+                   'pgtap-guard-gbp-a@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0e2', 'authenticated', 'authenticated',
+                   'pgtap-guard-gbp-b@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0e3', 'authenticated', 'authenticated',
+                   'pgtap-guard-gbp-c@local', '', now(), now());
+                insert into conversations (id, kind, title, created_by)
+                  values ('00000000-0000-0000-0000-00000000c0e4', 'group', 'guard witness',
+                          '00000000-0000-0000-0000-00000000c0e1');
+                insert into conversation_participants (conversation_id, user_id, membership_state, role, joined_at)
+                  values ('00000000-0000-0000-0000-00000000c0e4', '00000000-0000-0000-0000-00000000c0e1',
+                          'active', 'owner', now() - interval '1 hour'),
+                         ('00000000-0000-0000-0000-00000000c0e4', '00000000-0000-0000-0000-00000000c0e2',
+                          'active', 'member', now() - interval '1 hour'),
+                         ('00000000-0000-0000-0000-00000000c0e4', '00000000-0000-0000-0000-00000000c0e3',
+                          'active', 'member', now() - interval '1 hour');
+                insert into direct_messages (sender_id, conversation_id, body)
+                  values ('00000000-0000-0000-0000-00000000c0e2', '00000000-0000-0000-0000-00000000c0e4',
+                          'guard witness');
+                insert into user_blocks (blocker_id, blocked_id)
+                  values ('00000000-0000-0000-0000-00000000c0e1', '00000000-0000-0000-0000-00000000c0e2');
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c0e3","role":"authenticated"}', true);`,
+        probe: `select count(*) from group_blocked_placeholders('00000000-0000-0000-0000-00000000c0e4', null);`,
       },
     },
   ],

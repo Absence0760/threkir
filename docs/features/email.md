@@ -275,6 +275,7 @@ Shared pieces:
 | **New-device sign-in** (security notice, opt-out) | `security_email` (`new_device_sign_in`) | `auth.sessions` AFTER INSERT / first-known `user_agent` UPDATE, when the `(browser, platform)` class is new to an account that already had one; gated at send time on `email_new_device_alerts != 'off'` | ✓ | 1894 |
 | **Club verification proof** (confirm link to an address at the club's domain) | `club_verification_email` | `send_club_verification_email` RPC, owner only, ≤ 3 a request a day | ✓ | 2398 |
 | **Club verification update** (approved / rejected / revoked / lapsed) | `notification_email` (`club_verification`) + push | `private.notify_club_verification`, to the club's owner and active admins; important kind | ✓ | 2398 |
+| **Park course report** (to app admins) | `notification_email` (`park_course_report`) + push | `submit_park_course_report`, to every `app_admins` row on the first pending report on a course and on every land-manager or rights-holder request; important kind, links `/admin/reports` | ✓ | 2449, 2469 |
 | **Email address changed** (security notice, not optional) | GoTrue `email_changed_notification` → `auth-email` hook | a confirmed email change; sent to the **previous** address (`email_data.old_email`); `config.toml [auth.email.notification.email_changed]` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
 | **Phone number changed** (security notice, not optional) | GoTrue `phone_changed_notification` → `auth-email` hook | a confirmed phone change; `config.toml [auth.email.notification.phone_changed]` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
 | **Sign-in method linked / removed** (security notice, not optional) | GoTrue `identity_linked_notification` / `identity_unlinked_notification` → `auth-email` hook | an identity (Google, Apple, email…) linked to or unlinked from the account; names the provider; `config.toml [auth.email.notification.identity_linked]` / `identity_unlinked` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
@@ -792,6 +793,15 @@ neither, and neither carries a `List-Unsubscribe` header.
   `/clubs/{club_id}` rather than the hub; its copy is the existing
   `event_cancel` catalogue entry. Copy for the three new kinds in all seven
   locales.
+
+- [ ] **Park course reporter acknowledgement** — issue #1346, `decisions.md
+  § 2449`. A park course reporter may leave a contact email and need not be a
+  user. No mail is sent to it: the operator replies by hand from the address
+  `/admin/reports` links, and the purge clears it 30 days after resolution. An
+  automated acknowledgement would be a new non-user kind on the
+  `club_verification_email` pattern (inline address and locale in the payload,
+  no preference gate, its own footer), plus a stated basis for mailing a
+  non-user, which waits on an owner decision.
 
 ### Not planned (with reason)
 

@@ -109,7 +109,7 @@ select results_eq(
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-00000000c0a1"}';
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
 values ('b1b1b1b1-0000-0000-0000-0000000000a1',
-        '00000000-0000-0000-0000-00000000c0a1', now(), 5000, 1200, 'app',
+        '00000000-0000-0000-0000-00000000c0a1', now() - interval '2 hours', 5000, 1200, 'app',
         '{"activity_type":"run"}'::jsonb, true);
 insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at)
 values ('a1a1a1a1-0000-0000-0000-0000000000c1',
@@ -119,7 +119,7 @@ values ('a1a1a1a1-0000-0000-0000-0000000000c1',
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-00000000c0b2"}';
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
 values ('b1b1b1b1-0000-0000-0000-0000000000b2',
-        '00000000-0000-0000-0000-00000000c0b2', now(), 5000, 1300, 'app',
+        '00000000-0000-0000-0000-00000000c0b2', now() - interval '1 hours', 5000, 1300, 'app',
         '{"activity_type":"run"}'::jsonb, false);
 insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at)
 values ('a1a1a1a1-0000-0000-0000-0000000000c1',

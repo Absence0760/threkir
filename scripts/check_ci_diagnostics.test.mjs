@@ -602,6 +602,10 @@ const NOT_A_GUARD = new Map([
 	['scripts/gen_web_icon_font.mjs', 'a generator; its output is what the guard checks'],
 	['scripts/gen_catalogue_fold_table.mjs', 'a generator; its output is what the guard checks'],
 	[
+		'scripts/gen_park_course_runs.mjs',
+		'a generator; apps/web/src/lib/parks/course_run_fixture.test.ts rebuilds both outputs and fails the web unit suite when either is stale',
+	],
+	[
 		'scripts/gen_exercise_fold_table.mjs',
 		'a generator; unlike the catalogue table it is FROZEN, so nothing re-renders it '
 			+ '(decisions § 1176) and what CI checks is check_shared_constants.mjs comparing its '
@@ -682,7 +686,7 @@ const OFF_THE_GATE = new Map([
 			'`promote` / `advance` act on Google Play with the service account key CI does not ' +
 			'hold. What the gate holds instead is its SUITE, which drives every subcommand ' +
 			'against an in-memory Edits API and reads both workflows\' wiring, in the ' +
-			'`workflow-lint` job of ci.yml (decisions § 2433).',
+			'`workflow-lint` job of ci.yml (decisions § 2478).',
 	],
 	[
 		'scripts/check_compliance_drift.mjs',

@@ -791,6 +791,27 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardHeroRestDayBody => '今日はプランに予定がありません。';
 
   @override
+  String get dashboardHeroRestDayGrisnir => 'トールのヤギのように、朝には元どおり。';
+
+  @override
+  String get mascotMilestoneFirstRun => '初めてのランを記録。いちばん大変な一歩です。';
+
+  @override
+  String get mascotMilestoneFirst5k => '初めての5K。ちゃんと数に入ります。';
+
+  @override
+  String get mascotMilestoneBadge => 'バッジ獲得。跳ねたくなりますね。';
+
+  @override
+  String get mascotMilestoneBest => '自己ベスト更新。跳ねたくなりますね。';
+
+  @override
+  String get mascotMilestoneLongest => 'これまでで最長のラン。';
+
+  @override
+  String get mascotOnboardingLine => 'グリスニルは登山口で待っています。';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return '準備度 $score';
   }
@@ -943,13 +964,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get fitnessRunsPlans => 'トレーニングプラン';
 
   @override
-  String get runSurfaceLabel => 'ランセクション';
-
-  @override
   String get runSurfaceTabPlans => 'プラン';
 
   @override
-  String get runSurfaceTabRaces => 'レース';
+  String get runSurfaceTabRacesCourses => 'レース・コース';
 
   @override
   String get gymSurfaceLabel => 'ジムセクション';
@@ -1802,9 +1820,6 @@ class AppLocalizationsJa extends AppLocalizations {
       'これまで記録したすべてのアクティビティを含む、Stravaからメールで届くアーカイブをアップロードします';
 
   @override
-  String get setupImportParkrunDesc => 'アスリート番号でparkrunの全結果を取り込みます';
-
-  @override
   String get setupDoneTitle => '準備完了';
 
   @override
@@ -1983,7 +1998,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — スタート待ち';
+    return '$label — GO待ち';
   }
 
   @override
@@ -3185,6 +3200,20 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailSectionSegments => 'セグメント';
 
   @override
+  String get runDetailParkCourses => 'このランの公園コース';
+
+  @override
+  String runDetailParkCourseRank(String rank, String season) {
+    return '$season年 $rank位';
+  }
+
+  @override
+  String get runDetailParkCoursesLoadFailed => '公園コースのタイムを読み込めませんでした。';
+
+  @override
+  String get runDetailParkCourseOpenFailed => 'このコースを開けませんでした。';
+
+  @override
   String get runDetailSaveAsRouteTitle => 'ルートとして保存';
 
   @override
@@ -3300,6 +3329,32 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runDetailMadePrivate => 'ランは非公開になりました';
+
+  @override
+  String get runDetailMadePublic => 'ランを公開しました';
+
+  @override
+  String get runDetailVisibilityPublic => '公開';
+
+  @override
+  String get runDetailVisibilityPrivate => '非公開';
+
+  @override
+  String get runDetailVisibilityFollowers => 'フォロワー';
+
+  @override
+  String get runDetailVisibilityShared => '共有';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics => '非公開。このランを公開する';
+
+  @override
+  String get runDetailVisibilityPublicSemantics => '公開。このランを非公開にする';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level。このランを見られる人を変更';
+  }
 
   @override
   String get runDetailDeleteTitle => 'ランを削除しますか？';
@@ -5903,7 +5958,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'レース開始時に「GO」をタップしてください。参加者のウォッチに準備バナーが表示されます。';
+      'レース開始時に「GO」をタップしてください。参加者のウォッチに準備完了バナーが表示されます。';
 
   @override
   String get eventRaceFireGo => 'GO';
@@ -7104,7 +7159,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planNudgeAnchorReturnBody(int n) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#週間');
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n週間');
     return '$_temp0プランから離れていました。この先の週を最後に走った量から積み上げ直す変更案があります。';
   }
 
@@ -7165,7 +7220,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planDetailAnchorReturnNote(int n, String km) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#週間');
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n週間');
     return '$_temp0プランから離れていました。これからの週は最後に1週間で走った$kmの約半分から再開し、週に約10%ずつ増やします。テーパーは計画どおりです。';
   }
 
@@ -8339,13 +8394,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get integrationsParkrunTitle => 'parkrunの結果をインポート';
-
-  @override
-  String get integrationsParkrunBody =>
-      'parkrunのアスリート番号（例：A123456）を入力してください。フィニッシュ履歴を取得し、新しい結果をランのリストに追加します。';
-
-  @override
   String get integrationsParkrunFieldLabel => 'アスリート番号';
 
   @override
@@ -8401,27 +8449,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parkrunBarcodeOfflineCopy => 'この端末に保存されたコピーを表示しています。';
 
   @override
-  String get integrationsImport => 'インポート';
-
-  @override
-  String get integrationsParkrunImporting => 'parkrunの結果をインポートしています…';
-
-  @override
-  String integrationsParkrunImported(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'parkrunの結果を$count件インポートしました。',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String integrationsImportPartialOf(int n, int total) {
-    return '履歴の一部のみインポートできました: $total 件中 $n 件。';
-  }
-
-  @override
   String integrationsImportPartial(int n) {
     return 'すべての結果を読み取ることはできませんでした。インポート: $n 件。';
   }
@@ -8429,14 +8456,6 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get integrationsImportTruncated =>
       '結果リストが長すぎて最後まで読み取れなかったため、記録を確認できませんでした。代わりに手動で入力してください。';
-
-  @override
-  String get integrationsParkrunNoneNew => '前回のインポート以降、新しいparkrunの結果はありません。';
-
-  @override
-  String integrationsImportFailed(Object error) {
-    return 'インポートに失敗しました：$error';
-  }
 
   @override
   String get integrationsStravaName => 'Strava';
@@ -8479,21 +8498,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get integrationsSyncNow => '今すぐ同期';
 
   @override
-  String get integrationsParkrunName => 'parkrun';
-
-  @override
-  String get integrationsParkrunTileSubtitle => 'アスリート番号で結果をインポート';
-
-  @override
-  String get integrationsParkrunRegionNote =>
-      'parkrun は一部の国でのみ開催されており、お近くにイベントがない場合があります。parkrun のアスリート番号があれば結果をインポートできます。';
-
-  @override
   String get integrationsSignInTitle => 'サインインしてサービスを接続';
 
   @override
   String get integrationsSignInSubtitle =>
-      '同期したアクティビティを履歴に取り込むには、Strava + parkrunにアカウントが必要です。';
+      '同期したアクティビティを履歴に取り込むには、Stravaにアカウントが必要です。';
 
   @override
   String get integrationsHealthConnectTitle => 'ランをヘルスコネクトに書き込む';
@@ -9525,6 +9534,12 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get prefsShowCaloriesHint =>
       '距離と体重から推定します（未設定の場合は70 kgを使用）。オフにするとラン詳細ページのカロリー表示を非表示にします。';
+
+  @override
+  String get prefsShowMascot => 'Grisnirを表示';
+
+  @override
+  String get prefsShowMascotHint => 'Threkirのヤギです。休養日には一緒に休み、シェア画像の隅に小さく載ります。';
 
   @override
   String get prefsDefaultRunPrivacy => 'ランのデフォルトプライバシー';
@@ -10687,6 +10702,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get reportTitleMessage => 'メッセージを報告';
 
   @override
+  String get reportTitleGroupInvite => 'グループへの招待を報告';
+
+  @override
   String get reportTitleContent => 'コンテンツを報告';
 
   @override
@@ -11683,7 +11701,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava、parkrun、レースカレンダー、心拍ベルト、トレッドミル、ウォッチ';
+      'Strava、レースカレンダー、心拍ベルト、トレッドミル、ウォッチ';
 
   @override
   String get settingsTabDevicesSubtitle =>
@@ -13347,6 +13365,10 @@ class AppLocalizationsJa extends AppLocalizations {
       '昨日からさかのぼって、ランの記録がないまま過ぎた予定ワークアウトの連続数です。スキップしたワークアウトや休養日は数えず、連続も途切れません。完了したワークアウトで連続は終わります。';
 
   @override
+  String get metricRouteHistoryDefinition =>
+      '挑戦とは、このルートでのランのうち、アクティビティの種類が同じで、100 mを超えて移動し、記録されたタイム（0より大きく10日未満）があるものです。挑戦は速い順に並び、同じタイムは同じ順位になります。そのため、ベストタイムに並んだランも自己ベストです。';
+
+  @override
   String get coachingRosterRiskLow => '低';
 
   @override
@@ -14318,6 +14340,33 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesTitle => 'レースカレンダー';
 
   @override
+  String get racesSectionUpcoming => '今後のレース';
+
+  @override
+  String get racesSectionAnyTime => 'いつでも走れる';
+
+  @override
+  String racesAnyTimeFastest(String year, String time) {
+    return '$year年の最速タイム：$time';
+  }
+
+  @override
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return '$year年の最速タイム：$time（$name）';
+  }
+
+  @override
+  String get racesAnyTimeNoTimeYet => '今シーズンはまだタイムがありません。最初のタイムを残せるかもしれません。';
+
+  @override
+  String racesAnyTimeAway(String distance) {
+    return '$distance先';
+  }
+
+  @override
+  String get racesAnyTimeFastestFailed => '今シーズンの最速タイムを読み込めませんでした。';
+
+  @override
   String get racesSearchPlaceholder => 'レースを名前で検索…';
 
   @override
@@ -14696,23 +14745,6 @@ class AppLocalizationsJa extends AppLocalizations {
       '全体ではなくあなたの結果だけをインポートするため、ゼッケン番号を入力してください。';
 
   @override
-  String racesUltraSignUpImportingAs(String name, String id) {
-    return '$name（UltraSignup #$id）としてインポート';
-  }
-
-  @override
-  String get racesUltraSignUpLinkedHint =>
-      'このレースのあなたの結果だけを、UltraSignup のレース ID と日付で照合して取り込みます。';
-
-  @override
-  String get racesUltraSignUpNotLinked =>
-      '先に UltraSignup のプロフィールを連携してから、ここでインポートしてください。';
-
-  @override
-  String get racesUltraSignUpPersonNotFound =>
-      '連携した UltraSignup のプロフィールがその名前で見つからなくなりました。設定でもう一度連携してください。';
-
-  @override
   String get racesPasteResultHint => 'レースの結果ページから完走の詳細を入力してください。';
 
   @override
@@ -14770,16 +14802,8 @@ class AppLocalizationsJa extends AppLocalizations {
       'Strava はランの記録と共有に広く使われているアプリです。連携すると Strava のアクティビティが取り込まれます。まず直近 90 日分、その後は新しいアクティビティが出るたびに取り込まれます。Strava にサインインしてアクセスを許可します。連携はいつでも解除できます。';
 
   @override
-  String get integrationsParkrunInfo =>
-      'parkrun は世界各地の公園で毎週開催される、無料で計測付きの 5km ランです。このタイルをタップし、parkrun のバーコードにあるアスリート番号（A で始まる番号）を入力すると、完走したすべての parkrun をタイムとエイジグレードつきで取り込めます。';
-
-  @override
   String get integrationsRunsignupInfo =>
       'RunSignUp は数千のロードレースのエントリーと結果を扱っています。出走したレースをレースカレンダーで探し、着けていたゼッケン番号を入力すると、公式タイムとスプリットがそのランに紐づきます。';
-
-  @override
-  String get integrationsUltrasignupInfo =>
-      'UltraSignup はトレイル・ウルトラレースのエントリーと結果を扱っています。ここで UltraSignup のプロフィールを一度連携すると、レースカレンダーからレースの結果をインポートできます。';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -14787,92 +14811,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get integrationsRunsignupUnavailable =>
-      'RunSignUpのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。';
-
-  @override
-  String get integrationsUltrasignup => 'UltraSignup';
-
-  @override
-  String get integrationsUltrasignupConnect =>
-      'UltraSignupからトレイル・ウルトラの結果をインポートします。';
-
-  @override
-  String get integrationsUltrasignupOpen => 'レースカレンダーを開く';
-
-  @override
-  String get integrationsUltrasignupUnavailable =>
-      'UltraSignupのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。';
-
-  @override
-  String get integrationsUltrasignupFindLabel => 'UltraSignup のプロフィールを探す';
-
-  @override
-  String get integrationsUltrasignupFirstName => '名';
-
-  @override
-  String get integrationsUltrasignupLastName => '姓';
-
-  @override
-  String get integrationsUltrasignupNameHint =>
-      'レースのエントリーに使っている名前を入力してください。UltraSignup にその名前で登録されている全員が表示されるので、あなた自身を選んでください。';
-
-  @override
-  String get integrationsUltrasignupFind => '検索';
-
-  @override
-  String get integrationsUltrasignupSearching => 'UltraSignup を検索中…';
-
-  @override
-  String get integrationsUltrasignupNoMatches =>
-      'UltraSignup にその名前の人は見つかりませんでした。エントリー時のつづりを確認してください。';
-
-  @override
-  String get integrationsUltrasignupPickPrompt => 'どれがあなたですか？';
-
-  @override
-  String integrationsUltrasignupCandidateAge(int age) {
-    return '$age歳';
-  }
-
-  @override
-  String integrationsUltrasignupCandidateResults(int n) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n件の結果',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get integrationsUltrasignupThisIsMe => 'これが自分';
-
-  @override
-  String integrationsUltrasignupLinkedAs(String name, String id) {
-    return '$name（UltraSignup #$id）として連携済み';
-  }
-
-  @override
-  String get integrationsUltrasignupUnlink => '連携を解除';
-
-  @override
-  String get integrationsUltrasignupLinked => 'UltraSignup のプロフィールを連携しました。';
-
-  @override
-  String get integrationsUltrasignupLinkFailed =>
-      'UltraSignup のプロフィールを連携できませんでした。もう一度お試しください。';
-
-  @override
-  String get integrationsUltrasignupLookupFailed =>
-      'UltraSignup を検索できませんでした。しばらくしてからもう一度お試しください。';
-
-  @override
-  String get integrationsUltrasignupUnlinked =>
-      'UltraSignup のプロフィールの連携を解除しました。インポート済みのランはそのまま残ります。';
-
-  @override
-  String get integrationsUltrasignupUnlinkFailed =>
-      'UltraSignup のプロフィールの連携を解除できませんでした。もう一度お試しください。';
+      'RunSignUpのインポートはまだ利用できません。手動での貼り付けは引き続き利用できます。';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -14886,7 +14825,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get integrationsChronotrackUnavailable =>
-      'ChronoTrackのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。';
+      'ChronoTrackのインポートはまだ利用できません。手動での貼り付けは引き続き利用できます。';
 
   @override
   String get routeConditionsTitle => 'コンディション';
@@ -16265,9 +16204,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runSurfaceTabSegments => 'セグメント';
 
   @override
-  String get runSurfaceTabParks => '公園';
-
-  @override
   String rateLimitCreateClub(String wait) {
     return 'クラブの作成が速すぎます。$wait待ってから、もう一度お試しください。';
   }
@@ -16714,7 +16650,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      '遅れスタート：スタートから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
+      '遅れスタート：GOから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
 
   @override
   String get eventCoursesTitle => 'コース';
@@ -18439,6 +18375,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String plansStarterStarts(String date) {
     return '$date開始';
   }
+
+  @override
+  String get plansStarterStart => 'このプランを始める';
 
   @override
   String get planNewStartDateHint =>
@@ -20196,7 +20135,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get parksNoEfforts => 'このランキングにはまだタイムがありません。コースを走れば最初の記録になります。';
+  String get parksNoEfforts => 'このランキングにはまだタイムがありません。コースを走れば最初のタイムを残せます。';
 
   @override
   String get parksSignInForBoards => 'このコースのランキングを見るにはサインインしてください。';
@@ -20220,6 +20159,14 @@ class AppLocalizationsJa extends AppLocalizations {
       '長いコースです。閉園時間までに走り終えられるよう、早めにスタートしてください。自転車や馬と共用のトレイルや、雨の後は渡れなくなることがある渡渉箇所があります。';
 
   @override
+  String get parksTimesNotEventResults =>
+      'ここに表示されるタイムは、この道をThrekirで記録したタイムです。この道で開催されるいかなるイベントの結果でもありません。';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      '土曜日の朝は、団体がこの道を利用します。道を譲り、その中を走り抜けてタイムを計測するのは避けてください。';
+
+  @override
   String get parksAttributionOsm => 'コースライン © OpenStreetMap contributors';
 
   @override
@@ -20241,6 +20188,69 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksBrowseLink => '公園コース';
 
   @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n周');
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '登り$elevation';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed => '公園のウェブサイトを開けませんでした。';
+
+  @override
+  String get parksElevationProfile => '高低図';
+
+  @override
+  String get parksBoardEmptyTitle => 'まだタイムがありません。あなたが最初になれます。';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Threkirで記録しながらこのコースを走ってください。コース全体を走り、すべてのチェックポイントを通過すると、タイムが自動でここに表示されます。提出の手続きは必要ありません。';
+
+  @override
+  String get parksLegendTitle => '地図の凡例';
+
+  @override
+  String get parksLegendStart => 'スタート';
+
+  @override
+  String get parksLegendFinish => 'フィニッシュ';
+
+  @override
+  String get parksLegendStartFinish => 'スタート・フィニッシュ';
+
+  @override
+  String get parksLegendCheckpoints => 'チェックポイント：必ず通過してください';
+
+  @override
+  String get parksLegendDirection => '走る方向';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'チェックポイント$nか所のコースマップ。下の凡例で各マークを説明しています。',
+      zero: 'コースマップ。下の凡例で各マークを説明しています。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '公園の$nコースの地図',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get eventCourseLinesMapBoth => 'コースのスタートラインとフィニッシュラインの地図';
 
   @override
@@ -20250,16 +20260,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventCourseLinesMapFinish => 'コースのフィニッシュラインの地図';
 
   @override
-  String get eventRacePreflightTitle => '準備完了にする前にコースを確認';
+  String get eventRacePreflightTitle => 'レースを準備する前にコースを確認';
 
   @override
-  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備完了にできません';
+  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備できません';
 
   @override
   String get eventRacePreflightFixOnWeb => 'コースのラインはウェブのイベントエディターで編集します。';
 
   @override
-  String get eventRaceArmAnyway => 'このまま準備完了にする';
+  String get eventRaceArmAnyway => 'このまま準備する';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -20317,6 +20327,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String runRaceToStartLine(String distance) {
     return 'スタートラインまで$distance';
   }
+
+  @override
+  String get runRaceStartCrossed => 'スタートラインを通過。計測を開始します';
+
+  @override
+  String get runRaceUndoResume => 'ゴールしていない？再開';
+
+  @override
+  String get runRaceFinishUndone =>
+      'ゴールを取り消しました。ゴールしたら「停止」をタップし、続けて「レースを終了」をタップしてください。';
 
   @override
   String get runRaceThisIsMyAttempt => 'このランを挑戦にする';
@@ -20378,7 +20398,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String eventRaceSelfTimedParticipant(String time) {
-    return 'セルフタイムのレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
+    return 'セルフタイム方式のレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
   }
 
   @override
@@ -20547,5 +20567,825 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String profileNotifCourseAlertNamed(String club) {
     return '$clubがコースのお知らせを投稿しました';
+  }
+
+  @override
+  String get reportReasonOrganiserDispute => '自分の団体へのなりすまし・複製';
+
+  @override
+  String get reportReasonOrganiserDisputeHint =>
+      '認証済みクラブの所有者と管理者向けです。担当者が判断し、自動で非表示になることはありません。';
+
+  @override
+  String reportOrganiserDisputeFor(String club) {
+    return '$clubとして報告します。';
+  }
+
+  @override
+  String get reportOrganiserDisputeClubLabel => '報告する団体';
+
+  @override
+  String get reportErrNotOrganiser => '認証済みクラブの所有者または管理者だけが報告できます。';
+
+  @override
+  String get profileNotifOrganiserDispute => '名前に関する申し立てについてお知らせがあります';
+
+  @override
+  String profileNotifOrganiserDisputeNamed(String club) {
+    return '$clubとの名前に関する申し立てについてお知らせがあります';
+  }
+
+  @override
+  String get coachShareAction => 'コーチに共有';
+
+  @override
+  String get coachShareTitle => 'コーチに共有';
+
+  @override
+  String get coachShareIntro =>
+      'この回答から送る部分を選んでください。コーチには、あなた自身の言葉ではなく、AIコーチからの引用として表示されます。';
+
+  @override
+  String get coachShareCoachLegend => '送信先';
+
+  @override
+  String coachShareTo(String name) {
+    return '$nameさんに送信';
+  }
+
+  @override
+  String get coachShareParagraphsLegend => '共有する部分';
+
+  @override
+  String coachShareTooLong(int max) {
+    return '$max文字を超えています。一部を外してください。';
+  }
+
+  @override
+  String get coachShareLabelNote => '会話ではAIによる生成として表示されます。AIに新たに送信される内容はありません。';
+
+  @override
+  String get coachShareSend => '共有';
+
+  @override
+  String get coachShareSending => '共有中…';
+
+  @override
+  String coachShareSent(String name) {
+    return '$nameさんに共有しました。';
+  }
+
+  @override
+  String get coachShareOpenThread => '会話を開く';
+
+  @override
+  String get coachShareDone => '完了';
+
+  @override
+  String get coachShareCardLabel => 'AIコーチの回答';
+
+  @override
+  String get coachShareCardFromMe => 'あなたがAIコーチから共有しました';
+
+  @override
+  String coachShareCardFromAthlete(String name) {
+    return '$nameさんがAIコーチから共有しました';
+  }
+
+  @override
+  String get coachShareOpenSource => 'AIコーチで開く';
+
+  @override
+  String get coachShareUnavailable => 'コーチへの共有はまだ利用できません。';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'コーチアシスタント利用時（コーチ向け）: コーチアシスタントへの依頼内容。また、あなたとのコーチングのつながりで許可したアスリートに限り、そのアスリートとあなたの最近のメッセージ、プランと今後のワークアウト、最近のラン。これらは、あなただけに表示されるメッセージの下書きを作成するためにのみ使用されます。メッセージの編集と送信はあなた自身が行い、メッセージにはAIアシストの表示が付きます。';
+
+  @override
+  String get coachAssistMarker => 'AIアシスト';
+
+  @override
+  String get coachAssistMarkerTitle => 'AIの下書きをもとにコーチが作成';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return '$nameさんにAIアシストの利用を許可';
+  }
+
+  @override
+  String get coachAssistConsentWhat => '共有される内容';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return '$nameさんがコーチアシスタントに下書きを依頼すると、Threkirは下書きを作成するために、AIプロバイダーであるAnthropicに次の情報を送信します：';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread => 'このコーチとの最近のメッセージ（本文と送信日時）。';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      '取り組んでいるプラン: プラン名、目標レースと目標タイム、期間、今後2週間のワークアウト（日付、種類、距離または時間、ペース、完了したかスキップしたか）。';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      '直近10件のアクティビティ: 日付、距離、時間、アクティビティの種類。心拍数、ルート、ランについて書いた内容は一切送信しません。';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return '下書きを見られるのは$nameさんだけです。メッセージの編集と送信はコーチ本人が行い、メッセージにはAIアシストの表示が付きます。この設定がオフの間は何も送信されません。また、いつでもオフにできます。';
+  }
+
+  @override
+  String get coachAssistConsentFailed => '保存できませんでした。もう一度お試しください。';
+
+  @override
+  String get parkGuideTitle => 'ルートガイド';
+
+  @override
+  String get parkGuidePending => '地図データから作成したもので、まだ現地で確認していません。';
+
+  @override
+  String parkGuideChecked(String date) {
+    return '$dateに現地で確認済み。';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'アクセス';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return '$nameからスタート。';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => '林道からスタート。';
+
+  @override
+  String get parkGuideStartRoad => '園内道路からスタート。';
+
+  @override
+  String get parkGuideStartPath => '小道からスタート。';
+
+  @override
+  String get parkGuideClockwise => 'ループを時計回りに走ります。';
+
+  @override
+  String get parkGuideCounterclockwise => 'ループを反時計回りに走ります。';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return '$landmarkを左手に見て進みます。';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return '$landmarkを右手に見て進みます。';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'すべてのチェックポイントを順に通過してください。通過しないとタイムが記録されません。';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at：左折して$nameへ。';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at：右折して$nameへ。';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at：直進して$nameへ。';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at：左折して林道へ。';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at：右折して林道へ。';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at：林道を直進。';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at：左折して園内道路へ。';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at：右折して園内道路へ。';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at：園内道路を直進。';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at：左折して小道へ。';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at：右折して小道へ。';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at：小道を直進。';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at：橋を渡ります。';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at：浅瀬を渡ります。橋はないので、足が濡れる覚悟を。';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at：ここから舗装路。';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at：ここから砂利道。';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at：ここから土の道。';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at：ここから未舗装路。';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at：ここから木道。';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at：$lengthで$gainの上り。';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at：チェックポイント $n/$total。';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at：$n/$total周目を開始し、ループをもう一度走ります。';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at：フィニッシュ。';
+  }
+
+  @override
+  String get parkCourseReportAction => 'このコースの問題を報告';
+
+  @override
+  String get parkCourseReportExplainer =>
+      '危険、閉鎖、またはトレイルから外れたラインについてお知らせください。すべての報告は Threkir の担当者が確認します。報告だけでコースが閉鎖されることはありません。';
+
+  @override
+  String get parkCourseReportReasonLegend => 'どのような問題ですか？';
+
+  @override
+  String get parkCourseReportReasonHazard => 'コース上の危険';
+
+  @override
+  String get parkCourseReportReasonClosure => 'コースまたはトレイルが閉鎖されている';
+
+  @override
+  String get parkCourseReportReasonOffTrail => 'ラインが指定のトレイルから外れている';
+
+  @override
+  String get parkCourseReportReasonLandManager => '管理者からの依頼';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      '公園または管理機関の職員の方へ。コースの掲載停止をご依頼いただければ、2営業日以内に閉鎖します。';
+
+  @override
+  String get parkCourseReportReasonRightsHolder => '権利者からの依頼';
+
+  @override
+  String get parkCourseReportReasonRightsHolderHint =>
+      'ここで使われている名称、商標、コースデータの権利者またはその代理人の方へ。対象となる権利と変更してほしい点をお知らせください。2営業日以内に受領をお知らせします。';
+
+  @override
+  String get parkCourseReportReasonOther => 'その他';
+
+  @override
+  String get parkCourseReportNotesLabel => 'どのような状況ですか？';
+
+  @override
+  String get parkCourseReportNotesHint => 'コースのどこで、何を、いつ見たか。';
+
+  @override
+  String get parkCourseReportEmailLabel => 'メールアドレス（任意）';
+
+  @override
+  String get parkCourseReportEmailLabelRequired => 'メールアドレス';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      '返信をご希望の場合のみ。この報告への返信に使い、対応完了から30日後に削除します。';
+
+  @override
+  String get parkCourseReportEmailHintRequired =>
+      '権利者からの依頼に返信するため必須です。対応完了から30日後に削除します。';
+
+  @override
+  String get parkCourseReportCancel => 'キャンセル';
+
+  @override
+  String get parkCourseReportSubmit => '報告を送信';
+
+  @override
+  String get parkCourseReportSent => 'ありがとうございます。報告は Threkir チームに届きました。';
+
+  @override
+  String get parkCourseReportErrorFailed => '報告を送信できませんでした。もう一度お試しください。';
+
+  @override
+  String get parkCourseReportErrorRateLimited => '現在報告が多すぎます。しばらくしてからお試しください。';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'このコースはすでに報告済みで、その報告はまだ対応中です。';
+
+  @override
+  String get parkCourseReportErrorNotFound => 'このコースは現在掲載されていません。';
+
+  @override
+  String get parkCourseReportErrorInvalid => '報告内容を確認して、もう一度お試しください。';
+
+  @override
+  String get parkCourseReportErrorEmail => 'メールアドレスが正しくないようです。';
+
+  @override
+  String get parkCourseReportErrorEmailRequired =>
+      '権利者からの依頼には、返信先のメールアドレスが必要です。';
+
+  @override
+  String get profileNotifParkCourseReport => '公園コースについて報告がありました';
+
+  @override
+  String rateLimitReaction(String wait) {
+    return 'リアクションの送信が速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String rateLimitPhotoUpload(String wait) {
+    return '写真を多く送信しています。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'グループの作成が速すぎます。$wait待ってからもう一度お試しください。';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return '今日はグループへの招待を多く送っています。$wait待ってからもう一度お試しください。';
+  }
+
+  @override
+  String get prefsMessageRequests => 'メッセージリクエスト';
+
+  @override
+  String get prefsMessageRequestsHint =>
+      '同じクラブやイベントに参加している人が、あなたに先にメッセージを送れるようにします。オフにすると、あなたがフォローしている人、またはあなたのフォロワーだけがあなたとの会話を始められます。';
+
+  @override
+  String get prefsMessageRequestsFailed => 'メッセージリクエストの設定を変更できませんでした。';
+
+  @override
+  String get messagesReact => 'リアクション';
+
+  @override
+  String get messagesReactPickerLabel => 'リアクションを選択';
+
+  @override
+  String messagesReactionChipLabel(String reaction, int count) {
+    return '$reaction、$count人';
+  }
+
+  @override
+  String get messagesReactionThumbsUp => 'いいね';
+
+  @override
+  String get messagesReactionHeart => 'ハート';
+
+  @override
+  String get messagesReactionLaugh => '笑い';
+
+  @override
+  String get messagesReactionSurprised => '驚き';
+
+  @override
+  String get messagesReactionSad => '悲しい';
+
+  @override
+  String get messagesReactionFire => '炎';
+
+  @override
+  String get messagesReactionRefused => 'このメッセージにはリアクションできません。';
+
+  @override
+  String get messagesSearchPlaceholder => 'メッセージを検索';
+
+  @override
+  String get messagesSearchLabel => '自分のメッセージを検索';
+
+  @override
+  String get messagesSearchEmpty => '一致するメッセージはありません。';
+
+  @override
+  String get messagesSearchFailed => 'メッセージを検索できませんでした。もう一度お試しください。';
+
+  @override
+  String get messagesPhotoAttach => '写真を添付';
+
+  @override
+  String get messagesPhotoRemove => '写真を削除';
+
+  @override
+  String get messagesPhotoDraftAlt => '送信する写真';
+
+  @override
+  String get messagesPhotoAlt => 'メッセージ内の写真';
+
+  @override
+  String get messagesPhotoProcessing => '写真を準備中…';
+
+  @override
+  String get messagesPhotoRejected => 'この写真は送信できませんでした。';
+
+  @override
+  String get messagesPhotoUnavailableToView => '写真を表示できません';
+
+  @override
+  String get messagesPhotoPreview => '写真';
+
+  @override
+  String get messagesPhotoTooLarge => 'その写真は大きすぎるため送信できません。';
+
+  @override
+  String get messagesPhotoUnreadable => 'そのファイルを写真として読み込めませんでした。';
+
+  @override
+  String get messagesPhotoUnavailable => 'メッセージの写真機能はまだご利用いただけません。';
+
+  @override
+  String get messagesPhotoUploadFailed => '写真をアップロードできませんでした。もう一度お試しください。';
+
+  @override
+  String get messagesPhotoSendNotAllowed =>
+      '写真は、フォローしている人やフォロワー、または相手が承認した会話に送れます。ただし、どちらかが相手をブロックしている場合は送れません。';
+
+  @override
+  String get messagesLinkOpenFailed => 'リンクを開けませんでした。';
+
+  @override
+  String get groupsNewGroup => '新しいグループ';
+
+  @override
+  String get groupsGroupFallback => 'グループ';
+
+  @override
+  String groupsMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'メンバー$count人',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsMembersTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'メンバー$count人',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsMembersButton => 'メンバー';
+
+  @override
+  String get groupsYouLeftPreview => 'このグループを退出しました';
+
+  @override
+  String groupsRenamedPreview(String title) {
+    return 'グループ名が$titleに変更されました';
+  }
+
+  @override
+  String get groupsNoMessagesYet => 'まだメッセージはありません';
+
+  @override
+  String get groupsInvitesHeading => 'グループへの招待';
+
+  @override
+  String groupsInviteLine(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'メンバー$count人',
+    );
+    return '$nameさんからの招待 · $_temp0';
+  }
+
+  @override
+  String get groupsInviteAccept => '参加する';
+
+  @override
+  String get groupsInviteDecline => '辞退する';
+
+  @override
+  String get groupsInviteReport => '報告';
+
+  @override
+  String groupsInviteAcceptedToast(String title) {
+    return '$titleに参加しました';
+  }
+
+  @override
+  String get groupsInviteDeclinedToast => '招待を辞退しました';
+
+  @override
+  String groupsInviteActionFailed(String error) {
+    return '招待に応答できませんでした: $error';
+  }
+
+  @override
+  String groupsInviteDeclineConfirmTitle(String title) {
+    return '$titleへの招待を辞退しますか?';
+  }
+
+  @override
+  String get groupsInviteDeclineConfirmMessage =>
+      'グループには参加せず、14日間はこのグループから再度招待されません。理由は誰にも伝わりません。';
+
+  @override
+  String get groupsCreateTitle => '新しいグループ';
+
+  @override
+  String get groupsTitleLabel => 'グループ名';
+
+  @override
+  String get groupsCreateHint =>
+      '2人以上を選んでください。それぞれに招待が届き、承諾した場合のみ参加します。メッセージは参加した時点から表示されます。';
+
+  @override
+  String get groupsCreateSubmit => 'グループを作成';
+
+  @override
+  String get groupsCreating => '作成中…';
+
+  @override
+  String groupsCreatedToast(String title) {
+    return '$titleを作成し、招待を送りました。';
+  }
+
+  @override
+  String get groupsCreateFailed => 'グループを作成できませんでした。';
+
+  @override
+  String get groupsPeopleLoadFailed => '招待できる人を読み込めませんでした。';
+
+  @override
+  String get groupsPeopleEmpty => 'まだ招待できる人がいません。フォローしている人やフォロワーを招待できます。';
+
+  @override
+  String get groupsPeopleSearch => '人を検索';
+
+  @override
+  String groupsPeopleSelected(int count, int max) {
+    return '$max人中$count人を選択';
+  }
+
+  @override
+  String get groupsPeopleNoMatches => 'その名前に一致する人はいません。';
+
+  @override
+  String groupsPeopleFull(int max) {
+    return 'グループの上限は招待中を含めて32人です。あと$max人招待できます。';
+  }
+
+  @override
+  String get groupsUnavailable => 'グループの会話は現在ご利用いただけません。';
+
+  @override
+  String get groupsNotFound => 'このグループは利用できません。';
+
+  @override
+  String get groupsNotAvailable => 'このグループは利用できません。';
+
+  @override
+  String get groupsActionRefused => 'このグループではその操作はできません。';
+
+  @override
+  String get groupsInviteRefused => '招待できない人が含まれています。';
+
+  @override
+  String get groupsCapReached => 'グループの上限は招待中を含めて32人です。';
+
+  @override
+  String get groupsTitleInvalid => 'グループ名は1〜60文字です。';
+
+  @override
+  String get groupsSendNotAllowed => 'このグループには送信できません。';
+
+  @override
+  String groupsActionFailed(String error) {
+    return 'うまくいきませんでした: $error';
+  }
+
+  @override
+  String get groupsHistoryNote => '参加する前のメッセージは表示されません。';
+
+  @override
+  String get groupsEmptyThread => 'まだメッセージはありません。あいさつしてみましょう。';
+
+  @override
+  String get groupsBlockedPlaceholder => 'ブロックした人からのメッセージ';
+
+  @override
+  String groupsRenamedLine(String name, String title) {
+    return '$nameさんがグループ名を$titleに変更しました';
+  }
+
+  @override
+  String groupsRenamedLineYou(String title) {
+    return 'グループ名を$titleに変更しました';
+  }
+
+  @override
+  String get groupsLeftNotice => 'このグループを退出しました。自分のメッセージは引き続き送信取り消しできます。';
+
+  @override
+  String groupsComposerLabel(String title) {
+    return '$titleへのメッセージ';
+  }
+
+  @override
+  String get groupsLeave => '退出';
+
+  @override
+  String groupsLeaveConfirmTitle(String title) {
+    return '$titleから退出しますか?';
+  }
+
+  @override
+  String get groupsLeaveConfirmMessage =>
+      'すぐにグループのメッセージが見えなくなり、戻るには新しい招待が必要です。自分のメッセージは送信取り消しするまでグループに残ります。他のメンバーの端末にすでにあるものはそのまま残ります。';
+
+  @override
+  String groupsLeftToast(String title) {
+    return '$titleから退出しました';
+  }
+
+  @override
+  String get groupsRename => '名前を変更';
+
+  @override
+  String get groupsRenameSave => '保存';
+
+  @override
+  String get groupsRenamedToast => 'グループ名を変更しました';
+
+  @override
+  String get groupsInviteMore => '招待';
+
+  @override
+  String groupsInviteSend(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count人を招待',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsInvitedToast(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count件の招待を送りました',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsRoleInvited => '招待中';
+
+  @override
+  String get groupsYouSuffix => '(あなた)';
+
+  @override
+  String get groupsMakeAdmin => '管理者にする';
+
+  @override
+  String get groupsRemoveAdmin => '管理者から外す';
+
+  @override
+  String groupsMadeAdminToast(String name) {
+    return '$nameさんが管理者になりました';
+  }
+
+  @override
+  String groupsRemovedAdminToast(String name) {
+    return '$nameさんは管理者ではなくなりました';
+  }
+
+  @override
+  String get groupsMakeOwner => 'オーナーにする';
+
+  @override
+  String groupsTransferConfirmTitle(String name) {
+    return '$nameさんをオーナーにしますか?';
+  }
+
+  @override
+  String get groupsTransferConfirmMessage =>
+      'あなたは管理者になります。オーナーの権限を戻せるのは新しいオーナーだけです。';
+
+  @override
+  String groupsTransferredToast(String name) {
+    return '$nameさんがオーナーになりました';
+  }
+
+  @override
+  String get groupsRemove => '削除';
+
+  @override
+  String groupsRemoveConfirmTitle(String name) {
+    return '$nameさんをグループから削除しますか?';
+  }
+
+  @override
+  String get groupsRemoveConfirmMessage =>
+      'すぐにグループのメッセージが見えなくなり、戻るには新しい招待が必要です。本人のメッセージは残ります。誰が削除したかは伝わりません。';
+
+  @override
+  String groupsRemovedToast(String name) {
+    return '$nameさんを削除しました';
+  }
+
+  @override
+  String get groupsCancelInvite => '招待を取り消す';
+
+  @override
+  String groupsCancelInviteConfirmTitle(String name) {
+    return '$nameさんへの招待を取り消しますか?';
+  }
+
+  @override
+  String get groupsCancelInviteConfirmMessage =>
+      'この招待では参加できなくなります。後でもう一度招待できます。';
+
+  @override
+  String groupsInviteCancelledToast(String name) {
+    return '$nameさんへの招待を取り消しました';
+  }
+
+  @override
+  String profileNotifGroupMessage(String name) {
+    return '$nameさんがグループに投稿しました';
+  }
+
+  @override
+  String profileNotifGroupInvite(String name) {
+    return '$nameさんからグループに招待されました';
   }
 }

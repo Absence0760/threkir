@@ -7,6 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:ui_kit/ui_kit.dart'
     show AppIconSize, AppMotion, motionDuration, reduceMotion;
 
+import '../mascot.dart';
+import '../widgets/grisnir_moments.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
@@ -92,6 +94,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           icon: Icons.directions_run,
           title: l10n.onboardingTrackTitle,
           description: l10n.onboardingTrackBody,
+          mascot: true,
         ),
         _PageData(
           icon: Icons.route,
@@ -269,16 +272,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: theme.colorScheme.primaryContainer,
+                                if (p.mascot && mascotShown()) ...[
+                                  const GrisnirWaiting(width: 180),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    l10n.mascotOnboardingLine,
+                                    key: const Key('onboarding-grisnir-line'),
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
                                   ),
-                                  child: Icon(p.icon,
-                                      size: 64, color: theme.colorScheme.primary),
-                                ),
+                                ] else
+                                  Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: theme.colorScheme.primaryContainer,
+                                    ),
+                                    child: Icon(p.icon,
+                                        size: 64,
+                                        color: theme.colorScheme.primary),
+                                  ),
                                 const SizedBox(height: 32),
                                 Text(
                                   p.title,
@@ -488,10 +505,14 @@ class _PageData {
   final String title;
   final String description;
   final String? guideId;
+
+  /// Grisnir waits by a trail sign in place of the icon (show_mascot on).
+  final bool mascot;
   const _PageData({
     required this.icon,
     required this.title,
     required this.description,
     this.guideId,
+    this.mascot = false,
   });
 }

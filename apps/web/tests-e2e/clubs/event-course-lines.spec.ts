@@ -108,21 +108,26 @@ test.describe('/clubs/[slug]/events/[id] — course start and finish lines', () 
 			finish_gate_source: 'organiser'
 		});
 
-		// Turn it to face east.
+		// Turn it to face east. The width field left cleared keeps the last
+		// width rather than saving the default (#1358).
+		await editor.getByTestId('course-gate-width-number').fill('');
 		await editor.getByTestId('course-gate-bearing').fill('90');
 		await editor.getByTestId('course-gate-apply').click();
 		await expect
 			.poll(
 				async () =>
-					(
-						await readRow(
-							'course after turn',
-							getAdminClient().from('event_courses').select('finish_gate_bearing_deg').eq('id', courseId).single()
-						)
-					).finish_gate_bearing_deg,
+					await readRow(
+						'course after turn',
+						getAdminClient()
+							.from('event_courses')
+							.select('finish_gate_bearing_deg, finish_gate_half_width_m')
+							.eq('id', courseId)
+							.single()
+					),
 				{ timeout: 10_000 }
 			)
-			.toBe(90);
+			.toEqual({ finish_gate_bearing_deg: 90, finish_gate_half_width_m: 20 });
+		await expect(editor.getByTestId('course-gate-width-number')).toHaveValue('20');
 
 		// A routeless course has no route to go back to, so reset removes it.
 		await editor.getByTestId('course-gate-finish-reset').click();

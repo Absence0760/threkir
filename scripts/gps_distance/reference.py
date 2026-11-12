@@ -1,4 +1,4 @@
-"""GPS distance estimator — reference implementation, spec v1.5.
+"""GPS distance estimator — reference implementation, spec v1.8.
 
 Every port (Dart, TypeScript, Deno, Kotlin, Swift, Rust, Go) must reproduce
 gps_distance_vectors.json to 1e-3 m. Operation order matters only at the
@@ -9,10 +9,17 @@ Two entry points:
   GpsDistanceEstimator  the forward (causal) filter every live screen runs.
   smooth_distance       the saved / recomputed figure: a forward pass plus a
                         Rauch-Tung-Striebel backward pass over the whole run.
+
+v1.8 adds the watch run's segments, which the estimator itself does not see: a
+watch closes its estimator at a pause, a Wear OS source switch or a continued
+run and opens a fresh one, and marks the next segment's first stored fix.
+  record_segments       the watch recorder over its segments: the totals it saves.
+  smooth_segments       the server replay of a marked track, segment by segment.
+  recompute_distance    the worker's figure from that replay and the saved keys.
 """
 import math
 
-SPEC_VERSION = "1.5"
+SPEC_VERSION = "1.8"
 
 EARTH_RADIUS_M = 6371008.8
 Q_ACCEL = 0.6                     # m^2/s^3, white-acceleration spectral density (unvalidated, see doc)
@@ -25,6 +32,7 @@ MAX_SPEED_SIGMA_MPS = 1.5         # Doppler worse than this is ignored
 STATIONARY_SPEED_MPS = 0.4        # below: no distance (Doppler present)
 POS_ONLY_STATIONARY_SPEED_MPS = 0.8  # below: no distance (no Doppler)
 GAP_S = 10.0                      # fix interval above this (x expected interval) re-anchors, no credit
+MAX_OPEN_GAPS = 8                 # v1.6: gaps a step sample can still owe a share to; past it the oldest is dropped
 FRESH_FIX_S = 2.0                 # a fix this recent (x expected interval) counts as "GPS good" for stride learning
 STRIDE_WINDOW_STEPS = 50
 MIN_STRIDE_M, MAX_STRIDE_M = 0.4, 2.5
@@ -161,6 +169,10 @@ class GpsDistanceEstimator:
         self._fresh_fix_s = FRESH_FIX_S * scale
         self.gps_distance_m = 0.0
         self.step_distance_m = 0.0
+        # v1.7: what the steps credited the gaps over their chord lower bounds, summed.
+        # A replay with no steps credits each gap its chord, so this is exactly what it
+        # lacks: per gap max(chord, steps) - chord, a split step_distance_m cannot give.
+        self.step_over_chord_m = 0.0
         self.stride_m = initial_stride_m if (_valid(initial_stride_m) and
                                               MIN_STRIDE_M <= initial_stride_m <= MAX_STRIDE_M) else None
         self._lat0 = self._lng0 = None
@@ -168,10 +180,15 @@ class GpsDistanceEstimator:
         self._t = None
         self._win_steps = 0
         self._win_m = 0.0
+        self._win_from_t = -math.inf      # v1.6: the fix that last emptied the stride window
+        self._win_stale = False           # v1.6: a stale step sample emptied the window since the last fix
         self._last_steps = None
         self._last_step_t = None
         self._pending_step_m = 0.0
         self._stride_ok = False
+        # v1.6: the gaps re-anchors closed since the last step sample, each (start t,
+        # end t, its GPS top-up, its record), owed their share of the next sample
+        self._gaps = []
         # v1.2 state
         self.r_scale = 1.0
         self.rejected_fixes = 0
@@ -193,6 +210,9 @@ class GpsDistanceEstimator:
         self.zupt_fixes = 0
         self.step_batch_s = 0.0           # v1.5: longest walking span between two step increases
         self.records = [] if record else None
+        # Diagnostic only, kept with the records: per gap, {start t: [the chord lower bound a
+        # replay with no steps credits it, the step metres the recorder credited it]}.
+        self.gap_credits = {} if record else None
 
     @property
     def distance_m(self):
@@ -256,10 +276,20 @@ class GpsDistanceEstimator:
                 if lower > self._pending_step_m:
                     gap_m = lower - self._pending_step_m
                     self.gps_distance_m += gap_m
+                self.step_over_chord_m += max(0.0, self._pending_step_m - max(lower, 0.0))
+                rec = len(self.records) if self.records is not None else None
+                if self.gap_credits is not None:
+                    self.gap_credits[self._t] = [max(lower, 0.0), self._pending_step_m]
+                self._gaps.append([self._t, t, gap_m or 0.0, rec])
+                if len(self._gaps) > MAX_OPEN_GAPS:
+                    self._gaps.pop(0)
             self._pending_step_m = 0.0
+            self._win_stale = False
             self._stride_ok = self._stride_grade(accuracy_m, dop, sa)
-            if not self._stride_ok:
-                self._win_steps, self._win_m = 0, 0.0
+            # The first fix also starts the window: a step sample before it counted
+            # steps no fix measured metres for.
+            if not self._stride_ok or self._t is None:
+                self._empty_window(t)
             self._x, self._y = _Axis(zx, r), _Axis(zy, r)
             self._t = t
             self._xc_last = (zx, zy, t)
@@ -401,13 +431,22 @@ class GpsDistanceEstimator:
             inc = 0.0 if speed < floor else min(speed, self.max_speed_mps) * dt
         self.gps_distance_m += inc
         self._stride_ok = self._stride_grade(accuracy_m, dop if use_dop is not None and chord is None else None, sa)
-        if self._stride_ok:
+        # A step sample that fell stale since the last fix emptied the window inside this
+        # fix's interval, so the window no longer holds the steps its metres cover.
+        if self._stride_ok and not self._win_stale:
             self._win_m += inc
         else:
-            self._win_steps, self._win_m = 0, 0.0
+            self._empty_window(t)
+        self._win_stale = False
         self._record(t=t, anchor=False, chain_break=chain_break, dt=dt, pred=pred,
                      zupt=zupt, dop=use_dop, chord=chord)
         return inc
+
+    def _empty_window(self, t):
+        """Empty the stride window at the fix at t. Its metres start after t, so a step
+        sample whose interval reaches back before t must not refill it."""
+        self._win_steps, self._win_m = 0, 0.0
+        self._win_from_t = t
 
     def _stride_grade(self, accuracy_m, dop, sa):
         """Whether a fix may teach stride. dop: the Doppler speed the fix was credited
@@ -419,15 +458,29 @@ class GpsDistanceEstimator:
         return not (_valid(accuracy_m) and accuracy_m > STRIDE_MAX_POS_SIGMA_M)
 
     def add_steps(self, t, cumulative_steps):
-        """Cumulative pedometer count. Learns stride while GPS is good; buffers
-        steps x stride while it is not (committed only if the gap exceeds the gap window)."""
+        """Cumulative pedometer count. Learns stride while GPS is good; buffers steps x
+        stride for the time since the last fix, dropped when the next fix integrates it
+        and committed only if the gap exceeds the gap window (at that fix, or at finish)."""
         if not _valid(t) or cumulative_steps is None:
             return
         prev, prev_t = self._last_steps, self._last_step_t
         self._last_steps, self._last_step_t = cumulative_steps, t
         if prev is None or cumulative_steps < prev or prev_t is None or t <= prev_t:
+            # A baseline counts no interval, so the stride window's metres so far have
+            # no steps: start the window here, as a learn does. A stale one also marks
+            # the window, as any stale sample does, so the next fix empties it.
+            if self._t is not None and t - self._t > self._fresh_fix_s:
+                self._win_stale = True
+            if self._t is not None and t < self._t:
+                # v1.7: stamped before the last fix, so the window's metres already
+                # start after this sample's stamp; the next sample's steps reach back
+                # before them and must not refill it.
+                self._empty_window(self._t)
+            else:
+                self._win_steps, self._win_m = 0, 0.0
             return
         d = cumulative_steps - prev
+        in_gap = self._attribute_steps(prev_t, t, d)
         if d > 0:
             if self._last_step_inc_t is not None:
                 span = t - self._last_step_inc_t
@@ -436,7 +489,10 @@ class GpsDistanceEstimator:
             self._steps_seen = True
             self._last_step_inc_t = t
             self._zupt_released = False
-        if self._t is not None and t - self._t <= self._fresh_fix_s:
+        # A sample whose interval reaches into a gap, or stamped before the last fix,
+        # holds steps GPS measured no metres for, so it must not teach stride.
+        if (self._t is not None and not in_gap and prev_t >= self._win_from_t
+                and 0.0 <= t - self._t <= self._fresh_fix_s):
             if not self._stride_ok:
                 return
             self._win_steps += d
@@ -447,15 +503,55 @@ class GpsDistanceEstimator:
                         (1 - STRIDE_EMA_ALPHA) * self.stride_m + STRIDE_EMA_ALPHA * stride
                 self._win_steps, self._win_m = 0, 0.0
             return
+        if self._t is not None and t - self._t > self._fresh_fix_s:
+            self._win_stale = True
         self._win_steps, self._win_m = 0, 0.0
-        if self.stride_m is None:
-            return
-        self._pending_step_m += min(d * self.stride_m, self.max_speed_mps * (t - prev_t))
+
+    def _attribute_steps(self, prev_t, t, d):
+        """v1.6: a sample's d steps were taken across (prev_t, t], so each part of that
+        interval gets its share. The part after the last fix is buffered; the part
+        inside each gap a re-anchor closed since the previous sample tops that gap's
+        credit up to its steps. A gap that ends after t stays open, less what this
+        sample took from its GPS credit, so the next sample shares the rest of it.
+        Returns whether (prev_t, t] overlaps any open gap."""
+        gaps, self._gaps = self._gaps, []
+        in_gap = any(min(g1, t) > max(prev_t, g0) for g0, g1, _, _ in gaps)
+        stride = self.stride_m
+        if d <= 0 or stride is None:
+            self._gaps = [g for g in gaps if g[1] > t]
+            return in_gap
+        rate = min(d * stride / (t - prev_t), self.max_speed_mps)
+        lo = prev_t if self._t is None else max(prev_t, self._t)
+        if t > lo:
+            self._pending_step_m += rate * (t - lo)
+        for g0, g1, top_up, rec in gaps:
+            lo = max(prev_t, g0)
+            hi = min(g1, t)
+            take = 0.0
+            if hi > lo:
+                late = rate * (hi - lo)
+                self.step_distance_m += late
+                if self.gap_credits is not None:
+                    self.gap_credits[g0][1] += late
+                take = min(late, top_up)
+                self.gps_distance_m -= take
+                self.step_over_chord_m += late - take
+                if rec is not None:
+                    if take > 0:
+                        self.records[rec]["chord"] -= take
+                    for k in range(rec, len(self.records)):
+                        self.records[k]["step_distance_m"] += late
+            if g1 > t:
+                self._gaps.append([g0, g1, top_up - take, rec])
+        return in_gap
 
     def finish(self, t):
         """End of run: commit buffered steps if the trailing gap exceeds the gap window."""
         if self._t is not None and _valid(t) and t - self._t > self._gap_s:
             self.step_distance_m += self._pending_step_m
+            self.step_over_chord_m += self._pending_step_m
+            if self.gap_credits is not None and self._pending_step_m > 0:
+                self.gap_credits[self._t] = [0.0, self._pending_step_m]
         self._pending_step_m = 0.0
 
 
@@ -620,5 +716,72 @@ def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial
         cumulative.append(gps + step_m)
         positions.append(pos)
     return {"distance_m": gps + est.step_distance_m, "gps_distance_m": gps,
-            "step_distance_m": est.step_distance_m, "cumulative_m": cumulative,
-            "positions": positions, "stopped_fixes": len(hints)}
+            "step_distance_m": est.step_distance_m, "step_over_chord_m": est.step_over_chord_m,
+            "cumulative_m": cumulative,
+            "positions": positions, "stopped_fixes": len(hints),
+            "gap_credits": list(est.gap_credits.values())}
+
+
+def record_segments(segments, max_speed_mps=10.0, expected_interval_s=1.0, initial_stride_m=None):
+    """v1.8: a watch run as its recorder runs it. segments: [{"learnStride": bool,
+    "events": [...]}], each ending in the finish its close calls. Each segment runs on
+    a fresh estimator that keeps only the stride the last one learned (the ports'
+    next_segment), so nothing is credited across a close. Returns the totals the
+    watch saves: distance_m, step_distance_m (metadata.distance_step_filled_m) and
+    step_over_chord_m (metadata.distance_step_over_chord_m)."""
+    stride = initial_stride_m
+    out = {"distance_m": 0.0, "step_distance_m": 0.0, "step_over_chord_m": 0.0}
+    for seg in segments:
+        e = GpsDistanceEstimator(max_speed_mps, expected_interval_s, stride,
+                                 learn_stride=seg.get("learnStride", True))
+        for x in seg["events"]:
+            if x["type"] == "fix":
+                e.add_fix(x["t"], x["lat"], x["lng"], x["acc"], x["speed"], x["speedAcc"], x["bearing"])
+            elif x["type"] == "steps":
+                e.add_steps(x["t"], x["count"])
+            else:
+                e.finish(x["t"])
+        out["distance_m"] += e.distance_m
+        out["step_distance_m"] += e.step_distance_m
+        out["step_over_chord_m"] += e.step_over_chord_m
+        stride = e.stride_m
+    return out
+
+
+def smooth_segments(segment_fixes, max_speed_mps=10.0, expected_interval_s=1.0):
+    """v1.8: the server replay of a stored watch track whose segments are marked.
+    segment_fixes: one list of fix events per segment, as stored (no steps). Each is
+    replayed apart, ending at its own last fix, so no chord is credited across a
+    pause or a source switch. A track with no marks is one segment. Returns
+    distance_m (the smoothed figures summed), gap_m (the chords its gaps were
+    credited, summed: SmoothResult.GapM) and segments (how many segments held a
+    fix: trackReplay.Segments)."""
+    dist = gap = 0.0
+    segments = 0
+    for fixes in segment_fixes:
+        if not fixes:
+            continue
+        sm = smooth_distance(list(fixes) + [{"type": "finish", "t": fixes[-1]["t"]}],
+                             max_speed_mps, expected_interval_s)
+        dist += sm["distance_m"]
+        gap += sum(c for c, _ in sm["gap_credits"])
+        segments += 1
+    return {"distance_m": dist, "gap_m": gap, "segments": segments}
+
+
+def recompute_distance(replayed_m, gap_m, step_filled_m, step_over_chord_m=None,
+                       replayed_segments=None, saved_segments=None):
+    """The worker's figure (gapStepCreditM): the replay, plus the larger of the saved
+    step_over_chord_m (capped at step_filled_m) and the run-total rule
+    max(gap_m, step_filled_m) - gap_m. Neither adds more than the steps credited
+    beyond the replay's chords; on a marked track whose replayed gaps are the
+    recorder's the key is exact and never below the run-total rule.
+    The key is read only when saved_segments (metadata.distance_segments, the
+    segments the watch stored) equals replayed_segments (the segments the replay
+    found): a v1.8 key banks the steps a close committed past a segment's last fix
+    whole, which a replay that lost the marks reads as running on into the next
+    segment and credits its chord besides. Otherwise the run-total rule."""
+    run_total = max(gap_m, step_filled_m) - gap_m
+    if step_over_chord_m is None or saved_segments is None or saved_segments != replayed_segments:
+        return replayed_m + run_total
+    return replayed_m + max(min(step_over_chord_m, step_filled_m), run_total)

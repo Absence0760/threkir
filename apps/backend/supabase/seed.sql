@@ -541,7 +541,6 @@ UPDATE runs SET activity_type = metadata->>'activity_type'
 
 -- 5. Integrations
 INSERT INTO integrations (user_id, provider, last_sync_at) VALUES
-('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'parkrun', '2026-04-01T10:00:00Z'),
 ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'strava', '2026-03-30T08:00:00Z');
 
 -- ─────────────────────── 6. Clubs + events ───────────────────────
@@ -589,9 +588,12 @@ VALUES
 -- discoverable-pin layer (clubs_in_bbox + discoverable_routes_in_bbox,
 -- migration 20260911_001) lights up. friends-of-jared keeps a NULL
 -- location_point — private clubs aren't on the discoverable map.
-UPDATE clubs SET location_point = ST_GeogFromText('SRID=4326;POINT(-77.4360 37.5407)')
+-- PostGIS calls are schema-qualified, like the pgcrypto ones above: the seed
+-- runs on the connection that applied the migrations, so an unqualified call
+-- resolves against whatever session search_path the last migration left set.
+UPDATE clubs SET location_point = extensions.ST_GeogFromText('SRID=4326;POINT(-77.4360 37.5407)')
   WHERE id = 'c1111111-0000-0000-0000-000000000001'::uuid;
-UPDATE clubs SET location_point = ST_GeogFromText('SRID=4326;POINT(-78.4767 38.0293)')
+UPDATE clubs SET location_point = extensions.ST_GeogFromText('SRID=4326;POINT(-78.4767 38.0293)')
   WHERE id = 'c2222222-0000-0000-0000-000000000002'::uuid;
 
 -- Six more public clubs across Virginia so the heatmap shows a
@@ -607,7 +609,7 @@ VALUES
    'nova-trail-crew',
    'Weekend trail runs along the Mount Vernon Trail + W&OD. We meet at the Memorial Bridge.',
    'Arlington, VA',
-   ST_GeogFromText('SRID=4326;POINT(-77.0560 38.8870)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-77.0560 38.8870)'),
    true, 'open', null),
   ('c5555555-0000-0000-0000-000000000005',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -615,7 +617,7 @@ VALUES
    'norfolk-botanical-runners',
    'Quiet morning loops through Norfolk Botanical Garden. Beginners + walk-run welcome.',
    'Norfolk, VA',
-   ST_GeogFromText('SRID=4326;POINT(-76.2030 36.8983)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-76.2030 36.8983)'),
    true, 'open', null),
   ('c6666666-0000-0000-0000-000000000006',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -623,7 +625,7 @@ VALUES
    'va-beach-boardwalk-striders',
    'Sunrise runs on the Boardwalk year-round. 5K + 10K paces; weekend long runs in the summer.',
    'Virginia Beach, VA',
-   ST_GeogFromText('SRID=4326;POINT(-75.9772 36.8385)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-75.9772 36.8385)'),
    true, 'open', null),
   ('c7777777-0000-0000-0000-000000000007',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -631,7 +633,7 @@ VALUES
    'mill-mountain-hill-climbers',
    'Tuesday hill repeats on the Mill Mountain Star greenway. If you like climbing, this is the group.',
    'Roanoke, VA',
-   ST_GeogFromText('SRID=4326;POINT(-79.9416 37.2710)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-79.9416 37.2710)'),
    true, 'request', null),
   ('c8888888-0000-0000-0000-000000000008',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -639,7 +641,7 @@ VALUES
    'richmond-marathon-trainers',
    'Fall marathon training group out of Belle Isle. 16-week plan, Saturday long runs, Wednesday workouts.',
    'Richmond, VA',
-   ST_GeogFromText('SRID=4326;POINT(-77.4500 37.5300)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-77.4500 37.5300)'),
    true, 'open', null),
   ('c9999999-0000-0000-0000-000000000009',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -647,7 +649,7 @@ VALUES
    'blue-ridge-trail-society',
    'Trail running, Skyline Drive day trips, Massanutten + Shenandoah event recon. Vans depart from UVA.',
    'Charlottesville, VA',
-   ST_GeogFromText('SRID=4326;POINT(-78.5067 38.0356)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-78.5067 38.0356)'),
    true, 'request', null)
 ON CONFLICT (id) DO NOTHING;
 
@@ -3190,4 +3192,32 @@ insert into private.feature_flags (name, enabled) values ('signup_source', true)
 -- seed's own profiles were inserted above, before the gate opened, so their
 -- names are exactly what the seed wrote.
 insert into private.feature_flags (name, enabled) values ('display_name_from_provider', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Share with coach gate (20271210001215) ───────────────────
+--
+-- An athlete sharing an AI Coach answer with their coach is fail-closed behind
+-- a private.feature_flags row no migration writes, so prod stays off until the
+-- CISO / Security Analyst confirms the AI labelling (docs/ops/deployment.md,
+-- issue #1215 Phase 3). Local stacks and CI open it so both clients and their
+-- specs exercise it.
+insert into private.feature_flags (name, enabled) values ('coach_share', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Photos in direct messages gate (20271213121604) ───────────────────
+--
+-- Sending a photo in a direct message is fail-closed behind a
+-- private.feature_flags row no migration writes, so prod stays off until the
+-- pre-deploy review in docs/ops/deployment.md (issue #1216). Local stacks and
+-- CI open it so both clients and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('dm_images', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Group conversations gate (20271216000006) ───────────────────
+--
+-- Group conversations are fail-closed behind a private.feature_flags row no
+-- migration writes, so prod stays off until the pre-deploy items in
+-- docs/ops/deployment.md (issue #1365). Local stacks and CI open it so the
+-- slice 2 and 3 surfaces and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('group_messages', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

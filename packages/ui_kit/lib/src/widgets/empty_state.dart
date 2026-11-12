@@ -23,6 +23,11 @@ class EmptyState extends StatelessWidget {
   /// out by the caller; this widget only spaces it.
   final Widget? footer;
 
+  /// Art drawn in place of [icon], for a "nothing yet" surface that opts in
+  /// (the app passes its mascot here). An error is never an empty state: the
+  /// app's ErrorState has no art slot, so a failure can never carry one.
+  final Widget? illustration;
+
   const EmptyState({
     super.key,
     required this.icon,
@@ -32,6 +37,7 @@ class EmptyState extends StatelessWidget {
     this.onCta,
     this.ctaIcon = Icons.add,
     this.footer,
+    this.illustration,
   }) : assert((ctaLabel == null) == (onCta == null),
             'ctaLabel and onCta must be provided together');
 
@@ -44,7 +50,8 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: theme.colorScheme.outline),
+            illustration ??
+                Icon(icon, size: 48, color: theme.colorScheme.outline),
             const SizedBox(height: 12),
             Text(
               title,

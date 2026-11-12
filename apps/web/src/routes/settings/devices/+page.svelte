@@ -15,6 +15,7 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -431,13 +432,7 @@
 		</div>
 		<p class="visually-hidden" role="status">{m('settingsDevices.loadingDevices')}</p>
 	{:else if devices.length === 0}
-		<section class="card empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">devices_other</span>
-			<h3>{m('settingsDevices.emptyTitle')}</h3>
-			<p class="empty-text">
-				{m('settingsDevices.emptyText')}
-			</p>
-		</section>
+		<EmptyState icon="devices_other" title={m('settingsDevices.emptyTitle')} text={m('settingsDevices.emptyText')} />
 	{:else}
 		<div class="device-list">
 			{#each devices as d (d.device_id)}
@@ -660,34 +655,6 @@
 	}
 	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); }
 
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-
 	.skeleton-stack { display: flex; flex-direction: column; gap: 0.5rem; }
 	.skel-row {
 		display: flex;
@@ -873,7 +840,7 @@
 	}
 
 	/* Add-override reuses canonical .modal-* classes from app.css. */
-	.add-dialog-body {
+	:global(.add-dialog-body) {
 		display: grid;
 		gap: 0.9rem;
 	}

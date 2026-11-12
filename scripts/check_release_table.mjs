@@ -46,7 +46,7 @@
 // tag-to-workflow list must have a row. A table that parses to zero rows is a
 // hard error, not a pass — a dead matcher is a vacuous check.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -248,4 +248,4 @@ function main() {
 	return 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(main());
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());

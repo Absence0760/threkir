@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-day-for-hosts',
 	title: 'Renntag für Veranstalter',
-	summary: 'Stell das Rennen scharf, gib LOS, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.',
+	summary: 'Schalte das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.',
 	sections: [
 		{
 			heading: 'Wer ein Rennen leiten kann',
@@ -19,19 +19,23 @@ export const translation: GuideTranslation = {
 				{
 					type: 'illustration',
 					id: 'race-day-for-hosts',
-					alt: 'Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, LOS geben, live verfolgen und es dann im Ziel beenden.',
+					alt: 'Der Renntag in vier Schritten von links nach rechts: das Rennen scharf schalten, GO geben, live verfolgen und es dann im Ziel beenden.',
+				},
+				{
+					type: 'p',
+					text: 'Diese Schritte gelten für ein Rennen im Modus **GO durch Veranstalter**. Ein Rennen im Modus **Geplanter GO** startet von selbst, und ein **Selbstgestoppter Zeitraum** braucht am Renntag nichts von dir; siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]].',
 				},
 			],
 		},
 		{
-			heading: '1. Rennen scharfstellen',
+			heading: '1. Rennen scharf schalten',
 			blocks: [
 				{
 					type: 'steps',
 					items: [
 						'Öffne das Event und wähle den heutigen Termin, falls es sich wiederholt.',
 						'Lass **Eingereichte Ergebnisse automatisch genehmigen** angehakt, um Ergebnisse bei Eingang zu veröffentlichen, oder entferne den Haken, um jedes selbst zu genehmigen. (In der Handy-App heißt es **Eingereichte Zeiten automatisch genehmigen**.)',
-						'Wähle **Rennen scharfstellen**, wenn alle versammelt sind.',
+						'Wähle **Rennen scharf schalten**, wenn alle versammelt sind.',
 					],
 				},
 				{
@@ -41,25 +45,29 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du LOS gibst.',
+					text: 'Ein scharf geschaltetes Rennen wartet nur: Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst.',
+				},
+				{
+					type: 'p',
+					text: 'Bevor das Rennen scharf geschaltet wird, werden die Start- und Ziellinien jeder Strecke geprüft, und alles, was einen Blick wert ist, steht unter **Bevor du das Rennen scharf schaltest**. Bei einer Warnung kannst du **Trotzdem scharf schalten**; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]. Das Scharfschalten friert außerdem die Linien für dieses Rennen ein.',
 				},
 			],
 		},
 		{
-			heading: '2. LOS geben',
+			heading: '2. GO geben',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Drücke im Web **LOS** (in der Handy-App **Los**) genau in dem Moment, in dem das Rennen startet.',
+					text: 'Drücke im Web oder in der Handy-App auf **GO**, genau in dem Moment, in dem das Rennen startet.',
 				},
 				{
 					type: 'p',
-					text: 'Die Startzeit wird von unserem Server gestempelt, nicht von deinem Gerät. So gilt für alle Teilnehmenden derselbe Startschuss, auch wenn die Uhr deines Handys ein paar Sekunden abweicht. Die Brutto-Zeit aller Teilnehmenden wird ab diesem Moment gemessen.',
+					text: 'Die Startzeit wird von unserem Server gestempelt, nicht von deinem Gerät. So gilt für alle Teilnehmenden derselbe GO-Zeitpunkt, auch wenn die Uhr deines Handys ein paar Sekunden abweicht. Die Bruttozeit aller Teilnehmenden wird ab diesem Moment gemessen.',
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'LOS startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharfgestellt ist (die Aufzeichnung wird bei LOS mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten.',
+					text: 'GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharf geschaltet ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten.',
 				},
 			],
 		},
@@ -98,7 +106,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Das Beenden kann nicht rückgängig gemacht werden. Danach erwarten die Geräte der Teilnehmenden kein Ergebnis mehr. Um denselben Termin erneut zu laufen, stell eine neue Sitzung scharf.',
+					text: 'Das Beenden kann nicht rückgängig gemacht werden. Danach erwarten die Geräte der Teilnehmenden kein Ergebnis mehr. Um denselben Termin erneut zu laufen, schalte eine neue Sitzung scharf.',
 				},
 			],
 		},
@@ -107,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **LOS** (in der Handy-App **Los**) und dann **Rennen abbrechen**. Sobald du LOS gegeben hast, kann das Rennen nur noch beendet werden.',
+					text: 'Du kannst nur absagen, solange das Rennen scharf geschaltet ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden.',
 				},
 				{
 					type: 'p',
@@ -132,9 +140,13 @@ export const translation: GuideTranslation = {
 					items: [
 						'War die automatische Genehmigung aus, zeigen neue Ergebnisse **AUSSTEHEND** und keinen Platz. Wähle **Genehmigen**, um eines zu veröffentlichen. **Verifizierung aufheben** setzt ein genehmigtes Ergebnis wieder auf ausstehend.',
 						'Um ein Ergebnis zu korrigieren, wähle **Bearbeiten**, gib eine **Zeit (h:mm:ss)** und einen **Status** (**Im Ziel**, **DNF** oder **DNS**) ein und wähle dann **Ergebnis speichern**.',
-						'Ein bearbeitetes Ergebnis wird als **Vom Veranstalter bearbeitet** markiert, damit alle sehen, dass der Veranstalter es geändert hat. Die Änderung verschiebt auch die Brutto-Zeit der teilnehmenden Person.',
+						'Ein bearbeitetes Ergebnis wird als **Vom Veranstalter bearbeitet** markiert, damit alle sehen, dass der Veranstalter es geändert hat. Die Änderung verschiebt auch die Bruttozeit der teilnehmenden Person.',
 						'**Ergebnisse als CSV herunterladen** exportiert die Listen.',
 					],
+				},
+				{
+					type: 'p',
+					text: 'Bei einem selbstgestoppten Rennen warten Ergebnisse standardmäßig auf deine Genehmigung, und manche werden auch bei aktiver automatischer Genehmigung zur Prüfung zurückgehalten. Siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]].',
 				},
 			],
 		},
@@ -145,14 +157,17 @@ export const translation: GuideTranslation = {
 		's0.heading': '95b8e6a62cefca57',
 		's0.b0': '7b081f765b2e73ec',
 		's0.b1': '00aa52e26fec65b0',
+		's0.b2': '043bfb92b5287252',
+		's0.b3': 'acc54eca742d3a9e',
 		's1.heading': '0f3300a60c9bfa0b',
 		's1.b0.i0': '7bdfd19fafd16a95',
 		's1.b0.i1': 'b26a53d0fd770ca6',
 		's1.b0.i2': 'db729ba4238dbf0f',
 		's1.b1': '94ec2fea3c0890dc',
 		's1.b2': '9b4a5aa61857cac1',
+		's1.b3': 'e8bb5e75119028d9',
 		's2.heading': 'bcda14674f57c276',
-		's2.b0': '933b20b503e29bac',
+		's2.b0': '7d9717e613d837c4',
 		's2.b1': '656cb122eaf287fc',
 		's2.b2': '65fce2c1be98450f',
 		's3.heading': 'c3c4743c28e9dcc0',
@@ -167,7 +182,7 @@ export const translation: GuideTranslation = {
 		's4.b2': 'eefbd14c075fb596',
 		's4.b3': 'b067bfb6142d262b',
 		's5.heading': '20d55e8c3373cb09',
-		's5.b0': 'df971b2d64e7ef15',
+		's5.b0': '262e1b926341a0a0',
 		's5.b1': 'ba1729be79f60bc4',
 		's5.b2': 'b10fb4196bd3e2ef',
 		's6.heading': '27e65c3d7a252fc5',
@@ -176,6 +191,6 @@ export const translation: GuideTranslation = {
 		's6.b1.i1': '0bada1dfb7752ded',
 		's6.b1.i2': 'dc555607c15c1ae0',
 		's6.b1.i3': '12b5ecdf863972b3',
-		's0.b2': '043bfb92b5287252',
+		's6.b2': 'f2d0c11bca104665',
 	},
 };

@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { insertRun, deleteRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { readRow, readRows } from '../fixtures/db-read';
+import { GLOBAL_SEGMENT_MATCHER_VERSION } from '../../src/lib/segments/segments';
 
 /**
  * Catalogue segments timed by their start and end lines (#1308, decisions
@@ -168,7 +169,9 @@ test.describe('catalogue segments timed by their lines', () => {
 				.toEqual(['gate:320']);
 
 			const run = await readRow('runs by id', admin.from('runs').select('metadata').eq('id', runId).single());
-			expect((run.metadata as Record<string, unknown>).global_segments_matcher_version).toBe(2);
+			expect((run.metadata as Record<string, unknown>).global_segments_matcher_version).toBe(
+				GLOBAL_SEGMENT_MATCHER_VERSION,
+			);
 
 			await page.goto(`/segments/${segmentId}`);
 			await expect(page.locator('.section ol li')).toHaveCount(1, { timeout: 10_000 });

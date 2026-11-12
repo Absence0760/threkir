@@ -67,6 +67,7 @@ import '../widgets/mileage_trend_card.dart';
 import '../widgets/nutrition_rings_card.dart';
 import '../widgets/readiness_card.dart';
 import '../widgets/recent_lifts_card.dart';
+import '../widgets/rest_day_grisnir.dart';
 import '../widgets/run_list_tile.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
@@ -345,6 +346,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (!mounted || _trendTouched) return;
     setState(() => _trendOpen = stored);
   }
+
+  /// Grisnir on a rest day: the universal `show_mascot`, on unless it is
+  /// literally `false`, as web reads it.
+  bool get _showMascot =>
+      widget.settingsSync?.service?.effective<Object>(SettingsKeys.showMascot) !=
+      false;
 
   /// Trend groups hidden from Home (`dashboard_hidden_cards`, universal,
   /// decisions § 2386). An unreadable bag hides nothing.
@@ -1873,6 +1880,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           TodayHeroState.planToday => [?workoutCard, readinessLine, ?startButton],
           TodayHeroState.restDay => [
               workoutCard ?? const _RestDayCard(),
+              if (_showMascot) const RestDayGrisnir(),
               readinessLine,
               ?startButton,
             ],

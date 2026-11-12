@@ -1451,6 +1451,7 @@ var orderByTable = map[string]string{
 	schema.TableChallengeParticipants:    "challenge_id,user_id",
 	schema.TableClubMembers:              "club_id,user_id",
 	schema.TableConversationParticipants: "conversation_id,user_id",
+	schema.TableDirectMessageReactions:   "message_id,user_id",
 	schema.TableEventAttendees:           "event_id,user_id,instance_start",
 	schema.TableEventExceptions:          "event_id,instance_start",
 	schema.TableEventPricing:             "event_id,instance_start",
@@ -1842,7 +1843,7 @@ func (c *SupabaseClient) FetchUserSettingsPrefs(ctx context.Context, userID stri
 func (c *SupabaseClient) FetchNotificationForEmail(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,email_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,conversation_id,refunded,email_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1917,7 +1918,7 @@ func (c *SupabaseClient) MarkNotificationEmailed(ctx context.Context, notificati
 func (c *SupabaseClient) FetchNotificationForWebPush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,web_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,conversation_id,refunded,web_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -2027,7 +2028,7 @@ func (c *SupabaseClient) ClearPushSubscription(ctx context.Context, userID, devi
 func (c *SupabaseClient) FetchNotificationForNativePush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,native_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,conversation_id,refunded,native_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -2246,7 +2247,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// (right of access), so the export must reflect them.
 		{
 			name: "integrations.json", table: schema.TableIntegrations, filter: uidEq,
-			sel: "id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,external_first_name,external_last_name,created_at,updated_at",
+			sel: "id,provider,external_id,scope,last_sync_at,sync_cursor,disconnected_at,disconnected_reason,created_at,updated_at",
 		},
 		// run_kudos given BY the user (the row where user_id = me).
 		{name: "run_kudos.json", table: schema.TableRunKudos, filter: uidEq, sel: "*"},
@@ -2436,23 +2437,43 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// The sent side leaves out read_at, the recipient's own read time
 		// (20271113000001); seen_at is what the recipient chose to share.
 		// edited_at and original_body (the text before an edit,
-		// 20271114000210) are the subject's own words.
+		// 20271114000210) are the subject's own words. Group messages
+		// (20271216000003, decisions § 2461) ship on the sent side only: they
+		// have no recipient, and other members' group messages are not the
+		// subject's data (owner decision D5).
 		{
 			name: "direct_messages_sent.json", table: schema.TableDirectMessages,
 			filter: "sender_id=eq." + uid,
-			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body",
+			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id,is_group",
 		},
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,
 			filter: "recipient_id=eq." + uid, sel: "*",
 		},
+		// direct_message_reactions — the reactions the subject put on
+		// messages (migration 20271213121602). Only their own: the partner's
+		// reactions are the partner's data.
+		{
+			name: "direct_message_reactions.json", table: schema.TableDirectMessageReactions,
+			filter: "user_id=eq." + uid, sel: "message_id,reaction,created_at",
+		},
+		// direct_message_images — the photos the subject sent (migration
+		// 20271213121604). The re-encoded bytes ship under
+		// storage/dm-images/; the paths are left out because the object
+		// keys already carry them.
+		{
+			name: "direct_message_images.json", table: schema.TableDirectMessageImages,
+			filter: "owner_id=eq." + uid, sel: "id,message_id,status,width,height,created_at,processed_at",
+		},
 		// conversation_participants — the subject's own view of each
 		// conversation (joined, deleted-for-me, muted, archived, marked
 		// unread, message-request state; migrations 20271105000010,
-		// 20271109000020, 20271115002384). Only their own row.
+		// 20271109000020, 20271115002384) and their group memberships (state,
+		// role, invited/removed by, invited/left at, read position;
+		// 20271216000002). Only their own row.
 		{
 			name: "conversation_settings.json", table: schema.TableConversationParticipants,
-			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at",
+			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at,membership_state,role,invited_by,invited_at,left_at,removed_by,last_read_at",
 		},
 		// coach_athletes — the subject's coaching relationships, as coach
 		// and as athlete. `invite_token` is a redeemable credential
@@ -2462,12 +2483,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "coaching_as_coach.json", table: schema.TableCoachAthletes,
 			filter: "coach_id=eq." + uid,
-			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at",
+			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at",
 		},
 		{
 			name: "coaching_as_athlete.json", table: schema.TableCoachAthletes,
 			filter: "athlete_id=eq." + uid,
-			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at",
+			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at",
 		},
 		// plan_change_requests — changes to a coach-assigned plan the subject
 		// sent as athlete or decided as coach (issue #1215 Phase 2).
@@ -2528,6 +2549,20 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "club_verification_audit.json", table: schema.TableClubVerificationAudit,
 			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// organiser_dispute_actions — the naming disputes the subject filed
+		// for a verified club and, as a site admin, the reviews they made
+		// (migration 20271202000003).
+		{
+			name: "organiser_dispute_actions.json", table: schema.TableOrganiserDisputeActions,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// organiser_dispute_notices — the reviewed disputes about content the
+		// subject owns, without the reviewer.
+		{
+			name: "organiser_dispute_notices.json", table: schema.TableOrganiserDisputeActions,
+			filter: "target_owner_id=eq." + uid + "&action=neq.filed",
+			sel:    "id,target_kind,target_id,organiser_club_id,organiser_club_name,action,deadline_at,note,created_at",
 		},
 		// course_alerts — the course alerts the subject posted as a verified
 		// organiser club's admin (migration 20271124002407).

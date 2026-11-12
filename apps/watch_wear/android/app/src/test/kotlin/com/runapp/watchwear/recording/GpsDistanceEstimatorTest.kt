@@ -42,8 +42,8 @@ class GpsDistanceEstimatorTest {
 
     @Test
     fun `the fixture is spec v1_4 and every constant matches it`() {
-        assertEquals("gps-distance-estimator v1.5", fixture["spec"]!!.jsonPrimitive.content)
-        assertEquals("1.5", GpsDistanceEstimator.SPEC_VERSION)
+        assertEquals("gps-distance-estimator v1.8", fixture["spec"]!!.jsonPrimitive.content)
+        assertEquals("1.8", GpsDistanceEstimator.SPEC_VERSION)
         val constants = fixture["constants"]!!.jsonObject
         assertFalse("port declares no constants", GpsDistanceEstimator.CONSTANTS.isEmpty())
         for ((name, value) in GpsDistanceEstimator.CONSTANTS) {
@@ -98,6 +98,7 @@ class GpsDistanceEstimatorTest {
 
             assertEquals("$name: gpsDistanceM", expected["gpsDistanceM"]!!.jsonPrimitive.double, est.gpsDistanceM, tolerance)
             assertEquals("$name: stepDistanceM", expected["stepDistanceM"]!!.jsonPrimitive.double, est.stepDistanceM, tolerance)
+            assertEquals("$name: stepOverChordM", expected["stepOverChordM"]!!.jsonPrimitive.double, est.stepOverChordM, tolerance)
             val stride = expectedOrNull(expected["strideM"])
             if (stride == null) {
                 assertNull("$name: strideM", est.strideM)
@@ -169,6 +170,143 @@ class GpsDistanceEstimatorTest {
         assertEquals(0.0, est.addFix(0.0, 40.0, -75.0, 51.0), 0.0)
         est.addFix(1.0, 40.0, -75.0, 50.0)
         est.addFix(2.0, 40.00003, -75.0, 51.0, 3.0, 0.3, 0.0)
+        assertEquals(0.0, est.distanceM, 0.0)
+    }
+
+    private val eastMPerDeg = 111195.0 * Math.cos(40.0 * Math.PI / 180.0)
+
+    private fun eastward(): GpsDistanceEstimator {
+        val est = GpsDistanceEstimator(initialStrideM = 0.5, learnStride = false)
+        for (i in 0..25) {
+            est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            est.addSteps(i + 0.5, 4L * i + 2)
+        }
+        return est
+    }
+
+    @Test
+    fun `a late step batch tops a gap up without counting its chord twice`() {
+        // Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+        // lower bound wins. The batch after the resuming fix moves 10 m of
+        // that credit from the chord to the steps and adds nothing (v1.6).
+        val est = eastward()
+        est.addSteps(50.0, 202)
+        est.addFix(55.0, 40.0, -75.0 + 220.0 / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+        val before = est.distanceM
+        val steps = est.stepDistanceM
+        est.addSteps(56.5, 228)
+        assertEquals(before, est.distanceM, 1e-9)
+        assertEquals(10.0, est.stepDistanceM - steps, 1e-9)
+    }
+
+    @Test
+    fun `a late sample stamped inside a gap shares only its own interval`() {
+        // 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest
+        // of the gap, which the fix at 55 closed before the sample arrived, at
+        // the sample's rate would credit 5 m (v1.6).
+        val est = eastward()
+        est.addSteps(50.0, 202)
+        est.addFix(55.0, 40.0, -75.0 + 110.0 / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+        val before = est.distanceM
+        val steps = est.stepDistanceM
+        est.addSteps(51.0, 204)
+        assertEquals(1.0, est.distanceM - before, 1e-9)
+        assertEquals(1.0, est.stepDistanceM - steps, 1e-9)
+    }
+
+    @Test
+    fun `a fix bridging a short stall teaches no stride from its credit`() {
+        // 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+        // whose samples emptied the window; feeding its 28 m to the window
+        // learns 1.092 m, and letting the sample at 36.5 refill it 0.985 m (v1.6).
+        val est = GpsDistanceEstimator()
+        for (i in 0..60) {
+            if (i < 30 || i >= 36) est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            est.addSteps(i + 0.5, 4L * i + 2)
+        }
+        assertEquals(1.0, est.strideM!!, 1e-9)
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only sets
+    /// the baseline; counting the window's metres from the first fix put 30 s of
+    /// metres against 15 s of steps and learned 2.0 m, then 1.64 m by 60.5.
+    @Test
+    fun `the first step sample of a stretch starts the stride window`() {
+        val est = GpsDistanceEstimator()
+        for (i in 0..60) {
+            est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            if (i > 0 && i % 15 == 0) est.addSteps(i + 0.5, 4L * i + 2)
+        }
+        assertEquals(1.0, est.strideM!!, 1e-6)
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands
+    /// inside a 7 s stall the fix at 18 bridges, so it is stale as well as the
+    /// baseline; the bridging fix must empty the window rather than feed it 28
+    /// m, which learned 1.171 m.
+    @Test
+    fun `a stale first step sample keeps a bridged stall out of the stride window`() {
+        val est = GpsDistanceEstimator()
+        for (i in 0..60) {
+            if (i < 11 || i > 17) est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            if (i % 15 == 14) est.addSteps(i + 0.5, 4L * i + 2)
+        }
+        assertEquals(1.0, est.strideM!!, 1e-6)
+    }
+
+    /// The first sample, at 0.5, and the second, at 15.5, come before the
+    /// first fix at 20; the first fix starts the window, so the sample at
+    /// 30.5, whose interval began before it, empties the window rather than
+    /// pairing 15 s of steps with 10 s of metres, which learned 0.787 m.
+    @Test
+    fun `the first fix of a stretch starts the stride window`() {
+        val est = GpsDistanceEstimator()
+        for (i in 0..60) {
+            if (i >= 20) est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            if (i % 15 == 0) est.addSteps(i + 0.5, 4L * i + 2)
+        }
+        assertEquals(1.0, est.strideM!!, 1e-6)
+    }
+
+    /// The baseline, stamped 15.5, arrives after the fix at 18, so the window's
+    /// metres start at 18; the sample at 30.5, whose steps start at 15.5, must
+    /// empty the window rather than pair 15 s of steps with 12 s of metres,
+    /// which learned 0.8 m (v1.7).
+    @Test
+    fun `a step baseline delivered after a later fix keeps its steps out of the stride window`() {
+        val est = GpsDistanceEstimator()
+        for (i in 0..60) {
+            est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            if (i == 18) est.addSteps(15.5, 62)
+            if (i > 15 && i % 15 == 0) est.addSteps(i + 0.5, 4L * i + 2)
+        }
+        assertEquals(1.0, est.strideM!!, 1e-6)
+    }
+
+    /// A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose 104 m
+    /// of steps the resuming fix puts beside no chord (the runner looped back),
+    /// a 55.39 m one, and one longer than the steps (v1.7).
+    @Test
+    fun `stepOverChordM counts only the steps a gap credited beyond its chord`() {
+        for ((eastM, want) in listOf(24.0 to 104.0, 80.0 to 48.612667, 160.0 to 0.0)) {
+            val est = GpsDistanceEstimator(initialStrideM = 1.0, learnStride = false)
+            for (i in 0..30) {
+                if (i <= 5) est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+                est.addSteps(i + 0.5, 4L * i + 2)
+            }
+            est.addFix(31.0, 40.0, -75.0 + eastM / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            est.addSteps(31.5, 126)
+            assertEquals(104.0, est.stepDistanceM, 1e-9)
+            assertEquals("resume $eastM m", want, est.stepOverChordM, 1e-6)
+        }
+    }
+
+    @Test
+    fun `a stretch credits no steps taken before its first fix`() {
+        val est = GpsDistanceEstimator(initialStrideM = 1.0, learnStride = false)
+        for (i in 0 until 30) est.addSteps(i + 0.5, 4L * i)
+        est.addFix(30.0, 40.0, -75.0, 3.0)
+        est.finish(31.0)
         assertEquals(0.0, est.distanceM, 0.0)
     }
 }

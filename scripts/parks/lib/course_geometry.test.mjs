@@ -17,6 +17,7 @@ import {
 	haversineM,
 	lapCourse,
 	pathLengthM,
+	checkpointPositionsM,
 	placeCheckpoints,
 	simplify,
 	slice,
@@ -124,7 +125,7 @@ test('simplify drops collinear points and keeps corners', () => {
 
 test('placeCheckpoints splits the course into equal distances', () => {
 	const pts = toPoints([1, 2, 3, 4, 1], nodes);
-	const cps = placeCheckpoints(pts, 3);
+	const cps = placeCheckpoints(pts, checkpointPositionsM(pathLengthM(pts), 3));
 	assert.equal(cps.length, 3);
 	// Quarter, half and three-quarter marks of a square started at a corner are its other corners.
 	assert.deepEqual(cps, [
@@ -132,6 +133,16 @@ test('placeCheckpoints splits the course into equal distances', () => {
 		{ lat: 0.001, lng: 0.001 },
 		{ lat: 0.001, lng: 0 },
 	]);
+});
+
+test('checkpointPositionsM takes explicit positions, and refuses a list that does not fit the course', () => {
+	assert.deepEqual(checkpointPositionsM(400, 3), [100, 200, 300]);
+	assert.deepEqual(checkpointPositionsM(400, 2, [50, 380]), [50, 380]);
+	assert.throws(() => checkpointPositionsM(400, 3, [50, 380]), /2 positions for 3/);
+	assert.throws(() => checkpointPositionsM(400, 2, [200, 100]), /increase strictly/);
+	assert.throws(() => checkpointPositionsM(400, 2, [0, 100]), /increase strictly/);
+	assert.throws(() => checkpointPositionsM(400, 1, [400]), /increase strictly/);
+	assert.throws(() => checkpointPositionsM(400, 1, [Number.NaN]), /increase strictly/);
 });
 
 // A loop 1-2-3-4 that a long OSM way 20 crosses (8-2-3-9), so the named ways

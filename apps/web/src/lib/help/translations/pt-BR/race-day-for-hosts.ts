@@ -21,6 +21,10 @@ export const translation: GuideTranslation = {
 					id: 'race-day-for-hosts',
 					alt: 'O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar o GO, acompanhar ao vivo e encerrá-la na chegada.',
 				},
+				{
+					type: 'p',
+					text: 'Estes passos são para uma prova com **GO do organizador**. Uma prova com **GO agendado** começa sozinha, e uma **Janela de tempo próprio** não precisa de nada de você no dia; veja [[guide:choose-how-your-race-starts|Escolher como sua prova começa]].',
+				},
 			],
 		},
 		{
@@ -43,6 +47,10 @@ export const translation: GuideTranslation = {
 					tone: 'tip',
 					text: 'Preparada, a prova fica em espera. Nada é cronometrado e nenhum resultado pode ser salvo até você dar o GO.',
 				},
+				{
+					type: 'p',
+					text: 'Antes de a prova ser preparada, as linhas de largada e chegada de cada percurso são verificadas, e tudo o que merece atenção aparece em **Antes de preparar a corrida**. Um aviso permite **Preparar mesmo assim**; veja [[guide:start-and-finish-lines|Linhas de largada e chegada]]. Preparar a prova também fixa as linhas para ela.',
+				},
 			],
 		},
 		{
@@ -50,7 +58,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Clique em **JÁ** na web (**Disparar o Go** no app do celular) no momento em que a prova começar.',
+					text: 'Aperte **GO** na web ou no app do celular no momento em que a prova começar.',
 				},
 				{
 					type: 'p',
@@ -107,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Você só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** no app do celular) e depois **Cancelar corrida**. Depois que você dá o GO, a prova só pode ser encerrada.',
+					text: 'Você só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **GO** e depois **Cancelar corrida**. Depois que você dá o GO, a prova só pode ser encerrada.',
 				},
 				{
 					type: 'p',
@@ -136,6 +144,10 @@ export const translation: GuideTranslation = {
 						'**Baixar resultados CSV** exporta as classificações.',
 					],
 				},
+				{
+					type: 'p',
+					text: 'Em uma prova de tempo próprio, os resultados aguardam a sua aprovação por padrão, e alguns ficam retidos para revisão mesmo com a aprovação automática ativada. Veja [[guide:choose-how-your-race-starts|Escolher como sua prova começa]].',
+				},
 			],
 		},
 	],
@@ -145,14 +157,17 @@ export const translation: GuideTranslation = {
 		's0.heading': '95b8e6a62cefca57',
 		's0.b0': '7b081f765b2e73ec',
 		's0.b1': '00aa52e26fec65b0',
+		's0.b2': '043bfb92b5287252',
+		's0.b3': 'acc54eca742d3a9e',
 		's1.heading': '0f3300a60c9bfa0b',
 		's1.b0.i0': '7bdfd19fafd16a95',
 		's1.b0.i1': 'b26a53d0fd770ca6',
 		's1.b0.i2': 'db729ba4238dbf0f',
 		's1.b1': '94ec2fea3c0890dc',
 		's1.b2': '9b4a5aa61857cac1',
+		's1.b3': 'e8bb5e75119028d9',
 		's2.heading': 'bcda14674f57c276',
-		's2.b0': '933b20b503e29bac',
+		's2.b0': '7d9717e613d837c4',
 		's2.b1': '656cb122eaf287fc',
 		's2.b2': '65fce2c1be98450f',
 		's3.heading': 'c3c4743c28e9dcc0',
@@ -167,7 +182,7 @@ export const translation: GuideTranslation = {
 		's4.b2': 'eefbd14c075fb596',
 		's4.b3': 'b067bfb6142d262b',
 		's5.heading': '20d55e8c3373cb09',
-		's5.b0': 'df971b2d64e7ef15',
+		's5.b0': '262e1b926341a0a0',
 		's5.b1': 'ba1729be79f60bc4',
 		's5.b2': 'b10fb4196bd3e2ef',
 		's6.heading': '27e65c3d7a252fc5',
@@ -176,6 +191,6 @@ export const translation: GuideTranslation = {
 		's6.b1.i1': '0bada1dfb7752ded',
 		's6.b1.i2': 'dc555607c15c1ae0',
 		's6.b1.i3': '12b5ecdf863972b3',
-		's0.b2': '043bfb92b5287252',
+		's6.b2': 'f2d0c11bca104665',
 	},
 };

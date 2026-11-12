@@ -39,7 +39,7 @@
 //      the `CI gate` aggregator's `needs:` list.
 // Unit tests: `node --test scripts/check_watch_wire_vectors.test.mjs`
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -1119,6 +1119,6 @@ export function main() {
   return errors.length;
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   process.exit(main() === 0 ? 0 : 1);
 }

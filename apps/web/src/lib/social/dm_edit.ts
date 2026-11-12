@@ -13,6 +13,9 @@ export interface DmEditableMessage {
 	created_at: string;
 	unsent_at: string | null;
 	body: string | null;
+	/// A shared AI Coach answer (`coach_share`) is never editable: the text
+	/// under its AI label is the answer's, not the sender's (20271210001215).
+	kind?: string;
 }
 
 /**
@@ -27,6 +30,8 @@ export function canEditDm(
 ): boolean {
 	if (!viewerId || m.sender_id !== viewerId) return false;
 	if (m.unsent_at !== null || m.body === null) return false;
+	// Nor is a group's rename line (20271217000004), which only rename_group writes.
+	if (m.kind === 'coach_share' || m.kind === 'group_renamed') return false;
 	const sentMs = Date.parse(m.created_at);
 	if (Number.isNaN(sentMs)) return false;
 	return nowMs - sentMs <= DM_EDIT_WINDOW_MS;

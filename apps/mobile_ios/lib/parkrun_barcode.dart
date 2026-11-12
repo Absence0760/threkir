@@ -7,7 +7,8 @@
 // Web twin: apps/web/src/lib/integrations/parkrun_barcode.ts (keep in
 // lockstep).
 
-/// Same bound `parkrun-import` enforces (`/^A\d{1,12}$/`).
+/// Same bound the `user_profiles_parkrun_number_format_chk` CHECK enforces
+/// (`^A[0-9]{1,12}$`).
 const int kParkrunAthleteNumberMaxDigits = 12;
 
 final RegExp _athleteNumber =

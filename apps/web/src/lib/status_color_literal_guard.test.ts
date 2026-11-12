@@ -782,6 +782,18 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// whichever of the two clears 4.5:1 on the generated fill and nudges the
 	// lightness until one does.
 	'lib/format/avatar.ts': { '1A1722': [1, 'data'], FFFFFF: [1, 'data'] },
+	// Grisnir, the 3D marker that trots the course preview: the toon tones of
+	// the model's own parts and its horn ramp, uploaded as shader uniforms so
+	// the WebGL figure matches the brand stills and videos. Character art with
+	// no text on or over it, and a WebGL uniform cannot read a CSS token.
+	'lib/components/course_preview/mascot/palette.ts': {
+		C9BDD2: [1, 'svg-art'], F4EEE6: [4, 'svg-art'], FFFFFF: [1, 'svg-art'],
+		'221B29': [1, 'svg-art'], '3A3142': [1, 'svg-art'], '5A4E63': [1, 'svg-art'],
+		A8426A: [3, 'svg-art'], C2477E: [3, 'svg-art'], '5B4B8A': [2, 'svg-art'],
+		E07AA4: [1, 'svg-art'], '8E6C86': [1, 'svg-art'], B08AA6: [1, 'svg-art'],
+		C4A3BA: [1, 'svg-art'], EE7440: [3, 'svg-art'], '14101A': [4, 'svg-art'],
+		D9739E: [1, 'svg-art'],
+	},
 };
 
 // Every literal the register knows is still a measured FAILURE, with the

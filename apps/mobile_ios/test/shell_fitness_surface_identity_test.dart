@@ -114,7 +114,13 @@ void main() {
   Future<void> openFitnessTab(WidgetTester tester, String label) async {
     await tester.tap(find.text('Fitness').first);
     await settle(tester);
-    await tester.tap(find.text(label).first);
+    // The hub's strip scrolls since the run surfaces joined it (decisions
+    // § 2437), so Gym and Nutrition can start off its right edge.
+    final tab =
+        find.descendant(of: find.byType(TabBar), matching: find.text(label));
+    await tester.ensureVisible(tab);
+    await settle(tester);
+    await tester.tap(tab);
     await settle(tester);
   }
 

@@ -5,7 +5,7 @@
 	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
 	import { toRouteGpxWithMarkers, type GpxAttribution, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
-	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteCourseAttribution, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, updateRouteDetails, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
+	import { fetchClippedRouteForViewer, fetchRouteById, fetchParkCourseCredit, fetchRouteCourseAttribution, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, updateRouteDetails, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
 	import { routeDeleteImpactLines } from '#lib/routes/route_delete_impact.ts';
 	import { goto } from '$app/navigation';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
@@ -26,6 +26,7 @@
 	import RoutePhotos from '#lib/components/RoutePhotos.svelte';
 	import RouteConditions from '#lib/components/RouteConditions.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
@@ -114,6 +115,22 @@
 	const parkCourseRoutes = new ParkCourseRouteLookup();
 	$effect(() => {
 		if (route?.is_official) void parkCourseRoutes.check([route.id]);
+	});
+
+	// A park course's official route carries its source credit in the course
+	// row, not in the description (decisions § 2438). Only an official route
+	// can be one; a failed read shows none, the credit being auxiliary here
+	// (an export still refuses to go out uncredited, § 2395).
+	let courseCredit = $state<string | null>(null);
+	$effect(() => {
+		const id = route?.is_official ? route.id : null;
+		courseCredit = null;
+		if (!id) return;
+		fetchParkCourseCredit({ routeId: id })
+			.then((credit) => {
+				if (route?.id === id) courseCredit = credit;
+			})
+			.catch((e) => console.warn('fetchParkCourseCredit failed', e));
 	});
 
 	async function loadRoute() {
@@ -996,6 +1013,9 @@
 							{describing ? m('routeDetail.describing') : m('routeDetail.describe')}
 						</button>
 					{/if}
+					{#if courseCredit}
+						<p class="course-credit" data-testid="route-course-credit">{courseCredit}</p>
+					{/if}
 					{#if routeTags.length > 0 || isOwner}
 						<div class="tags-row">
 							{#each routeTags as t (t)}
@@ -1127,6 +1147,14 @@
 						>
 							<span class="material-symbols" aria-hidden="true">flag</span>
 						</button>
+					{/if}
+					{#if !isOwner && auth.user && route.is_public}
+						<OrganiserDisputeAction
+							targetKind="route"
+							targetId={route.id}
+							targetLabel={route.name ?? undefined}
+							targetClubId={route.club_id ?? null}
+						/>
 					{/if}
 				</div>
 			</header>
@@ -1847,6 +1875,11 @@
 		font-size: 1.1rem;
 	}
 
+	.course-credit {
+		margin: var(--space-2xs, 0.25rem) 0 0;
+		color: var(--color-text-tertiary, var(--color-text-secondary));
+		font-size: 0.75rem;
+	}
 	.desc-attribution {
 		margin: var(--space-2xs, 0.25rem) 0 0;
 		display: flex;

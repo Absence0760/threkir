@@ -23,6 +23,7 @@
 *.icns binary
 *.pdf binary
 *.zip binary
+*.glb binary
 *.tar binary
 *.tar.gz binary
 *.tgz binary

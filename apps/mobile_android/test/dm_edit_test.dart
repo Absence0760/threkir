@@ -15,8 +15,11 @@ DirectMessageRow _msg({
   String sender = _me,
   DateTime? unsentAt,
   String? body = 'hello',
+  String kind = 'text',
 }) =>
     DirectMessageRow(
+      kind: kind,
+      isGroup: false,
       id: 'm-1',
       conversationId: 'c-1',
       senderId: sender,
@@ -65,6 +68,12 @@ void main() {
   test('not an unsent message', () {
     expect(canEditDm(_msg(unsentAt: _sent, body: null), _me, _at(1)), isFalse);
     expect(canEditDm(_msg(body: null), _me, _at(1)), isFalse);
+  });
+
+  test('not a shared AI Coach answer', () {
+    expect(canEditDm(_msg(kind: 'coach_share'), _me, _at(1)), isFalse);
+    expect(canEditDm(_msg(kind: 'group_renamed'), _me, _at(1)), isFalse);
+    expect(canEditDm(_msg(kind: 'text'), _me, _at(1)), isTrue);
   });
 
   test('not a message with an unreadable timestamp', () {

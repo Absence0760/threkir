@@ -64,6 +64,14 @@ String _targetKeyFor(NotificationRow n) {
     case 'club_join_approved':
     case 'club_verification':
       return n.clubId != null ? 'club:${n.clubId}' : solo;
+    case 'organiser_dispute':
+      // Each is a reviewer's decision on one dispute, and a rename notice
+      // carries its own deadline: never collapse two (decisions § 2441).
+      return solo;
+    case 'park_course_report':
+      // An admin notice with no target: "and 1 other" would hide a
+      // land-manager deadline (decisions § 2449).
+      return solo;
     case 'plan_update':
     case 'plan_assigned':
     case 'plan_ai_edit':
@@ -75,7 +83,15 @@ String _targetKeyFor(NotificationRow n) {
     case 'challenge_complete':
       return n.challengeId != null ? 'challenge:${n.challengeId}' : solo;
     case 'message':
+      // A group message is about its group, not its sender: two members
+      // writing in one group is one burst, and one person writing in two
+      // groups and to the viewer 1:1 is three (decisions § 2468).
+      if (n.conversationId != null) return 'group:${n.conversationId}';
       return n.actorId != null ? 'message:${n.actorId}' : solo;
+    case 'group_invite':
+      // Each is a decision to join or decline one group: "and 1 other"
+      // would hide an invitation.
+      return solo;
     case 'personal_record':
       // One per run (the trigger collapses the brackets a run improved),
       // and two runs are two records: "and 1 other" would hide one.

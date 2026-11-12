@@ -4,6 +4,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchSessionPlans, type SessionPlan } from '#lib/core/data.ts';
 	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -72,10 +73,12 @@
 			<button class="btn btn-outline" onclick={load}>{t('session.run.retry')}</button>
 		</div>
 	{:else if plans.length === 0}
-		<div class="empty" data-testid="sessions-empty">
-			<p>{t('session.empty')}</p>
-			<p class="muted">{t('session.emptyHint')}</p>
-		</div>
+		<EmptyState
+			icon="self_improvement"
+			title={t('session.empty')}
+			text={t('session.emptyHint')}
+			data-testid="sessions-empty"
+		/>
 	{:else}
 		<ul class="plan-list">
 			{#each plans as plan (plan.id)}
@@ -120,10 +123,6 @@
 	}
 	.muted {
 		color: var(--color-text-tertiary);
-	}
-	.empty {
-		padding: var(--space-2xl);
-		text-align: center;
 	}
 	.plan-list {
 		list-style: none;

@@ -59,10 +59,10 @@ void main() {
   final posTolerance = (vectors['position_tolerance_deg'] as num).toDouble();
   final scenarios = (vectors['scenarios'] as List).cast<Map<String, dynamic>>();
 
-  test('fixture is spec v1.5 and carries every scenario', () {
-    expect(vectors['spec'], 'gps-distance-estimator v1.5');
-    expect(GpsDistanceEstimator.specVersion, '1.5');
-    expect(scenarios.length, greaterThanOrEqualTo(35));
+  test('fixture is spec v1.8 and carries every scenario', () {
+    expect(vectors['spec'], 'gps-distance-estimator v1.8');
+    expect(GpsDistanceEstimator.specVersion, '1.8');
+    expect(scenarios.length, greaterThanOrEqualTo(53));
   });
 
   test('constants match the fixture', () {
@@ -71,6 +71,7 @@ void main() {
     expect(c['Q_ACCEL'], GpsDistanceEstimator.qAccel);
     expect(c['MIN_POS_SIGMA_M'], GpsDistanceEstimator.minPosSigmaM);
     expect(c['MAX_POS_SIGMA_M'], GpsDistanceEstimator.maxPosSigmaM);
+    expect(c['MAX_OPEN_GAPS'], GpsDistanceEstimator.maxOpenGaps);
     expect(c['INIT_VEL_VAR'], GpsDistanceEstimator.initVelVar);
     expect(c['MIN_SPEED_SIGMA_MPS'], GpsDistanceEstimator.minSpeedSigmaMps);
     expect(
@@ -137,7 +138,7 @@ void main() {
     expect(c['STOP_SPEED_MPS'], GpsDistanceEstimator.stopSpeedMps);
     expect(c['STOP_RADIUS_M'], GpsDistanceEstimator.stopRadiusM);
     // Every fixture constant is pinned above; a new one fails here until it is.
-    expect(c.length, 51);
+    expect(c.length, 52);
   });
 
   group('golden vectors', () {
@@ -173,6 +174,10 @@ void main() {
         expect(
           e.stepDistanceM,
           closeTo(_num(expected, 'stepDistanceM')!, tolerance),
+        );
+        expect(
+          e.stepOverChordM,
+          closeTo(_num(expected, 'stepOverChordM')!, tolerance),
         );
         final stride = _num(expected, 'strideM');
         if (stride == null) {
@@ -224,6 +229,10 @@ void main() {
         expect(
           got.stepDistanceM,
           closeTo(_num(want, 'stepDistanceM')!, tolerance),
+        );
+        expect(
+          got.stepOverChordM,
+          closeTo(_num(want, 'stepOverChordM')!, tolerance),
         );
         expect(got.stoppedFixes, want['stoppedFixes']);
         final positions = want['positions'] as List;
@@ -423,5 +432,214 @@ void main() {
         expect(e.distanceM, closeTo(300 * 1.3, 300 * 1.3 * 0.05));
       },
     );
+  });
+
+  group('v1.6', () {
+    GpsDistanceEstimator eastward() {
+      final e = GpsDistanceEstimator(initialStrideM: 0.5, learnStride: false);
+      for (var i = 0; i <= 25; i++) {
+        e.addFix(
+          t: i.toDouble(),
+          lat: 40,
+          lng: -75 + 4.0 * i / (111195 * math.cos(40 * math.pi / 180)),
+          accuracyM: 3,
+          speedMps: 4,
+          speedAccuracyMps: 0.3,
+          bearingDeg: 90,
+        );
+        e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      return e;
+    }
+
+    test('a late step batch tops a gap up without counting its chord twice',
+        () {
+      // Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+      // lower bound wins. The batch after the resuming fix moves 10 m of
+      // that credit from the chord to the steps and adds nothing.
+      final e = eastward();
+      e.addSteps(50, 202);
+      e.addFix(
+        t: 55,
+        lat: 40,
+        lng: -75 + 220 / (111195 * math.cos(40 * math.pi / 180)),
+        accuracyM: 3,
+        speedMps: 4,
+        speedAccuracyMps: 0.3,
+        bearingDeg: 90,
+      );
+      final before = e.distanceM;
+      final steps = e.stepDistanceM;
+      e.addSteps(56.5, 228);
+      expect(e.distanceM, closeTo(before, 1e-9));
+      expect(e.stepDistanceM - steps, closeTo(10, 1e-9));
+    });
+
+    test('a late sample stamped inside a gap shares only its own interval',
+        () {
+      // 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest
+      // of the gap, which the fix at 55 closed before the sample arrived, at
+      // the sample's rate would credit 5 m.
+      final e = eastward();
+      e.addSteps(50, 202);
+      e.addFix(
+        t: 55,
+        lat: 40,
+        lng: -75 + 110 / (111195 * math.cos(40 * math.pi / 180)),
+        accuracyM: 3,
+        speedMps: 4,
+        speedAccuracyMps: 0.3,
+        bearingDeg: 90,
+      );
+      final before = e.distanceM;
+      final steps = e.stepDistanceM;
+      e.addSteps(51, 204);
+      expect(e.distanceM - before, closeTo(1, 1e-9));
+      expect(e.stepDistanceM - steps, closeTo(1, 1e-9));
+    });
+
+    test('a fix bridging a short stall teaches no stride from its credit', () {
+      // 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+      // whose samples emptied the window; feeding its 28 m to the window
+      // learns 1.092 m, and letting the sample at 36.5 refill it 0.985 m.
+      final e = GpsDistanceEstimator();
+      for (var i = 0; i <= 60; i++) {
+        if (i < 30 || i >= 36) {
+          e.addFix(
+            t: i.toDouble(),
+            lat: 40,
+            lng: -75 + 4.0 * i / (111195 * math.cos(40 * math.pi / 180)),
+            accuracyM: 3,
+            speedMps: 4,
+            speedAccuracyMps: 0.3,
+            bearingDeg: 90,
+          );
+        }
+        e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      expect(e.strideM, closeTo(1.0, 1e-9));
+    });
+
+    test('the first step sample of a stretch starts the stride window', () {
+      // 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only
+      // sets the baseline; counting the window's metres from the first fix
+      // put 30 s of metres against 15 s of steps and learned 2.0 m, then
+      // 1.64 m by 60.5.
+      final e = GpsDistanceEstimator();
+      for (var i = 0; i <= 60; i++) {
+        e.addFix(
+          t: i.toDouble(),
+          lat: 40,
+          lng: -75 + 4.0 * i / (111195 * math.cos(40 * math.pi / 180)),
+          accuracyM: 3,
+          speedMps: 4,
+          speedAccuracyMps: 0.3,
+          bearingDeg: 90,
+        );
+        if (i > 0 && i % 15 == 0) e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      expect(e.strideM, closeTo(1.0, 1e-6));
+    });
+
+    test('a stale first step sample keeps a bridged stall out of the stride window', () {
+      // 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands
+      // inside a 7 s stall the fix at 18 bridges, so it is stale as well as
+      // the baseline; the bridging fix must empty the window rather than feed
+      // it 28 m, which learned 1.171 m.
+      final e = GpsDistanceEstimator();
+      for (var i = 0; i <= 60; i++) {
+        if (i < 11 || i > 17) {
+          e.addFix(
+            t: i.toDouble(),
+            lat: 40,
+            lng: -75 + 4.0 * i / (111195 * math.cos(40 * math.pi / 180)),
+            accuracyM: 3,
+            speedMps: 4,
+            speedAccuracyMps: 0.3,
+            bearingDeg: 90,
+          );
+        }
+        if (i % 15 == 14) e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      expect(e.strideM, closeTo(1.0, 1e-6));
+    });
+
+    test('the first fix of a stretch starts the stride window', () {
+      // The first sample, at 0.5, and the second, at 15.5, come before the
+      // first fix at 20; the first fix starts the window, so the sample at
+      // 30.5, whose interval began before it, empties the window rather than
+      // pairing 15 s of steps with 10 s of metres, which learned 0.787 m.
+      final e = GpsDistanceEstimator();
+      for (var i = 0; i <= 60; i++) {
+        if (i >= 20) {
+          e.addFix(
+            t: i.toDouble(),
+            lat: 40,
+            lng: -75 + 4.0 * i / (111195 * math.cos(40 * math.pi / 180)),
+            accuracyM: 3,
+            speedMps: 4,
+            speedAccuracyMps: 0.3,
+            bearingDeg: 90,
+          );
+        }
+        if (i % 15 == 0) e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      expect(e.strideM, closeTo(1.0, 1e-6));
+    });
+
+    test('a stretch credits no steps taken before its first fix', () {
+      final e = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false);
+      for (var i = 0; i < 30; i++) {
+        e.addSteps(i + 0.5, 4 * i);
+      }
+      e.addFix(t: 30, lat: 40, lng: -75, accuracyM: 3);
+      e.finish(31);
+      expect(e.distanceM, 0);
+    });
+  });
+
+  group('v1.7', () {
+    final eastMPerDeg = 111195 * math.cos(40 * math.pi / 180);
+
+    void fix(GpsDistanceEstimator e, double t, double eastM) => e.addFix(
+          t: t,
+          lat: 40,
+          lng: -75 + eastM / eastMPerDeg,
+          accuracyM: 3,
+          speedMps: 4,
+          speedAccuracyMps: 0.3,
+          bearingDeg: 90,
+        );
+
+    test('a step baseline delivered after a later fix keeps its steps out of the stride window', () {
+      // The baseline, stamped 15.5, arrives after the fix at 18, so the
+      // window's metres start at 18; the sample at 30.5, whose steps start at
+      // 15.5, must empty the window rather than pair 15 s of steps with 12 s
+      // of metres, which learned 0.8 m.
+      final e = GpsDistanceEstimator();
+      for (var i = 0; i <= 60; i++) {
+        fix(e, i.toDouble(), 4.0 * i);
+        if (i == 18) e.addSteps(15.5, 62);
+        if (i > 15 && i % 15 == 0) e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      expect(e.strideM, closeTo(1.0, 1e-6));
+    });
+
+    test('stepOverChordM counts only the steps a gap credited beyond its chord', () {
+      // A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose
+      // 104 m of steps the resuming fix puts beside no chord (the runner
+      // looped back), a 55.39 m one, and one longer than the steps.
+      for (final (eastM, want) in [(24.0, 104.0), (80.0, 48.612667), (160.0, 0.0)]) {
+        final e = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false);
+        for (var i = 0; i <= 30; i++) {
+          if (i <= 5) fix(e, i.toDouble(), 4.0 * i);
+          e.addSteps(i + 0.5, 4 * i + 2);
+        }
+        fix(e, 31, eastM);
+        e.addSteps(31.5, 126);
+        expect(e.stepDistanceM, closeTo(104, 1e-9));
+        expect(e.stepOverChordM, closeTo(want, 1e-6), reason: 'resume $eastM m');
+      }
+    });
   });
 }

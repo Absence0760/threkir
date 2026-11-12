@@ -106,16 +106,16 @@ Deno.test('reconcileImportBatch — the stored set may be any iterable, and is n
   assertEquals(stored, ['a'], 'the caller-supplied stored ids must survive the call');
 });
 
-// ── the two call sites ───────────────────────────────────────────────────────
+// ── the call site ───────────────────────────────────────────────────────────
 //
-// The helper is only worth having if both importers actually go through it.
-// Each of them reached the bug by writing the reconciliation out inline, so the
+// The helper is only worth having if the importer actually goes through it.
+// It reached the bug by writing the reconciliation out inline, so the
 // guard is on the shape, not merely on the import: an index.ts that re-derives
 // `fresh` from a `Set` of its own is the pre-fix code back again.
 
-const IMPORTERS = ['../parkrun-import/index.ts', '../race-results-import/handler.ts'] as const;
+const IMPORTERS = ['../race-results-import/handler.ts'] as const;
 
-Deno.test('both run importers reconcile through this helper, not inline', async () => {
+Deno.test('the run importer reconciles through this helper, not inline', async () => {
   for (const rel of IMPORTERS) {
     const src = await Deno.readTextFile(new URL(rel, import.meta.url));
     assert(
@@ -134,7 +134,7 @@ Deno.test('both run importers reconcile through this helper, not inline', async 
   }
 });
 
-Deno.test('neither importer inserts before it has reconciled', async () => {
+Deno.test('the importer does not insert before it has reconciled', async () => {
   // Order is the whole point: reconciling AFTER the insert would leave the
   // 23505 exactly where it was.
   for (const rel of IMPORTERS) {

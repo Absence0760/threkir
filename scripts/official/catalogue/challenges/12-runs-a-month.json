@@ -1,0 +1,9 @@
+{
+	"slug": "12-runs-a-month",
+	"recurrence": "monthly",
+	"title": "12 runs in {period}",
+	"description": "An official Threkir challenge. Runs you record from the first to the last day of the month count, in UTC.",
+	"metric": "activity_count",
+	"goal_value": 12,
+	"activity_type": "run"
+}

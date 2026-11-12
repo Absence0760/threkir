@@ -69,10 +69,11 @@ supabase db reset --linked   # NEVER on a project with real users.
 
 ```bash
 # Deploy one:
-supabase functions deploy parkrun-import --project-ref <ref>
+supabase functions deploy strava-import --project-ref <ref>
 
-# Deploy all seven at once (this is what the release workflow does):
-for fn in parkrun-import refresh-tokens strava-import strava-webhook \
+# Deploy these at once (the release workflow deploys every directory under supabase/functions/,
+# then deletes what ops/prod_config.json lists under retired_functions):
+for fn in refresh-tokens strava-import strava-webhook \
           revenuecat-webhook delete-account export-data; do
   supabase functions deploy "$fn" --project-ref <ref>
 done
@@ -84,7 +85,6 @@ done
 cd apps/backend
 
 supabase secrets set --project-ref <ref> \
-  PARKRUN_USER_AGENT="run-app/1.0 (+https://threkir.com/bot)" \
   STRAVA_CLIENT_ID="..." \
   STRAVA_CLIENT_SECRET="..." \
   STRAVA_VERIFY_TOKEN="$(openssl rand -hex 16)" \
@@ -286,8 +286,8 @@ Before flipping the row in [`docs/ops/deployment.md`](../../docs/ops/deployment.
 - [ ] Tier decision recorded — Free today; upgrade to Pro (+ billing alert) before real users exist
 - [ ] `eu-west-2` region (or whichever was picked) confirmed
 - [ ] `supabase db push` ran clean against the live project
-- [ ] All seven Edge Functions deployed; each logs a successful test invocation
-- [ ] EF secrets set (`PARKRUN_USER_AGENT`, Strava env, RevenueCat env)
+- [ ] All Edge Functions deployed; each logs a successful test invocation
+- [ ] EF secrets set (Strava env, RevenueCat env)
 - [ ] Custom domain `api.threkir.com` verified (Pro + add-on only — skipped on Free; clients use the raw project URL)
 - [ ] `pg_cron` schedules confirmed (`SELECT * FROM cron.job;` from SQL editor)
 - [ ] Storage versioning on for `runs`

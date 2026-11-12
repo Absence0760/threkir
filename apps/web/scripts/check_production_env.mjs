@@ -72,6 +72,8 @@
  *   - PUBLIC_AI_PLAN_EDIT_ENABLED the same way: on with
  *     PUBLIC_COACH_ENABLED off, the "Adjust with AI" option on /plans/[id]
  *     stays hidden, and the CLI says so.
+ *   - PUBLIC_COACH_ASSIST_ENABLED the same way: on with PUBLIC_COACH_ENABLED
+ *     off, the coach assistant and the athlete's consent toggle stay hidden.
  *
  * NOT enforced (intentional):
  *   - PUBLIC_REVENUECAT_WEB_PORTAL_URL — the manage-subscription portal
@@ -93,6 +95,9 @@
  * suite — it covers the matcher and spawns this CLI against crafted
  * envs — from the `env-isolation` job of ci.yml (decisions § 862).
  */
+
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { checkoutBaseProblem } from '../src/lib/billing/revenuecat_links.ts';
 import { donateUrlProblem } from '../src/lib/billing/donate_link.ts';
@@ -324,6 +329,14 @@ export function checkProductionEnv(env) {
 			'AI plan edits stay hidden: PUBLIC_AI_PLAN_EDIT_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/[id] shows "Adjust with AI" only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_EDIT_ENABLED.',
 		);
 	}
+	if (
+		isTruthyFlagValue(env.PUBLIC_COACH_ASSIST_ENABLED) &&
+		!isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)
+	) {
+		notices.push(
+			'The coach assistant stays hidden: PUBLIC_COACH_ASSIST_ENABLED is on but PUBLIC_COACH_ENABLED is not, and a coach sees the AI draft panel only when both are. Turn the Coach on as well, or unset PUBLIC_COACH_ASSIST_ENABLED.',
+		);
+	}
 
 	// The fuelling page is reachable without the Coach, but the Coach's
 	// handoff is the only thing that links to it, so the flag on with the
@@ -380,7 +393,7 @@ export function formatGuardError(result) {
 
 // CLI entry. Invoked as `node apps/web/scripts/check_production_env.mjs`
 // from the release-web.yml workflow before `npm run build`.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const result = checkProductionEnv(process.env);
 	if (!result.ok) {
 		process.stderr.write(formatGuardError(result));

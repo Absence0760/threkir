@@ -1,15 +1,19 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { parseRouteGuide } from './route_guide';
 import {
 	COURSE_SHAPES,
 	courseAttribution,
 	courseIsCountable,
+	courseOffersWayfinding,
 	groupParksByRegion,
 	isLongCourse,
 	LONG_COURSE_THRESHOLD_M,
 	MAX_COURSE_CHECKPOINTS,
 	parkCourseGpx,
 	parseCourseCheckpoints,
+	parseSharedUse,
+	SHARED_USES,
 	regionCodeFromSlug,
 	regionName,
 	regionSlug,
@@ -79,6 +83,12 @@ test('courseIsCountable: a closed course drops out of counts, a seasonal one sta
 	assert.equal(courseIsCountable('open'), true);
 	assert.equal(courseIsCountable('seasonal'), true);
 	assert.equal(courseIsCountable('closed'), false);
+});
+
+test('courseOffersWayfinding: a closed course offers no Navigate, GPX or route guide', () => {
+	assert.equal(courseOffersWayfinding('open'), true);
+	assert.equal(courseOffersWayfinding('seasonal'), true);
+	assert.equal(courseOffersWayfinding('closed'), false);
 });
 
 test('isLongCourse: only a course over 15 km carries the long-course notice', () => {
@@ -179,6 +189,33 @@ test('parkCourseGpx: the line, one waypoint per checkpoint in order, and the cre
 	assert.ok(xml.includes('<copyright author="OpenStreetMap contributors">'));
 });
 
+test('parkCourseGpx: the route guide is the track desc, in English, led by its ground-check status', () => {
+	const guide = parseRouteGuide({
+		version: 1,
+		lang: 'en',
+		getting_there: 'Park by the boathouse.',
+		steps: [
+			{ kind: 'start', at_m: 0, name: 'Lake Trail' },
+			{ kind: 'junction', at_m: 400, turn: 'left', name: 'Ridge Trail' },
+			{ kind: 'finish', at_m: 1990 },
+		],
+	});
+	assert.ok(guide);
+	const xml = parkCourseGpx({
+		name: 'Lake Loop',
+		waypoints: [{ lat: 37.1, lng: -77.5 }],
+		checkpoints: [],
+		attribution: null,
+		guide: { guide, checkedAt: null },
+	});
+	assert.ok(
+		xml.includes(
+			'<desc>Drafted from map data, not yet checked on the ground.\nPark by the boathouse.\nStart on Lake Trail.\n' +
+				'400 m: turn left onto Ridge Trail.\n2.0 km: finish.</desc>',
+		),
+	);
+});
+
 test('parkCourseGpx: an unreadable checkpoint list writes no waypoints, never a partial set', () => {
 	const xml = parkCourseGpx({
 		name: 'Lake Loop',
@@ -223,7 +260,16 @@ test('recapParkSummary: parks with equal counts sort by name', () => {
 	);
 });
 
-const TIME = { course_name: 'Lake Loop', park_name: 'Pocahontas', time_seconds: 900, season: 2027 };
+const TIME = {
+	effort_id: 'e1',
+	course_name: 'Lake Loop',
+	course_slug: 'lake-loop',
+	park_name: 'Pocahontas',
+	park_slug: 'pocahontas',
+	region_code: 'US-VA',
+	time_seconds: 900,
+	season: 2027,
+};
 
 test('pickShareCourse: no park course, no sticker', () => {
 	assert.equal(pickShareCourse([]), null);
@@ -244,4 +290,12 @@ test('pickShareCourse: with nothing ranked, the first time', () => {
 		{ ...TIME, course_name: 'B', season_rank: null },
 	];
 	assert.equal(pickShareCourse(rows)?.course_name, 'A');
+});
+
+test('parseSharedUse: reads a known key and nothing else', () => {
+	assert.deepEqual([...SHARED_USES], ['saturday_morning_group']);
+	assert.equal(parseSharedUse('saturday_morning_group'), 'saturday_morning_group');
+	for (const raw of [null, undefined, '', 'Saturday group', 'SATURDAY_MORNING_GROUP', 1, {}]) {
+		assert.equal(parseSharedUse(raw), null, String(raw));
+	}
 });

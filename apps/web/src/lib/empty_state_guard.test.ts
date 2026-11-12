@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { parse } from 'svelte/compiler';
 
 // A whole-surface "nothing here" state renders EmptyState.svelte
 // (conventions.md § Web empty states). Before it existed, every page that
@@ -34,23 +35,49 @@ function stripComments(css: string): string {
 	return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
-function styleBlocks(source: string): string {
-	return [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style(?=[\s/>])[^>]*>/g)].map((m) => m[1]).join('\n');
+type Span = { start: number; end: number };
+type Parts = { css: Span[]; hidden: Span[] };
+
+// Svelte's own parser says where the style sheets, scripts and comments are,
+// so a `</script>` inside a string or a tag split across a comment cannot
+// fool it the way a regex stripper can.
+function parts(source: string): Parts {
+	const root = parse(source, { modern: true });
+	const out: Parts = { css: [], hidden: [] };
+	if (root.css) {
+		out.css.push(root.css.content);
+		out.hidden.push(root.css);
+	}
+	for (const script of [root.instance, root.module]) if (script) out.hidden.push(script);
+	const visit = (node: unknown): void => {
+		if (Array.isArray(node)) return node.forEach(visit);
+		if (!node || typeof node !== 'object') return;
+		const n = node as { type?: string; name?: string; start: number; end: number; fragment?: { nodes: unknown[] } };
+		if (n.type === 'Comment') return void out.hidden.push(n);
+		if (n.type === 'RegularElement' && (n.name === 'style' || n.name === 'script')) {
+			const body = n.fragment?.nodes ?? [];
+			if (n.name === 'style' && body.length > 0) {
+				out.css.push({ start: (body[0] as Span).start, end: (body[body.length - 1] as Span).end });
+			}
+			return void out.hidden.push(n);
+		}
+		for (const [key, value] of Object.entries(node)) if (key !== 'metadata') visit(value);
+	};
+	visit(root.fragment);
+	return out;
 }
 
-// Repeated to a fixed point: one pass can join the halves of a nested
-// `<sty<style></style>le>` into a block it then leaves behind.
+function styleBlocks(source: string): string {
+	return parts(source).css.map((s) => source.slice(s.start, s.end)).join('\n');
+}
+
+// Blanks rather than deletes, so nothing outside a hidden span moves or joins.
 function markup(source: string): string {
-	let prev: string;
-	let out = source;
-	do {
-		prev = out;
-		out = out
-			.replace(/<style[^>]*>[\s\S]*?<\/style(?=[\s/>])[^>]*>/g, '')
-			.replace(/<script[^>]*>[\s\S]*?<\/script(?=[\s/>])[^>]*>/g, '')
-			.replace(/<!--[\s\S]*?-->/g, '');
-	} while (out !== prev);
-	return out;
+	const chars = source.split('');
+	for (const { start, end } of parts(source).hidden) {
+		for (let i = start; i < end; i++) if (chars[i] !== '\n') chars[i] = ' ';
+	}
+	return chars.join('');
 }
 
 function ruleHits(source: string): string[] {
@@ -73,6 +100,8 @@ const FIXTURES: { source: string; rules: string[]; markup: string[]; why: string
 	{ source: '<style>.empty-cards { gap: 0; } .empty-card-row { gap: 0; }</style>', rules: [], markup: [], why: 'a longer class name is another class' },
 	{ source: '<div class="empty-state">x</div><p>empty-card</p>', rules: [], markup: [], why: 'the word outside a class attribute' },
 	{ source: '<!-- <div class="empty-card"> --><div class="x"></div>', rules: [], markup: [], why: 'an HTML comment' },
+	{ source: '<script>const s = "<div class=\\"empty-card\\">";</script><div class="x"></div>', rules: [], markup: [], why: 'a string inside the script' },
+	{ source: '<svelte:head><style>.empty-card { gap: 0; }</style></svelte:head>', rules: ['empty-card'], markup: [], why: 'a style element nested in markup' },
 ];
 
 test('the empty-card matchers flag rules and markup and spare comments and longer names', () => {

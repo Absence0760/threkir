@@ -190,6 +190,18 @@ void main() {
             reason: 'the athlete name and the time');
       });
 
+      test('the inbox search match highlight keeps its type over the page',
+          () {
+        // The matched run of a DM search snippet, `primary@0.18` behind the
+        // ListTile subtitle on the scaffold (1.274/1.334 against the page). Not
+        // the cue: the match goes w700. What it owes is the floor of the
+        // subtitle type drawn on it — 6.286/8.056.
+        final tint = _thin(s.primary, 0.18, scaffold);
+        expect(_contrast(s.onSurfaceVariant, tint),
+            greaterThanOrEqualTo(_aaText),
+            reason: 'the matched text the weight thickens');
+      });
+
       test('the leaderboard viewer row is invisible against its neighbour', () {
         // The tint composites over the CARD here, not over the neighbouring
         // row's own opaque fill, which is why the two rows differ by so little.

@@ -24,6 +24,7 @@ import org.junit.Test
 class ServerClockCacheTest {
 
     private val t0 = 1_779_472_800_000L
+    private val warnings = mutableListOf<String>()
 
     private fun sample(sentAt: Long, rtt: Long, serverAt: Long) =
         RaceSessionClient.ClockSample(sentAt, sentAt + rtt, serverAt)
@@ -109,7 +110,7 @@ class ServerClockCacheTest {
                 block(
                     {
                         reopen()
-                        RaceResultStore(store!!)
+                        RaceResultStore(store!!) { message, _ -> warnings += message }
                     },
                     { text ->
                         reopen()
@@ -140,6 +141,7 @@ class ServerClockCacheTest {
     fun `an unreadable kept offset reads as none`() = withStore { open, raw ->
         raw("{not json")
         assertNull(open().cachedClockOffset())
+        assertEquals("and says so", listOf("cached clock offset unreadable, ignoring"), warnings)
     }
 
     private fun read(rel: String) = File("src/main/kotlin/com/runapp/watchwear/$rel").readText()

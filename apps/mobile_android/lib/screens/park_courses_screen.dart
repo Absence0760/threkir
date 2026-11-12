@@ -1524,7 +1524,7 @@ class _CourseNotices extends StatelessWidget {
             const SizedBox(height: 10),
             row(
               const Key('park-course-times'),
-              Icons.timer_outlined,
+              Icons.timer,
               l10n.parksTimesNotEventResults,
               theme.textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,

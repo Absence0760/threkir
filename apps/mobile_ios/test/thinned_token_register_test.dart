@@ -62,6 +62,10 @@ const _register = <String, int>{
   // thinned_token_contrast_test.dart ("the park course board viewer row").
   // Not the cue: the row carries a `navYou` label and the name goes w700.
   'lib/screens/park_courses_screen.dart': 1,
+  // The DM search match highlight, `primary@0.18` behind the ListTile
+  // subtitle on the page (1.274/1.334) — a wash. Not the cue: the match goes
+  // w700. The subtitle type on it reads 6.286/8.056, clearing 4.5:1.
+  'lib/screens/messages_screen.dart': 1,
   // A privacy-zone disc drawn on basemap TILES, so no ratio is computable at
   // all. The same call sets `borderColor` to full `primary` at 2 px, and a
   // full-strength cancel glyph sits at the centre — the boundary is carried by

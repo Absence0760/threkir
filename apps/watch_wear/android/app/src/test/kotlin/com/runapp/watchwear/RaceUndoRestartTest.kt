@@ -351,7 +351,11 @@ class RaceUndoRestartTest {
         val sync = body(vm, "private fun syncRaceTimerRun(")
         assertTrue(sync.indexOf("restoreUndoneFinish(id)") > sync.indexOf("raceTimer.beginRecording()"))
         val restore = body(vm, "private fun restoreUndoneFinish(")
-        assertTrue(restore.contains("undoneFinishFor(raceResults.undoneFinish(), runId)"))
+        assertTrue(
+            "an unreadable store times the recording afresh rather than failing the restore",
+            restore.indexOf("raceResults.undoneFinish()") in restore.indexOf("try {") until restore.indexOf("catch ("),
+        )
+        assertTrue(restore.contains("undoneFinishFor(stored, runId)"))
         assertTrue("a recording moved on is left alone", restore.contains("if (raceTimerRunId != runId)"))
         assertTrue(restore.contains("raceTimer.restoreUndone("))
         assertTrue(body(vm, "private fun maybeBindRace(").contains("raceToRebindAfterUndo(_state.value.activeRace, raceUndone)"))

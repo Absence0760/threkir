@@ -62,8 +62,6 @@ class AppTheme {
   static const Color lilac = Color(0xFFB9A7E8);
   static const Color violet = Color(0xFF5B4B8A);
 
-  static const Color error = Color(0xFFD8594C);
-
   /// The one line token per brightness: every divider, hairline outline and
   /// hand-drawn border resolves to this, and each clears WCAG 1.4.11's 3:1
   /// non-text minimum against the surfaces it is drawn on (light 3.45:1 on
@@ -102,7 +100,8 @@ class AppTheme {
       surface: Colors.white,
       onSurface: ink,
       onSurfaceVariant: inkMuted,
-      error: error,
+      error: AppSemanticColors.light.danger,
+      onError: AppSemanticColors.light.onDanger,
       outlineVariant: snowLine,
     );
     return ThemeData(
@@ -291,7 +290,8 @@ class AppTheme {
       surface: nightRaised,
       onSurface: mist,
       onSurfaceVariant: mistMuted,
-      error: error,
+      error: AppSemanticColors.dark.danger,
+      onError: AppSemanticColors.dark.onDanger,
       outlineVariant: nightLine,
     );
     return ThemeData(
@@ -447,8 +447,9 @@ class AppTheme {
 /// Semantic status colours outside the Material scheme: success, warning,
 /// danger, and the segment-crown gold. Every on*/base pair is tuned to
 /// >= 4.5:1 WCAG AA contrast and every base to >= 3:1 against its
-/// brightness's scaffold background — the scheme's own error/onError pair
-/// computes below AA (3.85:1 in light), which is why danger exists.
+/// brightness's scaffold background. The scheme's `error` / `onError` are
+/// [danger] / [onDanger], so `colorScheme.error` as text (every
+/// `InputDecoration.errorText`) clears AA on every surface it lands on.
 @immutable
 class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   const AppSemanticColors({

@@ -178,6 +178,43 @@ void main() {
             greaterThanOrEqualTo(_aaText));
       });
     });
+
+    group('$name error is a text token', () {
+      final semantic = theme.extension<AppSemanticColors>()!;
+      final surfaces = [
+        ('surface', s.surface),
+        ('scaffold', theme.scaffoldBackgroundColor),
+        ('card', theme.cardTheme.color!),
+        ('sheet', theme.bottomSheetTheme.modalBackgroundColor!),
+        ('surfaceContainerLowest', s.surfaceContainerLowest),
+        ('surfaceContainerLow', s.surfaceContainerLow),
+        ('surfaceContainer', s.surfaceContainer),
+        ('surfaceContainerHigh', s.surfaceContainerHigh),
+        ('raised', name == 'light' ? AppTheme.snowDim : AppTheme.nightHigh),
+      ];
+
+      test('it clears AA as text on every surface an errorText lands on', () {
+        for (final (label, bg) in surfaces) {
+          expect(_contrast(s.error, bg), greaterThanOrEqualTo(_aaText),
+              reason: '$name colorScheme.error on $label is '
+                  '${_contrast(s.error, bg).toStringAsFixed(2)}:1');
+        }
+      });
+
+      test('onError clears AA on the error fill', () {
+        expect(_contrast(s.onError, s.error), greaterThanOrEqualTo(_aaText));
+      });
+
+      test('it is the semantic danger pair, so the two cannot drift', () {
+        expect(s.error, semantic.danger);
+        expect(s.onError, semantic.onDanger);
+      });
+
+      test('the coral it replaced failed AA on the card', () {
+        expect(_contrast(const Color(0xFFD8594C), theme.cardTheme.color!),
+            lessThan(_aaText));
+      });
+    });
   }
 
   group('the light theme has one coral, used as fill and as mark', () {

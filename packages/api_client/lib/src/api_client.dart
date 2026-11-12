@@ -5937,6 +5937,40 @@ class ApiClient {
     );
   }
 
+  /// The park course built on a catalogue segment, with its park and current
+  /// season, for the segment screen's link to the course and its credit.
+  /// Null when the segment is no park course's, or RLS hides the park or the
+  /// segment. Mirrors web `fetchParkCourseForSegment`. Throws on a failed
+  /// read.
+  Future<({ParkListing park, ParkCourseListing course})?>
+      fetchParkCourseForSegment(String segmentId) async {
+    final course = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colGlobalSegmentId, segmentId)
+        .limit(1)
+        .maybeSingle();
+    if (course == null || course['global_segments'] is! Map) return null;
+    final park = await _client
+        .from(ParkRow.table)
+        .select('*, park_season')
+        .eq(ParkRow.colId, course[ParkCourseRow.colParkId] as String)
+        .maybeSingle();
+    if (park == null) return null;
+    return (
+      park: ParkListing(
+        park: ParkRow.fromJson(park),
+        season: (park['park_season'] as num).toInt(),
+      ),
+      course: ParkCourseListing(
+        course: ParkCourseRow.fromJson(course),
+        segment: GlobalSegmentRow.fromJson(
+          (course['global_segments'] as Map).cast<String, dynamic>(),
+        ),
+      ),
+    );
+  }
+
   /// A park's courses with their catalogue segment, by slug. A course whose
   /// segment was pulled is dropped (RLS hides the segment). Throws on a
   /// failed read.
@@ -6044,28 +6078,17 @@ class ApiClient {
     );
   }
 
-  /// The source credit of the park course built on this official route or
-  /// catalogue segment (`park_courses.attribution`, decisions § 2438), for
-  /// the route and segment screens, which show the course outside its own
-  /// screen. Pass exactly one of [routeId] and [segmentId]. Null when it is
-  /// no park course's, or the course predates the column. Mirrors web
-  /// `fetchParkCourseCredit`. Throws on a failed read.
-  Future<String?> fetchParkCourseCredit({
-    String? routeId,
-    String? segmentId,
-  }) async {
-    if ((routeId == null) == (segmentId == null)) {
-      throw ArgumentError('pass exactly one of routeId and segmentId');
-    }
+  /// The source credit of the park course whose official route this is
+  /// (`park_courses.attribution`, decisions § 2438), for the route screen,
+  /// which shows the course outside its own screen; the segment screen reads
+  /// it from [fetchParkCourseForSegment]. Null when it is no park course's,
+  /// or the course predates the column. Mirrors web `fetchParkCourseCredit`.
+  /// Throws on a failed read.
+  Future<String?> fetchParkCourseCredit({required String routeId}) async {
     final row = await _client
         .from(ParkCourseRow.table)
         .select(ParkCourseRow.colAttribution)
-        .eq(
-          routeId != null
-              ? ParkCourseRow.colRouteId
-              : ParkCourseRow.colGlobalSegmentId,
-          (routeId ?? segmentId)!,
-        )
+        .eq(ParkCourseRow.colRouteId, routeId)
         .limit(1)
         .maybeSingle();
     final credit = (row?[ParkCourseRow.colAttribution] as String?)?.trim();

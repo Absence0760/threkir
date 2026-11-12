@@ -57,12 +57,21 @@ class RacesScreen extends StatefulWidget {
   /// opens; production callsites let the screen build its own.
   final TrainingService? training;
 
+  /// Which view is showing, shared with the shell so a link elsewhere (the
+  /// Segments tab's Park courses action) can open the Courses view of the
+  /// tab already in the hub (decisions § 2480). Null in standalone mounts,
+  /// where the screen owns one starting at [initialShow].
+  final ValueNotifier<RacesShow>? show;
+  final RacesShow initialShow;
+
   const RacesScreen({
     super.key,
     required this.service,
     this.mapTilerKey,
     this.api,
     this.training,
+    this.show,
+    this.initialShow = RacesShow.all,
   });
 
   @override
@@ -73,7 +82,7 @@ const _distanceBands = ['', '5k', '10k', 'half', 'marathon', 'ultra'];
 
 /// What Races & courses shows: both sections, the race calendar alone, or the
 /// park courses alone. Mirrors web `/races?show=`.
-enum _RacesShow { all, races, courses }
+enum RacesShow { all, races, courses }
 
 /// How far back Recent results looks, in days. Mirrors web's
 /// `RECENT_WINDOW_DAYS` on `/races`.
@@ -89,7 +98,8 @@ class _RacesScreenState extends State<RacesScreen> {
   String _distance = '';
   bool _recent = false;
   String _nearPlace = '';
-  _RacesShow _show = _RacesShow.all;
+  late final ValueNotifier<RacesShow> _show =
+      widget.show ?? ValueNotifier(widget.initialShow);
 
   bool _loading = true;
   bool _error = false;
@@ -100,11 +110,18 @@ class _RacesScreenState extends State<RacesScreen> {
   @override
   void initState() {
     super.initState();
+    _show.addListener(_onShow);
     _run();
+  }
+
+  void _onShow() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _show.removeListener(_onShow);
+    if (widget.show == null) _show.dispose();
     _debounce?.cancel();
     _searchCtl.dispose();
     _placeCtl.dispose();
@@ -242,31 +259,34 @@ class _RacesScreenState extends State<RacesScreen> {
                   key: const Key('races-show'),
                   container: true,
                   label: l.racesShowGroup,
-                  child: ChoiceChipRow<_RacesShow>(
-                    selected: _show,
-                    onChanged: (v) => setState(() => _show = v),
+                  child: ChoiceChipRow<RacesShow>(
+                    selected: _show.value,
+                    onChanged: (v) => _show.value = v,
                     options: [
                       ChoiceChipOption(
-                          value: _RacesShow.all, label: l.racesShowAll),
+                          value: RacesShow.all, label: l.racesShowAll),
                       ChoiceChipOption(
-                          value: _RacesShow.races, label: l.racesShowRaces),
+                          value: RacesShow.races, label: l.racesShowRaces),
                       ChoiceChipOption(
-                          value: _RacesShow.courses,
+                          value: RacesShow.courses,
                           label: l.racesShowCourses),
                     ],
                   ),
                 ),
               ),
             ),
-          if (_show != _RacesShow.courses) ..._raceSlivers(l, theme),
-          if (api != null && _show != _RacesShow.races)
+          if (_show.value != RacesShow.courses) ..._raceSlivers(l, theme),
+          if (api != null && _show.value != RacesShow.races)
             // Keyed so switching views keeps its courses, records and fix
             // rather than reading them again.
             SliverToBoxAdapter(
               key: const Key('races-any-time-sliver'),
               child: RunAnyTimeSection(
                 api: api,
-                limit: _show == _RacesShow.courses ? null : kRunAnyTimeLimit,
+                limit: _show.value == RacesShow.courses
+                    ? null
+                    : kRunAnyTimeLimit,
+                showParks: _show.value == RacesShow.courses,
               ),
             ),
           SliverToBoxAdapter(

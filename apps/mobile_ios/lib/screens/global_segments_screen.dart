@@ -13,12 +13,15 @@ import 'package:ui_kit/ui_kit.dart'
 
 import '../backend_timeout.dart';
 import '../catalogue_browse.dart';
+import '../fitness_surface_requests.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
+import '../race_service.dart';
 import '../route_surface_label.dart';
 import '../widgets/error_state.dart';
 import '../widgets/help_button.dart';
 import 'park_courses_screen.dart';
+import 'races_screen.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
@@ -123,9 +126,17 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
         CatalogueSort.climb => l10n.segmentCatalogueSortClimb,
       };
 
-  void _openParks() => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => ParksScreen(api: widget.api),
+  /// Park courses live in Races & courses (decisions § 2436), so this opens
+  /// that tab on its Courses view rather than pushing a copy of the park
+  /// index over the hub (decisions § 2437, § 2480).
+  void _openParks() => openFitnessSurface(
+        context,
+        FitnessTab.races,
+        racesShow: RacesShow.courses,
+        fallback: () => RacesScreen(
+          service: RaceService(),
+          api: widget.api,
+          initialShow: RacesShow.courses,
         ),
       );
 
@@ -394,31 +405,48 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
   String? _gender;
   String? _ageBand;
 
-  /// A park course's segment carries its source credit in its own column,
-  /// not in the description (decisions § 2438). Null until read, and when
-  /// the read fails: the credit is auxiliary on this screen.
-  String? _courseCredit;
+  /// The park course built on this segment, if any: the screen links to its
+  /// course page, and shows its source credit, which lives in the course's
+  /// own column rather than the description (decisions § 2438). Null until
+  /// read, and when the read fails: both are auxiliary on this screen.
+  ({ParkListing park, ParkCourseListing course})? _parkCourse;
+
+  String? get _courseCredit {
+    final credit = _parkCourse?.course.course.attribution?.trim();
+    return credit == null || credit.isEmpty ? null : credit;
+  }
 
   @override
   void initState() {
     super.initState();
     _loadSegment();
-    _loadCourseCredit();
+    _loadParkCourse();
   }
 
-  Future<void> _loadCourseCredit() async {
+  Future<void> _loadParkCourse() async {
     final api = widget.api;
     if (api == null) return;
     try {
-      final credit = await api.fetchParkCourseCredit(
-        segmentId: widget.segmentId,
-      );
-      if (!mounted || credit == null) return;
-      setState(() => _courseCredit = credit);
+      final found = await api
+          .fetchParkCourseForSegment(widget.segmentId)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted || found == null) return;
+      setState(() => _parkCourse = found);
     } catch (e) {
-      debugPrint('fetchParkCourseCredit failed: $e');
+      debugPrint('fetchParkCourseForSegment failed: $e');
     }
   }
+
+  void _openParkCourse(({ParkListing park, ParkCourseListing course}) pc) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ParkCourseScreen(
+            api: widget.api,
+            listing: pc.park,
+            course: pc.course,
+          ),
+        ),
+      );
 
   Future<void> _loadSegment() async {
     final api = widget.api;
@@ -572,10 +600,23 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
           const SizedBox(height: 16),
           Text(segment.description!, style: theme.textTheme.bodyMedium),
         ],
-        if (_courseCredit != null) ...[
+        if (_parkCourse case final pc?) ...[
+          const SizedBox(height: 8),
+          Card(
+            key: const Key('segment-park-course-link'),
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.park_outlined),
+              title: Text(l10n.segmentCatalogueParkCourseLink(pc.park.park.name)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _openParkCourse(pc),
+            ),
+          ),
+        ],
+        if (_courseCredit case final credit?) ...[
           const SizedBox(height: 8),
           Text(
-            _courseCredit!,
+            credit,
             key: const Key('segment-course-credit'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

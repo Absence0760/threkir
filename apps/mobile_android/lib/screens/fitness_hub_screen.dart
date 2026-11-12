@@ -124,6 +124,11 @@ class FitnessHubScreen extends StatefulWidget {
   /// Null in standalone mounts and tests, where the hub owns one of its own.
   final ValueNotifier<FitnessTab>? selectedTab;
 
+  /// The Races & courses tab's view, held by the host beside [selectedTab]
+  /// so a link can select the tab and its Courses view together. Null in
+  /// standalone mounts, where that tab owns its own.
+  final ValueNotifier<RacesShow>? racesShow;
+
   const FitnessHubScreen({
     super.key,
     this.apiClient,
@@ -136,6 +141,7 @@ class FitnessHubScreen extends StatefulWidget {
     required this.training,
     this.settingsSync,
     this.selectedTab,
+    this.racesShow,
   });
 
   @override
@@ -356,6 +362,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               service: _raceService,
               mapTilerKey: _mapTilerKey,
               api: widget.apiClient,
+              show: widget.racesShow,
             ),
           ),
         FitnessTab.routes => _KeepAliveTab(

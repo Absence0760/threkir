@@ -18,17 +18,17 @@ void main() {
 
     test('a listener is told, and take hands over the tab once', () {
       final requests = FitnessSurfaceRequests();
-      final drained = <FitnessTab?>[];
+      final drained = <FitnessSurfaceRequest?>[];
       requests.addListener(() => drained.add(requests.take()));
       expect(requests.request(FitnessTab.routes), isTrue);
-      expect(drained, [FitnessTab.routes]);
+      expect(drained, [(tab: FitnessTab.routes, racesShow: null)]);
       expect(requests.take(), isNull);
     });
 
     test('the same tab can be asked for twice in a row', () {
       final requests = FitnessSurfaceRequests();
       final drained = <FitnessTab?>[];
-      requests.addListener(() => drained.add(requests.take()));
+      requests.addListener(() => drained.add(requests.take()?.tab));
       requests.request(FitnessTab.segments);
       requests.request(FitnessTab.segments);
       expect(drained, [FitnessTab.segments, FitnessTab.segments]);
@@ -41,7 +41,15 @@ void main() {
       requests.request(FitnessTab.plans);
       requests.request(FitnessTab.races);
       expect(told, 2);
-      expect(requests.take(), FitnessTab.races);
+      expect(requests.take(), (tab: FitnessTab.races, racesShow: null));
+    });
+
+    test('a Races & courses request carries the view to open it on', () {
+      final requests = FitnessSurfaceRequests();
+      requests.addListener(() {});
+      requests.request(FitnessTab.races, racesShow: RacesShow.courses);
+      expect(requests.take(),
+          (tab: FitnessTab.races, racesShow: RacesShow.courses));
     });
   });
 
@@ -70,7 +78,7 @@ void main() {
     testWidgets('with a shell listening the tab goes to it and nothing is '
         'pushed', (tester) async {
       final drained = <FitnessTab?>[];
-      void listener() => drained.add(fitnessSurfaceRequests.take());
+      void listener() => drained.add(fitnessSurfaceRequests.take()?.tab);
       fitnessSurfaceRequests.addListener(listener);
       addTearDown(() => fitnessSurfaceRequests.removeListener(listener));
 

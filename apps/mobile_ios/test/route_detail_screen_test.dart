@@ -50,10 +50,7 @@ class _CourseCreditApi extends ApiClient {
   Future<Set<String>> fetchParkCourseRouteIds(List<String> routeIds) async =>
       {'r1'};
   @override
-  Future<String?> fetchParkCourseCredit({
-    String? routeId,
-    String? segmentId,
-  }) async {
+  Future<String?> fetchParkCourseCredit({required String routeId}) async {
     creditReads++;
     return routeId == 'r1' ? '© OpenStreetMap contributors (ODbL)' : null;
   }

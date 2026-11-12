@@ -19911,6 +19911,20 @@
   "@racesShowCourses": {
     "description": "Switch option on Races & courses: show only the park courses, every one of them. Mirrors web races.showCourses"
   },
+  "racesAnyTimeParks": "Parks",
+  "@racesAnyTimeParks": {
+    "description": "Heading of the row of park cards that leads the Courses view of Races & courses. Mirrors web races.anyTimeParks"
+  },
+  "racesAnyTimeParkLink": "{park}: park page",
+  "@racesAnyTimeParkLink": {
+    "description": "Screen-reader name of a park's name shown as a link to its park screen, on a course card or a course screen. {park} is the visible text, kept first. Mirrors web races.anyTimeParkLink",
+    "placeholders": {
+      "park": {
+        "type": "String",
+        "example": "Pocahontas State Park, Virginia"
+      }
+    }
+  },
   "racesAnyTimeFastest": "Fastest in {year}: {time}",
   "@racesAnyTimeFastest": {
     "description": "A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest",
@@ -22235,6 +22249,16 @@
   "segmentCatalogueStatSurface": "Surface",
   "@segmentCatalogueStatSurface": {
     "description": "Stat label for a catalogue segment’s surface"
+  },
+  "segmentCatalogueParkCourseLink": "Park course at {park}",
+  "@segmentCatalogueParkCourseLink": {
+    "description": "Link on a catalogue segment's screen to the park course built on it. Mirrors web segmentDetail.parkCourseLink",
+    "placeholders": {
+      "park": {
+        "type": "String",
+        "example": "Pocahontas State Park"
+      }
+    }
   },
   "segmentCatalogueLeaderboard": "Leaderboard",
   "@segmentCatalogueLeaderboard": {

@@ -24434,6 +24434,18 @@ abstract class AppLocalizations {
   /// **'Courses'**
   String get racesShowCourses;
 
+  /// Heading of the row of park cards that leads the Courses view of Races & courses. Mirrors web races.anyTimeParks
+  ///
+  /// In en, this message translates to:
+  /// **'Parks'**
+  String get racesAnyTimeParks;
+
+  /// Screen-reader name of a park's name shown as a link to its park screen, on a course card or a course screen. {park} is the visible text, kept first. Mirrors web races.anyTimeParkLink
+  ///
+  /// In en, this message translates to:
+  /// **'{park}: park page'**
+  String racesAnyTimeParkLink(String park);
+
   /// A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest
   ///
   /// In en, this message translates to:
@@ -27733,6 +27745,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Surface'**
   String get segmentCatalogueStatSurface;
+
+  /// Link on a catalogue segment's screen to the park course built on it. Mirrors web segmentDetail.parkCourseLink
+  ///
+  /// In en, this message translates to:
+  /// **'Park course at {park}'**
+  String segmentCatalogueParkCourseLink(String park);
 
   /// Section header for a catalogue segment’s leaderboard
   ///

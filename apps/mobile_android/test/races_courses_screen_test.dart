@@ -315,7 +315,9 @@ void main() {
       api: _ParksApi(extraCourses: 8),
     )));
     await coursesListed(tester);
-    final cards = anyTime(find.byType(Card));
+    final cards = anyTime(find.byWidgetPredicate((w) =>
+        w.key is ValueKey<String> &&
+        (w.key! as ValueKey<String>).value.startsWith('races-any-time-course-')));
     expect(find.text('Upcoming races'), findsOneWidget);
     expect(cards, findsNWidgets(kRunAnyTimeLimit));
 
@@ -339,6 +341,95 @@ void main() {
     expect(find.text('Upcoming races'), findsOneWidget);
     await coursesListed(tester);
     expect(cards, findsNWidgets(kRunAnyTimeLimit));
+  });
+
+  testWidgets(
+      'Courses leads with the parks, nearest course first, each opening its '
+      'park; All has no park row', (tester) async {
+    tallView(tester);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(),
+      api: _ParksApi(),
+    )));
+    await coursesListed(tester);
+    expect(find.byKey(const Key('races-any-time-parks')), findsNothing);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Courses'));
+    await tester.pump();
+    final row = find.byKey(const Key('races-any-time-parks'));
+    expect(row, findsOneWidget);
+    expect(find.text('Parks'), findsOneWidget);
+    final cards = find.descendant(of: row, matching: find.byType(ParkCard));
+    expect(cards, findsNWidgets(2));
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('races-any-time-park-p2')),
+            matching: find.text('Swift Creek')),
+        findsOneWidget);
+    // The stable order, without a fix: Pocahontas first.
+    expect(tester.getTopLeft(find.byKey(const ValueKey('races-any-time-park-p1'))).dx,
+        lessThan(tester.getTopLeft(find.byKey(const ValueKey('races-any-time-park-p2'))).dx));
+    await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey('races-any-time-park-p2')),
+        matching: find.text('Swift Creek')));
+    await pumpUntil(
+      tester,
+      () => find.byType(ParkScreen).evaluate().isNotEmpty,
+      describe: 'the park screen to open',
+    );
+    expect(
+        tester.widget<ParkScreen>(find.byType(ParkScreen)).listing.park.id, 'p2');
+  });
+
+  testWidgets('a course card names its park as a link of its own',
+      (tester) async {
+    tallView(tester);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(),
+      api: _ParksApi(),
+    )));
+    await coursesListed(tester);
+    final link = find.byKey(const ValueKey('races-any-time-park-link-near'));
+    expect(
+      tester.getSemantics(link),
+      matchesSemantics(
+        label: 'Swift Creek, Virginia: park page',
+        isLink: true,
+        hasTapAction: true,
+      ),
+    );
+    await tester.tap(link);
+    await pumpUntil(
+      tester,
+      () => find.byType(ParkScreen).evaluate().isNotEmpty,
+      describe: 'the park screen to open',
+    );
+    expect(find.byType(ParkCourseScreen), findsNothing);
+  });
+
+  testWidgets('a host notifier opens the tab on the view it names',
+      (tester) async {
+    tallView(tester);
+    final show = ValueNotifier(RacesShow.all);
+    addTearDown(show.dispose);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(results: [_race('r1', 'Richmond 10K')]),
+      api: _ParksApi(),
+      show: show,
+    )));
+    await coursesListed(tester);
+    show.value = RacesShow.courses;
+    await tester.pump();
+    expect(find.text('Upcoming races'), findsNothing);
+    expect(
+      tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Courses'))
+          .selected,
+      isTrue,
+    );
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Races'));
+    await tester.pump();
+    expect(show.value, RacesShow.races);
   });
 
   testWidgets('without a client the races stand alone', (tester) async {

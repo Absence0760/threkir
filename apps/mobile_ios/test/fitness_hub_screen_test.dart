@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../lib/fitness_surface_requests.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
@@ -80,6 +81,7 @@ void main() {
     List<Map<String, dynamic>> meals = const [],
     FitnessTab initialTab = FitnessTab.history,
     ValueNotifier<FitnessTab>? selectedTab,
+    ValueNotifier<RacesShow>? racesShow,
     Map<String, Object> storedPrefs = const {
       'show_gym': true,
       'show_nutrition': true,
@@ -122,6 +124,7 @@ void main() {
         preferences: prefs,
         training: TrainingService(),
         selectedTab: selectedTab ?? ValueNotifier(initialTab),
+        racesShow: racesShow,
       ),
     ));
     await tester.pumpAndSettle();
@@ -293,6 +296,42 @@ void main() {
         fitnessHubTabs(gymShown: false, nutritionShown: false)
             .indexOf(FitnessTab.plans));
     expect(find.byType(PlansScreen), findsOneWidget);
+    expect(routeCount(tester), 1);
+  });
+
+  // Park courses live in Races & courses (decisions § 2480): Segments' Park
+  // courses action asks the shell for that tab on its Courses view, and the
+  // hub hands the view to the tab, with no route pushed.
+  testWidgets('Park courses on Segments selects Races & courses on Courses',
+      (tester) async {
+    final selected = ValueNotifier(FitnessTab.runs);
+    final racesShow = ValueNotifier(RacesShow.all);
+    addTearDown(selected.dispose);
+    addTearDown(racesShow.dispose);
+    void shell() {
+      final request = fitnessSurfaceRequests.take();
+      if (request == null) return;
+      if (request.racesShow case final show?) racesShow.value = show;
+      selected.value = request.tab;
+    }
+
+    fitnessSurfaceRequests.addListener(shell);
+    addTearDown(() => fitnessSurfaceRequests.removeListener(shell));
+    await pump(tester,
+        runs: [runRow('r1')],
+        storedPrefs: const {},
+        selectedTab: selected,
+        racesShow: racesShow);
+    await openTab(tester, 'Segments');
+    await tester.tap(find.byKey(const Key('segments-parks-link')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(selected.value, FitnessTab.races);
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index,
+        fitnessHubTabs(gymShown: false, nutritionShown: false)
+            .indexOf(FitnessTab.races));
+    expect(tester.widget<RacesScreen>(find.byType(RacesScreen)).show!.value,
+        RacesShow.courses);
     expect(routeCount(tester), 1);
   });
 

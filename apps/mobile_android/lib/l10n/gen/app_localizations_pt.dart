@@ -15079,6 +15079,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesShowCourses => 'Percursos';
 
   @override
+  String get racesAnyTimeParks => 'Parques';
+
+  @override
+  String racesAnyTimeParkLink(String park) {
+    return '$park: página do parque';
+  }
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return 'Tempo mais rápido em $year: $time';
   }
@@ -17015,6 +17023,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get segmentCatalogueStatSurface => 'Piso';
+
+  @override
+  String segmentCatalogueParkCourseLink(String park) {
+    return 'Percurso de parque em $park';
+  }
 
   @override
   String get segmentCatalogueLeaderboard => 'Classificação';
@@ -37579,6 +37592,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesShowCourses => 'Percursos';
 
   @override
+  String get racesAnyTimeParks => 'Parques';
+
+  @override
+  String racesAnyTimeParkLink(String park) {
+    return '$park: página do parque';
+  }
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return 'Tempo mais rápido em $year: $time';
   }
@@ -39513,6 +39534,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get segmentCatalogueStatSurface => 'Piso';
+
+  @override
+  String segmentCatalogueParkCourseLink(String park) {
+    return 'Percurso de parque em $park';
+  }
 
   @override
   String get segmentCatalogueLeaderboard => 'Classificação';

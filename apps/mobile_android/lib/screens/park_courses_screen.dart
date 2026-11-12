@@ -194,7 +194,7 @@ class _ParksScreenState extends State<ParksScreen> {
     );
   }
 
-  Widget _parkCard(ParkListing listing) => _ParkCard(
+  Widget _parkCard(ParkListing listing) => ParkCard(
         key: ValueKey('parks-park-${listing.park.id}'),
         listing: listing,
         courses: _coursesByPark[listing.park.id],
@@ -226,14 +226,17 @@ class _TwoColumns extends StatelessWidget {
       );
 }
 
-class _ParkCard extends StatelessWidget {
+/// One park as a card that opens it: its course lines, agency, and how many
+/// courses at what distances. Shared by the park index and the Courses view
+/// of Races & courses.
+class ParkCard extends StatelessWidget {
   final ParkListing listing;
 
   /// Null while the course read is out or after it failed.
   final List<ParkCourseListing>? courses;
   final VoidCallback onTap;
 
-  const _ParkCard({
+  const ParkCard({
     super.key,
     required this.listing,
     required this.courses,
@@ -300,6 +303,48 @@ class _ParkCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A park's name as a link to its screen, set apart from whatever card it
+/// sits on: a tap target of its own, named as the park's page for a screen
+/// reader, with the visible text first in that name.
+class ParkNameLink extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const ParkNameLink({super.key, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Semantics(
+      container: true,
+      link: true,
+      label: l10n.racesAnyTimeParkLink(label),
+      onTap: onTap,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: 1,
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.primary,
+                decoration: TextDecoration.underline,
+                decorationColor: theme.colorScheme.primary,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -538,6 +583,7 @@ class _ParkScreenState extends State<ParkScreen> {
             api: widget.api,
             listing: widget.listing,
             course: c,
+            fromPark: true,
           ),
         ),
       );
@@ -804,11 +850,16 @@ class ParkCourseScreen extends StatefulWidget {
   final ParkListing listing;
   final ParkCourseListing course;
 
+  /// Opened from its own park's screen, so the park link goes back there
+  /// rather than stacking a second copy of it.
+  final bool fromPark;
+
   const ParkCourseScreen({
     super.key,
     required this.api,
     required this.listing,
     required this.course,
+    this.fromPark = false,
   });
 
   @override
@@ -959,6 +1010,18 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
         ),
       );
 
+  void _openPark() {
+    if (widget.fromPark) {
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ParkScreen(api: widget.api, listing: widget.listing),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -999,10 +1062,12 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  '${park.name} · ${regionName(park.regionCode)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: ParkNameLink(
+                    key: const Key('park-course-park-link'),
+                    label: '${park.name} · ${regionName(park.regionCode)}',
+                    onTap: _openPark,
                   ),
                 ),
                 if (pills.isNotEmpty) ...[

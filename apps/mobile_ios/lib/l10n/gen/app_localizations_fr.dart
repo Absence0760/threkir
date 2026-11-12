@@ -15108,6 +15108,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get racesShowCourses => 'Parcours';
 
   @override
+  String get racesAnyTimeParks => 'Parcs';
+
+  @override
+  String racesAnyTimeParkLink(String park) {
+    return '$park : page du parc';
+  }
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return 'Meilleur temps $year : $time';
   }
@@ -17044,6 +17052,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get segmentCatalogueStatSurface => 'Surface';
+
+  @override
+  String segmentCatalogueParkCourseLink(String park) {
+    return 'Parcours de parc à $park';
+  }
 
   @override
   String get segmentCatalogueLeaderboard => 'Classement';

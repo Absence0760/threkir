@@ -212,6 +212,10 @@ class _HomeScreenState extends State<HomeScreen>
     nutritionShown: _nutritionShown,
   ).first);
 
+  /// The Races & courses tab's view, owned here for the same reason: a link
+  /// can ask for the Courses view before that tab has been built.
+  final _racesShow = ValueNotifier<RacesShow>(RacesShow.all);
+
   /// Current page index. A `ValueNotifier` instead of a `setState` int so
   /// page changes during a swipe only rebuild the bottom bar — not the
   /// entire 5-page subtree. The PageView's children are built once in
@@ -726,8 +730,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onFitnessSurfaceRequest() {
-    final tab = fitnessSurfaceRequests.take();
-    if (tab != null) _openFitnessTab(tab);
+    final request = fitnessSurfaceRequests.take();
+    if (request == null) return;
+    if (request.racesShow case final show?) _racesShow.value = show;
+    _openFitnessTab(request.tab);
   }
 
   Future<void> _pushScreen(Widget screen) {
@@ -902,6 +908,7 @@ class _HomeScreenState extends State<HomeScreen>
           settingsSync: widget.settingsSync,
           training: widget.training,
           selectedTab: _fitnessTab,
+          racesShow: _racesShow,
         ),
       ),
       _LazyKeepAliveTab(
@@ -982,6 +989,7 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.dispose();
     _runPageShown.dispose();
     _fitnessTab.dispose();
+    _racesShow.dispose();
     super.dispose();
   }
 

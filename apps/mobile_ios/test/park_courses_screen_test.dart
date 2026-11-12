@@ -527,6 +527,59 @@ void main() {
   });
 
   group('ParkCourseScreen', () {
+    testWidgets('the park name is a link to the park screen', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Deep Run Park'),
+            course: _course(),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final link = find.byKey(const Key('park-course-park-link'));
+      expect(
+        tester.getSemantics(link),
+        matchesSemantics(
+          label: 'Deep Run Park · Virginia: park page',
+          isLink: true,
+          hasTapAction: true,
+        ),
+      );
+      await tester.tap(link);
+      await _settle(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ParkScreen), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('opened from its park, the park link goes back to it', (
+      tester,
+    ) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Deep Run Park'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      await tester.tap(find.text('Lake Loop'));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ParkCourseScreen), findsOneWidget);
+      await tester.tap(find.byKey(const Key('park-course-park-link')));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ParkCourseScreen), findsNothing);
+      expect(find.byType(ParkScreen), findsOneWidget);
+      await _unmount(tester);
+    });
+
     testWidgets(
       'a course an organised group shares gets the give-way note, naming no one',
       (tester) async {

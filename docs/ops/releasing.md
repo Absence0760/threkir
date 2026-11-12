@@ -142,7 +142,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 
 | Release tag | Runs | Signs | Publishes to | Attaches back to the Release |
 |---|---|---|---|---|
-| `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track | `.aab` |
+| `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track, then Production for review as a staged rollout at 1%; `play-rollout.yml` widens it daily to 100% ([§ 2478](../architecture/decisions.md)) | `.aab` |
 | `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
 | `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight, then App Store review; on approval it releases itself as a 7-day phased release ([§ 2040](../architecture/decisions.md)) | — |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
@@ -224,10 +224,31 @@ merged `prod_config.json` change goes live without cutting a release. A dry
 run never sets a function secret or sends a cron request; it runs pending ops
 tasks and rolls them back, so their results preview in the summary.
 
-Promoting Android + Wear from the Internal track to Beta or Production
-is done manually in the Play Console after you've smoke-tested the
-Internal build. The workflow deliberately stops at Internal so a tag
-doesn't immediately reach users.
+**What the Android promotion does, and when it stops.** After the Internal
+upload, `scripts/play_release.mjs promote` puts the version code on the Play
+production track with the Release's `## What's New` (at most 500 characters,
+never truncated, no fallback to generated notes) as its en-US notes, as a
+staged rollout at 1%, and commits the edit, which sends it for review. The
+`production` environment approval the job already waits on is the human gate,
+as on iOS ([decisions § 2478](../architecture/decisions.md), [§ 2040](../architecture/decisions.md)).
+Re-running is safe: an upload Play already holds is skipped, and production
+already carrying the build is a no-op. It fails the job, changing nothing,
+when a different build is still rolling out on production (complete or halt
+it first) or when other changes are already in review (it never cancels a
+review to send its own). The app's first production release goes out in
+full, because Play offers staged rollouts for updates only. Once Play has
+published the release, `play-rollout.yml` moves it 1% → 2% → 5% → 10% → 20%
+→ 50% → 100%, one step a day at 15:00 UTC, mirroring Apple's 7-day phased
+release; it skips a day while anything is in review, and a **Halt rollout**
+in Play Console stops it for good, since nothing here resumes a halt. To send
+a build Play already holds to production without rebuilding it, run
+**Release Android** by hand with the tag (Actions → Run workflow); that job
+waits for the same approval. The runbook is
+[`apps/mobile_android/deployment.md`](../../apps/mobile_android/deployment.md#release-workflow--mobile_android).
+
+The Wear OS release (`watch_wear@*`) still stops at Internal:
+`com.threkir.watchwear` is its own Play listing, with no production access
+yet. Promote it by hand in Play Console.
 
 ## Required GitHub Secrets
 
@@ -241,7 +262,7 @@ Configure at **Settings → Secrets and variables → Actions**.
 | `ANDROID_KEYSTORE_PASSWORD` | store password |
 | `ANDROID_KEY_ALIAS` | alias inside the keystore |
 | `ANDROID_KEY_PASSWORD` | key password (often same as store) |
-| `PLAY_SERVICE_ACCOUNT_JSON` | Google Play service-account JSON key |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Google Play service-account JSON key, with "Release to production, exclude devices, and use Play App Signing" and "Release apps to testing tracks" on `com.threkir.app`. A copy also lives on the reviewer-less `play-rollout` environment (restricted to `main`) for the daily rollout step |
 | `SENTRY_DSN` | Sentry mobile project DSN. Passed as `--dart-define=SENTRY_DSN=...` at build time; empty disables (`sentry_flutter` init in `lib/main.dart` is gated). |
 | `APP_RELEASE` | `mobile_android@<version>` tag — passed as `--dart-define=APP_RELEASE=...` so Sentry events are tagged with the release. Defaults to `dev` when unset. |
 

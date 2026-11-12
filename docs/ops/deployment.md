@@ -259,7 +259,7 @@ The matrix of "what lives where":
 | Android upload keystore | We generate once | GitHub Secrets (`ANDROID_KEYSTORE_BASE64`) |
 | iOS distribution `.p12` + provisioning profile | Apple Developer | GitHub Secrets (`IOS_BUILD_CERTIFICATE_BASE64` etc.) |
 | Wear OS upload keystore | We generate once | GitHub Secrets (`WATCH_WEAR_KEYSTORE_BASE64`) |
-| Play `service-account.json` | Google Cloud | GitHub Secrets (`PLAY_SERVICE_ACCOUNT_JSON`) |
+| Play `service-account.json` | Google Cloud | GitHub Secrets (`PLAY_SERVICE_ACCOUNT_JSON`) on `production`, and a copy on the reviewer-less `play-rollout` environment restricted to `main`, which `play-rollout.yml` reads daily to widen a staged production rollout ([decisions § 2478](../architecture/decisions.md)) |
 | App Store Connect `.p8` API key | Apple Developer | GitHub `production` environment secret `APP_STORE_CONNECT_API_PRIVATE_KEY` (the raw `.p8` text); backed up in the estate |
 | Sign-in-with-Apple `.p8` + the OAuth client secret it signs | Apple Developer | The `.p8` in the estate (`siwa_key_p8`), the Supabase EF env (`APPLE_PRIVATE_KEY`, for revocation) and the GitHub `apple-secret-rotation` environment (`APPLE_SIWA_PRIVATE_KEY`). The derived ES256 JWT lives only in the Supabase Apple provider; `rotate-apple-client-secret.yml` re-signs it on the 1st of every month, because Apple refuses one older than six months ([`apple_provisioning.md` § 9](apple_provisioning.md), [decisions § 1824](../architecture/decisions.md)) |
 

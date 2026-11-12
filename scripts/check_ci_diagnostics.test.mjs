@@ -680,6 +680,15 @@ const OFF_THE_GATE = new Map([
 			'job of ci.yml (decisions § 2040).',
 	],
 	[
+		'scripts/play_release.mjs',
+		"release-android.yml at tag time and on dispatch, and play-rollout.yml on its daily " +
+			"cron, and only there — `notes` reads the published Release's body, and `uploaded` / " +
+			'`promote` / `advance` act on Google Play with the service account key CI does not ' +
+			'hold. What the gate holds instead is its SUITE, which drives every subcommand ' +
+			'against an in-memory Edits API and reads both workflows\' wiring, in the ' +
+			'`workflow-lint` job of ci.yml (decisions § 2478).',
+	],
+	[
 		'scripts/check_compliance_drift.mjs',
 		'compliance-drift.yml, deliberately advisory (COMPLIANCE_DRIFT_MODE=warn) — it ' +
 			'reports findings and never fails the job, so being off the gate is the design ' +

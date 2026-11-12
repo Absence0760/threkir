@@ -1,0 +1,123 @@
+name: Advance the Play production rollout
+
+# Walks a staged production rollout of com.threkir.app up the ramp in
+# scripts/play_release.mjs (1%, 2%, 5%, 10%, 20%, 50%, then completed), one
+# step a day, the Android counterpart of the App Store's 7-day phased release
+# (decisions § 2478). release-android.yml starts the rollout at 1%; this only
+# moves one already published. It does nothing while the release is in review
+# or waiting to be published, while other changes are in review, or when the
+# rollout is halted: a halt in Play Console is the brake, and only Play
+# Console lifts it.
+#
+# Secret, on the `play-rollout` environment:
+#   PLAY_SERVICE_ACCOUNT_JSON  the same service account key release-android.yml
+#                              uses, with "Release to production, exclude
+#                              devices, and use Play App Signing" on the app
+#
+# WHY NOT THE `production` ENVIRONMENT. It requires a reviewer, and a scheduled
+# run that waits for an approval nobody is watching for advances nothing. The
+# dedicated environment carries no reviewer and must be restricted to the
+# `main` branch (Settings -> Environments -> Deployment branches), so only
+# workflow code that reached `main` through the CI gate can read the key —
+# the pattern rotate-apple-client-secret.yml set (decisions § 1824). The
+# environment approval still gates what reaches production at all; this job
+# only widens a release a human already approved.
+#
+# A red run opens a `play-rollout` issue and a green one closes it: a
+# scheduled job reaches no merge gate, so a failure that only lands in the
+# Actions tab reaches nobody.
+
+on:
+  schedule:
+    # 15:00 UTC daily: US morning, so a bad step is seen the same working day.
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: play-rollout
+  cancel-in-progress: false
+
+jobs:
+  advance:
+    name: Move the staged rollout one step
+    runs-on: ubuntu-latest
+    environment: play-rollout
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.20.0
+
+      # Stdlib only, so there is nothing to install.
+      - name: Advance the rollout
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: node scripts/play_release.mjs advance
+
+  report:
+    name: Surface a failed advance
+    needs: advance
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the tracking issue
+        if: needs.advance.result != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh label create play-rollout --repo "$REPO" \
+            --color B60205 \
+            --description "The daily Play production rollout step failed" \
+            2>/dev/null || true
+
+          {
+            echo "The daily step of the Play production rollout did not complete."
+            echo ""
+            echo "- Run: $RUN_URL"
+            echo "- Effect: the rollout stays at its current percentage. Nothing was"
+            echo "  rolled back; users who have the release keep it."
+            echo ""
+            echo "The run's error line names the cause. Fix it, then rerun the workflow"
+            echo "by hand, or move the rollout in Play Console."
+            echo ""
+            echo "This issue closes itself on the next green run."
+          } > body.md
+
+          existing=$(gh issue list --repo "$REPO" --state open \
+            --label play-rollout --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --repo "$REPO" --body-file body.md
+            gh issue comment "$existing" --repo "$REPO" \
+              --body "Still failing as of $(date -u +%Y-%m-%d). Run: $RUN_URL"
+          else
+            gh issue create --repo "$REPO" \
+              --title "The Play production rollout is failing" \
+              --body-file body.md \
+              --label play-rollout
+          fi
+
+      - name: Close the tracking issue on a green run
+        if: needs.advance.result == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          existing=$(gh issue list --repo "$REPO" --state open \
+            --label play-rollout --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --repo "$REPO" \
+              --comment "Advanced cleanly as of $(date -u +%Y-%m-%d) — closing automatically."
+          fi

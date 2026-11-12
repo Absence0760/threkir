@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, ListSkeleton, SheetScaffold;
 
 import '../auth_error.dart';
 import '../gear_rotation_pick.dart';
@@ -429,12 +430,10 @@ class _RotationMembersSheetState extends State<_RotationMembersSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final mq = MediaQuery.of(context);
-    final bottomInset =
-        mq.viewInsets.bottom > 0 ? mq.viewInsets.bottom : mq.viewPadding.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      scrollBody: false,
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

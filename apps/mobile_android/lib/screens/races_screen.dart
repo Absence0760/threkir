@@ -425,18 +425,19 @@ class _RacesScreenState extends State<RacesScreen> {
           }
 
           final theme = Theme.of(sheetContext);
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+          return SheetScaffold(
+            title: Text(l.racesFilters),
+            actions: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: FilledButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                child: Text(l.racesFiltersDone),
+              ),
             ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
+            body: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l.racesFilters, style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 16),
                   TextField(
                     controller: _placeCtl,
                     decoration: InputDecoration(
@@ -496,17 +497,8 @@ class _RacesScreenState extends State<RacesScreen> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      child: Text(l.racesFiltersDone),
-                    ),
-                  ),
                 ],
               ),
-            ),
           );
         },
       ),

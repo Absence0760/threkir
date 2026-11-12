@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -83,10 +84,26 @@ class _RunGearChipsState extends State<RunGearChips> {
         return StatefulBuilder(builder: (ctx, setLocal) {
           final l10n = AppLocalizations.of(ctx);
           final active = myGear.where((g) => g['retired_at'] == null).toList();
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-                16, 16, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
-            child: Column(
+          return SheetScaffold(
+            padding: const EdgeInsets.all(16),
+            actions: OverflowBar(
+              alignment: MainAxisAlignment.end,
+              overflowAlignment: OverflowBarAlignment.end,
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.runGearChipsCancel),
+                ),
+                FilledButton(
+                  onPressed: active.isEmpty
+                      ? null
+                      : () => Navigator.pop(ctx, picked),
+                  child: Text(l10n.runGearChipsSave),
+                ),
+              ],
+            ),
+            body: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -137,24 +154,6 @@ class _RunGearChipsState extends State<RunGearChips> {
                       ],
                     ),
                   ),
-                const SizedBox(height: 12),
-                OverflowBar(
-                  alignment: MainAxisAlignment.end,
-                  overflowAlignment: OverflowBarAlignment.end,
-                  spacing: 8,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(l10n.runGearChipsCancel),
-                    ),
-                    FilledButton(
-                      onPressed: active.isEmpty
-                          ? null
-                          : () => Navigator.pop(ctx, picked),
-                      child: Text(l10n.runGearChipsSave),
-                    ),
-                  ],
-                ),
               ],
             ),
           );

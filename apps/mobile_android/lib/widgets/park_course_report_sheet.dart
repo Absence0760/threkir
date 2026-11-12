@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
 import '../l10n/gen/app_localizations.dart';
@@ -147,11 +148,34 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final insets = MediaQuery.of(context).viewInsets;
-    return SingleChildScrollView(
+    return SheetScaffold(
       key: const Key('park-course-report-sheet'),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + insets.bottom),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      actions: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _busy ? null : () => Navigator.of(context).pop(),
+              child: Text(l10n.parkCourseReportCancel),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton(
+              key: const Key('park-course-report-submit'),
+              onPressed: _canSubmit ? _submit : null,
+              child: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.parkCourseReportSubmit),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -232,31 +256,6 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
               style: TextStyle(color: theme.colorScheme.error),
             ),
           ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
-                  child: Text(l10n.parkCourseReportCancel),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  key: const Key('park-course-report-submit'),
-                  onPressed: _canSubmit ? _submit : null,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.parkCourseReportSubmit),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

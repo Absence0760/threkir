@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth_error.dart';
@@ -214,10 +215,32 @@ class _ReportSheetState extends State<_ReportSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final insets = MediaQuery.of(context).viewInsets;
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + insets.bottom),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      actions: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _busy ? null : () => Navigator.of(context).pop(),
+              child: Text(l10n.reportCancel),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton(
+              onPressed: _busy ? null : _submit,
+              child: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.reportSubmit),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -299,30 +322,6 @@ class _ReportSheetState extends State<_ReportSheet> {
             const SizedBox(height: 12),
             Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
           ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
-                  child: Text(l10n.reportCancel),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.reportSubmit),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

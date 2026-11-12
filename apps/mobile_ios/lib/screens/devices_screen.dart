@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton, StatusPill, StatusPillSize;
+import 'package:ui_kit/ui_kit.dart'
+    show ListSkeleton, SheetScaffold, StatusPill, StatusPillSize;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -459,10 +460,23 @@ class _OverridesSheetState extends State<_OverridesSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(20),
+      actions: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.devicesCancel),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, _current),
+            child: Text(l10n.devicesSave),
+          ),
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -504,21 +518,6 @@ class _OverridesSheetState extends State<_OverridesSheet> {
               icon: const Icon(Icons.add),
               label: Text(l10n.devicesAddOverride),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.devicesCancel),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, _current),
-                child: Text(l10n.devicesSave),
-              ),
-            ],
           ),
         ],
       ),
@@ -587,10 +586,37 @@ class _AddOverrideSheetState extends State<_AddOverrideSheet> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final spec = _picked;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(20),
+      actions: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () {
+              if (spec != null) {
+                setState(() {
+                  _picked = null;
+                  _enumValue = null;
+                  _boolValue = false;
+                  _numCtrl.clear();
+                  _numError = null;
+                });
+              } else {
+                Navigator.pop(context);
+              }
+            },
+            child: Text(spec == null ? l10n.devicesCancel : l10n.devicesBack),
+          ),
+          if (spec != null) ...[
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: _commit,
+              child: Text(l10n.devicesAdd),
+            ),
+          ],
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -626,35 +652,6 @@ class _AddOverrideSheetState extends State<_AddOverrideSheet> {
           else
             // Value-editor pass — switch on the spec's declared kind.
             _buildEditor(spec, theme, l10n),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () {
-                  if (spec != null) {
-                    setState(() {
-                      _picked = null;
-                      _enumValue = null;
-                      _boolValue = false;
-                      _numCtrl.clear();
-                      _numError = null;
-                    });
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-                child: Text(spec == null ? l10n.devicesCancel : l10n.devicesBack),
-              ),
-              if (spec != null) ...[
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _commit,
-                  child: Text(l10n.devicesAdd),
-                ),
-              ],
-            ],
-          ),
         ],
       ),
     );

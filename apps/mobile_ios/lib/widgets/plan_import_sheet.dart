@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../backend_timeout.dart';
 import '../l10n/date_format.dart';
@@ -127,11 +128,9 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final parsed = _parsed;
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -210,7 +209,6 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
             ],
           ],
         ),
-      ),
     );
   }
 }

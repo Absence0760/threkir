@@ -8,7 +8,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, StatusPill, StatusPillSize;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, SheetScaffold, StatusPill, StatusPillSize;
 
 import '../distance_bands.dart';
 import '../geocoding.dart';
@@ -355,7 +356,10 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       context: context,
       useSafeArea: true,
       builder: (ctx) {
-        return ListView(
+        return SheetScaffold(
+          padding: EdgeInsets.zero,
+          scrollBody: false,
+          body: ListView(
           shrinkWrap: true,
           children: [
             Padding(
@@ -399,7 +403,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                 },
               ),
           ],
-        );
+        ));
       },
     );
   }
@@ -479,9 +483,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       context: context,
       useSafeArea: true,
       builder: (ctx) {
-        return Padding(
+        return SheetScaffold(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Column(
+          body: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -531,9 +535,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheet) {
-            return SingleChildScrollView(
+            return SheetScaffold(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: Column(
+              body: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1124,12 +1128,15 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheet) {
-            return ConstrainedBox(
+            return SheetScaffold(
+              padding: EdgeInsets.zero,
+              scrollBody: false,
+              body: ConstrainedBox(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.sizeOf(ctx).height * 0.7,
               ),
               child: _resultsList(ctx, setSheet),
-            );
+            ));
           },
         );
       },

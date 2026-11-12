@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -139,14 +140,11 @@ class _GearBackfillSheetState extends State<_GearBackfillSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final mq = MediaQuery.of(context);
-    final bottomInset = mq.viewInsets.bottom > 0
-        ? mq.viewInsets.bottom
-        : mq.viewPadding.bottom;
     final allSelected = _selected.length == widget.candidates.length;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      scrollBody: false,
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

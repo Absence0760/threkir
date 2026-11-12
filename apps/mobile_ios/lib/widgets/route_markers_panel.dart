@@ -1002,15 +1002,24 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final spec = kindSpec(_kind);
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.routeMarkerCancel),
+          ),
+          FilledButton(
+            onPressed: _save,
+            child: Text(l10n.routeMarkerSave),
+          ),
+        ],
       ),
-      child: SingleChildScrollView(
-        child: Column(
+      body: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1158,25 +1167,8 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
                 decoration: InputDecoration(labelText: l10n.routeMarkerNoteLabel),
               ),
             ],
-            const SizedBox(height: 12),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              spacing: 8,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.routeMarkerCancel),
-                ),
-                FilledButton(
-                  onPressed: _save,
-                  child: Text(l10n.routeMarkerSave),
-                ),
-              ],
-            ),
           ],
         ),
-      ),
     );
   }
 }

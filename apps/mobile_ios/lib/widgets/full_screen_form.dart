@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show systemBottomInset;
 
 import 'confirm_discard.dart';
 
@@ -44,13 +45,10 @@ Future<T?> showFullScreenForm<T>(
 }
 
 /// Standard scrollable chrome for a [showFullScreenForm] child: a 20px
-/// inset that grows to clear whichever system UI is active — the soft
-/// keyboard (`viewInsets.bottom`, when a field is focused) or the gesture /
-/// nav bar (`viewPadding.bottom`, otherwise). They never overlap (the
-/// keyboard replaces the nav bar when up), so picking whichever is non-zero
-/// is correct; pre-fix the sheets only padded for the keyboard, leaving the
-/// Cancel / Save buttons under Samsung's translucent gesture bar. Wraps the
-/// children in a [SingleChildScrollView] + stretch [Column].
+/// inset that grows by ui_kit's `systemBottomInset` (the keyboard when it
+/// is up, else the gesture / nav bar), the same inset `SheetScaffold` adds
+/// to a bottom sheet. Wraps the children in a [SingleChildScrollView] +
+/// stretch [Column].
 class FullScreenFormBody extends StatelessWidget {
   const FullScreenFormBody({super.key, required this.children});
 
@@ -58,12 +56,9 @@ class FullScreenFormBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final bottomInset = mq.viewInsets.bottom > 0
-        ? mq.viewInsets.bottom
-        : mq.viewPadding.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
+      padding:
+          EdgeInsets.fromLTRB(20, 20, 20, 20 + systemBottomInset(context)),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

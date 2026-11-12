@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SkeletonBlock;
+import 'package:ui_kit/ui_kit.dart'
+    show ListSkeleton, SheetScaffold, SkeletonBlock;
 
 import '../auth_error.dart';
 import '../column_limits.dart';
@@ -446,10 +447,31 @@ class _WeighInSheetState extends State<_WeighInSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final insets = MediaQuery.of(context).viewInsets;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + insets.bottom),
-      child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.all(20),
+      actions: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.checkpointCancel),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: _outOfRange
+                ? null
+                : () {
+                    Navigator.of(context).pop(_WeighInResult(
+                      consent: _consent,
+                      bodyWeightKg: _consent ? _typedKg : null,
+                      medicalHold: _consent ? _medicalHold : null,
+                    ));
+                  },
+            child: Text(l10n.checkpointWeighInSave),
+          ),
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -491,29 +513,6 @@ class _WeighInSheetState extends State<_WeighInSheet> {
               onChanged: (v) => setState(() => _medicalHold = v ?? false),
             ),
           ],
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.checkpointCancel),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _outOfRange
-                    ? null
-                    : () {
-                        Navigator.of(context).pop(_WeighInResult(
-                          consent: _consent,
-                          bodyWeightKg: _consent ? _typedKg : null,
-                          medicalHold: _consent ? _medicalHold : null,
-                        ));
-                      },
-                child: Text(l10n.checkpointWeighInSave),
-              ),
-            ],
-          ),
         ],
       ),
     );

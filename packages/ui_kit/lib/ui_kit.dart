@@ -12,6 +12,7 @@ export 'src/widgets/choice_chip_row.dart';
 export 'src/widgets/async_view.dart';
 export 'src/widgets/empty_state.dart';
 export 'src/widgets/error_state.dart';
+export 'src/widgets/filter_bar.dart';
 export 'src/widgets/identity_avatar.dart';
 export 'src/widgets/list_skeleton.dart';
 export 'src/widgets/progress_bar.dart';

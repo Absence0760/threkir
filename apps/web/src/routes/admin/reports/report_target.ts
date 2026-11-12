@@ -32,6 +32,9 @@ export const REPORT_TARGETS: Record<ReportTargetKind, ReportTargetSpec> = {
 	// A course page is keyed by region, park and course slugs, not an id, so
 	// the detail's course panel loads the course and links it (decisions § 2449).
 	park_course: { labelKey: 'admin.reports.kind.parkCourse', path: null },
+	// The group belongs to its members; the evidence is the title and inviter
+	// snapshotted on each report.
+	group_invite: { labelKey: 'admin.reports.kind.groupInvite', path: null },
 };
 
 export function reportTargetLabelKey(kind: ReportTargetKind): MessageKey | null {

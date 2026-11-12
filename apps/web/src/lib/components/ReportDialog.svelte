@@ -38,6 +38,7 @@
 		run: 'reportDialog.titleRun',
 		route_review: 'reportDialog.titleReview',
 		direct_message: 'reportDialog.titleMessage',
+		group_invite: 'reportDialog.titleGroupInvite',
 	};
 
 	// The organiser dispute reason is filed through OrganiserDisputeDialog,

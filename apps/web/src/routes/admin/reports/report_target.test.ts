@@ -25,6 +25,8 @@ const EXPECTED: Record<ReportTargetKind, { label: string; href: string | null }>
 	race_listing: { label: 'Race listing', href: `/races/${PAGE}` },
 	// Linked from the detail's course panel, which knows the slugs.
 	park_course: { label: 'Park course', href: null },
+	// The evidence is the snapshot on each report; the group is its members'.
+	group_invite: { label: 'Group invitation', href: null },
 };
 
 // EXPECTED is a Record over the union, which check_constraint_unions.mjs

@@ -23,3 +23,4 @@ export 'src/theme/corner_radii.dart';
 export 'src/theme/font_licenses.dart';
 export 'src/theme/icon_sizes.dart';
 export 'src/theme/section_accents.dart';
+export 'src/theme/spacing.dart';

@@ -1132,7 +1132,7 @@ A list group's uppercased eyebrow is ui_kit's `SectionHeader`. It is deliberatel
 
 ## Mobile empty states — ui_kit `EmptyState`
 
-On the Flutter apps, a whole-surface "nothing here yet / not found" state renders ui_kit's `EmptyState` (icon 48, `all(32)` padding, titleMedium title, bodySmall body, optional CTA — reusing `ErrorState`'s icon size and padding; [decisions.md § 485](decisions.md)), never a hand-rolled centred `Text` or bespoke icon column; tiny inline empty hints inside a larger card/list section stay inline. `architecture_guards_test.dart` fails any `class …EmptyState` declared in `lib/`.
+On the Flutter apps, a whole-surface "nothing here yet / not found" state renders ui_kit's `EmptyState` (icon 48, `all(32)` padding, titleMedium title, bodySmall body, optional CTA — reusing the icon size and padding of `ErrorState`, which sits beside it in ui_kit since issue #1374; [decisions.md § 485](decisions.md)), never a hand-rolled centred `Text` or bespoke icon column; tiny inline empty hints inside a larger card/list section stay inline. `architecture_guards_test.dart` fails any `class …EmptyState` declared in `lib/`.
 
 ## Loading surfaces — a skeleton shaped like the screen it becomes
 
@@ -1164,6 +1164,16 @@ Two habits these three carry, both general:
 
 - **Derive the numbers.** The bar is 6 tall because Material's own fill lane is 4 and a hairline costs 1 each side; the pill's glyph is the label size plus two; the chip row's spacing is one value. A derived number survives a type-scale change and a picked one does not.
 - **Prove the fix on the painted tree.** All three suites read the *rendered* decoration, size or colour back off the widget rather than re-stating the token, and each was proved to fail by perturbing the source — the progress bar's fill-vs-track assertion still passed with the old invisible track, which is exactly why both of its axes are asserted separately.
+
+## Mobile hub tabs and list controls — `HubTabBody`, `FilterBar`, `AsyncView`, `AppSpace`
+
+The page structure is owned by ui_kit components, so a screen supplies content and callbacks, not layout (issue #1374).
+
+- **A hub tab body is a `HubTabBody`, never a `Scaffold` with its own `AppBar` or FAB.** The hub owns the only app bar (its strip, no title) and the one FAB: the body hands its one `PrimaryAction` to the hub, keeps secondary actions in its control row, and owns pull-to-refresh. A tab with no create verb passes no primary action; a rare action (Add a race) goes in the overflow. The tab's label is its surface's name, and pushed on its own the body titles itself with that same name ([decisions § 2486](decisions.md)). `hub_tab_body_guard_test.dart` fails a Fitness tab body that builds `AppBar(`, `Scaffold(` or a FAB.
+- **A list's search and filters are one `FilterBar`.** One `AppSearchField` (it always has clear), at most one line of quick chips that scrolls sideways and never wraps (a chip filters; it never navigates), everything else in the sheet `showFilterSheet` opens, with the Filters icon carrying the count and the active filters as removable chips on the line ([decisions § 2487](decisions.md)). `filter_bar_guard_test.dart` counts the hand-built search fields and the wrapping toolbar chip rows left; both maps may only shrink.
+- **A read's states go through `AsyncView`**: rows when there are rows, else `LoadingState`, else `ErrorState` (ui_kit; `AppErrorState` in `lib/widgets` fills the Retry label), else `EmptyState` with a way forward. A failed read is never drawn as empty ([decisions § 2488](decisions.md)).
+- **Spacing in new and migrated code comes from `AppSpace` / `AppInsets`**, whose names are web's `--space-*` rungs (`AppSpace.md` = `--space-md` = 16) plus the mobile-only `smPlus` (12).
+- **Every migrated tab is tested at the worst case**: 320 dp, 2x text and the 3-button nav bar (`test/three_button_nav_bar.dart`), with the hub's FAB above the bar (`fitness_hub_tab_bodies_test.dart`).
 
 ## Mobile tap targets — no `VisualDensity.compact` on IconButtons
 

@@ -1301,6 +1301,13 @@ reading the **stored** `set_count` + `volume_kg` columns on
 - [ ] Each screen has exactly one primary action.
 - [ ] A hub has one tab strip: a section is a tab, never a second strip of
       pushed peers inside one tab (decisions § 2437).
+- [ ] A hub owns the only app bar (its strip, no title under it) and the one
+      FAB; a tab body is ui_kit's `HubTabBody` and hands the hub its one
+      primary action (decisions § 2486). Mobile only; web's run-surface strip
+      has no per-tab toolbar to remove.
+- [ ] A list's search and filters are one `FilterBar`: one search with clear,
+      one line of chips that filter and never wrap, the rest behind a counted
+      Filters sheet (decisions § 2487).
 - [ ] The runner-only experience is within one card of today's app, and a
       pure runner can keep Run as the one-tap primary action.
 - [ ] Lift-load contributions carry a `source` and never corrupt run-only

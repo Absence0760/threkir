@@ -34,7 +34,16 @@ class RunAnyTimeSection extends StatefulWidget {
   /// Test seam; production reads the quiet browse fix, which never prompts.
   final Stream<Position> Function()? positions;
 
-  const RunAnyTimeSection({super.key, required this.api, this.positions});
+  /// How many courses to list; null lists every one, as Races & courses
+  /// does when the courses are all it shows.
+  final int? limit;
+
+  const RunAnyTimeSection({
+    super.key,
+    required this.api,
+    this.positions,
+    this.limit = kRunAnyTimeLimit,
+  });
 
   @override
   State<RunAnyTimeSection> createState() => _RunAnyTimeSectionState();
@@ -209,8 +218,9 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
         ),
       ];
     }
-    final ordered =
-        orderAnyTimeCourses(_courses, _key, _origin).take(kRunAnyTimeLimit);
+    final all = orderAnyTimeCourses(_courses, _key, _origin);
+    final limit = widget.limit;
+    final ordered = limit == null ? all : all.take(limit);
     if (ordered.isEmpty) {
       return [
         Padding(

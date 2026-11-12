@@ -116,11 +116,13 @@ class _ParksApi extends ApiClient {
     this.viewer = 'viewer-1',
     this.failCourses = false,
     this.failRecords = false,
+    this.extraCourses = 0,
   });
 
   final String? viewer;
   final bool failCourses;
   final bool failRecords;
+  final int extraCourses;
   int recordCalls = 0;
 
   @override
@@ -140,6 +142,8 @@ class _ParksApi extends ApiClient {
       _course('near', 'p2', 'Near Loop', distanceM: 10000, laps: 2, lat: 37.51),
       // A course whose park the reader cannot see is not listed.
       _course('hidden', 'p-gone', 'Hidden Loop', lat: 37.5),
+      for (var i = 0; i < extraCourses; i++)
+        _course('extra-$i', 'p2', 'Extra Loop $i', lat: 37.6 + i / 100),
     ];
   }
 
@@ -302,6 +306,41 @@ void main() {
         findsNothing);
   });
 
+  testWidgets(
+      'the Show switch hides either section, and Courses lists every course',
+      (tester) async {
+    tallView(tester);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(results: [_race('r1', 'Richmond 10K')]),
+      api: _ParksApi(extraCourses: 8),
+    )));
+    await coursesListed(tester);
+    final cards = anyTime(find.byType(Card));
+    expect(find.text('Upcoming races'), findsOneWidget);
+    expect(cards, findsNWidgets(kRunAnyTimeLimit));
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Courses'));
+    await tester.pump();
+    expect(find.text('Upcoming races'), findsNothing);
+    expect(find.text('Richmond 10K'), findsNothing);
+    expect(find.byKey(const Key('races-filters-button')), findsNothing);
+    // The section is kept, not rebuilt, so every course is there at once.
+    expect(cards, findsNWidgets(10));
+    expect(find.byKey(const Key('races-any-time-all')), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Races'));
+    await tester.pump();
+    expect(find.byKey(const Key('races-any-time')), findsNothing);
+    expect(find.text('Upcoming races'), findsOneWidget);
+    expect(find.text('Richmond 10K'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'All'));
+    await tester.pump();
+    expect(find.text('Upcoming races'), findsOneWidget);
+    await coursesListed(tester);
+    expect(cards, findsNWidgets(kRunAnyTimeLimit));
+  });
+
   testWidgets('without a client the races stand alone', (tester) async {
     await tester.pumpWidget(_app(RacesScreen(
       service: _Races(results: [_race('r1', 'Richmond 10K')]),
@@ -312,6 +351,7 @@ void main() {
       describe: 'the race to list',
     );
     expect(find.byKey(const Key('races-any-time')), findsNothing);
+    expect(find.byKey(const Key('races-show')), findsNothing);
   });
 
   group('RunAnyTimeSection', () {

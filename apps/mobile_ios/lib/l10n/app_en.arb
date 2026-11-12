@@ -19895,6 +19895,22 @@
   "@racesSectionAnyTime": {
     "description": "Heading of the park-courses section on Races & courses: standing courses that can be run on any day, unlike a race. Mirrors web races.sectionAnyTime"
   },
+  "racesShowGroup": "Show",
+  "@racesShowGroup": {
+    "description": "Accessible name of the All / Races / Courses switch at the top of Races & courses. Mirrors web races.showGroup"
+  },
+  "racesShowAll": "All",
+  "@racesShowAll": {
+    "description": "Switch option on Races & courses: show both the race calendar and the park courses. Mirrors web races.showAll"
+  },
+  "racesShowRaces": "Races",
+  "@racesShowRaces": {
+    "description": "Switch option on Races & courses: show only the race calendar. Mirrors web races.showRaces"
+  },
+  "racesShowCourses": "Courses",
+  "@racesShowCourses": {
+    "description": "Switch option on Races & courses: show only the park courses, every one of them. Mirrors web races.showCourses"
+  },
   "racesAnyTimeFastest": "Fastest in {year}: {time}",
   "@racesAnyTimeFastest": {
     "description": "A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest",

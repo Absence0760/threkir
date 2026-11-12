@@ -24410,6 +24410,30 @@ abstract class AppLocalizations {
   /// **'Run any time'**
   String get racesSectionAnyTime;
 
+  /// Accessible name of the All / Races / Courses switch at the top of Races & courses. Mirrors web races.showGroup
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get racesShowGroup;
+
+  /// Switch option on Races & courses: show both the race calendar and the park courses. Mirrors web races.showAll
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get racesShowAll;
+
+  /// Switch option on Races & courses: show only the race calendar. Mirrors web races.showRaces
+  ///
+  /// In en, this message translates to:
+  /// **'Races'**
+  String get racesShowRaces;
+
+  /// Switch option on Races & courses: show only the park courses, every one of them. Mirrors web races.showCourses
+  ///
+  /// In en, this message translates to:
+  /// **'Courses'**
+  String get racesShowCourses;
+
   /// A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest
   ///
   /// In en, this message translates to:

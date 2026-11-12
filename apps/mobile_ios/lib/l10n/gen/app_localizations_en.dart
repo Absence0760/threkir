@@ -14914,6 +14914,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesSectionAnyTime => 'Run any time';
 
   @override
+  String get racesShowGroup => 'Show';
+
+  @override
+  String get racesShowAll => 'All';
+
+  @override
+  String get racesShowRaces => 'Races';
+
+  @override
+  String get racesShowCourses => 'Courses';
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return 'Fastest in $year: $time';
   }

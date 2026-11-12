@@ -15096,6 +15096,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get racesSectionAnyTime => 'À courir quand vous voulez';
 
   @override
+  String get racesShowGroup => 'Afficher';
+
+  @override
+  String get racesShowAll => 'Tout';
+
+  @override
+  String get racesShowRaces => 'Épreuves';
+
+  @override
+  String get racesShowCourses => 'Parcours';
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return 'Meilleur temps $year : $time';
   }

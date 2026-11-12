@@ -14346,6 +14346,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesSectionAnyTime => 'いつでも走れる';
 
   @override
+  String get racesShowGroup => '表示';
+
+  @override
+  String get racesShowAll => 'すべて';
+
+  @override
+  String get racesShowRaces => 'レース';
+
+  @override
+  String get racesShowCourses => 'コース';
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return '$year年の最速タイム：$time';
   }

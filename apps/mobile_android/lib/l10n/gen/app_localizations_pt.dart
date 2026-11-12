@@ -15067,6 +15067,18 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesSectionAnyTime => 'Corra quando quiser';
 
   @override
+  String get racesShowGroup => 'Mostrar';
+
+  @override
+  String get racesShowAll => 'Tudo';
+
+  @override
+  String get racesShowRaces => 'Provas';
+
+  @override
+  String get racesShowCourses => 'Percursos';
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return 'Tempo mais rápido em $year: $time';
   }
@@ -37553,6 +37565,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesSectionAnyTime => 'Corra quando quiser';
+
+  @override
+  String get racesShowGroup => 'Mostrar';
+
+  @override
+  String get racesShowAll => 'Tudo';
+
+  @override
+  String get racesShowRaces => 'Provas';
+
+  @override
+  String get racesShowCourses => 'Percursos';
 
   @override
   String racesAnyTimeFastest(String year, String time) {

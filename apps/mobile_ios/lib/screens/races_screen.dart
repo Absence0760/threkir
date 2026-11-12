@@ -71,6 +71,10 @@ class RacesScreen extends StatefulWidget {
 
 const _distanceBands = ['', '5k', '10k', 'half', 'marathon', 'ultra'];
 
+/// What Races & courses shows: both sections, the race calendar alone, or the
+/// park courses alone. Mirrors web `/races?show=`.
+enum _RacesShow { all, races, courses }
+
 /// How far back Recent results looks, in days. Mirrors web's
 /// `RECENT_WINDOW_DAYS` on `/races`.
 const recentWindowDays = 30;
@@ -85,6 +89,7 @@ class _RacesScreenState extends State<RacesScreen> {
   String _distance = '';
   bool _recent = false;
   String _nearPlace = '';
+  _RacesShow _show = _RacesShow.all;
 
   bool _loading = true;
   bool _error = false;
@@ -229,6 +234,50 @@ class _RacesScreenState extends State<RacesScreen> {
       body: CustomScrollView(
         key: const Key('races-scroll'),
         slivers: [
+          if (api != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Semantics(
+                  key: const Key('races-show'),
+                  container: true,
+                  label: l.racesShowGroup,
+                  child: ChoiceChipRow<_RacesShow>(
+                    selected: _show,
+                    onChanged: (v) => setState(() => _show = v),
+                    options: [
+                      ChoiceChipOption(
+                          value: _RacesShow.all, label: l.racesShowAll),
+                      ChoiceChipOption(
+                          value: _RacesShow.races, label: l.racesShowRaces),
+                      ChoiceChipOption(
+                          value: _RacesShow.courses,
+                          label: l.racesShowCourses),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (_show != _RacesShow.courses) ..._raceSlivers(l, theme),
+          if (api != null && _show != _RacesShow.races)
+            // Keyed so switching views keeps its courses, records and fix
+            // rather than reading them again.
+            SliverToBoxAdapter(
+              key: const Key('races-any-time-sliver'),
+              child: RunAnyTimeSection(
+                api: api,
+                limit: _show == _RacesShow.courses ? null : kRunAnyTimeLimit,
+              ),
+            ),
+          SliverToBoxAdapter(
+            child: SizedBox(height: fabScrollClearance(context)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _raceSlivers(AppLocalizations l, ThemeData theme) => [
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -286,15 +335,7 @@ class _RacesScreenState extends State<RacesScreen> {
           if (_activeCount > 0)
             SliverToBoxAdapter(child: _buildActiveFilters(l)),
           _buildResults(l),
-          if (api != null)
-            SliverToBoxAdapter(child: RunAnyTimeSection(api: api)),
-          SliverToBoxAdapter(
-            child: SizedBox(height: fabScrollClearance(context)),
-          ),
-        ],
-      ),
-    );
-  }
+        ];
 
   int get _activeCount =>
       (_distance.isEmpty ? 0 : 1) +

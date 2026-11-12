@@ -221,6 +221,7 @@ class _SegmentsPanelState extends State<SegmentsPanel> {
       });
     } catch (e) {
       debugPrint('segments panel delete error: $e');
+      if (!mounted) return;
       _toast(AppLocalizations.of(context).segmentsPanelDeleteError(friendlyError(AppLocalizations.of(context), e)));
     }
   }

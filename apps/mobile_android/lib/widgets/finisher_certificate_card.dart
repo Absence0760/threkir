@@ -88,6 +88,7 @@ class _CertificateSheetState extends State<_CertificateSheet> {
       final tmp = await getTemporaryDirectory();
       final file = File('${tmp.path}/threkir-certificate-$safe.png');
       await file.writeAsBytes(bytes);
+      if (!mounted) return;
 
       await shareFilesFrom(
         context,

@@ -1111,6 +1111,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
           DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
       final file = File('${tmp.path}/runs-$ts.csv');
       await file.writeAsString(buf.toString());
+      if (!mounted) return;
       await shareFilesFrom(
         context,
         files: [XFile(file.path, mimeType: 'text/csv')],
@@ -1146,12 +1147,11 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         api: api,
       ).createBackup(outputFile: file, runStore: widget.runStore);
       final localShort = outcome.localShortfall;
-      if (mounted) {
-        setState(() {
-          _backupLocalShortfall = localShort;
-          _lastBackupWasOnDevice = true;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _backupLocalShortfall = localShort;
+        _lastBackupWasOnDevice = true;
+      });
       await shareFilesFrom(
         context,
         files: [XFile(file.path)],
@@ -1193,7 +1193,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     );
     if (picked == null || picked.files.isEmpty) return;
     final path = picked.files.first.path;
-    if (path == null) return;
+    if (path == null || !mounted) return;
     final offline = api == null || api.userId == null;
     final ok = await showDialog<bool>(
       context: context,

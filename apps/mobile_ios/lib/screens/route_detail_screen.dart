@@ -793,6 +793,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
         if (mounted) {
           setState(() => _isPublic = !newValue);
           await widget.routeStore.save(buildRoute(!newValue));
+          if (!mounted) return;
           showTopBanner(context,
               AppLocalizations.of(context).routeDetailVisibilityFailed(friendlyError(AppLocalizations.of(context), e)));
         }
@@ -2233,6 +2234,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
         contents = routeToGpx(route, attribution);
       }
       await file.writeAsString(contents);
+      if (!context.mounted) return;
       await shareFilesFrom(
         context,
         files: [

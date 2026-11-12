@@ -1952,6 +1952,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // A rebuild, because the idle setup row shows the armed share.
     setState(() => _liveShareRequested = true);
     final started = await _startLiveBroadcast();
+    if (!mounted) return;
 
     try {
       await shareTextFrom(context, text: url, subject: _l10n.runShareSubject);

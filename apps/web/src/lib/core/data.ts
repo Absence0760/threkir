@@ -13071,12 +13071,14 @@ export async function setDmReadReceipts(on: boolean): Promise<void> {
 // exist and one they left with the same P0002.
 
 /// Whether group conversations are on for this deploy (the server's
-/// `group_messages` flag). Fail-closed: a failed read hides every group surface.
-export async function fetchGroupMessagesEnabled(): Promise<boolean> {
+/// `group_messages` flag): `null` when the read failed, so a caller can tell
+/// "off" from "not known yet". Callers render a `null` as off (fail-closed)
+/// and read again on their next poll; only a definite `false` ends that.
+export async function fetchGroupMessagesEnabled(): Promise<boolean | null> {
 	const { data, error } = await supabase.rpc('group_messages_enabled', undefined, { get: true });
 	if (error) {
 		console.error('group_messages_enabled failed', error.message);
-		return false;
+		return null;
 	}
 	return data === true;
 }

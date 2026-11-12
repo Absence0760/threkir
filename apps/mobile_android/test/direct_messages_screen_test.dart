@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
+import '../lib/dm_image.dart';
 import '../lib/dm_pending_hides.dart';
 import '../lib/dm_send_error.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -19,7 +20,6 @@ import '../lib/screens/message_thread_screen.dart';
 import '../lib/screens/messages_screen.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/undo_queue.dart';
-import '../lib/widgets/dm_photo.dart';
 import '../lib/widgets/dm_route_attachment.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
@@ -2388,12 +2388,31 @@ void main() {
         height: 300,
         url: 'https://storage.invalid/sign/img-1.jpg?token=t',
       );
-      await tester.pump(kDmPhotoPendingRecheck);
+      await tester.pump(kDmImageFastRecheck);
       await tester.pump();
 
       expect(api.imageReads, ['img-1', 'img-1']);
       expect(find.byKey(const ValueKey('dm-photo-pending')), findsNothing);
       expect(find.byKey(const ValueKey('dm-photo')), findsOneWidget);
+    });
+
+    testWidgets('a photo still preparing after the fast checks is checked '
+        'slowly, not left preparing', (tester) async {
+      final api = _FakeApi()
+        ..newest = [photoMsg('m1', 'img-1')]
+        ..images['img-1'] = const DmImageView(status: 'pending');
+      await pumpWith(tester, api);
+      for (var i = 0; i < kDmImageFastChecks; i++) {
+        await tester.pump(kDmImageFastRecheck);
+      }
+      expect(api.imageReads, hasLength(kDmImageFastChecks));
+      expect(find.byKey(const ValueKey('dm-photo-pending')), findsOneWidget);
+
+      api.images['img-1'] = const DmImageView(status: 'rejected');
+      await tester.pump(kDmImageSlowRecheck);
+      await tester.pump();
+      expect(api.imageReads, hasLength(kDmImageFastChecks + 1));
+      expect(find.text(l10n.messagesPhotoRejected), findsOneWidget);
     });
 
     testWidgets('a photo the server rejected, or one that cannot be read, '

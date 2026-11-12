@@ -160,7 +160,7 @@ Since migration `20271213121604` ([decisions § 2451](../architecture/decisions.
 | | Web | Mobile |
 |---|---|---|
 | Attach | `dm-attach-photo` beside the composer while `dm_images_enabled()`; a preview with Remove (`dm-photo-draft`) | the composer's attach button, same gate |
-| Pending | "Preparing photo…" (`dm-photo-pending`), re-checked every 4 s | the same |
+| Pending | "Preparing photo…" (`dm-photo-pending`), re-checked every 4 s for 45 checks (about three minutes), then every 30 s while it is on screen, so a slow re-encode still turns into the photo (`dmImageRecheckMs`, the `dm_image` pair); a read that keeps failing past the fast checks shows the unavailable note and keeps the slow checks | the same (`dmImageRecheckDelay`) |
 | Ready / rejected | the image (`dm-photo`) / "This photo couldn't be sent." | the same |
 | Refused send | `messages.photoSendNotAllowed`, one sentence that does not reveal a block | the same |
 

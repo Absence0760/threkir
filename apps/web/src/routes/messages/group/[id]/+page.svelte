@@ -56,7 +56,9 @@
 	const row = $derived(messagesInbox.threads.find((t) => t.kind === 'group' && t.conversationId === groupId) ?? null);
 
 	// null while unknown; the flag is read here as well as by the inbox so a
-	// deep link decides on its own (fail-closed: a failed read is off).
+	// deep link decides on its own. A failed read leaves it null, which shows
+	// nothing of the group (fail-closed) and is read again on the next poll;
+	// only a definite false is "not available".
 	let enabled = $state<boolean | null>(null);
 	let members = $state<GroupMember[]>([]);
 	// 'active' once group_members answers, 'outside' on its P0002: the viewer
@@ -228,7 +230,7 @@
 		const on = await fetchGroupMessagesEnabled();
 		if (id !== groupId) return;
 		enabled = on;
-		if (!on) {
+		if (on !== true) {
 			loading = false;
 			return;
 		}
@@ -279,7 +281,9 @@
 	}
 
 	async function poll(id: string) {
-		if (id !== groupId || polling || loading || loadError || enabled !== true) return;
+		if (id !== groupId || polling || loading) return;
+		if (enabled === null) return open(id);
+		if (loadError || enabled !== true) return;
 		polling = true;
 		const writesAtStart = localWrites;
 		try {
@@ -371,8 +375,12 @@
 			const imageId = photo ? await uploadDmImage(photo.blob) : undefined;
 			const msg = await sendGroupMessage(id, body, { imageId });
 			if (photo && photoDraft === photo) clearPhotoDraft();
-			delete drafts[id];
-			drafts = { ...drafts };
+			// Text typed while a slow send was in flight is the runner's next
+			// message, not this one's leftovers: only the sent words clear.
+			if ((drafts[id] ?? '') === body) {
+				delete drafts[id];
+				drafts = { ...drafts };
+			}
 			if (id === groupId) {
 				localWrites++;
 				messages = mergeDmMessages(messages, [msg]);

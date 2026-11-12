@@ -10531,16 +10531,18 @@ class ApiClient {
   // of web `core/data.ts`.
 
   /// Whether group conversations are on for this deploy (the server's
-  /// `group_messages` flag). Fail-closed: a failed read hides every group
-  /// surface. Mirrors web `fetchGroupMessagesEnabled`.
-  Future<bool> fetchGroupMessagesEnabled() async {
+  /// `group_messages` flag): null when the read failed, so a caller can tell
+  /// "off" from "not known yet". Callers render a null as off (fail-closed)
+  /// and read again on their next poll; only a definite false ends that.
+  /// Mirrors web `fetchGroupMessagesEnabled`.
+  Future<bool?> fetchGroupMessagesEnabled() async {
     try {
       final result = await _client
           .rpc('group_messages_enabled', params: const {}, get: true);
       return result == true;
     } catch (e) {
       debugPrint('group_messages_enabled failed: ${safeErrorLabel(e)}');
-      return false;
+      return null;
     }
   }
 

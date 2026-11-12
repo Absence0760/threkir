@@ -65,7 +65,12 @@ UserProfileRow _person(String id, String name) => UserProfileRow(
     profilePrivate: false, id: id, displayName: name, shadowHidden: false);
 
 class _FakeApi extends ApiClient {
-  bool groupsOn = true;
+  /// The flag read: null is a failed read.
+  bool? groupsOn = true;
+  int flagReads = 0;
+
+  /// Holds a send in flight until completed.
+  Completer<void>? sendGate;
   List<DmThread> threads = [];
   List<GroupInvite> invites = [];
   List<DirectMessageRow> messages = [];
@@ -91,7 +96,10 @@ class _FakeApi extends ApiClient {
   Stream<String?> get authUserChanges => const Stream.empty();
 
   @override
-  Future<bool> fetchGroupMessagesEnabled() async => groupsOn;
+  Future<bool?> fetchGroupMessagesEnabled() async {
+    flagReads++;
+    return groupsOn;
+  }
 
   @override
   Future<List<DmThread>> fetchDmThreads() async => threads;
@@ -168,6 +176,7 @@ class _FakeApi extends ApiClient {
   @override
   Future<DirectMessageRow> sendGroupMessage(String conversationId, String body,
       {String? imageId}) async {
+    await sendGate?.future;
     sent.add(body);
     return _msg('sent-${sent.length}', from: _me, minute: 59, body: body);
   }
@@ -268,6 +277,52 @@ void main() {
       await _pumpInbox(tester, api);
       expect(find.text('Tuesday tempo'), findsNothing);
       expect(find.byKey(const ValueKey('inbox-new-group')), findsNothing);
+    });
+
+    testWidgets(
+        'a failed flag read hides groups until the next poll reads it '
+        'again; a definite off is not re-read', (tester) async {
+      final api = _FakeApi()
+        ..groupsOn = null
+        ..threads = [_groupRow()];
+      const poll = Duration(seconds: 30);
+      await tester.pumpWidget(_app(MessagesScreen(
+        api: api,
+        pollInterval: poll,
+        threadPollInterval: _quiet,
+      )));
+      await pumpUntil(
+          tester, () => !_shows(find.byType(LinearProgressIndicator)),
+          describe: 'the inbox to load');
+      await tester.pump();
+      expect(find.text('Tuesday tempo'), findsNothing);
+      expect(find.byKey(const ValueKey('inbox-new-group')), findsNothing);
+
+      api.groupsOn = true;
+      await tester.pump(poll);
+      await pumpUntil(
+          tester, () => _shows(find.byKey(const ValueKey('inbox-new-group'))),
+          describe: 'the poll to read the flag again');
+      expect(find.text('Tuesday tempo'), findsOneWidget);
+      expect(api.flagReads, 2);
+
+      final off = _FakeApi()
+        ..groupsOn = false
+        ..threads = [_groupRow()];
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(_app(MessagesScreen(
+        api: off,
+        pollInterval: poll,
+        threadPollInterval: _quiet,
+      )));
+      await pumpUntil(
+          tester, () => !_shows(find.byType(LinearProgressIndicator)),
+          describe: 'the inbox to load');
+      await tester.pump(poll);
+      await tester.pump();
+      expect(off.flagReads, 1);
+      expect(find.text('Tuesday tempo'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
     });
 
     testWidgets('a group row shows its title, size and the right preview',
@@ -417,7 +472,9 @@ void main() {
               from: 'p-2', minute: 2, body: 'Tempo club', kind: 'group_renamed'),
           _msg('m4', from: _me, minute: 4, body: 'in'),
         ]
-        ..placeholders = [(id: 'm3', createdAt: DateTime.utc(2026, 11, 10, 8, 3))];
+        ..placeholders = [
+          (id: 'm3', createdAt: DateTime.utc(2026, 11, 10, 8, 1, 30)),
+        ];
       await _pumpThread(tester, api);
       await pumpUntil(
           tester, () => _shows(find.text('Message from someone you blocked')),
@@ -454,6 +511,73 @@ void main() {
       final composer = tester.widget<TextField>(
           find.byKey(const ValueKey('message-composer')));
       expect(composer.controller!.text, isEmpty);
+    });
+
+    testWidgets('text typed while a send is in flight stays in the composer',
+        (tester) async {
+      final api = _FakeApi()
+        ..messages = [_msg('m1')]
+        ..sendGate = Completer<void>();
+      await _pumpThread(tester, api);
+      final field = find.byKey(const ValueKey('message-composer'));
+      await tester.enterText(field, 'slow one');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await tester.pump();
+      await tester.enterText(field, 'typed meanwhile');
+      api.sendGate!.complete();
+      await pumpUntil(tester, () => api.sent.isNotEmpty, describe: 'the send');
+      await tester.pump();
+      expect(api.sent, ['slow one']);
+      expect(tester.widget<TextField>(field).controller!.text,
+          'typed meanwhile');
+    });
+
+    testWidgets(
+        'a failed flag read shows nothing of the group, and the next poll '
+        'opens it', (tester) async {
+      final api = _FakeApi()
+        ..groupsOn = null
+        ..messages = [_msg('m1', body: 'tempo at 6')];
+      const poll = Duration(seconds: 10);
+      await tester.pumpWidget(_app(GroupThreadScreen(
+        api: api,
+        conversationId: _group,
+        title: 'Tuesday tempo',
+        pollInterval: poll,
+      )));
+      await pumpUntil(tester, () => api.flagReads == 1,
+          describe: 'the first flag read');
+      await tester.pump();
+      expect(find.byKey(const ValueKey('group-unavailable')), findsNothing);
+      expect(find.text('tempo at 6'), findsNothing);
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+
+      api.groupsOn = true;
+      await tester.pump(poll);
+      await pumpUntil(tester, () => _shows(find.text('tempo at 6')),
+          describe: 'the poll to read the flag again and load the thread');
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets(
+        'a blocked renamer\'s newer rename leaves the header on the group\'s '
+        'own title, not an older rename line', (tester) async {
+      final api = _FakeApi()
+        ..threads = [_groupRow(title: 'Hill reps')]
+        ..messages = [
+          _msg('m1',
+              from: 'p-2', minute: 1, body: 'Tempo club', kind: 'group_renamed'),
+          _msg('m2', from: 'p-1', minute: 2, body: 'see you'),
+        ]
+        ..placeholders = [(id: 'm3', createdAt: DateTime.utc(2026, 11, 10, 8, 3))];
+      await _pumpThread(tester, api);
+      String header() =>
+          tester.widget<Text>(find.byKey(const ValueKey('group-title'))).data!;
+      await pumpUntil(tester, () => header() == 'Hill reps',
+          describe: 'the header to take the group row\'s title');
+      expect(header(), isNot('Tempo club'));
     });
 
     testWidgets('Leave asks first; Cancel stays', (tester) async {

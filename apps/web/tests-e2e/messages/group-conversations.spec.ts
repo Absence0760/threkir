@@ -142,6 +142,58 @@ test.describe('/messages — group conversations', () => {
 		}
 	});
 
+	test('text typed while a send is in flight stays in the composer', async ({ browser }) => {
+		const b = await open(browser, bea);
+		try {
+			await b.page.goto(`/messages/group/${groupId}`);
+			await expect(b.page.getByTestId('dm-bubble').filter({ hasText: `hello group ${stamp}` })).toBeVisible({
+				timeout: 15_000,
+			});
+			let release!: () => void;
+			const held = new Promise<void>((r) => (release = r));
+			await b.page.route('**/rest/v1/direct_messages*', async (route) => {
+				if (route.request().method() === 'POST') await held;
+				await route.continue();
+			});
+			const composer = b.page.getByPlaceholder('Message…');
+			await composer.fill(`slow one ${stamp}`);
+			await b.page.getByRole('button', { name: 'Send', exact: true }).click();
+			await composer.fill(`typed meanwhile ${stamp}`);
+			release();
+			await expect(b.page.getByTestId('dm-bubble').filter({ hasText: `slow one ${stamp}` })).toBeVisible({
+				timeout: 10_000,
+			});
+			await expect(composer).toHaveValue(`typed meanwhile ${stamp}`);
+		} finally {
+			await b.ctx.close();
+		}
+	});
+
+	test('a failed flag read is not "off": the next poll reads it again and the group appears', async ({ browser }) => {
+		const a = await open(browser, owner);
+		try {
+			await a.page.route('**/rest/v1/rpc/group_messages_enabled*', (route) =>
+				route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"blip"}' }),
+			);
+			await a.page.goto(`/messages/group/${groupId}`);
+			await expect(a.page.getByRole('heading', { name: 'Messages', level: 2 })).toBeVisible({ timeout: 15_000 });
+			// Unknown renders as nothing of the group, and not as "not available".
+			await expect(a.page.getByTestId('inbox-new-group')).toHaveCount(0);
+			await expect(a.page.getByTestId('dm-bubble')).toHaveCount(0);
+			await expect(a.page.getByTestId('group-unavailable')).toHaveCount(0);
+
+			await a.page.unroute('**/rest/v1/rpc/group_messages_enabled*');
+			// The thread's 10 s poll and the inbox's 30 s poll each read the flag again.
+			await expect(a.page.getByTestId('dm-bubble').filter({ hasText: `hello group ${stamp}` })).toBeVisible({
+				timeout: 20_000,
+			});
+			await expect(a.page.getByTestId('inbox-new-group')).toBeVisible({ timeout: 40_000 });
+			await expect(a.page.getByTestId('inbox-group-row').filter({ hasText: title })).toBeVisible();
+		} finally {
+			await a.ctx.close();
+		}
+	});
+
 	test('a late joiner reads nothing from before they joined', async ({ browser }) => {
 		const a = await open(browser, owner);
 		try {
@@ -191,7 +243,8 @@ test.describe('/messages — group conversations', () => {
 			await expect(c.page.getByTestId('dm-bubble').filter({ hasText: `dev says hi ${stamp}` })).toBeVisible({
 				timeout: 15_000,
 			});
-			await expect(c.page.getByTestId('group-blocked-placeholder')).toHaveCount(2);
+			// Bea's three messages: hello group, the slow send, and this one.
+			await expect(c.page.getByTestId('group-blocked-placeholder')).toHaveCount(3);
 			await expect(c.page.getByText(`can cal read this ${stamp}`)).toHaveCount(0);
 			await expect(c.page.getByText(`hello group ${stamp}`)).toHaveCount(0);
 		} finally {
@@ -305,7 +358,7 @@ test.describe('/messages — group conversations', () => {
 			await expect(a.page.getByTestId('group-unavailable')).toBeVisible({ timeout: 15_000 });
 			await expect(a.page.getByTestId('dm-bubble')).toHaveCount(0);
 
-			// A failed read is off too.
+			// A failed read shows nothing of them either.
 			await a.page.unroute('**/rest/v1/rpc/group_messages_enabled*');
 			await a.page.route('**/rest/v1/rpc/group_messages_enabled*', (route) =>
 				route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' }),

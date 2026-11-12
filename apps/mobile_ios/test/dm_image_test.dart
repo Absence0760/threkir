@@ -37,6 +37,16 @@ void main() {
     expect(parseDmImageStatus('weird'), 'pending');
   });
 
+  test(
+      'a pending photo is checked fast for about three minutes, then slowly '
+      'for good', () {
+    expect(dmImageRecheckDelay(1), const Duration(seconds: 4));
+    expect(dmImageRecheckDelay(44), const Duration(seconds: 4));
+    expect(dmImageRecheckDelay(45), const Duration(seconds: 30));
+    expect(dmImageRecheckDelay(1000), const Duration(seconds: 30));
+    expect(dmImageRecheckDelay(1) * 44, const Duration(seconds: 176));
+  });
+
   test('a photo is scaled down to the long edge and never up', () {
     expect(dmImageFit(4032, 3024), (width: 2048, height: 1536));
     expect(dmImageFit(3024, 4032), (width: 1536, height: 2048));

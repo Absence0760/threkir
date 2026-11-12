@@ -13,10 +13,10 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
-| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races`, the `/segments` header link and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
+| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races` (the Courses view's park cards, each course card's park link and "All park courses") and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
 | Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight courses with distance, shape and this season's record, nearest first once the page has a place or the runner's location, otherwise region, park, distance, name; closed courses last (`orderAnyTimeCourses` in `lib/parks/any_time_courses.ts`). Its own loading, error and `EmptyState`, independent of the race calendar above it. An **All · Races · Courses** switch (`?show=`, `lib/races/races_show.ts`; decisions § 2480) shows either section alone, and Courses lists every course with the place control beside them; mobile has the same switch on the Races & courses tab | Shipped |
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
-| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the **Parks** peer on the Fitness hub's Runs strip, and the segment catalogue's app bar) | Shipped |
+| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the Courses view's park cards, each course card's park link and "All park courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
 | Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
@@ -204,7 +204,19 @@ because a course is something you go and do, not a stretch you happen to run.
   ordered by the phone's fix, as before.
 - **`/parks`** stays the full index and the deep-link target for share pages
   and posts, with a back-link to Races & courses and no strip.
-- **`/segments`** keeps its header link to `/parks`.
+- **Segments**' Park courses action (web header link and empty state, mobile
+  app-bar action and empty state) opens Races & courses on its Courses view:
+  `/races?show=courses` on web, and on mobile the Races & courses tab with
+  Courses selected, through `openFitnessSurface(..., racesShow:)` rather than
+  a pushed copy of the park index (decisions § 2437, § 2480).
+- **Courses view** leads with a scrolling row of park cards (the `/parks`
+  card, `ParkCard` on both platforms), in the order of each park's first
+  course, so a set place or fix brings the nearest park first. Each course
+  card's park name is a link of its own to the park. All keeps the short list
+  with no park row.
+- **Segment page**: a catalogue segment a park course is built on links to
+  that course (`fetchParkCourseForSegment` on both platforms, one read that
+  also carries the course credit; no migration).
 - The run-surface strip has no Parks tab (five tabs: Runs · Plans · Races &
   courses · Routes · Segments, in the mobile order).
 
@@ -795,10 +807,15 @@ These gate going live, not the code:
   records, nearest first from the granted location, `/parks` from Run any
   time, Segments and directly, the Show switch and its `?show=` links, every
   course in the Courses view against eight in All, back from a course to the
-  Courses view, Use my location inside it); `apps/web/src/lib/races/races_show.test.ts`
+  Courses view, Use my location inside it, the park row and each card's park
+  link, Segments' Park courses opening the Courses view);
+  `apps/web/src/lib/races/races_show.test.ts`
   (parsing, the query string, the course limit per view); Flutter
   `apps/mobile_android/test/races_courses_screen_test.dart` (the switch hides
-  either section and Courses lists every course without reloading).
+  either section and Courses lists every course without reloading, the park
+  row and park links, a host notifier choosing the view); the hub, segments
+  and course-screen tests pin the Segments action landing on Courses, the
+  segment-to-course link and the course screen's link back to its park.
 - Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
   (creation, an unchanged re-run, changed geometry in place with efforts
   kept, status untouched, a deleted route recreated, the backfill flag, the

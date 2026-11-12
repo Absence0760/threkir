@@ -631,9 +631,9 @@ Smoke tests for `CoachAssistConsentSwitch` (issue #1215 Phase 4) over an in-file
 
 `DmMessageText` (issue #1216): plain text (markup included) is one plain `Text`; an http(s) link gets its text plus a chip naming the domain (`www.` and the port dropped) and a tap opens its href; links number in order. One looped declaration runs seven bodies that must stay text — `ftp:`, `mailto:`, `javascript:`, a Latin and a Cyrillic look-alike host, a `user@host` authority and a dotless host. A refused link beside a good one leaves only the good one, and a link with no handler draws without a tap target. Six declarations, 12 cases at run time.
 
-### `apps/mobile_android/test/fitness_surface_requests_test.dart` — 6 tests
+### `apps/mobile_android/test/fitness_surface_requests_test.dart` — 7 tests
 
-`FitnessSurfaceRequests` (decisions § 2437): with nobody listening a request is refused and nothing is parked; a listener is told and `take` hands the tab over once; the same tab can be asked for twice running; an undrained request is replaced by the newest. `openFitnessSurface` hands the tab to a listening shell without pushing anything, and pushes the fallback screen when no shell listens.
+`FitnessSurfaceRequests` (decisions § 2437): with nobody listening a request is refused and nothing is parked; a listener is told and `take` hands the tab over once; the same tab can be asked for twice running; an undrained request is replaced by the newest; a Races & courses request carries the view to open the tab on (decisions § 2480). `openFitnessSurface` hands the tab to a listening shell without pushing anything, and pushes the fallback screen when no shell listens.
 
 ### `apps/mobile_android/test/ai_disclosure_notice_test.dart` — 3 tests
 
@@ -1508,7 +1508,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,616 declared tests across 686 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,619 declared tests across 686 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

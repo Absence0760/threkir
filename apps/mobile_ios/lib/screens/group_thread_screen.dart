@@ -856,13 +856,13 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
               tooltip: _muted ? l10n.messagesUnmute : l10n.messagesMute,
               isSelected: _muted,
               icon: const Icon(Icons.notifications_off_outlined),
-              selectedIcon: const Icon(Icons.notifications_active_outlined),
+              selectedIcon: const Icon(Icons.notifications_active),
               onPressed: _busy ? null : _toggleMuted,
             ),
             IconButton(
               key: const ValueKey('group-members-button'),
               tooltip: l10n.groupsMembersButton,
-              icon: const Icon(Icons.group_outlined),
+              icon: const Icon(Icons.group),
               onPressed: _openMembers,
             ),
             PopupMenuButton<String>(

@@ -1313,7 +1313,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'La taille, le poids, la fréquence cardiaque enregistrée avec vos activités et votre journal alimentaire sont des données de santé sensibles, conservés uniquement tant que cette option est activée. Désactivez-la puis enregistrez pour les effacer.';
+      'Threkir conserve votre genre, votre taille, votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités, les cibles de fréquence cardiaque de vos plans, l\'indication qu\'un médicament modifie votre fréquence cardiaque et votre journal alimentaire, et les utilise avec votre date de naissance en tant que données de santé (art. 9, par. 2, point a, du RGPD) pour personnaliser votre entraînement et vos objectifs nutritionnels et vous placer dans les classements de segments par genre et par tranche d\'âge, uniquement tant que cette option est activée. Désactivez-la puis enregistrez pour retirer votre consentement et effacer ces données ; votre date de naissance reste enregistrée pour attester de votre âge.';
 
   @override
   String get bodyMetricsHeight => 'Taille';
@@ -1359,7 +1359,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Cela efface définitivement votre taille enregistrée, votre genre, votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités et votre journal alimentaire, et votre date de naissance n\'est plus utilisée pour personnaliser votre entraînement. Vos activités elles-mêmes sont conservées. Cette action est irréversible.';
+      'Cela efface définitivement votre genre, votre taille, votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités, les cibles de fréquence cardiaque de vos plans, l\'indication qu\'un médicament modifie votre fréquence cardiaque et votre journal alimentaire. Vos activités elles-mêmes sont conservées, et votre date de naissance reste enregistrée pour attester de votre âge, mais n\'est plus utilisée en tant que donnée de santé. Cette action est irréversible.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirer et effacer';
@@ -1373,7 +1373,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Threkir ne conserve un journal alimentaire qu\'avec votre consentement au traitement de vos données de santé. Rien n\'est enregistré tant que vous ne l\'avez pas donné.';
 
   @override
-  String get healthConsentGiveAction => 'Donner mon consentement';
+  String get healthConsentGiveAction => 'Consulter le consentement';
 
   @override
   String get bodyMetricsSaved => 'Enregistré';
@@ -2058,7 +2058,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'J\'autorise Threkir à utiliser mon genre et ma date de naissance pour personnaliser les estimations d\'allure, de fréquence cardiaque et de calories (données de santé sensibles, RGPD art. 9).';
+      'Je consens à ce que Threkir conserve mon genre, ma taille, mon historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec mes activités, les cibles de fréquence cardiaque de mes plans, l\'indication qu\'un médicament modifie ma fréquence cardiaque et mon journal alimentaire, et les utilise avec ma date de naissance en tant que données de santé (art. 9, par. 2, point a, du RGPD) pour personnaliser mon entraînement et mes objectifs nutritionnels et me placer dans les classements de segments par genre et par tranche d\'âge. Je peux retirer ce consentement à tout moment.';
 
   @override
   String get setupPrivacyTitle => 'Qui voit vos courses ?';
@@ -13722,7 +13722,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get nutritionNoTargets =>
-      'Renseignez votre taille, votre poids, votre âge et votre sexe pour voir les objectifs de calories et de macros.';
+      'Renseignez votre taille, votre poids, votre âge et votre genre pour voir les objectifs de calories et de macros.';
 
   @override
   String get nutritionAddBodyMetrics => 'Ajouter mes données corporelles';
@@ -13786,7 +13786,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'La taille, le poids, la date de naissance et le sexe sont des données de santé ; leur modification est donc soumise à votre consentement.';
+      'La taille, le poids, la date de naissance et le genre sont des données de santé : leur modification est donc soumise à votre consentement.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Modifier les données corporelles';
@@ -13799,7 +13799,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get nutritionTargetsEmptyBody =>
-      'Renseignez votre taille, votre poids, votre date de naissance et votre sexe et vos objectifs de calories et de macros apparaîtront ici.';
+      'Renseignez votre taille, votre poids, votre date de naissance et votre genre et vos objectifs de calories et de macros apparaîtront ici.';
 
   @override
   String get nutritionTargetsAge => 'Âge';

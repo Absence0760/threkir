@@ -546,7 +546,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$count atividades foram importadas sem a frequência cardíaca',
       one: '$count atividade foi importada sem a frequência cardíaca',
     );
-    return '$_temp0: o Threkir só guarda a frequência cardíaca com o seu consentimento de dados de saúde.';
+    return '$_temp0: a Threkir só guarda a frequência cardíaca com o seu consentimento de dados de saúde.';
   }
 
   @override
@@ -1316,7 +1316,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'A altura, o peso, a frequência cardíaca gravada com as suas atividades e o seu registo alimentar são dados de saúde de categoria especial, guardados apenas enquanto esta opção estiver ativa. Desative e guarde para os apagar.';
+      'A Threkir armazena o seu género, a sua altura, o seu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as suas atividades, as metas de frequência cardíaca dos seus planos, a indicação de que a sua frequência cardíaca é afetada por medicação e o seu registo alimentar, e utiliza-os com a sua data de nascimento como dados de saúde (art. 9, n.º 2, alínea a), do RGPD) para personalizar o seu treino e as suas metas de nutrição e para o colocar nas classificações de segmentos por género e faixa etária, apenas enquanto esta opção estiver ativa. Desative e guarde para retirar o consentimento e apagar estes dados; a sua data de nascimento fica guardada como registo da sua idade.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -1362,7 +1362,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isto apaga permanentemente a sua altura guardada, o seu género, o seu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca guardada com as suas atividades e o seu registo alimentar, e a sua data de nascimento deixa de ser usada para personalizar o seu treino. As suas atividades mantêm-se. Isto não pode ser desfeito.';
+      'Isto apaga permanentemente o seu género, a sua altura, o seu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as suas atividades, as metas de frequência cardíaca dos seus planos, a indicação de que a sua frequência cardíaca é afetada por medicação e o seu registo alimentar. As suas atividades em si mantêm-se, e a sua data de nascimento fica guardada como registo da sua idade, mas deixa de ser usada como dado de saúde. Isto não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
@@ -1373,10 +1373,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get healthConsentFoodBody =>
-      'O Threkir só guarda um registo alimentar com o seu consentimento de dados de saúde. Nada é registado até o dar.';
+      'A Threkir só guarda um registo alimentar com o seu consentimento de dados de saúde. Nada é registado até o dar.';
 
   @override
-  String get healthConsentGiveAction => 'Dar consentimento';
+  String get healthConsentGiveAction => 'Rever consentimento';
 
   @override
   String get bodyMetricsSaved => 'Guardado';
@@ -2057,7 +2057,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'Consinto que o Threkir utilize o meu género e data de nascimento para personalizar estimativas de ritmo, frequência cardíaca e calorias (dados de saúde de categoria especial, RGPD art. 9).';
+      'Consinto que a Threkir armazene o meu género, a minha altura, o meu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as minhas atividades, as metas de frequência cardíaca dos meus planos, a indicação de que a minha frequência cardíaca é afetada por medicação e o meu registo alimentar, e que os utilize com a minha data de nascimento como dados de saúde (art. 9, n.º 2, alínea a), do RGPD) para personalizar o meu treino e as minhas metas de nutrição e para me colocar nas classificações de segmentos por género e faixa etária. Posso retirar este consentimento a qualquer momento.';
 
   @override
   String get setupPrivacyTitle => 'Quem vê as suas corridas?';
@@ -2356,7 +2356,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runHeartRateNotSaved =>
-      'A frequência cardíaca desta atividade não foi guardada: o Threkir só guarda a frequência cardíaca com o seu consentimento de dados de saúde.';
+      'A frequência cardíaca desta atividade não foi guardada: a Threkir só guarda a frequência cardíaca com o seu consentimento de dados de saúde.';
 
   @override
   String get runDone => 'Concluído';
@@ -13698,7 +13698,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionNoTargets =>
-      'Introduza a sua altura, peso, idade e sexo para ver as metas de calorias e macros.';
+      'Introduza a sua altura, peso, idade e género para ver as metas de calorias e macros.';
 
   @override
   String get nutritionAddBodyMetrics => 'Adicionar dados corporais';
@@ -13762,7 +13762,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso só podem ser editados depois de dar o respetivo consentimento.';
+      'Altura, peso, data de nascimento e género são dados de saúde, por isso só podem ser editados depois de dar o respetivo consentimento.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Editar dados corporais';
@@ -13775,7 +13775,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionTargetsEmptyBody =>
-      'Indique a sua altura, peso, data de nascimento e sexo e as suas metas de calorias e macros aparecem aqui.';
+      'Indique a sua altura, peso, data de nascimento e género e as suas metas de calorias e macros aparecem aqui.';
 
   @override
   String get nutritionTargetsAge => 'Idade';
@@ -23680,7 +23680,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$count atividades foram importadas sem a frequência cardíaca',
       one: '$count atividade foi importada sem a frequência cardíaca',
     );
-    return '$_temp0: o Threkir só salva a frequência cardíaca com seu consentimento de dados de saúde.';
+    return '$_temp0: a Threkir só salva a frequência cardíaca com seu consentimento de dados de saúde.';
   }
 
   @override
@@ -24448,7 +24448,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Altura, peso, a frequência cardíaca gravada com suas atividades e seu registro alimentar são dados de saúde de categoria especial, salvos apenas enquanto esta opção estiver ativada. Desative esta opção e salve para apagá-los.';
+      'A Threkir armazena seu gênero, sua altura, seu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com suas atividades, as metas de frequência cardíaca dos seus planos, a indicação de que sua frequência cardíaca é afetada por medicação e seu registro alimentar, e os usa com sua data de nascimento como dados de saúde (art. 9(2)(a) do GDPR) para personalizar seu treino e suas metas de nutrição e colocar você nas classificações de segmentos por gênero e faixa etária, apenas enquanto esta opção estiver ativada. Desative esta opção e salve para retirar o consentimento e apagar esses dados; sua data de nascimento continua salva como registro da sua idade.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -24494,7 +24494,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isso apaga permanentemente sua altura salva, seu gênero, todo o seu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca salva com suas atividades e seu registro alimentar, e sua data de nascimento deixa de ser usada para personalizar seu treino. Suas atividades em si continuam salvas. Não pode ser desfeito.';
+      'Isso apaga permanentemente seu gênero, sua altura, seu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com suas atividades, as metas de frequência cardíaca dos seus planos, a indicação de que sua frequência cardíaca é afetada por medicação e seu registro alimentar. Suas atividades em si continuam salvas, e sua data de nascimento continua salva como registro da sua idade, mas deixa de ser usada como dado de saúde. Não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
@@ -24505,10 +24505,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get healthConsentFoodBody =>
-      'O Threkir só salva um registro alimentar com seu consentimento de dados de saúde. Nada é registrado até você dar esse consentimento.';
+      'A Threkir só salva um registro alimentar com seu consentimento de dados de saúde. Nada é registrado até você dar esse consentimento.';
 
   @override
-  String get healthConsentGiveAction => 'Dar consentimento';
+  String get healthConsentGiveAction => 'Revisar consentimento';
 
   @override
   String get bodyMetricsSaved => 'Salvo';
@@ -25189,7 +25189,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupHealthConsent =>
-      'Consinto que o Threkir use meu gênero e data de nascimento para personalizar estimativas de ritmo, frequência cardíaca e calorias (dados de saúde de categoria especial, RGPD art. 9).';
+      'Consinto que a Threkir armazene meu gênero, minha altura, meu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com minhas atividades, as metas de frequência cardíaca dos meus planos, a indicação de que minha frequência cardíaca é afetada por medicação e meu registro alimentar, e que os use com minha data de nascimento como dados de saúde (art. 9(2)(a) do GDPR) para personalizar meu treino e minhas metas de nutrição e me colocar nas classificações de segmentos por gênero e faixa etária. Posso retirar este consentimento a qualquer momento.';
 
   @override
   String get setupPrivacyTitle => 'Quem vê suas corridas?';
@@ -25489,7 +25489,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runHeartRateNotSaved =>
-      'A frequência cardíaca desta atividade não foi salva: o Threkir só salva a frequência cardíaca com seu consentimento de dados de saúde.';
+      'A frequência cardíaca desta atividade não foi salva: a Threkir só salva a frequência cardíaca com seu consentimento de dados de saúde.';
 
   @override
   String get runDone => 'Pronto';
@@ -34342,7 +34342,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runSegEffortsNoRoute =>
-      'Os segmentos são associados por rota — vincule esta corrida a uma rota salva para competir nos rankings dela.';
+      'Os segmentos são associados por rota — vincule esta corrida a uma rota salva para competir nas classificações dela.';
 
   @override
   String get runSegEffortsEmpty => 'Nenhum esforço de segmento nesta corrida.';
@@ -34430,7 +34430,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get segmentsPanelLeaderboardError =>
-      'Não foi possível carregar o ranking';
+      'Não foi possível carregar a classificação';
 
   @override
   String get segmentsPanelNameLabel => 'Nome';
@@ -36819,7 +36819,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionNoTargets =>
-      'Informe sua altura, peso, idade e sexo para ver as metas de calorias e macros.';
+      'Informe sua altura, peso, idade e gênero para ver as metas de calorias e macros.';
 
   @override
   String get nutritionAddBodyMetrics => 'Adicionar dados corporais';
@@ -36883,7 +36883,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso só são editados após o consentimento de dados de saúde.';
+      'Altura, peso, data de nascimento e gênero são dados de saúde, por isso só podem ser editados após o consentimento de dados de saúde.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Editar dados corporais';
@@ -36896,7 +36896,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionTargetsEmptyBody =>
-      'Informe sua altura, peso, data de nascimento e sexo e suas metas de calorias e macros aparecerão aqui.';
+      'Informe sua altura, peso, data de nascimento e gênero e suas metas de calorias e macros aparecerão aqui.';
 
   @override
   String get nutritionTargetsAge => 'Idade';
@@ -38312,7 +38312,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get challengesEnded => 'Encerrado';
 
   @override
-  String get challengesLeaderboard => 'Ranking';
+  String get challengesLeaderboard => 'Classificação';
 
   @override
   String get challengeInviteTitle => 'Convite para desafio';
@@ -38411,7 +38411,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get challengeInviteShareBody =>
-      'Desafios públicos também têm uma página de compartilhamento que mostra o ranking sem login.';
+      'Desafios públicos também têm uma página de compartilhamento que mostra a classificação sem login.';
 
   @override
   String get challengeInviteSharePage => 'Compartilhar a página do desafio';
@@ -38562,7 +38562,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get challengesDeleteConfirm =>
-      'Isso remove o desafio e o ranking para todos. Não pode ser desfeito.';
+      'Isso remove o desafio e a classificação para todos. Não pode ser desfeito.';
 
   @override
   String get challengesNotFound => 'Este desafio não está disponível.';
@@ -40554,7 +40554,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get segmentCatalogueIntro =>
-      'Subidas, pontes e voltas de parque selecionadas no mundo todo. Corra um deles e seu tempo entra no ranking automaticamente.';
+      'Subidas, pontes e voltas de parque selecionadas no mundo todo. Corra um deles e seu tempo entra na classificação automaticamente.';
 
   @override
   String get segmentCatalogueSearchLabel => 'Buscar';

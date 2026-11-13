@@ -231,7 +231,7 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
                 text: _author!.displayName ?? l10n.publicRunAuthorFallback,
               ),
             DetailMeta(
-              icon: Icons.event_outlined,
+              icon: Icons.event,
               text: formatDateTime(row.startedAt.toLocal(),
                   localeToTag(Localizations.localeOf(context))),
             ),

@@ -772,4 +772,63 @@ void main() {
       },
     );
   });
+
+  // The stats panel is MapFirstPage's, so it ends above a 3-button nav bar
+  // and clears a side bar in landscape (issue #1374 IK-5, IK-10).
+  group('LiveSpectatorScreen — insets', () {
+    Future<void> pumpOn(WidgetTester tester, Size size, FakeViewPadding bar,
+        {double textScale = 1}) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      tester.view.viewPadding = bar;
+      tester.view.padding = bar;
+      addTearDown(tester.view.reset);
+      final api = _FakeApi(
+        run: _run(
+          durationS: 3600,
+          startedAt: DateTime.now().toUtc().subtract(
+            const Duration(minutes: 3),
+          ),
+          concludedAt: DateTime.now().toUtc(),
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MediaQuery.withClampedTextScaling(
+            minScaleFactor: textScale,
+            maxScaleFactor: textScale,
+            child: LiveSpectatorScreen(api: api, runId: 'fake-run-id'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    realtimeWidgetTest('320 dp, 2x text, 3-button bar: the panel scrolls to '
+        'its last row above the bar', (tester) async {
+      await pumpOn(tester, const Size(320, 640),
+          const FakeViewPadding(bottom: 48), textScale: 2);
+      expect(tester.takeException(), isNull);
+      final timer = find.byKey(const Key('runner-timer'));
+      await tester.dragUntilVisible(timer,
+          find.byType(SingleChildScrollView).last, const Offset(0, -100));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(timer).bottom, lessThanOrEqualTo(640 - 48));
+    });
+
+    realtimeWidgetTest('landscape: the stats clear a side nav bar', (
+      tester,
+    ) async {
+      await pumpOn(tester, const Size(780, 360),
+          const FakeViewPadding(right: 48));
+      expect(tester.takeException(), isNull);
+      final timer = find.byKey(const Key('runner-timer'));
+      await tester.dragUntilVisible(timer,
+          find.byType(SingleChildScrollView).last, const Offset(0, -100));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(timer).right, lessThanOrEqualTo(780 - 48));
+    });
+  });
 }

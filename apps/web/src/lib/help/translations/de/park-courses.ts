@@ -2,8 +2,8 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'park-courses',
-	title: "Parkstrecken: Kontrollpunkte, Saisons und Bestenlisten",
-	summary: "Wie eine Parkstrecke deinen Lauf misst, warum jeder Kontrollpunkt zählt, wann eine Saison beginnt und wie die Listen Schnellste und Meiste Läufe ranken.",
+	title: "Parkstrecken: Kontrollpunkte, Saisons, Monate und Bestenlisten",
+	summary: "Wie eine Parkstrecke deinen Lauf misst, warum jeder Kontrollpunkt zählt, wann eine Saison und ein Monat beginnen und wie die Listen Schnellste und Meiste Läufe ranken.",
 	sections: [
 		{
 			heading: "Was eine Parkstrecke ist",
@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						"**Schnellste** ordnet jede Person nach ihrer besten Zeit auf der Strecke. Du erscheinst einmal, mit deinem besten Lauf.",
-						"Standardmäßig zeigt sie dieses Jahr. Wähle **Gesamt** für die besten Zeiten aller Zeiten.",
+						"Standardmäßig zeigt sie dieses Jahr. Wähle **Dieser Monat** für den bisherigen Monat oder **Gesamt** für die besten Zeiten aller Zeiten.",
 						"Filtere nach Geschlecht oder Altersklasse. Der Altersfilter enthält nur Personen, die dem Teilen von Gesundheitsdaten zugestimmt haben, daher kann er kürzer sein als die ganze Liste.",
 					],
 				},
@@ -52,6 +52,22 @@ export const translation: GuideTranslation = {
 			heading: "Die Liste Meiste Läufe",
 			blocks: [
 				{ type: 'p', text: "**Meiste Läufe** belohnt die Stammgäste. Sie zählt die Tage, an denen du die Strecke absolviert hast, in der Zeitzone des Parks, also zählen mehrere Runden an einem Tag als einer." },
+			],
+		},
+		{
+			heading: "Monate: jeden Monat eine neue Liste",
+			blocks: [
+				{ type: 'p', text: "Beide Listen gibt es auch Monat für Monat. Ein Monat ist ein Kalendermonat in der Zeitzone des Parks, von Mitternacht am 1. bis Mitternacht am 1. des nächsten Monats. Ein Lauf um 23:30 Uhr am 31. Oktober dort, wo der Park liegt, zählt also für Oktober." },
+				{
+					type: 'list',
+					items: [
+						"Wähle **Dieser Monat**, um den bisherigen Monat zu sehen, und blättere mit den Pfeilen neben dem Monatsnamen zu früheren Monaten zurück.",
+						"Jede Strecke auf der Seite eines Parks zeigt, wie viele Personen sie diesen Monat gelaufen sind.",
+						"Eine Parkstrecken-Zeit auf der Seite deines Laufs zeigt ihren Platz in diesem Monat und in diesem Jahr, etwa Platz 2 im November, Platz 9 in 2026. Der Sticker **Parkstrecke** auf einem geteilten Bild zeigt den Platz im Monat und auch den Platz im Jahr, wenn er unter den ersten 10 ist.",
+						"Wenn dort, wo der Park liegt, ein Monat endet, bekommst du im Posteingang eine Nachricht mit deiner Bestzeit aus dem Monat auf jeder Strecke, die du gelaufen bist. Schalte sie mit **Parkstrecken-Monate** aus: im Web unter [[route:/settings/notifications|Benachrichtigungen]], in der Handy-App unter **Benachrichtigungen** im Tab **Du**.",
+						"Die Abzeichen für Parkmonate zählen die Monate, in denen du eine Parkstrecke absolviert hast, bei 3, 6, 12 und 24 Monaten. Sie zählen absolvierte Strecken, nie Platzierungen.",
+					],
+				},
 			],
 		},
 		{
@@ -70,8 +86,8 @@ export const translation: GuideTranslation = {
 		},
 	],
 	sources: {
-		title: "c0967d2bf224e3d2",
-		summary: "6a173631b44944bc",
+		title: "80ff9e4c22672c3e",
+		summary: "a8d0d3cdf47ef5c6",
 		"s0.heading": "216fc084817bfda9",
 		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
@@ -87,14 +103,21 @@ export const translation: GuideTranslation = {
 		"s2.b1": "6afb246fc0e80841",
 		"s3.heading": "f90c634a3c69c00f",
 		"s3.b0.i0": "8bab47facf52e4fd",
-		"s3.b0.i1": "c74b158f75754752",
+		"s3.b0.i1": "01322b98d3fa4762",
 		"s3.b0.i2": "a26ad1f8b547015d",
 		"s4.heading": "d62c88ea85d104ce",
 		"s4.b0": "23512913978ca5c1",
-		"s5.heading": "b119ed9eec93efe3",
-		"s5.b0.i0": "bee88a50dcbbbfa2",
-		"s5.b0.i1": "25229437ce8179b8",
-		"s5.b0.i2": "c95241619d2e3582",
-		"s5.b1": "f0b47eeb5f542fe4",
+		"s5.heading": "2158104d68549d3e",
+		"s5.b0": "f8cebd1b6b6f6d5c",
+		"s5.b1.i0": "95832d49c27d961e",
+		"s5.b1.i1": "e5fd55e453a25d9a",
+		"s5.b1.i2": "0220ee50a2c3ffc2",
+		"s5.b1.i3": "3c988cac91d6d886",
+		"s5.b1.i4": "9f0fedf00dcae221",
+		"s6.heading": "b119ed9eec93efe3",
+		"s6.b0.i0": "bee88a50dcbbbfa2",
+		"s6.b0.i1": "25229437ce8179b8",
+		"s6.b0.i2": "c95241619d2e3582",
+		"s6.b1": "f0b47eeb5f542fe4",
 	},
 };

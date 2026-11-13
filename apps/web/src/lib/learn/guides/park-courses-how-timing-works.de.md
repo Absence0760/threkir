@@ -4,7 +4,7 @@ description: Wie eine feste Parkstrecke deinen Lauf misst, warum Kontrollpunkte 
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-08
+updated: 2026-11-13
 cta:
   feature: parks
 ---
@@ -35,9 +35,15 @@ Jede Bestenliste hat eine Saison: das Kalenderjahr **in der Zeitzone des Parks**
 
 Eine neue Saison jeden Januar gibt allen eine neue Chance auf eine Platzierung, und die Allzeit-Liste bewahrt die Rekorde.
 
+## Jeden Monat eine neue Liste
+
+Beide Listen gibt es auch **Monat für Monat**, in der Zeitzone des Parks: von Mitternacht am 1. bis Mitternacht am 1. des nächsten Monats, dort wo der Park liegt. Ein Lauf um 23:30 Uhr am 31. Oktober in einem Park in Virginia zählt für Oktober.
+
+Ein Monat, der leer beginnt, ist eine neue Chance für alle, nicht nur für die, die im Januar am schnellsten waren. Wenn ein Monat endet, bekommst du im Posteingang eine Nachricht mit deiner Bestzeit aus dem Monat auf jeder Strecke, die du gelaufen bist, und jeder Monat, in dem du eine Parkstrecke absolvierst, zählt für die Abzeichen für Parkmonate.
+
 ## Zwei Listen, zwei Wege zu gewinnen
 
-- **Schnellste** ordnet jede Person nach ihrer Bestzeit, einmal pro Person. Wechsle zwischen diesem Jahr und allen Zeiten und filtere nach Geschlecht oder Altersklasse.
+- **Schnellste** ordnet jede Person nach ihrer Bestzeit, einmal pro Person. Wechsle zwischen diesem Monat, diesem Jahr und allen Zeiten und filtere nach Geschlecht oder Altersklasse.
 - **Meiste Läufe** zählt die Tage, an denen du die Strecke in der Saison absolviert hast. Mehrere Runden an einem Tag zählen als einer, also belohnt die Liste Stammgäste, die Woche für Woche wiederkommen, statt eines langen Tages voller Runden.
 
 Private Läufe bleiben privat: Eine Zeit aus einem Lauf, den andere nicht sehen können, wird ihnen nicht angezeigt.

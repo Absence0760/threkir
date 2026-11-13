@@ -3060,7 +3060,7 @@ export const messages = {
 	"guidedDetail.library": "Bibliothèque",
 	"guidedDetail.unknownRun": "Course guidée inconnue.",
 	"guidedDetail.unknownRunSub": "Le lien est peut-être obsolète ou l'identifiant de la course a changé. Parcourez la bibliothèque pour voir la sélection actuelle.",
-	"guidedDetail.mobileNote": "Ouvrez l'application mobile pour faire cette course. Les repères se déclenchent automatiquement pendant que vous courez.",
+	"guidedDetail.mobileNote": "Ouvrez l'app mobile pour faire cette course. Les repères se déclenchent automatiquement pendant que vous courez.",
 	"guidedDetail.cueScript": "Script des repères",
 	"guidedDetail.fullScript": "Le script complet",
 	"guidedDetail.cueCount": "{n, plural, one {# repère} other {# repères}}",

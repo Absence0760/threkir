@@ -4405,7 +4405,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailDescribeConsentRequired =>
-      'As descrições com IA precisam do aviso de IA atualizado.';
+      'As descrições com IA precisam que aceite o aviso de IA atualizado.';
 
   @override
   String get routeDetailReviewDisclosure => 'Ver as informações';
@@ -27292,7 +27292,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailDescribeConsentRequired =>
-      'As descrições por IA precisam do aviso de IA atualizado.';
+      'As descrições por IA precisam que você aceite o aviso de IA atualizado.';
 
   @override
   String get routeDetailReviewDisclosure => 'Ver as informações';
@@ -37703,7 +37703,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get roadbookWeightUnavailable =>
-      'Para basear o líquido no seu peso corporal, adicione seu peso em Dados corporais e dê ali o seu consentimento de dados de saúde.';
+      'Para calcular os líquidos com base no seu peso corporal, adicione seu peso em Dados corporais e dê ali o seu consentimento de dados de saúde.';
 
   @override
   String get roadbookColTarget => 'Meta';
@@ -43432,7 +43432,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewExtraRecoveryHint =>
-      'Espaça mais as sessões fortes e alivia a cada três semanas. Fica salvo nas suas Preferências de treino, então todo plano novo usa.';
+      'Espaça mais as sessões fortes e alivia a cada três semanas. Fica salvo nas suas Preferências de treino, então todo plano novo passa a usar essa opção.';
 
   @override
   String get planNewExtraRecoverySaveFailed =>

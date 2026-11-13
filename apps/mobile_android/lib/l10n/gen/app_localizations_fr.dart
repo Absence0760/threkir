@@ -11573,7 +11573,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$count activités de $activity',
       one: '$count activité de $activity',
     );
-    return 'Nous avons trouvé $_temp0 après votre achat. Décochez celles où vous ne l\'utilisiez pas.';
+    return 'Nous avons trouvé $_temp0 depuis l\'achat de cet équipement. Décochez celles pour lesquelles il n\'a pas servi.';
   }
 
   @override

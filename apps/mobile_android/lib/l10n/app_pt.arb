@@ -1227,7 +1227,7 @@
   "routeDetailDescribing": "A descrever…",
   "routeDetailAiAttribution": "Escrito por IA a partir dos dados da rota",
   "routeDetailDescribeFailed": "Não foi possível gerar uma descrição. Tente novamente.",
-  "routeDetailDescribeConsentRequired": "As descrições com IA precisam do aviso de IA atualizado.",
+  "routeDetailDescribeConsentRequired": "As descrições com IA precisam que aceite o aviso de IA atualizado.",
   "routeDetailReviewDisclosure": "Ver as informações",
   "routeDetailEnhanceUpgradeHint": "As descrições com IA são uma funcionalidade Pro.",
   "routeDetailDescShapeLoop": "em circuito",

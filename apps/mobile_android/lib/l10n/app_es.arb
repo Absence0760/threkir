@@ -3097,7 +3097,7 @@
   "reportSubmit": "Enviar denuncia",
   "reportErrDuplicate": "Ya tienes un informe pendiente sobre este contenido.",
   "gearBackfillTitle": "¿Vincular carreras anteriores a {gear}?",
-  "gearBackfillBody": "Encontramos {count, plural, one{{count} actividad de {activity}} other{{count} actividades de {activity}}} desde la compra. Desmarca las que no correspondan.",
+  "gearBackfillBody": "Encontramos {count, plural, one{{count} actividad de {activity}} other{{count} actividades de {activity}}} desde que lo compraste. Desmarca aquellas en las que no lo usaste.",
   "gearBackfillActivityCycling": "ciclismo",
   "gearBackfillActivityRunning": "carrera",
   "gearBackfillSelectNone": "No seleccionar ninguna",

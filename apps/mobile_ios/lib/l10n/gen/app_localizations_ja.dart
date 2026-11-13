@@ -8334,7 +8334,7 @@ class AppLocalizationsJa extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count 件のランがまだ同期されていません。アカウントのエクスポートはサーバーで作成されるため、それらは含まれません — 残すには完全バックアップを使ってください。',
+          '$count件のランがまだ同期されていません。アカウントのエクスポートはサーバーで作成されるため、未同期のランは含まれません — 残すには完全バックアップを使ってください。',
     );
     return '$_temp0';
   }
@@ -17174,11 +17174,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventCancelOccurrenceBody =>
-      'この回だけが中止になります。シリーズの残りには影響しません。参加表明した全員(参加・未定・キャンセル待ち)に通知されます。';
+      'この回だけが中止になります。シリーズの残りには影響しません。参加表明した全員（参加・未定・キャンセル待ち）に通知されます。';
 
   @override
   String get eventCancelEventBody =>
-      'イベントが中止になります。参加表明した全員(参加・未定・キャンセル待ち)に通知されます。';
+      'イベントが中止になります。参加表明した全員（参加・未定・キャンセル待ち）に通知されます。';
 
   @override
   String get eventCancelSeriesBody =>

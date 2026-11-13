@@ -11543,7 +11543,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$count actividades de $activity',
       one: '$count actividad de $activity',
     );
-    return 'Encontramos $_temp0 desde la compra. Desmarca las que no correspondan.';
+    return 'Encontramos $_temp0 desde que lo compraste. Desmarca aquellas en las que no lo usaste.';
   }
 
   @override

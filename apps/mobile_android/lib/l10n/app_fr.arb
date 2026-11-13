@@ -3097,7 +3097,7 @@
   "reportSubmit": "Envoyer le signalement",
   "reportErrDuplicate": "Vous avez déjà un signalement en attente concernant ce contenu.",
   "gearBackfillTitle": "Associer les courses passées à {gear} ?",
-  "gearBackfillBody": "Nous avons trouvé {count, plural, one{{count} activité de {activity}} other{{count} activités de {activity}}} après votre achat. Décochez celles où vous ne l'utilisiez pas.",
+  "gearBackfillBody": "Nous avons trouvé {count, plural, one{{count} activité de {activity}} other{{count} activités de {activity}}} depuis l'achat de cet équipement. Décochez celles pour lesquelles il n'a pas servi.",
   "gearBackfillActivityCycling": "vélo",
   "gearBackfillActivityRunning": "course",
   "gearBackfillSelectNone": "Tout désélectionner",

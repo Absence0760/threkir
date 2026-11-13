@@ -2857,6 +2857,8 @@ export const messages = {
 	"dateRange.title": "Sélectionner les dates",
 	"dateRange.start": "DÉBUT",
 	"dateRange.end": "FIN",
+	"dateRange.startDay": "Date de début {date}",
+	"dateRange.endDay": "Date de fin {date}",
 	"dateRange.tapDate": "Touchez une date",
 	"dateRange.previousMonth": "Mois précédent",
 	"dateRange.nextMonth": "Mois suivant",

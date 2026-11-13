@@ -1165,7 +1165,7 @@ class _RunsScreenState extends State<RunsScreen>
   }
 
   /// Opens an airline-style bottom-sheet calendar (see
-  /// `_RangeCalendarSheet`): scrollable month grid, two-tap selection
+  /// `HistoryRangeCalendarSheet`): scrollable month grid, two-tap selection
   /// with range highlighting, sticky Start / End chips, Apply at the
   /// bottom. The sheet snaps the picked range to start-of-day /
   /// end-of-day so `_filterAndSort` comparators include both endpoints
@@ -1179,7 +1179,7 @@ class _RunsScreenState extends State<RunsScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _RangeCalendarSheet(
+      builder: (_) => HistoryRangeCalendarSheet(
         initialFrom: _customFrom,
         initialTo: _customTo,
       ),
@@ -2096,17 +2096,18 @@ class _RunsFilterHeader extends StatelessWidget {
 /// caller (via `Navigator.pop(DateTimeRange)`) when Apply is tapped
 /// with both endpoints set. This keeps the screen-level filter from
 /// thrashing while the user picks.
-class _RangeCalendarSheet extends StatefulWidget {
+@visibleForTesting
+class HistoryRangeCalendarSheet extends StatefulWidget {
   final DateTime? initialFrom;
   final DateTime? initialTo;
 
-  const _RangeCalendarSheet({this.initialFrom, this.initialTo});
+  const HistoryRangeCalendarSheet({super.key, this.initialFrom, this.initialTo});
 
   @override
-  State<_RangeCalendarSheet> createState() => _RangeCalendarSheetState();
+  State<HistoryRangeCalendarSheet> createState() => _HistoryRangeCalendarSheetState();
 }
 
-class _RangeCalendarSheetState extends State<_RangeCalendarSheet> {
+class _HistoryRangeCalendarSheetState extends State<HistoryRangeCalendarSheet> {
   /// Lower bound of the navigable range. 2 years back covers the vast
   /// majority of running history searches; older runs are reachable via
   /// the All-time preset.
@@ -2706,14 +2707,33 @@ class _MonthGrid extends StatelessWidget {
       );
     }
 
+    // A bare "12" told a screen reader neither the month nor which day
+    // starts or ends the range (#1374 A11Y-10). The label is Material's own
+    // date-picker wording, so it is localized in every locale already.
+    final ml = MaterialLocalizations.of(context);
+    final fullDate = ml.formatFullDate(date);
+    final dayLabel = isStart
+        ? ml.dateRangeStartDateSemanticLabel(fullDate)
+        : isEnd
+            ? ml.dateRangeEndDateSemanticLabel(fullDate)
+            : fullDate;
     return AspectRatio(
       aspectRatio: 1,
-      child: Material(
-        color: Colors.transparent,
-        child: InkResponse(
-          onTap: () => onTapDate(date),
-          radius: 28,
-          child: Stack(children: cellChildren),
+      child: Semantics(
+        key: ValueKey('rangeDay-${date.year}-${date.month}-$day'),
+        container: true,
+        button: true,
+        selected: isStart || isEnd || inRange,
+        label: isToday ? '${ml.currentDateLabel}, $dayLabel' : dayLabel,
+        onTap: () => onTapDate(date),
+        excludeSemantics: true,
+        child: Material(
+          color: Colors.transparent,
+          child: InkResponse(
+            onTap: () => onTapDate(date),
+            radius: 28,
+            child: Stack(children: cellChildren),
+          ),
         ),
       ),
     );

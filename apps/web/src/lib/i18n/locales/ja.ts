@@ -2852,6 +2852,8 @@ export const messages = {
 	"dateRange.title": "日付を選択",
 	"dateRange.start": "開始",
 	"dateRange.end": "終了",
+	"dateRange.startDay": "開始日 {date}",
+	"dateRange.endDay": "終了日 {date}",
 	"dateRange.tapDate": "日付をタップ",
 	"dateRange.previousMonth": "前の月",
 	"dateRange.nextMonth": "次の月",

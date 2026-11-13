@@ -2870,6 +2870,8 @@ export const en = {
 	"dateRange.title": "Select dates",
 	"dateRange.start": "START",
 	"dateRange.end": "END",
+	"dateRange.startDay": "Start date {date}",
+	"dateRange.endDay": "End date {date}",
 	"dateRange.tapDate": "Tap a date",
 	"dateRange.previousMonth": "Previous month",
 	"dateRange.nextMonth": "Next month",

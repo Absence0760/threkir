@@ -28,6 +28,7 @@
 	} from '#lib/integrations/strava_sync_result.ts';
 	import { importStravaZip, type StravaZipProgress } from '#lib/integrations/strava-zip.ts';
 	import { importGarminBundle, type GarminZipProgress } from '#lib/integrations/garmin-zip.ts';
+	import HealthConsentNotice from '#lib/components/HealthConsentNotice.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ImportFailureReport from '#lib/components/ImportFailureReport.svelte';
 	import { newImportFailureLog, type ImportFailureLog } from '#lib/integrations/import_failures.ts';
@@ -229,6 +230,9 @@
 
 	let zipProgress = $state<StravaZipProgress | null>(null);
 	let zipError = $state('');
+	// Runs the last import kept without heart rate, for want of health-data
+	// consent (decisions § 2513). Stays on screen with its consent link.
+	let zipHeartRateDropped = $state(0);
 	// Held separately from zipProgress, which self-clears after a few
 	// seconds — the "what didn't import" detail has to outlive the bar.
 	let zipFailures = $state<ImportFailureLog | null>(null);
@@ -240,7 +244,8 @@
 		if (!file) return;
 		zipError = '';
 		zipFailures = null;
-		zipProgress = { total: 0, imported: 0, skipped: 0, droppedUnsupported: 0, droppedPhotos: 0, failed: 0, failures: newImportFailureLog(), currentName: m('settingsIntegrations.readingArchive') };
+		zipHeartRateDropped = 0;
+		zipProgress = { total: 0, imported: 0, skipped: 0, droppedUnsupported: 0, droppedPhotos: 0, droppedHeartRate: 0, failed: 0, failures: newImportFailureLog(), currentName: m('settingsIntegrations.readingArchive') };
 		window.addEventListener('beforeunload', beforeUnloadGuard);
 		try {
 			const result = await importStravaZip(file, (p) => {
@@ -254,6 +259,7 @@
 			if (result.droppedPhotos)
 				msg += ' ' + m('settingsIntegrations.stravaZipImportDroppedPhotos', { photos: result.droppedPhotos });
 			showToast(msg, 'success');
+			zipHeartRateDropped = result.droppedHeartRate;
 			if (result.failures.items.length > 0 || result.failures.truncated > 0) {
 				zipFailures = result.failures;
 			}
@@ -271,6 +277,7 @@
 
 	let garminProgress = $state<GarminZipProgress | null>(null);
 	let garminError = $state('');
+	let garminHeartRateDropped = $state(0);
 	let garminFailures = $state<ImportFailureLog | null>(null);
 	let garminFileInput: HTMLInputElement | null = $state(null);
 
@@ -280,6 +287,7 @@
 		if (!file) return;
 		garminError = '';
 		garminFailures = null;
+		garminHeartRateDropped = 0;
 		garminProgress = { total: 0, imported: 0, skipped: 0, failed: 0, failures: newImportFailureLog(), currentName: m('settingsIntegrations.readingFile') };
 		window.addEventListener('beforeunload', beforeUnloadGuard);
 		try {
@@ -292,6 +300,7 @@
 					: m('settingsIntegrations.garminImport', { imported: result.imported, skipped: result.skipped }),
 				'success',
 			);
+			garminHeartRateDropped = result.heartRateDropped ?? 0;
 			if (result.hrZonesImported) {
 				showToast(m('settingsIntegrations.garminHrZonesImported'), 'success');
 			}
@@ -516,6 +525,12 @@
 				onchange={handleZipSelect}
 				style="display: none"
 			/>
+			{#if zipHeartRateDropped > 0}
+				<HealthConsentNotice
+					testid="strava-zip-hr-dropped"
+					message={m('healthConsent.importHeartRateDropped', { count: zipHeartRateDropped })}
+				/>
+			{/if}
 			{#if zipError}
 				<p class="zip-error" role="alert">{zipError}</p>
 			{/if}
@@ -593,6 +608,12 @@
 				onchange={handleGarminSelect}
 				style="display: none"
 			/>
+			{#if garminHeartRateDropped > 0}
+				<HealthConsentNotice
+					testid="garmin-hr-dropped"
+					message={m('healthConsent.importHeartRateDropped', { count: garminHeartRateDropped })}
+				/>
+			{/if}
 			{#if garminError}
 				<p class="zip-error" role="alert">{garminError}</p>
 			{/if}

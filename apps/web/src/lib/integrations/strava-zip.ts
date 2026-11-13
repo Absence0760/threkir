@@ -53,6 +53,9 @@ export interface StravaZipProgress {
 	// Photos left behind by the per-activity 10-photo cap, summed across
 	// every imported row.
 	droppedPhotos: number;
+	// Runs imported without their heart rate: the runner has no health-data
+	// consent (decisions § 2513). The rest of each run was imported.
+	droppedHeartRate: number;
 	failed: number;
 	// Per-activity detail behind `failed` — name, start, reason, log-safe
 	// message. A bare count can't tell a migrant whether re-running the
@@ -132,6 +135,7 @@ export async function importStravaZip(
 		skipped: 0,
 		droppedUnsupported: 0,
 		droppedPhotos: 0,
+		droppedHeartRate: 0,
 		failed: 0,
 		failures: newImportFailureLog(),
 		currentName: null,
@@ -161,10 +165,11 @@ export async function importStravaZip(
 		}
 
 		try {
-			const { droppedPhotos } = await importOne(zip, row, idx, stravaId, filename);
+			const { droppedPhotos, heartRateDropped } = await importOne(zip, row, idx, stravaId, filename);
 			seen.add(stravaId);
 			progress.imported++;
 			progress.droppedPhotos += droppedPhotos;
+			if (heartRateDropped) progress.droppedHeartRate++;
 		} catch (err) {
 			progress.failed++;
 			recordImportFailure(
@@ -187,7 +192,7 @@ async function importOne(
 	idx: HeaderIndex,
 	stravaId: string,
 	filename: string,
-): Promise<{ droppedPhotos: number }> {
+): Promise<{ droppedPhotos: number; heartRateDropped: boolean }> {
 	// A run whose start we cannot read is not importable as "today". The header
 	// check proved the COLUMN exists, so this is one row's unreadable cell, and
 	// the caller's per-row catch reports it in the ImportFailureReport under the
@@ -268,7 +273,7 @@ async function importOne(
 	if (idx.stravaType >= 0 && row[idx.stravaType])
 		metadata[METADATA_KEYS.strava_activity_type] = row[idx.stravaType];
 
-	const { id: runId } = await saveRun({
+	const { id: runId, heartRateDropped } = await saveRun({
 		started_at: startedAt,
 		distance_m: Math.max(0, Math.round(distanceM)),
 		duration_s: Math.max(0, Math.round(durationS)),
@@ -313,7 +318,7 @@ async function importOne(
 			}
 		}
 	}
-	return { droppedPhotos };
+	return { droppedPhotos, heartRateDropped };
 }
 
 // --- CSV parsing ---

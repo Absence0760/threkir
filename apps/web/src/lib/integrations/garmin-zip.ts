@@ -18,7 +18,7 @@
 /// pulled from the FIT `file_id` message. Falls back to a
 /// `started_at + distance` composite for non-FIT entries.
 
-import JSZip from 'jszip';
+import { openZip } from '../core/zip_archive';
 import { parseRouteFile } from './import';
 import { saveRun } from '../core/data';
 import type { JsonObject } from '../types';
@@ -195,18 +195,17 @@ export async function importGarminBundle(
 		throw new ImportRefusedError('garmin_unsupported_file');
 	}
 
-	const zip = await JSZip.loadAsync(file);
+	const zip = await openZip(file);
 
 	// Collect every importable entry first so we can report a real total.
 	type Entry = { path: string; kind: 'fit' | 'route' | 'fit-zip' };
 	const entries: Entry[] = [];
-	zip.forEach((path, entry) => {
-		if (entry.dir) return;
+	for (const path of zip.paths) {
 		const p = path.toLowerCase();
 		if (p.endsWith('.fit')) entries.push({ path, kind: 'fit' });
 		else if (/\.(gpx|tcx)$/.test(p)) entries.push({ path, kind: 'route' });
 		else if (p.endsWith('.zip')) entries.push({ path, kind: 'fit-zip' });
-	});
+	}
 
 	const progress: GarminZipProgress = {
 		total: entries.length,
@@ -224,7 +223,7 @@ export async function importGarminBundle(
 		try {
 			let handled: 'imported' | 'skipped';
 			if (e.kind === 'fit') {
-				const buf = await zip.file(e.path)!.async('uint8array');
+				const buf = (await zip.bytes(e.path))!;
 				handled = await importFitFile(
 					buf,
 					e.path,
@@ -234,22 +233,21 @@ export async function importGarminBundle(
 					hrZoneCollector,
 				);
 			} else if (e.kind === 'route') {
-				const blob = await zip.file(e.path)!.async('blob');
+				const blob = (await zip.blob(e.path))!;
 				const synthetic = new File([blob], e.path.split('/').pop()!);
 				handled = await importRouteFile(synthetic, seenComposite, existingIdentities, hrZoneCollector);
 			} else {
 				// Garmin sometimes wraps a single FIT inside a per-activity
 				// .zip; open it and pull out any .fit entries.
-				const blob = await zip.file(e.path)!.async('blob');
-				const inner = await JSZip.loadAsync(blob);
+				const inner = await openZip((await zip.blob(e.path))!);
 				let innerHandled: 'imported' | 'skipped' | null = null;
 				// A member that throws doesn't end the wrapper: a later .fit
 				// inside the same archive may still be readable, which is the
 				// fall-through the pre-throw disposition gave us.
 				let innerError: unknown = new Error('Archive member contains no FIT file');
-				for (const name of Object.keys(inner.files)) {
+				for (const name of inner.paths) {
 					if (!name.toLowerCase().endsWith('.fit')) continue;
-					const buf = await inner.file(name)!.async('uint8array');
+					const buf = (await inner.bytes(name))!;
 					try {
 						innerHandled = await importFitFile(
 							buf,

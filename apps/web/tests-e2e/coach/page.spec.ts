@@ -4,6 +4,8 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 const SEED_PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
+// en `coachChat.errorStreamFailed`: what a failed or cut-off stream shows.
+const STREAM_FAILED = "The Coach's reply was cut off. Try sending your message again.";
 
 /**
  * /coach — Anthropic-backed chat surface. The LLM round-trip itself
@@ -434,11 +436,13 @@ test.describe('/coach', () => {
 		await page.getByPlaceholder(/Ask about today/).fill('e2e mid-stream err');
 		await page.locator('form.composer button[type="submit"]').click();
 
-		// Both: partial bubble + error banner.
+		// Both: partial bubble + error banner. The banner is catalogue copy;
+		// the event's own text never reaches the reader (decisions § 2509).
 		await expect(
 			page.locator('.bubble', { hasText: PARTIAL })
 		).toBeVisible({ timeout: 10_000 });
-		await expect(page.getByText(ERR_MSG)).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByText(STREAM_FAILED)).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByText(ERR_MSG)).toHaveCount(0);
 	});
 
 	test('SSE: empty stream (meta + done, no tokens) does not stall the bubble', async ({
@@ -811,10 +815,10 @@ test.describe('/coach', () => {
 		await composer.fill('What pace today?');
 		await page.locator('form.composer button[type="submit"]').click();
 
-		// The stream-failure message surfaces...
-		await expect(
-			page.getByText('The coach is unavailable right now.')
-		).toBeVisible({ timeout: 10_000 });
+		// The stream-failure message surfaces as catalogue copy, never the
+		// event's own text (decisions § 2509)...
+		await expect(page.getByText(STREAM_FAILED)).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByText('The coach is unavailable right now.')).toHaveCount(0);
 		// ...and because usedToday rolled back from 2 to 1, limitReached
 		// (>= daily_limit 2) is false: the composer is still there. Before the
 		// fix it stuck at 2 and the composer was replaced by the limit

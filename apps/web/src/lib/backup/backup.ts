@@ -42,10 +42,9 @@ import {
  * **Streaming construction (May 2026):** the write side delegates to
  * `buildBackupZip` in `./backup_writer.ts`, which uses
  * `@zip.js/zip.js`'s `ZipWriter` + `BlobWriter`. Each entry's bytes
- * flush to the underlying Blob and the JS-side copy drops. Restore
- * still uses JSZip — the read path needs random access by name
- * (`zip.file('runs.json')`), which JSZip supports out of the box;
- * the write path was the heap hot-spot. Mirrors the mobile fix in
+ * flush to the underlying Blob and the JS-side copy drops; the write
+ * path was the heap hot-spot. Restore reads through the same library
+ * (`openZip` in core/zip_archive.ts), member by member by name. Mirrors the mobile fix in
  * [decisions.md § 66](../../../docs/architecture/decisions.md#66-backup-zip-writes-stream-to-disk-and-download-tracks-in-bounded-batches).
  */
 

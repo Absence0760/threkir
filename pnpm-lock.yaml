@@ -60,9 +60,6 @@ importers:
       isomorphic-dompurify:
         specifier: ^4.6.0
         version: 4.6.0
-      jszip:
-        specifier: ^3.10.2
-        version: 3.10.2
       maplibre-gl:
         specifier: ^6.15.0
         version: 6.16.0
@@ -97,6 +94,9 @@ importers:
       esbuild:
         specifier: 0.28.2
         version: 0.28.2
+      jszip:
+        specifier: ^3.10.2
+        version: 3.10.2
       mdsvex:
         specifier: ^0.12.8
         version: 0.12.8(svelte@5.57.3)

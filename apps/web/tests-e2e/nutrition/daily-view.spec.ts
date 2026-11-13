@@ -55,7 +55,8 @@ test.describe('/nutrition — daily grouping + water decrement', () => {
 			// Headers appear in display order regardless of insert order. Read the
 			// rendered slot-header sequence and assert breakfast precedes lunch
 			// precedes dinner.
-			const headers = await page.locator('.meal-head h3').allInnerTexts();
+			// Each slot header is an h3 under the day's own h2 (heading outline).
+			const headers = await page.locator('.meal-head').getByRole('heading', { level: 3 }).allInnerTexts();
 			const order = headers.map((h) => h.trim());
 			const iB = order.indexOf('Breakfast');
 			const iL = order.indexOf('Lunch');
@@ -67,7 +68,7 @@ test.describe('/nutrition — daily grouping + water decrement', () => {
 			// The Breakfast header sums its two items (200 + 150 = 350 kcal).
 			const breakfastGroup = page
 				.locator('.meal-group')
-				.filter({ has: page.locator('h3', { hasText: 'Breakfast' }) });
+				.filter({ has: page.getByRole('heading', { level: 3, name: 'Breakfast' }) });
 			await expect(breakfastGroup.locator('.meal-kcal')).toContainText('350 kcal');
 		} finally {
 			if (ids.length) await admin.from('food_log').delete().in('id', ids);

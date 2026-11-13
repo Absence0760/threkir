@@ -224,6 +224,32 @@
 		<span class="window-hint">{m('socialFeed.windowHint', { n: FEED_WINDOW_DAYS })}</span>
 	</div>
 
+	<!-- The strip is its own read: badges earned are news whether or not a
+	     followee ran in the window, and a failed read must show even over an
+	     empty feed (§ 2501). -->
+	{#if loaded || !loading}
+		{#if badgeAwardsFailed}
+			<p class="badge-strip-error" role="status" data-testid="feed-badges-error">
+				<span>{m('badges.feedLoadFailed')}</span>
+				<button type="button" class="btn btn-outline btn-sm" onclick={loadBadgeAwards}>{m('runs.retry')}</button>
+			</p>
+		{:else if badgeAwards.length > 0}
+			<section class="badge-strip" aria-label={m('badges.section.title')}>
+				{#each badgeAwards as b (b.badge.id)}
+					<a class="badge-chip tier-{b.badge.tier}" href="/u/{b.authorId}?tab=achievements&badge={b.badge.id}">
+						<span class="material-symbols" aria-hidden="true">{badgeIcon(b)}</span>
+						<span class="badge-chip-text">
+							{m('badges.feedEarned', {
+								name: b.authorName ?? m('badges.aRunner'),
+								badge: badgeLabel(b)
+							})}
+						</span>
+					</a>
+				{/each}
+			</section>
+		{/if}
+	{/if}
+
 	{#if loading && !loaded}
 		<div class="feed" aria-hidden="true">
 			{#each Array(4) as _, i (i)}
@@ -271,26 +297,6 @@
 			/>
 		{/if}
 	{:else}
-		{#if badgeAwardsFailed}
-			<p class="badge-strip-error" role="status" data-testid="feed-badges-error">
-				<span>{m('badges.feedLoadFailed')}</span>
-				<button type="button" class="btn btn-outline btn-sm" onclick={loadBadgeAwards}>{m('runs.retry')}</button>
-			</p>
-		{:else if badgeAwards.length > 0}
-			<section class="badge-strip" aria-label={m('badges.section.title')}>
-				{#each badgeAwards as b (b.badge.id)}
-					<a class="badge-chip tier-{b.badge.tier}" href="/u/{b.authorId}?tab=achievements&badge={b.badge.id}">
-						<span class="material-symbols" aria-hidden="true">{badgeIcon(b)}</span>
-						<span class="badge-chip-text">
-							{m('badges.feedEarned', {
-								name: b.authorName ?? m('badges.aRunner'),
-								badge: badgeLabel(b)
-							})}
-						</span>
-					</a>
-				{/each}
-			</section>
-		{/if}
 		<div class="feed">
 			{#each entries as entry (entry.id)}
 				<article class="entry">

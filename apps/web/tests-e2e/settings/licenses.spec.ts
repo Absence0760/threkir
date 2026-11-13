@@ -22,9 +22,8 @@ const KNOWN_DEPS: { name: string; license: string }[] = [
 	{ name: 'MapLibre GL JS', license: 'BSD-3-Clause' },
 	{ name: 'Anthropic SDK', license: 'MIT' },
 	// Dual-licensed deps carry an explicit election on the public record
-	// (audit/licenses 2026-07-02): JSZip is (MIT OR GPL-3.0-or-later) — MIT
-	// elected; DOMPurify is (MPL-2.0 OR Apache-2.0) — Apache-2.0 elected.
-	{ name: 'JSZip', license: 'MIT (elected)' },
+	// (audit/licenses 2026-07-02): DOMPurify is (MPL-2.0 OR Apache-2.0) —
+	// Apache-2.0 elected. JSZip no longer ships (zip reads use zip.js).
 	{ name: 'isomorphic-dompurify', license: 'MIT' },
 	{ name: 'DOMPurify', license: 'Apache-2.0 (elected)' },
 	{ name: '@sentry/sveltekit', license: 'MIT' },

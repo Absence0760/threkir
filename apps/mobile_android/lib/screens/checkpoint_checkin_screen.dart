@@ -12,6 +12,7 @@ import '../l10n/locale_support.dart' show activeLocaleTag;
 import '../l10n/number_format.dart' show formatFixed;
 import '../preferences.dart' show WeightFormat, activeWeightUnit;
 import '../weigh_in_flag.dart';
+import '../widgets/form_sheet.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
 
@@ -172,10 +173,8 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
   }
 
   Future<_WeighInResult?> _showWeighInSheet() {
-    return showModalBottomSheet<_WeighInResult>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    return showFormSheet<_WeighInResult>(
+      context,
       builder: (ctx) => _WeighInSheet(),
     );
   }
@@ -444,19 +443,25 @@ class _WeighInSheetState extends State<_WeighInSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _weight.text.trim().isNotEmpty,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return SheetScaffold(
       padding: const EdgeInsets.all(20),
-      actions: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
         children: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).maybePop(),
             child: Text(l10n.checkpointCancel),
           ),
-          const SizedBox(width: 8),
           FilledButton(
             onPressed: _outOfRange
                 ? null

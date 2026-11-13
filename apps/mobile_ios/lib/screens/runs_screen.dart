@@ -14,7 +14,8 @@ import 'package:ui_kit/ui_kit.dart'
         HubSelection,
         HubTabBody,
         PrimaryAction,
-        SelectionHint;
+        SelectionHint,
+        SheetScaffold;
 
 import '../widgets/grisnir_moments.dart';
 import '../adaptive_width.dart';
@@ -2224,8 +2225,10 @@ class _RangeCalendarSheetState extends State<_RangeCalendarSheet> {
     final cs = theme.colorScheme;
     final canApply = _pendingFrom != null && _pendingTo != null;
 
-    return SafeArea(
-      child: ConstrainedBox(
+    return SheetScaffold(
+      padding: EdgeInsets.zero,
+      scrollBody: false,
+      body: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.92,
         ),

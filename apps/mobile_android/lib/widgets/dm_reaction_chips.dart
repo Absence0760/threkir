@@ -109,59 +109,57 @@ Future<String?> showDmReactionPicker(BuildContext context, {String? current}) {
     useSafeArea: true,
     builder: (ctx) {
       final scheme = Theme.of(ctx).colorScheme;
-      return SafeArea(
-        child: SingleChildScrollView(
-          key: const ValueKey('dm-reaction-picker'),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.messagesReactPickerLabel,
-                style: Theme.of(ctx).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final r in kDmReactions)
-                    Semantics(
-                      button: true,
-                      selected: current == r,
-                      label: dmReactionName(l10n, r),
-                      excludeSemantics: true,
+      return SheetScaffold(
+        key: const ValueKey('dm-reaction-picker'),
+        padding: const EdgeInsets.all(16),
+        body: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.messagesReactPickerLabel,
+              style: Theme.of(ctx).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final r in kDmReactions)
+                  Semantics(
+                    button: true,
+                    selected: current == r,
+                    label: dmReactionName(l10n, r),
+                    excludeSemantics: true,
+                    onTap: () => Navigator.pop(ctx, r),
+                    child: InkWell(
+                      key: ValueKey('dm-reaction-option-$r'),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
                       onTap: () => Navigator.pop(ctx, r),
-                      child: InkWell(
-                        key: ValueKey('dm-reaction-option-$r'),
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        onTap: () => Navigator.pop(ctx, r),
-                        child: Container(
-                          constraints: const BoxConstraints(
-                            minWidth: 48,
-                            minHeight: 48,
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: current == r
+                                ? scheme.primary
+                                : scheme.outlineVariant,
                           ),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: current == r
-                                  ? scheme.primary
-                                  : scheme.outlineVariant,
-                            ),
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                          ),
-                          child: Text(
-                            dmReactionGlyph(r),
-                            style: Theme.of(ctx).textTheme.titleLarge,
-                          ),
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Text(
+                          dmReactionGlyph(r),
+                          style: Theme.of(ctx).textTheme.titleLarge,
                         ),
                       ),
                     ),
-                ],
-              ),
-            ],
-          ),
+                  ),
+              ],
+            ),
+          ],
         ),
       );
     },

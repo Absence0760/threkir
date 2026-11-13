@@ -2026,23 +2026,11 @@ class _ClubDescription extends StatelessWidget {
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(clubName, style: theme.textTheme.titleMedium),
-                const SizedBox(height: 12),
-                Text(description, style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (sheetContext) => SheetScaffold(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        title: Text(clubName),
+        body: Text(description),
+      ),
     );
   }
 

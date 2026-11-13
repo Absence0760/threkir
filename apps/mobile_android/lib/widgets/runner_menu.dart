@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit, PlanWorkoutRow;
 import 'package:flutter/material.dart';
 import 'package:run_recorder/run_recorder.dart' show WorkoutStep;
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 import '../plan_workout_steps.dart' show expandPlanWorkoutSteps;
@@ -209,88 +210,85 @@ class _RunnerMenu extends StatelessWidget {
             a == RunnerMenuAction.food)
           a,
     ];
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        // One focus group so a screen reader presents the sheet as one menu,
-        // as the Log fan does.
-        child: Semantics(
-          container: true,
-          explicitChildNodes: true,
-          label: l10n.logMoreTitle,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 12),
-                child: Text(l10n.logMoreTitle,
-                    style: theme.textTheme.titleMedium),
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      // One focus group so a screen reader presents the sheet as one menu,
+      // as the Log fan does.
+      body: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: l10n.logMoreTitle,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 12),
+              child: Text(l10n.logMoreTitle,
+                  style: theme.textTheme.titleMedium),
+            ),
+            if (workout != null &&
+                actions.contains(RunnerMenuAction.todaysWorkout))
+              _WorkoutCard(
+                workout: workout,
+                unit: unit,
+                onTap: () => _pick(
+                  context,
+                  const RunnerMenuActionChoice(
+                      RunnerMenuAction.todaysWorkout),
+                ),
               ),
-              if (workout != null &&
-                  actions.contains(RunnerMenuAction.todaysWorkout))
-                _WorkoutCard(
-                  workout: workout,
-                  unit: unit,
-                  onTap: () => _pick(
-                    context,
-                    const RunnerMenuActionChoice(
-                        RunnerMenuAction.todaysWorkout),
+            if (actions.contains(RunnerMenuAction.followRoute) &&
+                (routes.isNotEmpty || hasMoreRoutes)) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+                child: Text(
+                  l10n.runnerMenuFollowRoute,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-              if (actions.contains(RunnerMenuAction.followRoute) &&
-                  (routes.isNotEmpty || hasMoreRoutes)) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-                  child: Text(
-                    l10n.runnerMenuFollowRoute,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final r in routes)
+                    _RouteChip(
+                      route: r,
+                      unit: unit,
+                      onTap: () =>
+                          _pick(context, RunnerMenuRouteChoice(r)),
                     ),
-                  ),
-                ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final r in routes)
-                      _RouteChip(
-                        route: r,
-                        unit: unit,
-                        onTap: () =>
-                            _pick(context, RunnerMenuRouteChoice(r)),
+                  if (hasMoreRoutes)
+                    _Tile(
+                      icon: Icons.more_horiz,
+                      label: l10n.runnerMenuAllRoutes,
+                      onTap: () => _pick(
+                        context,
+                        const RunnerMenuActionChoice(
+                            RunnerMenuAction.followRoute),
                       ),
-                    if (hasMoreRoutes)
-                      _Tile(
-                        icon: Icons.more_horiz,
-                        label: l10n.runnerMenuAllRoutes,
-                        onTap: () => _pick(
-                          context,
-                          const RunnerMenuActionChoice(
-                              RunnerMenuAction.followRoute),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-              if (secondary.isNotEmpty) const SizedBox(height: 12),
-              for (final a in secondary)
-                _SecondaryRow(
-                  icon: switch (a) {
-                    RunnerMenuAction.lift => Icons.fitness_center,
-                    RunnerMenuAction.food => Icons.restaurant,
-                    _ => Icons.history,
-                  },
-                  label: switch (a) {
-                    RunnerMenuAction.lift => l10n.logLift,
-                    RunnerMenuAction.food => l10n.logFood,
-                    _ => l10n.historyAddPastRun,
-                  },
-                  onTap: () => _pick(context, RunnerMenuActionChoice(a)),
-                ),
+                    ),
+                ],
+              ),
             ],
-          ),
+            if (secondary.isNotEmpty) const SizedBox(height: 12),
+            for (final a in secondary)
+              _SecondaryRow(
+                icon: switch (a) {
+                  RunnerMenuAction.lift => Icons.fitness_center,
+                  RunnerMenuAction.food => Icons.restaurant,
+                  _ => Icons.history,
+                },
+                label: switch (a) {
+                  RunnerMenuAction.lift => l10n.logLift,
+                  RunnerMenuAction.food => l10n.logFood,
+                  _ => l10n.historyAddPastRun,
+                },
+                onTap: () => _pick(context, RunnerMenuActionChoice(a)),
+              ),
+          ],
         ),
       ),
     );

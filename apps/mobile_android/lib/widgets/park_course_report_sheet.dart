@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
 import '../l10n/gen/app_localizations.dart';
 import '../park_course_report.dart';
+import 'form_sheet.dart';
 import 'top_banner.dart';
 
 /// "Report a problem with this course" (issue #1346, decisions § 2449): the
@@ -18,10 +19,8 @@ Future<void> showParkCourseReportSheet(
   required String courseId,
   required String courseName,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
+  return showFormSheet<void>(
+    context,
     builder: (ctx) => ParkCourseReportSheet(
       api: api,
       courseId: courseId,
@@ -145,7 +144,12 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _notesCtl.text.trim().isNotEmpty || _emailCtl.text.trim().isNotEmpty,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return SheetScaffold(
@@ -155,7 +159,7 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
         children: [
           Expanded(
             child: OutlinedButton(
-              onPressed: _busy ? null : () => Navigator.of(context).pop(),
+              onPressed: _busy ? null : () => Navigator.of(context).maybePop(),
               child: Text(l10n.parkCourseReportCancel),
             ),
           ),

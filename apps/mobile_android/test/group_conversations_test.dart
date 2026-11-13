@@ -13,6 +13,7 @@ import '../lib/screens/group_thread_screen.dart';
 import '../lib/screens/messages_screen.dart';
 import '../lib/widgets/group_members_sheet.dart';
 import 'pump_until.dart';
+import 'three_button_nav_bar.dart';
 
 const _me = 'me';
 const _group = 'g-1';
@@ -830,6 +831,68 @@ void main() {
       expect(api.invited, isNotNull);
       expect(api.invited, ['p-9']);
       await _drainBanner(tester);
+    });
+
+    Future<void> openSheet(WidgetTester tester, _FakeApi api,
+            {double keyboard = 0}) =>
+        openSheetOverNavBar(
+          tester,
+          (context) => showGroupMembersSheet(
+            context,
+            api: api,
+            conversationId: _group,
+            title: 'Tuesday tempo',
+            members: api.members,
+            onChanged: () async {},
+          ),
+          keyboard: keyboard,
+        );
+
+    testWidgets(
+        'with the keyboard up, the people the search finds and Send invites '
+        'stay above it (issue #1374 IK-2)', (tester) async {
+      final api = _FakeApi()
+        ..followers = [
+          for (var i = 0; i < 8; i++) _person('f-$i', 'Runner $i'),
+          _person('p-9', 'Zed'),
+        ];
+      await openSheet(tester, api, keyboard: 300);
+      await tester.tap(find.byKey(const ValueKey('group-invite-more')));
+      await pumpUntil(
+          tester, () => _shows(find.byKey(const ValueKey('group-person-p-9'))),
+          describe: 'the picker');
+      await tester.enterText(
+          find.byKey(const ValueKey('group-people-search')), 'Zed');
+      await tester.pumpAndSettle();
+      final zed = find.byKey(const ValueKey('group-person-p-9'));
+      await tester.ensureVisible(zed);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(zed).bottom, lessThanOrEqualTo(780 - 300));
+      expect(zed.hitTestable(), findsOneWidget);
+      await tester.tap(zed);
+      await tester.pump();
+      expectAboveNavBar(
+          tester, find.byKey(const ValueKey('group-invite-send')));
+    });
+
+    testWidgets('Back with a rename typed asks before dropping it',
+        (tester) async {
+      await openSheet(tester, _FakeApi());
+      await tester.tap(find.byKey(const ValueKey('group-rename')));
+      await tester.pump();
+      await tester.enterText(
+          find.byKey(const ValueKey('group-rename-input')), 'Hill reps');
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.discardChangesTitle), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text(l10n.discardChangesCancel)));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('group-members-sheet')), findsOneWidget);
+      expect(find.text('Hill reps'), findsOneWidget);
     });
 
     testWidgets('rename saves a trimmed title', (tester) async {

@@ -640,7 +640,7 @@ Use a ≥840dp-logical-width device: a 10" tablet AVD (e.g. Pixel Tablet) in lan
 
 | Surface | What to test |
 |---|---|
-| Nav shell | BottomAppBar + docked Log FAB are replaced by a left `NavigationRail` (Home / Fitness / Social / You) with the Log button in the rail's leading slot. Tapping Log fans the speed-dial to the right of the button; rail destinations switch pages; a live recording survives switching. |
+| Nav shell | The NavigationBar + docked Log FAB are replaced by a left `NavigationRail` (Home / Fitness / Social / You) with the Log button in the rail's leading slot. Tapping Log fans the speed-dial to the right of the button; rail destinations switch pages; a live recording survives switching. |
 | Today | One reading column capped at 720dp and centred; no two-column grid. |
 | Progress | Open it from Today's progress summary card: the column caps at 1100dp and centres; the week lead, goals and period totals lead, then the streak and the trend groups alternate between two columns. Rotate to portrait (<840dp) → the single stacked column returns. |
 | Run detail | For a run with a track: map renders as a full-height left pane (~55% width) with the stats/sections scrolling beside it; replay, segment tap, and match pill still work inside the pane. |

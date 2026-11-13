@@ -1622,10 +1622,19 @@ class _HomeScreenState extends State<HomeScreen>
   /// a runner looking for their runs scanned past a gym icon. "Training"
   /// rather than "Runs" because the hub's own first tab is already "Runs",
   /// and it names the plans and races beside them.
-  ({IconData icon, String label}) _hubLook(AppLocalizations l10n) =>
+  ({IconData icon, IconData outlined, String label}) _hubLook(
+          AppLocalizations l10n) =>
       _gymShown || _nutritionShown
-          ? (icon: Icons.fitness_center, label: l10n.navFitness)
-          : (icon: Icons.directions_run, label: l10n.navTraining);
+          ? (
+              icon: Icons.fitness_center,
+              outlined: Icons.fitness_center_outlined,
+              label: l10n.navFitness,
+            )
+          : (
+              icon: Icons.directions_run,
+              outlined: Icons.directions_run_outlined,
+              label: l10n.navTraining,
+            );
 
   String _logPageName(AppLocalizations l10n, LogAction action) =>
       switch (action) {
@@ -1709,24 +1718,27 @@ class _HomeScreenState extends State<HomeScreen>
                     padding: const EdgeInsets.only(top: 8, bottom: 24),
                     child: _logFab(anchored: true),
                   ),
+                  // The same outlined / filled pairs and themed pill as the
+                  // phone's bar, so selection reads the same on both.
                   destinations: [
                     NavigationRailDestination(
-                      icon: const Icon(Icons.dashboard),
+                      icon: const Icon(Icons.dashboard_outlined),
+                      selectedIcon: const Icon(Icons.dashboard),
                       label: Text(l10n.navHome),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(hub.icon),
+                      icon: Icon(hub.outlined),
+                      selectedIcon: Icon(hub.icon),
                       label: Text(hub.label),
                     ),
                     NavigationRailDestination(
-                      icon: _UnreadDot(
-                        count: _socialUnread.value,
-                        child: const Icon(Icons.public),
-                      ),
+                      icon: _socialIcon(l10n, selected: false),
+                      selectedIcon: _socialIcon(l10n, selected: true),
                       label: Text(l10n.navSocial),
                     ),
                     NavigationRailDestination(
-                      icon: const Icon(Icons.person),
+                      icon: const Icon(Icons.person_outline),
+                      selectedIcon: const Icon(Icons.person),
                       label: Text(l10n.navYou),
                     ),
                   ],
@@ -1764,67 +1776,78 @@ class _HomeScreenState extends State<HomeScreen>
     ));
   }
 
+  /// The phone's bottom bar: Material 3's `NavigationBar` under the app
+  /// theme's `navigationBarTheme`, its destinations in page order, so a page
+  /// index is a bar index. Selection is the themed pill, the filled glyph
+  /// against the outlined one and the heavier label, never the colour alone.
+  /// The third destination is the Run page: the docked centre button floats
+  /// over it and its caption sits where a label would.
   Widget _bottomBar() => ListenableBuilder(
         listenable: _navInputs,
         builder: (context, _) {
-          final index = _currentIndex.value;
           final l10n = AppLocalizations.of(context);
           final hub = _hubLook(l10n);
           final metrics =
               bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
-          return BottomAppBar(
+          final look = _centreLook(l10n, docked: true);
+          return NavigationBar(
+            key: const ValueKey('shell-nav-bar'),
             height: metrics.height,
-            padding: EdgeInsets.zero,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _BottomNavItem(
-                  icon: Icons.dashboard,
-                  label: l10n.navHome,
-                  selected: index == _pageHome,
-                  onTap: () => _goToPage(_pageHome),
-                ),
-                _BottomNavItem(
-                  icon: hub.icon,
-                  label: hub.label,
-                  selected: index == _pageFitness,
-                  onTap: () => _goToPage(_pageFitness),
-                ),
-                // The docked centre Log FAB sits over this slot; the caption
-                // gives the centre action a visible text label like every other
-                // nav destination, so it isn't the one unlabelled "+" (#256).
-                // Wider than the 56 dp button: at 56 "Recording" cut to
-                // "Recordi…" at the default text size.
-                SizedBox(
-                  width: _centreSlotWidth,
-                  child: Builder(builder: (context) {
-                    final look = _centreLook(l10n, docked: true);
-                    return _CentreLogLabel(
-                        label: look.label, alert: look.recording);
-                  }),
-                ),
-                _BottomNavItem(
-                  icon: Icons.public,
-                  label: l10n.navSocial,
-                  selected: index == _pageSocial,
-                  unread: _socialUnread.value,
-                  onTap: () => _goToPage(_pageSocial),
-                ),
-                _BottomNavItem(
-                  icon: Icons.person,
-                  label: l10n.navYou,
-                  selected: index == _pageYou,
-                  onTap: () => _goToPage(_pageYou),
-                ),
-              ],
-            ),
+            labelBehavior: metrics.showLabels
+                ? NavigationDestinationLabelBehavior.alwaysShow
+                : NavigationDestinationLabelBehavior.alwaysHide,
+            selectedIndex: _currentIndex.value,
+            onDestinationSelected: _goToPage,
+            destinations: [
+              NavigationDestination(
+                icon: const Icon(Icons.dashboard_outlined),
+                selectedIcon: const Icon(Icons.dashboard),
+                label: l10n.navHome,
+              ),
+              NavigationDestination(
+                icon: Icon(hub.outlined),
+                selectedIcon: Icon(hub.icon),
+                label: hub.label,
+              ),
+              _CentreSlot(
+                pageLabel: l10n.navRun,
+                caption: look.label,
+                alert: look.recording,
+                showCaption: metrics.showLabels,
+                onOpenPage: () => _goToPage(_pageRun),
+              ),
+              NavigationDestination(
+                icon: _socialIcon(l10n, selected: false),
+                selectedIcon: _socialIcon(l10n, selected: true),
+                label: l10n.navSocial,
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.person_outline),
+                selectedIcon: const Icon(Icons.person),
+                label: l10n.navYou,
+              ),
+            ],
           );
         },
       );
 
-  static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];
+  /// Social's glyph, with a dot on it while messages wait unread: a shape,
+  /// not a tint, and the count is said in the destination's value. The badge
+  /// sits on the destination that hosts the messages, not on the bar.
+  Widget _socialIcon(AppLocalizations l10n, {required bool selected}) {
+    final count = _socialUnread.value;
+    return Semantics(
+      value: count > 0 ? l10n.messagesUnreadCount(count) : null,
+      child: Badge(
+        key: count > 0 ? const ValueKey('navUnreadDot') : null,
+        isLabelVisible: count > 0,
+        smallSize: 8,
+        child: Icon(selected ? Icons.public : Icons.public_outlined),
+      ),
+    );
+  }
 
-  static const double _centreSlotWidth = 72;
+  static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];
 
   int? _railIndexFor(int pageIndex) {
     final i = _railPages.indexOf(pageIndex);
@@ -1914,9 +1937,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-/// One destination in the [BottomAppBar] — icon over label, tinted when
-/// selected. A real button for accessibility (role + selected state), with
-/// a >=48 dp tap target.
 /// How tall the bottom nav is, and whether its labels still fit, for a given
 /// text scale.
 ///
@@ -1938,146 +1958,57 @@ class _HomeScreenState extends State<HomeScreen>
   return (height: (64.0 * scale).clamp(64.0, 96.0), showLabels: true);
 }
 
-class _BottomNavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+/// The bar's third destination, the Run page, under the docked centre
+/// button. It draws only the button's caption where a label would sit (the
+/// button itself is the Scaffold's FAB, so a docked Stop or Start stays one
+/// widget whichever page shows), and no pill: the button already says what
+/// the Run page is doing. To a screen reader it is the Run page's tab, in the
+/// bar's order and marked selected while that page shows; the caption is
+/// excluded because the button announces its own label.
+class _CentreSlot extends StatelessWidget {
+  final String pageLabel;
+  final String caption;
+  final bool alert;
+  final bool showCaption;
+  final VoidCallback onOpenPage;
 
-  /// Unread messages behind this destination; above zero draws a dot.
-  final int unread;
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.unread = 0,
+  const _CentreSlot({
+    required this.pageLabel,
+    required this.caption,
+    required this.alert,
+    required this.showCaption,
+    required this.onOpenPage,
   });
 
-  /// The pill behind the selected destination's icon, Material 3's
-  /// `NavigationBar` indicator size.
-  static const indicatorSize = Size(56, 28);
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color =
-        selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
-    final metrics = bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
-    final l10n = AppLocalizations.of(context);
-    return Expanded(
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: label,
-        value: unread > 0 ? l10n.messagesUnreadCount(unread) : null,
-        child: InkWell(
-          onTap: onTap,
-          child: SizedBox(
-            height: metrics.height,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Selection is a shape as well as a colour (issue #1374):
-                // a pill behind the icon and a heavier label, so it reads
-                // without telling primary from on-surface-variant apart.
-                AnimatedContainer(
-                  key: selected ? const ValueKey('navSelectedIndicator') : null,
-                  duration: const Duration(milliseconds: 150),
-                  width: indicatorSize.width,
-                  height: indicatorSize.height,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? theme.colorScheme.secondaryContainer
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(indicatorSize.height),
-                  ),
-                  alignment: Alignment.center,
-                  child: ExcludeSemantics(
-                    child: _UnreadDot(
-                      count: unread,
-                      child: Icon(icon, color: color, size: 24),
-                    ),
-                  ),
-                ),
-                if (metrics.showLabels) ...[
-                  const SizedBox(height: 2),
-                  Flexible(
-                    child: Text(
-                      label,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: color,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A dot on a nav icon while messages wait unread: a shape on the icon, not
-/// a tint, and the count is in the destination's semantics value.
-class _UnreadDot extends StatelessWidget {
-  final int count;
-  final Widget child;
-  const _UnreadDot({required this.count, required this.child});
-
-  @override
-  Widget build(BuildContext context) => Badge(
-        key: count > 0 ? const ValueKey('navUnreadDot') : null,
-        isLabelVisible: count > 0,
-        smallSize: 8,
-        child: child,
-      );
-}
-
-/// The caption under the docked centre Log FAB. The FAB itself is the tap
-/// target and occupies the icon slot; this renders the label at the same
-/// baseline as the sibling nav labels so the centre action carries visible
-/// text, not just a tooltip (#256). Marked [ExcludeSemantics] so the reader
-/// doesn't double-announce over the FAB's own semantics label.
-class _CentreLogLabel extends StatelessWidget {
-  final String label;
-
-  /// Tints the caption the error colour, matching the button above it while
-  /// a run records.
-  final bool alert;
-  const _CentreLogLabel({required this.label, this.alert = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // The same metrics as the sibling items: past the scale where they drop
-    // their labels the bar is 56dp, and a caption kept at 64 overflowed it.
-    final metrics = bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
-    return SizedBox(
-      height: metrics.height,
+    final style = theme.navigationBarTheme.labelTextStyle
+        ?.resolve(const <WidgetState>{});
+    return Semantics(
+      label: pageLabel,
+      button: true,
+      onTap: onOpenPage,
+      excludeSemantics: true,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Transparent stand-in for the 24 dp icon the sibling nav items
-          // render, so this label lines up with theirs while the floating
-          // FAB visually fills the space above it.
-          const SizedBox(height: 24),
-          if (metrics.showLabels) ...[
-            const SizedBox(height: 2),
-            // Shrinks to fit rather than ellipsising: at a large text size a
-            // smaller whole word reads, a clipped one does not.
-            ExcludeSemantics(
+          // A stand-in for a destination's 32 dp indicator and its 4 dp label
+          // gap, so the caption sits on the siblings' label line while the
+          // floating button fills the space above it.
+          const SizedBox(height: 36),
+          // Shrinks to fit rather than ellipsising: at a large text size a
+          // smaller whole word reads, a clipped one does not. Clamped as the
+          // bar clamps its own labels.
+          if (showCaption)
+            MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.3,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
+                  caption,
+                  key: const ValueKey('navCentreCaption'),
+                  style: (style ?? theme.textTheme.labelSmall)?.copyWith(
                     color: alert
                         ? theme.colorScheme.error
                         : theme.colorScheme.onSurfaceVariant,
@@ -2087,7 +2018,6 @@ class _CentreLogLabel extends StatelessWidget {
                 ),
               ),
             ),
-          ],
         ],
       ),
     );

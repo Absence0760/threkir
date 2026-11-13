@@ -87,6 +87,17 @@ class AppTheme {
   static const double dimmedSubtreeOpacity = 0.85;
 
   static ThemeData get light {
+    // One label style for the bar and the rail, so selection reads the same
+    // on a phone and a tablet: a heavier weight as well as a darker ink.
+    final navLabel = WidgetStateProperty.resolveWith(
+      (states) => TextStyle(
+        fontSize: 12,
+        fontWeight: states.contains(WidgetState.selected)
+            ? FontWeight.w600
+            : FontWeight.w500,
+        color: states.contains(WidgetState.selected) ? ink : inkMuted,
+      ),
+    );
     final scheme = ColorScheme.fromSeed(
       seedColor: dusk,
       brightness: Brightness.light,
@@ -256,15 +267,17 @@ class AppTheme {
             size: 24,
           ),
         ),
-        labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => TextStyle(
-            fontSize: 12,
-            fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w600
-                : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? ink : inkMuted,
-          ),
-        ),
+        labelTextStyle: navLabel,
+      ),
+      // The tablet rail marks selection as the phone's bar does: the same
+      // pill, glyph tints and label weights (issue #1374 finding 12).
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: snow,
+        indicatorColor: coralDeep.withOpacity(0.18),
+        selectedIconTheme: const IconThemeData(color: coralDeep, size: 24),
+        unselectedIconTheme: const IconThemeData(color: inkMuted, size: 24),
+        selectedLabelTextStyle: navLabel.resolve({WidgetState.selected}),
+        unselectedLabelTextStyle: navLabel.resolve(const <WidgetState>{}),
       ),
       dividerColor: snowLine,
       // Divider ignores `dividerColor` under Material 3 and falls back to
@@ -277,6 +290,17 @@ class AppTheme {
   }
 
   static ThemeData get dark {
+    final navLabel = WidgetStateProperty.resolveWith(
+      (states) => TextStyle(
+        fontSize: 12,
+        fontWeight: states.contains(WidgetState.selected)
+            ? FontWeight.w600
+            : FontWeight.w500,
+        color: states.contains(WidgetState.selected)
+            ? mist
+            : mist.withOpacity(0.55),
+      ),
+    );
     final scheme = ColorScheme.fromSeed(
       seedColor: dusk,
       brightness: Brightness.dark,
@@ -425,17 +449,16 @@ class AppTheme {
             size: 24,
           ),
         ),
-        labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => TextStyle(
-            fontSize: 12,
-            fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w600
-                : FontWeight.w500,
-            color: states.contains(WidgetState.selected)
-                ? mist
-                : mist.withOpacity(0.55),
-          ),
-        ),
+        labelTextStyle: navLabel,
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: night,
+        indicatorColor: coral.withOpacity(0.22),
+        selectedIconTheme: const IconThemeData(color: coral, size: 24),
+        unselectedIconTheme:
+            IconThemeData(color: mist.withOpacity(0.55), size: 24),
+        selectedLabelTextStyle: navLabel.resolve({WidgetState.selected}),
+        unselectedLabelTextStyle: navLabel.resolve(const <WidgetState>{}),
       ),
       dividerColor: nightLine,
       dividerTheme: const DividerThemeData(color: nightLine),

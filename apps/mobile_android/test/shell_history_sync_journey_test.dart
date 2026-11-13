@@ -315,7 +315,7 @@ void main() {
   Future<void> tapNav(WidgetTester tester, String label) async {
     await tester.tap(
       find.descendant(
-        of: find.byType(BottomAppBar),
+        of: find.byType(NavigationBar),
         matching: find.text(label),
       ),
     );

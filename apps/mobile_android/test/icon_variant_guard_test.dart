@@ -49,9 +49,20 @@ const _roots = ['lib', '../../packages/ui_kit/lib'];
 /// `verified` is a status toggle: `club_verification_status_card.dart` draws
 /// it filled while the club is verified and outlined while it is not, so the
 /// variant IS the state.
+///
+/// `dashboard`, `fitness_center`, `directions_run` and `public` are the
+/// shell's `NavigationBar` / `NavigationRail` destinations (Home, the Fitness
+/// or Training hub, Social): outlined while unselected and filled while
+/// selected, M3's `icon:` / `selectedIcon:` pair, so selection is a shape as
+/// well as a colour (issue #1374 finding 12). `person` / `person_outline`
+/// for You are already two stems.
 const _selectionPairs = <String>{
   'cloud_upload',
+  'dashboard',
+  'directions_run',
   'emoji_events',
+  'fitness_center',
+  'public',
   'push_pin',
   'verified',
 };

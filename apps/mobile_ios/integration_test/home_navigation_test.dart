@@ -16,14 +16,14 @@ void main() {
       'destinations', (tester) async {
     await launchApp(onboarded: true);
 
-    await pumpUntilFound(tester, find.byType(BottomAppBar),
+    await pumpUntilFound(tester, find.byType(NavigationBar),
         describe: 'the cold launch to reach the Home shell');
     final l10n = l10nOf(tester, find.byType(HomeScreen));
     await pumpUntilFound(tester, find.byType(TodayScreen).hitTestable(),
         describe: 'the dashboard to be the visible page');
 
     Finder navItem(String label) => find.descendant(
-        of: find.byType(BottomAppBar), matching: find.text(label));
+        of: find.byType(NavigationBar), matching: find.text(label));
 
     // The hub is captioned Training rather than Fitness while Gym and
     // Nutrition are both hidden, which depends on what this install has

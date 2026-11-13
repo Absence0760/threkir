@@ -333,7 +333,7 @@ void main() {
       await pick(tester, 'Log lift');
       expect(shellPage(tester), 1, reason: 'Gym is a tab of the Fitness hub');
       expect(find.byType(GymScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget,
+      expect(find.byType(NavigationBar), findsOneWidget,
           reason: 'a dwell-in surface, not a modal over the shell');
 
       await logALift(tester, s.gymStore);
@@ -365,7 +365,7 @@ void main() {
       expect(shellPage(tester), 2);
       expect(
           find.descendant(
-              of: find.byType(BottomAppBar), matching: find.text('Start')),
+              of: find.byType(NavigationBar), matching: find.text('Start')),
           findsOneWidget,
           reason: 'on the idle Run page the centre button is the Start');
       expect(find.textContaining('already on'), findsNothing);
@@ -383,7 +383,7 @@ void main() {
       await pick(tester, 'Log food');
       expect(shellPage(tester), 1);
       expect(find.byType(NutritionScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
 
       await logAMeal(tester, s.foodStore);
 
@@ -453,7 +453,7 @@ void main() {
       // a lift to log as well, so it fans the menu with Log lift on it.
       expect(
           find.descendant(
-              of: find.byType(BottomAppBar), matching: find.text('Run')),
+              of: find.byType(NavigationBar), matching: find.text('Run')),
           findsNothing);
       await openFan(tester);
       expect(fanItem('Log lift'), findsOneWidget);

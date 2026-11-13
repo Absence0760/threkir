@@ -2,7 +2,9 @@
 // Takes a `mobile_android@<version>` bundle from the Play Internal track to
 // production as a staged rollout, and walks that rollout up a fixed ramp, the
 // way an iOS release goes to App Store review and then a 7-day phased release
-// (decisions § 2040, § 2478).
+// (decisions § 2040, § 2478). It also puts a `watch_wear@<version>` bundle on
+// the Wear OS internal testing track of the same app, the phone's listing
+// (decisions § 2480).
 //
 // Commands:
 //
@@ -26,6 +28,14 @@
 //       offers staged rollouts for updates only. Production already carrying
 //       N is a no-op; a different release still rolling out fails closed.
 //
+//   upload --form-factor <prefix> --version-code N --bundle <file.aab>
+//       From release-watch-wear.yml. Uploads a form factor's bundle (Wear OS:
+//       `wear`) to that form factor's internal testing track of the same app,
+//       found by name in the edit's track list, and commits. Play holding the
+//       version code already skips the upload; the track already carrying it
+//       is a no-op. A form factor's bundle shares the app's version codes, so
+//       the caller gives it a range the phone's can never reach.
+//
 //   advance
 //       Daily, from play-rollout.yml. Moves an in-progress production rollout
 //       to the next ramp step, or to `completed` past the last. Does nothing
@@ -46,11 +56,22 @@ import { fileURLToPath } from 'node:url';
 import { extractWhatsNew } from './asc_submit.mjs';
 
 export const API = 'https://androidpublisher.googleapis.com/androidpublisher/v3';
+/** Media uploads go to the same API under `/upload` (edits.bundles.upload). */
+export const UPLOAD_API = 'https://androidpublisher.googleapis.com/upload/androidpublisher/v3';
 export const TOKEN_URI = 'https://oauth2.googleapis.com/token';
 export const SCOPE = 'https://www.googleapis.com/auth/androidpublisher';
 export const PACKAGE_NAME = 'com.threkir.app';
 export const TRACK = 'production';
 export const NOTES_LANGUAGE = 'en-US';
+
+/**
+ * A form factor's internal testing track is `<prefix>:<name>`. Google's track
+ * reference names the internal track `qa` ("wear:qa"), while the phone's has
+ * always been uploaded to as `internal` and a form-factor upload is reported
+ * working as `automotive:internal`, so both are looked for, documented name
+ * first, in the track list Play itself returns.
+ */
+export const INTERNAL_TRACK_NAMES = ['qa', 'internal'];
 
 /** Play's limit on a release note, per language, in characters. */
 export const NOTES_MAX = 500;
@@ -69,6 +90,7 @@ export const PUBLISHED = 'RELEASE_LIFECYCLE_STATE_PUBLISHED';
 
 const VERSION_CODE_PATTERN = /^[1-9][0-9]*$/;
 const PACKAGE_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
+const FORM_FACTOR_PATTERN = /^[a-z][a-z_]*$/;
 const EPSILON = 1e-9;
 
 // --- Release notes ------------------------------------------------------------
@@ -138,7 +160,7 @@ export function buildAssertion({ clientEmail, key, nowS }) {
 // --- API client -----------------------------------------------------------------
 
 /**
- * @typedef {(url: string, init: { method: string, headers: Record<string, string>, body?: string }) =>
+ * @typedef {(url: string, init: { method: string, headers: Record<string, string>, body?: string | Uint8Array }) =>
  *   Promise<{ ok: boolean, status: number, text: () => Promise<string> }>} Fetcher
  */
 
@@ -172,9 +194,9 @@ export class PlayError extends Error {
 }
 
 /**
- * @param {{ fetcher: Fetcher, assertion: () => string, base?: string, tokenUri?: string }} input
+ * @param {{ fetcher: Fetcher, assertion: () => string, base?: string, uploadBase?: string, tokenUri?: string }} input
  */
-export function makeApi({ fetcher, assertion, base = API, tokenUri = TOKEN_URI }) {
+export function makeApi({ fetcher, assertion, base = API, uploadBase = UPLOAD_API, tokenUri = TOKEN_URI }) {
 	/** @type {string | null} */
 	let token = null;
 
@@ -202,17 +224,19 @@ export function makeApi({ fetcher, assertion, base = API, tokenUri = TOKEN_URI }
 	/**
 	 * @param {string} method
 	 * @param {string} path
-	 * @param {unknown} [body]
+	 * @param {unknown} [body] JSON, or the raw bytes of a media upload
+	 * @param {string} [root]
 	 * @returns {Promise<any>}
 	 */
-	async function call(method, path, body) {
-		const res = await fetcher(`${base}${path}`, {
+	async function call(method, path, body, root = base) {
+		const media = body instanceof Uint8Array;
+		const res = await fetcher(`${root}${path}`, {
 			method,
 			headers: {
 				Authorization: `Bearer ${await accessToken()}`,
-				...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+				...(body === undefined ? {} : { 'Content-Type': media ? 'application/octet-stream' : 'application/json' }),
 			},
-			...(body === undefined ? {} : { body: JSON.stringify(body) }),
+			...(body === undefined ? {} : { body: media ? body : JSON.stringify(body) }),
 		});
 		const text = await res.text();
 		if (!res.ok) {
@@ -235,6 +259,8 @@ export function makeApi({ fetcher, assertion, base = API, tokenUri = TOKEN_URI }
 		put: (path, body) => call('PUT', path, body),
 		/** @param {string} path */
 		delete: (path) => call('DELETE', path),
+		/** @param {string} path @param {Uint8Array} bytes */
+		upload: (path, bytes) => call('POST', path, bytes, uploadBase),
 	};
 }
 
@@ -265,13 +291,23 @@ async function openEdit(api, packageName) {
 	return {
 		at,
 		/** @returns {Promise<Release[]>} */
-		async releases() {
-			const track = await api.get(`${at}/tracks/${TRACK}`);
-			return Array.isArray(track?.releases) ? track.releases : [];
+		async releases(track = TRACK) {
+			const read = await api.get(`${at}/tracks/${track}`);
+			return Array.isArray(read?.releases) ? read.releases : [];
 		},
 		/** @param {Release[]} releases */
-		async putReleases(releases) {
-			await api.put(`${at}/tracks/${TRACK}`, { track: TRACK, releases });
+		async putReleases(releases, track = TRACK) {
+			await api.put(`${at}/tracks/${track}`, { track, releases });
+		},
+		/** @returns {Promise<string[]>} */
+		async trackNames() {
+			const list = await api.get(`${at}/tracks`);
+			return (Array.isArray(list?.tracks) ? list.tracks : []).map((/** @type {{ track?: unknown }} */ t) => String(t.track));
+		},
+		/** @param {Uint8Array} bytes @returns {Promise<string>} the version code Play read out of the bundle */
+		async uploadBundle(bytes) {
+			const bundle = await api.upload(`${at}/bundles?uploadType=media`, bytes);
+			return String(bundle?.versionCode);
 		},
 		/** @returns {Promise<string[]>} */
 		async bundleVersionCodes() {
@@ -401,6 +437,54 @@ export async function promote({ api, packageName = PACKAGE_NAME, versionCode, no
 }
 
 /**
+ * @param {{ api: Api, packageName?: string, formFactor: string, versionCode: string, bundle: Uint8Array, log?: (line: string) => void }} input
+ * @returns {Promise<Outcome>}
+ */
+export async function uploadToFormFactor({ api, packageName = PACKAGE_NAME, formFactor, versionCode, bundle, log = () => {} }) {
+	if (!VERSION_CODE_PATTERN.test(versionCode)) throw new Error(`"${versionCode}" is not a version code.`);
+	if (!FORM_FACTOR_PATTERN.test(formFactor)) throw new Error(`"${formFactor}" is not a form factor track prefix (wear, tv, automotive, ...).`);
+	const candidates = INTERNAL_TRACK_NAMES.map((name) => `${formFactor}:${name}`);
+	const edit = await openEdit(api, packageName);
+	try {
+		const names = await edit.trackNames();
+		const track = candidates.find((name) => names.includes(name));
+		if (!track) {
+			throw new Error(
+				`${packageName} has no ${formFactor} internal testing track (looked for ${candidates.join(' and ')}; Play lists ${names.join(', ') || 'no tracks'}). Add the form factor in Play Console → Test and release → Advanced settings → Form factors, then re-run this job.`,
+			);
+		}
+		const held = (await edit.bundleVersionCodes()).includes(versionCode);
+		if (held && (await edit.releases(track)).some((r) => holds(r, versionCode) && r.status === 'completed')) {
+			return { level: 'info', message: `Version code ${versionCode} is already on ${track}; nothing to do.` };
+		}
+		if (held) {
+			log(`Google Play already holds version code ${versionCode}; the upload is skipped.`);
+		} else {
+			log(`Uploading the ${(bundle.length / 1e6).toFixed(1)} MB bundle for version code ${versionCode}.`);
+			const read = await edit.uploadBundle(bundle);
+			if (read !== versionCode) {
+				throw new Error(`Google Play read version code ${read} out of the bundle, not ${versionCode}. The build and the workflow disagree on the version code; nothing was committed.`);
+			}
+		}
+		log(`Putting version code ${versionCode} on ${track}.`);
+		await edit.putReleases([{ versionCodes: [versionCode], status: 'completed' }], track);
+		try {
+			await edit.commit();
+		} catch (err) {
+			if (isInReviewRefusal(err)) {
+				throw new Error(
+					`Google Play has other changes in review for ${packageName} (the phone app's release, or a listing change), and committing now would cancel that review. Wait for it to finish, then re-run this job.`,
+				);
+			}
+			throw err;
+		}
+		return { level: 'info', message: `Version code ${versionCode} is on ${track} of ${packageName}.` };
+	} finally {
+		await edit.discard();
+	}
+}
+
+/**
  * @param {{ api: Api, packageName?: string, log?: (line: string) => void }} input
  * @returns {Promise<Outcome>}
  */
@@ -506,7 +590,8 @@ function versionCodeOf(flags) {
 	return code;
 }
 
-const USAGE = 'Usage: node scripts/play_release.mjs notes <body> <out> | uploaded --version-code N | promote --version-code N --notes <file> | advance  [--package <name>]';
+const USAGE =
+	'Usage: node scripts/play_release.mjs notes <body> <out> | uploaded --version-code N | promote --version-code N --notes <file> | upload --form-factor <prefix> --version-code N --bundle <file> | advance  [--package <name>]';
 
 /** @param {string[]} argv @param {Record<string, string | undefined>} env */
 export async function main(argv, env, { apiFor = apiFromEnv, print = (/** @type {string} */ line) => console.log(line) } = {}) {
@@ -532,6 +617,14 @@ export async function main(argv, env, { apiFor = apiFromEnv, print = (/** @type 
 	if (command === 'promote') {
 		if (!flags.notes) throw new Error(USAGE);
 		report(await promote({ api: apiFor(env), packageName: packageOf(flags), versionCode: versionCodeOf(flags), notes: readFileSync(flags.notes, 'utf8'), log: print }));
+		return;
+	}
+	if (command === 'upload') {
+		if (!flags['form-factor'] || !flags.bundle) throw new Error(USAGE);
+		const packageName = packageOf(flags);
+		const versionCode = versionCodeOf(flags);
+		const bundle = readFileSync(flags.bundle);
+		report(await uploadToFormFactor({ api: apiFor(env), packageName, formFactor: flags['form-factor'], versionCode, bundle, log: print }));
 		return;
 	}
 	if (command === 'advance') {

@@ -14,6 +14,7 @@ import {
 	SCOPE,
 	TOKEN_LIFETIME_S,
 	TOKEN_URI,
+	UPLOAD_API,
 	advance,
 	buildAssertion,
 	describeError,
@@ -24,6 +25,7 @@ import {
 	nextFraction,
 	promote,
 	readServiceAccount,
+	uploadToFormFactor,
 } from './play_release.mjs';
 
 /**
@@ -38,6 +40,7 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ANDROID = readFileSync(resolve(root, '.github/workflows/release-android.yml'), 'utf8');
 const ROLLOUT = readFileSync(resolve(root, '.github/workflows/play-rollout.yml'), 'utf8');
+const WEAR = readFileSync(resolve(root, '.github/workflows/release-watch-wear.yml'), 'utf8');
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const PEM = /** @type {string} */ (privateKey.export({ type: 'pkcs8', format: 'pem' }));
@@ -50,7 +53,11 @@ const PKG = 'com.threkir.app';
 /** @typedef {import('./play_release.mjs').Release} Release */
 
 /**
- * @param {{ bundles?: string[], releases?: Release[], states?: Record<string, string>, inReview?: boolean, commitStatus?: number }} [seed]
+ * Form-factor tracks (`wear:qa`, ...) live beside production in `tracks`; a
+ * media upload adds the version code `uploadReads` names to `bundles`.
+ *
+ * @param {{ bundles?: string[], releases?: Release[], states?: Record<string, string>, inReview?: boolean, commitStatus?: number,
+ *   tracks?: Record<string, Release[]>, uploadReads?: string }} [seed]
  */
 function fakePlay(seed = {}) {
 	const state = {
@@ -60,12 +67,19 @@ function fakePlay(seed = {}) {
 		states: seed.states ?? {},
 		inReview: seed.inReview ?? false,
 		commitStatus: seed.commitStatus ?? 0,
+		/** @type {Record<string, Release[]>} */
+		tracks: structuredClone(seed.tracks ?? {}),
+		uploadReads: seed.uploadReads,
+		/** @type {number[]} */
+		uploads: [],
 		/** @type {Array<{ method: string, path: string, body?: any }>} */
 		requests: [],
 		/** @type {string[]} */
 		refused: [],
 		/** @type {Map<string, Release[]>} */
 		edits: new Map(),
+		/** @type {Map<string, { tracks: Record<string, Release[]>, bundles: string[] }>} */
+		editExtras: new Map(),
 		nextEdit: 1,
 		tokens: 0,
 	};
@@ -77,12 +91,12 @@ function fakePlay(seed = {}) {
 		return reply(status, { error: { code: status, message, status: status === 404 ? 'NOT_FOUND' : 'INVALID_ARGUMENT' } });
 	};
 
-	/** @param {Release[]} releases */
-	function invalid(releases) {
+	/** @param {Release[]} releases @param {string[]} [bundles] */
+	function invalid(releases, bundles = state.bundles) {
 		for (const r of releases) {
 			if (!['draft', 'inProgress', 'halted', 'completed'].includes(/** @type {string} */ (r.status))) return `status ${r.status} is not a Status`;
 			if (!Array.isArray(r.versionCodes) || !r.versionCodes.every((c) => typeof c === 'string')) return 'versionCodes must be strings';
-			if (!r.versionCodes.every((c) => state.bundles.includes(c))) return 'a version code has no bundle';
+			if (!r.versionCodes.every((c) => bundles.includes(c))) return 'a version code has no bundle';
 			if (r.status === 'inProgress' && !(typeof r.userFraction === 'number' && r.userFraction > 0 && r.userFraction < 1)) return 'a staged release needs 0 < userFraction < 1';
 			if (r.status === 'completed' && r.userFraction !== undefined) return 'a completed release takes no userFraction';
 			for (const n of r.releaseNotes ?? []) if ([...n.text].length > NOTES_MAX) return 'release notes over 500 characters';
@@ -92,7 +106,8 @@ function fakePlay(seed = {}) {
 
 	/** @type {import('./play_release.mjs').Fetcher} */
 	const fetcher = async (url, init) => {
-		const body = init.body === undefined ? undefined : init.headers['Content-Type']?.includes('json') ? JSON.parse(init.body) : init.body;
+		const body =
+			init.body === undefined ? undefined : init.headers['Content-Type']?.includes('json') ? JSON.parse(/** @type {string} */ (init.body)) : init.body;
 		if (url === TOKEN_URI) {
 			state.requests.push({ method: init.method, path: 'token' });
 			const form = new URLSearchParams(/** @type {string} */ (init.body));
@@ -104,8 +119,9 @@ function fakePlay(seed = {}) {
 			state.tokens += 1;
 			return reply(200, { access_token: TOKEN, token_type: 'Bearer', expires_in: 3600 });
 		}
-		assert.ok(url.startsWith(API), `a request left the Android Publisher API: ${url}`);
-		const [pathOnly, query = ''] = url.slice(API.length).split('?');
+		const media = url.startsWith(UPLOAD_API);
+		assert.ok(media || url.startsWith(API), `a request left the Android Publisher API: ${url}`);
+		const [pathOnly, query = ''] = url.slice((media ? UPLOAD_API : API).length).split('?');
 		state.requests.push({ method: init.method, path: pathOnly + (query ? `?${query}` : ''), body });
 		if (init.headers.Authorization !== `Bearer ${TOKEN}`) return refuse(401, 'Request had invalid authentication credentials.');
 		const app = `/applications/${PKG}`;
@@ -127,7 +143,9 @@ function fakePlay(seed = {}) {
 			const id = `edit${state.nextEdit++}`;
 			// Play keeps one open edit per user per app.
 			state.edits.clear();
+			state.editExtras.clear();
 			state.edits.set(id, structuredClone(state.releases));
+			state.editExtras.set(id, { tracks: structuredClone(state.tracks), bundles: [...state.bundles] });
 			return reply(200, { id, expiryTimeSeconds: String(NOW + 3600) });
 		}
 		const m = /^\/edits\/([^/:]+)(.*)$/.exec(rest);
@@ -136,19 +154,48 @@ function fakePlay(seed = {}) {
 		const staged = state.edits.get(editId);
 		if (!staged) return refuse(404, 'This Edit has been deleted.');
 
+		const extras = /** @type {{ tracks: Record<string, Release[]>, bundles: string[] }} */ (state.editExtras.get(editId));
+
+		if (media) {
+			if (init.method !== 'POST' || tail !== '/bundles' || query !== 'uploadType=media') return refuse(404, `No such upload endpoint: ${init.method} ${tail}?${query}`);
+			if (init.headers['Content-Type'] !== 'application/octet-stream' || !(init.body instanceof Uint8Array)) return refuse(400, 'Media upload without an octet-stream body.');
+			const code = /** @type {string} */ (state.uploadReads);
+			if (extras.bundles.includes(code)) return refuse(403, 'APK specifies a version code that has already been used.');
+			state.uploads.push(init.body.length);
+			extras.bundles.push(code);
+			return reply(200, { versionCode: Number(code), sha1: 'x', sha256: 'y' });
+		}
 		if (init.method === 'DELETE' && tail === '') {
 			state.edits.delete(editId);
+			state.editExtras.delete(editId);
 			return reply(204);
 		}
 		if (init.method === 'GET' && tail === '/bundles') {
-			return reply(200, { kind: 'androidpublisher#bundlesListResponse', bundles: state.bundles.map((v) => ({ versionCode: Number(v), sha1: 'x', sha256: 'y' })) });
+			return reply(200, { kind: 'androidpublisher#bundlesListResponse', bundles: extras.bundles.map((v) => ({ versionCode: Number(v), sha1: 'x', sha256: 'y' })) });
 		}
+		if (init.method === 'GET' && tail === '/tracks') {
+			const names = ['production', 'beta', 'alpha', 'internal', ...Object.keys(extras.tracks)];
+			return reply(200, { kind: 'androidpublisher#tracksListResponse', tracks: names.map((track) => ({ track })) });
+		}
+		const ff = /^\/tracks\/([a-z_]+:[a-z]+)$/.exec(tail);
+		if (ff && ff[1] in extras.tracks) {
+			const track = ff[1];
+			if (init.method === 'GET') return reply(200, extras.tracks[track].length ? { track, releases: extras.tracks[track] } : { track });
+			if (init.method === 'PUT') {
+				if (body?.track !== track) return refuse(400, 'Track name in the body does not match the URL.');
+				const problem = invalid(body.releases ?? [], extras.bundles);
+				if (problem) return refuse(400, problem);
+				extras.tracks[track] = structuredClone(body.releases);
+				return reply(200, body);
+			}
+		}
+		if (ff) return refuse(404, `Track not found: ${ff[1]}`);
 		if (init.method === 'GET' && tail === '/tracks/production') {
 			return reply(200, staged.length ? { track: 'production', releases: staged } : { track: 'production' });
 		}
 		if (init.method === 'PUT' && tail === '/tracks/production') {
 			if (body?.track !== 'production') return refuse(400, 'Track name in the body does not match the URL.');
-			const problem = invalid(body.releases ?? []);
+			const problem = invalid(body.releases ?? [], extras.bundles);
 			if (problem) return refuse(400, problem);
 			state.edits.set(editId, structuredClone(body.releases));
 			return reply(200, body);
@@ -159,7 +206,10 @@ function fakePlay(seed = {}) {
 			if (state.commitStatus) return refuse(state.commitStatus, 'Backend error.');
 			if (state.inReview) return refuse(400, 'You already have changes in review. Cancel this review or wait for it to complete before you try again.');
 			state.releases = structuredClone(staged);
+			state.tracks = structuredClone(extras.tracks);
+			state.bundles = [...extras.bundles];
 			state.edits.delete(editId);
+			state.editExtras.delete(editId);
 			return reply(200, { id: editId });
 		}
 		return refuse(404, `No such endpoint: ${init.method} ${rest}`);
@@ -416,6 +466,92 @@ test('a refused token names the status and the service account, never the assert
 		assert.ok(!message.includes('eyJ'), 'the assertion leaked into the error');
 		return true;
 	});
+});
+
+// --- upload: a form factor's bundle onto its internal track -----------------------
+
+const WEAR_CODE = '1000005160';
+const AAB = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3]);
+
+test("a Wear bundle lands on the Wear internal track by the name Play lists, never on the phone's tracks", async () => {
+	for (const name of ['wear:qa', 'wear:internal']) {
+		const play = fakePlay({ releases: [SERVING], bundles: ['5100'], tracks: { [name]: [] }, uploadReads: WEAR_CODE });
+		const outcome = await uploadToFormFactor({ api: play.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB });
+		assert.equal(outcome.message, `Version code ${WEAR_CODE} is on ${name} of ${PKG}.`);
+		assert.deepEqual(play.tracks[name], [{ versionCodes: [WEAR_CODE], status: 'completed' }]);
+		assert.deepEqual(play.releases, [SERVING], 'the phone production track moved');
+		assert.deepEqual(play.uploads, [AAB.length]);
+		assert.ok(play.requests.some((r) => r.path.endsWith(':commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW')));
+		assert.ok(!play.requests.some((r) => /\/tracks\/(production|internal|beta|alpha)$/.test(r.path)), 'a phone track was read or written');
+		assert.equal(play.edits.size, 0);
+	}
+});
+
+test('the documented wear:qa name wins when Play lists both', async () => {
+	const play = fakePlay({ tracks: { 'wear:internal': [], 'wear:qa': [] }, uploadReads: WEAR_CODE });
+	await uploadToFormFactor({ api: play.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB });
+	assert.deepEqual(play.tracks['wear:qa'], [{ versionCodes: [WEAR_CODE], status: 'completed' }]);
+	assert.deepEqual(play.tracks['wear:internal'], []);
+});
+
+test('an app without the Wear form factor fails naming the tracks Play has and the Console step, before any upload', async () => {
+	const play = fakePlay({ uploadReads: WEAR_CODE });
+	await assert.rejects(uploadToFormFactor({ api: play.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB }), (err) => {
+		const message = /** @type {Error} */ (err).message;
+		assert.match(message, /has no wear internal testing track \(looked for wear:qa and wear:internal; Play lists production, beta, alpha, internal\)/);
+		assert.match(message, /Advanced settings → Form factors/);
+		return true;
+	});
+	assert.deepEqual(play.uploads, []);
+	assert.equal(play.writes().length, 0);
+});
+
+test('a re-run after the upload landed is a no-op, and one after a lost commit re-uploads', async () => {
+	const done = fakePlay({ bundles: ['5100', WEAR_CODE], tracks: { 'wear:qa': [{ versionCodes: [WEAR_CODE], status: 'completed' }] }, uploadReads: WEAR_CODE });
+	assert.match((await uploadToFormFactor({ api: done.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB })).message, /already on wear:qa; nothing to do/);
+	assert.equal(done.writes().length, 0);
+
+	const held = fakePlay({ bundles: [WEAR_CODE], tracks: { 'wear:qa': [] }, uploadReads: WEAR_CODE });
+	const lines = /** @type {string[]} */ ([]);
+	await uploadToFormFactor({ api: held.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB, log: (l) => lines.push(l) });
+	assert.deepEqual(held.uploads, [], 'a bundle Play holds was uploaded again');
+	assert.ok(lines.some((l) => /already holds version code/.test(l)));
+	assert.deepEqual(held.tracks['wear:qa'], [{ versionCodes: [WEAR_CODE], status: 'completed' }]);
+
+	const flaky = fakePlay({ tracks: { 'wear:qa': [] }, uploadReads: WEAR_CODE, commitStatus: 500 });
+	await assert.rejects(uploadToFormFactor({ api: flaky.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB }), /HTTP 500: INVALID_ARGUMENT: Backend error\./);
+	assert.ok(!flaky.bundles.includes(WEAR_CODE), 'an uncommitted upload persisted');
+	flaky.commitStatus = 0;
+	await uploadToFormFactor({ api: flaky.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB });
+	assert.deepEqual(flaky.tracks['wear:qa'], [{ versionCodes: [WEAR_CODE], status: 'completed' }]);
+});
+
+test('a bundle whose version code is not the one asked for is never committed', async () => {
+	const play = fakePlay({ tracks: { 'wear:qa': [] }, uploadReads: '5160' });
+	await assert.rejects(uploadToFormFactor({ api: play.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB }), /read version code 5160 out of the bundle, not 1000005160/);
+	assert.deepEqual(play.tracks['wear:qa'], []);
+	assert.ok(!play.requests.some((r) => r.path.includes(':commit')));
+});
+
+test("changes in review (the phone's release) fail the Wear upload rather than cancel that review", async () => {
+	const play = fakePlay({ tracks: { 'wear:qa': [] }, uploadReads: WEAR_CODE, inReview: true });
+	await assert.rejects(uploadToFormFactor({ api: play.api, formFactor: 'wear', versionCode: WEAR_CODE, bundle: AAB }), /other changes in review .* would cancel that review/);
+	assert.deepEqual(play.tracks['wear:qa'], []);
+});
+
+test('the upload CLI reads the bundle file and refuses a bad form factor before any request', async () => {
+	const dir = mkdtempSync(join(tmpdir(), 'play-upload-'));
+	const aab = join(dir, 'app-release.aab');
+	writeFileSync(aab, AAB);
+	const play = fakePlay({ tracks: { 'wear:qa': [] }, uploadReads: WEAR_CODE });
+	const lines = /** @type {string[]} */ ([]);
+	const deps = { apiFor: () => play.api, print: (/** @type {string} */ l) => lines.push(l) };
+	await assert.rejects(main(['upload', '--form-factor', 'Wear OS', '--version-code', WEAR_CODE, '--bundle', aab], {}, deps), /not a form factor track prefix/);
+	await assert.rejects(main(['upload', '--version-code', WEAR_CODE, '--bundle', aab], {}, deps), /Usage/);
+	assert.equal(play.requests.length, 0);
+	await main(['upload', '--form-factor', 'wear', '--version-code', WEAR_CODE, '--bundle', aab], {}, deps);
+	assert.deepEqual(play.uploads, [AAB.length]);
+	assert.equal(lines.at(-1), `Version code ${WEAR_CODE} is on wear:qa of ${PKG}.`);
 });
 
 // --- Wiring ---------------------------------------------------------------------

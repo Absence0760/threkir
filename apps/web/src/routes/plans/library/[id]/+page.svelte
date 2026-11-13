@@ -1,5 +1,6 @@
 <script lang="ts">
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -167,18 +168,19 @@
 	{:else if notFound || !plan}
 		<p class="state">{m('planLibrary.notFound')}</p>
 	{:else}
-		<header class="preview-head">
-			<h1>{plan.name}{#if plan.is_official}<OfficialBadge size={18} />{/if}</h1>
-			<p class="author">
-				{m('planLibrary.byAuthor', {
-					author: authorHandle ?? m('planLibrary.anonymousAuthor'),
-				})}
-			</p>
+		<PageHeader
+			flush
+			title={plan.name}
+			subtitle={m('planLibrary.byAuthor', {
+				author: authorHandle ?? m('planLibrary.anonymousAuthor'),
+			})}
+		>
+			{#snippet badge()}{#if plan?.is_official}<OfficialBadge size={18} />{/if}{/snippet}
 			<div class="chips">
 				<span class="chip">{goalEventLabel(m, formatDistance, plan.goal_event, plan.goal_distance_m)}</span>
 				<span class="chip">{planLengthLabel(m, weeks.length, plan.days_per_week)}</span>
 			</div>
-		</header>
+		</PageHeader>
 
 		<section class="clone-row">
 			<label class="start">
@@ -250,14 +252,6 @@
 		flex-direction: column;
 		gap: 0.75rem;
 		align-items: center;
-	}
-	.preview-head h1 {
-		margin: 0.5rem 0 0.25rem;
-		font-size: 1.5rem;
-	}
-	.author {
-		margin: 0 0 0.5rem;
-		color: var(--color-text-secondary);
 	}
 	.chips {
 		display: flex;

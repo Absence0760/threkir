@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -231,12 +232,7 @@
 <svelte:head><title>{m('shell.coaching')} · Threkir</title></svelte:head>
 
 <div class="page">
-	<header class="page-head">
-		<h1>{m('shell.coaching')}</h1>
-		<p class="lede">
-			{m('coaching.lede')}
-		</p>
-	</header>
+	<PageHeader title={m('shell.coaching')} subtitle={m('coaching.lede')} />
 
 	{#if loading}
 		<p class="muted">{m('shell.loading')}</p>
@@ -487,21 +483,6 @@
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 64rem;
-	}
-	.page-head {
-		margin-bottom: var(--space-xl);
-	}
-	h1 {
-		margin: 0 0 var(--space-xs);
-		font-size: 1.9rem;
-		font-weight: 800;
-		letter-spacing: -0.01em;
-	}
-	.lede {
-		color: var(--color-text-secondary);
-		max-width: 46rem;
-		line-height: 1.5;
-		margin: 0;
 	}
 	.card {
 		background: var(--color-surface);

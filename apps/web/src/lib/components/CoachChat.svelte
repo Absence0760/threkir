@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { renderCoachMarkdown } from '#lib/coach/markdown.ts';
@@ -1308,7 +1309,7 @@
 		{:else if limitReached}
 			<div class="limit-bar">
 				<span class="material-symbols">schedule</span>
-				{t('coachChat.limitReached', { count: dailyLimit })}{#if tier === 'free'} {t('coachChat.limitUpgrade')}{:else} {t('coachChat.limitComeBack')}{/if}
+				{t('coachChat.limitReached', { count: dailyLimit })}{#if tier === 'free'} <ProUpsellLink message={t('coachChat.limitUpgrade')} />{:else} {t('coachChat.limitComeBack')}{/if}
 			</div>
 		{:else}
 			<form

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { goto } from '$app/navigation';
@@ -56,11 +57,11 @@
 </svelte:head>
 
 <div class="library">
-	<header class="library-head">
-		<a class="back" href="/plans">{m('planLibrary.backToLibrary')}</a>
-		<h1>{m('planLibrary.heading')}</h1>
-		<p class="sub">{m('planLibrary.subheading')}</p>
-	</header>
+	<PageHeader
+		back={{ href: '/plans', label: m('planLibrary.backToLibrary') }}
+		title={m('planLibrary.heading')}
+		subtitle={m('planLibrary.subheading')}
+	/>
 
 	<div class="search">
 		<AppSearchField
@@ -112,22 +113,6 @@
 		max-width: 880px;
 		margin: 0 auto;
 		padding: 1rem;
-	}
-	.library-head {
-		margin-bottom: 1rem;
-	}
-	.back {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-		text-decoration: none;
-	}
-	.library-head h1 {
-		margin: 0.25rem 0 0.25rem;
-		font-size: 1.4rem;
-	}
-	.sub {
-		margin: 0;
-		color: var(--color-text-secondary);
 	}
 	.search {
 		display: flex;

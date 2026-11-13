@@ -6,6 +6,8 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { BODY_METRICS_PAGE, PREFERENCES_PAGES } from '#lib/settings/preferences_ia.ts';
 	import { shareAttributionEnabled } from '#lib/share/share_attribution.ts';
+	import { searchSettings } from '#lib/settings/settings_search.ts';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 
 	type Tab = { href: string; label: string; icon: string };
 	type Section = { label: string; tabs: Tab[] };
@@ -76,6 +78,15 @@
 			],
 		},
 	]);
+
+	// Search over every settings page's rows (decisions § 2494): a result
+	// opens the page the setting is on. Only pages the nav shows are searched.
+	let query = $state('');
+	const results = $derived(
+		query.trim() === ''
+			? null
+			: searchSettings(query, m, new Set(sections.flatMap((s) => s.tabs.map((tab) => tab.href)))),
+	);
 </script>
 
 <svelte:head>
@@ -85,19 +96,38 @@
 <div class="settings-shell">
 	<nav class="settings-nav">
 		<h2>{m('shell.settings')}</h2>
-		{#each sections as section}
-			<div class="nav-section-label">{section.label}</div>
-			{#each section.tabs as tab}
-				<a
-					href={tab.href}
-					class="nav-item"
-					class:active={page.url.pathname.startsWith(tab.href)}
-				>
-					<span class="material-symbols">{tab.icon}</span>
-					{tab.label}
-				</a>
+		<div class="settings-search">
+			<AppSearchField bind:value={query} label={m('settingsLayout.searchLabel')} testid="settings-search" />
+		</div>
+		{#if results}
+			<ul class="search-results" data-testid="settings-search-results" aria-label={m('settingsLayout.searchLabel')}>
+				{#each results as hit (hit.href + hit.title)}
+					<li>
+						<a href={hit.href} class="nav-item search-hit" onclick={() => (query = '')} data-testid="settings-search-result">
+							<span class="hit-title">{hit.title}</span>
+							<span class="hit-where">{hit.where}</span>
+						</a>
+					</li>
+				{/each}
+			</ul>
+			<p class="search-empty" aria-live="polite" data-testid="settings-search-empty">
+				{results.length === 0 ? m('settingsLayout.searchEmpty', { query: query.trim() }) : ''}
+			</p>
+		{:else}
+			{#each sections as section}
+				<div class="nav-section-label">{section.label}</div>
+				{#each section.tabs as tab}
+					<a
+						href={tab.href}
+						class="nav-item"
+						class:active={page.url.pathname.startsWith(tab.href)}
+					>
+						<span class="material-symbols">{tab.icon}</span>
+						{tab.label}
+					</a>
+				{/each}
 			{/each}
-		{/each}
+		{/if}
 		<div class="legal-links">
 			<a href="/privacy">{m('landing.footerPrivacy')}</a>
 			<a href="/terms">{m('landing.footerTerms')}</a>
@@ -166,6 +196,35 @@
 		letter-spacing: 0.08em;
 		color: var(--color-text-tertiary);
 		margin-bottom: var(--space-md);
+	}
+	.settings-search {
+		margin-bottom: var(--space-sm);
+	}
+	.search-results {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+	.search-hit {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0;
+	}
+	.hit-where {
+		font-size: 0.78rem;
+		font-weight: 400;
+		color: var(--color-text-secondary);
+	}
+	.search-empty {
+		margin: var(--space-xs) 0.75rem;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.search-empty:empty {
+		display: none;
 	}
 	.nav-section-label {
 		font-size: var(--font-size-section-label);

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchMyGear,
@@ -536,13 +537,7 @@
 </script>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{t('shell.settings')}</p>
-		<h1>{t('settingsGear.title')}</h1>
-		<p class="tagline">
-			{t('settingsGear.tagline')}
-		</p>
-	</header>
+	<PageHeader kicker={t('shell.settings')} title={t('settingsGear.title')} subtitle={t('settingsGear.tagline')} />
 
 	<div class="tabs">
 		<button
@@ -1042,23 +1037,6 @@
 	.page {
 		max-width: 64rem;
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-	.page-head { margin-bottom: var(--space-xl); }
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	.page-head h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 var(--space-xs); }
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
 	}
 	.tabs {
 		display: flex;

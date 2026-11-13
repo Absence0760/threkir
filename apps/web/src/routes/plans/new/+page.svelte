@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { isEntityId } from '#lib/core/entity_id.ts';
@@ -334,6 +335,8 @@
 					return;
 				}
 				showToast(m('plansNew.toastCreated'));
+				// The busy guard refuses navigation while the clone is in flight.
+				cloning = false;
 				goto(`/plans/${outcome.value}`);
 			} catch (e) {
 				showToast(m('plansNew.toastCloneFailed', { error: errorCopy(e, m, 'plansNew.toastCloneFailed') }), 'error');
@@ -404,6 +407,7 @@
 					return;
 				}
 				showToast(m('plansNew.toastCreated'));
+				creatingStarter = false;
 				goto(`/plans/${outcome.value.id}`);
 			} catch (e) {
 				showToast(
@@ -417,6 +421,10 @@
 		await run('refuse');
 	}
 </script>
+
+<!-- A starter or a club template being created can't be left mid-request
+     (NS-6); the wizard below carries its own dirty guard in PlanEditor. -->
+<UnsavedChangesGuard isDirty={() => false} isBusy={() => cloning || creatingStarter} />
 
 <svelte:head>
 	<title>{m('plansNew.pageTitle')}</title>

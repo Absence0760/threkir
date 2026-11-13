@@ -129,7 +129,7 @@ test.describe('/settings/upgrade — free user', () => {
 
 		await expect(page.getByTestId('donate-card')).toHaveCount(0);
 		await expect(page.getByRole('heading', { name: /Not ready for a subscription/i })).toHaveCount(0);
-		await expect(page.locator('.tagline')).not.toContainText(/chip in/i);
+		await expect(page.getByTestId('page-header-subtitle')).not.toContainText(/chip in/i);
 		await expect(page.locator('a[href*="github.com/sponsors"]')).toHaveCount(0);
 	});
 

@@ -313,7 +313,7 @@
               "**Priority map-matching**: your GPS tracks are snapped to roads ahead of free accounts, so they are ready sooner.",
               "**Priority cloud exports**: up to 8 GPX bundle exports an hour instead of 2.",
               "**Server route generation**: loops traced on the real street network when you generate a route by distance. Free accounts still get loop generation, worked out in the browser.",
-              "Richer route descriptions: on a route's page, **Enhance with AI** turns the standard description into a fuller paragraph.",
+              "Richer route descriptions: on a route's page, **Describe this route** writes a fuller paragraph in place of the standard description.",
               "**Log from a photo**: photograph a meal and get your food log filled in for you to check. See [[guide:log-a-meal-from-a-photo|Log a meal from a photo]]."
             ]
           },

@@ -73,7 +73,7 @@ test('the training settings read the consent stamp only under the gate', () => {
 
 test('the dashboard marks the load low-confidence only under the gate', () => {
 	assert.match(
-		read('src/routes/dashboard/+page.svelte'),
+		read('src/routes/dashboard/DashboardView.svelte'),
 		/hrPrescription && isTrimpLowConfidence\(trainingLoadHasHr, hrMedicationAffected\)/
 	);
 });

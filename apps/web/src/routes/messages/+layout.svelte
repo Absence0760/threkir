@@ -19,6 +19,7 @@
 	import { goto } from '$app/navigation';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import GroupCreateDialog from '#lib/components/GroupCreateDialog.svelte';
+	import NewMessageDialog from '#lib/components/NewMessageDialog.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -153,6 +154,7 @@
 	});
 
 	let creatingGroup = $state(false);
+	let composingMessage = $state(false);
 	let inviteBusy = $state<string | null>(null);
 	let declineTarget = $state<GroupInvite | null>(null);
 	let reportInvite = $state<GroupInvite | null>(null);
@@ -246,17 +248,28 @@
 						</button>
 					{:else}
 						<h2>{m('messages.heading')}</h2>
-						{#if messagesInbox.groupsEnabled}
+						<div class="new-actions">
 							<button
 								type="button"
-								class="btn btn-secondary btn-sm new-group"
-								data-testid="inbox-new-group"
-								onclick={() => (creatingGroup = true)}
+								class="btn btn-primary btn-sm new-group"
+								data-testid="inbox-new-message"
+								onclick={() => (composingMessage = true)}
 							>
-								<span class="material-symbols" aria-hidden="true">group_add</span>
-								{m('groups.newGroup')}
+								<span class="material-symbols" aria-hidden="true">edit</span>
+								{m('messages.newMessage')}
 							</button>
-						{/if}
+							{#if messagesInbox.groupsEnabled}
+								<button
+									type="button"
+									class="btn btn-secondary btn-sm new-group"
+									data-testid="inbox-new-group"
+									onclick={() => (creatingGroup = true)}
+								>
+									<span class="material-symbols" aria-hidden="true">group_add</span>
+									{m('groups.newGroup')}
+								</button>
+							{/if}
+						</div>
 					{/if}
 				</header>
 				{#if !showingArchived && !showingRequests}
@@ -516,6 +529,7 @@
 				{@render children()}
 			</section>
 		</div>
+		<NewMessageDialog open={composingMessage} onclose={() => (composingMessage = false)} />
 		{#if messagesInbox.groupsEnabled}
 			<GroupCreateDialog open={creatingGroup} onclose={() => (creatingGroup = false)} />
 		{/if}
@@ -592,6 +606,12 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-sm);
+	}
+	.new-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: var(--space-xs);
 	}
 	.new-group {
 		display: inline-flex;

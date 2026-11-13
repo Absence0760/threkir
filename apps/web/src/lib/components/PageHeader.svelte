@@ -5,28 +5,36 @@
 	// `.page-header` markup ~20 routes copied with their own drift: an optional
 	// back link and kicker above the h1, a help link beside it, a subtitle and
 	// any extra lines under it, and the page's actions at the end of the row.
-	// `page_chrome_guard.test.ts` fails a copied `.page-header` anywhere else.
+	// `page_chrome_guard.test.ts` fails a copied `.page-header` anywhere else,
+	// and a raw `<h1>` in a route page that is not on its allowlist.
 	//
 	// `flush` drops the bottom margin, for a page that spaces its blocks with
-	// a flex gap instead.
+	// a flex gap instead. `back.onclick` takes a `smartBack()` handler, so the
+	// link returns to the page the runner came from when there is one. `badge`
+	// renders inside the h1 after the title (an `OfficialBadge`), so it is part
+	// of the heading's name. `testid` names the header; `titleTestid` the h1.
 	let {
 		title,
 		kicker,
 		subtitle,
 		back,
 		help,
+		badge,
 		sub,
 		actions,
 		children,
 		flush = false,
 		testid,
+		titleTestid,
 	}: {
 		title: string;
 		kicker?: string;
 		subtitle?: string;
-		back?: { href: string; label: string };
+		back?: { href: string; label: string; onclick?: (e: MouseEvent) => void };
 		/// Rendered beside the h1, usually a `HelpLink`.
 		help?: Snippet;
+		/// Rendered inside the h1 after the title.
+		badge?: Snippet;
 		/// Replaces `subtitle` when the line needs markup.
 		sub?: Snippet;
 		actions?: Snippet;
@@ -34,20 +42,21 @@
 		children?: Snippet;
 		flush?: boolean;
 		testid?: string;
+		titleTestid?: string;
 	} = $props();
 </script>
 
 <header class="page-head" class:flush data-testid={testid ?? 'page-header'}>
 	<div class="page-head-text">
 		{#if back}
-			<a class="page-head-back" href={back.href}>
+			<a class="page-head-back" href={back.href} onclick={back.onclick}>
 				<span class="material-symbols" aria-hidden="true">arrow_back</span>
 				{back.label}
 			</a>
 		{/if}
 		{#if kicker}<p class="page-head-kicker" data-testid="page-header-kicker">{kicker}</p>{/if}
 		<div class="page-head-title">
-			<h1>{title}</h1>
+			<h1 data-testid={titleTestid}>{title}{#if badge}{@render badge()}{/if}</h1>
 			{#if help}{@render help()}{/if}
 		</div>
 		{#if sub}

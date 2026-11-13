@@ -30,6 +30,8 @@
 		type SeasonUnplacedReason,
 	} from '#lib/training/season_plan.ts';
 	import { createSeasonPlans, type SeasonCreated } from '#lib/training/season_create.ts';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 
 	interface RaceRow {
 		key: number;
@@ -79,6 +81,11 @@
 	let failedIndex = $state<number | null>(null);
 	let createError = $state<string | null>(null);
 	let overlapping = $state<OverlapPlan[]>([]);
+
+	// Unsaved-changes guard (issue #1374 NS-7, twin of mobile's Season plan
+	// guard, decisions § 2500): the races, the week shape and the request
+	// text. While the plans are being created, leaving is refused.
+	const dirty = trackDirty(() => ({ rows, daysPerWeek, request }));
 
 	const REQUEST_ERROR_KEYS: Record<PlanRequestErrorKind, MessageKey> = {
 		consent: 'seasonPlanner.errorConsent',
@@ -263,6 +270,8 @@
 							});
 			} else {
 				showToast(m('seasonPlanner.createdToast', { count: outcome.created.length }), 'success');
+				dirty.rebaseline();
+				creating = false;
 				await goto(`/plans/${outcome.created[0].id}`);
 			}
 		} catch (e) {
@@ -273,6 +282,8 @@
 		}
 	}
 </script>
+
+<UnsavedChangesGuard isDirty={dirty.isDirty} isBusy={() => creating} />
 
 <div class="season-planner">
 	{#if showAssistant}

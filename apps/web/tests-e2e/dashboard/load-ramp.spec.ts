@@ -77,7 +77,7 @@ test.describe('dashboard training-load-ramp card', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			const card = page.getByTestId('load-ramp');
 			await expect(card).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByTestId('load-ramp-band')).toHaveText(/high/i);
@@ -94,7 +94,7 @@ test.describe('dashboard training-load-ramp card', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(page.getByTestId('load-ramp')).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByTestId('load-ramp-band')).toHaveText(/optimal/i);
 		} finally {
@@ -107,7 +107,7 @@ test.describe('dashboard training-load-ramp card', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			// Anchor on a stat the dashboard always renders: a bare
 			// toHaveCount(0) also passes on a page that never loaded, so the
 			// absence only means something once the dashboard is up.

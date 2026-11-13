@@ -20,7 +20,7 @@ import { insertRun } from '../fixtures/simulate';
  * What none of them does, and this one does: drive the pref change
  * through the REAL Settings → Units & display UI toggle (not a service-role
  * write) and then prove the new value lands on MULTIPLE distinct
- * surfaces — /runs list, /dashboard recent-runs, /runs/[id] detail — in
+ * surfaces — /runs list, /dashboard/progress recent-runs, /runs/[id] detail — in
  * ONE journey, then revert and prove every surface reverts too.
  *
  * Isolation: an EPHEMERAL saga user, NOT the shared seed user. The seed
@@ -142,9 +142,9 @@ test.describe('saga: unit pref flip propagates across runs list + dashboard + de
 				);
 			});
 
-			// ── Step 2: km baseline on /dashboard (recent runs) ──────
-			await test.step('km: /dashboard recent-runs render in km + pace /km', async () => {
-				await page.goto('/dashboard');
+			// ── Step 2: km baseline on /dashboard/progress (recent runs) ──────
+			await test.step('km: /dashboard/progress recent-runs render in km + pace /km', async () => {
+				await page.goto('/dashboard/progress');
 				await expect(dashRowA).toBeVisible({ timeout: 10_000 });
 				await expect(dashRowA.locator('.run-distance')).toHaveText(RUN_A_KM_TEXT);
 				await expect(dashRowA.locator('.run-pace')).toContainText('/km');
@@ -184,9 +184,9 @@ test.describe('saga: unit pref flip propagates across runs list + dashboard + de
 				);
 			});
 
-			// ── Step 5: /dashboard follows the flip too ──────────────
-			await test.step('mi: /dashboard recent-runs re-render in mi + pace /mi', async () => {
-				await page.goto('/dashboard');
+			// ── Step 5: /dashboard/progress follows the flip too ──────────────
+			await test.step('mi: /dashboard/progress recent-runs re-render in mi + pace /mi', async () => {
+				await page.goto('/dashboard/progress');
 				await expect(dashRowA).toBeVisible({ timeout: 10_000 });
 				await expect(dashRowA.locator('.run-distance')).toHaveText(RUN_A_MI_TEXT);
 				await expect(dashRowA.locator('.run-pace')).toContainText('/mi');
@@ -232,8 +232,8 @@ test.describe('saga: unit pref flip propagates across runs list + dashboard + de
 					RUN_B_KM_TEXT,
 				);
 
-				// /dashboard reverts.
-				await page.goto('/dashboard');
+				// /dashboard/progress reverts.
+				await page.goto('/dashboard/progress');
 				await expect(dashRowA).toBeVisible({ timeout: 10_000 });
 				await expect(dashRowA.locator('.run-distance')).toHaveText(RUN_A_KM_TEXT);
 

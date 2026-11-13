@@ -37,7 +37,7 @@ parity pair into the house lockstep registry so it stops drifting.
   stat-card grid + badge grid + monthly bar chart + closing CTA + `shareRecap()`
   (Web Share API w/ image file → download → text fallback). Fully i18n'd
   (`recap.*` keys). Entry points already wired in
-  `apps/web/src/routes/+layout.svelte` + `apps/web/src/routes/dashboard/+page.svelte`.
+  `apps/web/src/routes/+layout.svelte` + `apps/web/src/routes/dashboard/DashboardView.svelte`.
 - **Web data helper:** `fetchRecapExtras(year)` in
   `apps/web/src/lib/core/data.ts:157` (photo + personal-record counts).
 - **Web e2e:** `apps/web/tests-e2e/recap/page.spec.ts`.

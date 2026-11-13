@@ -206,7 +206,7 @@ test.describe('/clubs/[slug]/events/[id] — cancel one occurrence', () => {
 		});
 
 		await page.goto('/dashboard');
-		await expect(page.getByTestId('dash-total-runs')).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('today-progress-summary')).toBeVisible({ timeout: 15_000 });
 		await expect(page.locator('.event-card', { hasText: title })).toBeVisible({
 			timeout: 15_000
 		});
@@ -223,7 +223,7 @@ test.describe('/clubs/[slug]/events/[id] — cancel one occurrence', () => {
 		await page.goto('/dashboard');
 		// Wait for the dashboard to have actually rendered before asserting an
 		// absence, or the assertion passes on an empty page.
-		await expect(page.getByTestId('dash-total-runs')).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('today-progress-summary')).toBeVisible({ timeout: 15_000 });
 		await expect(page.locator('.event-card', { hasText: title })).toHaveCount(0);
 	});
 });

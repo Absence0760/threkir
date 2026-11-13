@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { AppError } from '#lib/core/app_error.ts';
 	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -1222,13 +1223,7 @@
 </script>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{m('shell.settings')}</p>
-		<h1>{m('settingsAccount.title')}</h1>
-		<p class="tagline">
-			{m('settingsAccount.tagline')}
-		</p>
-	</header>
+	<PageHeader kicker={m('shell.settings')} title={m('settingsAccount.title')} subtitle={m('settingsAccount.tagline')} />
 
 	<!-- Profile -->
 	<section class="card">
@@ -1918,23 +1913,6 @@
 
 <style>
 	.page { padding: var(--page-padding-y) var(--page-padding-x); max-width: 64rem; }
-	.page-head { margin-bottom: var(--space-xl); }
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 var(--space-xs); }
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
-	}
 	h2 { font-size: 0.9rem; font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-lg); }
 	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-xl); }
 	.profile-fields { border: 0; margin: 0; padding: 0; min-width: 0; }

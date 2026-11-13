@@ -313,7 +313,7 @@
               "**Map-matching prioritário**: os seus trajetos GPS são ajustados às estradas antes dos das contas gratuitas, por isso ficam prontos mais cedo.",
               "**Exportações para a nuvem prioritárias**: até 8 exportações de pacotes GPX por hora em vez de 2.",
               "**Geração de rotas no servidor**: circuitos traçados na rede viária real quando gera uma rota por distância. As contas gratuitas continuam a ter geração de circuitos, calculada no navegador.",
-              "Descrições de rotas mais ricas: na página de uma rota, **Melhorar com IA** transforma a descrição normal num parágrafo mais completo.",
+              "Descrições de rotas mais ricas: na página de uma rota, **Descrever esta rota** escreve um parágrafo mais completo em vez da descrição normal.",
               "**Registar a partir de uma fotografia**: fotografe uma refeição e o seu registo alimentar é preenchido para o verificar. Consulte [[guide:log-a-meal-from-a-photo|Registar uma refeição a partir de uma fotografia]]."
             ]
           },

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchSessionPlans, type SessionPlan } from '#lib/core/data.ts';
@@ -48,18 +49,13 @@
 <svelte:head><title>{t('session.title')}</title></svelte:head>
 
 <div class="page">
-	<header class="page-head">
-		<div class="head-text">
-			<a class="back-link" href="/gym">
-				<span class="material-symbols" aria-hidden="true">arrow_back</span>
-				{t('gym.back')}
-			</a>
-			<h1>{t('session.title')}</h1>
-		</div>
-		<button type="button" class="btn btn-primary" onclick={() => (showCreate = true)}>
-			{t('session.new')}
-		</button>
-	</header>
+	<PageHeader back={{ href: '/gym', label: t('gym.back') }} title={t('session.title')}>
+		{#snippet actions()}
+			<button type="button" class="btn btn-primary" onclick={() => (showCreate = true)}>
+				{t('session.new')}
+			</button>
+		{/snippet}
+	</PageHeader>
 
 	{#if loading}
 		<p class="muted">…</p>
@@ -105,21 +101,6 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-	.page-head {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-		margin-bottom: var(--space-lg);
-	}
-	.back-link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		color: var(--color-text-tertiary);
-		font-size: 0.9rem;
 	}
 	.muted {
 		color: var(--color-text-tertiary);

@@ -29,7 +29,7 @@ import {
 
 const GOAL_KEY = `run_app.goals_v1:${USER_A.id}`;
 
-test.describe('runs ↔ goals on /dashboard', () => {
+test.describe('runs ↔ goals on /dashboard/progress', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	let runId: string | null = null;
@@ -80,7 +80,7 @@ test.describe('runs ↔ goals on /dashboard', () => {
 			metadata: { activity_type: 'run' }
 		});
 
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 
 		// Wait for at least one goal-card to render past the loading
 		// state. Recent Runs visibility implies fetchRuns resolved,

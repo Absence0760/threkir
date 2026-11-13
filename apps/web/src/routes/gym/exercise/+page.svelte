@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { page } from '$app/state';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchExerciseSetHistoryWithError } from '#lib/core/data.ts';
@@ -122,8 +123,7 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
-		<header class="head">
-			<h1>{progress.exerciseName}</h1>
+		<PageHeader title={progress.exerciseName} testid="exercise-head">
 			<div class="headline">
 				{#if progress.latestEst1RmKg != null}
 					<span class="big-1rm">{formatWeight(progress.latestEst1RmKg)}</span>
@@ -143,7 +143,7 @@
 				{/if}
 			</div>
 			<p class="sub">{sessionsText(progress.sessions.length)}</p>
-		</header>
+		</PageHeader>
 
 		<ul class="session-list">
 			{#each reversed as s (s.workoutId)}
@@ -206,13 +206,6 @@
 		border-radius: var(--radius-sm);
 	}
 
-	.head {
-		margin-bottom: var(--space-xl);
-	}
-	.head h1 {
-		margin: 0 0 var(--space-2xs);
-		font-size: 1.6rem;
-	}
 	.headline {
 		display: flex;
 		align-items: baseline;

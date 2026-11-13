@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dmRelationLabelKey } from '#lib/social/dm_relation_label.ts';
 	import Modal from './Modal.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -114,9 +115,7 @@
 	}
 
 	function relationLabel(r: DmRecipient): string {
-		if (r.relation === 'mutual') return tr('routeDetail.sendDm.relationMutual');
-		if (r.relation === 'follows_you') return tr('routeDetail.sendDm.relationFollowsYou');
-		return tr('routeDetail.sendDm.relationYouFollow');
+		return tr(dmRelationLabelKey(r.relation));
 	}
 </script>
 

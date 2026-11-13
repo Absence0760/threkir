@@ -40,7 +40,7 @@ async function setWeekStart(userId: string, day: 'monday' | 'sunday') {
 	if (error) throw new Error(`setting week_start_day failed: ${error.message}`);
 }
 
-test.describe('/dashboard week lead vs mileage chart', () => {
+test.describe('/dashboard/progress week lead vs mileage chart', () => {
 	let runner: SagaUser;
 
 	test.beforeAll(async () => {
@@ -70,7 +70,7 @@ test.describe('/dashboard week lead vs mileage chart', () => {
 			const page = await ctx.newPage();
 			try {
 				await page.clock.setFixedTime(browserDayAt(SATURDAY, 22));
-				await page.goto('/dashboard');
+				await page.goto('/dashboard/progress');
 
 				await expect(page.getByTestId('dash-week-lead-distance')).toContainText(expected, {
 					timeout: 15_000,

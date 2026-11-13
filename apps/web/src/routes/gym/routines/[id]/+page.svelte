@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { smartBack } from '#lib/util/smart_back.ts';
@@ -168,17 +169,15 @@
 	{:else if !detail}
 		<p class="not-found">{t('gym.routine.notFound')}</p>
 	{:else}
-		<header class="detail-header">
-			<div>
-				<h1>{detail.routine.title}{#if detail.routine.is_official}<OfficialBadge size={18} />{/if}</h1>
-				<p class="head-sub">
-					{t('gym.routine.exerciseCount', { count: detail.routine.exercise_count })}
-				</p>
-				{#if detail.routine.notes}
-					<p class="notes">{detail.routine.notes}</p>
-				{/if}
-			</div>
-			<div class="head-actions">
+		<PageHeader
+			title={detail.routine.title}
+			subtitle={t('gym.routine.exerciseCount', { count: detail.routine.exercise_count })}
+		>
+			{#snippet badge()}{#if detail?.routine.is_official}<OfficialBadge size={18} />{/if}{/snippet}
+			{#if detail.routine.notes}
+				<p class="notes">{detail.routine.notes}</p>
+			{/if}
+			{#snippet actions()}
 				<button
 					class="btn btn-primary"
 					onclick={() => goto(`/gym/session/${routineId}`)}
@@ -194,8 +193,8 @@
 				>
 					{t('gym.routine.delete')}
 				</button>
-			</div>
-		</header>
+			{/snippet}
+		</PageHeader>
 
 		{#if detail.routine.club_id}
 			<p class="club-template-badge" data-testid="routine-club-template">
@@ -322,25 +321,8 @@
 		color: var(--color-text-tertiary);
 		font-size: 0.9rem;
 	}
-	.detail-header {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-		margin: var(--space-sm) 0 var(--space-lg);
-	}
-	.head-sub {
-		color: var(--color-text-tertiary);
-		margin: var(--space-2xs) 0 0;
-	}
 	.notes {
-		margin: var(--space-2xs) 0 0;
-	}
-	.head-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
+		margin: 0;
 	}
 	.publish-row {
 		display: flex;

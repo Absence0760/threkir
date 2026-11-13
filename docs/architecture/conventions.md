@@ -1238,7 +1238,11 @@ The You tab and every settings page are owned by ui_kit components, so a page de
 - **Preferences is web's five pages** (`PreferencesPage`, in `preferences_ia.ts`'s order), each one subject, each listed on You. A link into one names the page (`SettingsDestination.training`, `.privacy`, …), never a single "Preferences". A page holds one subject and stays short; a new row goes on the page of its subject and into `preferencesRowTitles`, which You's settings search reads (`preferences_search_index_test.dart` fails when the two disagree).
 - `settings_layout_guard_test.dart` fails a hand-built eyebrow (an uppercased `labelSmall`), a hand-built section title (`titleMedium` / `titleSmall`) or a hand-built `ListTile` / `SwitchListTile` in You or a settings page, against per-file counts of what is left that may only shrink.
 
-## Mobile upsells — `ProUpsellLink`, never "upgrade in Settings"
+## Upsells — `ProUpsellLink`, never "upgrade in Settings"
+
+**Web:** every upsell renders `ProUpsellLink.svelte` (`message`, then a "See Pro" link to `/settings/upgrade`), inline so it can sit in an error line or a note. `upsell_link_guard.test.ts` mirrors the mobile guard below over `locales/en.ts`: no string sends the reader to Settings to upgrade, and every string naming Pro outside the Pro page's own keys is in `UPSELLS` (each file reading it renders `ProUpsellLink`) or `EXEMPT` with a reason; both lists only shrink.
+
+**Mobile:**
 
 Every upsell on the Flutter apps draws `ProUpsellLink` (`lib/widgets/pro_upsell_link.dart`): the reason Pro would help, then a "See Pro" link that opens the Pro screen through the shell's settings seam (`openSettings(SettingsDestination.pro)`, below). The string gives the reason only; the link is the directions. The prompts it replaced (the Coach's daily cap, AI route descriptions) said "upgrade in Settings" and stopped there (issue #1374 finding 11). `upsell_link_guard_test.dart` fails an English string that sends the reader to Settings to upgrade, and any string outside the Pro screen's own `pro*` keys that names Pro unless it is a registered upsell (whose readers build a `ProUpsellLink`) or exempt with a reason.
 
@@ -1623,8 +1627,8 @@ The web twins of ui_kit's `FilterBar` / `AppSearchField` (§ Mobile hub tabs and
 
 - **A list's search and filters are one `FilterBar.svelte`.** Its `search` slot holds one `AppSearchField.svelte`, which always has a clear button. Its `chips` are data (`FilterChip`: label, pressed, onclick), so a quick chip can only toggle a filter and never link anywhere; they sit on one line that scrolls sideways and never wraps, with the `activeFilters` after them as removable chips. Everything else goes in the `filters` snippet, which the Filters button (carrying the active count) opens in a `Modal` that traps focus and hands it back on close; changes there apply at once and Done closes it. `idPrefix` names the parts for tests (`<prefix>-filters-toggle`, `-filter-count`, `-active-filters`, `-filters-panel`, `-filters-done`).
 - **A filter's explanation lives in the sheet, beside its control.** On a page swept by `control_hints_guard.test.ts` the controls in the `filters` snippet point at their hint with `aria-describedby`, and the hint is inside the same snippet, so the explanation and the control open together; the always-visible bar carries no hint paragraphs.
-- **A page's title block is `PageHeader.svelte`**: optional `back` link and `kicker`, the h1 with a `help` slot beside it, `subtitle` (or a `sub` snippet), extra lines as children, and `actions` at the end of the row. `flush` drops the bottom margin for a page laid out with a flex gap.
-- `apps/web/src/lib/page_chrome_guard.test.ts` fails a hand-built `type="search"` input or a `.page-header` class outside these components. Its allowlist may only shrink: an entry that no longer needs its exemption fails too.
+- **A page's title block is `PageHeader.svelte`**: optional `back` link (with an `onclick` for `smartBack()`) and `kicker`, the h1 with a `badge` snippet inside it (an `OfficialBadge`, so it stays part of the heading's name) and a `help` slot beside it, `subtitle` (or a `sub` snippet), extra lines as children, and `actions` at the end of the row. `flush` drops the bottom margin for a page laid out with a flex gap; `testid` / `titleTestid` name the header and the h1. A page's not-authorized or not-found card renders its title through `PageHeader` too.
+- `apps/web/src/lib/page_chrome_guard.test.ts` fails a hand-built `type="search"` input or a `.page-header` class outside these components, and a route page (`src/routes/**/+page.svelte`) that renders a raw `<h1>` of its own (a `visually-hidden` h1 is exempt). The h1 allowlist names, per file, the pages that are not an ordinary app page: the landing and compare pages, `/learn`, the legal documents, the public `/share` cards, auth, onboarding and token-link cards, entity heroes (run, route, segment, race, club, event, profile, plan, live, recap, park pages) and a few one-offs (the guided library's marketing hero, a help guide article, the printable roadbook, the route builder). Every allowlist may only shrink: an entry that no longer needs its exemption fails too.
 
 ## Web status / accent colour tokens — pick the variant for the JOB
 
@@ -1771,7 +1775,7 @@ Most settings auto-save (decisions § 111); a section holding Art 9 data saves o
 
 - **Each section states its save model in place**, next to its controls: the auto-save section shows its own Saving / Saved status, the explicit one says it saves only on its button.
 - **The explicit section shows an unsaved-changes state** the moment it is edited, and clears it on a successful save.
-- **The explicit section guards navigation** while it is dirty — `UnsavedChangesGuard` on web, the same prompt-on-pop on mobile — so leaving the page cannot silently drop an edit the runner believed was kept.
+- **The explicit section guards navigation** while it is dirty — `UnsavedChangesGuard` on web (whose `isBusy` refuses leaving with a "Still saving" toast while a create or save is on the wire, decisions § 2500; the decision order is `core/leave_guard.ts`), the same prompt-on-pop on mobile — so leaving the page cannot silently drop an edit the runner believed was kept.
 
 ## Web list pages — preserve scroll on back-navigation
 

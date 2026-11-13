@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
@@ -52,10 +53,7 @@
 </svelte:head>
 
 <div class="page">
-	<header>
-		<h1>{m('shares.heading')}</h1>
-		<p class="tagline">{m('shares.tagline')}</p>
-	</header>
+	<PageHeader title={m('shares.heading')} subtitle={m('shares.tagline')} />
 
 	{#if view.kind === 'loading'}
 		<p class="state" role="status">{m('shares.loading')}</p>
@@ -121,20 +119,12 @@
 		max-width: 48rem;
 		padding: var(--space-lg) var(--space-md);
 	}
-	h1 {
-		font-size: 1.5rem;
-		margin: 0 0 var(--space-xs);
-	}
-	.tagline,
 	.footnote,
 	.bots {
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
 		line-height: 1.5;
 		margin: 0;
-	}
-	header {
-		margin-bottom: var(--space-lg);
 	}
 	.state {
 		color: var(--color-text-secondary);

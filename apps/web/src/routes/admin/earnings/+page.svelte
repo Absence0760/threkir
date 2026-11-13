@@ -2,6 +2,7 @@
 	import { onMount, tick } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import {
 		amIAdmin,
 		fetchPlatformFeeMonths,
@@ -94,14 +95,10 @@
 		<p class="muted">…</p>
 	{:else if !isAdmin}
 		<div class="card-elevated not-authorized" data-testid="earnings-not-authorized">
-			<h1>{t('admin.earnings.notAuthorized')}</h1>
-			<p class="muted">{t('admin.earnings.notAuthorizedHint')}</p>
+			<PageHeader flush title={t('admin.earnings.notAuthorized')} subtitle={t('admin.earnings.notAuthorizedHint')} />
 		</div>
 	{:else}
-		<header>
-			<h1>{t('admin.earnings.title')}</h1>
-			<p class="muted">{t('admin.earnings.subtitle')}</p>
-		</header>
+		<PageHeader flush title={t('admin.earnings.title')} subtitle={t('admin.earnings.subtitle')} />
 
 		{#if loadError}
 			<EmptyState icon="error" tone="danger" title={loadError} role="alert" data-testid="earnings-load-error" />
@@ -238,11 +235,6 @@
 		flex-direction: column;
 		gap: var(--space-lg);
 	}
-	header h1,
-	.not-authorized h1 {
-		margin: 0 0 0.25rem;
-		font-size: 1.4rem;
-	}
 	h2 {
 		margin: 0 0 var(--space-sm);
 		font-size: 1.05rem;
@@ -255,7 +247,6 @@
 	}
 	.not-authorized {
 		padding: var(--space-xl);
-		text-align: center;
 	}
 	.totals {
 		list-style: none;

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { siteOrigin } from '#lib/core/site_url.ts';
+	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
@@ -995,8 +996,7 @@
 						{/if}
 						{#if showUpgradeHint && coachOn}
 							<p class="desc-upgrade">
-								{m('routeDetail.enhanceUpgradeHint')}
-								<a href="/settings/upgrade">{m('routeDetail.enhanceAi')}</a>
+								<ProUpsellLink message={m('routeDetail.enhanceUpgradeHint')} testid="route-enhance-upsell" />
 							</p>
 						{/if}
 						{#if describeError}

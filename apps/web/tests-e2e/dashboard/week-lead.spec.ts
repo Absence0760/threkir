@@ -8,7 +8,7 @@ import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
- * /dashboard leads with this week (#905 workstream 3).
+ * /dashboard/progress leads with this week (#905 workstream 3).
  *
  * An account with runs used to open on the plan hero, or the plan promo, and
  * then a source filter and a stat grid — with the only "Add a run" action
@@ -21,7 +21,9 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  * the week's climb (§ 2283).
  * Nothing below it moved out of existence, so the stat grid and the plan hero
  * are asserted present as well as ordered. Since #1187 the adaptive Today hero
- * sits above the lead (decisions § 2385).
+ * leads Today (decisions § 2385); since the Today / Progress split
+ * (decisions § 2492) the week lead opens Progress and the Add or import menu
+ * sits in Today's header.
  */
 
 async function precedes(a: Locator, b: Locator): Promise<boolean> {
@@ -32,7 +34,7 @@ async function precedes(a: Locator, b: Locator): Promise<boolean> {
 	);
 }
 
-test.describe('/dashboard — this week leads', () => {
+test.describe('/dashboard/progress — this week leads', () => {
 	let user: SagaUser;
 
 	test.beforeAll(async () => {
@@ -66,16 +68,8 @@ test.describe('/dashboard — this week leads', () => {
 			await acceptCookieConsent(ctx);
 			const page = await ctx.newPage();
 			try {
+				// Add a run lives in Today's header menu, above the fold.
 				await page.goto('/dashboard');
-				const lead = page.getByTestId('dash-week-lead');
-				await expect(lead).toBeVisible({ timeout: 15_000 });
-
-				await expect(lead.getByTestId('dash-week-lead-distance')).toContainText(/1 activity/);
-				await expect(lead.getByTestId('dash-week-lead-vs')).toContainText(/weekly average over the last \d weeks/i);
-				await expect(lead.getByTestId('dash-week-lead-next')).toHaveCount(0);
-
-				// The lead carries no actions of its own any more.
-				await expect(lead.getByRole('link')).toHaveCount(0);
 				const trigger = page.getByTestId('dash-actions-trigger');
 				await expect(trigger).toBeInViewport();
 				await expect(trigger).toHaveAttribute('aria-expanded', 'false');
@@ -91,6 +85,17 @@ test.describe('/dashboard — this week leads', () => {
 				await page.keyboard.press('Escape');
 				await expect(menu).toHaveCount(0);
 				await expect(trigger).toBeFocused();
+
+				await page.goto('/dashboard/progress');
+				const lead = page.getByTestId('dash-week-lead');
+				await expect(lead).toBeVisible({ timeout: 15_000 });
+
+				await expect(lead.getByTestId('dash-week-lead-distance')).toContainText(/1 activity/);
+				await expect(lead.getByTestId('dash-week-lead-vs')).toContainText(/weekly average over the last \d weeks/i);
+				await expect(lead.getByTestId('dash-week-lead-next')).toHaveCount(0);
+
+				// The lead carries no actions of its own any more.
+				await expect(lead.getByRole('link')).toHaveCount(0);
 
 				// One this-week view: no Week tile in the grid, no day strip.
 				await expect(page.locator('.stat-grid').getByText('This Week', { exact: true })).toHaveCount(0);
@@ -167,7 +172,7 @@ test.describe('/dashboard — this week leads', () => {
 			// A click outside closes it.
 			await trigger.click();
 			await expect(menu).toBeVisible();
-			await page.getByTestId('dash-week-lead-vs').click({ position: { x: 2, y: 2 } });
+			await page.getByRole('heading', { level: 1, name: 'Today' }).click({ position: { x: 2, y: 2 } });
 			await expect(menu).toHaveCount(0);
 			await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 		} finally {
@@ -182,7 +187,7 @@ test.describe('/dashboard — this week leads', () => {
 		});
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			const lead = page.getByTestId('dash-week-lead');
 			await expect(lead).toBeVisible({ timeout: 15_000 });
 			await expect(lead.getByTestId('dash-week-lead-vs')).toContainText(/weekly goal/i);
@@ -196,19 +201,24 @@ test.describe('/dashboard — this week leads', () => {
 	test.describe('with an active plan', () => {
 		test.use({ storageState: USER_A.storageStatePath });
 
-		test('the plan hero leads the page, and the next session sits in the lead under it', async ({ page }) => {
+		test('the plan hero leads Today, and the next session sits in the lead on Progress', async ({ page }) => {
 			await page.goto('/dashboard');
-			const lead = page.getByTestId('dash-week-lead');
-			await expect(lead).toBeVisible({ timeout: 15_000 });
-			await expect(lead.getByTestId('dash-week-lead-next')).toBeVisible();
-			await expect(page.getByTestId('dash-actions-trigger')).toBeInViewport();
+			await expect(page.getByTestId('dash-actions-trigger')).toBeInViewport({ timeout: 15_000 });
 
 			// The adaptive Today hero comes first (decisions § 2385); on a plan it
-			// is the plan hero.
+			// is the plan hero, above the progress summary.
 			const hero = page.locator('.plan-hero');
 			await expect(hero).toBeVisible();
 			await expect(hero).toHaveAttribute('data-testid', 'dash-today-hero');
-			expect(await precedes(hero, lead)).toBe(true);
+			const summary = page.getByTestId('today-progress-summary');
+			await expect(summary).toBeVisible();
+			expect(await precedes(hero, summary)).toBe(true);
+			await expect(page.getByTestId('dash-week-lead')).toHaveCount(0);
+
+			await page.goto('/dashboard/progress');
+			const lead = page.getByTestId('dash-week-lead');
+			await expect(lead).toBeVisible({ timeout: 15_000 });
+			await expect(lead.getByTestId('dash-week-lead-next')).toBeVisible();
 		});
 	});
 
@@ -219,7 +229,7 @@ test.describe('/dashboard — this week leads', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			const lead = page.getByTestId('dash-week-lead');
 			await expect(lead).toBeVisible({ timeout: 15_000 });
 			await lead.getByTestId('dash-week-lead-open').click();

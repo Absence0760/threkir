@@ -40,7 +40,7 @@ test('describe: every field, in priority order', () => {
 	assert.equal(
 		describe(FULL),
 		'Race: Richmond Marathon on 2026-11-14. Distance: 42.2 km. Goal time: 3:45:00. ' +
-			'Recent effort: 10 km in 48:30, 12 days ago. Course: 250 m ascent, 240 m descent, road surface.',
+			'Recent effort: 10 km in 48:30, 12 days ago. Course: 250 m ascent, 240 m descent, surface: road.',
 	);
 });
 
@@ -77,7 +77,7 @@ test('describe: the 600-char cap holds for an absurd listing', () => {
 	assert.equal(RACE_PLAN_DESCRIBE_MAX, 600);
 	assert.ok(out.length <= 600, String(out.length));
 	assert.ok(out.startsWith(`Race: ${'x'.repeat(120)} on 2026-11-14. Distance: 42.2 km.`), out);
-	assert.ok(out.endsWith(`${'y'.repeat(40)} surface.`), out);
+	assert.ok(out.endsWith(`surface: ${'y'.repeat(40)}.`), out);
 });
 
 test('describe: a tighter cap drops lower-priority sentences whole', () => {
@@ -103,7 +103,7 @@ test('describe: a miles runner reads miles and feet', () => {
 	assert.equal(
 		describe({ ...FULL, unit: 'mi' }),
 		'Race: Richmond Marathon on 2026-11-14. Distance: 26.2 mi. Goal time: 3:45:00. ' +
-			'Recent effort: 6.2 mi in 48:30, 12 days ago. Course: 822 ft ascent, 787 ft descent, road surface.',
+			'Recent effort: 6.2 mi in 48:30, 12 days ago. Course: 822 ft ascent, 787 ft descent, surface: road.',
 	);
 });
 

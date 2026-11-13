@@ -45,7 +45,7 @@ void main() {
     expect(
       _full(),
       'Race: Richmond Marathon on 2026-11-14. Distance: 42.2 km. Goal time: 3:45:00. '
-      'Recent effort: 10 km in 48:30, 12 days ago. Course: 250 m ascent, 240 m descent, road surface.',
+      'Recent effort: 10 km in 48:30, 12 days ago. Course: 250 m ascent, 240 m descent, surface: road.',
     );
   });
 
@@ -92,7 +92,7 @@ void main() {
     expect(out.startsWith('Race: ${'x' * 120} on 2026-11-14. Distance: 42.2 km.'),
         isTrue,
         reason: out);
-    expect(out.endsWith('${'y' * 40} surface.'), isTrue, reason: out);
+    expect(out.endsWith('surface: ${'y' * 40}.'), isTrue, reason: out);
   });
 
   test('describe: a tighter cap drops lower-priority sentences whole', () {
@@ -143,7 +143,7 @@ void main() {
         unit: DistanceUnit.mi,
       ),
       'Race: Richmond Marathon on 2026-11-14. Distance: 26.2 mi. Goal time: 3:45:00. '
-      'Recent effort: 6.2 mi in 48:30, 12 days ago. Course: 822 ft ascent, 787 ft descent, road surface.',
+      'Recent effort: 6.2 mi in 48:30, 12 days ago. Course: 822 ft ascent, 787 ft descent, surface: road.',
     );
   });
 

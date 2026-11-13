@@ -20583,7 +20583,7 @@
       }
     }
   },
-  "racePlanDescribeSurface": "{surface} surface",
+  "racePlanDescribeSurface": "surface: {surface}",
   "@racePlanDescribeSurface": {
     "description": "A sentence of the AI plan box prefill a race opens (Surface)",
     "placeholders": {

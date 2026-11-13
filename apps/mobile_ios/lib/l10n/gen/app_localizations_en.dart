@@ -15445,7 +15445,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String racePlanDescribeSurface(String surface) {
-    return '$surface surface';
+    return 'surface: $surface';
   }
 
   @override

@@ -25141,7 +25141,7 @@ abstract class AppLocalizations {
   /// A sentence of the AI plan box prefill a race opens (Surface)
   ///
   /// In en, this message translates to:
-  /// **'{surface} surface'**
+  /// **'surface: {surface}'**
   String racePlanDescribeSurface(String surface);
 
   /// A sentence of the AI plan box prefill a race opens (ListSeparator)

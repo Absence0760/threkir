@@ -4793,7 +4793,7 @@ export const en = {
 	"racePlan.describeCourse": "Course: {parts}.",
 	"racePlan.describeAscent": "{climb} ascent",
 	"racePlan.describeDescent": "{climb} descent",
-	"racePlan.describeSurface": "{surface} surface",
+	"racePlan.describeSurface": "surface: {surface}",
 	"racePlan.describeListSeparator": ", ",
 	"races.addToSeason": "Add to my season",
 	"races.addToSeasonHint": "Starts after {plan} ends on {date}, with {days} days to recover.",

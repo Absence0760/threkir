@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/smtp"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -444,6 +445,10 @@ var kindMutePrefKey = map[string]string{
 	// per-minute job also reads it and raises no starting-soon row at all.
 	"race_starting_soon": "notify_race_starting_soon",
 	"race_start_moved":   "notify_race_starting_soon",
+	// Clock-raised, so enqueue_park_course_month_notices reads the same key and
+	// raises no row for a muted runner; this entry holds the mute for a row
+	// raised before the runner turned it off (issue #1343).
+	"park_course_month_closed": "notify_park_course_month",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the
@@ -616,6 +621,14 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// The admins' moderation queue, where course reports sort by the
 		// land-manager deadline; the row carries no target (decisions § 2449).
 		return base + "/admin/reports"
+	case "park_course_month_closed":
+		// The course's own page on the closed month's board (issue #1343). The
+		// projection embeds the slugs; a course gone since the row was raised
+		// cascades the row away, so a missing slug only means a partial read.
+		if p := parkCourseMonthPath(n); p != "" {
+			return base + p
+		}
+		return inboxPath(base, n)
 	case "organiser_dispute":
 		// Both sides read the decision and any rename deadline on the disputes
 		// page; the row carries only the reporting club (decisions § 2441).
@@ -1293,4 +1306,21 @@ func badgePath(base string, n NotificationRow) string {
 		return base + "/share/badge/" + *n.AchievementID
 	}
 	return inboxPath(base, n)
+}
+
+// parkCourseMonthPath is /parks/{region}/{park}/{course}?period=YYYY-MM for a
+// 'park_course_month_closed' row, or "" when the row lacks any part of it.
+// The region segment is the ISO 3166-2 code lower-cased, as the web routes it.
+func parkCourseMonthPath(n NotificationRow) string {
+	c := n.ParkCourse
+	if c == nil || c.Park == nil || c.Slug == "" || c.Park.Slug == "" || c.Park.RegionCode == "" {
+		return ""
+	}
+	if n.ParkCourseMonth == nil || len(*n.ParkCourseMonth) < 7 {
+		return ""
+	}
+	return "/parks/" + url.PathEscape(strings.ToLower(c.Park.RegionCode)) +
+		"/" + url.PathEscape(c.Park.Slug) +
+		"/" + url.PathEscape(c.Slug) +
+		"?period=" + (*n.ParkCourseMonth)[:7]
 }

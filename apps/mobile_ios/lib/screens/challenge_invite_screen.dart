@@ -115,8 +115,10 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
       return l10n.challengeInviteStartsIn(p.startsAt.difference(now).inDays + 1);
     }
     if (now.isAfter(p.endsAt)) return l10n.challengesEnded;
-    final days = p.endsAt.difference(now).inDays;
-    return days <= 1 ? l10n.challengesEndsToday : l10n.challengesEndsIn(days);
+    // Whole days left, rounded up as web's challenge_labels does: under a
+    // day is "today", 25 hours is 2 days.
+    final minutes = p.endsAt.difference(now).inMinutes;
+    return l10n.challengesEndsIn(minutes <= 0 ? 1 : (minutes / 1440).ceil());
   }
 
   @override

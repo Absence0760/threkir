@@ -155,8 +155,7 @@ class FitnessCard extends StatelessWidget {
                       if (daysToHard != null && daysToHard >= 1) ...[
                         const SizedBox(height: 4),
                         Text(
-                          'Next hard session in ~$daysToHard '
-                          '${daysToHard == 1 ? 'day' : 'days'} of easy running.',
+                          l10n.fitnessNextHardSession(daysToHard),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSecondaryContainer,
                             fontWeight: FontWeight.w700,

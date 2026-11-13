@@ -407,8 +407,8 @@
 		recent: 'dash.trendGroupRecent',
 	};
 
-	/// Hiding is honestly reversible (Settings → Units & display brings a group
-	/// back), so it takes no confirm; the toast says where the way back is.
+	/// Hiding is honestly reversible (the Progress cards switches bring a group
+	/// back), so it takes no confirm; the toast's action opens them.
 	async function hideTrendGroup(id: HideableDashboardCard) {
 		const previous = hiddenCards;
 		hiddenCards = withCardHidden(previous, id, true);
@@ -416,7 +416,10 @@
 		if (!uid) return;
 		try {
 			await updateUniversal(uid, { [DASHBOARD_HIDDEN_CARDS_KEY]: hiddenCards });
-			showToast(m('dash.cardHidden', { name: m(TREND_GROUP_TITLES[id]) }), 'success');
+			showToast(m('dash.cardHidden', { name: m(TREND_GROUP_TITLES[id]) }), 'success', 8000, {
+				label: m('dash.cardHiddenAction'),
+				href: '/settings/display#home-cards',
+			});
 		} catch (e) {
 			hiddenCards = previous;
 			showToast(m('dash.hideCardFailed', { error: errorCopy(e, m, 'dash.hideCardFailed') }), 'error');
@@ -1095,9 +1098,7 @@
 		switch (countdown.kind) {
 			case 'starts_in':
 				relation =
-					countdown.days === 1
-						? m('dash.planStartsTomorrow')
-						: m('dash.planStartsInDays', { d: countdown.days });
+					m('dash.planStartsIn', { d: countdown.days });
 				raceState = 'upcoming';
 				break;
 			case 'race_past':
@@ -1110,9 +1111,7 @@
 				break;
 			case 'race_in':
 				relation =
-					countdown.days === 1
-						? m('dash.raceTomorrow')
-						: m('dash.raceInDays', { d: countdown.days });
+					m('dash.raceIn', { d: countdown.days });
 				raceState = 'upcoming';
 				break;
 		}
@@ -1803,7 +1802,7 @@
 						<dt>{m('dash.statStreak')}</dt>
 						<dd>
 							{streakCard.current}
-							<span class="stat-unit">{streakCard.current === 1 ? m('dash.dayUnit') : m('dash.daysUnit')}</span>
+							<span class="stat-unit">{m('dash.dayUnit', { n: streakCard.current })}</span>
 						</dd>
 					</div>
 				</dl>
@@ -1887,13 +1886,11 @@
 					<span class="stat-label">{m('dash.statStreak')}</span>
 					<span class="stat-value">
 						{streakCard.current}
-						<span class="stat-unit">{streakCard.current === 1 ? m('dash.dayUnit') : m('dash.daysUnit')}</span>
+						<span class="stat-unit">{m('dash.dayUnit', { n: streakCard.current })}</span>
 					</span>
 					<span class="stat-sub">
 						{#if streakCard.sub.kind === 'best'}
-							{streakCard.sub.n === 1
-								? m('dash.streakBestOne', { n: streakCard.sub.n })
-								: m('dash.streakBestOther', { n: streakCard.sub.n })}
+							{m('dash.streakBest', { n: streakCard.sub.n })}
 						{:else if streakCard.sub.kind === 'allTimeBest'}
 							{m('dash.streakAllTimeBest')}
 						{:else if streakCard.sub.kind === 'restart'}
@@ -2049,9 +2046,7 @@
 					</p>
 					{#if daysToHard != null}
 						<p class="fitness-next-hard">
-							{daysToHard === 1
-								? m('dash.nextHardOne')
-								: m('dash.nextHardOther', { days: daysToHard })}
+							{m('dash.nextHard', { days: daysToHard })}
 						</p>
 					{/if}
 					{#if excludeGymFromReadiness && hasRecentLift}
@@ -2406,9 +2401,7 @@
 												: intensityWindow === '90d'
 													? m('dash.windowLast90Days')
 													: m('dash.windowLast12Months')}
-											· {intensityBreakdown.hrTrackedRuns === 1
-												? m('dash.runsWithHrOne', { n: intensityBreakdown.hrTrackedRuns })
-												: m('dash.runsWithHrOther', { n: intensityBreakdown.hrTrackedRuns })}
+											· {m('dash.runsWithHr', { n: intensityBreakdown.hrTrackedRuns })}
 										</span>
 									{/if}
 								</div>

@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Open [[route:/settings/payouts|Settings, Payouts]] on the web.",
+              "Open [[route:/settings/payouts|Payouts]] on the web.",
               "Press **Set up payments**. You are taken to Stripe to enter your details and the bank account you want paid into.",
               "Finish Stripe's steps. When you come back, the page shows your status.",
               "If it says **Onboarding incomplete — finish to start charging** or **Your payout account needs attention before you can take payment**, press **Finish setting up payments** to go back to Stripe and pick up where you left off."

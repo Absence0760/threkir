@@ -37,9 +37,7 @@
 		return r.heaviestWeightReps != null ? `${w} × ${r.heaviestWeightReps}` : w;
 	}
 	function sessionsLine(r: ExerciseRecord): string {
-		return r.sessionCount === 1
-			? t('gym.records.sessionsOne')
-			: t('gym.records.sessionsMany', { count: r.sessionCount });
+		return t('gym.records.sessions', { count: r.sessionCount });
 	}
 </script>
 

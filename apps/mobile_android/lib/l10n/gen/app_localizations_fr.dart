@@ -121,8 +121,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String recapAcrossRuns(Object count, Object runWord) {
-    return 'sur $count $runWord';
+  String recapAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'sur $count courses',
+      one: 'sur $count course',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -132,8 +138,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get recapBestStreakLabel => 'Meilleure série';
 
   @override
-  String recapStreakDays(Object days, Object dayWord) {
-    return '$days $dayWord';
+  String recapStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days jours',
+      one: '$days jour',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1094,28 +1106,14 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       days,
       locale: localeName,
-      other: 'Course dans $days jours',
-      one: 'Course dans $days jour',
+      other: 'Épreuve dans $days jours',
+      one: 'Épreuve demain',
     );
     return '$_temp0';
   }
-
-  @override
-  String get homeRaceTomorrow => 'Course demain';
 
   @override
   String get homeRaceDay => 'Jour de course';
-
-  @override
-  String homePlanStartsInDays(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Commence dans $days jours',
-      one: 'Commence dans $days jour',
-    );
-    return '$_temp0';
-  }
 
   @override
   String homePlanUpNext(String name, String date) {
@@ -1123,7 +1121,15 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get homePlanStartsTomorrow => 'Commence demain';
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Commence dans $days jours',
+      one: 'Commence demain',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get youViewProfile => 'Voir le profil';
@@ -5089,13 +5095,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runHeatmapLegendTitle => 'Votre carte de chaleur';
 
   @override
-  String runHeatmapLegendSummaryOne(int n) {
-    return '$n course cartographiée — plus lumineux là où vous courez le plus.';
-  }
-
-  @override
-  String runHeatmapLegendSummaryMany(int n) {
-    return '$n courses cartographiées — plus lumineux là où vous courez le plus.';
+  String runHeatmapLegendSummary(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          '$n courses cartographiées — plus lumineux là où vous courez le plus.',
+      one: '$n course cartographiée — plus lumineux là où vous courez le plus.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -8586,7 +8594,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsAccountBackupPreparing => 'Préparation de la sauvegarde…';
 
   @override
-  String get settingsAccountBackupShareText => 'Sauvegarde Run app';
+  String get settingsAccountBackupShareText => 'Sauvegarde Threkir';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8809,7 +8817,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count courses ne sont pas encore synchronisées. L\'export du compte est créé sur le serveur, il ne les inclura donc pas — utilisez la sauvegarde complète pour les conserver.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count courses ne sont pas encore synchronisées. L\'export du compte est créé sur le serveur, il ne les inclura donc pas — utilisez la sauvegarde complète pour les conserver.',
+      one:
+          '$count course n\'est pas encore synchronisée. L\'export du compte est créé sur le serveur, il ne l\'inclura donc pas — utilisez la sauvegarde complète pour la conserver.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -9817,9 +9833,9 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count zones faisaient moins de $meters m et couvrent désormais $meters m, la taille minimale d’une zone.',
+          '$count zones faisaient moins de $meters m et couvrent désormais $meters m, la taille minimale d\'une zone.',
       one:
-          '$count zone faisait moins de $meters m et couvre désormais $meters m, la taille minimale d’une zone.',
+          '$count zone faisait moins de $meters m et couvre désormais $meters m, la taille minimale d\'une zone.',
     );
     return '$_temp0';
   }
@@ -10480,10 +10496,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboardStreakHistory => 'Historique';
 
   @override
-  String get dashboardStreakDayUnit => 'jour';
-
-  @override
-  String get dashboardStreakDaysUnit => 'jours';
+  String dashboardStreakDayUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'jours',
+      one: 'jour',
+      zero: 'jour',
+    );
+    return '$_temp0';
+  }
 
   @override
   String dashboardStreakBest(int count) {
@@ -10493,7 +10515,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$count jours',
       one: '$count jour',
     );
-    return 'meilleure $_temp0';
+    return 'record $_temp0';
   }
 
   @override
@@ -10722,6 +10744,17 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get fitnessStatRunsTooltip =>
       'Courses récentes assez longues pour compter dans votre estimation de forme.';
+
+  @override
+  String fitnessNextHardSession(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Prochaine séance difficile dans ~$days jours de course facile.',
+      one: 'Prochaine séance difficile dans ~$days jour de course facile.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get fitnessStatCtl => 'Forme (CTL)';
@@ -11537,7 +11570,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$count activités de $activity',
       one: '$count activité de $activity',
     );
-    return 'Nous avons trouvé $_temp0 après votre achat. Décochez celles où vous ne les portiez pas.';
+    return 'Nous avons trouvé $_temp0 depuis l\'achat de cet équipement. Décochez celles pour lesquelles il n\'a pas servi.';
   }
 
   @override
@@ -11692,11 +11725,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get upcomingEventInOneHour => 'Dans 1 heure';
-
-  @override
   String upcomingEventInHours(int count) {
-    return 'Dans $count heures';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Dans $count heures',
+      one: 'Dans $count heure',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12135,13 +12171,30 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String ttsDistanceWholeKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kilomètres',
+      one: '$count kilomètre',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String ttsDistanceMetres(int value) {
     return '$value mètres';
   }
 
   @override
-  String ttsDistanceMileSingular(String value) {
-    return '$value mile';
+  String ttsDistanceWholeMiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count miles',
+      one: '$count mile',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -14785,20 +14838,20 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get roadbookWeightToggle => 'Fluide selon le poids';
+  String get roadbookWeightToggle => 'Liquides selon le poids';
 
   @override
   String get roadbookWeightHint =>
-      'Ajuste la quantité de fluide à votre poids, dans la fourchette de 400 à 800 ml par heure que la médecine du sport indique pour la course. Une base de planification, pas un test de sudation.';
+      'Ajuste la quantité de liquides à votre poids, dans la fourchette de 400 à 800 ml par heure que la médecine du sport indique pour la course. Une base de planification, pas un test de sudation.';
 
   @override
   String roadbookWeightUsing(String ml) {
-    return 'Fluide : $ml ml par heure d\'après votre poids.';
+    return 'Liquides : $ml ml par heure d\'après votre poids.';
   }
 
   @override
   String get roadbookWeightUnavailable =>
-      'Pour baser le fluide sur votre poids, ajoutez votre poids dans Données corporelles et donnez votre consentement aux données de santé à cet endroit.';
+      'Pour calculer les liquides selon votre poids, ajoutez votre poids dans Données corporelles et donnez-y votre consentement aux données de santé.';
 
   @override
   String get roadbookColTarget => 'Objectif';
@@ -14977,11 +15030,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String challengesEndsIn(int n) {
-    return 'Se termine dans $n jours';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Se termine dans $n jours',
+      one: 'Se termine aujourd\'hui',
+    );
+    return '$_temp0';
   }
-
-  @override
-  String get challengesEndsToday => 'Se termine aujourd\'hui';
 
   @override
   String get challengesEnded => 'Terminé';
@@ -15167,11 +15223,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get challengesStandingTiedOne => 'À égalité avec 1 autre';
-
-  @override
-  String challengesStandingTiedMany(int n) {
-    return 'À égalité avec $n autres';
+  String challengesStandingTied(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'À égalité avec $n autres',
+      one: 'À égalité avec $n autre',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -18721,22 +18780,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routeDetailSendDmDone => 'Terminé';
 
   @override
-  String get runPhotosRaceGalleryShow => 'Afficher sur la page de la course';
+  String get runPhotosRaceGalleryShow => 'Afficher sur la page de l\'épreuve';
 
   @override
-  String get runPhotosRaceGalleryHide => 'Retirer de la page de la course';
+  String get runPhotosRaceGalleryHide => 'Retirer de la page de l\'épreuve';
 
   @override
   String get runPhotosRaceGalleryHint =>
-      'Touchez la médaille d\'une photo pour l\'afficher sur la page publique de cette course. Tout le monde peut voir cette page, et vous pouvez retirer une photo à tout moment.';
+      'Touchez la médaille d\'une photo pour l\'afficher sur la page publique de cette épreuve. Tout le monde peut voir cette page, et vous pouvez retirer une photo à tout moment.';
 
   @override
   String get runPhotosRaceGalleryPrivate =>
-      'Rendez cette activité publique pour partager ses photos sur la page de la course.';
+      'Rendez cette course publique pour partager ses photos sur la page de l\'épreuve.';
 
   @override
   String runPhotosRaceGalleryError(String error) {
-    return 'Impossible de mettre à jour la page de la course : $error';
+    return 'Impossible de mettre à jour la page de l\'épreuve : $error';
   }
 
   @override
@@ -20891,7 +20950,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get streamerOverlayLinkChanged =>
-      'Enregistré. Le lien a changé : copiez-le à nouveau dans votre application de streaming.';
+      'Enregistré. Le lien a changé : copiez-le à nouveau dans votre app de streaming.';
 
   @override
   String get streamerOverlaySaveFailed =>

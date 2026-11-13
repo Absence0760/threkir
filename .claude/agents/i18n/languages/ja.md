@@ -82,6 +82,12 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | cadence (steps/min) | ケイデンス | `runStatCadence`; 「頻度」 in `discover.cadenceLabel` means *recurrence* |
 | training plan | トレーニングプラン; short プラン | |
 | race | レース; 勝負 for the race phase intent | |
+| counting cues | 「# 件のキュー」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「#個のキュー」 |
+| mapped run (personal heatmap) | 「地図に#件のラン」「地図に表示できるランはまだありません」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「マップ化されたラン」 |
+| AI disclosure | **AIに関する説明** | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「AIの説明」, which collides with 「AIによる説明」 (an AI description) |
+| waitlist | **キャンセル待ち** everywhere — status 「キャンセル待ち」, 「満員 · キャンセル待ち{n}人」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 補欠 |
+| safety contact | **緊急連絡先** everywhere, including 「緊急連絡先のみ」 on the live view | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 安全連絡先 |
+| form (TSB), fitness and form | **調子** — 「TSB（調子）」「フィットネス、疲労、調子」「体力と調子」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; コンディション stays for route conditions and Readiness, so it is never form |
 | finish | ゴール (finish line), フィニッシュ (roadbook), 完走 (finished a race), 終了 (ended), 完了 (completed) | mixed — inconsistency 3 |
 | DNF | DNF | web `liveEvent.statusDnf` 「途中棄権」 |
 | route | ルート; コース for a race course | |

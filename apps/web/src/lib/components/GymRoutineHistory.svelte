@@ -71,9 +71,7 @@
 		<div class="history-head">
 			<h2 id="routine-history-head">{t('gym.routine.history.title')}</h2>
 			<span class="history-count" data-testid="routine-history-count">
-				{history.sessionCount === 1
-					? t('gym.records.sessionsOne')
-					: t('gym.records.sessionsMany', { count: history.sessionCount })}
+				{t('gym.records.sessions', { count: history.sessionCount })}
 			</span>
 		</div>
 

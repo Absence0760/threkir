@@ -298,7 +298,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Quase nada na app está bloqueado pelo Pro. As contas gratuitas têm gravação ilimitada no telemóvel e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contactos de segurança, importações e backups."
+            "text": "Quase nada na app está bloqueado pelo Pro. As contas gratuitas têm gravação ilimitada no telemóvel e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contactos de segurança, importações e cópias de segurança."
           }
         ]
       },
@@ -445,7 +445,7 @@
             "type": "list",
             "items": [
               "**Transferir ficheiro completo da conta** (no telemóvel, **Exportação da conta**): tudo o que guardamos sobre si, incluindo conversas com o treinador, mensagens, integrações e contactos de segurança, num único zip. É gerado no nosso servidor, por isso pode fechar a página e voltar mais tarde para o obter. Uma exportação concluída é mantida durante 7 dias.",
-              "**Transferir backup completo** (no telemóvel, **Backup completo**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de um backup**.",
+              "**Transferir cópia de segurança completa** (no telemóvel, **Cópia de segurança completa**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de uma cópia de segurança**.",
               "**Exportação na nuvem (zip GPX)**: um ficheiro GPX por corrida, com frequência cardíaca, pronto a importar noutras apps. As contas gratuitas podem exportar duas vezes por hora; as contas Pro, oito vezes.",
               "**Exportar todas as corridas (CSV)** (no telemóvel, **Exportar corridas como CSV**): uma linha por corrida para uma folha de cálculo, sem trajetos GPS."
             ]
@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra [[route:/settings/payouts|Definições, Pagamentos]] na web.",
+              "Abra [[route:/settings/payouts|Pagamentos]] na web.",
               "Prima **Configurar pagamentos**. É encaminhado para o Stripe para introduzir os seus dados e a conta bancária onde quer receber.",
               "Conclua os passos do Stripe. Quando voltar, a página mostra o seu estado.",
               "Se indicar **Registo incompleto — conclua para começar a cobrar** ou **A sua conta de pagamentos precisa de atenção antes de poder receber**, prima **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar onde ficou."

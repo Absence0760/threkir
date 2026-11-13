@@ -50,7 +50,7 @@ export function recapCardText(
 	return {
 		kicker: kicker.toLocaleUpperCase(opts.locale),
 		hero: recapWholeDistance(recap.totalDistanceM, unit),
-		subhead: t(recap.runCount === 1 ? 'recap.acrossRunsOne' : 'recap.acrossRunsMany', { n: recap.runCount }),
+		subhead: t('recap.acrossRuns', { n: recap.runCount }),
 		cells: [
 			{ label: t('recap.longestRun'), value: recapWholeDistance(recap.longestRunM, unit) },
 			{ label: t('recap.cardOnFoot'), value: formatHoursMinutes(recap.totalDurationS) },

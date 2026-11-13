@@ -123,7 +123,7 @@ export function recapSlides(recap: YearInRunningRecap, f: RecapSlideFormat): Rec
 			kind: 'title',
 			kicker: f.kicker,
 			hero: f.distance(recap.totalDistanceM),
-			subhead: t(recap.runCount === 1 ? 'recap.acrossRunsOne' : 'recap.acrossRunsMany', { n: recap.runCount }),
+			subhead: t('recap.acrossRuns', { n: recap.runCount }),
 		},
 		...middle.slice(0, MAX_MIDDLE_SLIDES),
 		{ kind: 'end', line: f.kicker, url: f.url },

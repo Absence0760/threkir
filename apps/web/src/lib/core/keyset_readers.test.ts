@@ -175,3 +175,25 @@ test('a whole-list read that ended short fails rather than returning what it rea
 	);
 });
 
+
+test('the follow graph a picker filters is walked to its end in both directions', () => {
+	// The message, send-route, group and audience pickers filter the whole
+	// follow graph on the client. Reading one FOLLOW_PAGE_SIZE page of each
+	// direction hid everyone past the 50th follow from the list and from its
+	// search, with nothing on screen to say so (round 3 review, #1374).
+	const fn = body('fetchFollowGraph');
+	assert.match(fn, /walkKeyset\(order, /, 'fetchFollowGraph must walk by cursor');
+	assert.match(fn, /walkEdges\(FOLLOWERS_ORDER, 'followee_id', 'follower_id'\)/);
+	assert.match(fn, /walkEdges\(FOLLOWING_ORDER, 'follower_id', 'followee_id'\)/);
+	assert.match(fn, /if \(after\) q = q\.or\(after\)/, 'each page must start after the last');
+	assert.match(fn, /if \(!walk\.complete\) throw dbError\(/, 'a short walk must fail, not read as everyone');
+
+	const pickers = webSources().filter(([, src]) =>
+		/dmRecipientCandidates\(/.test(src) && !/export function dmRecipientCandidates/.test(src),
+	);
+	assert.ok(pickers.length >= 4, `expected the four follow pickers, found ${pickers.map(([f]) => f)}`);
+	for (const [file, src] of pickers) {
+		assert.match(src, /fetchFollowGraph\(/, `${file} must read the whole follow graph`);
+		assert.doesNotMatch(src, /fetchFollowers\(|fetchFollowing\(/, `${file} must not read one page of follows`);
+	}
+});

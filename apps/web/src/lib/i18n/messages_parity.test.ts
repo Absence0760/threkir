@@ -17,8 +17,13 @@ import { CATALOGUE_LOADERS } from './catalogues';
 const enRecord = en as Record<string, string>;
 const enKeys = Object.keys(en).sort();
 
+// The distinct placeholders of a message. A plural branch whose whole text
+// is one word (`one {day}`) is a branch, not a placeholder, and a locale
+// whose plural has fewer branches (ja: `other` only) names each one fewer
+// times.
 function placeholders(s: string): string[] {
-	return (s.match(/\{[a-zA-Z0-9_]+\}/g) ?? []).sort();
+	const re = /(?<!(?:^|[\s{}])(?:zero|one|two|few|many|other|=\d+)\s*)\{[a-zA-Z0-9_]+\}/g;
+	return [...new Set(s.match(re) ?? [])].sort();
 }
 
 for (const loc of SUPPORTED_LOCALES) {

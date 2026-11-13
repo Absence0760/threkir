@@ -1475,7 +1475,7 @@
 				rows: importPreview
 			});
 			showToast(
-				m(importPreview.length === 1 ? 'clubEvent.importedToastOne' : 'clubEvent.importedToastMany', {
+				m('clubEvent.importedToast', {
 					n: importPreview.length
 				}),
 				'success'
@@ -2340,7 +2340,7 @@
 							{event.attendee_count}{event.capacity ? ` / ${event.capacity}` : ''}
 						</span>
 						{#if rsvpCounts.waitlisted > 0}
-							<span class="waitlist-note">{m(rsvpCounts.waitlisted === 1 ? 'clubEvent.waitlistNoteOne' : 'clubEvent.waitlistNoteMany', { n: rsvpCounts.waitlisted })}</span>
+							<span class="waitlist-note">{m('clubEvent.waitlistNote', { n: rsvpCounts.waitlisted })}</span>
 						{/if}
 					</div>
 				</div>
@@ -3253,7 +3253,7 @@
 						</ul>
 					{/if}
 					{#if importPreview.length > 0}
-						<p class="import-summary">{m(importPreview.length === 1 ? 'clubEvent.importReadyOne' : 'clubEvent.importReadyMany', { n: importPreview.length })}</p>
+						<p class="import-summary">{m('clubEvent.importReady', { n: importPreview.length })}</p>
 					{/if}
 					<div class="picker-actions">
 						<button
@@ -3264,7 +3264,7 @@
 						>
 							{importBusy
 								? m('clubEvent.importing')
-								: m(importPreview.length === 1 ? 'clubEvent.importButtonOne' : 'clubEvent.importButtonMany', { n: importPreview.length })}
+								: m('clubEvent.importButton', { n: importPreview.length })}
 						</button>
 						<button type="button" class="btn-link" onclick={closeImport} disabled={importBusy}>{m('clubEvent.cancel')}</button>
 					</div>
@@ -3308,7 +3308,7 @@
 							<li>
 								<span>{ex.exercise_name}</span>
 								<span class="muted session-cue">
-									{m(ex.sets.length === 1 ? 'clubEvent.gymRoutineSetsOne' : 'clubEvent.gymRoutineSetsMany', {
+									{m('clubEvent.gymRoutineSets', {
 										n: ex.sets.length
 									})}
 								</span>

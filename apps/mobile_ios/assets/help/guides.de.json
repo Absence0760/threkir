@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Öffne im Web [[route:/settings/payouts|Einstellungen, Auszahlungen]].",
+              "Öffne im Web [[route:/settings/payouts|Auszahlungen]].",
               "Drücke **Zahlungen einrichten**. Du wirst zu Stripe weitergeleitet, um deine Angaben und das Bankkonto einzugeben, auf das du ausgezahlt werden willst.",
               "Schließ die Schritte bei Stripe ab. Wenn du zurückkommst, zeigt die Seite deinen Status.",
               "Steht dort **Einrichtung unvollständig – abschließen, um Zahlungen zu starten** oder **Dein Auszahlungskonto benötigt Aufmerksamkeit, bevor du Zahlungen annehmen kannst**, drücke **Zahlungseinrichtung abschließen**, um zu Stripe zurückzukehren und dort weiterzumachen, wo du aufgehört hast."
@@ -3089,7 +3089,7 @@
           },
           {
             "type": "p",
-            "text": "Jede Änderung führen Threkirs eigene Planregeln aus. Die KI schreibt nie ein Training, eine Distanz oder eine Pace, daher bekommt eine Bitte wie *füge eine Bergeinheit hinzu* nur den Hinweis, dass das nicht geht. Für alles andere nutze **Plan bearbeiten**."
+            "text": "Jede Änderung führen Threkirs eigene Planregeln aus. Die KI schreibt nie ein Training, eine Distanz oder ein Tempo, daher bekommt eine Bitte wie *füge eine Bergeinheit hinzu* nur den Hinweis, dass das nicht geht. Für alles andere nutze **Plan bearbeiten**."
           },
           {
             "type": "note",
@@ -3133,7 +3133,7 @@
             "type": "list",
             "items": [
               "Jede Anfrage verbraucht eine deiner täglichen KI-Coach-Nachrichten, dasselbe Kontingent wie beim Coach.",
-              "Sie setzt die aktuellen KI-Hinweise voraus. Wirst du gebeten, sie zu akzeptieren, wähle **In den Einstellungen ansehen** und akzeptiere sie dort.",
+              "Es setzt die aktuellen KI-Hinweise voraus. Wirst du gebeten, sie zu akzeptieren, wähle **In den Einstellungen ansehen** und akzeptiere sie dort.",
               "An die KI gehen nur die anstehenden Trainings deines Plans und die Änderung, die du eingegeben hast."
             ]
           },

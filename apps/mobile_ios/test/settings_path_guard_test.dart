@@ -3,7 +3,8 @@
 // § 2494), so prose such as "Settings → Gear" or "Preferences → Training"
 // named places a runner could no longer find. A string says what is wrong and
 // a button beside it opens the page (`openSettings(SettingsDestination.x)`),
-// so the way there cannot drift from the screens again.
+// so the way there cannot drift from the screens again. The web twin is
+// apps/web/src/lib/i18n/settings_path_guard.test.ts.
 //
 // The exemptions below give directions into somewhere other than this app's
 // settings. The map may only shrink: an entry whose key is gone or whose

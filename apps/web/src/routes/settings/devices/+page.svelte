@@ -465,9 +465,7 @@
 								class="override-link"
 								onclick={() => toggleExpand(d.device_id)}
 							>
-								{overrideCount(d.prefs) === 1
-									? m('settingsDevices.overrideCountOne', { count: overrideCount(d.prefs) })
-									: m('settingsDevices.overrideCountOther', { count: overrideCount(d.prefs) })}
+								{m('settingsDevices.overrideCount', { count: overrideCount(d.prefs) })}
 								<span class="material-symbols chev" aria-hidden="true">
 									{expanded === d.device_id ? 'expand_less' : 'expand_more'}
 								</span>

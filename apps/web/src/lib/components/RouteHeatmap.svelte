@@ -946,9 +946,7 @@
 			? `<img class="pin-avatar" src="${escapeHtml(d.avatarUrl)}" alt="" />`
 			: `<span class="pin-avatar pin-avatar-initials">${escapeHtml(initialsOf(d.name))}</span>`;
 		const memberLine =
-			d.memberCount === 1
-				? m('routeHeatmap.memberCountOne', { n: d.memberCount })
-				: m('routeHeatmap.memberCountMany', { n: d.memberCount });
+			m('routeHeatmap.memberCount', { n: d.memberCount });
 		const subtitle = d.locationLabel
 			? `<span class="pin-popup-location">📍 ${escapeHtml(d.locationLabel)}</span>`
 			: '';
@@ -1408,9 +1406,7 @@
 					formatDistance(r.distance_m),
 					r.surface,
 					r.run_count > 0
-						? r.run_count === 1
-							? m('routeHeatmap.runCountOne', { n: r.run_count })
-							: m('routeHeatmap.runCountMany', { n: r.run_count })
+						? m('routeHeatmap.runCount', { n: r.run_count })
 						: '',
 				]
 					.filter(Boolean)
@@ -1663,7 +1659,7 @@
 		<div class="results-header">
 			<span class="results-count">
 				<strong>{routePinsCount}</strong>
-				{routePinsCount === 1 ? m('routeHeatmap.routeWordOne') : m('routeHeatmap.routeWordMany')}
+				{m('routeHeatmap.routeWord', { n: routePinsCount })}
 			</span>
 			<span class="results-lens">
 				{activeFilterLabel}{#if selectedBands.length > 0} · {bandSummary}{/if}
@@ -1730,7 +1726,7 @@
 							{#if band}<span class="result-band">{band.label}</span>{/if}
 							<span>{formatDistance(r.distance_m)}</span>
 							{#if r.surface}<span>· {routeSurfaceLabel(r.surface)}</span>{/if}
-							{#if r.run_count > 0}<span>· {r.run_count === 1 ? m('routeHeatmap.runCountOne', { n: r.run_count }) : m('routeHeatmap.runCountMany', { n: r.run_count })}</span>{/if}
+							{#if r.run_count > 0}<span>· {m('routeHeatmap.runCount', { n: r.run_count })}</span>{/if}
 						</span>
 					</button>
 					<a

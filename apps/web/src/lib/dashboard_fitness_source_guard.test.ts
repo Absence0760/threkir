@@ -117,13 +117,8 @@ test('the fitness card\'s next-hard line is localized, not an English literal', 
 	// English sentence inside an otherwise translated card.
 	assert.match(
 		SOURCE,
-		/m\('dash\.nextHardOne'\)/,
-		'the singular next-hard line must resolve through m()',
-	);
-	assert.match(
-		SOURCE,
-		/m\('dash\.nextHardOther', \{ days: daysToHard \}\)/,
-		'the plural next-hard line must resolve through m() with the day count',
+		/m\('dash\.nextHard', \{ days: daysToHard \}\)/,
+		'the next-hard line must resolve through m() with the day count',
 	);
 	assert.doesNotMatch(
 		SOURCE,
@@ -136,11 +131,10 @@ test('the fitness card\'s next-hard line is localized, not an English literal', 
 			resolve(`src/lib/i18n/locales/${locale}.ts`),
 			'utf-8',
 		);
-		assert.match(catalogue, /"dash\.nextHardOne":/, `dash.nextHardOne missing from ${locale}`);
 		assert.match(
 			catalogue,
-			/"dash\.nextHardOther": "[^"]*\{days\}[^"]*"/,
-			`dash.nextHardOther must keep the {days} slot in ${locale}`,
+			/"dash\.nextHard": "\{days, plural, [^"]*#[^"]*"/,
+			`dash.nextHard must be a plural over {days} in ${locale}`,
 		);
 	}
 });

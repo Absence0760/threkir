@@ -85,11 +85,12 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | cadence (steps/min) | Schrittfrequenz | `runStatCadence`. "Rhythmus" in `discover.cadenceLabel` means *recurrence* — a different sense |
 | training plan | Trainingsplan / Trainingspläne; short Plan / Pläne | |
 | race | Rennen (nav, tabs, calendar `Rennkalender`); Wettkampf (workout kind, run source) | |
+| mapped run (personal heatmap) | **Lauf auf der Karte** — „Noch keine Läufe auf der Karte“ | settled 2026-11-13 (#1374 round 3.5), both surfaces; never „erfasst“, which is *logged* |
+| club (every surface, including plan templates and race claims) | **Club** / Clubs; compounds hyphenated as the catalogue already writes them (Club-Vorlage, Club-Admins) or closed where already closed (Clubmitglieder, Clubkopie, Clubbeitrag) | settled 2026-11-13 (#1374 round 3.5), both surfaces; never Verein — this closes inconsistency 5 |
 | finish | Ziel (finish line); Beendet (status); Beenden (action) | "Ziel" also means *goal* — disambiguate by context |
 | DNF | DNF | kept as-is on both surfaces |
 | route | Route / Routen | dominant; web also "Strecke" (`eventEditor.route`, `routeHeatmap.*`) — inconsistency 4 |
 | segment | Segment / Segmente | |
-| club | Club / Clubs | 45 / 97 strings; "Verein" in plan-template copy — inconsistency 5 |
 | event | Event / Events | |
 | gym | Gym | `nav.gym`, `gymTitle` |
 | nutrition | Ernährung | |
@@ -121,7 +122,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 2. **Sie slips** — listed under Register.
 3. **elevation gain**: Höhenmeter / Anstieg / Aufstieg / Höhengewinn.
 4. **route**: Route vs Strecke on web.
-5. **club**: Club vs Verein (`planNewTemplate*`, `planDetailPublish*`).
+5. **club**: Club vs Verein — resolved 2026-11-13: always Club (see the glossary row).
 6. **cool-down**: Auslaufen / Abwärmen / Abkühlen.
 7. **social destination**: Sozial (mobile) vs Community (web).
 

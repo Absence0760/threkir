@@ -428,9 +428,7 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
                     Text(l10n.runHeatmapLegendTitle,
                         style: theme.textTheme.labelLarge),
                     Text(
-                      _trackCount == 1
-                          ? l10n.runHeatmapLegendSummaryOne(_trackCount)
-                          : l10n.runHeatmapLegendSummaryMany(_trackCount),
+                      l10n.runHeatmapLegendSummary(_trackCount),
                       style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant),
                     ),

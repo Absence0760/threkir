@@ -88,6 +88,11 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
 | race | **Prova** (workout kind, run source); "Corridas" in nav, tabs and `races.title` | collides with *run* — inconsistency 1 |
+| @username help | « nome de utilizador/usuário público (@…) », never « @nome de … » | settled 2026-11-13 (#1374 round 3.5), both surfaces |
+| Threkir's gender | **o Threkir** for the app (« no Threkir », « do Threkir »); **a Threkir** only for the company in legal and consent text (« em nome da Threkir ») | settled 2026-11-13 (#1374 round 3.5), both surfaces |
+| cue (guided run) | **dica** / dicas — « Ouvir dica », « # dicas na corrida » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « alerta », « sinal » or « indicação » for a guided-run cue (a session plan's breath / alignment cue stays « Indicação ») |
+| build (the plan's build phase) | **construção** — « semanas de construção », « Encurtar a construção » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « desenvolvimento » |
+| gym session / gym workout | **treino de academia** / treinos de academia (masculine: « os treinos de academia ») | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « sessão de academia » or « sessão de musculação » |
 | finish | Chegada (finish line); Concluído (status); Concluir (mobile) / Finalizar (web) action | |
 | Done | By what it does. A button that **closes** a sheet, a dialog, a selection mode or a finished screen is **Pronto** (`filterBarDone`, `runDone`, `coachShare.done`, `runs.done`). A **status** — a workout, a step or a goal that is done — is **Concluído / concluída / concluídos** (`dash.doneBadge`, `coachingAthleteStatusDone`, the widget's done state, the onboarding rail's last step), and so is a button that records a step as done (`session.run.done`); "Mark as done / not done" is "Marcar como concluído / não concluído", "{done} de {total} concluídos", "{pct}% concluído" | settled 2026-11-12; never "Feito" / "feitos" for the status, never "Concluído" for a button that only closes. Not a status, so kept: `gymRoutineHistoryLastDone` "Feita hoje / ontem" (the routine was *performed* then) |
 | DNF | DNF; "Não concluiu" (web `checkpoint.statusDnf`) | |
@@ -103,7 +108,7 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | goal | Meta / Metas | "Objetivo" occasionally on web |
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
 | AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está pensando"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
-| AI disclosure | **o aviso de IA** ("precisa do aviso de IA atualizado") | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
+| AI disclosure | **o aviso de IA** ("precisa que aceite o aviso de IA atualizado" — keep the consent: the reader accepts the notice, not merely needs it) | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
 | event host | **Organizador** | `admin.earnings.*`; never "Anfitrião" |
 | payouts / payout account | **Repasses** / **conta de repasses** | `payouts.pageTitle`, `fundraiser.setUpPayouts`; *payment* (a charge) stays "pagamento" |
 | activity discipline (yoga, pilates…) | **Modalidade** | `eventEditor.discipline`, `session.discipline` |
@@ -117,7 +122,7 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
-| Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab, page title, and in paths ("Configurações → Preferências de treino") | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
+| Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab and page title; a string names the page, never a path to it (decisions § 2496) | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar** | settled 2026-10-21; never "pulado" for the status. Skipping a step or setup is **Pular**; "não pule" stays in coaching advice |
 | readiness | **Prontidão** — "Prontidão {score}", "da sua prontidão para correr", "reduzem a sua prontidão", "Excluir a carga do ginásio da prontidão para correr" | settled 2026-11-13; never "preparo" (Brazilian colloquial, and a second word for one score) |
 | taper (the plan phase and the act) | **Polimento** — phase "Polimento", "Polimento em torno das provas B/C", "está no polimento", "antes do polimento", "o polimento fica como está", "Em polimento — …" | settled 2026-11-13; never "afinamento", "afunilamento" or "redução de carga" for the taper. "Redução de carga" stays for a *deload* (`planDetail.replanDeload`) |

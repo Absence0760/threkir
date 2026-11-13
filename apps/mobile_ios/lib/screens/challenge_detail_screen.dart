@@ -144,8 +144,10 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   String _windowLabel(AppLocalizations l10n, ChallengeView c) {
     final now = DateTime.now();
     if (now.isAfter(c.endsAt)) return l10n.challengesEnded;
-    final days = c.endsAt.difference(now).inDays;
-    return days <= 1 ? l10n.challengesEndsToday : l10n.challengesEndsIn(days);
+    // Whole days left, rounded up as web's challenge_labels does: under a
+    // day is "today", 25 hours is 2 days.
+    final minutes = c.endsAt.difference(now).inMinutes;
+    return l10n.challengesEndsIn(minutes <= 0 ? 1 : (minutes / 1440).ceil());
   }
 
   @override
@@ -302,9 +304,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
           style: TextStyle(fontWeight: FontWeight.w700, color: scheme.onPrimaryContainer)),
       if (s.tiedWith > 0)
         Text(
-          s.tiedWith == 1
-              ? l10n.challengesStandingTiedOne
-              : l10n.challengesStandingTiedMany(s.tiedWith),
+          l10n.challengesStandingTied(s.tiedWith),
           style: TextStyle(color: scheme.onSurfaceVariant),
         ),
       if (s.chasing != null)

@@ -65,9 +65,7 @@
 				<p class="subtitle">{g.subtitle}</p>
 				<p class="desc">{g.description}</p>
 				<div class="cue-count">
-					{g.cues.length === 1
-						? t('guidedList.cueCountOne', { n: g.cues.length })
-						: t('guidedList.cueCountMany', { n: g.cues.length })}
+					{t('guidedList.cueCount', { n: g.cues.length })}
 				</div>
 			</a>
 		{/each}

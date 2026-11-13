@@ -62,11 +62,8 @@ class NextRaceCard extends StatelessWidget {
 
   static String relation(AppLocalizations l10n, PlanRaceCountdown c) =>
       switch (c.kind) {
-        PlanRaceCountdownKind.startsIn => c.days == 1
-            ? l10n.homePlanStartsTomorrow
-            : l10n.homePlanStartsInDays(c.days),
-        PlanRaceCountdownKind.raceIn =>
-          c.days == 1 ? l10n.homeRaceTomorrow : l10n.homeRaceInDays(c.days),
+        PlanRaceCountdownKind.startsIn => l10n.homePlanStartsInDays(c.days),
+        PlanRaceCountdownKind.raceIn => l10n.homeRaceInDays(c.days),
         PlanRaceCountdownKind.raceDay => l10n.homeRaceDay,
         PlanRaceCountdownKind.racePast => '',
       };

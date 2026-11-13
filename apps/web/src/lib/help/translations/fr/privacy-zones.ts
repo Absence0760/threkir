@@ -33,7 +33,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres.',
+						'Ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages.',
 						'Sous **Zones de confidentialité**, sélectionnez **Ajouter une zone**.',
 						'Cliquez sur la carte à l\'endroit où la zone doit être centrée, ou sélectionnez **Utiliser ma position actuelle**, puis faites glisser le repère pour l\'ajuster.',
 						'Réglez le **Rayon**. Tout ce qui se trouve dans le cercle rouge est masqué des partages publics.',

@@ -122,8 +122,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String recapAcrossRuns(Object count, Object runWord) {
-    return 'über $count $runWord';
+  String recapAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'über $count Läufe',
+      one: 'über $count Lauf',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -133,8 +139,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get recapBestStreakLabel => 'Beste Serie';
 
   @override
-  String recapStreakDays(Object days, Object dayWord) {
-    return '$days $dayWord';
+  String recapStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days Tage',
+      one: '$days Tag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1097,27 +1109,13 @@ class AppLocalizationsDe extends AppLocalizations {
       days,
       locale: localeName,
       other: 'Rennen in $days Tagen',
-      one: 'Rennen in $days Tag',
+      one: 'Rennen morgen',
     );
     return '$_temp0';
   }
-
-  @override
-  String get homeRaceTomorrow => 'Rennen morgen';
 
   @override
   String get homeRaceDay => 'Renntag';
-
-  @override
-  String homePlanStartsInDays(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Beginnt in $days Tagen',
-      one: 'Beginnt in $days Tag',
-    );
-    return '$_temp0';
-  }
 
   @override
   String homePlanUpNext(String name, String date) {
@@ -1125,7 +1123,15 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get homePlanStartsTomorrow => 'Beginnt morgen';
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Beginnt in $days Tagen',
+      one: 'Beginnt morgen',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get youViewProfile => 'Profil ansehen';
@@ -5062,7 +5068,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get runHeatmapEmptyTitle => 'Noch keine erfassten Läufe';
+  String get runHeatmapEmptyTitle => 'Noch keine Läufe auf der Karte';
 
   @override
   String get runHeatmapEmptyBody =>
@@ -5091,13 +5097,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runHeatmapLegendTitle => 'Deine Heatmap';
 
   @override
-  String runHeatmapLegendSummaryOne(int n) {
-    return '$n erfasster Lauf – heller, wo du am häufigsten läufst.';
-  }
-
-  @override
-  String runHeatmapLegendSummaryMany(int n) {
-    return '$n erfasste Läufe – heller, wo du am häufigsten läufst.';
+  String runHeatmapLegendSummary(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Läufe auf der Karte – heller, wo du am häufigsten läufst.',
+      one: '$n Lauf auf der Karte – heller, wo du am häufigsten läufst.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -7497,7 +7504,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get planDetailPublishTooltip => 'Als Vereinsvorlage veröffentlichen';
+  String get planDetailPublishTooltip => 'Als Club-Vorlage veröffentlichen';
 
   @override
   String get planDetailRacesTitle => 'Wettkämpfe in diesem Plan';
@@ -7813,19 +7820,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailPublishLoadClubsTimeout =>
-      'Deine Vereine konnten nicht geladen werden — prüfe dein Netzwerk.';
+      'Deine Clubs konnten nicht geladen werden — prüfe dein Netzwerk.';
 
   @override
   String get planDetailPublishLoadClubsFailed =>
-      'Deine Vereine konnten nicht geladen werden.';
+      'Deine Clubs konnten nicht geladen werden.';
 
   @override
   String get planDetailPublishNoClubs =>
-      'Du musst Inhaber oder Admin eines Vereins sein, um eine Vorlage zu veröffentlichen.';
+      'Du musst Inhaber oder Admin eines Clubs sein, um eine Vorlage zu veröffentlichen.';
 
   @override
   String planDetailPublishSuccess(String name) {
-    return '„$name“ als Vereinsvorlage veröffentlicht.';
+    return '„$name“ als Club-Vorlage veröffentlicht.';
   }
 
   @override
@@ -7834,11 +7841,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get planDetailPublishPickerTitle => 'Im Verein veröffentlichen';
+  String get planDetailPublishPickerTitle => 'Im Club veröffentlichen';
 
   @override
   String get planDetailPublishPickerBody =>
-      'Mitglieder des Vereins können diesen Plan als eigenen übernehmen.';
+      'Mitglieder des Clubs können diesen Plan als eigenen übernehmen.';
 
   @override
   String planDetailPublishPickerMembers(int count) {
@@ -8585,7 +8592,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsAccountBackupPreparing => 'Backup wird vorbereitet…';
 
   @override
-  String get settingsAccountBackupShareText => 'Run-App-Backup';
+  String get settingsAccountBackupShareText => 'Threkir-Backup';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8805,7 +8812,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count Läufe sind noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält sie daher nicht — nutze das vollständige Backup, um sie zu sichern.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Läufe sind noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält sie daher nicht — nutze das vollständige Backup, um sie zu sichern.',
+      one:
+          '$count Lauf ist noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält ihn daher nicht — nutze das vollständige Backup, um ihn zu sichern.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -10470,10 +10485,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dashboardStreakHistory => 'Verlauf';
 
   @override
-  String get dashboardStreakDayUnit => 'Tag';
-
-  @override
-  String get dashboardStreakDaysUnit => 'Tage';
+  String dashboardStreakDayUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Tage',
+      one: 'Tag',
+    );
+    return '$_temp0';
+  }
 
   @override
   String dashboardStreakBest(int count) {
@@ -10713,6 +10733,17 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get fitnessStatRunsTooltip =>
       'Aktuelle Läufe, die lang genug sind, um in deine Fitness-Schätzung einzufließen.';
+
+  @override
+  String fitnessNextHardSession(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Nächste harte Einheit nach ~$days Tagen lockeren Laufens.',
+      one: 'Nächste harte Einheit nach ~$days Tag lockeren Laufens.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get fitnessStatCtl => 'Fitness (CTL)';
@@ -11384,7 +11415,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventEditorMembersOnlyHint =>
-      'Nur Vereinsmitglieder können dieses Event sehen; es erscheint nicht in der öffentlichen Suche.';
+      'Nur Clubmitglieder können dieses Event sehen; es erscheint nicht in der öffentlichen Suche.';
 
   @override
   String get eventEditorDiscipline => 'Disziplin';
@@ -11525,7 +11556,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$count $activity-Aktivitäten',
       one: '$count $activity-Aktivität',
     );
-    return 'Wir haben $_temp0 nach dem Kauf gefunden. Entferne das Häkchen bei allen, bei denen du sie nicht getragen hast.';
+    return 'Wir haben $_temp0 nach dem Kauf gefunden. Entferne das Häkchen bei allen, bei denen du die Ausrüstung nicht benutzt hast.';
   }
 
   @override
@@ -11680,11 +11711,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get upcomingEventInOneHour => 'In 1 Stunde';
-
-  @override
   String upcomingEventInHours(int count) {
-    return 'In $count Stunden';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'In $count Stunden',
+      one: 'In $count Stunde',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12123,13 +12157,30 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String ttsDistanceWholeKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Kilometer',
+      one: '$count Kilometer',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String ttsDistanceMetres(int value) {
     return '$value Meter';
   }
 
   @override
-  String ttsDistanceMileSingular(String value) {
-    return '$value Meile';
+  String ttsDistanceWholeMiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Meilen',
+      one: '$count Meile',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12709,7 +12760,7 @@ class AppLocalizationsDe extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count Einheiten',
-      one: '1 Einheit',
+      one: '$count Einheit',
     );
     return '$_temp0';
   }
@@ -14962,11 +15013,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String challengesEndsIn(int n) {
-    return 'Endet in $n Tagen';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Endet in $n Tagen',
+      one: 'Endet heute',
+    );
+    return '$_temp0';
   }
-
-  @override
-  String get challengesEndsToday => 'Endet heute';
 
   @override
   String get challengesEnded => 'Beendet';
@@ -15151,11 +15205,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get challengesStandingTiedOne => 'Gleichauf mit 1 weiteren';
-
-  @override
-  String challengesStandingTiedMany(int n) {
-    return 'Gleichauf mit $n weiteren';
+  String challengesStandingTied(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Gleichauf mit $n weiteren',
+      one: 'Gleichauf mit $n weiteren',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -15454,14 +15511,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseClaimTitle =>
-      'Dieses Rennen für deinen Verein beanspruchen';
+      'Dieses Rennen für deinen Club beanspruchen';
 
   @override
   String get raceCourseClaimBody =>
-      'Mit dem Beanspruchen wird das Rennen verifiziert und dein Verein kann seine Strecke verknüpfen. Beanspruche nur ein Rennen, das dein Verein ausrichtet oder für das er Strecken zeichnet.';
+      'Mit dem Beanspruchen wird das Rennen verifiziert und dein Club kann seine Strecke verknüpfen. Beanspruche nur ein Rennen, das dein Club ausrichtet oder für das er Strecken zeichnet.';
 
   @override
-  String get raceCourseClaimClub => 'Verein';
+  String get raceCourseClaimClub => 'Club';
 
   @override
   String get raceCourseClaimConfirm => 'Rennen beanspruchen';
@@ -15487,7 +15544,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseLinkNoRoutes =>
-      'Dein Verein hat noch keine öffentlichen Routen. Erstelle eine im Tab „Routen“ des Vereins, mach sie öffentlich und verknüpfe sie dann hier.';
+      'Dein Club hat noch keine öffentlichen Routen. Erstelle eine im Tab „Routen“ des Clubs, mach sie öffentlich und verknüpfe sie dann hier.';
 
   @override
   String get raceCourseLinkSourceLabel => 'Woher die Strecke stammt';
@@ -15525,7 +15582,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseSuggestBody =>
-      'Wähle eine deiner öffentlichen Routen. Der Veranstalter prüft sie – oder ein verifizierter Verein, solange niemand das Rennen beansprucht hat.';
+      'Wähle eine deiner öffentlichen Routen. Der Veranstalter prüft sie – oder ein verifizierter Club, solange niemand das Rennen beansprucht hat.';
 
   @override
   String get raceCourseSuggestRoute => 'Deine Route';
@@ -15575,7 +15632,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String raceCourseReviewApproveBody(String route) {
-    return 'Die Strecke muss eine öffentliche Route deines Vereins sein. Wähle die Vereinskopie von $route.';
+    return 'Die Strecke muss eine öffentliche Route deines Clubs sein. Wähle die Clubkopie von $route.';
   }
 
   @override
@@ -17238,7 +17295,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String rateLimitCreateClub(String wait) {
-    return 'Du erstellst zu schnell Vereine – bitte warte $wait und versuche es erneut.';
+    return 'Du erstellst zu schnell Clubs – bitte warte $wait und versuche es erneut.';
   }
 
   @override
@@ -17549,7 +17606,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailSectionShareHint =>
-      'Vereinsvorlage und öffentliche Planbibliothek';
+      'Club-Vorlage und öffentliche Planbibliothek';
 
   @override
   String get confirmAgeHeading => 'Nur noch ein Schritt';
@@ -19580,7 +19637,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewReadyMadeBody =>
-      'Ein integrierter Plan oder einer, den ein Verein, in dem du Mitglied bist, veröffentlicht hat. Du kannst ihn danach bearbeiten.';
+      'Ein integrierter Plan oder einer, den ein Club, in dem du Mitglied bist, veröffentlicht hat. Du kannst ihn danach bearbeiten.';
 
   @override
   String get planNewReadyMadeButton => 'Fertige Pläne ansehen';
@@ -19589,7 +19646,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planNewReadyMadeBuiltIn => 'Integrierte Pläne';
 
   @override
-  String get planNewReadyMadeClubs => 'Aus deinen Vereinen';
+  String get planNewReadyMadeClubs => 'Aus deinen Clubs';
 
   @override
   String get planNewBuildOwn => 'Oder stell dir deinen eigenen zusammen';

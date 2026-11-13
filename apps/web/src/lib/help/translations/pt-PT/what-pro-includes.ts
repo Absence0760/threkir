@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Quase nada na app está bloqueado pelo Pro. As contas gratuitas têm gravação ilimitada no telemóvel e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contactos de segurança, importações e backups.',
+					text: 'Quase nada na app está bloqueado pelo Pro. As contas gratuitas têm gravação ilimitada no telemóvel e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contactos de segurança, importações e cópias de segurança.',
 				},
 			],
 		},

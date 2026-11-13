@@ -99,7 +99,9 @@ test.describe('/dashboard — the Today hero', () => {
 			await expect(volume).toBeVisible({ timeout: 15_000 });
 			await page.getByRole('button', { name: 'Hide Volume from Progress' }).click();
 			await expect(volume).toHaveCount(0);
-			await expect(page.getByText('Volume is hidden. You can bring it back in Settings.')).toBeVisible();
+			await expect(page.getByText('Volume is hidden.')).toBeVisible();
+			// The way back is a link to the switches, not prose naming a place.
+			await expect(page.getByTestId('toast-action')).toHaveAttribute('href', '/settings/display#home-cards');
 
 			// Universal, so it survives a reload rather than living in this tab.
 			await page.reload();

@@ -59,7 +59,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'**Transferir ficheiro completo da conta** (no telemóvel, **Exportação da conta**): tudo o que guardamos sobre si, incluindo conversas com o treinador, mensagens, integrações e contactos de segurança, num único zip. É gerado no nosso servidor, por isso pode fechar a página e voltar mais tarde para o obter. Uma exportação concluída é mantida durante 7 dias.',
-						'**Transferir backup completo** (no telemóvel, **Backup completo**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de um backup**.',
+						'**Transferir cópia de segurança completa** (no telemóvel, **Cópia de segurança completa**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de uma cópia de segurança**.',
 						'**Exportação na nuvem (zip GPX)**: um ficheiro GPX por corrida, com frequência cardíaca, pronto a importar noutras apps. As contas gratuitas podem exportar duas vezes por hora; as contas Pro, oito vezes.',
 						'**Exportar todas as corridas (CSV)** (no telemóvel, **Exportar corridas como CSV**): uma linha por corrida para uma folha de cálculo, sem trajetos GPS.',
 					],

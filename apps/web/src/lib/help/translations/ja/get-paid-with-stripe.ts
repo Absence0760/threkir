@@ -25,7 +25,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Webで[[route:/settings/payouts|設定の「支払い」]]を開きます。',
+						'Webで[[route:/settings/payouts|支払い]]を開きます。',
 						'**支払いを設定**を押します。Stripeに移動するので、あなたの情報と入金先の銀行口座を入力します。',
 						'Stripeの手順を完了します。戻ってくると、ページにステータスが表示されます。',
 						'**設定が未完了です。完了すると請求を開始できます**または**支払いを受け取る前に、支払いアカウントの対応が必要です**と表示された場合は、**支払い設定を完了する**を押してStripeに戻り、中断したところから再開します。',
@@ -93,7 +93,7 @@ export const translation: GuideTranslation = {
 		's0.b0': '94bdd45ffa45992b',
 		's0.b1': 'a2c35333af5a1b69',
 		's1.heading': '3f872765a64cbf87',
-		's1.b0.i0': 'e50bbd6128265cce',
+		's1.b0.i0': '9321b7eb6cd09720',
 		's1.b0.i1': '0f46885c40eac7c9',
 		's1.b0.i2': '5c865b5f5c133459',
 		's1.b0.i3': '8dda9f151d4fc524',

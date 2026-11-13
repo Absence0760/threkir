@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/corner_radii.dart';
 import '../theme/spacing.dart';
 
 enum _ListCardKind { content, row, flush }
@@ -55,6 +56,7 @@ class ListCard extends StatelessWidget {
     this.actions = const [],
     this.margin,
     this.color,
+    this.outline,
   }) : _kind = _ListCardKind.content,
        leading = null,
        leadingWidth = null,
@@ -92,6 +94,7 @@ class ListCard extends StatelessWidget {
     this.actions = const [],
     this.margin,
     this.color,
+    this.outline,
   }) : _kind = _ListCardKind.row,
        child = null;
 
@@ -108,6 +111,7 @@ class ListCard extends StatelessWidget {
     this.actions = const [],
     this.margin,
     this.color,
+    this.outline,
   }) : _kind = _ListCardKind.flush,
        dense = false,
        leading = null,
@@ -189,6 +193,16 @@ class ListCard extends StatelessWidget {
   /// Defaults to the theme's card colour. Ignored while [selected].
   final Color? color;
 
+  /// The border's colour, in place of the theme's hairline: a card that
+  /// must read as tappable beside read-only ones of the same shape.
+  final Color? outline;
+
+  /// The most of the row's width the leading slot may take.
+  static const double maxLeadingFraction = 0.4;
+
+  /// The most of the card's width the trailing slot may take.
+  static const double maxTrailingFraction = 0.45;
+
   /// The margin of a card in a list that has no horizontal padding of its
   /// own: the page gutter beside, half the item gap above and below, so two
   /// cards sit [AppInsets.itemGap] apart.
@@ -248,6 +262,9 @@ class ListCard extends StatelessWidget {
       selected: selected ? true : null,
       label: semanticLabel,
       hint: semanticHint,
+      // A selected card with no tap of its own would otherwise lend its
+      // selected flag to whatever node is above it.
+      container: selected && !tappable,
       child: tapArea,
     );
     // A row's leading and texts are one reading. A content card's child may
@@ -256,17 +273,27 @@ class ListCard extends StatelessWidget {
 
     final Widget top = end == null
         ? tapArea
-        : Row(
-            children: [
-              Expanded(child: tapArea),
-              Padding(
-                padding: EdgeInsets.only(
-                  left: AppSpace.smPlus,
-                  right: padding.right,
+        // The trailing slot is capped, so a wide value or tag wraps or
+        // ellipsizes inside it rather than pushing the row off a narrow
+        // phone at large text.
+        : LayoutBuilder(
+            builder: (context, constraints) => Row(
+              children: [
+                Expanded(child: tapArea),
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: AppSpace.smPlus,
+                    right: padding.right,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth * maxTrailingFraction,
+                    ),
+                    child: end,
+                  ),
                 ),
-                child: end,
-              ),
-            ],
+              ],
+            ),
           );
 
     return Card(
@@ -274,6 +301,12 @@ class ListCard extends StatelessWidget {
       color: selected
           ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
           : color,
+      shape: outline == null
+          ? null
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              side: BorderSide(color: outline!),
+            ),
       clipBehavior: Clip.antiAlias,
       child: hasActions
           ? Column(
@@ -359,18 +392,27 @@ class ListCard extends StatelessWidget {
         : leading;
     if (lead == null) return texts;
     final width = leadingWidth ?? (selecting ? selectionGlyphWidth : null);
-    return Row(
-      children: [
-        if (width != null)
-          SizedBox(
-            width: width,
-            child: Center(child: lead),
-          )
-        else
-          lead,
-        const SizedBox(width: AppSpace.md),
-        Expanded(child: texts),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: [
+          if (width != null)
+            SizedBox(
+              width: width,
+              child: Center(child: lead),
+            )
+          else
+            // Capped like the trailing slot: a date lane or a label at 2x
+            // must not leave the title no room.
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: constraints.maxWidth * maxLeadingFraction,
+              ),
+              child: lead,
+            ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(child: texts),
+        ],
+      ),
     );
   }
 
@@ -387,7 +429,7 @@ class ListCard extends StatelessWidget {
     if (chevronIcon == null) return trailing;
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [trailing!, chevronIcon],
+      children: [Flexible(child: trailing!), chevronIcon],
     );
   }
 }

@@ -80,6 +80,9 @@ const _markHosts = {
   'UnderlineInputBorder', 'RoundedRectangleBorder', 'StadiumBorder',
   'CircleBorder', 'BoxDecoration', 'ShapeDecoration', 'Container',
   'DecoratedBox', 'ColoredBox', 'CircleAvatar', 'Chip', 'Card', 'Material',
+  // ui_kit's `ListCard` is every card the app draws (#1374); its `color` is a
+  // fill and its `outline` a boundary, as `Card`'s were.
+  'ListCard',
   'LinearGradient', 'RadialGradient', 'Paint', 'CircularProgressIndicator',
   'LinearProgressIndicator', 'Checkbox', 'Switch', 'Radio', 'Slider',
   // A `Canvas.draw*` colour is a painted mark by construction, and the

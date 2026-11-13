@@ -220,5 +220,35 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('a wide leading or trailing is capped, not pushed off the row',
+        (tester) async {
+      await _pump(
+        tester,
+        ListCard.row(
+          title: 'Parkrun',
+          leading: const Text('Samstag, 12. Oktober 2026, 09:00'),
+          trailing: const Text('Offizielle Quelle des Veranstalters'),
+          onTap: () {},
+        ),
+        size: const Size(320, 640),
+        textScale: 2.0,
+      );
+      expect(tester.takeException(), isNull);
+      final card = tester.getSize(find.byType(Card)).width;
+      expect(tester.getSize(find.text('Samstag, 12. Oktober 2026, 09:00')).width,
+          lessThanOrEqualTo(card * ListCard.maxLeadingFraction));
+      expect(
+          tester.getSize(find.text('Offizielle Quelle des Veranstalters')).width,
+          lessThanOrEqualTo(card * ListCard.maxTrailingFraction));
+    });
+
+    testWidgets('outline replaces the theme hairline', (tester) async {
+      await _pump(
+          tester, const ListCard(outline: Colors.teal, child: Text('Week')));
+      final shape =
+          tester.widget<Card>(find.byType(Card)).shape as RoundedRectangleBorder;
+      expect(shape.side.color, Colors.teal);
+    });
   });
 }

@@ -33,7 +33,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración.',
+						'Abre [[route:/settings/privacy|Privacidad y uso compartido]] en Ajustes.',
 						'En **Zonas de privacidad**, selecciona **Añadir una zona**.',
 						'Haz clic en el mapa donde quieras centrar la zona, o selecciona **Usar ubicación actual**, y luego arrastra el marcador para ajustarla.',
 						'Fija el **Radio**. Todo lo que quede dentro del círculo rojo se oculta en lo que compartes públicamente.',

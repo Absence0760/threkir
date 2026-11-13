@@ -102,7 +102,7 @@
     <string name="race_wait_for_go">%1$s · espera el GO</string>
     <string name="race_self_timed">CRONO PROPIO</string>
     <string name="race_self_timed_how">%1$s · toca Intento, luego Empezar, y cruza la línea de salida</string>
-    <string name="race_attempt">Esta carrera es mi intento</string>
+    <string name="race_attempt">Esta actividad es mi intento</string>
     <string name="race_attempt_ready">Intento listo · toca Empezar</string>
     <string name="race_tap_start">%1$s · toca Empezar</string>
     <string name="race_finish_short">Meta</string>

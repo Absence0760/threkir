@@ -30,7 +30,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Privacidad y uso compartido** de la pestaña **Tú**.',
+						'En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Ajustes y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Privacidad y uso compartido** de la pestaña **Tú**.',
 						'Para cambiar una sola carrera más tarde, ábrela y toca **Privado** o **Público** debajo de su título. Antes de hacer pública una carrera, te lo preguntamos y te mostramos lo que ocultarán tus zonas de privacidad.',
 					],
 				},
@@ -53,7 +53,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'En la web, abre **Cuenta** en Configuración. La app móvil tiene las mismas opciones en **Cuenta**, en la pestaña **Tú**.',
+					text: 'En la web, abre **Cuenta** en Ajustes. La app móvil tiene las mismas opciones en **Cuenta**, en la pestaña **Tú**.',
 				},
 				{
 					type: 'list',
@@ -73,7 +73,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Descarga primero todo lo que quieras conservar. La eliminación no se puede deshacer.',
-						'En la web, abre **Cuenta** en Configuración y selecciona **Eliminar cuenta** en **Zona de peligro**. En la app móvil, abre **Cuenta** en la pestaña **Tú** y toca **Eliminar cuenta**.',
+						'En la web, abre **Cuenta** en Ajustes y selecciona **Eliminar cuenta** en **Zona de peligro**. En la app móvil, abre **Cuenta** en la pestaña **Tú** y toca **Eliminar cuenta**.',
 						'Escribe ELIMINAR para confirmar y luego selecciona **Eliminar mi cuenta** en la web o **Eliminar** en la app.',
 					],
 				},

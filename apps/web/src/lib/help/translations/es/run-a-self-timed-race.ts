@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'run-a-self-timed-race',
 	title: 'Correr una carrera con cronometraje propio',
-	summary: 'Únete a una carrera abierta durante una ventana de tiempo, marca tu carrera como tu intento y corre de la línea de salida a la línea de meta cuando mejor te venga.',
+	summary: 'Únete a una carrera abierta durante una ventana de tiempo, marca tu actividad como tu intento y corre de la línea de salida a la línea de meta cuando mejor te venga.',
 	sections: [
 		{
 			heading: 'Qué es una carrera con cronometraje propio',
@@ -14,7 +14,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Grabas tu intento con la app del móvil o con un reloj Wear OS. La web sirve para unirte y para ver los resultados; un navegador no puede grabar una carrera.',
+					text: 'Grabas tu intento con la app del móvil o con un reloj Wear OS. La web sirve para unirte y para ver los resultados; un navegador no puede grabar una actividad.',
 				},
 			],
 		},
@@ -39,18 +39,18 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'En la pestaña Correr de la app del móvil, el aviso de carrera muestra **Cronometraje propio** y cuándo se cierra la ventana.',
-						'Toca **Esta carrera es mi intento**. Cambia a **Intento listo: toca Iniciar**; vuelve a tocarlo si cambias de idea.',
+						'Toca **Esta actividad es mi intento**. Cambia a **Intento listo: toca Iniciar**; vuelve a tocarlo si cambias de idea.',
 						'Pulsa Iniciar antes de llegar a la línea de salida y luego cruza la línea de salida en el sentido del recorrido.',
 					],
 				},
 				{
 					type: 'p',
-					text: 'En un reloj Wear OS, la pantalla previa a la salida muestra CRONO PROPIO. Toca **Esta carrera es mi intento** y luego Empezar.',
+					text: 'En un reloj Wear OS, la pantalla previa a la salida muestra CRONO PROPIO. Toca **Esta actividad es mi intento** y luego Empezar.',
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Una carrera que no marques como tu intento nunca se une a la competición: no envía posición en directo ni obtiene resultado. Así, una carrera con la que no pretendías competir nunca acaba en la clasificación.',
+					text: 'Una actividad que no marques como tu intento nunca se une a la carrera: no envía posición en directo ni obtiene resultado. Así, una actividad con la que no pretendías competir nunca acaba en la clasificación.',
 				},
 			],
 		},
@@ -60,7 +60,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Puedes hacer más de un intento mientras la ventana esté abierta. Toca **Esta carrera es mi intento** antes de cada uno.',
+						'Puedes hacer más de un intento mientras la ventana esté abierta. Toca **Esta actividad es mi intento** antes de cada uno.',
 						'Cuenta tu mejor llegada cronometrada por las dos líneas. Un intento más lento no la sustituye.',
 						'Puede que tu resultado tenga que esperar a que el organizador lo apruebe. Hasta entonces se muestra como pendiente y no tiene puesto.',
 						'Un resultado sin cruce de la línea de salida, como uno enviado desde un Apple Watch o desde una versión antigua de la app, se conserva, pero el organizador lo revisa antes de que cuente.',
@@ -83,7 +83,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'En la meta, toca Detener y luego **Terminar carrera**. Si has cubierto el 90 % del recorrido, eso envía tu tiempo, y el organizador lo revisa antes de que cuente.',
-						'O vuelve a cronometrar tu intento con su traza después: abre la carrera en la web y elige **Recalcular el tiempo con mi traza**. Cronometra la traza por las líneas de la carrera y sustituye un resultado pendiente de revisión, o uno más lento. Puedes hacerlo hasta 24 horas después de que se cierre la ventana.',
+						'O vuelve a cronometrar tu intento con su traza después: abre la actividad en la web y elige **Recalcular el tiempo con mi traza**. Cronometra la traza por las líneas de la carrera y sustituye un resultado pendiente de revisión, o uno más lento. Puedes hacerlo hasta 24 horas después de que se cierre la ventana.',
 						'¿Competiste con un Apple Watch? No detecta las líneas, así que volver a cronometrar con tu traza es la forma de que tu intento obtenga un resultado cronometrado por las líneas.',
 					],
 				},

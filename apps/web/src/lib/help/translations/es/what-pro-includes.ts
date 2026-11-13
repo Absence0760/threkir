@@ -47,7 +47,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'En un iPhone, abre **Pro y apoyo** en la pestaña **Tú** y suscríbete a través del App Store.',
-						'En la web, abre [[route:/settings/upgrade|Pro y apoyo]] en Configuración. Si dice **La suscripción desde la web llegará pronto.**, suscríbete en la app de iPhone.',
+						'En la web, abre [[route:/settings/upgrade|Pro y apoyo]] en Ajustes. Si dice **La suscripción desde la web llegará pronto.**, suscríbete en la app de iPhone.',
 					],
 				},
 				{

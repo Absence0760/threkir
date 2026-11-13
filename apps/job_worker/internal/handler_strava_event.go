@@ -216,6 +216,18 @@ func (w *Worker) handleStravaEvent(ctx context.Context, job *Job) error {
 			w.Log.Warn("strava_event: stream fetch failed (row inserted, track skipped)",
 				"err", streamErr, "activity_id", p.ObjectID)
 		} else if streams != nil {
+			// Per-point heart rate is kept only with health-data consent
+			// (decisions § 2513); the database never sees inside the track
+			// blob, so the stream is dropped here. Fail-closed on a lookup
+			// error: the run keeps its track, without bpm.
+			consented, cErr := w.Backend.HealthDataConsented(ctx, userID)
+			if cErr != nil {
+				w.Log.Warn("strava_event: consent lookup failed; heart rate dropped",
+					"err", cErr, "activity_id", p.ObjectID)
+			}
+			if cErr != nil || !consented {
+				delete(streams, "heartrate")
+			}
 			track := BuildTrackFromStreams(streams, act.StartDate)
 			if len(track) >= 2 {
 				path := fmt.Sprintf("%s/%s.json.gz", info.UserID, info.ID)

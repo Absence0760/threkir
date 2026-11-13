@@ -111,6 +111,12 @@ type fakeBackend struct {
 	// duration_repair state; nil fails every call. Methods live in
 	// handler_duration_repair_test.go.
 	durationRepair *fakeDurationRepair
+	// health-data consent and the health_hr_erase state. Methods live in
+	// handler_health_hr_erase_test.go; a nil healthErase fails every call
+	// on that path, and healthConsented answers false for an absent user.
+	healthConsented  map[string]bool
+	healthConsentErr error
+	healthErase      *fakeHealthErase
 	// map_match road-distance state; nil reads as a deleted run so the
 	// map_match tests that do not care skip the step. Methods live in
 	// road_distance_test.go.

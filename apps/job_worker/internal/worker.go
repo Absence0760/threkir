@@ -207,6 +207,14 @@ type Backend interface {
 	// DownloadRecordedTrack.
 	ReadRunForDurationRepair(ctx context.Context, runID string) (*DurationRepairRun, error)
 	UpdateRunDuration(ctx context.Context, read *DurationRepairRun, durationS int) error
+	// Health-data consent (decisions § 2513). HealthDataConsented answers
+	// whether a runner may keep heart rate (the strava_event stream). The
+	// health_hr_erase path pages the runner's runs and rewrites their
+	// Storage objects; sidecars go through DeleteStorageObjects.
+	HealthDataConsented(ctx context.Context, userID string) (bool, error)
+	ListRunsForHealthErase(ctx context.Context, userID, afterID string, limit int) ([]HealthEraseRun, error)
+	DownloadRunsObject(ctx context.Context, path string) ([]byte, error)
+	UploadRunsObject(ctx context.Context, path string, body []byte, contentType string) error
 	// Road-distance path — the map_match handler's last step. Reads the run
 	// with its linked route's surface and writes metadata.distance_map_matched_m
 	// through a track_url + metadata CAS; UpdateRunMetadata returns
@@ -572,6 +580,8 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleDistanceRecompute(ctx, job)
 	case "duration_repair":
 		return w.handleDurationRepair(ctx, job)
+	case "health_hr_erase":
+		return w.handleHealthHrErase(ctx, job)
 	case "segment_match":
 		return w.handleSegmentMatch(ctx, job)
 	default:

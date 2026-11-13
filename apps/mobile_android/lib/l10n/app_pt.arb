@@ -3776,7 +3776,7 @@
   "nutritionGoalBreakdown": "Meta {base} + {exercise} kcal queimadas hoje",
   "dashGymReadinessIncluded": "As suas sessões recentes de ginásio entram na sua fadiga.",
   "dashGymReadinessExcluded": "A carga do ginásio fica de fora da sua prontidão para correr.",
-  "prefsExcludeGymFromReadiness": "Excluir a carga do ginásio da prontidão para correr",
+  "prefsExcludeGymFromReadiness": "Deixar a carga do ginásio fora da prontidão para correr",
   "prefsExcludeGymFromReadinessHint": "Por predefinição, as sessões de ginásio aumentam a sua fadiga e reduzem a sua prontidão, como uma corrida. Ative isto para que o seu condicionamento, fadiga e forma se baseiem apenas nas corridas.",
   "prefsHrMedicationAffected": "A minha frequência cardíaca é afetada por medicação",
   "prefsHrMedicationAffectedHint": "Por exemplo, um betabloqueante. As zonas pela idade e a carga de treino por frequência cardíaca ficam baixas, por isso a carga aparece como menos fiável. É um dado de saúde e é apagado se retirar o consentimento.",

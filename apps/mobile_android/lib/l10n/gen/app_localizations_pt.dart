@@ -13598,7 +13598,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsExcludeGymFromReadiness =>
-      'Excluir a carga do ginásio da prontidão para correr';
+      'Deixar a carga do ginásio fora da prontidão para correr';
 
   @override
   String get prefsExcludeGymFromReadinessHint =>

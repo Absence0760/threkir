@@ -45,7 +45,13 @@ byte-behaviour-identical; registered in the root `CLAUDE.md` parity list,
   web fetches the photo and PR counts with `fetchRecapExtras` and the park
   efforts with `fetchRecapParkCourses` (both in `core/data.ts`). Negative
   inputs clamp to 0.
-- `recapHeadline(recap, 'km'|'mi')` — the one-line share-copy summary.
+- `computeRecapBadges` returns each badge as an id, an icon and the number or
+  start time its detail names (`value`), never words. The trophy grid reads the
+  label and detail from the reader's catalogue through `recapBadgeText`
+  (`share/recap_card_text.ts`, `recap.badgeLabel_*` / `recap.badgeDetail_*`), so
+  a published snapshot reads in its reader's language. `recapBadgeFromSnapshot`
+  reads a snapshot's badges; one published before round 3.6 carries an English
+  `detail` and no `value`, and the value is read back out of that line.
 - `recapSnapshotJson(recap)` (Dart only) — serialises the recap into the
   frozen-snapshot field shape the web `YearInRunningRecap` object carries, so a
   mobile-published `public_recaps` row renders identically on the web share

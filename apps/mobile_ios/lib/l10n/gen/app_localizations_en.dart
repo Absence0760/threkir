@@ -19371,6 +19371,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Deleted on this phone. It will sync when you\'re back online.';
 
   @override
+  String get pushTargetOpening => 'Opening…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Couldn\'t open that notification: $error';
+  }
+
+  @override
   String get planDetailMoreActions => 'More plan actions';
 
   @override

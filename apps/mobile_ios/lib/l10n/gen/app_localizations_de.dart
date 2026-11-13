@@ -19599,6 +19599,14 @@ class AppLocalizationsDe extends AppLocalizations {
       'Auf diesem Smartphone gelöscht. Wird synchronisiert, sobald du wieder online bist.';
 
   @override
+  String get pushTargetOpening => 'Wird geöffnet…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Diese Benachrichtigung konnte nicht geöffnet werden: $error';
+  }
+
+  @override
   String get planDetailMoreActions => 'Weitere Planaktionen';
 
   @override

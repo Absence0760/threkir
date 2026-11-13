@@ -5465,6 +5465,8 @@
   "commonStaleRefreshFailed": "更新できませんでした。最後に読み込んだ内容を表示しています。",
   "commonSavedOnPhone": "このスマートフォンに保存しました。オンラインに戻ると同期されます。",
   "commonDeletedOnPhone": "このスマートフォンで削除しました。オンラインに戻ると同期されます。",
+  "pushTargetOpening": "開いています…",
+  "pushTargetOpenFailed": "その通知を開けませんでした: {error}",
   "planDetailMoreActions": "その他のプラン操作",
   "planDetailWeekActions": "第{n}週の操作",
   "planDetailShiftDates": "日付をずらす…",

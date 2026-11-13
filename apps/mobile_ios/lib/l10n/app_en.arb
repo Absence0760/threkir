@@ -25742,6 +25742,19 @@
   "@commonDeletedOnPhone": {
     "description": "Confirmation after a delete that landed on the phone but has not reached the server yet"
   },
+  "pushTargetOpening": "Opening…",
+  "@pushTargetOpening": {
+    "description": "Top banner while a tapped notification is looked up before its screen opens (a club or event read on a slow connection)"
+  },
+  "pushTargetOpenFailed": "Couldn't open that notification: {error}",
+  "@pushTargetOpenFailed": {
+    "description": "Top banner, with Retry, when a tapped notification could not be opened; {error} is the classified reason",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailMoreActions": "More plan actions",
   "@planDetailMoreActions": {
     "description": "Tooltip on the plan detail app-bar overflow menu"

@@ -31,6 +31,7 @@ import '../lib/run_stop_dock.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/unread_messages.dart';
+import '../lib/screens/club_detail_screen.dart';
 import '../lib/widgets/gym_summary_card.dart';
 import '../lib/widgets/run_list_tile.dart';
 import '../lib/training_service.dart';
@@ -2633,6 +2634,22 @@ void main() {
       expect(find.byType(RunDetailScreen), findsOneWidget);
       expect(find.byType(PublicRunScreen), findsNothing);
       expect(pendingEntityLink.value, isNull);
+      tester.takeException();
+    });
+
+    // Issue #1374 NS-12: a club or event push whose lookup failed did
+    // nothing at all, or dropped the runner on Clubs as if the club were gone.
+    testWidgets('a club push whose lookup fails says so and offers Retry',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s, api: _LinkApi());
+      pendingPushTarget.value = const PushTarget(PushTargetKind.club, 'club-7');
+      final failed = find.textContaining("Couldn't open that notification");
+      await pumpUntil(tester, () => failed.evaluate().isNotEmpty,
+          describe: 'the failed-open banner');
+      expect(find.text('Retry'), findsOneWidget);
+      expect(find.byType(ClubDetailScreen), findsNothing);
+      await tester.pump(const Duration(seconds: 7));
       tester.takeException();
     });
 

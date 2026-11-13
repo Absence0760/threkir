@@ -5465,6 +5465,8 @@
   "commonStaleRefreshFailed": "Actualisation impossible. Affichage des dernières données chargées.",
   "commonSavedOnPhone": "Enregistré sur ce téléphone. La synchronisation se fera dès que vous serez de nouveau en ligne.",
   "commonDeletedOnPhone": "Supprimé sur ce téléphone. La synchronisation se fera dès que vous serez de nouveau en ligne.",
+  "pushTargetOpening": "Ouverture…",
+  "pushTargetOpenFailed": "Impossible d'ouvrir cette notification : {error}",
   "planDetailMoreActions": "Autres actions du plan",
   "planDetailWeekActions": "Actions de la semaine {n}",
   "planDetailShiftDates": "Décaler les dates…",

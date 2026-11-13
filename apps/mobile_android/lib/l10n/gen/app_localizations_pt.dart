@@ -19582,6 +19582,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Eliminado neste telemóvel. Será sincronizado quando voltar a estar online.';
 
   @override
+  String get pushTargetOpening => 'A abrir…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Não foi possível abrir essa notificação: $error';
+  }
+
+  @override
   String get planDetailMoreActions => 'Mais ações do plano';
 
   @override
@@ -42235,6 +42243,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get commonDeletedOnPhone =>
       'Excluído neste celular. Será sincronizado quando você voltar a ficar online.';
+
+  @override
+  String get pushTargetOpening => 'Abrindo…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Não foi possível abrir essa notificação: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'Mais ações do plano';

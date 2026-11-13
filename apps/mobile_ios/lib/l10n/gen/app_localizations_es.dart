@@ -19572,6 +19572,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Eliminado en este teléfono. Se sincronizará cuando vuelvas a tener conexión.';
 
   @override
+  String get pushTargetOpening => 'Abriendo…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'No se pudo abrir esa notificación: $error';
+  }
+
+  @override
   String get planDetailMoreActions => 'Más acciones del plan';
 
   @override

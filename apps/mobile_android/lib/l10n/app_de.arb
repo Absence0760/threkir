@@ -5465,6 +5465,8 @@
   "commonStaleRefreshFailed": "Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt geladene Stand.",
   "commonSavedOnPhone": "Auf diesem Smartphone gespeichert. Wird synchronisiert, sobald du wieder online bist.",
   "commonDeletedOnPhone": "Auf diesem Smartphone gelöscht. Wird synchronisiert, sobald du wieder online bist.",
+  "pushTargetOpening": "Wird geöffnet…",
+  "pushTargetOpenFailed": "Diese Benachrichtigung konnte nicht geöffnet werden: {error}",
   "planDetailMoreActions": "Weitere Planaktionen",
   "planDetailWeekActions": "Aktionen für Woche {n}",
   "planDetailShiftDates": "Termine verschieben…",

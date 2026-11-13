@@ -18670,6 +18670,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get commonDeletedOnPhone => 'このスマートフォンで削除しました。オンラインに戻ると同期されます。';
 
   @override
+  String get pushTargetOpening => '開いています…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'その通知を開けませんでした: $error';
+  }
+
+  @override
   String get planDetailMoreActions => 'その他のプラン操作';
 
   @override

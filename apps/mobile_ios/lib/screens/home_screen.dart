@@ -40,6 +40,7 @@ import '../return_to_shell.dart';
 import '../run_stop_dock.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
+import '../auth_error.dart';
 import '../shell_back.dart';
 import '../shell_page_controller.dart';
 import '../sync_service.dart';
@@ -421,6 +422,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) return;
     if (!consentRecordedOn(profile)) {
       _consentGateOpen = true;
+      // The gate is not a tap, and _consentGateOpen holds it to one.
+      // single-flight: guarded by _consentGateOpen.
       final confirmed = await Navigator.of(context).push<bool>(
         MaterialPageRoute<bool>(
           fullscreenDialog: true,
@@ -451,6 +454,7 @@ class _HomeScreenState extends State<HomeScreen>
     // goal-keyed "create my training plan" CTA (else null). Route straight
     // into the plan wizard preselected so a brand-new runner doesn't have to
     // hunt for /plans/new + the beginner walk-run toggle.
+    // single-flight: guarded by _setupWizardShown.
     final goal = await Navigator.of(context).push<String?>(
       MaterialPageRoute<String?>(
         fullscreenDialog: true,
@@ -538,16 +542,53 @@ class _HomeScreenState extends State<HomeScreen>
   /// guarded. A club or event whose slug won't resolve falls back to the clubs
   /// hub rather than opening a screen that can never load; the mapper has
   /// already sent anything it couldn't place to the inbox.
+  ///
+  /// A tapped notification never does nothing in silence (issue #1374
+  /// NS-12): with no account to open it in, or when its lookup fails, a
+  /// banner says so, with Retry where a retry can work; a lookup that takes a
+  /// moment says it is opening (see [_resolving]).
   Future<void> _onPendingPushTarget() async {
     final target = pendingPushTarget.value;
     if (target == null || !mounted) return;
     pendingPushTarget.value = null;
     final api = widget.apiClient;
-    if (api == null) return;
+    if (api == null) {
+      showTopBanner(context, AppLocalizations.of(context).authErrorNotSignedIn);
+      return;
+    }
     try {
       await _openPushTarget(api, target);
     } catch (e) {
       debugPrint('push target navigation failed: $e');
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(
+        context,
+        l10n.pushTargetOpenFailed(friendlyError(l10n, e)),
+        duration: kTopBannerMaxDuration,
+        actionLabel: l10n.errorStateRetry,
+        onAction: () => pendingPushTarget.value = target,
+      );
+    }
+  }
+
+  /// A notification target that must be looked up before its screen can
+  /// open. After a beat the runner is told it is opening, so a slow read
+  /// does not read as a tap that did nothing, and the cue goes when the read
+  /// settles. A failure propagates to [_onPendingPushTarget]'s banner.
+  Future<T> _resolving<T>(Future<T> read) async {
+    var shown = false;
+    final cue = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      shown = true;
+      showTopBanner(context, AppLocalizations.of(context).pushTargetOpening,
+          duration: kTopBannerMaxDuration);
+    });
+    try {
+      return await read;
+    } finally {
+      cue.cancel();
+      if (shown) hideTopBanner();
     }
   }
 
@@ -591,7 +632,8 @@ class _HomeScreenState extends State<HomeScreen>
       case PushTargetKind.clubs:
         await _openSocialTab(SocialTab.clubs);
       case PushTargetKind.club:
-        final slug = await widget.social.fetchClubSlugById(target.id!);
+        final slug =
+            await _resolving(widget.social.fetchClubSlugById(target.id!));
         if (!mounted) return;
         if (slug == null) return _openSocialTab(SocialTab.clubs);
         await _pushScreen(ClubDetailScreen(
@@ -602,7 +644,8 @@ class _HomeScreenState extends State<HomeScreen>
           slug: slug,
         ));
       case PushTargetKind.event:
-        final slug = await widget.social.fetchClubSlugForEvent(target.id!);
+        final slug =
+            await _resolving(widget.social.fetchClubSlugForEvent(target.id!));
         if (!mounted) return;
         if (slug == null) return _openSocialTab(SocialTab.clubs);
         await _pushScreen(EventDetailScreen(
@@ -632,7 +675,7 @@ class _HomeScreenState extends State<HomeScreen>
         final service = RaceService(api: api);
         ({String? listingId, String? routeId})? alert;
         try {
-          alert = await service.fetchCourseAlertTarget(target.id!);
+          alert = await _resolving(service.fetchCourseAlertTarget(target.id!));
         } catch (e) {
           debugPrint('HomeScreen: course alert resolve failed: $e');
         }

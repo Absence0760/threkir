@@ -19618,6 +19618,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Supprimé sur ce téléphone. La synchronisation se fera dès que vous serez de nouveau en ligne.';
 
   @override
+  String get pushTargetOpening => 'Ouverture…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Impossible d\'ouvrir cette notification : $error';
+  }
+
+  @override
   String get planDetailMoreActions => 'Autres actions du plan';
 
   @override

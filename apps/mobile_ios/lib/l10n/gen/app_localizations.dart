@@ -31831,6 +31831,18 @@ abstract class AppLocalizations {
   /// **'Deleted on this phone. It will sync when you\'re back online.'**
   String get commonDeletedOnPhone;
 
+  /// Top banner while a tapped notification is looked up before its screen opens (a club or event read on a slow connection)
+  ///
+  /// In en, this message translates to:
+  /// **'Opening…'**
+  String get pushTargetOpening;
+
+  /// Top banner, with Retry, when a tapped notification could not be opened; {error} is the classified reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open that notification: {error}'**
+  String pushTargetOpenFailed(String error);
+
   /// Tooltip on the plan detail app-bar overflow menu
   ///
   /// In en, this message translates to:

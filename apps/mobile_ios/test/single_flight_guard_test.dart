@@ -46,14 +46,13 @@ const _unconverted = <String, int>{
   'lib/screens/course_drive_screen.dart': 1,
   'lib/screens/event_detail_screen.dart': 4,
   'lib/screens/group_thread_screen.dart': 1,
-  'lib/screens/home_screen.dart': 1,
   'lib/screens/period_summary_screen.dart': 1,
   'lib/screens/plan_detail_screen.dart': 2,
   'lib/screens/plan_library_screen.dart': 1,
   'lib/screens/plan_new_screen.dart': 3,
   'lib/screens/profile_screen.dart': 2,
   'lib/screens/race_detail_screen.dart': 2,
-  'lib/screens/route_detail_screen.dart': 3,
+  'lib/screens/route_detail_screen.dart': 2,
   'lib/screens/routine_public_library_screen.dart': 1,
   'lib/screens/run_screen.dart': 3,
   'lib/screens/season_plan_screen.dart': 1,
@@ -76,7 +75,12 @@ String? _calledName(Expression e) {
 /// Awaits and openers directly in one body, skipping nested closures, which
 /// are bodies of their own.
 class _BodyScan extends RecursiveAstVisitor<void> {
-  final awaits = <int>[];
+  /// Where a read's await ends (a window opens).
+  final reads = <int>[];
+
+  /// Where an await of something modal ends: the runner was inside it, so
+  /// the window a read opened before it has closed.
+  final modals = <int>[];
   final openers = <MethodInvocation>[];
 
   @override
@@ -95,9 +99,10 @@ class _BodyScan extends RecursiveAstVisitor<void> {
     }
     final name = _calledName(inner);
     if (name != null && (_modalAwait.hasMatch(name) || _opener.hasMatch(name))) {
+      modals.add(node.end);
       return;
     }
-    awaits.add(node.end);
+    reads.add(node.end);
   }
 
   @override
@@ -186,10 +191,17 @@ List<int> unguardedOpeners(String source) {
     if (name != null && guarded.contains(name)) continue;
     final scan = _BodyScan();
     body.visitChildren(scan);
-    if (scan.awaits.isEmpty) continue;
-    final first = scan.awaits.reduce((a, b) => a < b ? a : b);
+    if (scan.reads.isEmpty) continue;
+    // An opener is late when a read's await ended after the last modal await
+    // that precedes it: that read is the window a second tap lands in.
+    bool late(int at) {
+      final read = scan.reads.where((r) => r <= at).fold(-1, (a, b) => b > a ? b : a);
+      if (read < 0) return false;
+      final modal = scan.modals.where((m) => m <= at).fold(-1, (a, b) => b > a ? b : a);
+      return read > modal;
+    }
     for (final opener in scan.openers) {
-      if (opener.offset < first) continue;
+      if (!late(opener.offset)) continue;
       final line = unit.lineInfo.getLocation(opener.offset).lineNumber;
       final here = lines[line - 1];
       final above = line >= 2 ? lines[line - 2] : '';

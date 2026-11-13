@@ -5465,6 +5465,8 @@
   "commonStaleRefreshFailed": "Não foi possível atualizar. Mostrando o que foi carregado por último.",
   "commonSavedOnPhone": "Salvo neste celular. Será sincronizado quando você voltar a ficar online.",
   "commonDeletedOnPhone": "Excluído neste celular. Será sincronizado quando você voltar a ficar online.",
+  "pushTargetOpening": "Abrindo…",
+  "pushTargetOpenFailed": "Não foi possível abrir essa notificação: {error}",
   "planDetailMoreActions": "Mais ações do plano",
   "planDetailWeekActions": "Ações da semana {n}",
   "planDetailShiftDates": "Mudar datas…",

@@ -63,6 +63,10 @@ class _ExploreRoutesMapState extends State<ExploreRoutesMap> {
   bool _moved = false;
   int _generation = 0;
 
+  /// The last read of the routes in view failed. Shown on the map with
+  /// Retry, never as an empty map (issue #1374 FS-10).
+  bool _failed = false;
+
   @override
   void initState() {
     super.initState();
@@ -94,15 +98,25 @@ class _ExploreRoutesMapState extends State<ExploreRoutesMap> {
     if (!_ready || api == null) return;
     final bounds = widget.controller.camera.visibleBounds;
     final generation = ++_generation;
-    // Fails soft to no pins: the list in the sheet is the primary read.
-    final pins = await api.fetchDiscoverableRoutesInBbox(
-      minLng: bounds.west,
-      minLat: bounds.south,
-      maxLng: bounds.east,
-      maxLat: bounds.north,
-    );
-    if (!mounted || generation != _generation) return;
-    setState(() => _pins = pins);
+    try {
+      final pins = await api.fetchDiscoverableRoutesInBbox(
+        minLng: bounds.west,
+        minLat: bounds.south,
+        maxLng: bounds.east,
+        maxLat: bounds.north,
+      );
+      if (!mounted || generation != _generation) return;
+      setState(() {
+        _pins = pins;
+        _failed = false;
+      });
+    } catch (e) {
+      // L4: the pins are auxiliary to the list in the sheet, so a failed read
+      // keeps the pins already shown and says so on the map.
+      debugPrint('explore map routes read failed: ${safeErrorLabel(e)}');
+      if (!mounted || generation != _generation) return;
+      setState(() => _failed = true);
+    }
   }
 
   void _zoomInto(PinCluster<cm.DiscoverableRoutePin> c) {
@@ -199,6 +213,19 @@ class _ExploreRoutesMapState extends State<ExploreRoutesMap> {
             ],
           );
         }),
+        if (_failed)
+          Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: ActionChip(
+                key: const Key('explore-map-load-failed'),
+                avatar: const Icon(Icons.refresh, size: 18),
+                label: Text(l10n.heatmapLoadFailed),
+                onPressed: _refresh,
+              ),
+            ),
+          ),
       ],
     );
   }

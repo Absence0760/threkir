@@ -24,6 +24,41 @@ class _FakeApi extends ApiClient {
     int limit = kGlobalSegmentCatalogueLimit,
   }) async =>
       const [];
+
+  @override
+  Future<List<cm.DiscoverableRoutePin>> fetchDiscoverableRoutesInBbox({
+    required double minLng,
+    required double minLat,
+    required double maxLng,
+    required double maxLat,
+    int limit = 100,
+    String filter = 'popular',
+    List<double>? distMin,
+    List<double?>? distMax,
+  }) async =>
+      const [];
+}
+
+/// Explore's map read fails until [up] is set, then answers empty.
+class _MapDownApi extends _FakeApi {
+  bool up = false;
+  int calls = 0;
+
+  @override
+  Future<List<cm.DiscoverableRoutePin>> fetchDiscoverableRoutesInBbox({
+    required double minLng,
+    required double minLat,
+    required double maxLng,
+    required double maxLat,
+    int limit = 100,
+    String filter = 'popular',
+    List<double>? distMin,
+    List<double?>? distMax,
+  }) async {
+    calls++;
+    if (!up) throw Exception('network');
+    return const [];
+  }
 }
 
 /// Signed in, owns no routes, and cannot load the routes it bookmarked.
@@ -148,6 +183,25 @@ void main() {
       expect(find.byType(ExploreRoutesScreen), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsNothing,
           reason: 'Build belongs to My routes, not to Explore');
+    });
+
+    testWidgets(
+        "a failed read of Explore's map says so with Retry, not an empty map "
+        '(FS-10)', (tester) async {
+      final prefs = await _makePrefs();
+      final api = _MapDownApi();
+      await _pump(tester,
+          prefs: prefs, api: api, initialShow: RoutesShow.routes);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final failed = find.byKey(const Key('explore-map-load-failed'));
+      expect(failed, findsOneWidget);
+      api.up = true;
+      final before = api.calls;
+      await tester.tap(failed);
+      await tester.pump();
+      expect(api.calls, greaterThan(before));
+      expect(failed, findsNothing);
     });
 
     testWidgets(

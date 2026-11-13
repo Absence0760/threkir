@@ -15987,6 +15987,15 @@
   "@notificationBellTooltip": {
     "description": "Tooltip on the notification bell"
   },
+  "notificationBellUnread": "{count, plural, one{Notifications, {count} unread} other{Notifications, {count} unread}}",
+  "@notificationBellUnread": {
+    "description": "Tooltip and screen-reader name of the notifications bell when there are unread notifications",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "liveRunMapWaitingGps": "Waiting for GPS...",
   "@liveRunMapWaitingGps": {
     "description": "Overlay shown while waiting for the first GPS fix"

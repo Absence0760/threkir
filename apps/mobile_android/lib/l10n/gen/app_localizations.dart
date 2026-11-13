@@ -19233,6 +19233,12 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get notificationBellTooltip;
 
+  /// Tooltip and screen-reader name of the notifications bell when there are unread notifications
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Notifications, {count} unread} other{Notifications, {count} unread}}'**
+  String notificationBellUnread(int count);
+
   /// Overlay shown while waiting for the first GPS fix
   ///
   /// In en, this message translates to:

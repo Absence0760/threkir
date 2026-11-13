@@ -3224,6 +3224,7 @@
   "gearWearLogAddError": "観察メモを追加できませんでした: {error}",
   "gearWearLogDeleteError": "観察メモを削除できませんでした: {error}",
   "notificationBellTooltip": "通知",
+  "notificationBellUnread": "{count, plural, other{通知、未読{count}件}}",
   "liveRunMapWaitingGps": "GPS を待っています...",
   "liveRunMapApproximateLocation": "正確な位置情報がオフです — 地図に現在地を表示できません",
   "liveRunMapRecentre": "現在地に再センタリング",

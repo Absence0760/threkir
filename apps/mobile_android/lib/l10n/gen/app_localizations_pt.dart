@@ -11886,6 +11886,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get notificationBellTooltip => 'Notificações';
 
   @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Notificações, $count não lidas',
+      one: 'Notificações, $count não lida',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get liveRunMapWaitingGps => 'A aguardar GPS...';
 
   @override
@@ -34503,6 +34514,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get notificationBellTooltip => 'Notificações';
+
+  @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Notificações, $count não lidas',
+      one: 'Notificações, $count não lida',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get liveRunMapWaitingGps => 'Aguardando GPS...';

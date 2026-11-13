@@ -11882,6 +11882,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get notificationBellTooltip => 'Notificaciones';
 
   @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Notificaciones, $count sin leer',
+      one: 'Notificaciones, $count sin leer',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get liveRunMapWaitingGps => 'Esperando GPS...';
 
   @override

@@ -3224,6 +3224,7 @@
   "gearWearLogAddError": "Beobachtung konnte nicht hinzugefügt werden: {error}",
   "gearWearLogDeleteError": "Beobachtung konnte nicht gelöscht werden: {error}",
   "notificationBellTooltip": "Benachrichtigungen",
+  "notificationBellUnread": "{count, plural, one{Benachrichtigungen, {count} ungelesen} other{Benachrichtigungen, {count} ungelesen}}",
   "liveRunMapWaitingGps": "Warte auf GPS...",
   "liveRunMapApproximateLocation": "Genauer Standort ist aus — die Karte kann deine Position nicht anzeigen",
   "liveRunMapRecentre": "Auf meinen Standort zentrieren",

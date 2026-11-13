@@ -3224,6 +3224,7 @@
   "gearWearLogAddError": "Não foi possível adicionar a observação: {error}",
   "gearWearLogDeleteError": "Não foi possível eliminar a observação: {error}",
   "notificationBellTooltip": "Notificações",
+  "notificationBellUnread": "{count, plural, one{Notificações, {count} não lida} other{Notificações, {count} não lidas}}",
   "liveRunMapWaitingGps": "A aguardar GPS...",
   "liveRunMapApproximateLocation": "A localização exata está desativada — o mapa não consegue mostrar onde está",
   "liveRunMapRecentre": "Recentralizar na minha localização",

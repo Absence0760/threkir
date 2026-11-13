@@ -11313,6 +11313,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get notificationBellTooltip => '通知';
 
   @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '通知、未読$count件',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get liveRunMapWaitingGps => 'GPS を待っています...';
 
   @override

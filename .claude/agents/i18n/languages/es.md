@@ -71,7 +71,9 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | heart rate zone | Zonas de frecuencia cardíaca | |
 | cadence (steps/min) | Cadencia | `runStatCadence`; "Frecuencia" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plan de entrenamiento; short Plan(es) | |
-| race | Carrera; "Competir" for the race phase intent | collides with *run* — inconsistency 1 |
+| race (a competition you find, enter, browse or are listed for) | **Prueba / Pruebas** — `navRaces` / `nav.races` "Pruebas", "Calendario de pruebas" (`racesTitle`, `races.title`), "Pruebas y recorridos", "Próximas pruebas", "Buscar pruebas por nombre…", "Página de la prueba e inscripción", "Reclamar esta prueba", "Ficha de prueba", "página de la prueba" (race photo gallery), "resultados de pruebas" (RunSignUp / ChronoTrack); "Es una contrarreloj, no una prueba organizada" (park courses) | settled 2026-11-12 (inconsistency 1). Covers every race-discovery, calendar, registration, race-listing, race-page, race-course-claim and results-import string. Feminine like *carrera*, so agreement is unchanged ("esta prueba", "Próximas pruebas"). *Prueba* in its other senses ("periodo de prueba", "Prueba encontrada", "prueba a ampliarlo") are unaffected |
+| race (as the athlete's own effort, in training plans) | **Carrera** — "carrera objetivo", "carreras A/B/C", "Semana de carrera", "Día de carrera", "Fecha de carrera", "Estrategia de carrera", "Predictor de tiempo de carrera", "Avituallamiento de carrera"; "Competir" for the race phase intent | settled 2026-11-12: plan / season / workout / prediction strings keep *carrera*, as Spanish running coaching does. A plan string that points at the race *listing* takes *prueba* ("Toca «Añadir a mi temporada» en la prueba", "Buscar una prueba") |
+| race (a club-hosted live race: control, live page, results) | **Carrera** — the race-control rows below, "Control de carrera", "Carrera en vivo", "Director de carrera", help category `helpCategoryRaces` / `help.categoryRaces` "Carreras" | settled 2026-11-10 / 2026-11-12: the host's live race keeps *carrera* (Preparar / Finalizar / Cancelar carrera, «CARRERA PREPARADA» on Wear) |
 | finish | **Meta** (finish line); Finalizado (status); Finalizar (action) | "Meta" also used once for *goal* on web |
 | DNF | DNF | web `liveEvent`/checkpoint also "Abandono" |
 | route | Ruta / Rutas | |
@@ -101,9 +103,14 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 
-1. **run vs race are both "Carrera(s)".** Web `runSurface.tabRuns` and
-   `runSurface.tabRaces` render "Carreras" twice on one tab bar
-   (`RunSurfaceTabs.svelte`); `nav.races` / `navRaces` (unused) too.
+1. ~~**run vs race are both "Carrera(s)"**~~: resolved 2026-11-12. A race
+   you find, enter, browse or are listed for is **prueba(s)** (the race
+   calendar, race pages, listings, claims, results import, `nav.races` /
+   `navRaces` "Pruebas"; the run-surface tab is `runSurface.tabRacesCourses`
+   "Pruebas y recorridos" beside `tabRuns` "Carreras"). The run stays
+   *carrera*, and so do the training-plan race terms and the club-hosted
+   live race-control vocabulary settled 2026-11-10 — see the three *race*
+   rows in the glossary for the boundary.
 2. ~~**gym**~~: resolved 2026-11-10, the phone says "Gym" like the web.
 3. **settings**: "Ajustes" (mobile `navSettings`, web `prefs.kicker`) vs
    "Configuración" (web `shell.settings`).

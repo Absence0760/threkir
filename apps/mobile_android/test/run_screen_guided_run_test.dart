@@ -678,4 +678,35 @@ void main() {
       expect(block.contains('_guidedCueSec = nowSec;'), isTrue);
     });
   });
+
+  // #1374 A11Y-11: the 3-2-1 was never announced, and the "Tap to cancel"
+  // hint was white at 0.7 straight on the scrim, about 2.5:1 over a light map.
+  group('RunScreen — the start countdown', () {
+    testWidgets('announces once that the run is starting and how to cancel',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      final spoken = tester.takeAnnouncements().map((a) => a.message).toList();
+      expect(spoken, ['Starting in 3 seconds. Tap to cancel.']);
+      final hint = find.byKey(const Key('runCountdownCancelHint'));
+      expect(hint, findsOneWidget);
+      expect(
+        tester.widget<Text>(find.descendant(of: hint, matching: find.byType(Text))).style?.color,
+        Colors.white,
+      );
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      expect(
+        tester.takeAnnouncements().where((a) => a.message.startsWith('Starting in')),
+        isEmpty,
+        reason: 'the countdown is announced once, not every second',
+      );
+    });
+  });
 }
+

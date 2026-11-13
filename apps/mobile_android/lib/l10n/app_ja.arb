@@ -625,6 +625,7 @@
   "runWeakGpsApproximate": "おおよその位置情報 — 距離は一時停止中",
   "runTurnOnPreciseLocation": "正確な位置情報をオンにする",
   "runA11yStarted": "ランを開始しました",
+  "runA11yStartingIn": "{seconds, plural, other{{seconds} 秒後に開始します。タップしてキャンセル。}}",
   "runA11yResumed": "ランを再開しました",
   "runA11yPaused": "ランを一時停止しました",
   "runA11yFinished": "ランを終了しました",

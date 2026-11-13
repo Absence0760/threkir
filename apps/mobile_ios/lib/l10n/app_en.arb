@@ -2997,6 +2997,15 @@
   "@runA11yStarted": {
     "description": "Screen-reader status announcement when recording begins"
   },
+  "runA11yStartingIn": "{seconds, plural, one{Starting in {seconds} second. Tap to cancel.} other{Starting in {seconds} seconds. Tap to cancel.}}",
+  "@runA11yStartingIn": {
+    "description": "Screen-reader announcement when the 3-2-1 countdown before a recording begins",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "runA11yResumed": "Run resumed",
   "@runA11yResumed": {
     "description": "Screen-reader status announcement when a paused run resumes"

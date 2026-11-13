@@ -2203,6 +2203,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runA11yStarted => 'ランを開始しました';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds 秒後に開始します。タップしてキャンセル。',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'ランを再開しました';
 
   @override

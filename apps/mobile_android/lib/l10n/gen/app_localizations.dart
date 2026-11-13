@@ -3899,6 +3899,12 @@ abstract class AppLocalizations {
   /// **'Run started'**
   String get runA11yStarted;
 
+  /// Screen-reader announcement when the 3-2-1 countdown before a recording begins
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds, plural, one{Starting in {seconds} second. Tap to cancel.} other{Starting in {seconds} seconds. Tap to cancel.}}'**
+  String runA11yStartingIn(int seconds);
+
   /// Screen-reader status announcement when a paused run resumes
   ///
   /// In en, this message translates to:

@@ -2305,6 +2305,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runA11yStarted => 'Course démarrée';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Départ dans $seconds secondes. Touchez pour annuler.',
+      one: 'Départ dans $seconds seconde. Touchez pour annuler.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'Course reprise';
 
   @override

@@ -625,6 +625,7 @@
   "runWeakGpsApproximate": "Ubicación aproximada — distancia en pausa",
   "runTurnOnPreciseLocation": "Activar la ubicación exacta",
   "runA11yStarted": "Carrera iniciada",
+  "runA11yStartingIn": "{seconds, plural, one{Empieza en {seconds} segundo. Toca para cancelar.} other{Empieza en {seconds} segundos. Toca para cancelar.}}",
   "runA11yResumed": "Carrera reanudada",
   "runA11yPaused": "Carrera en pausa",
   "runA11yFinished": "Carrera finalizada",

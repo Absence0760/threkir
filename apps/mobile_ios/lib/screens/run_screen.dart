@@ -192,6 +192,12 @@ double idleStartAreaHeight(double buttonSize, double dockInset) =>
 
 /// Main run recording screen with GPS tracking, live stats, sync, audio cues,
 /// auto-pause, countdown, and optional route following.
+/// The backing behind the countdown's "Tap to cancel", over the 0.45 black
+/// scrim: white on it is 11.71:1 over a white basemap (the old 0.7-alpha
+/// white straight on the scrim was 2.46:1).
+@visibleForTesting
+const Color kCountdownHintBacking = Color(0x99000000);
+
 class RunScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final LocalRunStore runStore;
@@ -1792,6 +1798,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _setScreenState(_ScreenState.countdown);
       _countdownValue = 3;
     });
+    // The big digits are drawn, not read: say once that the run is about to
+    // start and how to stop it (#1374 A11Y-11).
+    _announceA11yState(_l10n.runA11yStartingIn(_countdownValue));
 
     // Warm up everything that would otherwise delay the start of the run —
     // GPS stream, pedometer sensor, wakelock — while the countdown ticks.
@@ -5531,13 +5540,27 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       bottom: 48,
                       left: 0,
                       right: 0,
+                      // On its own backing, so its contrast does not depend
+                      // on the tile under the scrim: white at 0.7 over the
+                      // scrim over a white basemap was about 2.5:1.
                       child: Center(
-                        child: Text(
-                          l10n.runTapToCancel,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
+                        child: DecoratedBox(
+                          key: const Key('runCountdownCancelHint'),
+                          decoration: BoxDecoration(
+                            color: kCountdownHintBacking,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
+                            child: Text(
+                              l10n.runTapToCancel,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
                         ),
                       ),

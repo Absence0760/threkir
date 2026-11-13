@@ -625,6 +625,7 @@
   "runWeakGpsApproximate": "Position approximative — distance en pause",
   "runTurnOnPreciseLocation": "Activer la position exacte",
   "runA11yStarted": "Course démarrée",
+  "runA11yStartingIn": "{seconds, plural, one{Départ dans {seconds} seconde. Touchez pour annuler.} other{Départ dans {seconds} secondes. Touchez pour annuler.}}",
   "runA11yResumed": "Course reprise",
   "runA11yPaused": "Course en pause",
   "runA11yFinished": "Course terminée",

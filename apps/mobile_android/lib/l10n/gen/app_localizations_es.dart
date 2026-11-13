@@ -2297,6 +2297,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runA11yStarted => 'Carrera iniciada';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Empieza en $seconds segundos. Toca para cancelar.',
+      one: 'Empieza en $seconds segundo. Toca para cancelar.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'Carrera reanudada';
 
   @override

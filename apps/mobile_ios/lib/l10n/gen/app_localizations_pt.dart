@@ -2299,6 +2299,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runA11yStarted => 'Corrida iniciada';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Começa dentro de $seconds segundos. Toque para cancelar.',
+      one: 'Começa dentro de $seconds segundo. Toque para cancelar.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'Corrida retomada';
 
   @override
@@ -24967,6 +24978,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runA11yStarted => 'Corrida iniciada';
+
+  @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Começa em $seconds segundos. Toque para cancelar.',
+      one: 'Começa em $seconds segundo. Toque para cancelar.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get runA11yResumed => 'Corrida retomada';

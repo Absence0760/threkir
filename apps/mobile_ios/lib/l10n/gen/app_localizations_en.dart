@@ -5940,10 +5940,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubsTabMine => 'My clubs';
 
   @override
+  String get clubsViewGroup => 'Clubs section';
+
+  @override
   String get clubsJoinWithCode => 'Join with invite code';
 
   @override
   String get clubsSearchHint => 'Search by name or location';
+
+  @override
+  String get clubsSearchMineHint => 'Search your clubs';
+
+  @override
+  String get clubsMineNoMatch => 'None of your clubs match your search';
 
   @override
   String get clubsTimeoutError =>
@@ -15025,6 +15034,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get challengesTitle => 'Challenges';
+
+  @override
+  String get challengesSearchHint => 'Search challenges';
+
+  @override
+  String get challengesNoMatch => 'No challenges match your search';
 
   @override
   String get challengesMyChallenges => 'My challenges';

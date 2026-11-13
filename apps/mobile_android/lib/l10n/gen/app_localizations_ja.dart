@@ -5679,10 +5679,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubsTabMine => 'マイクラブ';
 
   @override
+  String get clubsViewGroup => 'クラブセクション';
+
+  @override
   String get clubsJoinWithCode => '招待コードで参加';
 
   @override
   String get clubsSearchHint => '名前または場所で検索';
+
+  @override
+  String get clubsSearchMineHint => '参加中のクラブを検索';
+
+  @override
+  String get clubsMineNoMatch => '検索に一致するクラブはありません';
 
   @override
   String get clubsTimeoutError => '接続がタイムアウトしました。ネットワークを確認して再試行してください。';
@@ -14456,6 +14465,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get challengesTitle => 'チャレンジ';
+
+  @override
+  String get challengesSearchHint => 'チャレンジを検索';
+
+  @override
+  String get challengesNoMatch => '検索に一致するチャレンジはありません';
 
   @override
   String get challengesMyChallenges => '参加中のチャレンジ';

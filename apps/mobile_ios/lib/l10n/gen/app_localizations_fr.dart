@@ -6017,10 +6017,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get clubsTabMine => 'Mes clubs';
 
   @override
+  String get clubsViewGroup => 'Section clubs';
+
+  @override
   String get clubsJoinWithCode => 'Rejoindre avec un code d\'invitation';
 
   @override
   String get clubsSearchHint => 'Rechercher par nom ou lieu';
+
+  @override
+  String get clubsSearchMineHint => 'Rechercher dans vos clubs';
+
+  @override
+  String get clubsMineNoMatch =>
+      'Aucun de vos clubs ne correspond à votre recherche';
 
   @override
   String get clubsTimeoutError =>
@@ -15210,6 +15220,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get challengesTitle => 'Défis';
+
+  @override
+  String get challengesSearchHint => 'Rechercher des défis';
+
+  @override
+  String get challengesNoMatch => 'Aucun défi ne correspond à votre recherche';
 
   @override
   String get challengesMyChallenges => 'Mes défis';

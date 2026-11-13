@@ -6005,10 +6005,20 @@ class AppLocalizationsPt extends AppLocalizations {
   String get clubsTabMine => 'Os meus clubes';
 
   @override
+  String get clubsViewGroup => 'Secção de clubes';
+
+  @override
   String get clubsJoinWithCode => 'Entrar com código de convite';
 
   @override
   String get clubsSearchHint => 'Pesquisar por nome ou local';
+
+  @override
+  String get clubsSearchMineHint => 'Pesquisar nos seus clubes';
+
+  @override
+  String get clubsMineNoMatch =>
+      'Nenhum dos seus clubes corresponde à sua pesquisa';
 
   @override
   String get clubsTimeoutError =>
@@ -15187,6 +15197,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get challengesTitle => 'Desafios';
+
+  @override
+  String get challengesSearchHint => 'Procurar desafios';
+
+  @override
+  String get challengesNoMatch => 'Nenhum desafio corresponde à sua pesquisa';
 
   @override
   String get challengesMyChallenges => 'Os meus desafios';
@@ -29526,10 +29542,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get clubsTabMine => 'Meus clubes';
 
   @override
+  String get clubsViewGroup => 'Seção de clubes';
+
+  @override
   String get clubsJoinWithCode => 'Entrar com código de convite';
 
   @override
   String get clubsSearchHint => 'Pesquisar por nome ou local';
+
+  @override
+  String get clubsSearchMineHint => 'Buscar nos seus clubes';
+
+  @override
+  String get clubsMineNoMatch =>
+      'Nenhum dos seus clubes corresponde à sua busca';
 
   @override
   String get clubsTimeoutError =>
@@ -38698,6 +38724,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get challengesTitle => 'Desafios';
+
+  @override
+  String get challengesSearchHint => 'Buscar desafios';
+
+  @override
+  String get challengesNoMatch => 'Nenhum desafio corresponde à sua busca';
 
   @override
   String get challengesMyChallenges => 'Meus desafios';

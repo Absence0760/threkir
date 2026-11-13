@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../catalogue_browse.dart' show fold;
 import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
 import '../local_route_store.dart';
@@ -63,6 +64,20 @@ class _ClubsScreenState extends State<ClubsScreen> {
   List<ClubView> _browse = const [];
   List<ClubView> _mine = const [];
   final _searchCtrl = TextEditingController();
+
+  /// My clubs' own search: a name filter over the clubs already loaded, so
+  /// it narrows as it is typed and never reaches the server.
+  final _mineSearchCtrl = TextEditingController();
+  String _mineQuery = '';
+
+  List<ClubView> get _mineShown {
+    final q = fold(_mineQuery.trim());
+    if (q.isEmpty) return _mine;
+    return [
+      for (final v in _mine)
+        if (fold(v.row.name).contains(q)) v,
+    ];
+  }
 
   /// Null when the build has no Strava client id or no api client; then the
   /// section is never built and Strava is never asked.
@@ -142,6 +157,7 @@ class _ClubsScreenState extends State<ClubsScreen> {
   void dispose() {
     widget.social.removeListener(_onChange);
     _searchCtrl.dispose();
+    _mineSearchCtrl.dispose();
     _strava?.dispose();
     super.dispose();
   }
@@ -227,13 +243,24 @@ class _ClubsScreenState extends State<ClubsScreen> {
     );
   }
 
-  /// Browse / My clubs as the quick chips, the Browse search, and Join with
-  /// code as the row's one secondary action. Three stacked control rows
-  /// before (chips, a full-width button, the search), now at most two.
+  /// Browse · My clubs as the view switch, then each view's search with
+  /// Join with code beside it. My clubs had no search, so the code button
+  /// stood alone on a row under the views (the owner's screenshot, issue
+  /// #1374); each view's list can grow, so each has one.
   FilterBar _filterBar(AppLocalizations l10n) => FilterBar(
         key: const ValueKey('clubs-filter-bar'),
+        views: ViewSwitch<int>(
+          label: l10n.clubsViewGroup,
+          options: [
+            ChoiceChipOption(value: 0, label: l10n.clubsTabBrowse),
+            ChoiceChipOption(value: 1, label: l10n.clubsTabMine),
+          ],
+          selected: _tab,
+          onChanged: (v) => setState(() => _tab = v),
+        ),
         search: _tab == 0
             ? AppSearchField(
+                  key: const ValueKey('clubs-search-browse'),
                   controller: _searchCtrl,
                   hint: l10n.clubsSearchHint,
                   clearTooltip: l10n.commonClearSearch,
@@ -245,7 +272,13 @@ class _ClubsScreenState extends State<ClubsScreen> {
                     if (v.isEmpty) _searchBrowse();
                   },
                 )
-            : null,
+            : AppSearchField(
+                key: const ValueKey('clubs-search-mine'),
+                controller: _mineSearchCtrl,
+                hint: l10n.clubsSearchMineHint,
+                clearTooltip: l10n.commonClearSearch,
+                onChanged: (v) => setState(() => _mineQuery = v),
+              ),
         trailing: [
           IconButton(
             key: const ValueKey('clubs-join-with-code'),
@@ -254,21 +287,22 @@ class _ClubsScreenState extends State<ClubsScreen> {
             onPressed: _joinWithCode,
           ),
         ],
-        chips: [
-          for (final option in [
-            ChoiceChipOption(value: 0, label: l10n.clubsTabBrowse),
-            ChoiceChipOption(value: 1, label: l10n.clubsTabMine),
-          ])
-            buildChoiceChip<int>(
-              context,
-              option,
-              _tab,
-              (v) => setState(() => _tab = v),
-            ),
-        ],
       );
 
-  Widget _empty(AppLocalizations l10n) => _tab == 0
+  Widget _empty(AppLocalizations l10n) => _tab == 1 && _mine.isNotEmpty
+      // The runner has clubs and the search matched none of them.
+      ? EmptyState(
+          key: const ValueKey('clubs-mine-no-match'),
+          icon: Icons.search_off,
+          title: l10n.clubsMineNoMatch,
+          ctaLabel: l10n.commonClearSearch,
+          ctaIcon: Icons.clear,
+          onCta: () => setState(() {
+            _mineSearchCtrl.clear();
+            _mineQuery = '';
+          }),
+        )
+      : _tab == 0
       ? EmptyState(
           icon: Icons.groups_outlined,
           title: l10n.clubsEmptyBrowseTitle,
@@ -346,7 +380,7 @@ class _ClubsScreenState extends State<ClubsScreen> {
         onPressed: _createClub,
       ),
       onRefresh: _load,
-      body: _buildList(l10n, _tab == 0 ? _browse : _mine),
+      body: _buildList(l10n, _tab == 0 ? _browse : _mineShown),
     );
   }
 }

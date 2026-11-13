@@ -68,6 +68,7 @@ import 'confirm_age_screen.dart';
 import 'dashboard_screen.dart';
 import 'event_detail_screen.dart';
 import 'fitness_hub_screen.dart';
+import 'gear_screen.dart';
 import 'import_screen.dart';
 import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
@@ -690,6 +691,12 @@ class _HomeScreenState extends State<HomeScreen>
             treadmill: widget.treadmill,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
+          ),
+        SettingsDestination.gear => GearScreen(
+            api: widget.apiClient,
+            preferences: widget.preferences,
+            store: widget.gearStore,
+            runStore: widget.runStore,
           ),
         SettingsDestination.bodyMetrics => SettingsBodyMetricsScreen(
             api: widget.apiClient,

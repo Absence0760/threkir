@@ -30,6 +30,7 @@ enum SettingsDestination {
   account,
   safety,
   integrations,
+  gear,
   bodyMetrics,
   about,
   pro;

@@ -12,6 +12,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_preferences_screen.dart';
 import '../lib/settings_sync.dart';
+import 'worst_case_layout.dart';
 
 class _FakeSettingsService extends SettingsService {
   _FakeSettingsService(this._values)
@@ -86,6 +87,24 @@ bool _on(WidgetTester tester) => tester
     .value;
 
 void main() {
+  worstCaseTestWidgets('the Notifications page with the Park course months '
+      'switch', (tester, locale) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final prefs = Preferences();
+    await prefs.init();
+    final sync = _FakeSettingsSync(prefs, _FakeSettingsService(const {}));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SettingsPreferencesScreen(
+        page: PreferencesPage.notifications,
+        preferences: prefs,
+        settingsSync: sync,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await walkScrollable(tester, primaryScrollable(), 'Notifications');
+  }, layoutOnly: true);
+
   testWidgets('with nothing stored the switch is on, and a tap mutes it', (
     tester,
   ) async {

@@ -6520,7 +6520,6 @@ class AppLocalizationsJa extends AppLocalizations {
       weeks,
       locale: localeName,
       other: '$weeks週間・週$days日',
-      one: '$weeks週間・週$days日',
     );
     return '$_temp0';
   }
@@ -8150,21 +8149,21 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get settingsAccountAiConsentUpdateTitle => '更新されたAIの説明に同意する';
+  String get settingsAccountAiConsentUpdateTitle => '更新されたAIに関する説明に同意する';
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
       '説明の対象となる機能が増えました。内容を確認して同意すると、記載されているすべてのAI機能を利用できます。';
 
   @override
-  String get settingsAccountAiConsentGrantTitle => 'AIの説明を確認する';
+  String get settingsAccountAiConsentGrantTitle => 'AIに関する説明を確認する';
 
   @override
   String get settingsAccountAiConsentGrantSubtitle =>
       'ThrekirのAI機能は、データを使用する前に同意を求めます。説明を読み、ここで同意できます。';
 
   @override
-  String get settingsAccountAiConsentAccepted => 'AIの説明に同意しました。';
+  String get settingsAccountAiConsentAccepted => 'AIに関する説明に同意しました。';
 
   @override
   String settingsAccountDeleteFailed(Object error) {
@@ -11093,7 +11092,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String gearBackfillBody(int count, String activity) {
-    return '購入後に $activity のアクティビティが $count 件見つかりました。使用していないものはチェックを外してください。';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count件',
+    );
+    return '購入後に$activityのアクティビティが$_temp0見つかりました。使用していないものはチェックを外してください。';
   }
 
   @override

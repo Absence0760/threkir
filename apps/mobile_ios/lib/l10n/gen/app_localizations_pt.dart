@@ -843,7 +843,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get readinessReasonOverTapered =>
-      'Polimento a mais — pode perder o ritmo';
+      'Polimento excessivo — pode perder acutilância';
 
   @override
   String get readinessReasonVeryLittleSleep =>
@@ -16852,7 +16852,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get phaseIntentSettle => 'Assentar';
 
   @override
-  String get phaseIntentRace => 'Correr';
+  String get phaseIntentRace => 'Competir';
 
   @override
   String get phaseIntentEven => 'Constante';
@@ -17010,7 +17010,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get watchMetricPacerDelta => 'Diferença para o pacer';
 
   @override
-  String get watchMetricGuidedRunRemaining => 'Aviso da corrida guiada';
+  String get watchMetricGuidedRunRemaining => 'Dica da corrida guiada';
 
   @override
   String get watchMetricWorkoutRemaining => 'Etapa do treino';
@@ -23918,7 +23918,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get readinessReasonOverTapered =>
-      'Polimento demais — pode perder o ritmo';
+      'Polimento excessivo — você pode perder o pique';
 
   @override
   String get readinessReasonVeryLittleSleep =>
@@ -24308,7 +24308,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get editProfileUsernameHelp =>
-      'Seu nome de usuário público (@…) — 3 a 30 letras minúsculas, números ou sublinhados. Outros podem te encontrar por ele.';
+      'Seu nome de usuário público (@…) — 3 a 30 letras minúsculas, números ou sublinhados. Outras pessoas podem encontrar você por ele.';
 
   @override
   String get editProfileUsernameTaken => 'Esse nome de usuário já está em uso.';
@@ -27086,9 +27086,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other:
-          'Não foi possível ajustar $count segmentos a uma via. Arraste os pinos afetados para ajustar.',
+          'Não foi possível ajustar $count segmentos a uma via. Arraste os pinos afetados para corrigir.',
       one:
-          'Não foi possível ajustar $count segmento a uma via. Arraste o pino afetado para ajustar.',
+          'Não foi possível ajustar $count segmento a uma via. Arraste o pino afetado para corrigir.',
     );
     return '$_temp0';
   }
@@ -30192,7 +30192,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewAiErrorConsent =>
-      'O assistente de planos precisa do aviso de IA atualizado.';
+      'O assistente de planos precisa que você aceite o aviso de IA atualizado.';
 
   @override
   String get planNewAiReviewDisclosure => 'Ver as informações';
@@ -31696,7 +31696,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar todos os recursos de IA que elas descrevem.';
 
   @override
-  String get settingsAccountAiConsentGrantTitle => 'Ver o aviso de IA';
+  String get settingsAccountAiConsentGrantTitle => 'Revisar o aviso de IA';
 
   @override
   String get settingsAccountAiConsentGrantSubtitle =>
@@ -31954,9 +31954,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other:
-          '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, então não vai incluí-las — use o backup completo para guardá-las.',
+          '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, então não vai incluí-las — use Backup completo para guardá-las.',
       one:
-          '$count corrida ainda não foi sincronizada. A exportação da conta é criada no servidor, então não vai incluí-la — use o backup completo para guardá-la.',
+          '$count corrida ainda não foi sincronizada. A exportação da conta é criada no servidor, então não vai incluí-la — use Backup completo para guardá-la.',
     );
     return '$_temp0';
   }
@@ -36634,7 +36634,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registro por foto do prato precisa do aviso de IA atualizado.';
+      'O registro por foto do prato precisa que você aceite o aviso de IA atualizado.';
 
   @override
   String get platePhotoErrorPro =>
@@ -42214,7 +42214,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get seasonPlanErrorConsent =>
-      'O assistente de temporada precisa do aviso de IA atualizado. Você ainda pode adicionar suas provas abaixo.';
+      'O assistente de temporada precisa que você aceite o aviso de IA atualizado. Você ainda pode adicionar suas provas abaixo.';
 
   @override
   String get seasonPlanErrorDailyLimit =>

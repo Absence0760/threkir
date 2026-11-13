@@ -775,13 +775,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger les suggestions.';
 
   @override
-  String get readinessCardHeader => 'Forme du jour';
+  String get readinessCardHeader => 'État de forme';
 
   @override
-  String get readinessBandHigh => 'élevée';
+  String get readinessBandHigh => 'élevé';
 
   @override
-  String get readinessBandModerate => 'modérée';
+  String get readinessBandModerate => 'modéré';
 
   @override
   String get readinessBandLow => 'faible';
@@ -802,11 +802,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get readinessAdviceNoSignal =>
-      'Connectez vos données de sommeil et de fréquence cardiaque pour une vraie mesure de votre disponibilité.';
+      'Connectez vos données de sommeil et de fréquence cardiaque pour une vraie mesure de votre état de forme.';
 
   @override
   String get readinessAdviceNoSignalHigh =>
-      'Bonne journée pour accélérer, semble-t-il.';
+      'On dirait une bonne journée pour accélérer.';
 
   @override
   String get readinessNextLow =>
@@ -970,7 +970,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String dashboardHeroReadiness(int score) {
-    return 'Forme $score';
+    return 'État de forme $score';
   }
 
   @override
@@ -10701,7 +10701,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get periodShareStatAvgPace => 'ALLURE MOY.';
 
   @override
-  String get trainingLoadTitle => 'Forme, Fatigue & Fraîcheur';
+  String get trainingLoadTitle => 'Forme, fatigue et fraîcheur';
 
   @override
   String trainingLoadSubtitleHr(int days) {
@@ -10832,11 +10832,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get fitnessRecoveryAdviceSweetSpot =>
-      'Zone idéale — une course régulière ou une séance au seuil convient.';
+      'Zone idéale — une course régulière ou une séance de tempo convient.';
 
   @override
   String get fitnessRecoveryAdviceTapering =>
-      'Affûtage / regain de fraîcheur — une course ou une séance dure passera bien dans les prochains jours.';
+      'Affûtage / regain de fraîcheur — une épreuve ou une séance dure passera bien dans les prochains jours.';
 
   @override
   String get fitnessRecoveryAdviceVeryFresh =>
@@ -15626,12 +15626,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String racePlanDescribeAscent(String climb) {
-    return '$climb de montée';
+    return '$climb de dénivelé positif';
   }
 
   @override
   String racePlanDescribeDescent(String climb) {
-    return '$climb de descente';
+    return '$climb de dénivelé négatif';
   }
 
   @override

@@ -26,13 +26,11 @@ ein", "Füge … ein", "prüfe deine Verbindung"). TTS cues are short
 `du`-imperatives or nominal ("Halte ein gleichmäßiges Tempo.",
 "Links abbiegen", "Tempo erhöhen").
 
-**Register slips already shipping (findings, don't copy them):**
-mobile `discardChangesBody` and `privacyZonesDiscardBody` ("Sie haben
-nicht gespeicherte …", while web's twin `common.unsavedBody` says "Du
-hast"); mobile TTS `ttsSlightLeft` / `ttsSlightRight` ("Halten Sie sich
-links/rechts") and `ttsUturn` ("Wenden Sie") among `du`/neutral TTS cues;
-web `checkpoint.boardNoCheckpoints` ("Fügen Sie zuerst …") and
-`settingsAccount.exportReasonSignedOut` ("Ihre Sitzung ist abgelaufen").
+**Register slips:** none left. The last ones (mobile `discardChangesBody`,
+`privacyZonesDiscardBody`, the TTS cues `ttsSlightLeft` / `ttsSlightRight` /
+`ttsUturn`, web `checkpoint.boardNoCheckpoints` and
+`settingsAccount.exportReasonSignedOut`) moved to `du` on 2026-11-13 (#1374
+round 3.6).
 Capitalised `Sie` that means *she/it/they* ("Sie hat kaum Höhenunterschied"
 for a Route) is correct and not a slip.
 
@@ -98,7 +96,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | streak | Serie | "Beste Serie" |
 | goal | Ziel / Ziele | |
 | coach | Coach; AI Coach = **KI-Coach** | `nav.coach` |
-| AI disclosure | **KI-Hinweise** (plural: "die aktualisierten KI-Hinweise", "KI-Hinweise ansehen", "akzeptiere sie") | settled 2026-11-13; never the singular "KI-Hinweis". Consent wording: CISO/counsel review |
+| AI disclosure | **KI-Hinweise** (plural: "die aktualisierten KI-Hinweise", "KI-Hinweise ansehen", "akzeptiere sie") | settled 2026-11-13; never the singular "KI-Hinweis" or "KI-Information" (the plan assistant's consent error moved off it in round 3.6). Consent wording: CISO/counsel review |
 | auto-pause | — | no catalogue string yet; build from "Pause" / "pausieren" ("Lauf pausiert") → "Auto-Pause", and flag it as a new term |
 | kudos | Kudos ("Kudos geben", "Kudos zurücknehmen") | |
 | workout | Training (dominant) / Workout | |
@@ -119,7 +117,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
    *tempo run* workout kind; and mobile mixes "Pace" for pace in
    `workoutReviewColPace`, `shareCardStatPace`, `ttsPaceKm`, `ttsPaceMi`.
    New pace strings: "Tempo"; flag any string where both senses meet.
-2. **Sie slips** — listed under Register.
+2. **Sie slips** — resolved 2026-11-13 (see Register).
 3. **elevation gain**: Höhenmeter / Anstieg / Aufstieg / Höhengewinn.
 4. **route**: Route vs Strecke on web.
 5. **club**: Club vs Verein — resolved 2026-11-13: always Club (see the glossary row).

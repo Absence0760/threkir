@@ -828,7 +828,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Starke Ermüdung – die Trainingsbelastung der letzten Zeit liegt deutlich über deiner Fitness';
 
   @override
-  String get readinessReasonFatigued => 'Ermüdet vom letzten Training';
+  String get readinessReasonFatigued => 'Ermüdet vom Training der letzten Zeit';
 
   @override
   String get readinessReasonSlightFatigue => 'Leichte Ermüdung';
@@ -877,7 +877,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get readinessReasonHrSlightlyHigh => 'Ruhepuls leicht erhöht';
 
   @override
-  String get readinessReasonHrBaseline => 'Ruhepuls im Normalbereich';
+  String get readinessReasonHrBaseline => 'Ruhepuls auf deinem Basiswert';
 
   @override
   String get readinessReasonHrBelow =>
@@ -7133,7 +7133,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewAiErrorConsent =>
-      'Der Plan-Assistent benötigt die aktualisierte KI-Information.';
+      'Der Plan-Assistent benötigt die aktualisierten KI-Hinweise.';
 
   @override
   String get planNewAiReviewDisclosure => 'Hinweise ansehen';
@@ -9952,14 +9952,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyZonesDiscardBody =>
-      'Sie haben nicht gespeicherte Datenschutzzonen. Ohne Speichern verlassen?';
+      'Du hast ungespeicherte Datenschutzzonen. Ohne Speichern verlassen?';
 
   @override
   String get discardChangesTitle => 'Änderungen verwerfen?';
 
   @override
   String get discardChangesBody =>
-      'Sie haben nicht gespeicherte Änderungen. Ohne Speichern verlassen?';
+      'Du hast ungespeicherte Änderungen. Ohne Speichern verlassen?';
 
   @override
   String get discardChangesCancel => 'Abbrechen';
@@ -15346,8 +15346,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'Gleichauf mit $n weiteren',
-      one: 'Gleichauf mit $n weiteren',
+      other: 'Gleichauf mit $n weiteren Personen',
+      one: 'Gleichauf mit $n weiteren Person',
     );
     return '$_temp0';
   }
@@ -16146,13 +16146,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get ttsTurnRightNow => 'Rechts abbiegen';
 
   @override
-  String get ttsSlightLeft => 'Halten Sie sich links';
+  String get ttsSlightLeft => 'Halte dich links';
 
   @override
-  String get ttsSlightRight => 'Halten Sie sich rechts';
+  String get ttsSlightRight => 'Halte dich rechts';
 
   @override
-  String get ttsUturn => 'Wenden Sie';
+  String get ttsUturn => 'Wenden';
 
   @override
   String routeOfflinePackDownloading(int done, int total) {
@@ -18211,11 +18211,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventCancelOccurrenceBody =>
-      'Nur dieser Termin wird abgesagt — der Rest der Serie bleibt unberührt. Alle, die zugesagt haben (zugesagt, vielleicht oder Warteliste), werden benachrichtigt.';
+      'Nur dieser Termin wird abgesagt — der Rest der Serie bleibt unberührt. Alle mit einer Rückmeldung (zugesagt, vielleicht oder auf der Warteliste) werden benachrichtigt.';
 
   @override
   String get eventCancelEventBody =>
-      'Das Event wird abgesagt. Alle, die zugesagt haben (zugesagt, vielleicht oder Warteliste), werden benachrichtigt.';
+      'Das Event wird abgesagt. Alle mit einer Rückmeldung (zugesagt, vielleicht oder auf der Warteliste) werden benachrichtigt.';
 
   @override
   String get eventCancelSeriesBody =>
@@ -18250,7 +18250,7 @@ class AppLocalizationsDe extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count Erstattungen konnten',
-      one: '1 Erstattung konnte',
+      one: '$count Erstattung konnte',
     );
     return 'Abgesagt, aber $_temp0 nicht gestartet werden. Versuche es auf der Event-Seite im Web erneut.';
   }

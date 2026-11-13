@@ -801,7 +801,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get readinessAdviceNoSignal =>
-      'Conecta datos de sueño y frecuencia cardíaca para ver tu disposición real.';
+      'Conecta datos de sueño y frecuencia cardíaca para ver tu preparación real.';
 
   @override
   String get readinessAdviceNoSignalHigh =>
@@ -10792,7 +10792,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fitnessRecoveryAdviceBuilding =>
-      'Tu estado físico aún se está construyendo. Céntrate en la constancia; una sesión de calidad a la semana basta por ahora.';
+      'Tu estado físico aún se está desarrollando. Céntrate en la constancia; una sesión de calidad a la semana basta por ahora.';
 
   @override
   String get fitnessRecoveryAdviceLoaded =>
@@ -10804,7 +10804,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fitnessRecoveryAdviceTapering =>
-      'Puesta a punto / recuperando frescura: una carrera o un entrenamiento duro te sentará bien en los próximos días.';
+      'Puesta a punto / recuperando frescura: competir o hacer un entrenamiento duro te sentará bien en los próximos días.';
 
   @override
   String get fitnessRecoveryAdviceVeryFresh =>
@@ -15329,6 +15329,7 @@ class AppLocalizationsEs extends AppLocalizations {
       n,
       locale: localeName,
       other: 'Empate con $n más',
+      one: 'Empate con $n más',
     );
     return '$_temp0';
   }

@@ -11,12 +11,14 @@ import 'package:ui_kit/ui_kit.dart'
         AppSearchField,
         AppSemanticColors,
         AppSpace,
+        ChoiceChipOption,
         EmptyState,
         FilterBar,
         HubSelection,
         HubTabBody,
         PrimaryAction,
         SelectionHint,
+        buildChoiceChip,
         showFilterSheet;
 
 import '../widgets/grisnir_moments.dart';
@@ -29,16 +31,20 @@ import '../local_run_store.dart';
 import '../official_distance.dart';
 import '../preferences.dart';
 import '../route_file_import.dart';
+import '../routes_views.dart';
 import '../social_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
 import '../widgets/route_track_preview.dart';
 import 'explore_routes_screen.dart';
+import 'global_segments_screen.dart';
 import 'routes_heatmap_screen.dart';
 import 'route_builder_screen.dart';
 import 'route_detail_screen.dart';
 import 'run_heatmap_screen.dart';
 import '../widgets/top_banner.dart';
+
+export '../routes_views.dart' show RoutesShow;
 
 /// Page size for the cloud fetch + visible-list window. Same value as
 /// runs_screen — `docs/architecture/conventions.md § Pagination` makes consistency
@@ -73,7 +79,14 @@ bool shouldShowRoutesLoadMore({
   return remoteHasMore && apiSignedIn;
 }
 
-/// Route library: imported and synced routes.
+/// The Routes tab: `Mine · Explore` (issue #1374, owner decision 1).
+///
+/// Mine is the route library, imported and synced routes plus the ones the
+/// runner saved. Explore is public routes, headed by the discovery maps, and
+/// the segment catalogue, on its `Routes · Segments` chips; the catalogue was
+/// a Fitness tab of its own until then. Each view keeps its own controls and
+/// state while another is showing, and only Mine has a primary action (Build,
+/// or Import with no api client).
 class RoutesScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final LocalRouteStore routeStore;
@@ -86,6 +99,14 @@ class RoutesScreen extends StatefulWidget {
   /// the user's clubs. When null, the picker is hidden and saved
   /// routes go to the user's personal library (existing behaviour).
   final SocialService? social;
+
+  /// Which view is showing, held by the shell beside the hub's selected tab
+  /// so a link can open Explore on Segments without pushing a copy
+  /// (`fitness_surface_requests.dart`). Null where the screen owns one,
+  /// starting at [initialShow].
+  final ValueNotifier<RoutesShow>? show;
+  final RoutesShow initialShow;
+
   const RoutesScreen({
     super.key,
     this.apiClient,
@@ -93,6 +114,8 @@ class RoutesScreen extends StatefulWidget {
     this.runStore,
     required this.preferences,
     this.social,
+    this.show,
+    this.initialShow = RoutesShow.mine,
   });
 
   @override
@@ -144,9 +167,29 @@ class RoutesScreenState extends State<RoutesScreen> {
   /// once so every starred route is present, not just the first page's.
   bool _starredLoaded = false;
 
+  late final ValueNotifier<RoutesShow> _show =
+      widget.show ?? ValueNotifier(widget.initialShow);
+
+  /// The Explore chip last shown, so the Explore chip of the view row
+  /// returns to it.
+  late RoutesShow _explore =
+      _show.value.isExplore ? _show.value : RoutesShow.routes;
+
+  /// The Explore bodies are built the first time they are shown and kept
+  /// from then on, so a runner who never opens Explore never fetches it.
+  late final Set<RoutesShow> _opened = {_show.value};
+
+  void _onShow() {
+    final show = _show.value;
+    if (show.isExplore) _explore = show;
+    _opened.add(show);
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    _show.addListener(_onShow);
     widget.routeStore.addListener(_onChange);
     widget.preferences.addListener(_onChange);
     _fetchRemoteRoutes();
@@ -156,6 +199,8 @@ class RoutesScreenState extends State<RoutesScreen> {
 
   @override
   void dispose() {
+    _show.removeListener(_onShow);
+    if (widget.show == null) _show.dispose();
     widget.routeStore.removeListener(_onChange);
     widget.preferences.removeListener(_onChange);
     _searchCtl.dispose();
@@ -716,6 +761,77 @@ class RoutesScreenState extends State<RoutesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final show = _show.value;
+    final chrome = _chrome(l10n);
+    return IndexedStack(
+      index: show.index,
+      sizing: StackFit.expand,
+      children: [
+        _buildMine(context),
+        if (_opened.contains(RoutesShow.routes))
+          ExploreRoutesScreen(
+            key: const PageStorageKey('routes-explore-routes'),
+            apiClient: widget.apiClient,
+            routeStore: widget.routeStore,
+            preferences: widget.preferences,
+            chrome: chrome,
+            maps: _mapsStrip(Theme.of(context), l10n),
+          )
+        else
+          const SizedBox.shrink(),
+        if (_opened.contains(RoutesShow.segments))
+          GlobalSegmentsScreen(
+            key: const PageStorageKey('routes-explore-segments'),
+            api: widget.apiClient,
+            chrome: chrome,
+          )
+        else
+          const SizedBox.shrink(),
+      ],
+    );
+  }
+
+  RoutesExploreChrome _chrome(AppLocalizations l10n) => RoutesExploreChrome(
+        viewBar: _viewBar(l10n),
+        chips: _exploreChips(l10n),
+      );
+
+  /// My routes · Explore, above every view's own controls. A chip that
+  /// switches the view rather than filtering it, as Races & courses' All ·
+  /// Races · Courses does, and on its own line so the view's filters keep
+  /// theirs.
+  FilterBar _viewBar(AppLocalizations l10n) {
+    final selected = _show.value.isExplore;
+    return FilterBar(
+      key: const ValueKey('routes-view-bar'),
+      chipsLabel: l10n.routesViewGroup,
+      padding: const EdgeInsets.fromLTRB(
+          AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
+      chips: [
+        for (final o in [
+          ChoiceChipOption(value: false, label: l10n.routesViewMine),
+          ChoiceChipOption(value: true, label: l10n.routesViewExplore),
+        ])
+          buildChoiceChip<bool>(context, o, selected,
+              (explore) => _show.value = explore ? _explore : RoutesShow.mine),
+      ],
+    );
+  }
+
+  /// Routes · Segments, leading each Explore view's chip line.
+  List<Widget> _exploreChips(AppLocalizations l10n) => [
+        for (final o in [
+          ChoiceChipOption(
+              value: RoutesShow.routes, label: l10n.fitnessRunsRoutes),
+          ChoiceChipOption(
+              value: RoutesShow.segments, label: l10n.runSurfaceTabSegments),
+        ])
+          buildChoiceChip<RoutesShow>(
+              context, o, _show.value, (v) => _show.value = v),
+      ];
+
+  Widget _buildMine(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
@@ -748,7 +864,8 @@ class RoutesScreenState extends State<RoutesScreen> {
           )
         : mergedRoutes.isEmpty
           // Names both ways in: the body copy says Build and Import, and the
-          // button is whichever the hub's FAB is.
+          // button is whichever the hub's FAB is. Public routes opens
+          // Explore, where a runner with no routes of their own goes next.
           ? EmptyState(
               icon: Icons.route,
               illustration: grisnirWaitingOrNull(),
@@ -761,6 +878,12 @@ class RoutesScreenState extends State<RoutesScreen> {
                   ? Icons.upload_file
                   : Icons.add_location_alt,
               onCta: widget.apiClient == null ? _importFile : _openBuilder,
+              footer: TextButton.icon(
+                key: const ValueKey('routes-empty-explore'),
+                icon: const Icon(Icons.explore),
+                label: Text(l10n.routesPublicRoutes),
+                onPressed: () => _show.value = _explore,
+              ),
             )
           : ListView.builder(
               // Clears the Build FAB and the navigation bar, so the last
@@ -775,7 +898,6 @@ class RoutesScreenState extends State<RoutesScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _discoverStrip(theme, l10n, inList: true),
                       _countRow(theme, l10n,
                           visible: routes.length, total: mergedRoutes.length),
                       // Long-press is the only way into multi-select, so it
@@ -1006,21 +1128,18 @@ class RoutesScreenState extends State<RoutesScreen> {
               },
             );
 
-    // The "Discover" strip (Public routes / Routes heatmap / Run heatmap) is
-    // the single home of every map/discovery entry point: icon-only actions
-    // proved undiscoverable (field reports for both heatmaps). With routes on
-    // screen it heads the list and scrolls away with it; over the empty and
-    // error states it stays put.
+    // The view row stays over the empty and error states too: it is the way
+    // to Explore. Build is the primary action only while Mine is showing.
+    final actions = _routeActions(l10n);
     return HubTabBody(
       title: l10n.fitnessRunsRoutes,
-      actions: _routeActions(l10n),
-      primary: _primaryAction(l10n),
-      filters: mergedRoutes.isEmpty ? null : _filterBar(theme, l10n),
+      primary: _show.value == RoutesShow.mine ? _primaryAction(l10n) : null,
+      filters: _chrome(l10n).above(mergedRoutes.isEmpty
+          ? FilterBar(trailing: actions)
+          : _filterBar(theme, l10n).withTrailing(actions)),
       selection: _selecting
           ? _selectionBar(visible: routes, ownedIds: ownedIds)
           : null,
-      banner:
-          mergedRoutes.isEmpty ? _discoverStrip(theme, l10n, inList: false) : null,
       // The list never refreshed on its own: a stale cache stayed stale with
       // no way to ask again (issue #1374 FS-5).
       onRefresh: _refresh,
@@ -1175,7 +1294,7 @@ class RoutesScreenState extends State<RoutesScreen> {
     );
   }
 
-  /// "Showing n of m" under the Discover strip, with Clear filters while any
+  /// "Showing n of m" at the head of the list, with Clear filters while any
   /// filter or search narrows the list.
   Widget _countRow(ThemeData theme, AppLocalizations l10n,
           {required int visible, required int total}) =>
@@ -1201,65 +1320,49 @@ class RoutesScreenState extends State<RoutesScreen> {
         ),
       );
 
-  /// The "Discover" strip: the labelled discovery entry points — Public
-  /// routes, the community routes heatmap (discoverable-route + club pins)
-  /// and the user's own run heatmap — as one row of equal tiles, icon over
-  /// label.
+  /// The discovery maps heading Explore → Routes: the community routes
+  /// heatmap (discoverable-route, club and race pins) and the runner's own
+  /// run heatmap, as one row of equal labelled tiles, icon over label. Null
+  /// without an api client, which both maps read from.
   ///
-  /// One row at every width and text scale. As chips that wrapped, the three
-  /// stacked into three full-width pills on a phone at a raised text scale and
+  /// One row at every width and text scale. As chips that wrapped, the tiles
+  /// stacked into full-width pills on a phone at a raised text scale and
   /// pushed the list half a screen down; as a sideways scroll they gave no edge
   /// cue and "Run heatmap" was never seen (decisions § 1954). A tile's label
-  /// takes a second line instead. Each stays labelled, because icon-only AppBar
-  /// actions proved undiscoverable for both heatmaps. "Discover" names the
-  /// strip for assistive tech rather than spending a row.
-  Widget _discoverStrip(ThemeData theme, AppLocalizations l10n,
-      {required bool inList}) {
+  /// takes a second line instead. Each stays labelled, because icon-only
+  /// actions proved undiscoverable for both heatmaps. Public routes was a
+  /// third tile while it was a pushed screen; it is Explore itself now.
+  Widget? _mapsStrip(ThemeData theme, AppLocalizations l10n) {
     final api = widget.apiClient;
+    if (api == null) return null;
     final tiles = <Widget>[
+      // The two heatmaps sit side by side, so both labels carry their
+      // qualifier ("Routes" = community discoverable-route + club pins;
+      // "Run" = the user's own tracks) — a bare "Heatmap" next to a
+      // sibling heatmap says nothing.
       _DiscoverTile(
-        icon: Icons.explore,
-        label: l10n.routesPublicRoutes,
+        icon: Icons.local_fire_department,
+        label: l10n.routesHeatmapTooltip,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ExploreRoutesScreen(
-              apiClient: widget.apiClient,
-              routeStore: widget.routeStore,
-              preferences: widget.preferences,
+            builder: (_) => RoutesHeatmapScreen(api: api),
+          ),
+        ),
+      ),
+      _DiscoverTile(
+        icon: Icons.person_pin_circle_outlined,
+        label: l10n.runHeatmapTooltip,
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RunHeatmapScreen(
+              api: api,
+              runStore: widget.runStore,
             ),
           ),
         ),
       ),
-      if (api != null) ...[
-        // The two heatmaps sit side by side, so both labels carry their
-        // qualifier ("Routes" = community discoverable-route + club pins;
-        // "Run" = the user's own tracks) — a bare "Heatmap" next to a
-        // sibling heatmap says nothing.
-        _DiscoverTile(
-          icon: Icons.local_fire_department,
-          label: l10n.routesHeatmapTooltip,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => RoutesHeatmapScreen(api: api),
-            ),
-          ),
-        ),
-        _DiscoverTile(
-          icon: Icons.person_pin_circle_outlined,
-          label: l10n.runHeatmapTooltip,
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => RunHeatmapScreen(
-                api: api,
-                runStore: widget.runStore,
-              ),
-            ),
-          ),
-        ),
-      ],
     ];
 
     return Semantics(
@@ -1267,17 +1370,15 @@ class RoutesScreenState extends State<RoutesScreen> {
       explicitChildNodes: true,
       label: l10n.routesDiscover,
       child: Padding(
-        // In the list the ListView's own 16 dp gutter applies.
-        padding: inList
-            ? EdgeInsets.zero
-            : const EdgeInsets.fromLTRB(16, 4, 16, 0),
+        padding: const EdgeInsets.fromLTRB(
+            AppInsets.gutter, AppSpace.xs, AppInsets.gutter, AppSpace.xs),
         child: IntrinsicHeight(
           child: Row(
             key: const ValueKey('routes-discover-strip'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (var i = 0; i < tiles.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
+                if (i > 0) const SizedBox(width: AppSpace.sm),
                 Expanded(child: tiles[i]),
               ],
             ],

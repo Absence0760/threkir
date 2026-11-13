@@ -3546,6 +3546,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routesDiscover => '見つける';
 
   @override
+  String get routesViewGroup => 'ルートセクション';
+
+  @override
+  String get routesViewMine => '自分の';
+
+  @override
+  String get routesViewExplore => '探索';
+
+  @override
   String get routesSyncFromCloud => 'クラウドから同期';
 
   @override
@@ -4444,9 +4453,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get exploreRoutesTitle => 'ルートを探索';
-
-  @override
-  String get exploreRoutesModeSearch => '検索';
 
   @override
   String get exploreRoutesModeNearMe => '近くで探す';

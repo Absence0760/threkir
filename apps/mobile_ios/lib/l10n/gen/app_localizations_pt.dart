@@ -3727,6 +3727,15 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routesDiscover => 'Descobrir';
 
   @override
+  String get routesViewGroup => 'Secção de rotas';
+
+  @override
+  String get routesViewMine => 'As minhas';
+
+  @override
+  String get routesViewExplore => 'Explorar';
+
+  @override
   String get routesSyncFromCloud => 'Sincronizar da nuvem';
 
   @override
@@ -4726,9 +4735,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get exploreRoutesTitle => 'Explorar rotas';
-
-  @override
-  String get exploreRoutesModeSearch => 'Procurar';
 
   @override
   String get exploreRoutesModeNearMe => 'Perto de mim';
@@ -26278,6 +26284,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get routesDiscover => 'Descobrir';
 
   @override
+  String get routesViewGroup => 'Seção de rotas';
+
+  @override
+  String get routesViewMine => 'Minhas';
+
+  @override
+  String get routesViewExplore => 'Explorar';
+
+  @override
   String get routesSyncFromCloud => 'Sincronizar da nuvem';
 
   @override
@@ -27277,9 +27292,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get exploreRoutesTitle => 'Explorar rotas';
-
-  @override
-  String get exploreRoutesModeSearch => 'Buscar';
 
   @override
   String get exploreRoutesModeNearMe => 'Perto de mim';

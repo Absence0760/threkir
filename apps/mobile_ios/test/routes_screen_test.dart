@@ -7,12 +7,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
+import '../lib/screens/explore_routes_screen.dart';
+import '../lib/screens/global_segments_screen.dart';
 import '../lib/screens/routes_screen.dart';
 import 'pump_until.dart';
 
-/// Signed-out fake — non-null so the api-gated Discover entries render,
-/// null userId so no fetch paths fire.
-class _FakeApi extends ApiClient {}
+/// Signed-out fake — non-null so the api-gated discovery maps render, null
+/// userId so no fetch paths fire. The Explore views' reads answer empty.
+class _FakeApi extends ApiClient {
+  @override
+  Future<List<String>> fetchPopularRouteTags({int limit = 20}) async =>
+      const [];
+
+  @override
+  Future<List<cm.GlobalSegmentRow>> fetchGlobalSegments({
+    int limit = kGlobalSegmentCatalogueLimit,
+  }) async =>
+      const [];
+}
 
 /// Signed in, owns no routes, and cannot load the routes it bookmarked.
 class _BookmarksDownApi extends ApiClient {
@@ -82,6 +94,8 @@ Future<void> _pump(WidgetTester tester,
     {required Preferences prefs,
     ApiClient? api,
     LocalRouteStore? routeStore,
+    ValueNotifier<RoutesShow>? show,
+    RoutesShow initialShow = RoutesShow.mine,
     double textScale = 1.0}) {
   return tester.pumpWidget(
     MaterialApp(
@@ -96,13 +110,15 @@ Future<void> _pump(WidgetTester tester,
         apiClient: api,
         routeStore: routeStore ?? LocalRouteStore(),
         preferences: prefs,
+        show: show,
+        initialShow: initialShow,
       ),
     ),
   );
 }
 
-// The route list's own scroller. The Discover strip above it is a
-// horizontal scroller too, so "the first Scrollable" is not the list.
+// The route list's own scroller. The chip lines above it are horizontal
+// scrollers too, so "the first Scrollable" is not the list.
 final _routeList = find.byWidgetPredicate(
   (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
 );
@@ -119,31 +135,39 @@ void main() {
       expect(find.widgetWithText(AppBar, 'Routes'), findsOneWidget);
     });
 
-    testWidgets('renders the labelled Public-routes entry in the Discover strip',
+    testWidgets('an empty My routes offers Public routes, which opens Explore',
         (tester) async {
       final prefs = await _makePrefs();
-      await _pump(tester, prefs: prefs);
+      final show = ValueNotifier(RoutesShow.mine);
+      addTearDown(show.dispose);
+      await _pump(tester, prefs: prefs, api: _FakeApi(), show: show);
       await tester.pump();
-      expect(find.widgetWithText(OutlinedButton, 'Public routes'),
-          findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('routes-empty-explore')));
+      await tester.pump();
+      expect(show.value, RoutesShow.routes);
+      expect(find.byType(ExploreRoutesScreen), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing,
+          reason: 'Build belongs to My routes, not to Explore');
     });
 
     testWidgets(
-        'the Discover strip surfaces both heatmap entries when an api '
-        'client is wired, and hides them when it is not', (tester) async {
+        'Explore heads Routes with both heatmaps when an api client is wired, '
+        'and has none without one', (tester) async {
       final prefs = await _makePrefs();
-      await _pump(tester, prefs: prefs, api: _FakeApi());
+      await _pump(tester,
+          prefs: prefs, api: _FakeApi(), initialShow: RoutesShow.routes);
       await tester.pump();
       // Community routes heatmap + the user's own run heatmap, both as
-      // labelled buttons — the routes page is the single home of the
-      // map/discovery entry points. Both labels carry their qualifier
-      // since the siblings sit side by side.
+      // labelled buttons. Both labels carry their qualifier since the
+      // siblings sit side by side.
       expect(find.widgetWithText(OutlinedButton, 'Routes heatmap'),
           findsOneWidget);
       expect(
           find.widgetWithText(OutlinedButton, 'Run heatmap'), findsOneWidget);
 
-      await _pump(tester, prefs: prefs);
+      await _pump(tester, prefs: prefs, initialShow: RoutesShow.mine);
+      await tester.pump();
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
       await tester.pump();
       expect(find.widgetWithText(OutlinedButton, 'Routes heatmap'),
           findsNothing);
@@ -746,29 +770,28 @@ void main() {
     }
 
     for (final scale in [1.3, 2.0]) {
-      testWidgets('at ${scale}x the Discover chips all sit on screen',
+      testWidgets('at ${scale}x the Explore maps all sit on screen in one row',
           (tester) async {
         usePhone(tester);
         final prefs = await _makePrefs();
-        // ignore: invalid_use_of_visible_for_testing_member
-        final store = LocalRouteStore()..debugSeed(plainRoutes(3));
         await _pump(tester,
-            prefs: prefs, api: _FakeApi(), routeStore: store, textScale: scale);
+            prefs: prefs,
+            api: _FakeApi(),
+            initialShow: RoutesShow.routes,
+            textScale: scale);
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'no overflow stripe');
 
-        final discover = find.descendant(
+        final maps = find.descendant(
             of: find.byKey(const ValueKey('routes-discover-strip')),
             matching: find.byType(OutlinedButton));
-        expect(discover, findsNWidgets(3));
-        expectInsideScreen(tester, discover, 'Discover tile');
-        // One row, not three stacked pills: the field report's strip took
-        // ~180 dp before the first route.
-        final top = tester.getRect(discover.first).top;
-        for (var i = 0; i < 3; i++) {
-          expect(tester.getRect(discover.at(i)).top, top,
-              reason: 'Discover tile #$i shares the first row');
-          expect(tester.getSize(discover.at(i)).height,
+        expect(maps, findsNWidgets(2));
+        expectInsideScreen(tester, maps, 'map tile');
+        final top = tester.getRect(maps.first).top;
+        for (var i = 0; i < 2; i++) {
+          expect(tester.getRect(maps.at(i)).top, top,
+              reason: 'map tile #$i shares the first row');
+          expect(tester.getSize(maps.at(i)).height,
               greaterThanOrEqualTo(kMinInteractiveDimension));
         }
         final strip =
@@ -782,20 +805,33 @@ void main() {
             reason: 'the strip is still named for assistive tech');
       });
 
-      testWidgets(
-          'at ${scale}x the pinned Discover strip over the empty state stays '
-          'on screen', (tester) async {
+      testWidgets('at ${scale}x the view and Explore chips sit on screen',
+          (tester) async {
         usePhone(tester);
         final prefs = await _makePrefs();
-        await _pump(tester, prefs: prefs, api: _FakeApi(), textScale: scale);
+        await _pump(tester,
+            prefs: prefs,
+            api: _FakeApi(),
+            initialShow: RoutesShow.routes,
+            textScale: scale);
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'no overflow stripe');
-        expectInsideScreen(
-            tester,
-            find.descendant(
-                of: find.byKey(const ValueKey('routes-discover-strip')),
-                matching: find.byType(OutlinedButton)),
-            'Discover tile');
+        // The test font draws every glyph a full em wide, about twice
+        // Roboto's average, so at 2x it overstates the chips past the
+        // screen; the line scrolls there, which the chip-line test covers.
+        if (scale < 2) {
+          expectInsideScreen(
+              tester,
+              find.descendant(
+                  of: find.byKey(const ValueKey('routes-view-bar')),
+                  matching: find.byType(ChoiceChip)),
+              'view chip');
+        }
+        for (final label in ['Routes', 'Segments']) {
+          final chip = find.widgetWithText(ChoiceChip, label);
+          expect(chip, findsOneWidget);
+          expect(tester.getRect(chip).left, greaterThanOrEqualTo(0));
+        }
       });
 
       testWidgets('at ${scale}x Filters and the Starred chip sit on screen',
@@ -903,11 +939,67 @@ void main() {
           findsNothing,
           reason: 'a tab body\'s actions live in its control row, hosted or '
               'pushed');
+    });
+  });
+
+  // Owner decision 1 on issue #1374: Routes is My routes · Explore, and the
+  // segment catalogue is Explore's Segments chip rather than a Fitness tab.
+  group('RoutesScreen — My routes · Explore', () {
+    testWidgets('the view row switches views and Explore keeps its chip',
+        (tester) async {
+      final prefs = await _makePrefs();
+      final show = ValueNotifier(RoutesShow.mine);
+      addTearDown(show.dispose);
+      await _pump(tester, prefs: prefs, api: _FakeApi(), show: show);
+      await tester.pump();
+      expect(find.widgetWithText(FloatingActionButton, 'Build'),
+          findsOneWidget);
+      expect(find.byType(GlobalSegmentsScreen), findsNothing,
+          reason: 'Explore is built the first time it is shown');
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+      await tester.pump();
+      expect(show.value, RoutesShow.routes);
+      expect(find.byType(ExploreRoutesScreen), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Segments'));
+      await tester.pump();
+      expect(show.value, RoutesShow.segments);
+      expect(find.byType(GlobalSegmentsScreen), findsOneWidget);
+      expect(find.byType(ExploreRoutesScreen), findsNothing,
+          reason: 'one Explore view on screen at a time');
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Mine'));
+      // Past the Scaffold's FAB entrance, which draws the old and new FAB.
+      await tester.pump(const Duration(seconds: 1));
+      expect(show.value, RoutesShow.mine);
+      expect(find.widgetWithText(FloatingActionButton, 'Build'),
+          findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+      await tester.pump();
+      expect(show.value, RoutesShow.segments,
+          reason: 'Explore reopens on the chip it was left on');
+    });
+
+    testWidgets('a host notifier opens Explore on Segments with nothing pushed',
+        (tester) async {
+      final prefs = await _makePrefs();
+      final show = ValueNotifier(RoutesShow.mine);
+      addTearDown(show.dispose);
+      await _pump(tester, prefs: prefs, api: _FakeApi(), show: show);
+      await tester.pump();
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      show.value = RoutesShow.segments;
+      await tester.pump();
+      expect(find.byType(GlobalSegmentsScreen), findsOneWidget);
       expect(
-          find.descendant(
-              of: find.byKey(const ValueKey('routes-discover-strip')),
-              matching: find.byIcon(Icons.cloud_download)),
-          findsNothing);
+          tester
+              .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Segments'))
+              .selected,
+          isTrue);
+      expect(navigator.canPop(), isFalse, reason: 'selected, not pushed');
     });
   });
 

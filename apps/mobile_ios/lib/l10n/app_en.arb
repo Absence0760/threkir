@@ -4920,7 +4920,19 @@
   },
   "routesDiscover": "Discover",
   "@routesDiscover": {
-    "description": "Section header for the Explore / Heatmap discovery strip in the embedded routes view"
+    "description": "Screen-reader name of the strip of discovery maps (routes heatmap, run heatmap) heading Routes → Explore"
+  },
+  "routesViewGroup": "Routes section",
+  "@routesViewGroup": {
+    "description": "Screen-reader name of the Mine / Explore chip pair at the top of the Routes tab. Same text as web routesPage.sectionLabel"
+  },
+  "routesViewMine": "Mine",
+  "@routesViewMine": {
+    "description": "Chip on the Routes tab showing the runner's own and saved routes (\"my routes\"), beside Explore. Kept short so both chips fit one line at 2x text on a 360 dp phone. Same text as web routesPage.tabMine"
+  },
+  "routesViewExplore": "Explore",
+  "@routesViewExplore": {
+    "description": "Chip on the Routes tab showing public routes and the segment catalogue (with Routes / Segments chips). Same text as web routesPage.tabExplore"
   },
   "routesSyncFromCloud": "Sync from cloud",
   "@routesSyncFromCloud": {
@@ -6221,10 +6233,6 @@
   "exploreRoutesTitle": "Explore Routes",
   "@exploreRoutesTitle": {
     "description": "AppBar title for the explore-public-routes screen"
-  },
-  "exploreRoutesModeSearch": "Search",
-  "@exploreRoutesModeSearch": {
-    "description": "Mode-toggle label for the search-by-name mode"
   },
   "exploreRoutesModeNearMe": "Near Me",
   "@exploreRoutesModeNearMe": {

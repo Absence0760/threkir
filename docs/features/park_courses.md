@@ -205,7 +205,8 @@ because a course is something you go and do, not a stretch you happen to run.
 - **`/parks`** stays the full index and the deep-link target for share pages
   and posts, with a back-link to Races & courses and no strip.
 - **Segments**' Park courses action (web header link and empty state, mobile
-  app-bar action and empty state) opens Races & courses on its Courses view:
+  control-row action and empty state; the catalogue is Routes → Explore →
+  Segments since issue #1374) opens Races & courses on its Courses view:
   `/races?show=courses` on web, and on mobile the Races & courses tab with
   Courses selected, through `openFitnessSurface(..., racesShow:)` rather than
   a pushed copy of the park index (decisions § 2437, § 2480).
@@ -217,8 +218,9 @@ because a course is something you go and do, not a stretch you happen to run.
 - **Segment page**: a catalogue segment a park course is built on links to
   that course (`fetchParkCourseForSegment` on both platforms, one read that
   also carries the course credit; no migration).
-- The run-surface strip has no Parks tab (five tabs: Runs · Plans · Races &
-  courses · Routes · Segments, in the mobile order).
+- The run-surface strip has no Parks tab, and since issue #1374 no Segments
+  tab either (four tabs: Runs · Plans · Races & courses · Routes, in the
+  mobile order; the catalogue is Routes → Explore → Segments).
 
 ## The pages (web, issue #1352)
 

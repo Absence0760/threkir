@@ -390,7 +390,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('segments-parks-link')));
       await tester.pumpAndSettle();
-      expect(drained, [(tab: FitnessTab.races, racesShow: RacesShow.courses)]);
+      expect(drained, [
+        (tab: FitnessTab.races, racesShow: RacesShow.courses, routesShow: null),
+      ]);
       expect(find.byType(RacesScreen), findsNothing);
     });
 

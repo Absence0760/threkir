@@ -171,8 +171,9 @@ class FitnessHubScreen extends StatefulWidget {
 
 class _FitnessHubScreenState extends State<FitnessHubScreen>
     with TickerProviderStateMixin, ShellBackHandler {
-  late TabController _controller;
-  late List<FitnessTab> _tabs;
+  late final TabSetController<FitnessTab> _tabSet;
+  TabController get _controller => _tabSet.controller;
+  List<FitnessTab> get _tabs => _tabSet.tabs;
   late bool _centreOpensRecorder;
   late final RaceService _raceService = RaceService();
   final _actions = HubPrimaryActions();
@@ -205,9 +206,13 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = _visibleTabs();
     _centreOpensRecorder = _resolveCentreOpensRecorder();
-    _controller = _buildController();
+    _tabSet = TabSetController(
+      vsync: this,
+      tabs: _visibleTabs(),
+      initial: _tab.value,
+      onIndexChanged: _publishTab,
+    );
     _settleSelection();
     _tab
       ..addListener(_adoptTab)
@@ -232,23 +237,10 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
         nutritionShown: _nutritionShown,
       );
 
-  TabController _buildController() {
-    final index = _tabs.indexOf(_tab.value);
-    final controller = TabController(
-      length: _tabs.length,
-      vsync: this,
-      initialIndex: index < 0 ? 0 : index,
-    );
-    controller.addListener(_publishTab);
-    return controller;
-  }
-
-  /// A tab that has just been hidden can't stay selected. Run only once the
-  /// new controller is in [_controller]: the write notifies [_adoptTab],
-  /// which would otherwise drive the controller just disposed.
-  void _settleSelection() {
-    if (!_tabs.contains(_tab.value)) _tab.value = _tabs.first;
-  }
+  /// The notifier follows the controller once the set has changed: a hidden
+  /// tab falls back to the first, and a tap still animating keeps the tab it
+  /// was moving to, which the notifier had not been told yet.
+  void _settleSelection() => _tab.value = _tabSet.selected;
 
   /// Rebuilds the strip only when the set of tabs actually changes — the
   /// stores notify on every logged entry, and a fresh controller each time
@@ -261,11 +253,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     setState(() {
       _centreOpensRecorder = opensRecorder;
       if (!tabsChanged) return;
-      _controller
-        ..removeListener(_publishTab)
-        ..dispose();
-      _tabs = next;
-      _controller = _buildController();
+      _tabSet.update(next, fallback: next.first);
       _settleSelection();
     });
   }
@@ -292,8 +280,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     _tab
       ..removeListener(_rememberTab)
       ..removeListener(_adoptTab);
-    _controller.removeListener(_publishTab);
-    _controller.dispose();
+    _tabSet.dispose();
     if (_ownsTab) _tab.dispose();
     _actions.dispose();
     super.dispose();

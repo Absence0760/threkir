@@ -758,6 +758,42 @@ void main() {
       expect(selected.value, FitnessTab.runs);
     });
 
+    // Sentry THREKIR-CLIENT-A: a strip that shrinks while a tap's animation
+    // is still running. The pager was still sliding towards the old index,
+    // wrote it back to the new, shorter controller, and the strip built a
+    // tab that no longer existed (a RangeError in release, where the
+    // controller's own range assert is compiled out).
+    for (final settle in [false, true])
+      testWidgets(
+          'the strip shrinking ${settle ? 'after' : 'during'} a jump to the '
+          'last tab keeps that tab selected and never indexes past the strip',
+          (tester) async {
+        final selected = ValueNotifier(FitnessTab.history);
+        addTearDown(selected.dispose);
+        final prefs = await pump(tester,
+            runs: [runRow('r1')], selectedTab: selected);
+        expect(stripLabels(tester), strip(gym: true, nutrition: true));
+
+        await tester.ensureVisible(tab('Routes'));
+        await tester.tap(tab('Routes'));
+        await tester.pump();
+        await tester.pump(
+            settle ? const Duration(seconds: 1) : const Duration(milliseconds: 60));
+
+        await prefs.setShowGym(false);
+        await prefs.setShowNutrition(false);
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(stripLabels(tester), strip());
+        final controller =
+            tester.widget<TabBar>(find.byType(TabBar)).controller!;
+        expect(controller.length, strip().length);
+        expect(controller.index, strip().indexOf('Routes'));
+        expect(selected.value, FitnessTab.routes);
+        expect(find.byType(RoutesScreen), findsOneWidget);
+      });
+
     test('fitnessHubTabs: the run surface always, History with either '
         'modality, Gym and Nutrition third and fourth',
         () {

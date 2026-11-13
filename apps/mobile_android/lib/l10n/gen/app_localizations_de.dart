@@ -5743,7 +5743,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get profileNotifEventReminder =>
-      'Eine Veranstaltung, zu der du gehst, steht bevor';
+      'Ein Event, zu dem du gehst, steht bevor';
 
   @override
   String get profileNotifAchievement => 'Du hast einen neuen Erfolg erzielt';
@@ -6512,7 +6512,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventRemoveResultBody =>
-      'Deine eingereichte Zielzeit wird aus der Bestenliste dieser Veranstaltung entfernt. Du kannst später erneut einreichen.';
+      'Deine eingereichte Zielzeit wird aus der Bestenliste dieses Events entfernt. Du kannst später erneut einreichen.';
 
   @override
   String get eventRemoveResultConfirm => 'Ergebnis entfernen';
@@ -11350,7 +11350,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get goalEditorDeletedAnnounce => 'Ziel gelöscht';
 
   @override
-  String get eventFormTitle => 'Neue Veranstaltung';
+  String get eventFormTitle => 'Neues Event';
 
   @override
   String get eventFormTitleLabel => 'Titel';
@@ -11389,10 +11389,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventFormRecurMonthly => 'Monatlich';
 
   @override
-  String get eventFormCreate => 'Veranstaltung erstellen';
+  String get eventFormCreate => 'Event erstellen';
 
   @override
-  String get eventEditorCategory => 'Veranstaltungstyp';
+  String get eventEditorCategory => 'Event-Typ';
 
   @override
   String get eventEditorCatRun => 'Gruppenlauf';
@@ -11408,7 +11408,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventEditorCategoryHint =>
-      'Wähle die Art der Veranstaltung – ein Kurs oder Treffen lässt Strecke, Distanz, Tempo und Rennergebnisse weg.';
+      'Wähle die Art des Events – ein Kurs oder Treffen lässt Strecke, Distanz, Tempo und Rennergebnisse weg.';
 
   @override
   String get eventEditorMembersOnlyToggle => 'Nur für Mitglieder';
@@ -15839,7 +15839,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get integrationsChronotrackConnect =>
-      'Rennergebnisse von ChronoTrack-gemessenen Veranstaltungen importieren.';
+      'Rennergebnisse von ChronoTrack-gemessenen Events importieren.';
 
   @override
   String get integrationsChronotrackOpen => 'Rennkalender öffnen';
@@ -18017,7 +18017,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventCancelOccurrence => 'Diesen Termin absagen';
 
   @override
-  String get eventCancelEvent => 'Veranstaltung absagen';
+  String get eventCancelEvent => 'Event absagen';
 
   @override
   String get eventCancelSeries => 'Ganze Serie absagen';
@@ -18028,7 +18028,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventCancelEventBody =>
-      'Die Veranstaltung wird abgesagt. Alle, die zugesagt haben (zugesagt, vielleicht oder Warteliste), werden benachrichtigt.';
+      'Das Event wird abgesagt. Alle, die zugesagt haben (zugesagt, vielleicht oder Warteliste), werden benachrichtigt.';
 
   @override
   String get eventCancelSeriesBody =>
@@ -18065,7 +18065,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$count Erstattungen konnten',
       one: '1 Erstattung konnte',
     );
-    return 'Abgesagt, aber $_temp0 nicht gestartet werden. Versuche es auf der Veranstaltungsseite im Web erneut.';
+    return 'Abgesagt, aber $_temp0 nicht gestartet werden. Versuche es auf der Event-Seite im Web erneut.';
   }
 
   @override
@@ -18090,14 +18090,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventReinstateOccurrence => 'Diesen Termin wiederherstellen';
 
   @override
-  String get eventReinstateEvent => 'Diese Veranstaltung wiederherstellen';
+  String get eventReinstateEvent => 'Dieses Event wiederherstellen';
 
   @override
   String get eventReinstateFailed =>
       'Dieser Termin konnte nicht wiederhergestellt werden';
 
   @override
-  String get eventEventCancelled => 'Diese Veranstaltung wurde abgesagt.';
+  String get eventEventCancelled => 'Dieses Event wurde abgesagt.';
 
   @override
   String get eventSeriesWasCancelled => 'Diese Serie wurde abgesagt.';
@@ -18159,11 +18159,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventFormChargeHint =>
-      'Erhebt bei der Anmeldung eine Gebühr. Das Geld geht auf dein eigenes Auszahlungskonto, nicht auf das des Clubs — und nur Veranstaltungen vor Ort dürfen Gebühren nehmen.';
+      'Erhebt bei der Anmeldung eine Gebühr. Das Geld geht auf dein eigenes Auszahlungskonto, nicht auf das des Clubs — und nur Events vor Ort dürfen Gebühren nehmen.';
 
   @override
   String get eventFormChargeNeedsPayout =>
-      'Richte im Web Auszahlungen ein, um für Veranstaltungen Geld zu verlangen.';
+      'Richte im Web Auszahlungen ein, um für Events Geld zu verlangen.';
 
   @override
   String get eventFormPrice => 'Preis';
@@ -18205,11 +18205,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventFormPricingFailed =>
-      'Veranstaltung erstellt, aber der Preis konnte nicht gespeichert werden. Lege den Preis auf der Veranstaltungsseite im Web fest.';
+      'Event erstellt, aber der Preis konnte nicht gespeichert werden. Lege den Preis auf der Event-Seite im Web fest.';
 
   @override
   String get eventFormSessionPlanFailed =>
-      'Veranstaltung erstellt, aber der Session-Plan konnte nicht angehängt werden. Hänge ihn auf der Veranstaltungsseite an.';
+      'Event erstellt, aber der Session-Plan konnte nicht angehängt werden. Hänge ihn auf der Event-Seite an.';
 
   @override
   String get eventFormGymRoutine => 'Gym-Routine';
@@ -18227,7 +18227,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventFormGymRoutineFailed =>
-      'Veranstaltung erstellt, aber die Routine konnte nicht angehängt werden. Hänge sie auf der Veranstaltungsseite an.';
+      'Event erstellt, aber die Routine konnte nicht angehängt werden. Hänge sie auf der Event-Seite an.';
 
   @override
   String get clubEventGymRoutineTitle => 'Kursroutine';
@@ -21556,7 +21556,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksTimesNotEventResults =>
-      'Die Zeiten hier sind Threkir-Zeiten auf diesen Wegen. Sie sind keine Ergebnisse einer Veranstaltung, die auf ihnen stattfindet.';
+      'Die Zeiten hier sind Threkir-Zeiten auf diesen Wegen. Sie sind keine Ergebnisse eines Events, das auf ihnen stattfindet.';
 
   @override
   String get parksSharedUseSaturdayMorningGroup =>

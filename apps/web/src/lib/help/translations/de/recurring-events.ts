@@ -26,7 +26,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Das Wiederholungsmuster lässt sich nur beim Erstellen des Events wählen. **Veranstaltung bearbeiten** ändert Titel, Uhrzeit, Treffpunkt und die übrigen Angaben für die ganze Serie, aber nicht, wie oft sie sich wiederholt.',
+					text: 'Das Wiederholungsmuster lässt sich nur beim Erstellen des Events wählen. **Event bearbeiten** ändert Titel, Uhrzeit, Treffpunkt und die übrigen Angaben für die ganze Serie, aber nicht, wie oft sie sich wiederholt.',
 				},
 				{
 					type: 'p',
@@ -76,7 +76,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Termine absagen und wiederherstellen geht nur im Web. **Veranstaltung löschen** entfernt jeden Termin der Serie, nicht nur einen.',
+					text: 'Termine absagen und wiederherstellen geht nur im Web. **Event löschen** entfernt jeden Termin der Serie, nicht nur einen.',
 				},
 				{
 					type: 'note',

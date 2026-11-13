@@ -91,7 +91,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | DNF | DNF | kept as-is on both surfaces |
 | route | Route / Routen | dominant; web also "Strecke" (`eventEditor.route`, `routeHeatmap.*`) — inconsistency 4 |
 | segment | Segment / Segmente | |
-| event | Event / Events | |
+| event (a club event: run, class, social; the entity, its page and its editor) | **das Event** / die Events; genitive *des Events* / *dieses Events* ("Neues Event", "Dieses Event wurde abgesagt", "Ein Event, zu dem du gehst", "nach dem Event", pronoun *es*). Compounds hyphenated as the catalogue already writes them: **Event-Seite**, **Event-Typ**, Event-Foto, Event-Termin, Event-Editor, Club-Event, Kurs-Event; closed only where already closed (Eventorganisator) | settled 2026-11-13 (#1374 round 3.6), web, mobile and help: 61 strings moved off "Veranstaltung" / "Veranstaltungstyp" / "Veranstaltungsseite"; never "Veranstaltung", never "Eventseite". "Veranstalter" (the organiser, "GO durch Veranstalter") is a person and stays |
 | gym | Gym | `nav.gym`, `gymTitle` |
 | nutrition | Ernährung | |
 | log (verb) | Erfassen | `navLog` |

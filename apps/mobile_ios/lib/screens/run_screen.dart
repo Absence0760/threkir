@@ -96,7 +96,7 @@ import '../widgets/finish_plan_card.dart';
 import '../widgets/idle_setup_chip.dart';
 import '../widgets/race_strategy_sheet.dart';
 import '../widgets/cutoff_card.dart';
-import 'route_picker_screen.dart';
+import '../widgets/route_picker_sheet.dart';
 import '../background_location_nudge.dart';
 import '../battery_optimisation_hint.dart';
 import '../live_activity_bridge.dart';
@@ -1747,10 +1747,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       return;
     }
     final unit = widget.preferences.unit;
-    // Full-screen page (was a modal bottom sheet). Surfaces a
-    // search field at the top + sorts starred routes first per
-    // user feedback. See `route_picker_screen.dart`.
-    final picked = await pickRoute(context, routes: routes, unit: unit);
+    final picked = await pickRoute(context,
+        routes: routes, unit: unit, selected: _selectedRoute);
     if (picked == null || !mounted) return;
     _setFollowedRoute(switch (picked) {
       RoutePicked(:final route) => route,

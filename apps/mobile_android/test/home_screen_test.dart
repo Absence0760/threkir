@@ -48,7 +48,7 @@ import '../lib/screens/home_screen.dart';
 import '../lib/screens/nutrition_screen.dart';
 import '../lib/screens/public_route_screen.dart';
 import '../lib/screens/public_run_screen.dart';
-import '../lib/screens/route_picker_screen.dart';
+import '../lib/widgets/route_picker_sheet.dart';
 import '../lib/screens/run_detail_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/screens/settings_about_screen.dart';
@@ -2439,7 +2439,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.byType(RoutePickerScreen), findsNothing,
+      expect(find.byType(RoutePickerSheet), findsNothing,
           reason: 'an inline route needs no second picker');
       expect(shellPage(tester), 2, reason: 'the recorder opens on the route');
       tester.takeException();
@@ -2459,23 +2459,26 @@ void main() {
       await tester.tap(_inMenu('All routes…'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.byType(RoutePickerScreen), findsOneWidget);
+      expect(find.byType(RoutePickerSheet), findsOneWidget);
+      expect(find.byKey(const ValueKey('route-picker-no-route')), findsNothing,
+          reason: 'the menu opens it to start a run on a route, so "No '
+              'route" would do nothing');
 
       // The shell behind the picker may also show the route's name, so the
       // tap is scoped to the picker's own row.
       await tester.tap(find.descendant(
-        of: find.byType(RoutePickerScreen),
+        of: find.byType(RoutePickerSheet),
         matching: find.text('Park loop'),
       ));
       // A popped route stays in the tree until its exit transition ends, so
       // advance the clock until it is gone (bounded) instead of a fixed pump.
       for (var i = 0;
-          i < 30 && find.byType(RoutePickerScreen).evaluate().isNotEmpty;
+          i < 30 && find.byType(RoutePickerSheet).evaluate().isNotEmpty;
           i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
-      expect(find.byType(RoutePickerScreen), findsNothing);
+      expect(find.byType(RoutePickerSheet), findsNothing);
       expect(shellPage(tester), 2, reason: 'the recorder opens on the route');
       tester.takeException();
     });

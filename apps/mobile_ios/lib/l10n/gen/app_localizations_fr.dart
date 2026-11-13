@@ -195,9 +195,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routePickerNoRoute => 'Aucun parcours';
 
   @override
-  String get routePickerClearSearchTooltip => 'Effacer la recherche';
-
-  @override
   String get routePickerSearchHint => 'Rechercher des parcours par nom…';
 
   @override
@@ -3225,23 +3222,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addRunSaved => 'Course ajoutée à l\'historique';
-
-  @override
-  String get addRunPickerSearchHint => 'Rechercher des itinéraires';
-
-  @override
-  String get addRunPickerClear => 'Effacer';
-
-  @override
-  String get addRunPickerCancel => 'Annuler';
-
-  @override
-  String addRunPickerNoMatch(String query) {
-    return 'Aucun itinéraire ne correspond à « $query »';
-  }
-
-  @override
-  String get addRunPickerNoRoute => 'Aucun itinéraire';
 
   @override
   String get runDetailDnfBadge => 'DNF';

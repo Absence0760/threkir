@@ -188,9 +188,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routePickerNoRoute => 'ルートなし';
 
   @override
-  String get routePickerClearSearchTooltip => '検索をクリア';
-
-  @override
   String get routePickerSearchHint => '名前でルートを検索…';
 
   @override
@@ -3068,23 +3065,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get addRunSaved => 'ランを履歴に追加しました';
-
-  @override
-  String get addRunPickerSearchHint => 'ルートを検索';
-
-  @override
-  String get addRunPickerClear => 'クリア';
-
-  @override
-  String get addRunPickerCancel => 'キャンセル';
-
-  @override
-  String addRunPickerNoMatch(String query) {
-    return '「$query」に一致するルートはありません';
-  }
-
-  @override
-  String get addRunPickerNoRoute => 'ルートなし';
 
   @override
   String get runDetailDnfBadge => 'DNF';

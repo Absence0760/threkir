@@ -196,9 +196,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routePickerNoRoute => 'Sem rota';
 
   @override
-  String get routePickerClearSearchTooltip => 'Limpar pesquisa';
-
-  @override
   String get routePickerSearchHint => 'Procurar rotas por nome…';
 
   @override
@@ -3219,23 +3216,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get addRunSaved => 'Corrida adicionada ao histórico';
-
-  @override
-  String get addRunPickerSearchHint => 'Procurar rotas';
-
-  @override
-  String get addRunPickerClear => 'Limpar';
-
-  @override
-  String get addRunPickerCancel => 'Cancelar';
-
-  @override
-  String addRunPickerNoMatch(String query) {
-    return 'Nenhuma rota corresponde a “$query”';
-  }
-
-  @override
-  String get addRunPickerNoRoute => 'Sem rota';
 
   @override
   String get runDetailDnfBadge => 'DNF';
@@ -23731,9 +23711,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get routePickerNoRoute => 'Sem rota';
 
   @override
-  String get routePickerClearSearchTooltip => 'Limpar busca';
-
-  @override
   String get routePickerSearchHint => 'Buscar rotas por nome…';
 
   @override
@@ -26752,23 +26729,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get addRunSaved => 'Corrida adicionada ao histórico';
-
-  @override
-  String get addRunPickerSearchHint => 'Buscar rotas';
-
-  @override
-  String get addRunPickerClear => 'Limpar';
-
-  @override
-  String get addRunPickerCancel => 'Cancelar';
-
-  @override
-  String addRunPickerNoMatch(String query) {
-    return 'Nenhuma rota corresponde a “$query”';
-  }
-
-  @override
-  String get addRunPickerNoRoute => 'Sem rota';
 
   @override
   String get runDetailDnfBadge => 'DNF';

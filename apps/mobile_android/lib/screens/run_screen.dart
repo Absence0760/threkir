@@ -5496,6 +5496,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
         // Every top-anchored overlay in ONE column — see [RunTopOverlay].
         RunTopOverlay(
+          bottomClearance: _statsOverlayHeight + 12,
           // Structured-workout band — only mounts when the run was
           // started from a planned workout. Reads through its own
           // ValueListenable so the band rebuilds on transitions /
@@ -6590,6 +6591,7 @@ class RunTopOverlay extends StatelessWidget {
     this.workoutBand,
     required this.badges,
     required this.banners,
+    required this.bottomClearance,
   });
 
   /// The structured-workout band, or null when no workout is armed.
@@ -6600,6 +6602,13 @@ class RunTopOverlay extends StatelessWidget {
 
   /// The conditional banner stack ([RunTopBanners]).
   final Widget banners;
+
+  /// How far above the bottom of the screen the band must stop: the stats
+  /// overlay's height and its gap. At 2x in de / es / fr the safety nudge
+  /// alone is taller than the screen above the stats, and a band hung from
+  /// the top with no limit drew its Share button off the bottom; bounded,
+  /// the band scrolls, so every line and both actions stay reachable.
+  final double bottomClearance;
 
   /// Clearance from the top of the screen. The column carries the whole top
   /// band now, so it takes the larger of this and the device's status-bar
@@ -6613,15 +6622,23 @@ class RunTopOverlay extends StatelessWidget {
       top: math.max(topInset, MediaQuery.of(context).padding.top),
       left: 12,
       right: 12,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (workoutBand != null) workoutBand!,
-          badges,
-          const SizedBox(height: 4),
-          banners,
-        ],
+      bottom: bottomClearance,
+      // The band takes only its content's height; the space under it stays
+      // the map's, for taps as well as paint.
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (workoutBand != null) workoutBand!,
+              badges,
+              const SizedBox(height: 4),
+              banners,
+            ],
+          ),
+        ),
       ),
     );
   }

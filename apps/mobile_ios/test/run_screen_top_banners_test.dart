@@ -83,6 +83,47 @@ void main() {
     });
   }
 
+  // The real host: the band hangs from the top of the run screen's Stack and
+  // must stop above the stats overlay. At 2x in de / es / fr the nudge alone
+  // is taller than that space; the band scrolls, so its Share button is
+  // still reachable rather than drawn off the bottom of the screen.
+  worstCaseTestWidgets('Run top band over the stats overlay',
+      (tester, locale) async {
+    const clearance = 300.0;
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: Stack(
+          children: [
+            RunTopOverlay(
+              bottomClearance: clearance,
+              badges: const SizedBox(key: _badgeKey, height: 40),
+              banners: RunTopBanners(
+                offRouteMetres: 120,
+                permissionLost: false,
+                gpsLost: true,
+                weakGps: false,
+                safetyNudgeVisible: true,
+                onSafetyNudgeShare: () {},
+                onSafetyNudgeDismiss: () {},
+              ),
+            ),
+          ],
+        ),
+      ),
+    ));
+    await tester.pump();
+    final stack = tester.getRect(find.byType(Stack).first);
+    final band = tester.getRect(find.byType(RunTopOverlay));
+    expect(band.bottom, lessThanOrEqualTo(stack.bottom - clearance + 0.5));
+    final share = find.text(l10nFor(locale).runSafetyNudgeShareAction);
+    await tester.ensureVisible(share);
+    await tester.pump();
+    expect(share.hitTestable(), findsOneWidget);
+    expect(tester.getRect(share).bottom,
+        lessThanOrEqualTo(stack.bottom - clearance + 0.5));
+  });
+
   testWidgets('off-route + GPS-lost render together without overlapping '
       '(issue #666 V10)', (tester) async {
     await _pump(tester, offRouteMetres: 120, gpsLost: true);
@@ -250,6 +291,7 @@ Future<void> _pumpOverlay(
           body: Stack(
             children: [
               RunTopOverlay(
+                bottomClearance: 0,
                 workoutBand: armed
                     ? WorkoutExecutionBand(
                         state: notifier,

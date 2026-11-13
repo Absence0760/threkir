@@ -69,6 +69,8 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | elevation gain | **Desnivel positivo** | web; mobile "Desnivel +", "Desnivel", "Subida", "Ascenso", web `dash.elevationGain` "desnivel acumulado" |
 | heart rate / HR | Frecuencia cardíaca / FC | |
 | heart rate zone | Zonas de frecuencia cardíaca | |
+| fitness / fatigue / form (training load: CTL / ATL / TSB) | **Estado físico** / **Fatiga** / **Forma** — "Estado físico, fatiga y forma", "Estado físico (CTL)", "CTL (estado físico)", "Forma (TSB)", "estado físico − fatiga". *Fitness* in its everyday sense ("refleja tu estado físico actual", VDOT "puntuación de estado físico", "tu estado físico reciente") takes the same word, as the English does | settled 2026-11-12; never "forma física" or bare "Estado" for fitness, never "frescura" for form. *Forma* is the TSB alone (and *form* in its everyday sense, "tu forma pasada"). The *Fitness* destination (`navFitness`) stays "Fitness" |
+| max HR / resting HR | **frecuencia cardíaca máxima** / **frecuencia cardíaca en reposo** in sentences, setting titles and errors; abbreviated **FC máxima** / **FC en reposo** only where the HR row allows *FC* (a field label with its unit, a button: "FC máxima (ppm)", "Definir FC máxima"); coordinated "frecuencia cardíaca en reposo y máxima". The unit is **ppm**, never "bpm" / "lpm". A zone's upper bound is "el límite superior de frecuencia cardíaca", not "frecuencia cardíaca máxima" | settled 2026-11-12; never "FC máx." |
 | cadence (steps/min) | Cadencia | `runStatCadence`; "Frecuencia" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plan de entrenamiento; short Plan(es) | |
 | race (a competition you find, enter, browse or are listed for) | **Prueba / Pruebas** — `navRaces` / `nav.races` "Pruebas", "Calendario de pruebas" (`racesTitle`, `races.title`), "Pruebas y recorridos", "Próximas pruebas", "Buscar pruebas por nombre…", "Página de la prueba e inscripción", "Reclamar esta prueba", "Ficha de prueba", "página de la prueba" (race photo gallery), "resultados de pruebas" (RunSignUp / ChronoTrack); "Es una contrarreloj, no una prueba organizada" (park courses) | settled 2026-11-12 (inconsistency 1). Covers every race-discovery, calendar, registration, race-listing, race-page, race-course-claim and results-import string. Feminine like *carrera*, so agreement is unchanged ("esta prueba", "Próximas pruebas"). *Prueba* in its other senses ("periodo de prueba", "Prueba encontrada", "prueba a ampliarlo") are unaffected |
@@ -111,6 +113,15 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
    *carrera*, and so do the training-plan race terms and the club-hosted
    live race-control vocabulary settled 2026-11-10 — see the three *race*
    rows in the glossary for the boundary.
+   The help category `helpCategoryRaces` / `help.categoryRaces` stays
+   **Carreras** (checked 2026-11-12): eight of its nine guides are the
+   club-hosted live race (set it up, choose how it starts, race day for
+   hosts, racing in it, following it live, start and finish lines,
+   self-timed races, results), none of them points at the race calendar,
+   and each already says *carrera*; the ninth, `drive-a-course`, is about a
+   public race course and rightly says *prueba* in its own text. A category
+   label names its guides, so it follows the live-race row, not the
+   calendar's. Revisit only if a calendar or race-listing guide joins it.
 2. ~~**gym**~~: resolved 2026-11-10, the phone says "Gym" like the web.
 3. **settings**: "Ajustes" (mobile `navSettings`, web `prefs.kicker`) vs
    "Configuración" (web `shell.settings`).

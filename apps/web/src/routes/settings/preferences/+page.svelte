@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { goto } from '$app/navigation';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import {
@@ -21,11 +22,7 @@
 </script>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{m('prefs.kicker')}</p>
-		<h1>{m('prefs.heading')}</h1>
-		<p class="tagline">{m('prefs.tagline')}</p>
-	</header>
+	<PageHeader kicker={m('prefs.kicker')} title={m('prefs.heading')} subtitle={m('prefs.tagline')} />
 
 	<ul class="prefs-group-list" data-testid="preferences-groups">
 		{#each groups as group (group.href)}
@@ -45,23 +42,6 @@
 
 <style>
 	.page { padding: var(--page-padding-y) var(--page-padding-x); max-width: 64rem; }
-	.page-head { margin-bottom: var(--space-xl); }
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 var(--space-xs); }
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
-	}
 	.prefs-group-list {
 		list-style: none;
 		margin: 0;

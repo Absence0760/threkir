@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -99,11 +100,7 @@
 </svelte:head>
 
 <div class="page">
-	<header class="hero">
-		<p class="kicker">{m('shell.settings')}</p>
-		<h1>{m('payouts.heroTitle')}</h1>
-		<p class="tagline">{m('payouts.heroTagline')}</p>
-	</header>
+	<PageHeader kicker={m('shell.settings')} title={m('payouts.heroTitle')} subtitle={m('payouts.heroTagline')} />
 
 	<section class="card" aria-busy={!loaded}>
 		{#if !loaded}
@@ -239,30 +236,6 @@
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 48rem;
-	}
-	.hero {
-		margin-bottom: var(--space-xl);
-		max-width: 40rem;
-	}
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	.hero h1 {
-		font-size: 1.7rem;
-		font-weight: 800;
-		margin: 0 0 var(--space-sm);
-		line-height: 1.15;
-	}
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.55;
-		margin: 0;
 	}
 	.card {
 		background: var(--color-surface);

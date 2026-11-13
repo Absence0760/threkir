@@ -71,6 +71,9 @@ const HOMES: Record<string, Home> = {
 	notify_course_alert: { page: 'notifications' },
 	notify_race_starting_soon: { page: 'notifications' },
 	notify_workout_reminder: { page: 'notifications' },
+	notify_park_course_month: {
+		none: 'its switch ships with the monthly park course board (#1343 phase 2); the job that reads it is flag-held off until then',
+	},
 	email_new_device_alerts: { page: 'notifications' },
 	locale: {
 		page: 'display',

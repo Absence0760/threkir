@@ -259,6 +259,7 @@ Shared pieces:
 | Notification → email (kudos, comment, reaction, comment like, mention, follow, follow request, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
 | **Event-day reminders** (scheduled) | `notification_email` (`event_reminder`) | hourly pg_cron `enqueue_event_reminders()` over `going` RSVPs in the next 24 h | ✓ | §117 |
 | **Today's-workout reminder** (scheduled) | `notification_email` (`workout_reminder`) | hourly pg_cron `enqueue_workout_reminders()`: one per runner per local morning (07:00-11:59 in `prefs.time_zone`, nobody without a known zone) when the active plan's day holds an outstanding workout; emailed only under `email_notifications = all` (pushed under the default); `notify_workout_reminder = 'off'` withholds the row itself | ✓ | §2087 |
+| **Park course month closed** (scheduled, bell-only by default) | `notification_email` (`park_course_month_closed`) | hourly pg_cron `enqueue_park_course_month_notices()`: in the first three local days of a month, one per runner per park course they ran in the month that just closed, with their best time and no rank; in neither default set, so emailed and pushed only under `all`; mute `notify_park_course_month`; held off by the `park_course_month_notices` flag until the clients render it (issue #1343) | ✓ | §2426, §2511 |
 | **Race starting soon / start moved** (scheduled race, push only) | `notification_email` rail skipped: `race_starting_soon` / `race_start_moved` are in `pushOnlyKinds`, so no mode emails them | per-minute pg_cron `race_sessions_tick()` about 10 minutes before a scheduled GO (skipped after an `event_reminder` within the hour; `notify_race_starting_soon = 'off'` withholds the row); a Delay's `race_sessions_notify_start_moved_trg` | ✓ (push copy) | §2400 |
 | **Welcome** ("thanks for signing up") | `lifecycle_email` (`welcome`) | `user_profiles` AFTER INSERT | ✓ | §119 |
 | **Pro-purchase receipt** | `lifecycle_email` (`pro_welcome`) | `user_profiles` AFTER UPDATE, `subscription_tier` → paid | ✓ | §121 |
@@ -760,6 +761,22 @@ neither, and neither carries a `List-Unsubscribe` header.
   closure, course-direction or notice) is in `importantKinds` with the
   opt-OUT mute `notify_course_alert`. Deep link `/course-alerts/{id}`, the
   web resolver that opens the race or route. Copy in all seven locales.
+- [x] **Park course month closed** — issue #1343, `decisions.md § 2426` /
+  `§ 2511`, migrations `20271226011343`-`41343`. `park_course_month_closed`
+  is raised by the hourly `enqueue_park_course_month_notices()` cron, not a
+  trigger: one notice per runner, park course and closed month, carrying the
+  course, the month and the runner's best time, never a rank. It is in
+  neither `importantKinds` nor `pushImportantKinds`, so it stays in the bell
+  unless the runner chose `all`. Its opt-OUT mute `notify_park_course_month`
+  is applied before the row exists (like `notify_workout_reminder`) and in
+  `kindMuted`. Deep link `/parks/{region}/{park}/{course}?period=YYYY-MM`,
+  built from the course slugs the three notification projections embed
+  (`park_course:park_courses(slug,park:parks(slug,region_code))`). Copy in
+  all seven locales. The kind widen is the `NOT VALID` half in
+  `20271226011343` and the `VALIDATE` in `20271226021343`. **Off in every
+  environment** until `park_course_month_notices` is declared in
+  `apps/backend/ops/prod_config.json`, after the web and mobile bell render
+  the kind (#1343 phase 2).
 - [x] **Race start notices** — `race_starting_soon` and `race_start_moved`
   (issue #1306, `decisions.md § 2400`, migration `20271121002400`, the kind
   widen's `VALIDATE` in `…2401`). Raised for a Scheduled GO race: about 10

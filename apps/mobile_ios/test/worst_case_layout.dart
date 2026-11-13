@@ -36,6 +36,17 @@ final List<Locale> kWorstCaseLocales = AppLocalizations.supportedLocales;
 
 /// A 320 x 640 dp phone with the 48 dp 3-button navigation bar.
 void useWorstCasePhone(WidgetTester tester) {
+  // Keep the framework's report of the last error, which names the widget
+  // that overflowed; `takeException` alone returns only the message.
+  final previous = FlutterError.onError;
+  FlutterError.onError = (details) {
+    _lastReport = details.toString();
+    previous?.call(details);
+  };
+  addTearDown(() {
+    FlutterError.onError = previous;
+    _lastReport = null;
+  });
   tester.view.physicalSize = kWorstCasePhone;
   tester.view.devicePixelRatio = 1;
   tester.view.viewPadding = const FakeViewPadding(bottom: kThreeButtonNavBar);
@@ -69,8 +80,11 @@ Widget worstCaseApp({
 /// reported as one.
 void expectNoOverflow(WidgetTester tester, String where) {
   final e = tester.takeException();
-  expect(e, isNull, reason: '$where overflowed or threw: $e');
+  expect(e, isNull,
+      reason: '$where overflowed or threw: ${_lastReport ?? e}');
 }
+
+String? _lastReport;
 
 /// One test per shipped locale at the worst case. [body] pumps the screen
 /// (through [worstCaseApp]) and may walk it; any overflow left at the end
@@ -98,3 +112,24 @@ void worstCaseTestWidgets(
 /// The [AppLocalizations] a worst-case run reads, for finding a localized
 /// label without spelling it in English.
 AppLocalizations l10nFor(Locale locale) => lookupAppLocalizations(locale);
+
+/// Scrolls [scrollable] from top to bottom a viewport at a time, failing on
+/// the first step that overflows, so a lazy list's off-screen items are laid
+/// out at the worst case too.
+Future<void> walkScrollable(
+  WidgetTester tester,
+  Finder scrollable,
+  String where,
+) async {
+  final position = tester.state<ScrollableState>(scrollable).position;
+  position.jumpTo(position.minScrollExtent);
+  await tester.pump();
+  expectNoOverflow(tester, '$where at the top');
+  for (var step = 1; step <= 60; step++) {
+    if (position.pixels >= position.maxScrollExtent) return;
+    position.jumpTo((position.pixels + position.viewportDimension * 0.8)
+        .clamp(position.minScrollExtent, position.maxScrollExtent));
+    await tester.pump();
+    expectNoOverflow(tester, '$where, scroll step $step');
+  }
+}

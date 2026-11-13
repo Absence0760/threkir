@@ -27,6 +27,7 @@ import '../lib/screens/progress_screen.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
+import 'worst_case_layout.dart';
 
 const _phone = Size(320, 640);
 const _fabKey = ValueKey('test-docked-fab');
@@ -90,7 +91,8 @@ void main() {
     dirs.clear();
   });
 
-  Future<void> pumpToday(WidgetTester tester, {double height = 640}) async {
+  Future<void> pumpToday(WidgetTester tester,
+      {double height = 640, Locale locale = const Locale('en')}) async {
     tester.view.physicalSize = Size(_phone.width, height);
     tester.view.devicePixelRatio = 1;
     tester.view.viewPadding = const FakeViewPadding(bottom: kThreeButtonNavBar);
@@ -114,6 +116,7 @@ void main() {
       await runStore.init(overrideDirectory: dir);
       await tester.pumpWidget(MaterialApp(
         theme: AppTheme.light,
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => MediaQuery(
@@ -284,4 +287,23 @@ void main() {
     expect(lastGroup, findsOneWidget);
     expectAboveNavBar(tester, lastGroup);
   });
+
+  // Today and the Progress page it opens, walked top to bottom at the worst
+  // case in every shipped locale (issue #1374 TO-6).
+  worstCaseTestWidgets('Today and Progress', (tester, locale) async {
+    // Loaded tall so the hero is built whatever the locale pushes above it
+    // (a long unsynced banner in French moves it off a 640 dp list), then
+    // walked on the phone.
+    await pumpToday(tester, locale: locale, height: 3000);
+    tester.view.physicalSize = kWorstCasePhone;
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Today');
+    await openProgress(tester);
+    final scrollable = find
+        .descendant(
+            of: find.byType(ProgressScreen), matching: find.byType(Scrollable))
+        .first;
+    await walkScrollable(tester, scrollable, 'Progress');
+  });
 }
+

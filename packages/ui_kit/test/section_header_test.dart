@@ -125,4 +125,48 @@ void main() {
     );
     semantics.dispose();
   });
+
+  // Issue #1374 TO-6: a Row put the action beside the heading whatever the
+  // width, and it overflowed by 39 dp in German at 2x on a 320 dp phone.
+  testWidgets('an action that does not fit beside the heading drops under it',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+        child: Scaffold(
+          body: SizedBox(
+            width: 288,
+            child: SectionHeader.title(
+              label: 'Trainingsbelastung',
+              trailing: TextButton(onPressed: () {}, child: const Text('Alle anzeigen')),
+            ),
+          ),
+        ),
+      ),
+    ));
+    expect(tester.takeException(), isNull);
+    final heading = tester.getRect(find.text('Trainingsbelastung'));
+    final action = tester.getRect(find.byType(TextButton));
+    expect(action.top, greaterThanOrEqualTo(heading.bottom - 0.5));
+  });
+
+  testWidgets('an action that fits stays on the heading line, at the end',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 360,
+          child: SectionHeader(
+            label: 'Goals',
+            trailing: TextButton(onPressed: () {}, child: const Text('Edit')),
+          ),
+        ),
+      ),
+    ));
+    final heading = tester.getRect(find.text('GOALS'));
+    final action = tester.getRect(find.byType(TextButton));
+    expect(action.center.dy, closeTo(heading.center.dy, 1));
+    expect(action.right, closeTo(360, 0.5));
+  });
 }
+

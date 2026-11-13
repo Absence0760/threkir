@@ -211,9 +211,11 @@ Some per-device prefs are **never** synced to `user_settings` / `user_device_set
   Preferences). Body metrics sits under Profile on both. A key's row is on the
   page of the same subject; the mobile groups inside each page carry web's
   section names. Mobile keeps date of birth on Training (it drives max HR),
-  where web keeps it with Body metrics. `preferencesRowTitles` in
-  `settings_preferences_screen.dart` is the index You's settings search reads;
-  `preferences_search_index_test.dart` fails when it and the pages disagree.
+  where web keeps it with Body metrics. `PreferencesRow` (in
+  `preferences_page.dart`, titles in `settings_preferences_screen.dart`) is the
+  index You's settings search reads, and each row's id is the anchor a result
+  lands on; `preferences_search_index_test.dart` fails when it and the pages
+  disagree.
   The error-reports opt-out (`sentry_opt_out`, device-local) moved from Account
   to Privacy & sharing with the split, as on web (issue #1374).
 

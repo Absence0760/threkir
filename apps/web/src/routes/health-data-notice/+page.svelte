@@ -35,7 +35,7 @@
 		activities, computing training and nutrition targets, powering the AI Coach when you open it,
 		and running the safety features you enable. Health-related categories (heart rate, body
 		measurements, nutrition) are gated behind an explicit in-app consent you can withdraw at any
-		time under Settings → Account on the web, or Account in the app's You tab. We do not use consumer health data for advertising, and we
+		time under Settings → Account on the web, or with the Store health data switch under Body metrics in the app's You tab. We do not use consumer health data for advertising, and we
 		<strong>do not sell consumer health data</strong> — so no "sale" authorization is ever
 		requested.
 	</p>
@@ -52,8 +52,8 @@
 
 	<h2>4. Your rights</h2>
 	<ul>
-		<li><strong>Access</strong>: Settings → Export your data gives you a machine-readable copy, including all health data.</li>
-		<li><strong>Withdraw consent</strong>: health-data consent under Settings → Account on the web, or Account in the app's You tab; withdrawal blocks further collection and processing of the consented categories.</li>
+		<li><strong>Access</strong>: Data Export on the Account page (Settings → Account on the web, Account in the app's You tab) gives you a machine-readable copy, including all health data.</li>
+		<li><strong>Withdraw consent</strong>: health-data consent under Settings → Account on the web, or with the Store health data switch under Body metrics in the app's You tab; withdrawal blocks further collection and processing of the consented categories.</li>
 		<li><strong>Delete</strong>: delete individual entries (runs, weights, food logs) in-app, or the whole account via Settings → Account → Delete account on the web, or Account → Delete account in the app's You tab. Deletion cascades through our systems and our processors on the schedule in the Privacy Policy.</li>
 		<li><strong>Appeal</strong>: if we decline a request, you may appeal by replying to our decision or emailing <a href="mailto:privacy@threkir.com">privacy@threkir.com</a> with "Appeal" in the subject. If the appeal fails, Washington residents may contact the <a href="https://www.atg.wa.gov/" target="_blank" rel="noopener noreferrer">Washington Attorney General</a>.</li>
 	</ul>

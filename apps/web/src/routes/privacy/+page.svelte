@@ -422,13 +422,13 @@
 	<h2>8. Your rights</h2>
 	<p>Under the GDPR / UK GDPR / CCPA / LGPD you have the right to:</p>
 	<ul>
-		<li><strong>Access</strong> your personal data (Art 15) — use Settings → Export your data.</li>
-		<li><strong>Rectify</strong> inaccurate data (Art 16) — use Settings → Profile.</li>
+		<li><strong>Access</strong> your personal data (Art 15) — use Data Export on the Account page (Settings → Account on the web, Account in the app's You tab).</li>
+		<li><strong>Rectify</strong> inaccurate data (Art 16) — edit your profile on the Account page (Settings → Account on the web, Account in the app's You tab).</li>
 		<li><strong>Erase</strong> your data (Art 17) — use Settings → Account → Delete account on the web, or Account → Delete account in the app's You tab. Deletion cascades through our database, drains your uploaded files from storage, and disconnects or deletes linked third-party resources (for example Strava authorisation and any connected Stripe account). Step-by-step instructions, including what to do if you can no longer sign in, are on the <a href="/delete-account">Delete your account</a> page.</li>
 		<li><strong>Restrict</strong> or <strong>object to</strong> processing (Arts 18 + 21) — email <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>. There is no self-service toggle yet; we action these manually and confirm within one month.</li>
-		<li><strong>Portability</strong> (Art 20) — use Settings → Export your data; the bundle is machine-readable JSON plus GPX.</li>
-		<li><strong>Withdraw consent</strong> at any time without affecting the lawfulness of prior processing. AI Coach consent and health-data consent are each withdrawable self-service under Settings → Account on the web, or Account in the app's You tab; withdrawing blocks the corresponding processing immediately.</li>
-		<li><strong>Object to direct marketing</strong> at any time (Art 21(2)) — every marketing email carries an unsubscribe link, and the email preference is in Settings. Transactional mail (receipts, security notices) is not marketing.</li>
+		<li><strong>Portability</strong> (Art 20) — use Data Export on the Account page (Settings → Account on the web, Account in the app's You tab); the bundle is machine-readable JSON plus GPX.</li>
+		<li><strong>Withdraw consent</strong> at any time without affecting the lawfulness of prior processing. AI Coach consent and health-data consent are each withdrawable self-service: AI Coach consent on the Account page (Settings → Account on the web, Account in the app's You tab), and health-data consent under Settings → Account on the web, or with the Store health data switch under Body metrics in the app's You tab; withdrawing blocks the corresponding processing immediately.</li>
+		<li><strong>Object to direct marketing</strong> at any time (Art 21(2)) — every marketing email carries an unsubscribe link, and the email preference is under Settings → Notifications on the web, or Notifications in Preferences on the app's You tab. Transactional mail (receipts, security notices) is not marketing.</li>
 		<li><strong>Lodge a complaint</strong> with your local supervisory authority. UK residents may contact the <a href="https://ico.org.uk/" target="_blank" rel="noopener noreferrer">ICO</a>; EU residents the DPA of their member state; Brazilian residents the ANPD; Canadian residents the OPC (Quebec: the CAI); Australian residents the OAIC.</li>
 	</ul>
 	<p>

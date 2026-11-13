@@ -118,6 +118,31 @@ test.describe('Legal pages', () => {
 		expect(body).not.toContain('remains gated on your telemetry');
 	});
 
+	test('each consent and data right names where it lives on the web and in the app', async ({
+		page
+	}) => {
+		// The app has no Settings screen since #1374 (decisions § 2494): AI
+		// Coach consent is on the Account page, but health-data consent is
+		// the Store health data switch under Body metrics, so one "Settings →
+		// Account" pointed app users to the wrong place for an Art 7(3)
+		// withdrawal.
+		await page.goto('/privacy');
+		const privacy = (await page.locator('.legal-page').innerText()).replace(/\s+/g, ' ');
+		expect(privacy).toContain(
+			"AI Coach consent on the Account page (Settings → Account on the web, Account in the app's You tab)"
+		);
+		expect(privacy).toContain(
+			"health-data consent under Settings → Account on the web, or with the Store health data switch under Body metrics in the app's You tab"
+		);
+		expect(privacy).not.toContain('Settings → Export your data');
+		expect(privacy).not.toContain('Settings → Profile');
+
+		await page.goto('/health-data-notice');
+		const notice = (await page.locator('.legal-page').innerText()).replace(/\s+/g, ' ');
+		expect(notice).toContain('Store health data switch under Body metrics');
+		expect(notice).not.toContain("or Account in the app's You tab;");
+	});
+
 	test('/terms states the subscription pillars + marketplace + DMCA clauses', async ({
 		page
 	}) => {

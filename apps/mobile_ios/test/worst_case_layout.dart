@@ -1,7 +1,8 @@
 // ignore_for_file: avoid_relative_lib_imports
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show AppTheme;
+import 'package:ui_kit/ui_kit.dart' show AppTheme, PageTitleScope;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
@@ -100,6 +101,73 @@ void expectNoLayoutOverflow(WidgetTester tester, String where) {
 
 final List<String> _reports = [];
 
+/// Fails when an app bar shows a title it has cut short (TO-12): a pushed
+/// page says its name in its body (`PageHeader`, `DetailHero`) and the bar
+/// repeats it only once that heading has scrolled away, so a cut bar title
+/// is only acceptable on a page whose body says the name in full. A title
+/// the bar is hiding (opacity 0) is not shown, so not cut. A conversation's
+/// name (`ThreadTitle`) cannot move into a body of messages; it passes when a
+/// `Tooltip` around it carries the whole name.
+///
+/// [worstCaseTestWidgets] runs it on every surface it lays out.
+void expectTitlesNotCut(WidgetTester tester, String where) {
+  final cut = <String>[];
+  for (final barElement in find.byType(AppBar).evaluate()) {
+    final title = (barElement.widget as AppBar).title;
+    if (title == null) continue;
+    Element? titleElement;
+    void seek(Element e) {
+      if (titleElement != null) return;
+      if (identical(e.widget, title)) {
+        titleElement = e;
+        return;
+      }
+      e.visitChildren(seek);
+    }
+
+    barElement.visitChildren(seek);
+    final found = titleElement;
+    if (found == null || PageTitleScope.hasInBodyTitle(found)) continue;
+    final barRender = barElement.renderObject;
+    void check(Element e) {
+      final render = e.renderObject;
+      if (e is RenderObjectElement &&
+          render is RenderParagraph &&
+          render.hasSize &&
+          render.didExceedMaxLines &&
+          _shown(render, barRender) &&
+          !_wholeInTooltip(e, render.text.toPlainText())) {
+        cut.add(render.text.toPlainText());
+      }
+      e.visitChildren(check);
+    }
+
+    check(found);
+  }
+  expect(cut, isEmpty,
+      reason: '$where cuts its app-bar title short: $cut. Say the title in '
+          'the body (PushedPage / DetailPage with a PageHeader or '
+          'DetailHero), where it wraps.');
+}
+
+bool _wholeInTooltip(Element e, String text) {
+  var whole = false;
+  e.visitAncestorElements((a) {
+    final w = a.widget;
+    if (w is Tooltip && w.message == text) whole = true;
+    return !whole && w is! AppBar;
+  });
+  return whole;
+}
+
+bool _shown(RenderObject render, RenderObject? stop) {
+  for (RenderObject? r = render; r != null && r != stop; r = r.parent) {
+    if (r is RenderOpacity && r.opacity == 0) return false;
+    if (r is RenderAnimatedOpacity && r.opacity.value == 0) return false;
+  }
+  return true;
+}
+
 /// One test per shipped locale at the worst case. [body] pumps the screen
 /// (through [worstCaseApp]) and may walk it; any overflow left at the end
 /// fails the run, and [body] can call [expectNoOverflow] between steps.
@@ -121,6 +189,7 @@ void worstCaseTestWidgets(
         layoutOnly
             ? expectNoLayoutOverflow(tester, where)
             : expectNoOverflow(tester, where);
+        expectTitlesNotCut(tester, where);
       },
       skip: skip,
     );

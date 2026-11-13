@@ -48,19 +48,30 @@ class ThreadTitle extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                title,
-                key: titleKey,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (sub != null)
-                Text(
-                  sub,
-                  key: subtitleKey,
+              // A conversation's name cannot move into the body, which is the
+              // messages, so a name the bar cuts is shown whole on a long
+              // press (TO-12).
+              Tooltip(
+                message: title,
+                excludeFromSemantics: true,
+                child: Text(
+                  title,
+                  key: titleKey,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+              if (sub != null)
+                Tooltip(
+                  message: sub,
+                  excludeFromSemantics: true,
+                  child: Text(
+                    sub,
+                    key: subtitleKey,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ),
             ],
           ),

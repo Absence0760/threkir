@@ -13,6 +13,10 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
+| Monthly boards: `p_month` on both boards, `park_month` computed field, `month` / `month_rank` on `run_park_course_times` (issue #1343, migration `20271226001343`, decisions § 2426 / § 2511). See *Months* | Backend shipped; the web and mobile period control, run-detail row and sticker are #1343 phase 2 |
+| Month-close notice `park_course_month_closed` (migrations `20271226011343`..`41343`). See *Months* | Backend and worker shipped; off behind `park_course_month_notices` until the clients render it |
+| Official monthly passport "Run 3 Virginia park courses in {period}" (official catalogue, issue #1343) | Shipped; published by the release's official catalogue stage |
+| `park_months` badge (distinct local months with a completion, 3 / 6 / 12 / 24) | Not built: the badge catalogue is a three-way parity rail (`badges.ts`, `badges.dart`, `achievement_tiers_met`), so it lands with the client lane. See *Months* |
 | Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races`, the `/segments` header link and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
 | Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight courses with distance, shape and this season's record, nearest first once the page has a place or the runner's location, otherwise region, park, distance, name; closed courses last (`orderAnyTimeCourses` in `lib/parks/any_time_courses.ts`). Its own loading, error and `EmptyState`, independent of the race calendar above it | Shipped |
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
@@ -181,6 +185,69 @@ Every run is scored on the server (decisions § 2392):
   with `p_limit` 1 and that park's `park_season`, so it applies exactly the
   board's rules; a course with nothing this season has no row, and the card
   says no time yet. A failed read leaves the courses listed without records.
+
+## Months
+
+Issue #1343, [decisions § 2426](../architecture/decisions.md) and § 2511. A
+month is a filter on the same boards, not a stored period and not an entry.
+
+- **The boards.** `global_segment_leaderboard(..., p_season, p_month)` and
+  `global_segment_completions(p_segment_id, p_season, p_limit, p_month)`.
+  `p_month` is trailing on both, so every older call shape resolves, named or
+  positional (the issue sketched `p_month` before `p_limit` on the completions
+  board, which would have read an existing positional limit as a month). A
+  month is the calendar month of the effort's `started_at` in the park's
+  timezone, local midnight on the 1st to local midnight on the next 1st, read
+  with the same `at time zone` the season uses, so DST is handled (pinned
+  across 8 March and the repeated hour of 1 November 2026 in New York). A
+  month without a season, or outside 1-12, raises `22023`.
+- **This month.** Clients read `park_month` beside `park_season` in one select
+  and pass both back, so no client carries a timezone database.
+- **Nothing is stored per month**, so a late import lands on its own month's
+  board and no board is ever frozen.
+- **Privacy.** Every rule comes from the recreated bodies: run visibility, the
+  block filter, shadow-hidden masking, the consent-gated age band, own-row
+  demographics, and 42501 for anon. The month narrows the year and exposes
+  nothing new, so there is no opt-in.
+- **The run's month place.** `run_park_course_times` returns `month` and
+  `month_rank` after its old columns, read from the monthly board the way
+  `season_rank` is read from the yearly one. Owner-only, like the rest of it.
+  Run detail ("2nd in November, 9th in 2026") and the sticker (the month
+  place, plus the year place when it is in the top 10, `pickShareCourse`)
+  read it in phase 2.
+- **Month-close notice.** `park_course_month_closed`, raised by the hourly
+  `enqueue_park_course_month_notices()` (at :17) in the first three local days
+  of the month where the park is, for the month that just closed: one notice
+  per runner and course, with the course, the month (`notifications.park_course_month`,
+  the local 1st) and the runner's best time (`park_course_time_s`), never a
+  rank. The window lets a missed tick or an import on the 2nd still reach its
+  runner, and stops a backlog: turning the job on mid-month sends nothing for
+  an older month. `private.park_course_month_notices` claims each
+  (course, month, runner) once, so a re-run or a cleared notice raises nothing
+  more. An empty month raises nothing; `notify_park_course_month = 'off'`
+  raises nothing, and the worker holds the same mute on email and push. It is
+  bell-only by default (email and push only under `all`), and the email and
+  push deep-link to `/parks/<region>/<park>/<course>?period=YYYY-MM`. **Off**
+  until the `park_course_month_notices` flag is declared in
+  `apps/backend/ops/prod_config.json`, which waits on the clients rendering
+  the kind (the `notifications.kind` rails in `check_constraint_unions.mjs`
+  carry the pending exemption, which fails once a client names it).
+- **Monthly passport.** An ordinary official challenge,
+  `scripts/official/catalogue/challenges/virginia-park-courses-a-month.json`
+  (3 Virginia park courses a month), published a board per month by the
+  official catalogue stage. Its window is the UTC month, as every challenge's
+  is; each course's board runs on the park's local time.
+- **`park_months` badge: not built yet.** Distinct park-local months with a
+  park course completion, 3 / 6 / 12 / 24, completions never rank. The SQL
+  awarder cannot land alone: `check_shared_constants.mjs` requires the same
+  ladder in `badges.ts` and `badges.dart`, with labels in every locale, so it
+  ships with the client lane.
+- **No index.** EXPLAIN on 300,000 efforts (180,000 on one course over four
+  years) read the course's efforts in 23 ms by the existing segment index; the
+  monthly board took 0.41 s against 1.81 s for the yearly one, the difference
+  being the per-effort visibility check on fewer rows, and the close job 0.41 s
+  for 20 courses. A `(global_segment_id, started_at)` index would not change
+  either, so none was added (decisions § 2511).
 
 ## Where courses are surfaced
 
@@ -913,6 +980,16 @@ These gate going live, not the code:
   `nps` park and refused for any other); Playwright
   `parks/park-nps-alerts.spec.ts` (a runner refused, the link from the reports
   queue, close with a note, dismiss).
+- Months: pgTAP `park_course_months_test.sql` (41: 23:30 on 31 October in
+  New York is October, February and March across the DST change and the
+  repeated hour on 1 November, the 22023 refusals, every older call shape,
+  distinct local days, shadow-hidden, block and private-run rules, anon
+  refused, `month_rank` owner-only, and the close job: gated off, one notice
+  per runner, best time and no rank, mute, empty month, idempotent, the late
+  import inside the window, nothing after it, the window in the park's zone,
+  ledger sweep); Go `notification_park_course_month_test.go` (bell-only by
+  default, the mute, the deep link resolving against the web routes, copy
+  in every locale without a rank).
 - Run detail chips: Playwright `parks/run-park-course-chips.spec.ts` (time,
   season place and link; a failed read with Retry; no chips for a run with no
   course; never asked for by anyone else); Flutter

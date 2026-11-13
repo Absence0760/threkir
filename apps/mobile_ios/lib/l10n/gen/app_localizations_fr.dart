@@ -872,7 +872,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get progressHideGroup => 'Masquer de la progression';
+  String get progressHideGroup => 'Masquer de la page Progression';
 
   @override
   String dashboardCardHidden(String name) {
@@ -22613,7 +22613,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: 'Filtres, $count actifs',
-      one: 'Filtres, 1 actif',
+      one: 'Filtres, $count actif',
     );
     return '$_temp0';
   }

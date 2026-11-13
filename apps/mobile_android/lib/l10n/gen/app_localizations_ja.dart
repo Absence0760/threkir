@@ -767,7 +767,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get progressSummaryMonth => '今月';
 
   @override
-  String get todayGoalsMore => 'その他の目標は進捗で';
+  String get todayGoalsMore => 'その他の目標は「進捗」で確認できます';
 
   @override
   String get dashboardTrendGroupVolume => '走行量';
@@ -835,7 +835,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get progressHideGroup => '進捗で非表示';
+  String get progressHideGroup => '進捗から非表示にする';
 
   @override
   String dashboardCardHidden(String name) {
@@ -3544,7 +3544,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routesViewGroup => 'ルートセクション';
 
   @override
-  String get routesViewMine => '自分の';
+  String get routesViewMine => 'マイルート';
 
   @override
   String get routesViewExplore => '探索';
@@ -7687,7 +7687,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachLimitReachedPro => '1日の上限に達しました。明日また来てください。';
 
   @override
-  String get coachLimitReachedFree => '1日の上限に達しました。Pro ならより高い上限になります。';
+  String get coachLimitReachedFree => '1日の上限に達しました。Proなら上限が上がります。';
 
   @override
   String coachMessagesLeft(int count) {
@@ -9230,7 +9230,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsPagePrivacySummary =>
-      'ランを見られる人、他のランナーに見つけてもらうか、プライバシーゾーン、エラーレポート。';
+      'ランを見られる人、他のランナーから見つけられるかどうか、プライバシーゾーン、エラーレポート。';
 
   @override
   String get prefsPageNotifications => '通知';

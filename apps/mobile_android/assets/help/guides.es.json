@@ -3776,7 +3776,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Un recorrido de parque es un recorrido fijo de contrarreloj por un sendero de un parque estatal o nacional. No hay organizador ni día de carrera: córrelo cuando el parque esté abierto y una carrera que cubra todo el recorrido se cronometra. Los encontrarás en **Corre cuando quieras**, dentro de [[route:/races|Pruebas y recorridos]], con los más cercanos primero cuando indicas un lugar, o todos en [[route:/parks|Recorridos de parques]]. Elige **Recorridos** arriba en Pruebas y recorridos para ver todos los recorridos solos, sin el calendario de pruebas."
+            "text": "Un recorrido de parque es un recorrido contrarreloj fijo por un sendero de un parque estatal o nacional. No hay organizador ni fecha de competición: córrelo cuando el parque esté abierto, y cualquier carrera que cubra todo el recorrido se cronometra en él. Los encontrarás en **Corre cuando quieras**, dentro de [[route:/races|Pruebas y recorridos]], con los más cercanos primero cuando indicas un lugar, o todos en [[route:/parks|Recorridos de parques]]. Elige **Recorridos** arriba en Pruebas y recorridos para ver todos los recorridos solos, sin el calendario de pruebas."
           },
           {
             "type": "list",

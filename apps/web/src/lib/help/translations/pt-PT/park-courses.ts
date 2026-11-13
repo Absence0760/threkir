@@ -8,7 +8,7 @@ export const translation: GuideTranslation = {
 		{
 			heading: "O que é um percurso de parque",
 			blocks: [
-				{ type: 'p', text: "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando indica um local, ou veja todos em [[route:/parks|Percursos de parques]]. Selecione **Percursos** no topo de Provas e percursos para ver todos os percursos sozinhos, sem o calendário de provas." },
+				{ type: 'p', text: "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada nele. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando define um local, ou veja todos em [[route:/parks|Percursos de parques]]. Selecione **Percursos** no topo de Provas e percursos para listar todos os percursos à parte, sem o calendário de provas." },
 				{
 					type: 'list',
 					items: [

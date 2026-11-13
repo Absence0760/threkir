@@ -1061,7 +1061,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Dicas sobre as suas corridas, treino e recuperação';
 
   @override
-  String get homeCoachTitle => 'Treinador';
+  String get homeCoachTitle => 'Coach';
 
   @override
   String get homeCoachSubtitleTools =>
@@ -1500,7 +1500,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String settingsSearchNoResults(String query) {
-    return 'Nenhuma definição corresponde a «$query».';
+    return 'Nenhuma definição corresponde a “$query”.';
   }
 
   @override
@@ -5066,7 +5066,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get feedEveryoneYouFollow => 'Todos que segue';
 
   @override
-  String get feedFilterAuthor => 'Atividade de';
+  String get feedFilterAuthor => 'De quem é a atividade';
 
   @override
   String get feedRunnerFallback => 'Corredor';
@@ -9751,7 +9751,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsPagePrivacySummary =>
-      'Quem vê as suas corridas, se outros corredores o podem encontrar, zonas de privacidade e relatórios de erros.';
+      'Quem vê as suas corridas, se outros corredores o podem encontrar, zonas de privacidade e relatórios de erro.';
 
   @override
   String get prefsPageNotifications => 'Notificações';
@@ -22574,7 +22574,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: 'Filtros, $count ativos',
-      one: 'Filtros, 1 ativo',
+      one: 'Filtros, $count ativo',
     );
     return '$_temp0';
   }
@@ -23661,7 +23661,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Dicas sobre suas corridas, treino e recuperação';
 
   @override
-  String get homeCoachTitle => 'Treinador';
+  String get homeCoachTitle => 'Coach';
 
   @override
   String get homeCoachSubtitleTools =>
@@ -38214,7 +38214,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeConditionsLoadFailed =>
-      'Não foi possível carregar os relatos. Verifique sua conexão e tente novamente.';
+      'Não foi possível carregar os relatos de condições. Verifique sua conexão e tente novamente.';
 
   @override
   String get routeConditionsLoading => 'Carregando…';
@@ -45154,7 +45154,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: 'Filtros, $count ativos',
-      one: 'Filtros, 1 ativo',
+      one: 'Filtros, $count ativo',
     );
     return '$_temp0';
   }

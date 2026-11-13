@@ -621,12 +621,27 @@ class _ProfileScreenState extends State<ProfileScreen>
     });
     try {
       await widget.api.markNotificationRead(item.row.id);
-    } catch (_) {
-      /* best-effort */
+    } catch (e) {
+      // Optimistic, so a refused write puts the row back the way it was
+      // rather than showing it read until the next load brings it back
+      // unread (issue #1374 FS-14).
+      debugPrint('profile mark read failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _notifications = [
+          for (final n in _notifications)
+            n.row.id == item.row.id ? item : n,
+        ];
+      });
     }
   }
 
+  /// A mark-all write is in flight; the button is off until it settles.
+  bool _markingAllRead = false;
+
   Future<void> _markAllNotifsRead() async {
+    if (_markingAllRead) return;
+    setState(() => _markingAllRead = true);
     try {
       await widget.api.markAllNotificationsRead();
       if (!mounted) return;
@@ -643,6 +658,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           friendlyError(AppLocalizations.of(context), e),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _markingAllRead = false);
     }
   }
 
@@ -1248,7 +1265,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               if (hasUnread)
                 TextButton(
-                  onPressed: _markAllNotifsRead,
+                  onPressed: _markingAllRead ? null : _markAllNotifsRead,
                   child: Text(l10n.profileMarkAllRead),
                 ),
             ],

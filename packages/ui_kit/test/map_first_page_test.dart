@@ -110,6 +110,31 @@ void main() {
         lessThanOrEqualTo(_size.height - _bar + 0.01));
   });
 
+  testWidgets('a tall header and a tall panel share the page and the map '
+      'keeps the rest', (tester) async {
+    await _pump(
+      tester,
+      MapFirstPage(
+        appBar: AppBar(title: const Text('Map')),
+        map: _map,
+        header: Column(children: [
+          for (var i = 0; i < 30; i++) Text('hint $i'),
+        ]),
+        panel: Column(children: [
+          for (var i = 0; i < 30; i++) Text('stat $i'),
+        ]),
+      ),
+      textScale: 2,
+    );
+    expect(tester.takeException(), isNull);
+    const page = 640 - 56.0;
+    final map = tester.getRect(find.byKey(const ValueKey('map')));
+    expect(map.height, greaterThanOrEqualTo(0.4 * page - 1));
+    expect(
+        tester.getRect(find.byKey(const ValueKey('map-first-header'))).height,
+        lessThanOrEqualTo(0.3 * page + 1));
+  });
+
   testWidgets('the sheet ends its list above the nav bar and the controls '
       'ride its top edge', (tester) async {
     await _pump(

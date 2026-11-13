@@ -87,6 +87,7 @@ class MapFirstPage extends StatefulWidget {
   final PreferredSizeWidget? appBar;
 
   /// Solid controls above the map (a hint, a search field, a slider).
+  /// Scrolls when it outgrows its share of the page, as [panel] does.
   final Widget? header;
 
   /// Laid over the top of the map, full width, later ones on top: a status
@@ -105,7 +106,7 @@ class MapFirstPage extends StatefulWidget {
   final Widget? attribution;
 
   /// Pinned below the map, never over it: live stats, a count and its
-  /// action. Scrolls when it outgrows [maxPanelFraction] of the page.
+  /// action. Scrolls when it outgrows its share of the page.
   final Widget? panel;
 
   /// The panel's surface. Defaults to `surfaceContainerHighest`.
@@ -116,6 +117,8 @@ class MapFirstPage extends StatefulWidget {
   /// Height the host covers at the bottom of a hosted page.
   final double bottomClearance;
 
+  /// The most of the page the [header] and the [panel] take together, so the
+  /// map keeps the rest at any text size. With both, each gets half.
   final double maxPanelFraction;
 
   @override
@@ -298,14 +301,24 @@ class _MapFirstPageState extends State<MapFirstPage> {
     );
   }
 
+  double _bandMax(double pageHeight) =>
+      pageHeight *
+      widget.maxPanelFraction /
+      (widget.header != null && widget.panel != null ? 2 : 1);
+
+  Widget _header(Widget header, double pageHeight) => ConstrainedBox(
+        key: const ValueKey('map-first-header'),
+        constraints: BoxConstraints(maxHeight: _bandMax(pageHeight)),
+        child: SingleChildScrollView(child: _sides(header)),
+      );
+
   Widget _panel(BuildContext context, double pageHeight) {
     final theme = Theme.of(context);
     return Material(
       key: const ValueKey('map-first-panel'),
       color: widget.panelColor ?? theme.colorScheme.surfaceContainerHighest,
       child: ConstrainedBox(
-        constraints:
-            BoxConstraints(maxHeight: pageHeight * widget.maxPanelFraction),
+        constraints: BoxConstraints(maxHeight: _bandMax(pageHeight)),
         child: SingleChildScrollView(
           child: SafeArea(
             top: false,
@@ -325,7 +338,8 @@ class _MapFirstPageState extends State<MapFirstPage> {
       builder: (context, box) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.header case final header?) _sides(header),
+          if (widget.header case final header?)
+            _header(header, box.maxHeight),
           Expanded(child: _mapArea(context)),
           if (widget.panel != null) _panel(context, box.maxHeight),
         ],

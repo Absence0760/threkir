@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppInsets, AppSpace, IdentityAvatar, ListRow;
+    show AppInsets, AppSpace, IdentityAvatar, ListRow, ListCard;
 
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
@@ -166,10 +166,10 @@ class _YouScreenState extends State<YouScreen>
     final theme = Theme.of(context);
     final name = _displayName;
     final hasName = name != null && name.isNotEmpty;
-    return Card(
+    // Flush: the profile link and Edit profile are two targets of their own.
+    return ListCard.flush(
       key: const ValueKey('you-identity-card'),
       margin: const EdgeInsets.symmetric(horizontal: AppInsets.gutter),
-      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -241,23 +241,20 @@ class _YouScreenState extends State<YouScreen>
   Widget _signInCard(BuildContext context, ApiClient api) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Card(
+    return ListCard(
       key: const ValueKey('you-sign-in-card'),
       margin: const EdgeInsets.symmetric(horizontal: AppInsets.gutter),
-      child: Padding(
-        padding: AppInsets.card,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.settingsAccountSignInToSync,
-                style: theme.textTheme.bodyLarge),
-            const SizedBox(height: AppSpace.smPlus),
-            FilledButton(
-              onPressed: () => _signIn(api),
-              child: Text(l10n.settingsAccountSignIn),
-            ),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.settingsAccountSignInToSync,
+              style: theme.textTheme.bodyLarge),
+          const SizedBox(height: AppSpace.smPlus),
+          FilledButton(
+            onPressed: () => _signIn(api),
+            child: Text(l10n.settingsAccountSignIn),
+          ),
+        ],
       ),
     );
   }

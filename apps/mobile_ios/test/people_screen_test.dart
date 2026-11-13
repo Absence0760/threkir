@@ -11,6 +11,7 @@ import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, LoadingState;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/nearby_flag.dart';
+import '../lib/follow_state.dart';
 import '../lib/screens/people_screen.dart';
 import '../lib/settings_destination.dart';
 import '../lib/widgets/error_state.dart';
@@ -335,6 +336,30 @@ void main() {
         findsAtLeastNWidgets(1),
       );
       handle.dispose();
+    });
+
+    // Issue #1374 NS-10: following from the profile left this row on Follow,
+    // and tapping it sent a second follow.
+    testWidgets('a follow made on the profile shows on the row here',
+        (tester) async {
+      FollowState.instance.debugClear();
+      addTearDown(FollowState.instance.debugClear);
+      final p = _person(follows: false);
+      final api = _FakeApi(suggestions: [p]);
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
+      await _settle(tester);
+      expect(find.text('Follow'), findsOneWidget);
+
+      // What ProfileScreen records once its follow lands.
+      FollowState.instance.put('me', p.id, following: true);
+      await tester.pump();
+      expect(find.text('Following'), findsOneWidget);
+      expect(api.followCalls, 0);
+
+      // Another account on the phone does not inherit it.
+      FollowState.instance.put('someone-else', p.id, following: false);
+      await tester.pump();
+      expect(find.text('Following'), findsOneWidget);
     });
 
     testWidgets('tapping Follow optimistically flips the label + calls follow',

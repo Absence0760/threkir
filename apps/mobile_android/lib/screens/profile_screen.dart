@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../auth_error.dart';
+import '../follow_state.dart';
 import '../entity_link.dart';
 import '../help_destination.dart';
 import '../help_guides.dart' show HelpDestination;
@@ -464,6 +465,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       final l10n = AppLocalizations.of(context);
       if (wasFollowing) {
         await widget.api.unfollowUser(widget.userId);
+        FollowState.instance
+            .put(widget.api.userId, widget.userId, following: false);
         if (summary.profilePrivate && mounted) {
           setState(() {
             _runs = const [];
@@ -479,6 +482,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         showTopBanner(context, l10n.profileRequestWithdrawn);
       } else {
         final outcome = await widget.api.followUser(widget.userId);
+        if (outcome != FollowOutcome.requested) {
+          FollowState.instance
+              .put(widget.api.userId, widget.userId, following: true);
+        }
         if (!mounted) return;
         if (outcome == FollowOutcome.requested) {
           setState(() => _summary = summary.copyWith(viewerRequested: true));

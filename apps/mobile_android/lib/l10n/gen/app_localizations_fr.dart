@@ -14122,6 +14122,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Tous vos athlètes en un coup d\'œil — charge, suivi du plan et risque de blessure.';
 
   @override
+  String get coachingRosterLoadFailed =>
+      'Impossible de charger la liste de vos athlètes.';
+
+  @override
   String get coachingRosterNeverRun => 'Aucune course';
 
   @override

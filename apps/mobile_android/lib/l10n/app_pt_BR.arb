@@ -3937,6 +3937,7 @@
   "coachingNoAthletes": "Nenhum atleta ainda. Convide um para começar.",
   "coachingRosterTitle": "Lista de atletas",
   "coachingRosterSubtitle": "Todos os seus atletas num relance — carga, adesão ao plano e risco de lesão.",
+  "coachingRosterLoadFailed": "Não foi possível carregar sua lista de atletas.",
   "coachingRosterNeverRun": "Nenhuma corrida ainda",
   "coachingRosterNoPlan": "Sem plano",
   "coachingRosterRiskInsufficient": "Novo",

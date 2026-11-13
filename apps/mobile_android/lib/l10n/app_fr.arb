@@ -3937,6 +3937,7 @@
   "coachingNoAthletes": "Aucun athlète pour l'instant. Invitez-en un pour commencer.",
   "coachingRosterTitle": "Liste des athlètes",
   "coachingRosterSubtitle": "Tous vos athlètes en un coup d'œil — charge, suivi du plan et risque de blessure.",
+  "coachingRosterLoadFailed": "Impossible de charger la liste de vos athlètes.",
   "coachingRosterNeverRun": "Aucune course",
   "coachingRosterNoPlan": "Aucun plan",
   "coachingRosterRiskInsufficient": "Nouveau",

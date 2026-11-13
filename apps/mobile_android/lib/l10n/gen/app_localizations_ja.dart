@@ -13428,6 +13428,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachingRosterSubtitle => '負荷・プラン達成率・けがリスクをひと目で確認できます。';
 
   @override
+  String get coachingRosterLoadFailed => 'アスリート一覧を読み込めませんでした。';
+
+  @override
   String get coachingRosterNeverRun => 'ランの記録なし';
 
   @override

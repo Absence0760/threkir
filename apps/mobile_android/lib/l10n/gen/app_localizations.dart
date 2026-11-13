@@ -22851,6 +22851,12 @@ abstract class AppLocalizations {
   /// **'Every athlete at a glance — load, plan compliance, and injury risk.'**
   String get coachingRosterSubtitle;
 
+  /// Inline error on the coaching roster card when its read failed, beside a Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your athlete roster.'**
+  String get coachingRosterLoadFailed;
+
   /// Roster cell when athlete has no runs
   ///
   /// In en, this message translates to:

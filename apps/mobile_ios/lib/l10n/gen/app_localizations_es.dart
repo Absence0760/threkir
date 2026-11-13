@@ -14087,6 +14087,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Todos tus atletas de un vistazo: carga, cumplimiento del plan y riesgo de lesión.';
 
   @override
+  String get coachingRosterLoadFailed =>
+      'No se pudo cargar tu lista de atletas.';
+
+  @override
   String get coachingRosterNeverRun => 'Sin carreras todavía';
 
   @override

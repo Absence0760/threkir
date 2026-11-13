@@ -14094,6 +14094,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Todos os seus atletas num relance — carga, adesão ao plano e risco de lesão.';
 
   @override
+  String get coachingRosterLoadFailed =>
+      'Não foi possível carregar a sua lista de atletas.';
+
+  @override
   String get coachingRosterNeverRun => 'Nenhuma corrida ainda';
 
   @override
@@ -36728,6 +36732,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachingRosterSubtitle =>
       'Todos os seus atletas num relance — carga, adesão ao plano e risco de lesão.';
+
+  @override
+  String get coachingRosterLoadFailed =>
+      'Não foi possível carregar sua lista de atletas.';
 
   @override
   String get coachingRosterNeverRun => 'Nenhuma corrida ainda';

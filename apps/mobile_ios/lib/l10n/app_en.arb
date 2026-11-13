@@ -18525,6 +18525,10 @@
   "@coachingRosterSubtitle": {
     "description": "Athlete roster card subtitle"
   },
+  "coachingRosterLoadFailed": "Couldn't load your athlete roster.",
+  "@coachingRosterLoadFailed": {
+    "description": "Inline error on the coaching roster card when its read failed, beside a Retry button"
+  },
   "coachingRosterNeverRun": "No runs yet",
   "@coachingRosterNeverRun": {
     "description": "Roster cell when athlete has no runs"

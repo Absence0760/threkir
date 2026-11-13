@@ -3937,6 +3937,7 @@
   "coachingNoAthletes": "Noch keine Athleten. Lade einen ein, um zu starten.",
   "coachingRosterTitle": "Athletenübersicht",
   "coachingRosterSubtitle": "Alle Athleten auf einen Blick – Belastung, Plantreue und Verletzungsrisiko.",
+  "coachingRosterLoadFailed": "Deine Athletenübersicht konnte nicht geladen werden.",
   "coachingRosterNeverRun": "Noch keine Läufe",
   "coachingRosterNoPlan": "Kein Plan",
   "coachingRosterRiskInsufficient": "Neu",

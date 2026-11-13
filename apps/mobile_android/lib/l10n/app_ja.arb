@@ -3937,6 +3937,7 @@
   "coachingNoAthletes": "まだアスリートがいません。招待して始めましょう。",
   "coachingRosterTitle": "アスリート一覧",
   "coachingRosterSubtitle": "負荷・プラン達成率・けがリスクをひと目で確認できます。",
+  "coachingRosterLoadFailed": "アスリート一覧を読み込めませんでした。",
   "coachingRosterNeverRun": "ランの記録なし",
   "coachingRosterNoPlan": "プランなし",
   "coachingRosterRiskInsufficient": "新規",

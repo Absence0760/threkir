@@ -14108,6 +14108,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Alle Athleten auf einen Blick – Belastung, Plantreue und Verletzungsrisiko.';
 
   @override
+  String get coachingRosterLoadFailed =>
+      'Deine Athletenübersicht konnte nicht geladen werden.';
+
+  @override
   String get coachingRosterNeverRun => 'Noch keine Läufe';
 
   @override

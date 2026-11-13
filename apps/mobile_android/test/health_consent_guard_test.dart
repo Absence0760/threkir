@@ -15,8 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 // Screens reading the settings-bag mirror (`SettingsKeys.dateOfBirth`) need no
 // gate either — the mirror already follows consent in both directions.
 const _healthUseSurfaces = <String>[
-  'lib/screens/dashboard_screen.dart',
   'lib/screens/nutrition_screen.dart',
+  'lib/screens/progress_screen.dart',
   'lib/screens/nutrition_targets_screen.dart',
   'lib/plan_calibration.dart',
 ];

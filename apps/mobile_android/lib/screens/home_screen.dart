@@ -44,7 +44,8 @@ import '../shell_page_controller.dart';
 import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
-import '../social_unread.dart';
+import '../social_surface_requests.dart';
+import '../unread_messages.dart';
 import '../training_service.dart';
 import '../today_widget.dart' show TodayWidgetBridge;
 import '../watch_workout_push.dart' show WatchWorkoutBridge;
@@ -59,12 +60,10 @@ import '../widgets/log_speed_dial.dart';
 import '../widgets/runner_menu.dart';
 import '../widgets/top_banner.dart';
 import 'add_run_screen.dart';
-import 'challenges_screen.dart';
 import 'club_detail_screen.dart';
 import 'challenge_detail_screen.dart';
 import 'challenge_invite_screen.dart';
 import 'club_invite_screen.dart';
-import 'clubs_screen.dart';
 import 'confirm_age_screen.dart';
 import 'dashboard_screen.dart';
 import 'event_detail_screen.dart';
@@ -149,10 +148,10 @@ class HomeScreen extends StatefulWidget {
   /// multi-day effort continues as ONE run instead of two.
   final cm.Run? resumablePartial;
 
-  /// The unread count behind the dot on the Social nav item. Null builds the
-  /// shell's own read ([DmBadgeUnreadSource]) when there is a backend; tests
-  /// hand in a fake.
-  final SocialUnreadSource? socialUnread;
+  /// The unread count behind the dot on the Social nav item and Social's
+  /// Messages button. Null reads the app-scoped [UnreadMessages.instance],
+  /// which the shell binds to [apiClient]; tests hand in their own.
+  final UnreadMessages? socialUnread;
 
   const HomeScreen({
     super.key,
@@ -269,13 +268,15 @@ class _HomeScreenState extends State<HomeScreen>
   /// page too: it is the Stop while a run records on the Run page.
   /// Unread messages for the Social nav item's dot (issue #1374: Messages
   /// move to Social). Owned here only when nobody handed one in.
-  late final SocialUnreadSource? _socialUnread = widget.socialUnread ??
-      (widget.apiClient == null
-          ? null
-          : DmBadgeUnreadSource(widget.apiClient!));
+  late final UnreadMessages _socialUnread =
+      widget.socialUnread ?? UnreadMessages.instance;
+
+  /// The Social hub's selected tab, which a link elsewhere sets through
+  /// `social_surface_requests.dart` instead of pushing a copy (issue #1374).
+  final _socialTab = ValueNotifier<SocialTab>(SocialTab.feed);
 
   late final Listenable _navInputs = Listenable.merge(
-      [_currentIndex, _centreInputs, ?_socialUnread]);
+      [_currentIndex, _centreInputs, _socialUnread]);
 
   late final PageController _pageController =
       ShellPageController(currentPage: () => _currentIndex.value);
@@ -294,7 +295,11 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.addListener(_dropFocusLeftBehind);
     _currentIndex.addListener(_refreshSocialUnread);
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_socialUnread?.refresh());
+    // The nav dot needs the count before the lazily built Social page
+    // exists, so the shell binds it; binding the same client again is free.
+    if (widget.socialUnread == null) _socialUnread.bind(widget.apiClient);
+    unawaited(_socialUnread.refresh());
+    socialSurfaceRequests.addListener(_onSocialSurfaceRequest);
     _rebuildPages();
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
@@ -384,18 +389,18 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void onAuthUserChanged(String? userId) {
     _setupWizardShown = false;
-    unawaited(_socialUnread?.refresh());
+    unawaited(_socialUnread.refresh());
     if (userId != null) _runSignInGates();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(_socialUnread?.refresh());
+    if (state == AppLifecycleState.resumed) unawaited(_socialUnread.refresh());
   }
 
   /// The dot is re-read whenever the runner changes page, which is when a
   /// conversation they just read in Social (or You) stops counting.
-  void _refreshSocialUnread() => unawaited(_socialUnread?.refresh());
+  void _refreshSocialUnread() => unawaited(_socialUnread.refresh());
 
   Future<void> _runSignInGates() async {
     final api = widget.apiClient;
@@ -576,13 +581,13 @@ class _HomeScreenState extends State<HomeScreen>
             planId: target.id!,
             shareRef: target.shareRef));
       case PushTargetKind.challenges:
-        await _pushScreen(ChallengesScreen(social: widget.social));
+        await _openSocialTab(SocialTab.challenges);
       case PushTargetKind.clubs:
-        await _pushClubsHub(api);
+        await _openSocialTab(SocialTab.clubs);
       case PushTargetKind.club:
         final slug = await widget.social.fetchClubSlugById(target.id!);
         if (!mounted) return;
-        if (slug == null) return _pushClubsHub(api);
+        if (slug == null) return _openSocialTab(SocialTab.clubs);
         await _pushScreen(ClubDetailScreen(
           social: widget.social,
           training: widget.training,
@@ -593,7 +598,7 @@ class _HomeScreenState extends State<HomeScreen>
       case PushTargetKind.event:
         final slug = await widget.social.fetchClubSlugForEvent(target.id!);
         if (!mounted) return;
-        if (slug == null) return _pushClubsHub(api);
+        if (slug == null) return _openSocialTab(SocialTab.clubs);
         await _pushScreen(EventDetailScreen(
           social: widget.social,
           clubSlug: slug,
@@ -744,13 +749,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _pushClubsHub(ApiClient api) => _pushScreen(ClubsScreen(
-        social: widget.social,
-        training: widget.training,
-        apiClient: api,
-        routeStore: widget.routeStore,
-      ));
-
   /// The run list and the run surface's sections are Fitness hub tabs, not
   /// pushable screens: return to the shell and select the tab, as the Log
   /// action does for Gym and Nutrition (decisions § 2437). A form above the
@@ -771,6 +769,23 @@ class _HomeScreenState extends State<HomeScreen>
     final request = fitnessSurfaceRequests.take();
     if (request == null) return;
     _openFitnessTab(request.tab, request: request);
+  }
+
+  /// Social's tabs are hub tabs too: a link returns to the shell (asking a
+  /// form above it to discard first) and selects the tab, never a copy.
+  Future<void> _openSocialTab(SocialTab tab) async {
+    if (!mounted) return;
+    final shell = ModalRoute.of(context);
+    final reached = await returnToShell(Navigator.of(context),
+        isShell: (route) => route == shell);
+    if (!reached || !mounted) return;
+    _socialTab.value = tab;
+    _goToPage(_pageSocial);
+  }
+
+  void _onSocialSurfaceRequest() {
+    final tab = socialSurfaceRequests.take();
+    if (tab != null) _openSocialTab(tab);
   }
 
   Future<void> _pushScreen(Widget screen) {
@@ -982,6 +997,8 @@ class _HomeScreenState extends State<HomeScreen>
           social: widget.social,
           training: widget.training,
           routeStore: widget.routeStore,
+          selectedTab: _socialTab,
+          unreadMessages: _socialUnread,
         ),
       ),
       _LazyKeepAliveTab(
@@ -1015,6 +1032,7 @@ class _HomeScreenState extends State<HomeScreen>
         .removeListener(_onPendingSettingsDestination);
     pendingHelpDestination.removeListener(_onPendingHelpDestination);
     fitnessSurfaceRequests.removeListener(_onFitnessSurfaceRequest);
+    socialSurfaceRequests.removeListener(_onSocialSurfaceRequest);
     pendingClubInviteToken.removeListener(_onPendingClubInvite);
     pendingChallengeLink.removeListener(_onPendingChallengeLink);
     pendingEntityLink.removeListener(_onPendingEntityLink);
@@ -1024,11 +1042,11 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.removeListener(_dropFocusLeftBehind);
     _currentIndex.removeListener(_refreshSocialUnread);
     WidgetsBinding.instance.removeObserver(this);
-    if (widget.socialUnread == null) _socialUnread?.dispose();
     _currentIndex.dispose();
     _runPageShown.dispose();
     _fitnessTab.dispose();
     _fitnessViews.dispose();
+    _socialTab.dispose();
     super.dispose();
   }
 
@@ -1617,7 +1635,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     NavigationRailDestination(
                       icon: _UnreadDot(
-                        count: _socialUnread?.unreadCount ?? 0,
+                        count: _socialUnread.value,
                         child: const Icon(Icons.public),
                       ),
                       label: Text(l10n.navSocial),
@@ -1704,7 +1722,7 @@ class _HomeScreenState extends State<HomeScreen>
                   icon: Icons.public,
                   label: l10n.navSocial,
                   selected: index == _pageSocial,
-                  unread: _socialUnread?.unreadCount ?? 0,
+                  unread: _socialUnread.value,
                   onTap: () => _goToPage(_pageSocial),
                 ),
                 _BottomNavItem(

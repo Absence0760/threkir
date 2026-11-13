@@ -26,7 +26,7 @@ import '../lib/race_controller.dart';
 import '../lib/run_stop_dock.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
-import '../lib/social_unread.dart';
+import '../lib/unread_messages.dart';
 import '../lib/widgets/gym_summary_card.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/add_run_screen.dart';
@@ -197,7 +197,7 @@ Future<({
 }
 
 Future<void> _pump(WidgetTester tester, dynamic s,
-    {ApiClient? api, SocialUnreadSource? socialUnread}) async {
+    {ApiClient? api, UnreadMessages? socialUnread}) async {
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -236,12 +236,14 @@ Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
 }
 
 /// An unread count the test sets by hand, standing in for the shell's read.
-class _FakeUnread extends ChangeNotifier implements SocialUnreadSource {
+class _FakeUnread extends UnreadMessages {
+  _FakeUnread() : super(listenToLifecycle: false);
+
   int _count = 0;
   int refreshes = 0;
 
   @override
-  int get unreadCount => _count;
+  int get value => _count;
 
   set count(int value) {
     _count = value;

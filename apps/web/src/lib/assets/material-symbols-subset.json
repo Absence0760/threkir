@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 74956,
-		"sha256": "b14d592f64225a1ef92c97b246b0e66711164479bfb1cb0de7b617dc7e9391dc",
-		"glyphs": 335,
-		"ligatures": 452
+		"bytes": 75080,
+		"sha256": "ada2a4bb61886b6e14a5c175137025324bb5ce2948c6cddb8b58fdb0c665f8fc",
+		"glyphs": 337,
+		"ligatures": 454
 	},
 	"icons": [
 		"10k",
@@ -66,6 +66,7 @@
 		"browse",
 		"bubble",
 		"build",
+		"cadence",
 		"calendar_add_on",
 		"calendar_month",
 		"calendar_today",
@@ -304,6 +305,7 @@
 		"sleep",
 		"smartphone",
 		"sms",
+		"sort",
 		"source",
 		"south",
 		"sports",

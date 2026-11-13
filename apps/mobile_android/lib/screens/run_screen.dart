@@ -5802,6 +5802,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// a direct `setState` would assert "Build scheduled during frame"; the
   /// change lands in a post-frame callback instead.
   void _onStatsOverlaySized(Size size) {
+    // Includes the transparent strip above the panel that is the stats
+    // handle's touch target (`CollapsiblePanel.handleOverhang`), so the map
+    // credit and the floating cards stay clear of it rather than under it.
     final h = size.height;
     if ((h - _statsOverlayHeight).abs() <= 1) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -3508,7 +3508,7 @@
   {
     "id": "location-permission",
     "lang": "pt-PT",
-    "title": "Acesso à localização para registar corridas",
+    "title": "Acesso à localização para gravar corridas",
     "summary": "Que opção de localização escolher no Android e no iPhone, o que cada uma muda nas suas corridas e como alterá-la mais tarde nas definições.",
     "kind": "how-to",
     "category": "running",
@@ -3525,7 +3525,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "A sua localização desenha o mapa de uma corrida e mede a distância e o ritmo. Sem ela, a corrida continua a registar tempo e passos, mas sem mapa, distância ou ritmo."
+            "text": "A sua localização desenha o mapa de uma corrida e mede a distância e o ritmo. Sem ela, a corrida continua a gravar tempo e passos, mas sem mapa, distância ou ritmo."
           },
           {
             "type": "p",
@@ -3550,7 +3550,7 @@
           },
           {
             "type": "p",
-            "text": "Se tocar em **Iniciar mesmo assim**, a corrida é registada normalmente enquanto a app estiver no ecrã. Com o ecrã desligado ou noutra app, o Android pode deixar de enviar a sua localização: o tempo continua a contar e nada do que já foi registado se perde, mas a distância percorrida entretanto não é contabilizada. Quando isso acontece, ao voltar surge uma mensagem que começa por **O registo foi pausado enquanto esteve fora**, com um botão **Definições**."
+            "text": "Se tocar em **Iniciar mesmo assim**, a corrida é gravada normalmente enquanto a app estiver no ecrã. Com o ecrã desligado ou noutra app, o Android pode deixar de enviar a sua localização: o tempo continua a contar e nada do que já foi gravado se perde, mas a distância percorrida entretanto não é contabilizada. Quando isso acontece, ao voltar surge uma mensagem que começa por **O registo foi pausado enquanto esteve fora**, com um botão **Definições**."
           },
           {
             "type": "note",
@@ -3562,7 +3562,7 @@
             "items": [
               "Com **Aproximada**, a localização é demasiado imprecisa para medir uma corrida: verá **Localização aproximada — distância pausada** durante toda a corrida.",
               "**Apenas desta vez** vale para a corrida que vai iniciar, e da próxima vez o telemóvel volta a perguntar.",
-              "Com **Não permitir**, as corridas registam apenas tempo e passos."
+              "Com **Não permitir**, as corridas gravam apenas tempo e passos."
             ]
           }
         ]
@@ -3572,7 +3572,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "No iPhone, o acesso durante a utilização da app é suficiente: a corrida continua a ser registada com o ecrã bloqueado ou enquanto utiliza outra app. A app nunca pede **Sempre**, e não precisa dessa opção."
+            "text": "No iPhone, o acesso durante a utilização da app é suficiente: a corrida continua a ser gravada com o ecrã bloqueado ou enquanto utiliza outra app. A app nunca pede **Sempre**, e não precisa dessa opção."
           },
           {
             "type": "steps",
@@ -3583,7 +3583,7 @@
           },
           {
             "type": "p",
-            "text": "**Permitir uma vez** vale apenas para esta corrida, e da próxima vez o iPhone volta a perguntar. Com **Não permitir**, as corridas registam apenas tempo e passos."
+            "text": "**Permitir uma vez** vale apenas para esta corrida, e da próxima vez o iPhone volta a perguntar. Com **Não permitir**, as corridas gravam apenas tempo e passos."
           }
         ]
       },
@@ -3593,7 +3593,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Alguns telemóveis Android (Samsung, Xiaomi, OnePlus e outros) põem as apps a dormir para poupar bateria, o que pode interromper o registo de uma corrida longa com o ecrã desligado, mesmo com **Permitir sempre**. Antes da sua primeira corrida, a app mostra uma vez **Manter a gravação ativa em segundo plano**: toque em **Abrir definições** e exclua o Threkir da otimização da bateria. Se tocou em **Agora não**, abra a página da app nas definições do telemóvel, toque em **Bateria** e escolha **Sem restrições**. Os nomes variam um pouco de fabricante para fabricante."
+            "text": "Alguns telemóveis Android (Samsung, Xiaomi, OnePlus e outros) põem as apps a dormir para poupar bateria, o que pode interromper a gravação de uma corrida longa com o ecrã desligado, mesmo com **Permitir sempre**. Antes da sua primeira corrida, a app mostra uma vez **Manter a gravação ativa em segundo plano**: toque em **Abrir definições** e exclua o Threkir da otimização da bateria. Se tocou em **Agora não**, abra a página da app nas definições do telemóvel, toque em **Bateria** e escolha **Sem restrições**. Os nomes variam um pouco de fabricante para fabricante."
           }
         ]
       },
@@ -3636,8 +3636,8 @@
           {
             "type": "list",
             "items": [
-              "Lê a sua localização enquanto regista uma corrida e quando um mapa se centra em si, por exemplo ao criar um percurso ou ao colocar uma zona de privacidade. Não o segue entre corridas.",
-              "No Android, surge uma notificação enquanto uma corrida está a ser registada, se permitir notificações.",
+              "Lê a sua localização enquanto grava uma corrida e quando um mapa se centra em si, por exemplo ao criar um percurso ou ao colocar uma zona de privacidade. Não o segue entre corridas.",
+              "No Android, surge uma notificação enquanto uma corrida está a ser gravada, se permitir notificações.",
               "O traçado de uma corrida fica no seu telemóvel até ser sincronizado com a sua conta ou até o partilhar, e quem o pode ver segue as suas definições de privacidade: veja [[guide:your-data-and-privacy|os seus dados e a sua privacidade]].",
               "Para esconder onde mora, configure [[guide:privacy-zones|zonas de privacidade]]. A sua posição em direto só é partilhada se ativar o [[guide:live-tracking-and-safety|seguimento em direto]]."
             ]

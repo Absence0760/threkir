@@ -516,7 +516,7 @@
               "Ajoutez une **Description** et un **Lieu** si vous le souhaitez. Les deux sont facultatifs, mais une ville et un pays dans **Lieu** aident les coureurs à proximité à vous trouver quand ils cherchent dans leur région.",
               "Choisissez une **Visibilité** : les clubs **Public** apparaissent dans **Parcourir**, tandis que les clubs **Privé** sont masqués et ne peuvent être rejoints que par un lien d'invitation.",
               "Sous **Qui peut rejoindre ?**, choisissez **Tout le monde peut rejoindre**, **Approbation requise** ou **Sur invitation uniquement**.",
-              "Cochez **Exiger une reconnaissance des risques liés à l'activité pour rejoindre** si vous voulez que chaque nouveau membre confirme qu'il comprend les risques des sorties en groupe. Ce réglage ne peut être défini que maintenant, pendant la création du club.",
+              "Cochez **Exiger une reconnaissance des risques liés à l'activité pour rejoindre** si vous voulez que chaque nouveau membre confirme qu'il comprend les risques des courses en groupe. Ce réglage ne peut être défini que maintenant, pendant la création du club.",
               "Sélectionnez **Créer le club**. Vous arrivez sur la page du nouveau club, dont vous êtes le propriétaire."
             ]
           }
@@ -553,7 +553,7 @@
             "type": "list",
             "items": [
               "Pour modifier plus tard le nom, la description, la visibilité, la politique d'adhésion ou les liens, ouvrez le club sur le web et sélectionnez **Modifier le club**.",
-              "Pour ajouter votre première sortie en groupe, sélectionnez **Nouvel événement** sur le web, ou touchez **Créer un événement** dans l'onglet **Événements** de l'app mobile.",
+              "Pour ajouter votre première course en groupe, sélectionnez **Nouvel événement** sur le web, ou touchez **Créer un événement** dans l'onglet **Événements** de l'app mobile.",
               "Pour faire venir du monde, voir [[guide:invite-members-and-roles|Inviter des membres et leur attribuer des rôles]]."
             ]
           },
@@ -1833,7 +1833,7 @@
           },
           {
             "type": "p",
-            "text": "Faites votre choix sous **Comment la course démarre** dans l'éditeur d'événement sur le web, pour un événement de sortie en groupe ou de vélo. L'app mobile permet de gérer la course le jour J (l'armer plus tôt, la retarder, la prolonger ou la terminer), mais le mode de départ se choisit sur le web."
+            "text": "Faites votre choix sous **Comment la course démarre** dans l'éditeur d'événement sur le web, pour un événement de course en groupe ou de vélo. L'app mobile permet de gérer la course le jour J (l'armer plus tôt, la retarder, la prolonger ou la terminer), mais le mode de départ se choisit sur le web."
           }
         ]
       },
@@ -2424,7 +2424,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la sortie que vous avez enregistrée. Ouvrez la sortie sur le web : si elle appartient à une course, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé."
+            "text": "Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la course que vous avez enregistrée. Ouvrez-la sur le web : si elle appartient à une épreuve, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé."
           },
           {
             "type": "steps",
@@ -2500,7 +2500,7 @@
               "App iPhone : elle exécute le même code qu'Android, mais n'a pas encore été testée sur iPhone lors d'une vraie course.",
               "Montre Wear OS : prise en charge complète au poignet, y compris le chronométrage par les lignes. L'inscription et le choix du parcours se font toujours sur le web ou le téléphone.",
               "Apple Watch : prise en charge préliminaire seulement. Elle affiche le bandeau de course, envoie votre position et transmet votre temps via votre iPhone, mais elle ne détecte pas les lignes de départ et d'arrivée : elle n'a donc pas d'arrivée automatique, et elle n'a pas fait ses preuves lors d'une vraie course. Gardez votre téléphone sur vous en secours, ou rechronométrez ensuite votre résultat à partir de votre tracé sur le web.",
-              "Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir du tracé d'une sortie. Un navigateur ne peut pas enregistrer de course."
+              "Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir du tracé d'une course enregistrée. Un navigateur ne peut pas enregistrer de course."
             ]
           }
         ]
@@ -2666,7 +2666,7 @@
     "id": "run-a-self-timed-race",
     "lang": "fr",
     "title": "Courir une course en chrono libre",
-    "summary": "Inscrivez-vous à une course ouverte pendant une fenêtre de temps, marquez votre sortie comme votre tentative et courez de la ligne de départ à la ligne d'arrivée quand cela vous convient.",
+    "summary": "Inscrivez-vous à une course ouverte pendant une fenêtre de temps, marquez votre course comme votre tentative et courez de la ligne de départ à la ligne d'arrivée quand cela vous convient.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2692,7 +2692,7 @@
           },
           {
             "type": "p",
-            "text": "Vous enregistrez votre tentative avec l'app mobile ou une montre Wear OS. Le web sert à vous inscrire et à consulter les résultats ; un navigateur ne peut pas enregistrer une sortie."
+            "text": "Vous enregistrez votre tentative avec l'app mobile ou une montre Wear OS. Le web sert à vous inscrire et à consulter les résultats ; un navigateur ne peut pas enregistrer une course."
           }
         ]
       },
@@ -2728,7 +2728,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Une sortie que vous ne marquez pas comme votre tentative ne rejoint jamais la course : elle n'envoie aucune position en direct et n'obtient aucun résultat. Ainsi, une sortie que vous ne vouliez pas courir en compétition n'apparaît jamais au classement."
+            "text": "Une course que vous ne marquez pas comme votre tentative ne rejoint jamais l'épreuve : elle n'envoie aucune position en direct et n'obtient aucun résultat. Ainsi, une course que vous ne vouliez pas courir en compétition n'apparaît jamais au classement."
           }
         ]
       },
@@ -2761,7 +2761,7 @@
             "type": "list",
             "items": [
               "À l'arrivée, touchez Arrêter, puis **Terminer la course**. Une fois que vous avez couvert 90 % du parcours, cela envoie votre temps, et l'organisateur l'examine avant qu'il compte.",
-              "Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la sortie sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de la course, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
+              "Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la course sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de la course, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
               "Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre tracé est donc le moyen d'obtenir pour votre tentative un résultat chronométré par les lignes."
             ]
           },
@@ -2818,7 +2818,7 @@
             "type": "steps",
             "items": [
               "Ouvrez votre club et choisissez **Nouvel événement**.",
-              "Sous **Type d'événement**, choisissez **Sortie en groupe** (ou **Vélo**). Les cours et les événements sociaux n'ont ni itinéraire, ni distance, ni contrôle de course, ni résultats.",
+              "Sous **Type d'événement**, choisissez **Course en groupe** (ou **Vélo**). Les cours et les événements sociaux n'ont ni itinéraire, ni distance, ni contrôle de course, ni résultats.",
               "Donnez-lui un **Titre** et une **Date**. Ne définissez une répétition que si la course a vraiment lieu régulièrement ; chaque occurrence est courue séparément.",
               "Choisissez un **Parcours** et renseignez la **Distance**. Ensemble, ils forment votre *parcours principal*.",
               "Saisissez éventuellement un **Nom du parcours principal** sous **Parcours de la course** (par exemple « Semi-marathon »). Si vous le laissez vide, le nom de l'itinéraire est utilisé.",
@@ -3180,7 +3180,7 @@
           {
             "type": "list",
             "items": [
-              "Votre temps court du moment où votre sortie franchit la ligne de départ jusqu'à celui où elle franchit la ligne de fin.",
+              "Votre temps court du moment où votre course franchit la ligne de départ jusqu'à celui où elle franchit la ligne de fin.",
               "Chaque franchissement est calculé entre les deux points GPS situés de part et d'autre de la ligne, et non pris au point qui se trouvait être le plus proche : le temps est donc plus proche du temps réel.",
               "Les deux lignes doivent être franchies dans le sens du segment. En franchir une à l'envers ne compte pas.",
               "La distance parcourue entre les deux franchissements doit être à 25 % près de la longueur du segment, et sur un parcours de parc vous devez passer par chaque point de contrôle, dans l'ordre, entre les deux."
@@ -3193,12 +3193,12 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Une sortie sur un chemin qui longe le segment, à 20 m, passe près des deux extrémités sans jamais traverser les lignes : elle n'obtient donc pas de temps. L'aller d'un itinéraire en aller-retour qui ne fait que passer près de la fin n'en obtient pas non plus."
+            "text": "Une course sur un chemin qui longe le segment, à 20 m, passe près des deux extrémités sans jamais traverser les lignes : elle n'obtient donc pas de temps. L'aller d'un itinéraire en aller-retour qui ne fait que passer près de la fin n'en obtient pas non plus."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Lancez l'enregistrement un peu avant la ligne de départ. Une sortie dont l'enregistrement commence sur la ligne, ou après, ne la franchit jamais et n'obtient pas de temps sur ce segment."
+            "text": "Lancez l'enregistrement un peu avant la ligne de départ. Une course dont l'enregistrement commence sur la ligne, ou après, ne la franchit jamais et n'obtient pas de temps sur ce segment."
           }
         ]
       },
@@ -3208,7 +3208,7 @@
           {
             "type": "list",
             "items": [
-              "Si votre sortie passe plusieurs fois sur le segment, votre passage le plus rapide compte.",
+              "Si votre course passe plusieurs fois sur le segment, votre passage le plus rapide compte.",
               "Un échauffement qui repasse par la ligne de départ n'allonge pas votre temps : le chrono part de votre dernier franchissement de la ligne de départ avant la fin.",
               "Sur une boucle, chaque tour complet est chronométré et ton tour le plus rapide compte. Quand le départ et la fin sont la même ligne, le franchissement qui termine un tour lance aussi le suivant."
             ]
@@ -3220,7 +3220,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Un segment trop court à une extrémité pour y placer une ligne n'a pas de lignes. Il est toujours chronométré à l'ancienne : votre sortie doit passer à moins de 35 m de son départ, puis à moins de 35 m de sa fin."
+            "text": "Un segment trop court à une extrémité pour y placer une ligne n'a pas de lignes. Il est toujours chronométré à l'ancienne : votre course doit passer à moins de 35 m de son départ, puis à moins de 35 m de sa fin."
           }
         ]
       },
@@ -3229,7 +3229,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Les efforts enregistrés avant que les segments aient des lignes ont été mesurés à l'ancienne, en passant près du départ et de la fin. Chacun est remesuré avec les lignes la prochaine fois que son coureur ouvre la sortie sur le site web. Son temps peut changer, et il peut disparaître si la sortie n'a jamais franchi les lignes."
+            "text": "Les efforts enregistrés avant que les segments aient des lignes ont été mesurés à l'ancienne, en passant près du départ et de la fin. Chacun est remesuré avec les lignes la prochaine fois que son coureur ouvre la course sur le site web. Son temps peut changer, et il peut disparaître si la course n'a jamais franchi les lignes."
           },
           {
             "type": "p",
@@ -3753,7 +3753,7 @@
     "id": "park-courses",
     "lang": "fr",
     "title": "Parcours des parcs : points de contrôle, saisons et classements",
-    "summary": "Comment un parcours de parc chronomètre votre sortie, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
+    "summary": "Comment un parcours de parc chronomètre votre course, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3776,7 +3776,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]. Sélectionnez **Parcours** en haut d'Épreuves et parcours pour afficher tous les parcours seuls, sans le calendrier des épreuves."
+            "text": "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de compétition : courez-le quand le parc est ouvert, et toute course qui couvre l'ensemble du parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]. Sélectionnez **Parcours** en haut d'Épreuves et parcours pour afficher tous les parcours seuls, sans le calendrier des épreuves."
           },
           {
             "type": "list",
@@ -3790,7 +3790,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Un parcours fermé ne prend aucun nouveau temps : une sortie dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois."
+            "text": "Un parcours fermé ne prend aucun nouveau temps : une course dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois."
           }
         ]
       },
@@ -3799,7 +3799,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "En plus du départ et de l'arrivée, un parcours peut avoir des points de contrôle en chemin. Votre sortie n'est chronométrée que si elle passe par chaque point de contrôle, dans l'ordre, entre le départ et l'arrivée. Une sortie qui coupe un virage, saute un lacet ou traverse par le milieu manque un point de contrôle et n'obtient pas de temps."
+            "text": "En plus du départ et de l'arrivée, un parcours peut avoir des points de contrôle en chemin. Votre course n'est chronométrée que si elle passe par chaque point de contrôle, dans l'ordre, entre le départ et l'arrivée. Une course qui coupe un virage, saute un lacet ou traverse par le milieu manque un point de contrôle et n'obtient pas de temps."
           },
           {
             "type": "p",
@@ -3816,7 +3816,7 @@
           },
           {
             "type": "p",
-            "text": "Par exemple, une sortie qui démarre à 22 h le 31 décembre dans un parc de Virginie compte pour cette année-là, même si votre téléphone est réglé sur un fuseau où l'on est déjà le 1er janvier."
+            "text": "Par exemple, une course qui démarre à 22 h le 31 décembre dans un parc de Virginie compte pour cette année-là, même si votre téléphone est réglé sur un fuseau où l'on est déjà le 1er janvier."
           }
         ]
       },
@@ -3826,7 +3826,7 @@
           {
             "type": "list",
             "items": [
-              "**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure sortie.",
+              "**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure course.",
               "Il affiche cette année par défaut. Sélectionnez **Depuis toujours** pour les meilleurs temps de tous les temps.",
               "Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont accepté de partager leurs données de santé, il peut donc être plus court que le classement complet."
             ]
@@ -3849,14 +3849,14 @@
             "type": "list",
             "items": [
               "Vous devez être connecté pour voir les classements. Sans connexion, une page de parcours affiche quand même le parcours et un lien **Se connecter**.",
-              "Le temps d'une sortie que les autres ne peuvent pas voir ne leur est pas montré.",
+              "Le temps d'une course que les autres ne peuvent pas voir ne leur est pas montré.",
               "Vous ne voyez pas les personnes que vous avez bloquées, et elles ne vous voient pas."
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Une sortie est comparée aux parcours de parc sur nos serveurs peu après son enregistrement ou son import, quel que soit l'appareil. Un nouveau temps peut mettre quelques minutes à apparaître dans un classement."
+            "text": "Une course est comparée aux parcours de parc sur nos serveurs peu après son enregistrement ou son import, quel que soit l'appareil. Un nouveau temps peut mettre quelques minutes à apparaître dans un classement."
           }
         ]
       }

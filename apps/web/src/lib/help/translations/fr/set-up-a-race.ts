@@ -25,7 +25,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Ouvrez votre club et choisissez **Nouvel événement**.',
-						'Sous **Type d\'événement**, choisissez **Sortie en groupe** (ou **Vélo**). Les cours et les événements sociaux n\'ont ni itinéraire, ni distance, ni contrôle de course, ni résultats.',
+						'Sous **Type d\'événement**, choisissez **Course en groupe** (ou **Vélo**). Les cours et les événements sociaux n\'ont ni itinéraire, ni distance, ni contrôle de course, ni résultats.',
 						'Donnez-lui un **Titre** et une **Date**. Ne définissez une répétition que si la course a vraiment lieu régulièrement ; chaque occurrence est courue séparément.',
 						'Choisissez un **Parcours** et renseignez la **Distance**. Ensemble, ils forment votre *parcours principal*.',
 						'Saisissez éventuellement un **Nom du parcours principal** sous **Parcours de la course** (par exemple « Semi-marathon »). Si vous le laissez vide, le nom de l\'itinéraire est utilisé.',

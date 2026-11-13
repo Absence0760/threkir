@@ -95,3 +95,68 @@ for (const loc of SUPPORTED_LOCALES) {
 		);
 	});
 }
+
+// The text of every `one {…}` branch of a `{var, plural, …}` block in `s`,
+// brace-balanced so a branch may itself hold `{placeholder}` tokens.
+function oneBranches(s: string): string[] {
+	const out: string[] = [];
+	const open = /\{\w+,\s*plural,/g;
+	for (let m = open.exec(s); m; m = open.exec(s)) {
+		let i = m.index + m[0].length;
+		for (;;) {
+			const label = /^\s*([^\s{}]+)\s*\{/.exec(s.slice(i));
+			if (!label) break;
+			const start = i + label[0].length;
+			let depth = 1;
+			let j = start;
+			while (j < s.length && depth > 0) {
+				if (s[j] === '{') depth++;
+				else if (s[j] === '}') depth--;
+				j++;
+			}
+			if (label[1] === 'one') out.push(s.slice(start, j - 1));
+			i = j;
+		}
+	}
+	return out;
+}
+
+// A `1` standing as a number of its own: not part of `10`, `1.5`, `1RM`.
+const LITERAL_ONE = /(?<![\p{L}\p{N}.,])1(?![\p{L}\p{N}.,])/u;
+
+// interpolate() picks a plural branch with Intl.PluralRules for the active
+// locale, and in some locales CLDR's `one` covers counts other than 1 (fr and
+// pt-BR take 0 too). A `one` branch that copies the English "1" then renders
+// "1 …" for 0, which is how `filterBarFiltersCount` shipped "Filtres, 1 actif"
+// with no filter on. Use `#` instead. Which locales are affected is derived
+// from the rules, not listed. The mobile twin is in
+// apps/mobile_android/test/l10n_parity_test.dart.
+function oneCoversMoreThanOne(loc: string): boolean {
+	const rules = new Intl.PluralRules(loc);
+	return Array.from({ length: 101 }, (_, n) => n).some((n) => n !== 1 && rules.select(n) === 'one');
+}
+
+test('the one-branch scan reads plural one {} branches only', () => {
+	assert.deepEqual(oneBranches('{n, plural, one {1 run} other {# runs}}'), ['1 run']);
+	assert.deepEqual(oneBranches('{n, plural, =1 {x} one {{a} y} other {z}}'), ['{a} y']);
+	assert.deepEqual(oneBranches('{k, select, one {1} other {2}}'), []);
+	assert.ok(LITERAL_ONE.test('Filtres, 1 actif'));
+	for (const ok of ['10 km', '1.5 km', '1RM', '# actif']) assert.ok(!LITERAL_ONE.test(ok), ok);
+	assert.ok(oneCoversMoreThanOne('fr') && oneCoversMoreThanOne('pt-BR'));
+	assert.ok(!oneCoversMoreThanOne('en') && !oneCoversMoreThanOne('de'));
+});
+
+for (const loc of SUPPORTED_LOCALES) {
+	if (!oneCoversMoreThanOne(loc)) continue;
+	test(`${loc}: no plural one branch spells out a literal 1`, async () => {
+		const dict = (await CATALOGUE_LOADERS[loc]()) as Record<string, string>;
+		const offenders = Object.keys(dict)
+			.filter((key) => oneBranches(dict[key]).some((b) => LITERAL_ONE.test(b)))
+			.sort();
+		assert.deepEqual(
+			offenders,
+			[],
+			`${loc}: \`one\` also covers counts other than 1 here, so a literal 1 in it is wrong; use #`,
+		);
+	});
+}

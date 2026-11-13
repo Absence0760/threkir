@@ -17,7 +17,7 @@ export const translation: GuideTranslation = {
 						'Ajoutez une **Description** et un **Lieu** si vous le souhaitez. Les deux sont facultatifs, mais une ville et un pays dans **Lieu** aident les coureurs à proximité à vous trouver quand ils cherchent dans leur région.',
 						'Choisissez une **Visibilité** : les clubs **Public** apparaissent dans **Parcourir**, tandis que les clubs **Privé** sont masqués et ne peuvent être rejoints que par un lien d\'invitation.',
 						'Sous **Qui peut rejoindre ?**, choisissez **Tout le monde peut rejoindre**, **Approbation requise** ou **Sur invitation uniquement**.',
-						'Cochez **Exiger une reconnaissance des risques liés à l\'activité pour rejoindre** si vous voulez que chaque nouveau membre confirme qu\'il comprend les risques des sorties en groupe. Ce réglage ne peut être défini que maintenant, pendant la création du club.',
+						'Cochez **Exiger une reconnaissance des risques liés à l\'activité pour rejoindre** si vous voulez que chaque nouveau membre confirme qu\'il comprend les risques des courses en groupe. Ce réglage ne peut être défini que maintenant, pendant la création du club.',
 						'Sélectionnez **Créer le club**. Vous arrivez sur la page du nouveau club, dont vous êtes le propriétaire.',
 					],
 				},
@@ -54,7 +54,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Pour modifier plus tard le nom, la description, la visibilité, la politique d\'adhésion ou les liens, ouvrez le club sur le web et sélectionnez **Modifier le club**.',
-						'Pour ajouter votre première sortie en groupe, sélectionnez **Nouvel événement** sur le web, ou touchez **Créer un événement** dans l\'onglet **Événements** de l\'app mobile.',
+						'Pour ajouter votre première course en groupe, sélectionnez **Nouvel événement** sur le web, ou touchez **Créer un événement** dans l\'onglet **Événements** de l\'app mobile.',
 						'Pour faire venir du monde, voir [[guide:invite-members-and-roles|Inviter des membres et leur attribuer des rôles]].',
 					],
 				},

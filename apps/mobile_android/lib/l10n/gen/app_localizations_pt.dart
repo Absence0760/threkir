@@ -366,7 +366,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Ida e volta sem perdas. Funciona sem sessão iniciada — as corridas restauradas sincronizam com a sua conta na próxima vez que entrar.';
+      'Exportação e restauro sem perdas. Funciona sem sessão iniciada — as corridas restauradas sincronizam com a sua conta da próxima vez que iniciar sessão.';
 
   @override
   String get importBackupMakeOne => 'Fazer um backup';
@@ -455,7 +455,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count atividades não foram importadas',
-      one: '1 atividade não foi importada',
+      one: '$count atividade não foi importada',
     );
     return '$_temp0';
   }
@@ -470,7 +470,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: 'Mais $count falhas não foram registadas.',
-      one: 'Mais 1 falha não foi registada.',
+      one: 'Mais $count falha não foi registada.',
     );
     return '$_temp0';
   }
@@ -521,7 +521,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           '$count corridas estão guardadas neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
       one:
-          '1 corrida está guardada neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
+          '$count corrida está guardada neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
     );
     return '$_temp0';
   }
@@ -550,7 +550,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           '$count atividades importadas têm mapas de GPS que o Threkir não tem permissão para ler.',
       one:
-          '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
+          '$count atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
     );
     return '$_temp0 A Conexão Saúde protege a rota de um treino com uma permissão própria.';
   }
@@ -576,7 +576,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: 'Mapas adicionados a $count atividades.',
-      one: 'Mapa adicionado a 1 atividade.',
+      one: 'Mapa adicionado a $count atividade.',
       zero: 'Nenhum mapa pôde ser adicionado.',
     );
     return '$_temp0';
@@ -643,7 +643,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count corridas públicas',
-      one: '1 corrida pública',
+      one: '$count corrida pública',
     );
     return '$_temp0';
   }
@@ -654,7 +654,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count clubes em comum',
-      one: '1 clube em comum',
+      one: '$count clube em comum',
     );
     return '$_temp0';
   }
@@ -881,7 +881,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name está oculto no Progresso.';
+    return 'Ocultou $name do Progresso.';
   }
 
   @override
@@ -1713,11 +1713,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir recolhe a sua localização GPS para registar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da app, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra app. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para gravar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há uma gravação a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da app, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra app. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a gravar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
-      'O Threkir recolhe a sua localização GPS para registar uma corrida, incluindo com o ecrã desligado ou enquanto está noutra app. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. Pode alterar isto a qualquer momento em Definições › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para gravar uma corrida, incluindo com o ecrã desligado ou enquanto está noutra app. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. Pode alterar isto a qualquer momento em Definições › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam a gravar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationDeniedTitle => 'Sem acesso à localização';
@@ -2505,17 +2505,17 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runNoGpsStartServicesOffBody =>
-      'A localização está desligada neste telemóvel, por isso esta corrida só registaria o tempo — sem percurso, distância nem ritmo.';
+      'A localização está desligada neste telemóvel, por isso esta corrida só gravaria o tempo — sem percurso, distância nem ritmo.';
 
   @override
   String get runNoGpsStartPermissionBody =>
-      'O acesso à localização está desligado para esta app, por isso esta corrida só registaria o tempo — sem percurso, distância nem ritmo.';
+      'O acesso à localização está desligado para esta app, por isso esta corrida só gravaria o tempo — sem percurso, distância nem ritmo.';
 
   @override
-  String get runNoGpsStartTimeOnly => 'Registar só o tempo';
+  String get runNoGpsStartTimeOnly => 'Gravar só o tempo';
 
   @override
-  String get runNoDistanceTitle => 'Nenhuma distância registada';
+  String get runNoDistanceTitle => 'Nenhuma distância gravada';
 
   @override
   String get runNoDistanceBody =>
@@ -2526,11 +2526,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runBackgroundLocationPaused =>
-      'O registo foi pausado enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como “Permitir sempre” para continuar a registar em segundo plano.';
+      'A gravação da localização foi pausada enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como “Permitir sempre” para continuar a gravar em segundo plano.';
 
   @override
   String get runPreciseLocationOff =>
-      'A localização exata está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua a ser registado. Ative a localização exata nas Definições para um percurso preciso.';
+      'A localização exata está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua a ser gravado. Ative a localização exata nas Definições para um percurso preciso.';
 
   @override
   String get runGpsSensorFailed =>
@@ -3050,7 +3050,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailIncompleteTooltip =>
-      'O seu relógio reiniciou a meio da corrida. Estes totais são apenas o que tinha registado até esse momento, não a atividade inteira.';
+      'O seu relógio reiniciou a meio da corrida. Estes totais são apenas o que tinha gravado até esse momento, não a atividade inteira.';
 
   @override
   String get runDetailEditTooltip => 'Editar corrida';
@@ -3226,7 +3226,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'As zonas utilizam uma FC máxima estimada pela idade. Se toma medicação cardíaca (ex.: betabloqueadores) ou já mediu a sua FC máxima, defina-a para zonas precisas.';
+      'As zonas utilizam uma FC máxima estimada pela idade. Se toma medicação que afeta a frequência cardíaca (ex.: betabloqueadores) ou já mediu a sua FC máxima, defina-a para obter zonas precisas.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Definir FC máx.';
@@ -3416,7 +3416,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailRecalculateDistanceDialogMessage =>
-      'A distância desta corrida será recalculada a partir do percurso GPS com o filtro GPS melhorado, que remove a distância a mais causada pelas oscilações do GPS. A distância registada originalmente é mantida e mostrada ao lado da nova.';
+      'A distância desta corrida será recalculada a partir do percurso GPS com o filtro GPS melhorado, que remove a distância a mais causada pelas oscilações do GPS. A distância gravada originalmente é mantida e mostrada ao lado da nova.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Recalcular';
@@ -3432,7 +3432,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailRecalculateDistanceNotOwner =>
-      'Só quem registou esta corrida pode recalcular a distância.';
+      'Só quem gravou esta corrida pode recalcular a distância.';
 
   @override
   String get runDetailRecalculateDistanceNoTrack =>
@@ -3440,7 +3440,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String runDetailOriginallyRecorded(String distance) {
-    return 'Registada originalmente: $distance';
+    return 'Gravada originalmente: $distance';
   }
 
   @override
@@ -5220,7 +5220,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other:
           '$count das suas corridas não são públicas, por isso não aparecem aqui.',
-      one: '1 das suas corridas não é pública, por isso não aparece aqui.',
+      one: '$count das suas corridas não é pública, por isso não aparece aqui.',
     );
     return '$_temp0';
   }
@@ -6204,7 +6204,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventNoRecentRuns =>
-      'Nenhuma corrida recente encontrada. Registe uma corrida primeiro e volte.';
+      'Nenhuma corrida recente encontrada. Grave uma corrida primeiro e volte.';
 
   @override
   String get eventAddOccurrencePhoto => 'Adicionar fotografia do evento';
@@ -7560,7 +7560,7 @@ class AppLocalizationsPt extends AppLocalizations {
       n,
       locale: localeName,
       other: '$n treinos ajustados',
-      one: '1 treino ajustado',
+      one: '$n treino ajustado',
     );
     return '$_temp0';
   }
@@ -9749,14 +9749,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Idioma, tema, unidades de distância e peso, formato de ritmo, mapas e o tempo para desfazer.';
 
   @override
-  String get prefsPageRecording => 'Registo e voz';
+  String get prefsPageRecording => 'Gravação e voz';
 
   @override
   String get prefsPageRecordingSummary =>
-      'A atividade com que um novo registo começa e o que o telemóvel ou o relógio diz em voz alta durante a corrida.';
+      'A atividade com que uma nova gravação começa e o que o telemóvel ou o relógio diz em voz alta durante a corrida.';
 
   @override
-  String get prefsPageTraining => 'Treino';
+  String get prefsPageTraining => 'Preferências de treino';
 
   @override
   String get prefsPageTrainingSummary =>
@@ -10131,7 +10131,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Regista um trajeto mais detalhado. A distância não muda.';
+      'Grava um trajeto mais detalhado. A distância não muda.';
 
   @override
   String get prefsShowRawTrack => 'Mostrar trajeto GPS bruto';
@@ -10458,14 +10458,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Baseado em volume — defina FC de repouso e máxima e registe com uma cinta para mudar para TRIMP.';
+      'Baseado em volume — defina FC de repouso e máxima e grave com uma cinta para mudar para TRIMP.';
 
   @override
   String get trainingLoadSetHeartRate => 'Definir frequência cardíaca';
 
   @override
   String get trainingLoadEmpty =>
-      'Registe algumas corridas para ver a sua tendência de forma.';
+      'Grave algumas corridas para ver a sua tendência de forma.';
 
   @override
   String get trainingLoadLegendFitness => 'Forma';
@@ -12080,7 +12080,7 @@ class AppLocalizationsPt extends AppLocalizations {
       min,
       locale: localeName,
       other: '$min minutos',
-      one: '1 minuto',
+      one: '$min minuto',
     );
     return '$_temp0';
   }
@@ -12415,7 +12415,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count corridas',
-      one: '1 corrida',
+      one: '$count corrida',
     );
     return '$_temp0';
   }
@@ -12561,7 +12561,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count sessões',
-      one: '1 sessão',
+      one: '$count sessão',
     );
     return '$_temp0';
   }
@@ -12635,7 +12635,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           'O seu calendário não consegue ignorar datas canceladas: $count ocorrências canceladas vão continuar a aparecer.',
       one:
-          'O seu calendário não consegue ignorar datas canceladas: 1 ocorrência cancelada vai continuar a aparecer.',
+          'O seu calendário não consegue ignorar datas canceladas: $count ocorrência cancelada vai continuar a aparecer.',
     );
     return '$_temp0';
   }
@@ -13359,7 +13359,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionTargetsExerciseHint =>
-      'As corridas e sessões de musculação que registares hoje são somadas por cima.';
+      'As corridas e sessões de musculação que registar hoje são somadas por cima.';
 
   @override
   String get nutritionTargetsMacrosHeading => 'Macros';
@@ -13389,7 +13389,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso são editados atrás do consentimento.';
+      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso só podem ser editados depois de dar o respetivo consentimento.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Editar dados corporais';
@@ -15594,7 +15594,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get integrationsStravaInfo =>
-      'O Strava é uma app popular para registar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Inicia sessão no Strava e autoriza o acesso, e pode desligar quando quiser.';
+      'O Strava é uma app popular para gravar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Inicia sessão no Strava e autoriza o acesso, e pode desligar quando quiser.';
 
   @override
   String get integrationsRunsignupInfo =>
@@ -17143,7 +17143,7 @@ class AppLocalizationsPt extends AppLocalizations {
       n,
       locale: localeName,
       other: '$n segundos',
-      one: '1 segundo',
+      one: '$n segundo',
     );
     return '$_temp0';
   }
@@ -17154,7 +17154,7 @@ class AppLocalizationsPt extends AppLocalizations {
       n,
       locale: localeName,
       other: '$n minutos',
-      one: '1 minuto',
+      one: '$n minuto',
     );
     return '$_temp0';
   }
@@ -17448,7 +17448,7 @@ class AppLocalizationsPt extends AppLocalizations {
       target,
       locale: localeName,
       other: '$done de $target atividades, a sua meta semanal',
-      one: '$done de 1 atividade, a sua meta semanal',
+      one: '$done de $target atividade, a sua meta semanal',
     );
     return '$_temp0';
   }
@@ -17823,7 +17823,8 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other:
           'Cancelado. $count pessoas inscritas estão a ser reembolsadas na totalidade.',
-      one: 'Cancelado. 1 pessoa inscrita está a ser reembolsada na totalidade.',
+      one:
+          'Cancelado. $count pessoa inscrita está a ser reembolsada na totalidade.',
     );
     return '$_temp0';
   }
@@ -17834,7 +17835,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count reembolsos',
-      one: '1 reembolso',
+      one: '$count reembolso',
     );
     return 'Cancelado, mas não foi possível iniciar $_temp0. Tente novamente na página do evento na web.';
   }
@@ -19260,7 +19261,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count semanas anteriores',
-      one: '1 semana anterior',
+      one: '$count semana anterior',
     );
     return '$_temp0';
   }
@@ -20429,7 +20430,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser.';
 
   @override
-  String get dashboardTrainingLoadSectionAction => 'Mudar quanto detalhe';
+  String get dashboardTrainingLoadSectionAction => 'Alterar o nível de detalhe';
 
   @override
   String recapCardKicker(String period) {
@@ -21365,7 +21366,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other:
           'Mapa do percurso com $n pontos de controlo. A legenda abaixo explica cada marca.',
       one:
-          'Mapa do percurso com 1 ponto de controlo. A legenda abaixo explica cada marca.',
+          'Mapa do percurso com $n ponto de controlo. A legenda abaixo explica cada marca.',
       zero: 'Mapa do percurso. A legenda abaixo explica cada marca.',
     );
     return '$_temp0';
@@ -22988,7 +22989,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importBackupCardDescription =>
-      'Ida e volta sem perdas. Funciona sem login — as corridas restauradas sincronizam com sua conta na próxima vez que você entrar.';
+      'Backup e restauração sem perda de dados. Funciona sem login — as corridas restauradas sincronizam com sua conta na próxima vez que você entrar.';
 
   @override
   String get importBackupMakeOne => 'Fazer um backup';
@@ -23077,7 +23078,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: '$count atividades não foram importadas',
-      one: '1 atividade não foi importada',
+      one: '$count atividade não foi importada',
     );
     return '$_temp0';
   }
@@ -23092,7 +23093,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: 'Mais $count falhas não foram registradas.',
-      one: 'Mais 1 falha não foi registrada.',
+      one: 'Mais $count falha não foi registrada.',
     );
     return '$_temp0';
   }
@@ -23143,7 +23144,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other:
           '$count corridas estão salvas neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
       one:
-          '1 corrida está salva neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
+          '$count corrida está salva neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
     );
     return '$_temp0';
   }
@@ -23172,7 +23173,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other:
           '$count atividades importadas têm mapas de GPS que o Threkir não tem permissão para ler.',
       one:
-          '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
+          '$count atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
     );
     return '$_temp0 A Conexão Saúde protege a rota de um treino com uma permissão própria.';
   }
@@ -23198,7 +23199,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: 'Mapas adicionados a $count atividades.',
-      one: 'Mapa adicionado a 1 atividade.',
+      one: 'Mapa adicionado a $count atividade.',
       zero: 'Nenhum mapa pôde ser adicionado.',
     );
     return '$_temp0';
@@ -23265,7 +23266,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: '$count corridas públicas',
-      one: '1 corrida pública',
+      one: '$count corrida pública',
     );
     return '$_temp0';
   }
@@ -23276,7 +23277,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: '$count clubes em comum',
-      one: '1 clube em comum',
+      one: '$count clube em comum',
     );
     return '$_temp0';
   }
@@ -23505,7 +23506,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name está oculto no Progresso.';
+    return 'O grupo $name foi ocultado do Progresso.';
   }
 
   @override
@@ -24337,11 +24338,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir coleta sua localização GPS para gravar uma corrida e continua pedindo a localização com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; só com esse acesso, o Android pode parar de enviar sua localização com a tela desligada ou enquanto você está em outro app. Antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir o tempo todo”, que mantém o rastreamento confiável nesses casos. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir coleta sua localização GPS para gravar uma corrida e continua pedindo a localização com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; só com esse acesso, o Android pode parar de enviar sua localização com a tela desligada ou enquanto você está em outro app. Antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir o tempo todo”, que mantém o rastreamento confiável nesses casos. Se recusar, as corridas continuam gravando tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
-      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada ou enquanto você está em outro app. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. Você pode alterar isso quando quiser em Ajustes › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada ou enquanto você está em outro app. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. Você pode alterar isso quando quiser em Ajustes › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam gravando tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationDeniedTitle => 'Sem acesso à localização';
@@ -24369,7 +24370,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get onboardingAccountBody =>
-      'Uma conta sincroniza suas corridas com o app web e seus outros dispositivos, e recupera tudo se você perder este. Você pode correr sem ela: aqui tudo funciona offline, e você pode criar uma mais tarde em Você.';
+      'Uma conta sincroniza suas corridas com o app web e seus outros dispositivos, e recupera tudo se você perder este. Você pode correr sem ela: aqui tudo funciona offline, e você pode criar uma mais tarde na aba Você.';
 
   @override
   String get onboardingAccountCreate => 'Criar uma conta gratuita';
@@ -25129,17 +25130,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runNoGpsStartServicesOffBody =>
-      'A localização está desativada neste celular, então esta corrida só registraria o tempo — sem trajeto, distância nem ritmo.';
+      'A localização está desativada neste celular, então esta corrida só gravaria o tempo — sem trajeto, distância nem ritmo.';
 
   @override
   String get runNoGpsStartPermissionBody =>
-      'O acesso à localização está desativado para este app, então esta corrida só registraria o tempo — sem trajeto, distância nem ritmo.';
+      'O acesso à localização está desativado para este app, então esta corrida só gravaria o tempo — sem trajeto, distância nem ritmo.';
 
   @override
-  String get runNoGpsStartTimeOnly => 'Registrar só o tempo';
+  String get runNoGpsStartTimeOnly => 'Gravar só o tempo';
 
   @override
-  String get runNoDistanceTitle => 'Nenhuma distância registrada';
+  String get runNoDistanceTitle => 'Nenhuma distância gravada';
 
   @override
   String get runNoDistanceBody =>
@@ -25154,7 +25155,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runPreciseLocationOff =>
-      'A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo registrado. Ative a localização precisa nos Ajustes para um trajeto preciso.';
+      'A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo gravado. Ative a localização precisa nos Ajustes para um trajeto preciso.';
 
   @override
   String get runGpsSensorFailed =>
@@ -25675,7 +25676,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailIncompleteTooltip =>
-      'Seu relógio reiniciou no meio da corrida. Estes totais são apenas o que ele havia registrado até aquele ponto, não a atividade inteira.';
+      'Seu relógio reiniciou no meio da corrida. Estes totais são apenas o que ele havia gravado até aquele ponto, não a atividade inteira.';
 
   @override
   String get runDetailEditTooltip => 'Editar corrida';
@@ -25851,7 +25852,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailHrDisclaimer =>
-      'As zonas usam uma FC máxima estimada pela idade. Se você toma medicação cardíaca (ex.: betabloqueadores) ou já mediu sua FC máxima, defina-a para zonas precisas.';
+      'As zonas usam uma FC máxima estimada pela idade. Se você toma medicação que afeta a frequência cardíaca (ex.: betabloqueadores) ou já mediu sua FC máxima, defina-a para obter zonas precisas.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Definir FC máx.';
@@ -26039,7 +26040,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailRecalculateDistanceDialogMessage =>
-      'A distância desta corrida será recalculada a partir do trajeto GPS com o filtro GPS aprimorado, que remove a distância a mais causada pelas oscilações do GPS. A distância registrada originalmente é mantida e exibida ao lado da nova.';
+      'A distância desta corrida será recalculada a partir do trajeto GPS com o filtro GPS aprimorado, que remove a distância a mais causada pelas oscilações do GPS. A distância gravada originalmente é mantida e exibida ao lado da nova.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Recalcular';
@@ -26055,7 +26056,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailRecalculateDistanceNotOwner =>
-      'Só quem registrou esta corrida pode recalcular a distância.';
+      'Só quem gravou esta corrida pode recalcular a distância.';
 
   @override
   String get runDetailRecalculateDistanceNoTrack =>
@@ -26063,7 +26064,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String runDetailOriginallyRecorded(String distance) {
-    return 'Registrada originalmente: $distance';
+    return 'Gravada originalmente: $distance';
   }
 
   @override
@@ -27844,7 +27845,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other:
           '$count das suas corridas não são públicas, por isso não aparecem aqui.',
-      one: '1 das suas corridas não é pública, por isso não aparece aqui.',
+      one: '$count das suas corridas não é pública, por isso não aparece aqui.',
     );
     return '$_temp0';
   }
@@ -28827,7 +28828,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventNoRecentRuns =>
-      'Nenhuma corrida recente encontrada. Registre uma corrida primeiro e volte.';
+      'Nenhuma corrida recente encontrada. Grave uma corrida primeiro e volte.';
 
   @override
   String get eventAddOccurrencePhoto => 'Adicionar foto do evento';
@@ -30182,7 +30183,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       n,
       locale: localeName,
       other: '$n treinos ajustados',
-      one: '1 treino ajustado',
+      one: '$n treino ajustado',
     );
     return '$_temp0';
   }
@@ -32364,14 +32365,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Idioma, tema, unidades de distância e peso, formato de ritmo, mapas e o tempo para desfazer.';
 
   @override
-  String get prefsPageRecording => 'Registro e voz';
+  String get prefsPageRecording => 'Gravação e voz';
 
   @override
   String get prefsPageRecordingSummary =>
-      'A atividade com que um novo registro começa e o que o celular ou o relógio fala em voz alta durante a corrida.';
+      'A atividade com que uma nova gravação começa e o que o celular ou o relógio fala em voz alta durante a corrida.';
 
   @override
-  String get prefsPageTraining => 'Treino';
+  String get prefsPageTraining => 'Preferências de treino';
 
   @override
   String get prefsPageTrainingSummary =>
@@ -32745,7 +32746,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Registra um trajeto mais detalhado. A distância não muda.';
+      'Grava um trajeto mais detalhado. A distância não muda.';
 
   @override
   String get prefsShowRawTrack => 'Mostrar trajeto GPS bruto';
@@ -33072,14 +33073,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Baseado em volume — defina FC de repouso e máxima e registre com uma cinta para mudar para TRIMP.';
+      'Baseado em volume — defina FC de repouso e máxima e grave com uma cinta para mudar para TRIMP.';
 
   @override
   String get trainingLoadSetHeartRate => 'Definir frequência cardíaca';
 
   @override
   String get trainingLoadEmpty =>
-      'Registre algumas corridas para ver sua tendência de forma.';
+      'Grave algumas corridas para ver sua tendência de forma.';
 
   @override
   String get trainingLoadLegendFitness => 'Forma';
@@ -34695,7 +34696,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       min,
       locale: localeName,
       other: '$min minutos',
-      one: '1 minuto',
+      one: '$min minuto',
     );
     return '$_temp0';
   }
@@ -35031,7 +35032,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: '$count corridas',
-      one: '1 corrida',
+      one: '$count corrida',
     );
     return '$_temp0';
   }
@@ -35177,7 +35178,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: '$count sessões',
-      one: '1 sessão',
+      one: '$count sessão',
     );
     return '$_temp0';
   }
@@ -35251,7 +35252,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other:
           'Seu calendário não consegue pular datas canceladas: $count ocorrências canceladas ainda vão aparecer.',
       one:
-          'Seu calendário não consegue pular datas canceladas: 1 ocorrência cancelada ainda vai aparecer.',
+          'Seu calendário não consegue pular datas canceladas: $count ocorrência cancelada ainda vai aparecer.',
     );
     return '$_temp0';
   }
@@ -36005,7 +36006,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso são editados atrás do consentimento.';
+      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso só são editados após o consentimento de dados de saúde.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Editar dados corporais';
@@ -38208,7 +38209,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get integrationsStravaInfo =>
-      'O Strava é um app popular para registrar e compartilhar corridas. Ao conectar, suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade conforme ela aparece. Você entra no Strava e autoriza o acesso, e pode desconectar quando quiser.';
+      'O Strava é um app popular para gravar e compartilhar corridas. Ao conectar, suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade conforme ela aparece. Você entra no Strava e autoriza o acesso, e pode desconectar quando quiser.';
 
   @override
   String get integrationsRunsignupInfo =>
@@ -39754,7 +39755,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       n,
       locale: localeName,
       other: '$n segundos',
-      one: '1 segundo',
+      one: '$n segundo',
     );
     return '$_temp0';
   }
@@ -39765,7 +39766,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       n,
       locale: localeName,
       other: '$n minutos',
-      one: '1 minuto',
+      one: '$n minuto',
     );
     return '$_temp0';
   }
@@ -40059,7 +40060,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       target,
       locale: localeName,
       other: '$done de $target atividades, sua meta semanal',
-      one: '$done de 1 atividade, sua meta semanal',
+      one: '$done de $target atividade, sua meta semanal',
     );
     return '$_temp0';
   }
@@ -40434,7 +40435,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other:
           'Cancelado. $count pessoas inscritas estão recebendo o reembolso integral.',
-      one: 'Cancelado. 1 pessoa inscrita está recebendo o reembolso integral.',
+      one:
+          'Cancelado. $count pessoa inscrita está recebendo o reembolso integral.',
     );
     return '$_temp0';
   }
@@ -40445,7 +40447,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: '$count reembolsos',
-      one: '1 reembolso',
+      one: '$count reembolso',
     );
     return 'Cancelado, mas não foi possível iniciar $_temp0. Tente de novo na página do evento na web.';
   }
@@ -41869,7 +41871,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: '$count semanas anteriores',
-      one: '1 semana anterior',
+      one: '$count semana anterior',
     );
     return '$_temp0';
   }
@@ -43036,7 +43038,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser.';
 
   @override
-  String get dashboardTrainingLoadSectionAction => 'Mudar quanto detalhe';
+  String get dashboardTrainingLoadSectionAction => 'Mudar o nível de detalhe';
 
   @override
   String recapCardKicker(String period) {
@@ -43974,7 +43976,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other:
           'Mapa do percurso com $n pontos de controle. A legenda abaixo explica cada marca.',
       one:
-          'Mapa do percurso com 1 ponto de controle. A legenda abaixo explica cada marca.',
+          'Mapa do percurso com $n ponto de controle. A legenda abaixo explica cada marca.',
       zero: 'Mapa do percurso. A legenda abaixo explica cada marca.',
     );
     return '$_temp0';

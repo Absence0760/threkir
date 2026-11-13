@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Votre temps court du moment où votre sortie franchit la ligne de départ jusqu\'à celui où elle franchit la ligne de fin.',
+						'Votre temps court du moment où votre course franchit la ligne de départ jusqu\'à celui où elle franchit la ligne de fin.',
 						'Chaque franchissement est calculé entre les deux points GPS situés de part et d\'autre de la ligne, et non pris au point qui se trouvait être le plus proche : le temps est donc plus proche du temps réel.',
 						'Les deux lignes doivent être franchies dans le sens du segment. En franchir une à l\'envers ne compte pas.',
 						'La distance parcourue entre les deux franchissements doit être à 25 % près de la longueur du segment, et sur un parcours de parc vous devez passer par chaque point de contrôle, dans l\'ordre, entre les deux.',
@@ -28,12 +28,12 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Une sortie sur un chemin qui longe le segment, à 20 m, passe près des deux extrémités sans jamais traverser les lignes : elle n\'obtient donc pas de temps. L\'aller d\'un itinéraire en aller-retour qui ne fait que passer près de la fin n\'en obtient pas non plus.',
+					text: 'Une course sur un chemin qui longe le segment, à 20 m, passe près des deux extrémités sans jamais traverser les lignes : elle n\'obtient donc pas de temps. L\'aller d\'un itinéraire en aller-retour qui ne fait que passer près de la fin n\'en obtient pas non plus.',
 				},
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Lancez l\'enregistrement un peu avant la ligne de départ. Une sortie dont l\'enregistrement commence sur la ligne, ou après, ne la franchit jamais et n\'obtient pas de temps sur ce segment.',
+					text: 'Lancez l\'enregistrement un peu avant la ligne de départ. Une course dont l\'enregistrement commence sur la ligne, ou après, ne la franchit jamais et n\'obtient pas de temps sur ce segment.',
 				},
 			],
 		},
@@ -43,7 +43,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Si votre sortie passe plusieurs fois sur le segment, votre passage le plus rapide compte.',
+						'Si votre course passe plusieurs fois sur le segment, votre passage le plus rapide compte.',
 						'Un échauffement qui repasse par la ligne de départ n\'allonge pas votre temps : le chrono part de votre dernier franchissement de la ligne de départ avant la fin.',
 						'Sur une boucle, chaque tour complet est chronométré et ton tour le plus rapide compte. Quand le départ et la fin sont la même ligne, le franchissement qui termine un tour lance aussi le suivant.',
 					],
@@ -55,7 +55,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Un segment trop court à une extrémité pour y placer une ligne n\'a pas de lignes. Il est toujours chronométré à l\'ancienne : votre sortie doit passer à moins de 35 m de son départ, puis à moins de 35 m de sa fin.',
+					text: 'Un segment trop court à une extrémité pour y placer une ligne n\'a pas de lignes. Il est toujours chronométré à l\'ancienne : votre course doit passer à moins de 35 m de son départ, puis à moins de 35 m de sa fin.',
 				},
 			],
 		},
@@ -64,7 +64,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Les efforts enregistrés avant que les segments aient des lignes ont été mesurés à l\'ancienne, en passant près du départ et de la fin. Chacun est remesuré avec les lignes la prochaine fois que son coureur ouvre la sortie sur le site web. Son temps peut changer, et il peut disparaître si la sortie n\'a jamais franchi les lignes.',
+					text: 'Les efforts enregistrés avant que les segments aient des lignes ont été mesurés à l\'ancienne, en passant près du départ et de la fin. Chacun est remesuré avec les lignes la prochaine fois que son coureur ouvre la course sur le site web. Son temps peut changer, et il peut disparaître si la course n\'a jamais franchi les lignes.',
 				},
 				{
 					type: 'p',

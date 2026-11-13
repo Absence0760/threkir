@@ -107,6 +107,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | self-timed (race) | **selbstgestoppt** ("selbstgestopptes Rennen", "Selbstgestoppter Zeitraum") | settled 2026-11-10; never "selbst gezeitet" / "selbst gestoppt" |
 | gun time / chip time | **Bruttozeit** / **Nettozeit** (closed compounds); coordinated "Brutto- und Nettozeit"; short split "Brutto {gun} · Netto {chip}" | settled 2026-11-10; never "Brutto-Zeit" / "Netto-Zeit" |
 | set up (a race created automatically before its start) | **angelegt** ("Das Rennen wird einen Tag vor dem Start angelegt") | keeps it apart from *arm* |
+| undo | **Rückgängig** (button), "Rückgängig machen" (verb), setting "Zeitfenster für Rückgängig" | settled 2026-11-12; never "Widerrufen" / "Widerruf", which is the legal *revoke* (consent withdrawal, coach-invite revoke) |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

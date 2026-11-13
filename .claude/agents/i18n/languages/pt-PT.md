@@ -66,7 +66,7 @@ consonants), but the European forms that AO1990 keeps: `contacto` (21 /
 proparoxytones: `quilómetro`, `género`, `oxigénio`, `cronómetro`.
 
 House vocabulary (verified in both catalogues): `registar` / `registo`
-(never `registrar`/`registro`), `guardar` (never `salvar`), `partilhar`,
+(never `registrar`/`registro`) for logging, `gravar` / `gravação` for GPS recording, `guardar` (never `salvar`), `partilhar`,
 `ecrã`, `telemóvel`, `ficheiro`, `palavra-passe`, `em direto` (live),
 `utilizador`, `ginásio`, `passadeira` (treadmill), `aceder`, `equipa`,
 `transferir` (download), `pequeno-almoço`, `predefinição`.
@@ -119,6 +119,7 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | gym | **Ginásio** | |
 | nutrition | Nutrição | |
 | log (verb) | Registar | `navLog` |
+| record (GPS / an activity), recording | **Gravar** / **gravação** — "A gravar", "Gravação e voz", "Começar uma gravação", "corrida gravada", "distância gravada", "grave com uma cinta" | settled 2026-11-12; never *registar* / *registo* for recording. *Registar* / *registo* stay for logging (manual entry, diary, gym and food log), sign-up, records on file (consent, DNF / DNS, weigh-ins, payment records, a DNS record) and a race finish being recorded |
 | streak | Sequência | |
 | goal | Meta / Metas (dominant); "Objetivo" on web onboarding and plans | |
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
@@ -129,6 +130,7 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
+| Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab, page title, and in paths ("Definições → Preferências de treino") | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar**; status = **estado** | settled 2026-10-21; never "saltado" for the status. Skipping a step or setup is **Saltar**; "não salte" stays in coaching advice |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Guardar / **Definições** / Feed / Seguidores | `navSettings` is "Config." — inconsistency 3 |

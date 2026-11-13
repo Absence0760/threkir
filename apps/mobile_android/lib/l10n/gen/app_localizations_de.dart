@@ -3233,7 +3233,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Die Zonen verwenden eine altersgeschätzte maximale HF. Wenn du Herzfrequenzmedikamente nimmst (z. B. Betablocker) oder deine maximale HF gemessen hast, lege sie fest, um genaue Zonen zu erhalten.';
+      'Die Zonen beruhen auf einem altersgeschätzten Maximalpuls. Wenn du Medikamente nimmst, die die Herzfrequenz beeinflussen (z. B. Betablocker), oder deinen Maximalpuls gemessen hast, lege ihn fest, um genaue Zonen zu erhalten.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Max. HF festlegen';
@@ -9759,7 +9759,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsPageDisplaySummary =>
-      'Sprache, Design, Distanz- und Gewichtseinheiten, Tempoformat, Karten und das Widerruf-Zeitfenster.';
+      'Sprache, Design, Distanz- und Gewichtseinheiten, Tempoformat, Karten und das Zeitfenster für Rückgängig.';
 
   @override
   String get prefsPageRecording => 'Aufzeichnung & Ansagen';
@@ -13404,7 +13404,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Größe, Gewicht, Geburtsdatum und Geschlecht sind Gesundheitsdaten und werden daher hinter der Einwilligung bearbeitet.';
+      'Größe, Gewicht, Geburtsdatum und Geschlecht sind Gesundheitsdaten und lassen sich daher erst nach deiner Einwilligung bearbeiten.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Körperdaten bearbeiten';
@@ -16836,19 +16836,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get commonMore => 'Mehr';
 
   @override
-  String get undoAction => 'Widerrufen';
+  String get undoAction => 'Rückgängig';
 
   @override
   String get undoDismiss => 'Schließen';
 
   @override
-  String get undoHint => 'Widerrufen ist kurze Zeit möglich.';
+  String get undoHint => 'Rückgängig machen ist kurze Zeit möglich.';
 
   @override
   String get undoRestored => 'Wiederhergestellt';
 
   @override
-  String get prefsUndoWindow => 'Widerruf-Zeitfenster';
+  String get prefsUndoWindow => 'Zeitfenster für Rückgängig';
 
   @override
   String get prefsUndoWindow8s => '8 Sekunden';
@@ -20423,7 +20423,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsProgressCardsHint =>
-      'Entferne den Haken bei einer Gruppe, um sie von der Seite Fortschritt zu nehmen. Die Auswahl gilt auf all deinen Geräten.';
+      'Entferne den Haken bei einer Gruppe, um sie unter Fortschritt auszublenden. Die Auswahl gilt auf all deinen Geräten.';
 
   @override
   String get prefsDisclosureAuto => 'Automatisch';
@@ -20447,7 +20447,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit.';
+      'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — klapp den Bereich jederzeit auf.';
 
   @override
   String get dashboardTrainingLoadSectionAction => 'Detailgrad ändern';

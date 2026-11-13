@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Faites votre choix sous **Comment la course démarre** dans l\'éditeur d\'événement sur le web, pour un événement de sortie en groupe ou de vélo. L\'app mobile permet de gérer la course le jour J (l\'armer plus tôt, la retarder, la prolonger ou la terminer), mais le mode de départ se choisit sur le web.',
+					text: 'Faites votre choix sous **Comment la course démarre** dans l\'éditeur d\'événement sur le web, pour un événement de course en groupe ou de vélo. L\'app mobile permet de gérer la course le jour J (l\'armer plus tôt, la retarder, la prolonger ou la terminer), mais le mode de départ se choisit sur le web.',
 				},
 			],
 		},

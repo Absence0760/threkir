@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Sua localização desenha o mapa de uma corrida e mede a distância e o ritmo. Sem ela, a corrida continua registrando tempo e passos, mas sem mapa, distância ou ritmo.',
+					text: 'Sua localização desenha o mapa de uma corrida e mede a distância e o ritmo. Sem ela, a corrida continua gravando tempo e passos, mas sem mapa, distância ou ritmo.',
 				},
 				{
 					type: 'p',
@@ -47,7 +47,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Com **Aproximada**, a localização é imprecisa demais para medir uma corrida: você verá **Localização aproximada — distância pausada** durante toda a corrida.',
 						'**Apenas esta vez** vale para a corrida que você vai começar, e na próxima vez o celular pergunta de novo.',
-						'Com **Não permitir**, as corridas registram só tempo e passos.',
+						'Com **Não permitir**, as corridas gravam só tempo e passos.',
 					],
 				},
 			],
@@ -68,7 +68,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: '**Permitir Uma Vez** vale só para esta corrida, e na próxima vez o iPhone pergunta de novo. Com **Não Permitir**, as corridas registram só tempo e passos.',
+					text: '**Permitir Uma Vez** vale só para esta corrida, e na próxima vez o iPhone pergunta de novo. Com **Não Permitir**, as corridas gravam só tempo e passos.',
 				},
 			],
 		},

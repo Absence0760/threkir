@@ -10,6 +10,7 @@ import '../auth_error.dart';
 import '../exif_strip.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../widgets/photo_lightbox.dart';
+import '../widgets/caption_editor.dart';
 import '../widgets/top_banner.dart';
 import 'confirm_destructive.dart';
 
@@ -36,7 +37,6 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
   bool _loading = true;
   bool _uploading = false;
   String? _editingId;
-  final _captionCtrl = TextEditingController();
   final _pendingCaptionCtrl = TextEditingController();
   XFile? _pending;
   List<RoutePhotoRow> _photos = const [];
@@ -69,7 +69,6 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _captionCtrl.dispose();
     _pendingCaptionCtrl.dispose();
     super.dispose();
   }
@@ -240,22 +239,14 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
     }
   }
 
-  void _startEdit(RoutePhotoRow p) {
-    setState(() {
-      _editingId = p.id;
-      _captionCtrl.text = p.caption ?? '';
-    });
-  }
+  void _startEdit(RoutePhotoRow p) => setState(() => _editingId = p.id);
 
-  Future<void> _saveCaption() async {
-    final id = _editingId;
-    if (id == null) return;
-    final next = _captionCtrl.text.trim();
-    final value = next.isEmpty ? null : next;
-    setState(() => _editingId = null);
+  /// Answers whether the caption was stored, so the editor closes only then
+  /// and a failed write keeps the typed text (issue #1374 FS-11).
+  Future<bool> _saveCaption(String id, String? value) async {
     try {
       await widget.api.updateRoutePhotoCaption(photoId: id, caption: value);
-      if (!mounted) return;
+      if (!mounted) return true;
       setState(() {
         _photos = _photos
             .map((p) => p.id == id
@@ -272,11 +263,13 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
                 : p)
             .toList();
       });
+      return true;
     } catch (e) {
       debugPrint('route photos caption error: $e');
-      if (!mounted) return;
+      if (!mounted) return false;
       showTopBanner(
           context, AppLocalizations.of(context).routePhotosCaptionError(friendlyError(AppLocalizations.of(context), e)));
+      return false;
     }
   }
 
@@ -462,34 +455,16 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
             if (editing)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: _captionCtrl,
-                      maxLength: 280,
-                      decoration: InputDecoration(
-                        hintText: l10n.routePhotosCaptionHint,
-                        isDense: true,
-                        counterText: '',
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    OverflowBar(
-                      alignment: MainAxisAlignment.end,
-                      overflowAlignment: OverflowBarAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => setState(() => _editingId = null),
-                          child: Text(l10n.routePhotosCancel),
-                        ),
-                        FilledButton(
-                          onPressed: _saveCaption,
-                          child: Text(l10n.routePhotosSave),
-                        ),
-                      ],
-                    ),
-                  ],
+                child: CaptionEditor(
+                  key: ValueKey(p.id),
+                  initial: p.caption,
+                  hint: l10n.routePhotosCaptionHint,
+                  cancelLabel: l10n.routePhotosCancel,
+                  saveLabel: l10n.routePhotosSave,
+                  onSave: (value) => _saveCaption(p.id, value),
+                  onClose: () {
+                    if (mounted) setState(() => _editingId = null);
+                  },
                 ),
               )
             else if (p.caption != null && p.caption!.isNotEmpty)

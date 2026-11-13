@@ -6,7 +6,7 @@ import 'package:core_models/core_models.dart' show ExerciseRow;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show TextLane;
+import 'package:ui_kit/ui_kit.dart' show PageHeading, TextLane;
 
 import '../lib/gym_compose_draft.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -417,7 +417,7 @@ void main() {
       // Open the catalogue picker for the first (only) exercise block.
       await tester.tap(find.byIcon(Icons.menu_book_outlined));
       await tester.pumpAndSettle();
-      expect(find.text('Exercise catalogue'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Exercise catalogue'), findsOneWidget);
 
       // The picker's search field is the first TextField on the picker route.
       await tester.enterText(find.byType(TextField).first, 'Deadlift');

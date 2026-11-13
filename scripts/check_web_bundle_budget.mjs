@@ -307,6 +307,21 @@
 // the park_courses parser it imports 1.9, now its own chunk; no new module
 // joined the shell's import graph, which shell_import_graph_guard.test.ts
 // holds. Same 6 KB of cover (decisions § 2470).
+// Raised to 2710 for the #1374 component-owned layout rounds (PR #1373),
+// measured in CI at 2704 KB (626 files) and locally at 2680 -> 2703 KB (607 ->
+// 626 files) against origin/main b1c58ff07 with the CI build's placeholder env.
+// Less than half of it is bytes: summed exactly, the JS grew ~11 KB and the
+// CSS shrank ~1 KB, and the other ~13 KB is the per-file round-up on 19 more
+// files, because the rounds extracted shared components each now their own
+// chunk and stylesheet: FilterBar 1.5, ParkCard 1.2, ListCard 1.0, PageHeader
+// 0.8, RoutesViewNav 0.8, AppSearchField 0.7, CaptionEditForm 0.6,
+// ProUpsellLink 0.3. The rest is route-level: the settings search (settings
+// layout +1.7), the races page +0.8, the messages layout +0.7. DashboardView
+// left the /dashboard node as its own 32 KB chunk because /dashboard/progress
+// reuses it, which moves bytes and adds none. The entry grew 0.5 KB, no web
+// dependency changed and the largest code chunk is 288 KB on both sides.
+// Lazy-loading any of it would move bytes into yet another rounded-up file
+// rather than remove them. Same 6 KB of cover.
 // MAX_CORE_CATALOGUE_KB is 15 since the 2026-11-08 round: de, fr and ja cores read
 // 14 KB (de 13,593 bytes gzipped) from 48 new core keys, after the areas were
 // re-cut so that nothing a single area renders stays in core (`clubs` split
@@ -351,7 +366,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2684;
+export const MAX_CODE_KB = 2710;
 export const MAX_CORE_CATALOGUE_KB = 15;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

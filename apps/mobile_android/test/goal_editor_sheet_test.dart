@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show TextLane;
+import 'package:ui_kit/ui_kit.dart' show PageHeading, TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/goals.dart';
 import '../lib/preferences.dart';
@@ -121,7 +121,7 @@ void main() {
         (tester) async {
       final prefs = await _makePrefs();
       await _pumpSheet(tester, prefs);
-      expect(find.text('New goal'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New goal'), findsOneWidget);
     });
 
     testWidgets(
@@ -134,7 +134,7 @@ void main() {
         distanceMetres: 40000,
       );
       await _pumpSheet(tester, prefs, existing: goal);
-      expect(find.text('Edit goal'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Edit goal'), findsOneWidget);
       // 40 km distance pre-populated in the distance field.
       expect(find.text('40.0'), findsOneWidget);
     });
@@ -223,7 +223,7 @@ void main() {
         (tester) async {
       final prefs = await _makePrefs();
       await _pumpSheet(tester, prefs);
-      expect(find.text('New goal'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New goal'), findsOneWidget);
       expect(find.text('Cancel'), findsNothing);
       await tester.tap(find.byTooltip('Close'));
       // Pop animation for fullscreenDialog runs ~400-500ms; double-
@@ -357,7 +357,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.textContaining("Couldn't save the goal"), findsOneWidget);
       // Sheet stays open (its AppBar title is still mounted).
-      expect(find.text('New goal'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New goal'), findsOneWidget);
       expect(prefs.goals, isEmpty);
       await tester.pump(const Duration(seconds: 4)); // drain banner timer
     });

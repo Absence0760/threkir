@@ -376,7 +376,7 @@ test('the summary states the catalogue total without gating on it', () => {
 });
 
 test('the shipped ceilings are the ones this suite reasons about', () => {
-	assert.equal(MAX_CODE_KB, 2684);
+	assert.equal(MAX_CODE_KB, 2710);
 	assert.equal(MAX_CORE_CATALOGUE_KB, 15);
 	assert.equal(MAX_AREA_CATALOGUE_KB, 14);
 	assert.equal(MAX_LARGEST_CHUNK_KB, 350);

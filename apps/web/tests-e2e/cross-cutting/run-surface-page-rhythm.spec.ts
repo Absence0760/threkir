@@ -69,7 +69,7 @@ test.describe('run-surface pages share one page rhythm', () => {
 			.first()
 			.evaluate((el) => Math.round(el.getBoundingClientRect().x));
 
-		await page.getByTestId('segment-catalogue-list').locator('a.card').first().click();
+		await page.getByTestId('segment-catalogue-list').getByRole('link').first().click();
 		await page.waitForURL(/\/segments\/[0-9a-f-]{36}$/, { timeout: 10_000 });
 		await expect(page.locator('nav.sidebar')).toBeVisible({ timeout: 10_000 });
 

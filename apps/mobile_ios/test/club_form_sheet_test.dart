@@ -4,7 +4,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart' show ChoiceChipRow, PageHeading;
 
 import '../lib/club_slug.dart';
 import '../lib/text_limits.dart';
@@ -164,7 +164,7 @@ void main() {
     testWidgets('renders the New club heading and Name / Description / Location fields',
         (tester) async {
       await _openSheet(tester);
-      expect(find.text('New club'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New club'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Description (optional)'),
           findsOneWidget);

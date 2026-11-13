@@ -545,7 +545,7 @@ void main() {
     await _pump(tester, service, runStore: runStore);
 
     expect(find.byKey(const Key('account-export-unsynced')), findsOneWidget);
-    expect(find.textContaining('1 runs'), findsOneWidget);
+    expect(find.textContaining("1 run hasn't synced"), findsOneWidget);
     // Still an account export, not a switch to the on-device archive.
     expect(find.byKey(const Key('account-export-tile')), findsOneWidget);
   });

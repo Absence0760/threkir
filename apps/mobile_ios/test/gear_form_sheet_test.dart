@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -119,7 +120,7 @@ void main() {
     try {
       await _open(tester, _opener(f.store, f.prefs));
       expect(find.byType(AppBar), findsOneWidget);
-      expect(find.text('Add shoes'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Add shoes'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
       // fullscreenDialog injects a Close affordance, not a Back arrow.
       expect(find.byTooltip('Close'), findsOneWidget);

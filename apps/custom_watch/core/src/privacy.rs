@@ -34,6 +34,23 @@ pub const PRIVACY_ZONES_KEY: &str = "privacy_zones";
 /// clamped to this many points rather than overflowing the fixed buffer.
 pub const MAX_CLIPPED_TRACK_POINTS: usize = 256;
 
+/// The smallest radius a zone covers, on every platform. A zone stored under it
+/// (the phone once offered 50 m) is read as this many metres, as the twins'
+/// `effectiveZoneRadius` and the server's `privacy_in_any_zone` read it
+/// (decisions § 2505), so a watch never clips less than the phone or server.
+pub const PRIVACY_ZONE_MIN_RADIUS_M: f64 = 100.0;
+
+/// The radius `zone` covers: what was stored, never less than
+/// [`PRIVACY_ZONE_MIN_RADIUS_M`]. A non-finite radius is the floor.
+pub fn effective_zone_radius(zone: &PrivacyZone) -> f64 {
+    let r = zone.radius_m;
+    if r.is_finite() && r > PRIVACY_ZONE_MIN_RADIUS_M {
+        r
+    } else {
+        PRIVACY_ZONE_MIN_RADIUS_M
+    }
+}
+
 /// A privacy geofence: centre coordinate + radius in metres.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -53,11 +70,14 @@ pub struct TrackPoint {
     pub lon_deg: f64,
 }
 
-/// True when `point` is within any of `zones` by haversine distance. An empty
-/// zone list is always false.
+/// True when `point` is within any of `zones` by haversine distance, each zone
+/// covering at least [`PRIVACY_ZONE_MIN_RADIUS_M`]. An empty zone list is
+/// always false.
 pub fn is_in_any_zone(point: &TrackPoint, zones: &[PrivacyZone]) -> bool {
     for z in zones {
-        if haversine_metres(point.lat_deg, point.lon_deg, z.lat_deg, z.lon_deg) <= z.radius_m {
+        if haversine_metres(point.lat_deg, point.lon_deg, z.lat_deg, z.lon_deg)
+            <= effective_zone_radius(z)
+        {
             return true;
         }
     }
@@ -155,6 +175,36 @@ mod tests {
             &offset(HOME.lat_deg, HOME.lon_deg, 0.01),
             &[HOME]
         ));
+    }
+
+    #[test]
+    fn a_zone_stored_under_the_floor_covers_the_floor() {
+        let small = PrivacyZone {
+            radius_m: 50.0,
+            ..HOME
+        };
+        // 0.0007 deg of latitude is ~78 m: between the stored 50 m and the floor.
+        let p = TrackPoint {
+            lat_deg: HOME.lat_deg + 0.0007,
+            lon_deg: HOME.lon_deg,
+        };
+        let d = haversine_metres(p.lat_deg, p.lon_deg, HOME.lat_deg, HOME.lon_deg);
+        assert!(
+            d > 50.0 && d < PRIVACY_ZONE_MIN_RADIUS_M,
+            "fixture distance {d}"
+        );
+        assert!(is_in_any_zone(&p, &[small]));
+        assert_eq!(effective_zone_radius(&small), PRIVACY_ZONE_MIN_RADIUS_M);
+    }
+
+    #[test]
+    fn a_non_finite_radius_reads_as_the_floor() {
+        let nan = PrivacyZone {
+            radius_m: f64::NAN,
+            ..HOME
+        };
+        assert_eq!(effective_zone_radius(&nan), PRIVACY_ZONE_MIN_RADIUS_M);
+        assert_eq!(effective_zone_radius(&HOME), 200.0);
     }
 
     #[test]

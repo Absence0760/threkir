@@ -47,9 +47,6 @@ const _register = <String, int>{
   // Two 48x48 icon bubbles on a card (1.306/1.334 and 1.231/1.402). Washes:
   // the glyph inside each is the full-strength token and the row is labelled.
   'lib/screens/import_screen.dart': 2,
-  // ICON, `onSurfaceVariant@0.7` on the page — 3.861/5.899, clears 3:1. The
-  // 48 px empty-state glyph, with its title and body text beside it.
-  'lib/screens/people_screen.dart': 1,
   // The catalogue leaderboard's viewer row — the same `primaryContainer@0.5`
   // fill as `segments_panel`'s, and the same numbers (1.078/1.013) rather than
   // a fresh measurement, because `cardTheme.color` IS `surface` in both themes,
@@ -77,20 +74,20 @@ const _register = <String, int>{
   // Two map overlay panels. Their `onSurface` type clears 4.5:1 against both
   // tile extremes (>= 14.272/12.715), which bounds every tile between them.
   'lib/screens/route_builder_screen.dart': 2,
-  // Two map overlay panels plus three washes (1.109/1.087, 1.143/1.162,
-  // 1.184/1.207); the type and glyph on each is full strength. Plus the
-  // START disc's halo ring (primary@0.3) and glow (primary@0.25): both sit
+  // Two map overlay panels; the type and glyph on each is full strength. Plus
+  // the START disc's halo ring (primary@0.3) and glow (primary@0.25): both sit
   // outside a solid primary disc that carries the boundary itself (>= 3:1 on
-  // the scaffold in both themes), so neither owes a floor of its own.
-  'lib/screens/run_screen.dart': 7,
+  // the scaffold in both themes), so neither owes a floor of its own. The
+  // three washes went with the last-run and first-run cards (issue #1374).
+  'lib/screens/run_screen.dart': 4,
   // The live stats panel, blurred over the map. Type >= 11.292/9.165 at both
   // tile extremes.
   'lib/widgets/collapsible_panel.dart': 1,
-  // The multi-select selected-row fill (1.065/1.223), moved here with the row
-  // itself when #666 C8 consolidated the two forks of it. Not the cue: the
-  // leading slot forks `check_circle` / `radio_button_unchecked` and the row
-  // carries `Semantics(selected:)`.
-  'lib/widgets/run_list_tile.dart': 1,
+  // The selected-card fill (1.065/1.223), moved here from `run_list_tile.dart`
+  // when every list card became ui_kit's `ListCard` (issue #1374). Not the
+  // cue: a selecting row's leading slot forks `check_circle` /
+  // `radio_button_unchecked` and the card carries `Semantics(selected:)`.
+  '../../packages/ui_kit/lib/src/widgets/list_card.dart': 1,
   // `surface@0.95` over the PAGE, not a map — the only one of the family that
   // is not an overlay, and in dark it is a lighter fill on a darker page
   // (1.163:1), so its `dividerColor` border is what separates it.

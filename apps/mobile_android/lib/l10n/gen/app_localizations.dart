@@ -290,8 +290,8 @@ abstract class AppLocalizations {
   /// Subtitle under the hero distance giving the run count
   ///
   /// In en, this message translates to:
-  /// **'across {count} {runWord}'**
-  String recapAcrossRuns(Object count, Object runWord);
+  /// **'{count, plural, one{across {count} run} other{across {count} runs}}'**
+  String recapAcrossRuns(int count);
 
   /// Stat card label for the longest run of the year
   ///
@@ -305,11 +305,11 @@ abstract class AppLocalizations {
   /// **'Best streak'**
   String get recapBestStreakLabel;
 
-  /// Stat card value for the best streak length in days
+  /// Recap best-streak stat value
   ///
   /// In en, this message translates to:
-  /// **'{days} {dayWord}'**
-  String recapStreakDays(Object days, Object dayWord);
+  /// **'{days, plural, one{{days} day} other{{days} days}}'**
+  String recapStreakDays(int days);
 
   /// Stat card label for the highest-mileage week
   ///
@@ -530,7 +530,7 @@ abstract class AppLocalizations {
   /// Status while restoring from a full-backup ZIP
   ///
   /// In en, this message translates to:
-  /// **'Restoring backup...'**
+  /// **'Restoring backup…'**
   String get importStatusRestoringBackup;
 
   /// Status after a successful full-backup restore
@@ -650,8 +650,14 @@ abstract class AppLocalizations {
   /// Body copy explaining the full-backup restore behaviour
   ///
   /// In en, this message translates to:
-  /// **'Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do. Make a backup from Settings → Full backup.'**
+  /// **'Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do.'**
   String get importBackupCardDescription;
+
+  /// Link on the Restore backup card; opens the Account page, where Full backup makes one
+  ///
+  /// In en, this message translates to:
+  /// **'Make a backup'**
+  String get importBackupMakeOne;
 
   /// Button to pick and restore a full-backup ZIP
   ///
@@ -851,6 +857,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{1 run is saved on this device — its upload to the cloud didn\'t go through. It will retry on the next sync.} other{{count} runs are saved on this device — their upload to the cloud didn\'t go through. They will retry on the next sync.}}'**
   String importStatusCloudPushDeferred(int count);
 
+  /// Note after an import whose activities were stored without heart rate, for want of health-data consent
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 activity was imported without its heart rate} other{{count} activities were imported without their heart rate}}: Threkir keeps heart rate only with your health-data consent.'**
+  String importHeartRateNotKept(int count);
+
   /// iOS subtitle naming apps that write to Apple Health
   ///
   /// In en, this message translates to:
@@ -1040,13 +1052,13 @@ abstract class AppLocalizations {
   /// Empty-state body for the runners-nearby list, pointing at the opt-in and area setter
   ///
   /// In en, this message translates to:
-  /// **'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.'**
+  /// **'Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.'**
   String get peopleNearbyEmptyBody;
 
-  /// Button on the runners-nearby empty state that opens the Preferences settings screen
+  /// Button on the runners-nearby empty state that opens the Privacy & sharing preferences page
   ///
   /// In en, this message translates to:
-  /// **'Open Preferences'**
+  /// **'Open privacy settings'**
   String get peopleNearbyEmptyAction;
 
   /// Error-state message when the runners-nearby list fails to load
@@ -1070,7 +1082,7 @@ abstract class AppLocalizations {
   /// Toggle title for opting in to coarse-location runners-nearby discovery
   ///
   /// In en, this message translates to:
-  /// **'Show me to runners nearby'**
+  /// **'Show me in Runners nearby'**
   String get prefsDiscoverableNearby;
 
   /// Subtitle for the runners-nearby opt-in toggle
@@ -1241,11 +1253,185 @@ abstract class AppLocalizations {
   /// **'Resting heart rate'**
   String get readinessContributorRestingHr;
 
-  /// Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header.
+  /// The readiness advice line: the reason, then what to do
   ///
   /// In en, this message translates to:
-  /// **'Trends'**
-  String get dashboardTrendsDivider;
+  /// **'{reason}. {next}'**
+  String readinessAdviceLine(String reason, String next);
+
+  /// Readiness advice with no inputs, below the high band
+  ///
+  /// In en, this message translates to:
+  /// **'Connect sleep + HR data for a real readiness picture.'**
+  String get readinessAdviceNoSignal;
+
+  /// Readiness advice with no inputs, in the high band
+  ///
+  /// In en, this message translates to:
+  /// **'Looks like a good day to push the pace.'**
+  String get readinessAdviceNoSignalHigh;
+
+  /// What the low readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'Consider an easy day or a rest day.'**
+  String get readinessNextLow;
+
+  /// What the moderate readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'A steady or moderate effort fits today.'**
+  String get readinessNextModerate;
+
+  /// What the high readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'You’re primed for a harder effort if planned.'**
+  String get readinessNextHigh;
+
+  /// Why an input moved readiness (heavyFatigue)
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy fatigue — recent training stress is well above your fitness'**
+  String get readinessReasonHeavyFatigue;
+
+  /// Why an input moved readiness (fatigued)
+  ///
+  /// In en, this message translates to:
+  /// **'Fatigued from recent training'**
+  String get readinessReasonFatigued;
+
+  /// Why an input moved readiness (slightFatigue)
+  ///
+  /// In en, this message translates to:
+  /// **'Slight fatigue'**
+  String get readinessReasonSlightFatigue;
+
+  /// Why an input moved readiness (formNeutral)
+  ///
+  /// In en, this message translates to:
+  /// **'Form is neutral'**
+  String get readinessReasonFormNeutral;
+
+  /// Why an input moved readiness (fresh)
+  ///
+  /// In en, this message translates to:
+  /// **'Fresh and well-recovered'**
+  String get readinessReasonFresh;
+
+  /// Why an input moved readiness (veryFresh)
+  ///
+  /// In en, this message translates to:
+  /// **'Very fresh — borderline tapered'**
+  String get readinessReasonVeryFresh;
+
+  /// Why an input moved readiness (overTapered)
+  ///
+  /// In en, this message translates to:
+  /// **'Over-tapered — edge may be blunted'**
+  String get readinessReasonOverTapered;
+
+  /// Why an input moved readiness (veryLittleSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Very little sleep — recovery is compromised'**
+  String get readinessReasonVeryLittleSleep;
+
+  /// Why an input moved readiness (shortSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Short on sleep'**
+  String get readinessReasonShortSleep;
+
+  /// Why an input moved readiness (underSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'A little under target sleep'**
+  String get readinessReasonUnderSleep;
+
+  /// Why an input moved readiness (wellRested)
+  ///
+  /// In en, this message translates to:
+  /// **'Well rested'**
+  String get readinessReasonWellRested;
+
+  /// Why an input moved readiness (extendedSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Extended sleep — recovery should be solid'**
+  String get readinessReasonExtendedSleep;
+
+  /// Why an input moved readiness (hrWellAbove)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR {bpm} bpm above baseline — strong sign of illness or under-recovery'**
+  String readinessReasonHrWellAbove(int bpm);
+
+  /// Why an input moved readiness (hrAbove)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR {bpm} bpm above baseline'**
+  String readinessReasonHrAbove(int bpm);
+
+  /// Why an input moved readiness (hrSlightlyHigh)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR slightly elevated'**
+  String get readinessReasonHrSlightlyHigh;
+
+  /// Why an input moved readiness (hrBaseline)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR at baseline'**
+  String get readinessReasonHrBaseline;
+
+  /// Why an input moved readiness (hrBelow)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR below baseline — well recovered'**
+  String get readinessReasonHrBelow;
+
+  /// Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get todayTitle;
+
+  /// Title of the Progress page, reached from the progress summary card on Today: trends, personal bests, streak, goals and the recap
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get progressTitle;
+
+  /// Heading of the one progress summary card on Today; a tap opens the Progress page
+  ///
+  /// In en, this message translates to:
+  /// **'Your progress'**
+  String get progressSummaryTitle;
+
+  /// Screen-reader hint on the progress summary card: what a tap does
+  ///
+  /// In en, this message translates to:
+  /// **'Open your progress'**
+  String get progressSummaryOpenHint;
+
+  /// Label under this calendar week's distance on Today's progress summary card
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get progressSummaryWeek;
+
+  /// Label under this calendar month's distance on Today's progress summary card
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get progressSummaryMonth;
+
+  /// Quiet line under Today's goals strip when the runner has more goals than it lists; the strip opens the Progress page, which lists them all
+  ///
+  /// In en, this message translates to:
+  /// **'More goals in Progress'**
+  String get todayGoalsMore;
 
   /// Home dashboard trend group heading, collapsible: the weekly distance cards
   ///
@@ -1373,17 +1559,23 @@ abstract class AppLocalizations {
   /// **'Readiness {score}'**
   String dashboardHeroReadiness(int score);
 
-  /// Long-press action on a Home trend group that hides it from Home
+  /// Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Progress cards on the Units & display page brings it back
   ///
   /// In en, this message translates to:
-  /// **'Hide from Home'**
-  String get dashboardHideFromHome;
+  /// **'Hide from Progress'**
+  String get progressHideGroup;
 
   /// Banner after hiding a Home trend group; {name} is the group title
   ///
   /// In en, this message translates to:
-  /// **'{name} is hidden. You can bring it back in Settings.'**
+  /// **'{name} is hidden from Progress.'**
   String dashboardCardHidden(String name);
+
+  /// Action on the banner after hiding a trend group on Progress; opens the Units & display page, where Progress cards brings a group back
+  ///
+  /// In en, this message translates to:
+  /// **'Manage cards'**
+  String get dashboardCardHiddenAction;
 
   /// Banner when hiding a Home trend group could not be saved
   ///
@@ -1523,37 +1715,37 @@ abstract class AppLocalizations {
   /// **'Log an activity'**
   String get logA11yLabel;
 
-  /// Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun "Run", which decisions § 1649 keeps out of the tab-label set
+  /// Caption of the Today hero's quick Start, whose tap starts a run (the countdown with tap-to-cancel). Only a control that starts the run says Start (issue #1374); the centre nav button names the activity instead
   ///
   /// In en, this message translates to:
   /// **'Start run'**
   String get navStartRun;
 
-  /// Caption under the centre nav button when a tap on it starts recording and the default activity is walk. Same slot and rules as navStartRun
+  /// As navStartRun, when the default activity is walk
   ///
   /// In en, this message translates to:
   /// **'Start walk'**
   String get navStartWalk;
 
-  /// Caption under the centre nav button when a tap on it starts recording and the default activity is cycle. Same slot and rules as navStartRun
+  /// As navStartRun, when the default activity is cycle
   ///
   /// In en, this message translates to:
   /// **'Start ride'**
   String get navStartRide;
 
-  /// Caption under the centre nav button when a tap on it starts recording and the default activity is hike (shown as Trail run). Same slot and rules as navStartRun
+  /// As navStartRun, when the default activity is hike (shown as Trail run)
   ///
   /// In en, this message translates to:
   /// **'Start trail run'**
   String get navStartTrailRun;
 
-  /// Caption under the centre nav button when a tap on it starts recording and the default activity is stroller. Same slot and rules as navStartRun
+  /// As navStartRun, when the default activity is stroller
   ///
   /// In en, this message translates to:
   /// **'Start stroller run'**
   String get navStartStroller;
 
-  /// Action that starts recording a run: the centre nav button's screen-reader label and the empty Home's primary button
+  /// Action that starts recording a run: the empty Home's primary button
   ///
   /// In en, this message translates to:
   /// **'Start a run'**
@@ -1606,6 +1798,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stop'**
   String get navStop;
+
+  /// Caption under the centre nav button while the Run page shows its start screen, where a tap starts the 3-2-1 countdown. Must fit the 72dp centre slot
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get navStart;
+
+  /// Caption under the centre nav button after its Start was tapped on the Run page, while the permission, GPS, background-location and battery checks (or a planned workout loading) stand between the tap and the 3-2-1; a second tap does nothing. Must fit the 72dp centre slot
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get navStarting;
+
+  /// Screen-reader label for the centre nav button while a start is in its pre-countdown checks (navStarting)
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the run'**
+  String get runStartingA11yLabel;
+
+  /// Screen-reader label for the centre nav button away from the Run page, when a tap opens the recording screen (it starts nothing; the caption is the activity name)
+  ///
+  /// In en, this message translates to:
+  /// **'Open the recording screen ({activity})'**
+  String navOpenRecorderA11yLabel(String activity);
+
+  /// Screen-reader label for the centre nav button during the 3-2-1 countdown; a tap cancels the start
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel the start'**
+  String get runCancelStartA11yLabel;
 
   /// Screen-reader label for the centre nav button while a run is recording
   ///
@@ -1721,6 +1943,18 @@ abstract class AppLocalizations {
   /// **'Advice on your runs, training and recovery'**
   String get homeAskCoachSubtitleRunOnly;
 
+  /// Title of the Coach row on Today when the AI coach is not live on this deploy or the runner is signed out: the Coach screen still holds guided runs and athletes & coaches
+  ///
+  /// In en, this message translates to:
+  /// **'Coach'**
+  String get homeCoachTitle;
+
+  /// Subtitle of the Coach row on Today when the AI coach is not available: what the Coach screen holds instead
+  ///
+  /// In en, this message translates to:
+  /// **'Guided runs, athletes and coaches'**
+  String get homeCoachSubtitleTools;
+
   /// Title of the profile entry at the top of the You tab
   ///
   /// In en, this message translates to:
@@ -1733,17 +1967,11 @@ abstract class AppLocalizations {
   /// **'Training plan'**
   String get homeTrainingPlanLabel;
 
-  /// Countdown on the Home plan card: whole days until the plan's race day (always 2 or more; 1 is homeRaceTomorrow)
+  /// Countdown on the Home plan card: whole days until the plan's race day, "tomorrow" at 1
   ///
   /// In en, this message translates to:
-  /// **'{days, plural, one{Race in {days} day} other{Race in {days} days}}'**
+  /// **'{days, plural, =1{Race tomorrow} other{Race in {days} days}}'**
   String homeRaceInDays(int days);
-
-  /// Countdown on the Home plan card when race day is tomorrow
-  ///
-  /// In en, this message translates to:
-  /// **'Race tomorrow'**
-  String get homeRaceTomorrow;
 
   /// Countdown on the Home plan card on race day itself
   ///
@@ -1751,29 +1979,77 @@ abstract class AppLocalizations {
   /// **'Race day'**
   String get homeRaceDay;
 
-  /// Home plan card before the plan's first day: whole days until it starts
-  ///
-  /// In en, this message translates to:
-  /// **'{days, plural, one{Starts in {days} day} other{Starts in {days} days}}'**
-  String homePlanStartsInDays(int days);
-
   /// Home card line naming the next active plan queued after the current one. date is its formatted start date
   ///
   /// In en, this message translates to:
   /// **'Up next: {name}, starts {date}'**
   String homePlanUpNext(String name, String date);
 
-  /// Home plan card when the plan starts tomorrow
+  /// Home plan card before the plan's first day: whole days until it starts, tomorrow at 1
   ///
   /// In en, this message translates to:
-  /// **'Starts tomorrow'**
-  String get homePlanStartsTomorrow;
+  /// **'{days, plural, =1{Starts tomorrow} other{Starts in {days} days}}'**
+  String homePlanStartsInDays(int days);
 
   /// Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile
   ///
   /// In en, this message translates to:
   /// **'View profile'**
   String get youViewProfile;
+
+  /// Button on the You tab identity card that opens the name and photo editor
+  ///
+  /// In en, this message translates to:
+  /// **'Edit profile'**
+  String get youEditProfile;
+
+  /// Account row subtitle: what the Edit profile page edits
+  ///
+  /// In en, this message translates to:
+  /// **'Photo, name and username'**
+  String get editProfileSubtitle;
+
+  /// Edit profile: label of the public @username field (web settingsAccount.handleLabel)
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get editProfileUsername;
+
+  /// Edit profile: help under the username field
+  ///
+  /// In en, this message translates to:
+  /// **'Your public @username — 3–30 lowercase letters, numbers, or underscores. Others can find you by it.'**
+  String get editProfileUsernameHelp;
+
+  /// Edit profile: the username belongs to someone else
+  ///
+  /// In en, this message translates to:
+  /// **'That username is already taken.'**
+  String get editProfileUsernameTaken;
+
+  /// Edit profile: the username breaks the 3-30 [a-z0-9_] rule
+  ///
+  /// In en, this message translates to:
+  /// **'Use 3–30 lowercase letters, numbers, or underscores.'**
+  String get editProfileUsernameInvalid;
+
+  /// Edit profile: the Save button while saving
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get editProfileSaving;
+
+  /// Banner after Edit profile saves
+  ///
+  /// In en, this message translates to:
+  /// **'Profile saved'**
+  String get editProfileSaved;
+
+  /// Banner when Edit profile's save fails for a reason other than the username
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your profile. Please try again.'**
+  String get editProfileSaveFailed;
 
   /// Title of the Log capture bottom sheet
   ///
@@ -1868,7 +2144,7 @@ abstract class AppLocalizations {
   /// Explanation under the health-data consent toggle
   ///
   /// In en, this message translates to:
-  /// **'Height and weight are special-category health data. Turn this off to erase them.'**
+  /// **'Threkir stores your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and uses them and your date of birth as health data (GDPR Art 9(2)(a)) to personalise your training and nutrition targets and to place you in gender and age-band segment leaderboards, only while this is on. Turn it off and save to withdraw consent and erase them; your date of birth stays as your age record.'**
   String get bodyMetricsConsentSubtitle;
 
   /// Label for the height input (centimetres)
@@ -1946,7 +2222,7 @@ abstract class AppLocalizations {
   /// No description provided for @bodyMetricsWithdrawBody.
   ///
   /// In en, this message translates to:
-  /// **'This permanently erases your saved height and your entire weight history. This can\'t be undone.'**
+  /// **'This permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log. Your activities themselves are kept, and your date of birth stays as your age record but is no longer used as health data. This can\'t be undone.'**
   String get bodyMetricsWithdrawBody;
 
   /// No description provided for @bodyMetricsWithdrawConfirm.
@@ -1954,6 +2230,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Withdraw & erase'**
   String get bodyMetricsWithdrawConfirm;
+
+  /// Title of the dialog asking for health-data consent before the first food is logged (decisions § 2514)
+  ///
+  /// In en, this message translates to:
+  /// **'Your food log is health data'**
+  String get healthConsentFoodTitle;
+
+  /// Body of the dialog asking for health-data consent before food is logged
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.'**
+  String get healthConsentFoodBody;
+
+  /// Button that opens the screen where health-data consent is reviewed and given; tapping it does not give consent itself
+  ///
+  /// In en, this message translates to:
+  /// **'Review consent'**
+  String get healthConsentGiveAction;
 
   /// Confirmation toast after saving body metrics
   ///
@@ -2140,6 +2434,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No safety contacts yet.'**
   String get safetyEmpty;
+
+  /// Inline error on Settings > Safety when the contact lists could not be read; distinct from the empty state, and says nothing was lost
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your safety contacts. Nothing has been removed. Check your connection and try again.'**
+  String get safetyLoadFailed;
 
   /// Status badge for a contact who hasn't opted in yet
   ///
@@ -2405,35 +2705,35 @@ abstract class AppLocalizations {
   /// **'Today\'s lift'**
   String get homeTodaysLift;
 
-  /// Section header on the You tab above coaching and guided runs
-  ///
-  /// In en, this message translates to:
-  /// **'Training'**
-  String get settingsSectionTraining;
-
-  /// Section header on the You tab above Account, Preferences and Safety contacts
-  ///
-  /// In en, this message translates to:
-  /// **'Settings'**
-  String get settingsSectionSettings;
-
   /// Settings landing section header grouping Integrations + Devices + Gear
   ///
   /// In en, this message translates to:
   /// **'Apps & data'**
   String get settingsSectionAppsData;
 
+  /// You tab group: Account, Body metrics, Safety contacts, Follow requests (web Settings → Profile)
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get settingsSectionProfile;
+
+  /// Hint of the search field at the top of the You tab, which finds a row on You or on any Preferences page
+  ///
+  /// In en, this message translates to:
+  /// **'Search settings'**
+  String get settingsSearchHint;
+
+  /// Shown under the You tab settings search when nothing matches
+  ///
+  /// In en, this message translates to:
+  /// **'No settings match “{query}”.'**
+  String settingsSearchNoResults(String query);
+
   /// Settings landing section header grouping Pro & support + Licenses
   ///
   /// In en, this message translates to:
   /// **'Account & legal'**
   String get settingsSectionAccountLegal;
-
-  /// Settings > Preferences section header for units, pace format, map style, language, theme
-  ///
-  /// In en, this message translates to:
-  /// **'Units & display'**
-  String get prefsSectionUnitsDisplay;
 
   /// Label for the email field on the sign-in and sign-up screens
   ///
@@ -2816,7 +3116,7 @@ abstract class AppLocalizations {
   /// Body of the onboarding account page — what an account buys and that the app works without one
   ///
   /// In en, this message translates to:
-  /// **'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.'**
+  /// **'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You.'**
   String get onboardingAccountBody;
 
   /// Primary action on the onboarding account page — opens sign-up
@@ -3128,7 +3428,7 @@ abstract class AppLocalizations {
   /// Setup wizard health-data (GDPR Art 9) consent checkbox label
   ///
   /// In en, this message translates to:
-  /// **'I consent to Threkir using my gender and date of birth to personalise pace, heart-rate and calorie estimates (special-category health data, GDPR Art 9).'**
+  /// **'I consent to Threkir storing my gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with my activities, the heart-rate targets in my plans, my heart-rate medication setting and my food log, and using them and my date of birth as health data (GDPR Art 9(2)(a)) to personalise my training and nutrition targets and to place me in gender and age-band segment leaderboards. I can withdraw this consent at any time.'**
   String get setupHealthConsent;
 
   /// Setup wizard privacy-default step title
@@ -3274,12 +3574,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start run'**
   String get runStartA11yLabel;
-
-  /// Screen-reader label for the tappable recent-run card on the start-run screen
-  ///
-  /// In en, this message translates to:
-  /// **'Open last run details'**
-  String get runLastRunOpenA11yLabel;
 
   /// Idle-screen button to pick a route to follow when no route is selected
   ///
@@ -3473,18 +3767,6 @@ abstract class AppLocalizations {
   /// **'Tap to cancel'**
   String get runTapToCancel;
 
-  /// Empty-state encouragement on the idle run screen when there is no recent run, event, or plan
-  ///
-  /// In en, this message translates to:
-  /// **'Your first run is one tap away.'**
-  String get runFirstRunPrompt;
-
-  /// Label on the last-run card when the recorded distance is negligible (treated as a generic activity)
-  ///
-  /// In en, this message translates to:
-  /// **'Last activity'**
-  String get runLastActivity;
-
   /// Label on the last-run card on the idle run screen
   ///
   /// In en, this message translates to:
@@ -3659,6 +3941,12 @@ abstract class AppLocalizations {
   /// **'Syncing...'**
   String get runSyncing;
 
+  /// Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2514)
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate from this activity wasn\'t saved: Threkir keeps heart rate only with your health-data consent.'**
+  String get runHeartRateNotSaved;
+
   /// Button on the finish summary that dismisses back to the idle run screen
   ///
   /// In en, this message translates to:
@@ -3815,6 +4103,12 @@ abstract class AppLocalizations {
   /// **'Run started'**
   String get runA11yStarted;
 
+  /// Screen-reader announcement when the 3-2-1 countdown before a recording begins
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds, plural, one{Starting in {seconds} second. Tap to cancel.} other{Starting in {seconds} seconds. Tap to cancel.}}'**
+  String runA11yStartingIn(int seconds);
+
   /// Screen-reader status announcement when a paused run resumes
   ///
   /// In en, this message translates to:
@@ -3923,10 +4217,10 @@ abstract class AppLocalizations {
   /// **'This workout has no runnable structure.'**
   String get runWorkoutNoStructure;
 
-  /// Banner shown when a structured workout is loaded and ready to start
+  /// Banner shown when a structured workout is loaded on the recorder, before its run starts (the centre button's Start, or the countdown a Start on the workout already began)
   ///
   /// In en, this message translates to:
-  /// **'Workout loaded · {count, plural, one{{count} step} other{{count} steps}} — tap GO to start'**
+  /// **'Workout loaded · {count, plural, one{{count} step} other{{count} steps}}'**
   String runWorkoutLoaded(int count);
 
   /// Title of the idle-screen card for the plan workout the next run will execute
@@ -4199,48 +4493,6 @@ abstract class AppLocalizations {
   /// **'Recording without GPS — could not start the sensor.'**
   String get runGpsSensorFailed;
 
-  /// Relative-time label for an event within the last minute
-  ///
-  /// In en, this message translates to:
-  /// **'Just now'**
-  String get runAgoJustNow;
-
-  /// Relative-time label in minutes
-  ///
-  /// In en, this message translates to:
-  /// **'{count} min ago'**
-  String runAgoMinutes(int count);
-
-  /// Relative-time label in hours
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} hour ago} other{{count} hours ago}}'**
-  String runAgoHours(int count);
-
-  /// Relative-time label for one day ago
-  ///
-  /// In en, this message translates to:
-  /// **'Yesterday'**
-  String get runAgoYesterday;
-
-  /// Relative-time label in days (2-6 days)
-  ///
-  /// In en, this message translates to:
-  /// **'{count} days ago'**
-  String runAgoDays(int count);
-
-  /// Relative-time label in weeks
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} week ago} other{{count} weeks ago}}'**
-  String runAgoWeeks(int count);
-
-  /// Relative-time label in months
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} month ago} other{{count} months ago}}'**
-  String runAgoMonths(int count);
-
   /// Workout-execution band text after the structured workout is abandoned
   ///
   /// In en, this message translates to:
@@ -4288,6 +4540,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Abandon'**
   String get runWorkoutAbandon;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'On pace'**
+  String get workoutPaceOnPace;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Ahead of pace'**
+  String get workoutPaceAhead;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Behind pace'**
+  String get workoutPaceBehind;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Well ahead of pace'**
+  String get workoutPaceWayAhead;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Well behind pace'**
+  String get workoutPaceWayBehind;
 
   /// Tooltip and accessibility label of the workout band overflow menu that holds Abandon
   ///
@@ -4463,10 +4745,10 @@ abstract class AppLocalizations {
   /// **'Add past run'**
   String get historyAddPastRun;
 
-  /// Empty Runs list body when the centre button starts recording, so it names that button by its caption (navStartRun / navStartWalk / ...) rather than Log
+  /// Empty Runs list body when a tap on the centre button opens the recording screen, so it names that button by its caption (the default activity: Run / Walk / ...) rather than Log
   ///
   /// In en, this message translates to:
-  /// **'Tap {button} to start recording, or add one you have already finished'**
+  /// **'Tap {button} to record one, or add one you have already finished'**
   String historyEmptyBodyRunPrimary(String button);
 
   /// Tooltip on the History add button when it logs a lift, a meal, or opens the run/lift/meal picker
@@ -4808,7 +5090,7 @@ abstract class AppLocalizations {
   /// Banner shown when tapping sync while signed out
   ///
   /// In en, this message translates to:
-  /// **'Sign in from Settings to sync runs'**
+  /// **'Sign in on the You tab to sync runs'**
   String get historySignInToSync;
 
   /// Banner shown when a cloud refresh of the runs list fails
@@ -4858,12 +5140,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add run'**
   String get addRunTitle;
-
-  /// AppBar save button on the manual add-run form
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get addRunSave;
 
   /// Section header for the date/time pickers on the add-run form
   ///
@@ -5231,6 +5507,23 @@ abstract class AppLocalizations {
   /// **'Elevation'**
   String get runDetailSectionElevation;
 
+  /// Screen-reader summary of the elevation chart on run detail and park courses
+  ///
+  /// In en, this message translates to:
+  /// **'Elevation over {distance}: lowest {min}, highest {max}, {gain} climbed'**
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  );
+
+  /// Screen-reader value of the elevation chart's cursor as it is stepped along the track
+  ///
+  /// In en, this message translates to:
+  /// **'{elevation} at {distance}'**
+  String elevationChartPoint(String elevation, String distance);
+
   /// Fast end of the run-detail map's pace-colour legend
   ///
   /// In en, this message translates to:
@@ -5360,10 +5653,10 @@ abstract class AppLocalizations {
   /// Info note under the run-detail HR-zone breakdown when zones fall back to an age-estimated max HR (no hr_zones or max_hr_bpm override set)
   ///
   /// In en, this message translates to:
-  /// **'Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you\'ve measured your max HR, set it in Preferences for accurate zones.'**
+  /// **'Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you\'ve measured your max HR, set it for accurate zones.'**
   String get runDetailHrDisclaimer;
 
-  /// Button under the HR-zone disclaimer that opens Settings to set max HR / zones
+  /// Button under the HR-zone disclaimer that opens the Training preferences page to set max HR / zones
   ///
   /// In en, this message translates to:
   /// **'Set max HR'**
@@ -5596,6 +5889,23 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'#{rank} in {season}'**
   String runDetailParkCourseRank(String rank, String season);
+
+  /// A park course chip's place on that month's fastest board, e.g. #2 in November (runDetail.parkCourseMonthRank)
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank} in {month}'**
+  String runDetailParkCourseMonthRank(String rank, String month);
+
+  /// A park course chip's places on its month's and its season's boards, e.g. #2 in November, #9 in 2026 (runDetail.parkCourseRanks)
+  ///
+  /// In en, this message translates to:
+  /// **'#{monthRank} in {month}, #{seasonRank} in {season}'**
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  );
 
   /// Quiet line on run detail when the park course chips could not be read; a Retry button follows (runDetail.parkCoursesLoadFailed)
   ///
@@ -5860,6 +6170,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t delete from the cloud; the run is kept for now — will retry when back online.'**
   String get runDetailDeleteQueued;
+
+  /// Screen-reader label of the spinner that replaces the run's overflow menu while a delete is in flight
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting run…'**
+  String get runDetailDeleting;
 
   /// Confirm action on the auto-link route-suggestion banner
   ///
@@ -6173,11 +6489,29 @@ abstract class AppLocalizations {
   /// **'Star to show on watch'**
   String get routesStarForWatch;
 
-  /// Section header for the Explore / Heatmap discovery strip in the embedded routes view
+  /// Screen-reader name of the strip of discovery maps (routes heatmap, run heatmap) heading Routes → Explore
   ///
   /// In en, this message translates to:
   /// **'Discover'**
   String get routesDiscover;
+
+  /// Screen-reader name of the Mine / Explore chip pair at the top of the Routes tab. Same text as web routesPage.sectionLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Routes section'**
+  String get routesViewGroup;
+
+  /// Chip on the Routes tab showing the runner's own and saved routes ("my routes"), beside Explore. Kept short so both chips fit one line at 2x text on a 360 dp phone. Same text as web routesPage.tabMine
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get routesViewMine;
+
+  /// Chip on the Routes tab showing public routes and the segment catalogue (with Routes / Segments chips). Same text as web routesPage.tabExplore
+  ///
+  /// In en, this message translates to:
+  /// **'Explore'**
+  String get routesViewExplore;
 
   /// Tooltip on the cloud-download sync button in the routes list
   ///
@@ -6430,6 +6764,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pin already there — tap further apart to add another.'**
   String get routeBuilderPinAlreadyThere;
+
+  /// Screen-reader name of a route-builder waypoint pin between the start and the end
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}'**
+  String routeBuilderWaypoint(int index, int total);
+
+  /// Screen-reader name of the route-builder start pin
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}, start'**
+  String routeBuilderWaypointStart(int index, int total);
+
+  /// Screen-reader name of the route-builder end pin
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}, finish'**
+  String routeBuilderWaypointEnd(int index, int total);
 
   /// Banner shown when the generate-loop target distance is out of range
   ///
@@ -7072,7 +7424,7 @@ abstract class AppLocalizations {
   /// Upsell shown to free users; the templated description still shows
   ///
   /// In en, this message translates to:
-  /// **'AI descriptions are a Pro feature. Upgrade to enhance.'**
+  /// **'AI descriptions are a Pro feature.'**
   String get routeDetailEnhanceUpgradeHint;
 
   /// Route shape word: a route that returns to its start
@@ -7570,12 +7922,6 @@ abstract class AppLocalizations {
   /// **'Explore Routes'**
   String get exploreRoutesTitle;
 
-  /// Mode-toggle label for the search-by-name mode
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get exploreRoutesModeSearch;
-
   /// Mode-toggle label for the near-me mode
   ///
   /// In en, this message translates to:
@@ -7810,6 +8156,12 @@ abstract class AppLocalizations {
   /// **'No routes here'**
   String get heatmapNoRoutesHere;
 
+  /// Discovery map results pill (and results list) when the routes read failed; tapping retries. Replaces 'No routes here', which was false
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load routes. Tap to retry'**
+  String get heatmapLoadFailed;
+
   /// Empty-state shown in the heatmap results list
   ///
   /// In en, this message translates to:
@@ -8020,17 +8372,11 @@ abstract class AppLocalizations {
   /// **'Your heatmap'**
   String get runHeatmapLegendTitle;
 
-  /// Legend summary on the personal heatmap for a single mapped run
+  /// Heatmap legend: how many runs are drawn
   ///
   /// In en, this message translates to:
-  /// **'{n} mapped run — brighter where you run most.'**
-  String runHeatmapLegendSummaryOne(int n);
-
-  /// Legend summary on the personal heatmap for multiple mapped runs
-  ///
-  /// In en, this message translates to:
-  /// **'{n} mapped runs — brighter where you run most.'**
-  String runHeatmapLegendSummaryMany(int n);
+  /// **'{n, plural, one{{n} mapped run — brighter where you run most.} other{{n} mapped runs — brighter where you run most.}}'**
+  String runHeatmapLegendSummary(int n);
 
   /// Low end of the colour-scale legend on the personal heatmap
   ///
@@ -8187,6 +8533,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Everyone you follow'**
   String get feedEveryoneYouFollow;
+
+  /// Heading of the Feed filter sheet's group that picks whose activity the feed shows: everyone you follow, or one person
+  ///
+  /// In en, this message translates to:
+  /// **'Whose activity'**
+  String get feedFilterAuthor;
 
   /// Fallback name shown in the feed when an author has no display name
   ///
@@ -9052,11 +9404,11 @@ abstract class AppLocalizations {
   /// **'Routes'**
   String get socialTabRoutes;
 
-  /// Social hub sub-tab label — cross-club activity discovery
+  /// Social hub sub-tab label: club events and classes from every public club, searched across clubs (named Discover before issue #1374)
   ///
   /// In en, this message translates to:
-  /// **'Discover'**
-  String get socialTabDiscover;
+  /// **'Events'**
+  String get socialTabEvents;
 
   /// Discover tab search field placeholder
   ///
@@ -9436,10 +9788,10 @@ abstract class AppLocalizations {
   /// **'Club members see you as {handle}.'**
   String clubDetailNameHint(String handle);
 
-  /// Second line of the club name hint, pointing at Settings > Account; web clubHome.nameHintAction
+  /// Second line of the club name hint; tapping the hint opens the Account page; web clubHome.nameHintAction
   ///
   /// In en, this message translates to:
-  /// **'You can add your name in your account settings.'**
+  /// **'Add your name to your account.'**
   String get clubDetailNameHintAction;
 
   /// Club role label (club_members.role owner); web clubRole.owner
@@ -9742,6 +10094,12 @@ abstract class AppLocalizations {
   /// **'No routes shared with this club yet.'**
   String get clubDetailRoutesEmpty;
 
+  /// Routes tab of a club when the read failed; shown with a Retry button instead of the empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this club\'s routes. Check your connection and try again.'**
+  String get clubDetailRoutesLoadFailed;
+
   /// Banner shown after adopting a plan template
   ///
   /// In en, this message translates to:
@@ -9765,6 +10123,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No plan templates yet for this club.'**
   String get clubDetailNoTemplates;
+
+  /// Templates tab of a club when the read failed; shown with a Retry button instead of the empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this club\'s templates. Check your connection and try again.'**
+  String get clubDetailTemplatesLoadFailed;
 
   /// Button to adopt a plan template
   ///
@@ -10078,11 +10442,11 @@ abstract class AppLocalizations {
   /// **'Could not update attendance. Please try again.'**
   String get eventAttendanceFailed;
 
-  /// Error banner when an RSVP write fails
+  /// Error banner when an RSVP write fails; {error} is the classified reason (offline, signed out, generic)
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t update your RSVP. Please try again.'**
-  String get eventRsvpFailed;
+  /// **'Couldn\'t update your RSVP: {error}'**
+  String eventRsvpFailed(String error);
 
   /// RSVP chip — going
   ///
@@ -11271,12 +11635,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn’t load the library. Retry.'**
   String get planLibraryLoadError;
-
-  /// Public plan library
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get planLibraryRetry;
 
   /// Public plan library
   ///
@@ -12733,7 +13091,7 @@ abstract class AppLocalizations {
   /// Consent gate data-processing paragraph
   ///
   /// In en, this message translates to:
-  /// **'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time in Settings → Account; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.'**
+  /// **'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time under Account in the You tab; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.'**
   String get coachConsentProcessing;
 
   /// Consent gate action paragraph
@@ -12922,10 +13280,10 @@ abstract class AppLocalizations {
   /// **'Daily limit reached. Come back tomorrow.'**
   String get coachLimitReachedPro;
 
-  /// Daily-cap banner for free tier
+  /// Daily-cap banner for free tier; followed by the See Pro link, so it gives no directions
   ///
   /// In en, this message translates to:
-  /// **'Daily limit reached. Pro gets a higher cap — upgrade in Settings.'**
+  /// **'Daily limit reached. Pro gets a higher cap.'**
   String get coachLimitReachedFree;
 
   /// Daily-cap banner: messages remaining today
@@ -13144,16 +13502,28 @@ abstract class AppLocalizations {
   /// **'Coach error ({code})'**
   String coachGenericError(int code);
 
+  /// Error when /api/coach answers 5xx before streaming
+  ///
+  /// In en, this message translates to:
+  /// **'Coach is unavailable right now. Try again in a moment.'**
+  String get coachUnavailable;
+
+  /// Error on 409 from /api/coach: a regenerate or edit was refused because the thread on this phone is out of date; reopening the Coach screen reloads it
+  ///
+  /// In en, this message translates to:
+  /// **'This conversation is out of date. Reopen the Coach and try again.'**
+  String get coachStaleThread;
+
   /// Error on transport-layer failure
   ///
   /// In en, this message translates to:
   /// **'Could not reach the Coach. Check your connection and try again.'**
   String get coachTransportError;
 
-  /// Fallback error message from the SSE error event
+  /// Shown when the Coach reply stream fails part-way; the server sends no text of its own
   ///
   /// In en, this message translates to:
-  /// **'stream failed'**
+  /// **'The Coach\'s reply was cut off. Try sending your message again.'**
   String get coachStreamFailed;
 
   /// Error starting a new conversation
@@ -13465,7 +13835,7 @@ abstract class AppLocalizations {
   /// Share-sheet caption for the full backup archive
   ///
   /// In en, this message translates to:
-  /// **'Run app backup'**
+  /// **'Threkir backup'**
   String get settingsAccountBackupShareText;
 
   /// Banner shown when the backup fails
@@ -13653,12 +14023,6 @@ abstract class AppLocalizations {
   /// **'Guided runs'**
   String get guidedRunsTitle;
 
-  /// Subtitle of the Guided runs tile
-  ///
-  /// In en, this message translates to:
-  /// **'Coach-voice scripted workouts with TTS cues'**
-  String get guidedRunsSubtitle;
-
   /// AppBar title for the Settings > Privacy zones screen, and the title of the Settings tile that opens it
   ///
   /// In en, this message translates to:
@@ -13812,7 +14176,7 @@ abstract class AppLocalizations {
   /// Persistent notice under the account-export tile when the device holds undrained runs
   ///
   /// In en, this message translates to:
-  /// **'{count} runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.'**
+  /// **'{count, plural, one{{count} run hasn\'t synced yet. The account export is built on the server, so it won\'t include it — use Full backup to keep it.} other{{count} runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.}}'**
   String settingsAccountExportUnsyncedWarning(int count);
 
   /// Persistent notice after a locally-built archive naming which archive the runner got
@@ -14427,6 +14791,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pro & support'**
   String get proTitle;
+
+  /// Link after every upsell message (coach limit, AI route descriptions, plate photo) that opens the Pro & support screen
+  ///
+  /// In en, this message translates to:
+  /// **'See Pro'**
+  String get proUpsellAction;
 
   /// Banner shown when an external URL can't be opened
   ///
@@ -15172,6 +15542,12 @@ abstract class AppLocalizations {
   /// **'No rotations yet. Create one to group a set of shoes or bikes.'**
   String get gearRotationsEmpty;
 
+  /// Rotations screen when the read failed; shown with Retry instead of the empty list
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your rotations. Nothing has been removed. Check your connection and try again.'**
+  String get gearRotationsLoadFailed;
+
   /// Label/hint for the rotation-name field
   ///
   /// In en, this message translates to:
@@ -15237,6 +15613,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t save rotation: {error}'**
   String gearRotationSaveFailed(Object error);
+
+  /// Banner when deleting a rotation fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete rotation: {error}'**
+  String gearRotationDeleteFailed(String error);
 
   /// Save/confirm button in the rotation member-edit sheet
   ///
@@ -15340,6 +15722,12 @@ abstract class AppLocalizations {
   /// **'{meters} m'**
   String privacyZonesRadiusMeters(int meters);
 
+  /// Privacy-zone editor note: zones saved under the 100 m minimum (the app once allowed 50 m) are read as the minimum, never smaller.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} zone was smaller than {meters} m and now covers {meters} m, the smallest a zone can be.} other{{count} zones were smaller than {meters} m and now cover {meters} m, the smallest a zone can be.}}'**
+  String privacyZonesRaisedToFloor(int count, int meters);
+
   /// Footer summarising the number of zones
   ///
   /// In en, this message translates to:
@@ -15412,11 +15800,77 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get discardChangesDiscard;
 
+  /// Banner shown when the person tries to leave a form while its save or create is still running; the page stays open until it finishes
+  ///
+  /// In en, this message translates to:
+  /// **'Still saving. You can leave when it finishes.'**
+  String get discardChangesBusy;
+
   /// AppBar title for the Settings > Preferences screen
   ///
   /// In en, this message translates to:
   /// **'Preferences'**
   String get prefsTitle;
+
+  /// Title of the Units & display preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Units & display'**
+  String get prefsPageDisplay;
+
+  /// What the Units & display page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Language, theme, distance and weight units, pace format, maps and the undo timer.'**
+  String get prefsPageDisplaySummary;
+
+  /// Title of the Recording & voice preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Recording & voice'**
+  String get prefsPageRecording;
+
+  /// What the Recording & voice page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'The activity a new recording starts as, and what your phone or watch says out loud while you run.'**
+  String get prefsPageRecordingSummary;
+
+  /// Title of the Training preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Training'**
+  String get prefsPageTraining;
+
+  /// What the Training page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Your weekly distance goal, heart rate and heart rate zones, race fuelling and the coach\'s tone.'**
+  String get prefsPageTrainingSummary;
+
+  /// Title of the Privacy & sharing preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & sharing'**
+  String get prefsPagePrivacy;
+
+  /// What the Privacy & sharing page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Who sees your runs, whether other runners can find you, privacy zones and error reports.'**
+  String get prefsPagePrivacySummary;
+
+  /// Title of the Notifications preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get prefsPageNotifications;
+
+  /// What the Notifications page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Which emails and push alerts you get, and the optional emails you can sign up for.'**
+  String get prefsPageNotificationsSummary;
 
   /// Notice on the Preferences screen when settings are served from the on-device copy because the server could not be reached
   ///
@@ -15694,12 +16148,6 @@ abstract class AppLocalizations {
   /// **'Analytical'**
   String get prefsCoachAnalytical;
 
-  /// Settings section label for notification preferences
-  ///
-  /// In en, this message translates to:
-  /// **'Notifications'**
-  String get prefsSectionNotifications;
-
   /// Tile and picker title for the email-notification preference
   ///
   /// In en, this message translates to:
@@ -15910,23 +16358,83 @@ abstract class AppLocalizations {
   /// **'Activity & recording'**
   String get prefsSectionActivityRecording;
 
-  /// Section header for training and demographics settings
-  ///
-  /// In en, this message translates to:
-  /// **'Training & demographics'**
-  String get prefsSectionTrainingDemographics;
-
-  /// Section header for privacy and sharing settings
-  ///
-  /// In en, this message translates to:
-  /// **'Privacy & sharing'**
-  String get prefsSectionPrivacySharing;
-
   /// Section header for AI coach settings
   ///
   /// In en, this message translates to:
   /// **'AI coach'**
   String get prefsSectionAiCoach;
+
+  /// Group label on the Units & display page
+  ///
+  /// In en, this message translates to:
+  /// **'Language & theme'**
+  String get prefsGroupLanguageTheme;
+
+  /// Group label on the Units & display page
+  ///
+  /// In en, this message translates to:
+  /// **'Units'**
+  String get prefsGroupUnits;
+
+  /// Group label on the Units & display page: detail level, home cards, map style, undo
+  ///
+  /// In en, this message translates to:
+  /// **'Maps & pages'**
+  String get prefsGroupMapsPages;
+
+  /// Group label on the Recording & voice page
+  ///
+  /// In en, this message translates to:
+  /// **'Voice feedback'**
+  String get prefsGroupVoiceFeedback;
+
+  /// Group label on the Training page
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly goal'**
+  String get prefsGroupWeeklyGoal;
+
+  /// Group label on the Training page: date of birth, resting and max HR, zones
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate zones'**
+  String get prefsGroupHeartRate;
+
+  /// Group label on the Training page: plan recovery
+  ///
+  /// In en, this message translates to:
+  /// **'Training plans'**
+  String get prefsGroupPlans;
+
+  /// Group label on the Privacy & sharing page
+  ///
+  /// In en, this message translates to:
+  /// **'Your runs'**
+  String get prefsGroupYourRuns;
+
+  /// Group label on the Privacy & sharing page: private profile, search, nearby
+  ///
+  /// In en, this message translates to:
+  /// **'Being found'**
+  String get prefsGroupBeingFound;
+
+  /// Group label on the Privacy & sharing page over the error-reports switch
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & telemetry'**
+  String get prefsGroupTelemetry;
+
+  /// Group label on the Notifications page
+  ///
+  /// In en, this message translates to:
+  /// **'Email and push'**
+  String get prefsGroupEmailPush;
+
+  /// Group label on the Notifications page
+  ///
+  /// In en, this message translates to:
+  /// **'Optional emails'**
+  String get prefsGroupOptionalEmails;
 
   /// Notice shown when the bag-backed settings are not yet available
   ///
@@ -16078,23 +16586,11 @@ abstract class AppLocalizations {
   /// **'Coach'**
   String get dashboardCoachTooltip;
 
-  /// Dashboard toolbar tooltip for the activity-feed action
-  ///
-  /// In en, this message translates to:
-  /// **'Activity feed'**
-  String get dashboardFeedTooltip;
-
   /// Dashboard toolbar tooltip for the year-in-running recap action
   ///
   /// In en, this message translates to:
   /// **'Year in running'**
   String get dashboardRecapTooltip;
-
-  /// Dashboard toolbar tooltip for opening the user's own profile
-  ///
-  /// In en, this message translates to:
-  /// **'Your profile'**
-  String get dashboardProfileTooltip;
 
   /// Dashboard empty-state welcome headline
   ///
@@ -16335,17 +16831,11 @@ abstract class AppLocalizations {
   /// **'History'**
   String get dashboardStreakHistory;
 
-  /// Singular day unit beside the current streak count
+  /// Unit word under the streak day count
   ///
   /// In en, this message translates to:
-  /// **'day'**
-  String get dashboardStreakDayUnit;
-
-  /// Plural days unit beside the current streak count
-  ///
-  /// In en, this message translates to:
-  /// **'days'**
-  String get dashboardStreakDaysUnit;
+  /// **'{count, plural, one{day} other{days}}'**
+  String dashboardStreakDayUnit(int count);
 
   /// Best run-streak readout when the best exceeds the current
   ///
@@ -16554,14 +17044,35 @@ abstract class AppLocalizations {
   /// Training-load subtitle when only volume-based load is available
   ///
   /// In en, this message translates to:
-  /// **'Volume-based — set resting + max HR in preferences and record with a strap to upgrade to TRIMP.'**
+  /// **'Volume-based — set resting + max HR and record with a strap to upgrade to TRIMP.'**
   String get trainingLoadSubtitleVolume;
+
+  /// Link under the volume-based training load subtitle; opens the Training preferences page, where resting and max HR are set
+  ///
+  /// In en, this message translates to:
+  /// **'Set heart rate'**
+  String get trainingLoadSetHeartRate;
 
   /// Empty-state text for the training-load chart
   ///
   /// In en, this message translates to:
   /// **'Record a few runs to see your fitness trend.'**
   String get trainingLoadEmpty;
+
+  /// Screen-reader summary of the training-load chart: where each line started and ended over the window
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness {ctlFrom} to {ctlTo}, fatigue {atlFrom} to {atlTo}, form {tsbFrom} to {tsbTo}, {from} to {to}'**
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  );
 
   /// Legend label for the CTL (fitness) series
   ///
@@ -16683,6 +17194,54 @@ abstract class AppLocalizations {
   /// **'Fitness'**
   String get fitnessTitle;
 
+  /// Fitness card advice line when the training-load kind is noData
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough data yet — log a few runs with HR and try again.'**
+  String get fitnessRecoveryAdviceNoData;
+
+  /// Fitness card advice line when the training-load kind is welcomeBack
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back. Your form numbers reset after the break — rebuild gradually with easy, consistent running before any hard sessions.'**
+  String get fitnessRecoveryAdviceWelcomeBack;
+
+  /// Fitness card advice line when the training-load kind is heavyLoad
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re heavily loaded — easy running or a rest day today.'**
+  String get fitnessRecoveryAdviceHeavyLoad;
+
+  /// Fitness card advice line when the training-load kind is building
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness is still building. Focus on consistency; one quality session a week is plenty for now.'**
+  String get fitnessRecoveryAdviceBuilding;
+
+  /// Fitness card advice line when the training-load kind is loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Loaded but within build territory. Easy / steady is right for today.'**
+  String get fitnessRecoveryAdviceLoaded;
+
+  /// Fitness card advice line when the training-load kind is sweetSpot
+  ///
+  /// In en, this message translates to:
+  /// **'Sweet spot — a steady run or a tempo effort works.'**
+  String get fitnessRecoveryAdviceSweetSpot;
+
+  /// Fitness card advice line when the training-load kind is tapering
+  ///
+  /// In en, this message translates to:
+  /// **'Tapering / freshening up — a race or hard workout will land well in the next few days.'**
+  String get fitnessRecoveryAdviceTapering;
+
+  /// Fitness card advice line when the training-load kind is veryFresh
+  ///
+  /// In en, this message translates to:
+  /// **'Very fresh — if you\'ve been tapering on purpose, race soon. Otherwise, it\'s time to build again.'**
+  String get fitnessRecoveryAdviceVeryFresh;
+
   /// Fitness card stat label for VO2 max
   ///
   /// In en, this message translates to:
@@ -16718,6 +17277,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recent runs long enough to count toward your fitness estimate.'**
   String get fitnessStatRunsTooltip;
+
+  /// Fitness card, under the recovery advice: days of easy running until the next hard session
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, one{Next hard session in ~{days} day of easy running.} other{Next hard session in ~{days} days of easy running.}}'**
+  String fitnessNextHardSession(int days);
 
   /// Fitness card stat label for CTL (chronic training load)
   ///
@@ -17841,6 +18406,42 @@ abstract class AppLocalizations {
   /// **'One-off'**
   String get eventFormRecurOneOff;
 
+  /// How an event repeats, on its detail page (OneOff)
+  ///
+  /// In en, this message translates to:
+  /// **'One-off event'**
+  String get eventRecurrenceOneOff;
+
+  /// How an event repeats, on its detail page (Monthly)
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats monthly'**
+  String get eventRecurrenceMonthly;
+
+  /// How an event repeats, on its detail page (Weekly)
+  ///
+  /// In en, this message translates to:
+  /// **'Every week'**
+  String get eventRecurrenceWeekly;
+
+  /// How an event repeats, on its detail page (Biweekly)
+  ///
+  /// In en, this message translates to:
+  /// **'Every other week'**
+  String get eventRecurrenceBiweekly;
+
+  /// How an event repeats, on its detail page (WithDays)
+  ///
+  /// In en, this message translates to:
+  /// **'{base} · {days}'**
+  String eventRecurrenceWithDays(String base, String days);
+
+  /// How an event repeats, on its detail page (DaySeparator)
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get eventRecurrenceDaySeparator;
+
   /// Recurrence option: weekly
   ///
   /// In en, this message translates to:
@@ -17858,12 +18459,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Monthly'**
   String get eventFormRecurMonthly;
-
-  /// Button to cancel the event form
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get eventFormCancel;
 
   /// Button to create the event
   ///
@@ -17996,12 +18591,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invite only'**
   String get clubFormJoinInvite;
-
-  /// Button to cancel the club form
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get clubFormCancel;
 
   /// Button to create the club
   ///
@@ -18174,7 +18763,7 @@ abstract class AppLocalizations {
   /// Body explaining the matched activities found
   ///
   /// In en, this message translates to:
-  /// **'We found {count, plural, one{{count} {activity} activity} other{{count} {activity} activities}} after you bought them. Uncheck any you weren\'t wearing them for.'**
+  /// **'We found {count, plural, one{{count} {activity} activity} other{{count} {activity} activities}} since you bought this gear. Uncheck any it wasn\'t used for.'**
   String gearBackfillBody(int count, String activity);
 
   /// Activity word for bikes in the backfill body
@@ -18429,16 +19018,10 @@ abstract class AppLocalizations {
   /// **'In {count} min'**
   String upcomingEventInMinutes(int count);
 
-  /// Relative time: in one hour
-  ///
-  /// In en, this message translates to:
-  /// **'In 1 hour'**
-  String get upcomingEventInOneHour;
-
   /// Relative time: in N hours
   ///
   /// In en, this message translates to:
-  /// **'In {count} hours'**
+  /// **'{count, plural, one{In {count} hour} other{In {count} hours}}'**
   String upcomingEventInHours(int count);
 
   /// Relative time: tomorrow
@@ -18828,7 +19411,7 @@ abstract class AppLocalizations {
   /// Empty state in the gear picker
   ///
   /// In en, this message translates to:
-  /// **'You haven\'t registered any gear yet. Add some in Settings → Gear.'**
+  /// **'You haven\'t registered any gear yet.'**
   String get runGearChipsEmpty;
 
   /// Cancel button in the gear picker
@@ -18932,12 +19515,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notes'**
   String get gearFormNotesLabel;
-
-  /// Button to cancel the gear form
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get gearFormCancel;
 
   /// Button label while the gear is saving
   ///
@@ -19064,6 +19641,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notifications'**
   String get notificationBellTooltip;
+
+  /// Tooltip and screen-reader name of the notifications bell when there are unread notifications
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Notifications, {count} unread} other{Notifications, {count} unread}}'**
+  String notificationBellUnread(int count);
 
   /// Overlay shown while waiting for the first GPS fix
   ///
@@ -19197,17 +19780,23 @@ abstract class AppLocalizations {
   /// **'{value} kilometres'**
   String ttsDistanceKm(String value);
 
+  /// Spoken distance in whole kilometres
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} kilometre} other{{count} kilometres}}'**
+  String ttsDistanceWholeKm(int count);
+
   /// Spoken distance in metres
   ///
   /// In en, this message translates to:
   /// **'{value} metres'**
   String ttsDistanceMetres(int value);
 
-  /// Spoken distance of exactly one mile
+  /// Spoken distance in whole miles
   ///
   /// In en, this message translates to:
-  /// **'{value} mile'**
-  String ttsDistanceMileSingular(String value);
+  /// **'{count, plural, one{{count} mile} other{{count} miles}}'**
+  String ttsDistanceWholeMiles(int count);
 
   /// Spoken distance in miles (plural; value may be integer or decimal string)
   ///
@@ -19839,12 +20428,6 @@ abstract class AppLocalizations {
   /// **'Sign-in, profile, import and backup, delete account'**
   String get settingsTabAccountSubtitle;
 
-  /// Settings landing: Preferences tile subtitle
-  ///
-  /// In en, this message translates to:
-  /// **'Units, theme, recording, training, privacy'**
-  String get settingsTabPreferencesSubtitle;
-
   /// Settings landing: Integrations tile subtitle
   ///
   /// In en, this message translates to:
@@ -19862,12 +20445,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Track shoes + bikes and per-item mileage'**
   String get settingsTabGearSubtitle;
-
-  /// Settings landing: Coaching tile subtitle
-  ///
-  /// In en, this message translates to:
-  /// **'Coach athletes or follow your own coach'**
-  String get settingsTabCoachingSubtitle;
 
   /// Settings landing: Pro & support tile subtitle
   ///
@@ -20112,7 +20689,7 @@ abstract class AppLocalizations {
   /// Records card: distinct session count for an exercise
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one{1 session} other{{count} sessions}}'**
+  /// **'{count, plural, one{{count} session} other{{count} sessions}}'**
   String gymRecordsSessions(int count);
 
   /// No description provided for @gymExerciseBack.
@@ -20709,11 +21286,23 @@ abstract class AppLocalizations {
   /// **'Adopting…'**
   String get gymLibraryAdopting;
 
+  /// Adopt button label once the routine has been copied, so a second tap cannot make another copy
+  ///
+  /// In en, this message translates to:
+  /// **'Added to my routines'**
+  String get gymLibraryAdopted;
+
   /// Error after a failed public-routine adopt
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t adopt the routine.'**
   String get gymLibraryAdoptFailed;
+
+  /// Banner when the routine was copied on the server but this phone could not fetch the copy yet; the adopt itself succeeded
+  ///
+  /// In en, this message translates to:
+  /// **'Added to your routines. It will show there once this phone syncs.'**
+  String get gymLibraryAdoptedNotSynced;
 
   /// No description provided for @gymRoutineDelete.
   ///
@@ -21270,7 +21859,7 @@ abstract class AppLocalizations {
   /// The endpoint refused for want of AI disclosure v5
   ///
   /// In en, this message translates to:
-  /// **'The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.'**
+  /// **'The plate-photo logger needs the updated AI disclosure.'**
   String get platePhotoErrorConsent;
 
   /// The endpoint refused because the runner is not Pro
@@ -21426,10 +22015,10 @@ abstract class AppLocalizations {
   /// No description provided for @nutritionNoTargets.
   ///
   /// In en, this message translates to:
-  /// **'Add your height, weight, age and sex to see calorie + macro targets.'**
+  /// **'Add your height, weight, age and gender to see calorie + macro targets.'**
   String get nutritionNoTargets;
 
-  /// CTA on the nutrition rings card that opens Settings > Body metrics
+  /// CTA on the nutrition rings card that opens the Body metrics page
   ///
   /// In en, this message translates to:
   /// **'Add body metrics'**
@@ -21531,16 +22120,16 @@ abstract class AppLocalizations {
   /// **'Body metrics'**
   String get nutritionTargetsMetricsHeading;
 
-  /// Hint explaining that body metrics are health data edited in Settings behind the consent gate
+  /// Hint explaining that body metrics are health data edited behind the consent gate; the Edit body metrics button beside the heading opens them
   ///
   /// In en, this message translates to:
-  /// **'Height, weight, date of birth and sex are health data, so they\'re edited in Settings behind their consent gate.'**
+  /// **'Height, weight, date of birth and gender are health data, so they\'re edited behind their consent gate.'**
   String get nutritionTargetsMetricsHint;
 
-  /// Action opening the consent-gated body-metrics editor in Settings
+  /// Action opening the consent-gated Body metrics page
   ///
   /// In en, this message translates to:
-  /// **'Edit in Settings'**
+  /// **'Edit body metrics'**
   String get nutritionTargetsEditMetrics;
 
   /// Placeholder for a body metric the user has not provided
@@ -21558,7 +22147,7 @@ abstract class AppLocalizations {
   /// Body of the no-targets-yet state on the targets screen
   ///
   /// In en, this message translates to:
-  /// **'Add your height, weight, date of birth and sex and your calorie + macro targets appear here.'**
+  /// **'Add your height, weight, date of birth and gender and your calorie + macro targets appear here.'**
   String get nutritionTargetsEmptyBody;
 
   /// Body-metrics row label for age
@@ -21830,6 +22419,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Searching…'**
   String get nutritionSearching;
+
+  /// A food search result's energy, per 100 g of the food
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal / 100 g'**
+  String nutritionSearchKcalPer100g(int kcal);
 
   /// No description provided for @nutritionNoResults.
   ///
@@ -22670,6 +23265,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Every athlete at a glance — load, plan compliance, and injury risk.'**
   String get coachingRosterSubtitle;
+
+  /// Inline error on the coaching roster card when its read failed, beside a Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your athlete roster.'**
+  String get coachingRosterLoadFailed;
 
   /// Roster cell when athlete has no runs
   ///
@@ -23894,17 +24495,11 @@ abstract class AppLocalizations {
   /// **'{rate} per day to finish'**
   String challengesPaceNeedPerDay(String rate);
 
-  /// Days-left label
+  /// Challenge window: days left, rounded up; 1 reads as ending today
   ///
   /// In en, this message translates to:
-  /// **'Ends in {n} days'**
+  /// **'{n, plural, =1{Ends today} other{Ends in {n} days}}'**
   String challengesEndsIn(int n);
-
-  /// Ends-today label
-  ///
-  /// In en, this message translates to:
-  /// **'Ends today'**
-  String get challengesEndsToday;
 
   /// Past-end label
   ///
@@ -24194,17 +24789,11 @@ abstract class AppLocalizations {
   /// **'#{rank} of {total}'**
   String challengesStandingRank(int rank, int total);
 
-  /// Standing card: exactly one other entrant shares the viewer rank
+  /// Standing card: how many other entrants share the viewer rank
   ///
   /// In en, this message translates to:
-  /// **'Tied with 1 other'**
-  String get challengesStandingTiedOne;
-
-  /// Standing card: several other entrants share the viewer rank
-  ///
-  /// In en, this message translates to:
-  /// **'Tied with {n} others'**
-  String challengesStandingTiedMany(int n);
+  /// **'{n, plural, one{Tied with {n} other} other{Tied with {n} others}}'**
+  String challengesStandingTied(int n);
 
   /// Standing card: metric gap to the nearest entrant ranked above
   ///
@@ -24410,6 +24999,42 @@ abstract class AppLocalizations {
   /// **'Run any time'**
   String get racesSectionAnyTime;
 
+  /// Accessible name of the All / Races / Courses switch at the top of Races & courses. Mirrors web races.showGroup
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get racesShowGroup;
+
+  /// Switch option on Races & courses: show both the race calendar and the park courses. Mirrors web races.showAll
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get racesShowAll;
+
+  /// Switch option on Races & courses: show only the race calendar. Mirrors web races.showRaces
+  ///
+  /// In en, this message translates to:
+  /// **'Races'**
+  String get racesShowRaces;
+
+  /// Switch option on Races & courses: show only the park courses, every one of them. Mirrors web races.showCourses
+  ///
+  /// In en, this message translates to:
+  /// **'Courses'**
+  String get racesShowCourses;
+
+  /// Heading of the row of park cards that leads the Courses view of Races & courses. Mirrors web races.anyTimeParks
+  ///
+  /// In en, this message translates to:
+  /// **'Parks'**
+  String get racesAnyTimeParks;
+
+  /// Screen-reader name of a park's name shown as a link to its park screen, on a course card or a course screen. {park} is the visible text, kept first. Mirrors web races.anyTimeParkLink
+  ///
+  /// In en, this message translates to:
+  /// **'{park}: park page'**
+  String racesAnyTimeParkLink(String park);
+
   /// A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest
   ///
   /// In en, this message translates to:
@@ -24446,35 +25071,11 @@ abstract class AppLocalizations {
   /// **'Search races by name…'**
   String get racesSearchPlaceholder;
 
-  /// Label of the button that opens the race calendar's filter sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Filters'**
-  String get racesFilters;
-
-  /// Screen-reader label of the Filters button when filters are on. {count} is how many.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{Filters, 1 on} other{Filters, {count} on}}'**
-  String racesFiltersCount(int count);
-
-  /// Tooltip and screen-reader label of the remove action on an active race-calendar filter chip. {filter} is the chip's own label.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove filter: {filter}'**
-  String racesRemoveFilter(String filter);
-
   /// Active-filter chip for the near-a-place filter. {place} is what the runner typed.
   ///
   /// In en, this message translates to:
   /// **'Near {place}'**
   String racesNearChip(String place);
-
-  /// Button that closes the race calendar's filter sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get racesFiltersDone;
 
   /// Heading over the distance-band chips in the race calendar filter sheet
   ///
@@ -24553,6 +25154,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tailor it with AI'**
   String get racesTailorWithAi;
+
+  /// A sentence of the AI plan box prefill a race opens (Race)
+  ///
+  /// In en, this message translates to:
+  /// **'Race: {name} on {date}.'**
+  String racePlanDescribeRace(String name, String date);
+
+  /// A sentence of the AI plan box prefill a race opens (Distance)
+  ///
+  /// In en, this message translates to:
+  /// **'Distance: {distance}.'**
+  String racePlanDescribeDistance(String distance);
+
+  /// A sentence of the AI plan box prefill a race opens (Goal)
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time: {time}.'**
+  String racePlanDescribeGoal(String time);
+
+  /// A sentence of the AI plan box prefill a race opens (Recent)
+  ///
+  /// In en, this message translates to:
+  /// **'Recent effort: {distance} in {time}, {days, plural, =0{today} one{{days} day ago} other{{days} days ago}}.'**
+  String racePlanDescribeRecent(String distance, String time, int days);
+
+  /// A sentence of the AI plan box prefill a race opens (Course)
+  ///
+  /// In en, this message translates to:
+  /// **'Course: {parts}.'**
+  String racePlanDescribeCourse(String parts);
+
+  /// A sentence of the AI plan box prefill a race opens (Ascent)
+  ///
+  /// In en, this message translates to:
+  /// **'{climb} ascent'**
+  String racePlanDescribeAscent(String climb);
+
+  /// A sentence of the AI plan box prefill a race opens (Descent)
+  ///
+  /// In en, this message translates to:
+  /// **'{climb} descent'**
+  String racePlanDescribeDescent(String climb);
+
+  /// A sentence of the AI plan box prefill a race opens (Surface)
+  ///
+  /// In en, this message translates to:
+  /// **'surface: {surface}'**
+  String racePlanDescribeSurface(String surface);
+
+  /// A sentence of the AI plan box prefill a race opens (ListSeparator)
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get racePlanDescribeListSeparator;
 
   /// Race detail: action that builds a plan for this race starting after the runner's current plan ends.
   ///
@@ -25286,6 +25941,12 @@ abstract class AppLocalizations {
   /// **'No condition reports yet.'**
   String get routeConditionsEmpty;
 
+  /// Inline error in the route condition-reports panel when the reports could not be read; distinct from the empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load condition reports. Check your connection and try again.'**
+  String get routeConditionsLoadFailed;
+
   /// Loading state for the route condition-reports panel
   ///
   /// In en, this message translates to:
@@ -25520,6 +26181,12 @@ abstract class AppLocalizations {
   /// **'{name} earned the {badge} badge'**
   String badgesFeedEarned(String name, String badge);
 
+  /// One-line error in place of the feed's badge strip when the read of recent badges from followed people failed; a Retry button sits beside it
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the latest badges from people you follow.'**
+  String get feedBadgesLoadFailed;
+
   /// Fallback name when a badge awardee has no display name
   ///
   /// In en, this message translates to:
@@ -25556,11 +26223,11 @@ abstract class AppLocalizations {
   /// **'First 5K'**
   String get badgesDistanceSingle5kLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 5 km in a single run'**
-  String get badgesDistanceSingle5kDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingle5kDesc(String distance);
 
   /// Badge label
   ///
@@ -25568,11 +26235,11 @@ abstract class AppLocalizations {
   /// **'Half marathon'**
   String get badgesDistanceSingleHalfLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 21.1 km in a single run'**
-  String get badgesDistanceSingleHalfDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingleHalfDesc(String distance);
 
   /// Badge label
   ///
@@ -25580,11 +26247,11 @@ abstract class AppLocalizations {
   /// **'Marathon'**
   String get badgesDistanceSingleMarathonLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 42.2 km in a single run'**
-  String get badgesDistanceSingleMarathonDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingleMarathonDesc(String distance);
 
   /// Badge label
   ///
@@ -25592,59 +26259,59 @@ abstract class AppLocalizations {
   /// **'Ultra'**
   String get badgesDistanceSingleUltraLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 50 km or more in a single run'**
-  String get badgesDistanceSingleUltraDesc;
+  /// **'Ran {distance} or more in a single run'**
+  String badgesDistanceSingleUltraDesc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'100 km club'**
-  String get badgesDistanceLifetime100Label;
+  /// **'{distance} club'**
+  String badgesDistanceLifetime100Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'100 km logged all-time'**
-  String get badgesDistanceLifetime100Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime100Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'500 km'**
-  String get badgesDistanceLifetime500Label;
+  /// **'{distance}'**
+  String badgesDistanceLifetime500Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'500 km logged all-time'**
-  String get badgesDistanceLifetime500Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime500Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'1,000 km club'**
-  String get badgesDistanceLifetime1000Label;
+  /// **'{distance} club'**
+  String badgesDistanceLifetime1000Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'1,000 km logged all-time'**
-  String get badgesDistanceLifetime1000Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime1000Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'5,000 km'**
-  String get badgesDistanceLifetime5000Label;
+  /// **'{distance}'**
+  String badgesDistanceLifetime5000Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'5,000 km logged all-time'**
-  String get badgesDistanceLifetime5000Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime5000Desc(String distance);
 
   /// Badge label
   ///
@@ -25886,6 +26553,54 @@ abstract class AppLocalizations {
   /// **'Completed a park passport in 10 states'**
   String get badgesParkPassport10Desc;
 
+  /// Park course monthly boards (#1343) (badges.parkMonths3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park months'**
+  String get badgesParkMonths3Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 3 different months'**
+  String get badgesParkMonths3Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths6.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Half a year of parks'**
+  String get badgesParkMonths6Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths6.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 6 different months'**
+  String get badgesParkMonths6Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths12.label)
+  ///
+  /// In en, this message translates to:
+  /// **'A year of parks'**
+  String get badgesParkMonths12Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths12.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 12 different months'**
+  String get badgesParkMonths12Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths24.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Two years of parks'**
+  String get badgesParkMonths24Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths24.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 24 different months'**
+  String get badgesParkMonths24Desc;
+
   /// Title of the dashboard race-time predictor card
   ///
   /// In en, this message translates to:
@@ -25969,6 +26684,286 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Riegel equivalence from your best recent effort, recency-weighted. Closer distances are more reliable.'**
   String get racePredictorFootnote;
+
+  /// Debug-build Settings row that opens the timing-line calibration tool
+  ///
+  /// In en, this message translates to:
+  /// **'Line calibration'**
+  String get lineCalibrationEntryTitle;
+
+  /// Subtitle of the debug-build calibration row
+  ///
+  /// In en, this message translates to:
+  /// **'Debug build: timing-line error figures'**
+  String get lineCalibrationEntrySubtitle;
+
+  /// Title of the debug-build timing-line calibration screen
+  ///
+  /// In en, this message translates to:
+  /// **'Line calibration (debug)'**
+  String get lineCalibrationTitle;
+
+  /// How a calibration session runs; the quoted tab is navRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.'**
+  String get lineCalibrationIntro;
+
+  /// Capture status while recording; count is GPS fixes held
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Capturing: {count} fix} other{Capturing: {count} fixes}}'**
+  String lineCalibrationCapturing(int count);
+
+  /// Capture status while stopped; count is GPS fixes held
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Idle: {count} fix held} other{Idle: {count} fixes held}}'**
+  String lineCalibrationIdle(int count);
+
+  /// Button that starts a calibration capture
+  ///
+  /// In en, this message translates to:
+  /// **'Start capture'**
+  String get lineCalibrationStart;
+
+  /// Button that stops a calibration capture
+  ///
+  /// In en, this message translates to:
+  /// **'Stop capture'**
+  String get lineCalibrationStop;
+
+  /// Button that redraws the capture status
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get lineCalibrationRefresh;
+
+  /// Field label: latitude of the timing line centre
+  ///
+  /// In en, this message translates to:
+  /// **'Line centre latitude'**
+  String get lineCalibrationLatLabel;
+
+  /// Field label: longitude of the timing line centre
+  ///
+  /// In en, this message translates to:
+  /// **'Line centre longitude'**
+  String get lineCalibrationLngLabel;
+
+  /// Field label: compass bearing a runner crosses the line in, in degrees
+  ///
+  /// In en, this message translates to:
+  /// **'Bearing of travel (degrees)'**
+  String get lineCalibrationBearingLabel;
+
+  /// Field label: half the timing line width, in metres
+  ///
+  /// In en, this message translates to:
+  /// **'Half-width (m)'**
+  String get lineCalibrationHalfWidthLabel;
+
+  /// Button that fills the line centre from the current position
+  ///
+  /// In en, this message translates to:
+  /// **'Centre at my position'**
+  String get lineCalibrationHere;
+
+  /// Button that measures the device-to-server clock offset over count round trips
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Measure server clock ({count} round trip)} other{Measure server clock ({count} round trips)}}'**
+  String lineCalibrationMeasure(int count);
+
+  /// Field label: the clock offset, in milliseconds
+  ///
+  /// In en, this message translates to:
+  /// **'Clock offset (ms)'**
+  String get lineCalibrationOffsetLabel;
+
+  /// Helper under the clock offset field: which clock is subtracted from which
+  ///
+  /// In en, this message translates to:
+  /// **'Server minus device'**
+  String get lineCalibrationOffsetHelper;
+
+  /// Dropdown label: the angle the runner approaches the line at
+  ///
+  /// In en, this message translates to:
+  /// **'Approach'**
+  String get lineCalibrationApproachLabel;
+
+  /// Approach option: crossing square to the line
+  ///
+  /// In en, this message translates to:
+  /// **'At 90° to the line'**
+  String get lineCalibrationApproach90;
+
+  /// Approach option: crossing at a shallow angle
+  ///
+  /// In en, this message translates to:
+  /// **'At 30° to the line'**
+  String get lineCalibrationApproach30;
+
+  /// Approach option: running alongside the line 20 m off it, never crossing
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel, 20 m away'**
+  String get lineCalibrationApproachParallel20;
+
+  /// Approach option: running alongside the line 40 m off it, never crossing
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel, 40 m away'**
+  String get lineCalibrationApproachParallel40;
+
+  /// Approach option: standing still on the line
+  ///
+  /// In en, this message translates to:
+  /// **'Standing on the line'**
+  String get lineCalibrationApproachStanding;
+
+  /// Dropdown label: how fast the tester moves
+  ///
+  /// In en, this message translates to:
+  /// **'Pace'**
+  String get lineCalibrationPaceLabel;
+
+  /// Pace option
+  ///
+  /// In en, this message translates to:
+  /// **'Walk'**
+  String get lineCalibrationPaceWalk;
+
+  /// Pace option
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get lineCalibrationPaceRun;
+
+  /// Pace option: not moving
+  ///
+  /// In en, this message translates to:
+  /// **'Standing still'**
+  String get lineCalibrationPaceStill;
+
+  /// Dropdown label: where the phone is carried
+  ///
+  /// In en, this message translates to:
+  /// **'Carry'**
+  String get lineCalibrationCarryLabel;
+
+  /// Carry option
+  ///
+  /// In en, this message translates to:
+  /// **'Phone in hand'**
+  String get lineCalibrationCarryHand;
+
+  /// Carry option
+  ///
+  /// In en, this message translates to:
+  /// **'Phone in pocket'**
+  String get lineCalibrationCarryPocket;
+
+  /// Field label: the true crossing times, typed one per line
+  ///
+  /// In en, this message translates to:
+  /// **'True crossing instants'**
+  String get lineCalibrationInstantsLabel;
+
+  /// Field hint: two example formats, a time of day and an ISO-8601 instant
+  ///
+  /// In en, this message translates to:
+  /// **'{time} or {instant}'**
+  String lineCalibrationInstantsHint(String time, String instant);
+
+  /// Field helper: how a bare time of day is read
+  ///
+  /// In en, this message translates to:
+  /// **'One per line. A time of day is read in this phone\'s time zone on the capture day; give an ISO instant with its zone across midnight or when the reference clock shows UTC.'**
+  String get lineCalibrationInstantsHelper;
+
+  /// Problem: the server clock could not be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the server clock; enter the offset by hand.'**
+  String get lineCalibrationClockFailed;
+
+  /// Problem: no GPS position for Centre at my position
+  ///
+  /// In en, this message translates to:
+  /// **'No position fix.'**
+  String get lineCalibrationNoFix;
+
+  /// Problem: the line fields are empty or invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the line: centre, bearing of travel, half-width.'**
+  String get lineCalibrationLineMissing;
+
+  /// Problem: no clock offset
+  ///
+  /// In en, this message translates to:
+  /// **'Measure or enter the clock offset.'**
+  String get lineCalibrationOffsetMissing;
+
+  /// Problem: the instants do not parse; time is the HH:MM:SS.fff pattern
+  ///
+  /// In en, this message translates to:
+  /// **'One instant per line: {time} or ISO-8601.'**
+  String lineCalibrationInstantsInvalid(String time);
+
+  /// Problem: the capture has fewer than two GPS fixes
+  ///
+  /// In en, this message translates to:
+  /// **'The capture holds fewer than two fixes.'**
+  String get lineCalibrationFewFixes;
+
+  /// Problem: the line geometry is degenerate
+  ///
+  /// In en, this message translates to:
+  /// **'That line is not usable.'**
+  String get lineCalibrationLineUnusable;
+
+  /// Button that scores the capture against the entered instants
+  ///
+  /// In en, this message translates to:
+  /// **'Score this capture'**
+  String get lineCalibrationScore;
+
+  /// One scored capture's figures; median, p50, p95 and offset are a number or a dash
+  ///
+  /// In en, this message translates to:
+  /// **'{matched} of {total} matched, {missed} missed, {falseCount} false, {near} near; median {median} ms, |err| p50 {p50} ms, p95 {p95} ms; offset ±{offset} ms'**
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  );
+
+  /// Under a result that matched nothing: detections sit a median of ms milliseconds from the true crossings
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matched, yet detections sit a median {ms} ms from the truths: check the clock, the offset and the time zone.'**
+  String lineCalibrationNothingMatched(int ms);
+
+  /// Button that shares the results CSV
+  ///
+  /// In en, this message translates to:
+  /// **'Share CSV'**
+  String get lineCalibrationShare;
+
+  /// Button that copies the results CSV
+  ///
+  /// In en, this message translates to:
+  /// **'Copy CSV'**
+  String get lineCalibrationCopy;
 
   /// No description provided for @settingsSectionDeveloper.
   ///
@@ -27710,6 +28705,12 @@ abstract class AppLocalizations {
   /// **'Surface'**
   String get segmentCatalogueStatSurface;
 
+  /// Link on a catalogue segment's screen to the park course built on it. Mirrors web segmentDetail.parkCourseLink
+  ///
+  /// In en, this message translates to:
+  /// **'Park course at {park}'**
+  String segmentCatalogueParkCourseLink(String park);
+
   /// Section header for a catalogue segment’s leaderboard
   ///
   /// In en, this message translates to:
@@ -28213,6 +29214,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue'**
   String get confirmAgeContinue;
+
+  /// Top banner (with a Sign out action) when Back is pressed on the age and terms gate, which cannot be dismissed
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm both to continue, or sign out to leave.'**
+  String get confirmAgeBackHint;
 
   /// Consent gate: error shown when recording the confirmations fails
   ///
@@ -29564,6 +30571,24 @@ abstract class AppLocalizations {
   /// **'Open a runner\'s profile and tap Message to start a conversation.'**
   String get messagesEmptyBody;
 
+  /// The Messages inbox's primary action and the title of the sheet it opens, which picks the person to write to
+  ///
+  /// In en, this message translates to:
+  /// **'New message'**
+  String get messagesNewMessage;
+
+  /// The New message sheet when the runner follows nobody and nobody follows them
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody to message yet. You can message people you follow or who follow you.'**
+  String get messagesNewMessageNobody;
+
+  /// The New message sheet when the follow lists failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the people you can message.'**
+  String get messagesNewMessageLoadFailed;
+
   /// Inbox failed to load
   ///
   /// In en, this message translates to:
@@ -30151,6 +31176,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Follow requests'**
   String get followRequestsTitle;
+
+  /// Subtitle of the Follow requests row in the You tab Profile group
+  ///
+  /// In en, this message translates to:
+  /// **'People asking to follow your private profile'**
+  String get youFollowRequestsSubtitle;
 
   /// Empty state title on the follow requests screen
   ///
@@ -31561,6 +32592,30 @@ abstract class AppLocalizations {
   /// **'Couldn\'t refresh. Showing what was last loaded.'**
   String get commonStaleRefreshFailed;
 
+  /// Confirmation after a save that landed on the phone but has not reached the server yet; the sync carries on in the background
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this phone. It will sync when you\'re back online.'**
+  String get commonSavedOnPhone;
+
+  /// Confirmation after a delete that landed on the phone but has not reached the server yet
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted on this phone. It will sync when you\'re back online.'**
+  String get commonDeletedOnPhone;
+
+  /// Top banner while a tapped notification is looked up before its screen opens (a club or event read on a slow connection)
+  ///
+  /// In en, this message translates to:
+  /// **'Opening…'**
+  String get pushTargetOpening;
+
+  /// Top banner, with Retry, when a tapped notification could not be opened; {error} is the classified reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open that notification: {error}'**
+  String pushTargetOpenFailed(String error);
+
   /// Tooltip on the plan detail app-bar overflow menu
   ///
   /// In en, this message translates to:
@@ -32687,7 +33742,7 @@ abstract class AppLocalizations {
   /// **'Plans give runners aged 50 and over more recovery automatically.'**
   String get planNewDobHintAbsent;
 
-  /// Button opening Settings → Preferences, where the date of birth is edited.
+  /// Button opening the Training preferences page, where the date of birth is edited.
   ///
   /// In en, this message translates to:
   /// **'Add your date of birth'**
@@ -32699,7 +33754,7 @@ abstract class AppLocalizations {
   /// **'Plans can only use your date of birth to adjust for age with your consent to health-data use.'**
   String get planNewDobHintHealthData;
 
-  /// Button opening Settings → Body metrics, where health-data consent is reviewed.
+  /// Button opening the Body metrics page, where health-data consent is reviewed.
   ///
   /// In en, this message translates to:
   /// **'Review consent'**
@@ -32795,17 +33850,17 @@ abstract class AppLocalizations {
   /// **'How much detail'**
   String get prefsDisclosureLevel;
 
-  /// Settings row and sheet title listing the Home trend groups to show or hide
+  /// Units & display row and dialog title listing the Progress page's trend groups to show or hide
   ///
   /// In en, this message translates to:
-  /// **'Home cards'**
-  String get prefsHomeCards;
+  /// **'Progress cards'**
+  String get prefsProgressCards;
 
-  /// Explanation under the Home cards setting
+  /// Explanation under the Progress cards setting
   ///
   /// In en, this message translates to:
-  /// **'Untick a group to take it off Home. The choice follows you to every device.'**
-  String get prefsHomeCardsHint;
+  /// **'Untick a group to take it off the Progress page. The choice follows you to every device.'**
+  String get prefsProgressCardsHint;
 
   /// Disclosure-level option: no stored level, derived from the onboarding goal and run count
   ///
@@ -32843,11 +33898,17 @@ abstract class AppLocalizations {
   /// **'Training load'**
   String get dashboardTrainingLoadSection;
 
-  /// One-line explanation under the Training load expander title on Home; names where the level is changed
+  /// One-line explanation under the Training load expander title on Progress; the link below it opens the page where the level is changed
   ///
   /// In en, this message translates to:
-  /// **'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.'**
+  /// **'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it.'**
   String get dashboardTrainingLoadSectionHint;
+
+  /// Link under the folded Training load section on Progress; opens the Units & display page where the How much detail level is set
+  ///
+  /// In en, this message translates to:
+  /// **'Change how much detail'**
+  String get dashboardTrainingLoadSectionAction;
 
   /// Letter-spaced kicker on the recap share image, printed in capitals; period is a year or a month and year
   ///
@@ -33203,6 +34264,60 @@ abstract class AppLocalizations {
   /// **'Couldn\'t change the delay. Try again.'**
   String get streamerOverlayDelayFailed;
 
+  /// Switch on the streamer overlay sheet: draw the route trace on the OBS overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Show a route trace'**
+  String get streamerOverlayShowMap;
+
+  /// Under the route-trace switch
+  ///
+  /// In en, this message translates to:
+  /// **'Draws the route so far, with your privacy zones left out. No map tiles are loaded.'**
+  String get streamerOverlayShowMapHelp;
+
+  /// Switch on the streamer overlay sheet: show heart rate on the overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Show heart rate'**
+  String get streamerOverlayShowHeartRate;
+
+  /// Under the heart-rate switch while health-data consent is on
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate is health data. It\'s shown only while your health-data consent is on.'**
+  String get streamerOverlayShowHeartRateHelp;
+
+  /// Under the heart-rate switch while health-data consent is off; a Review consent button follows
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate is health data. Turn on health-data consent to show it.'**
+  String get streamerOverlayHeartRateNeedsConsent;
+
+  /// Button: opens Body metrics, where health-data consent is turned on
+  ///
+  /// In en, this message translates to:
+  /// **'Review consent'**
+  String get streamerOverlayReviewConsent;
+
+  /// Notice after the heart-rate switch is saved
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay settings saved'**
+  String get streamerOverlaySettingsSaved;
+
+  /// Notice after the route-trace switch is saved: the overlay URL now differs
+  ///
+  /// In en, this message translates to:
+  /// **'Saved. The link changed: copy it into your streaming app again.'**
+  String get streamerOverlayLinkChanged;
+
+  /// Notice when saving an overlay switch fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the overlay settings. Please try again.'**
+  String get streamerOverlaySaveFailed;
+
   /// Error when the overlay settings cannot be read
   ///
   /// In en, this message translates to:
@@ -33220,12 +34335,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The streamer overlay isn\'t available right now.'**
   String get streamerOverlayUnavailable;
-
-  /// Note naming the web settings page where the route trace and heart rate are turned on
-  ///
-  /// In en, this message translates to:
-  /// **'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.'**
-  String get streamerOverlayMapHeartRateNote;
 
   /// Live spectator stat label for the runner's current heart rate
   ///
@@ -33359,11 +34468,22 @@ abstract class AppLocalizations {
   /// **'Park course time'**
   String get shareCardCourseKicker;
 
-  /// Park courses phase 5 (runShare.courseRank)
+  /// Park course monthly boards (#1343): the sticker's month place (runShare.courseMonthRank)
   ///
   /// In en, this message translates to:
-  /// **'#{rank} in {season}'**
-  String shareCardCourseRank(String rank, String season);
+  /// **'#{rank} in {month}'**
+  String shareCardCourseMonthRank(String rank, String month);
+
+  /// Park course monthly boards (#1343): the sticker's month place with a top-10 year place (runShare.courseRanks)
+  ///
+  /// In en, this message translates to:
+  /// **'#{monthRank} in {month} · #{seasonRank} in {season}'**
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  );
 
   /// Run detail action that opens the share sheet on the PR card
   ///
@@ -34133,6 +35253,12 @@ abstract class AppLocalizations {
   /// **'Most completions'**
   String get parksBoardCompletions;
 
+  /// Park course monthly boards (#1343): web key parks.periodThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get parksPeriodThisMonth;
+
   /// Park courses (#1313): web key parks.seasonThisYear.
   ///
   /// In en, this message translates to:
@@ -34145,11 +35271,35 @@ abstract class AppLocalizations {
   /// **'All time'**
   String get parksSeasonAllTime;
 
+  /// Park course monthly boards (#1343): the month arrow back. Web key parks.periodPrevMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get parksPeriodPrevMonth;
+
+  /// Park course monthly boards (#1343): the month arrow forward. Web key parks.periodNextMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Next month'**
+  String get parksPeriodNextMonth;
+
   /// Park courses (#1313): web key parks.completionDays.
   ///
   /// In en, this message translates to:
   /// **'{n, plural, one {{n} day} other {{n} days}}'**
   String parksCompletionDays(int n);
+
+  /// Park course monthly boards (#1343): how many runners have a time on a course this month, on its park page. Web key parks.monthRunners.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} runner this month} other {{n} runners this month}}'**
+  String parksMonthRunners(int n);
+
+  /// Park course monthly boards (#1343): the park page could not read how many ran each course this month. Web key parks.monthRunnersFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load how many ran each course this month.'**
+  String get parksMonthRunnersFailed;
 
   /// Park courses (#1313): web key parks.noEfforts.
   ///
@@ -34600,6 +35750,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.'**
   String get prefsNotifyRaceStartingSoonHint;
+
+  /// Notifications: the switch for the park course month-close notice (notify_park_course_month). Web key prefs.notifyParkCourseMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Park course months'**
+  String get prefsNotifyParkCourseMonth;
+
+  /// Notifications: hint under the park course month-close switch.
+  ///
+  /// In en, this message translates to:
+  /// **'When a month ends at a park course you ran, a note in your inbox with your best time from it.'**
+  String get prefsNotifyParkCourseMonthHint;
 
   /// Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins
   ///
@@ -35453,6 +36615,22 @@ abstract class AppLocalizations {
   /// **'A park course was reported'**
   String get profileNotifParkCourseReport;
 
+  /// Notification text: a calendar month closed at a park course you ran, when the course cannot be named (notificationBell.parkCourseMonthClosed)
+  ///
+  /// In en, this message translates to:
+  /// **'A month has closed on a park course you ran'**
+  String get profileNotifParkCourseMonthClosed;
+
+  /// Notification text: a calendar month closed at a park course you ran, with your best time from it; month is a month and year such as November 2026 (notificationBell.parkCourseMonthClosedNamed)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the {month} board has closed. Your best: {time}'**
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  );
+
   /// Rate-limit refusal when the direct-message reaction bucket is spent
   ///
   /// In en, this message translates to:
@@ -35494,6 +36672,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t update message requests.'**
   String get prefsMessageRequestsFailed;
+
+  /// Subtitle of a settings row whose saved value could not be read; the switch is hidden and tapping the row retries the read
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this setting. Tap to retry.'**
+  String get asyncSwitchLoadFailed;
 
   /// Option in a message's long-press menu that opens the reaction picker
   ///
@@ -36124,6 +37308,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} invited you to a group'**
   String profileNotifGroupInvite(String name);
+
+  /// Label of the button at the start of a list's filter row that opens its filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get filterBarFilters;
+
+  /// Screen-reader label of a list's Filters button when filters are on. {count} is how many.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Filters, 1 on} other{Filters, {count} on}}'**
+  String filterBarFiltersCount(int count);
+
+  /// Tooltip of the remove button on an active-filter chip. {filter} is the chip's label.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove filter: {filter}'**
+  String filterBarRemoveFilter(String filter);
+
+  /// Button that closes a list's filter sheet; the filters already applied as they changed
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get filterBarDone;
+
+  /// Heading of the surface choices in a list's filter sheet (routes, segments)
+  ///
+  /// In en, this message translates to:
+  /// **'Surface'**
+  String get filterBarSurface;
+
+  /// Heading of the distance choices in a list's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get filterBarDistance;
+
+  /// Heading of the sort-order choices in a list's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get filterBarSort;
+
+  /// Heading of the run-source choices (recorded, watch, Strava, parkrun, Health) in the run list's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get filterBarSource;
+
+  /// Placeholder of the Runs tab's search field, which matches the names runners give their runs
+  ///
+  /// In en, this message translates to:
+  /// **'Search run names'**
+  String get runsSearchHint;
+
+  /// Heading of the region choices in a list's filter sheet (the segment catalogue)
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get filterBarRegion;
 }
 
 class _AppLocalizationsDelegate

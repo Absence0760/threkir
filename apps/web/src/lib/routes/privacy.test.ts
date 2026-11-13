@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+	PRIVACY_ZONE_MAX_RADIUS_M,
+	PRIVACY_ZONE_MIN_RADIUS_M,
 	clipPointsToZones,
+	effectiveZoneRadius,
 	isFixInAnyZone,
 	isInAnyZone,
 	trackEntersAnyZone,
@@ -28,6 +31,27 @@ test('isInAnyZone — center is in zone', () => {
 
 test('isInAnyZone — far point is not', () => {
 	assert.equal(isInAnyZone(offset(home.lat, home.lng, 0.01), [home]), false);
+});
+
+test('isInAnyZone — a zone stored under 100 m covers 100 m', () => {
+	// The phone once offered 50 m. About 80 m east is outside 50 m and inside
+	// the floor; about 110 m east is outside both.
+	const small: PrivacyZone = { lat: home.lat, lng: home.lng, radius_m: 50 };
+	assert.equal(isInAnyZone(offset(home.lat, home.lng, 0.00095), [small]), true);
+	assert.equal(isInAnyZone(offset(home.lat, home.lng, 0.0013), [small]), false);
+});
+
+test('effectiveZoneRadius — keeps a stored radius above the floor and floors the rest', () => {
+	assert.equal(PRIVACY_ZONE_MIN_RADIUS_M, 100);
+	assert.equal(PRIVACY_ZONE_MAX_RADIUS_M, 1000);
+	assert.equal(effectiveZoneRadius({ radius_m: 250 }), 250);
+	assert.equal(effectiveZoneRadius({ radius_m: 50 }), 100);
+	assert.equal(effectiveZoneRadius({ radius_m: Number.NaN }), 100);
+});
+
+test('effectiveZoneRadius — a zone stored without a radius reads as the floor', () => {
+	const stored = JSON.parse('{"lat": 1, "lng": 2}') as PrivacyZone;
+	assert.equal(effectiveZoneRadius(stored), 100);
 });
 
 test('clipPointsToZones — empty zones returns input', () => {

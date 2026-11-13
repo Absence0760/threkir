@@ -19,22 +19,21 @@ import '../lib/run_upload_signal.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
-import '../lib/widgets/todays_workout_card.dart';
 import 'pump_until.dart';
 
 // A plain run that covers today's plan workout is linked to it by the server
 // as the row is written (decisions § 2079), so nothing on the phone writes to
-// the plan. The Run page is kept alive behind the other tabs, and its card
-// used to keep offering "Start workout" for a session Home already showed as
-// done. These pin the three things that now re-read it: a run reaching the
-// server, the page coming back into view, and the app resuming.
+// the plan. The Run page is kept alive behind the other tabs, and its plan
+// chip (and, before issue #1374, a today's-workout card) used to keep what it
+// read when the page was first built. These pin the three things that re-read
+// it: a run reaching the server, the page coming back into view, and the app
+// resuming.
 //
 // No Supabase client is initialized here: RunScreen runs with apiClient null,
 // and a live client registers its own lifecycle observer, whose resume starts
 // a periodic token-refresh timer that outlives the test, and an app_links
 // listener whose missing-plugin error lands in whichever test is running.
 
-const _startKey = Key('todaysWorkoutStart');
 const _debounce = Duration(milliseconds: 600);
 
 late Directory _runsDir;
@@ -132,8 +131,8 @@ Future<void> _pump(
   );
   await pumpUntil(
     tester,
-    () => find.byType(TodaysWorkoutCard).evaluate().isNotEmpty,
-    describe: "today's plan workout card to load",
+    () => find.text('Richmond Marathon block').evaluate().isNotEmpty,
+    describe: 'the plan chip to load',
   );
 }
 
@@ -156,24 +155,18 @@ void main() {
     if (_runsDir.existsSync()) _runsDir.deleteSync(recursive: true);
   });
 
-  testWidgets('the card flips to done once a run reaches the server', (
+  testWidgets('a run reaching the server re-reads the plan', (
     tester,
   ) async {
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     final training = _MatchingTraining();
     final landed = RunUploadSignal();
     training.followRunsLanded(landed);
     await _pump(tester, training);
-
-    expect(find.byKey(_startKey), findsOneWidget);
-    expect(find.text(l10n.todaysWorkoutDone), findsNothing);
+    final afterOpen = training.fetches;
 
     training.linkRun('run-4mi');
     landed.fire();
-    await _waitForFetches(tester, training, 2);
-
-    expect(find.byKey(_startKey), findsNothing);
-    expect(find.text(l10n.todaysWorkoutDone), findsOneWidget);
+    await _waitForFetches(tester, training, afterOpen + 1);
   });
 
   testWidgets('coming back to the Run page re-reads the plan', (tester) async {
@@ -195,7 +188,7 @@ void main() {
     shown.value = true;
     await _waitForFetches(tester, training, afterOpen + 1);
 
-    expect(find.byKey(_startKey), findsNothing);
+    expect(training.fetches, greaterThan(afterOpen));
   });
 
   testWidgets('resuming the app re-reads the plan while the page shows', (
@@ -214,7 +207,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await _waitForFetches(tester, training, afterOpen + 1);
 
-    expect(find.byKey(_startKey), findsNothing);
+    expect(training.fetches, greaterThan(afterOpen));
   });
 
   testWidgets('resuming on another tab leaves the hidden page alone', (

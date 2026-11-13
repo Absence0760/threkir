@@ -6,7 +6,7 @@ import 'package:core_models/core_models.dart' show ExerciseRow;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show TextLane;
+import 'package:ui_kit/ui_kit.dart' show PageHeading, TextLane;
 
 import '../lib/gym_compose_draft.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -417,7 +417,7 @@ void main() {
       // Open the catalogue picker for the first (only) exercise block.
       await tester.tap(find.byIcon(Icons.menu_book_outlined));
       await tester.pumpAndSettle();
-      expect(find.text('Exercise catalogue'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Exercise catalogue'), findsOneWidget);
 
       // The picker's search field is the first TextField on the picker route.
       await tester.enterText(find.byType(TextField).first, 'Deadlift');
@@ -1176,16 +1176,12 @@ void main() {
     // font, which this round does not own.
   });
 
-  group('GymComposeSheet — the §486 action row', () {
-    // Cancel/Save is a RUN OF BUTTONS with nothing at the opposite end, so it
-    // takes §486's end-aligned treatment (`OverflowBar`) rather than the
-    // opposing-ends `Expanded(Wrap)` the goal editor needs — there is no
-    // anchor to preserve.
+  group('GymComposeSheet — the pinned Save', () {
+    // Save is EditorPage's one primary action, pinned full width under the
+    // fields; there is no Cancel beside it to wrap against (TO-7).
     //
-    // Both cases pin the DERIVATION, never a width: flutter_test's font is
-    // fixed-advance and 2-6x wider than Roboto (§500), so "stacked here" holds
-    // a fortiori on a device, and the 1.0x case pins that the bar only
-    // overflows when it must.
+    // 480, not 320: under the fixed-advance test font the sheet's set-type
+    // dropdown and exercise header overflow on their own account below ~470.
     Future<void> pumpSheet(WidgetTester tester, LocalGymStore store,
         {required double scale, required double width}) async {
       await tester.binding.setSurfaceSize(Size(width, 1400));
@@ -1201,41 +1197,25 @@ void main() {
         home: Scaffold(body: GymComposeSheet(store: store)),
       ));
       await tester.pump();
-      await tester.ensureVisible(find.text('Cancel'));
-      await tester.pump();
     }
 
-    testWidgets('keeps Cancel and Save on one run at 1.0x', (tester) async {
-      final f = await _store('bar1x_');
-      try {
-        await pumpSheet(tester, f.store, scale: 1.0, width: 800);
-        final cancel = tester.getRect(find.text('Cancel'));
-        final save = tester.getRect(find.text('Save workout'));
-        expect(cancel.top, save.top, reason: 'the bar reflowed with room left');
-        expect(save.left, greaterThan(cancel.right),
-            reason: 'Save must follow Cancel, end-aligned');
-      } finally {
-        f.dir.deleteSync(recursive: true);
-      }
-    });
-
-    // 480, not 320: under the fixed-advance test font the sheet's set-type
-    // dropdown and exercise header overflow on their own account below ~470,
-    // and this round owns only the action row. 480 still puts the pre-fix
-    // Cancel/Save row over its lane, so the reflow is genuinely exercised.
-    testWidgets('stacks Cancel over Save at 2.0x on a narrow surface',
-        (tester) async {
-      final f = await _store('bar2x_');
-      try {
-        await pumpSheet(tester, f.store, scale: 2.0, width: 480);
-        final cancel = tester.getRect(find.text('Cancel'));
-        final save = tester.getRect(find.text('Save workout'));
-        expect(save.top, greaterThanOrEqualTo(cancel.bottom),
-            reason: 'the action row striped instead of stacking');
-      } finally {
-        f.dir.deleteSync(recursive: true);
-      }
-    });
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('Save is whole, on screen and tappable at ${scale}x',
+          (tester) async {
+        final f = await _store('bar${scale}_');
+        try {
+          await pumpSheet(tester, f.store, scale: scale, width: 480);
+          final save = find.widgetWithText(FilledButton, 'Save workout');
+          expect(save.hitTestable(), findsOneWidget);
+          final rect = tester.getRect(save);
+          expect(rect.left, greaterThanOrEqualTo(0));
+          expect(rect.right, lessThanOrEqualTo(480));
+          expect(find.text('Cancel'), findsNothing);
+        } finally {
+          f.dir.deleteSync(recursive: true);
+        }
+      });
+    }
   });
 
   group('GymComposeSheet — the half-built workout survives a kill', () {

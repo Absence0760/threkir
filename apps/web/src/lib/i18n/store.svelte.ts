@@ -1,3 +1,4 @@
+import { localStore } from '../core/browser_storage';
 import { browser, dev } from '$app/env';
 import { CORE_LOADERS, FALLBACK_CORE, GROUPS, PART_LOADERS } from 'virtual:i18n-catalogues';
 import { partsForRoute } from './areas';
@@ -124,7 +125,7 @@ function applyDocumentLocale(next: Locale): void {
 	setActiveFormatLocale(formatLocale);
 	if (!browser) return;
 	try {
-		localStorage.setItem('locale', next);
+		localStore()?.setItem('locale', next);
 	} catch {
 		/* storage may be unavailable (private mode / quota) — non-fatal */
 	}
@@ -144,7 +145,7 @@ export async function setLocale(next: Locale): Promise<void> {
 function negotiatedLocale(): Locale {
 	let stored: string | null = null;
 	try {
-		stored = localStorage.getItem('locale');
+		stored = localStore()?.getItem('locale') ?? null;
 	} catch {
 		/* ignore */
 	}

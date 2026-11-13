@@ -320,8 +320,9 @@ void main() {
     return runStore;
   }
 
+  /// Docked, the shell's centre button is the Start (issue #1374).
   Future<void> tapStart(WidgetTester tester) async {
-    await tester.tap(find.text('START'));
+    runStartRequests.request(RunStartRequest.start);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
   }
@@ -353,7 +354,7 @@ void main() {
         describe: 'the finished summary');
     runSummaryDismissRequests.request();
     await tester.pump();
-    expect(find.text('START'), findsOneWidget);
+    expect(runIdleShowing.value, isTrue);
   }
 
   Future<void> unmount(WidgetTester tester) async {
@@ -392,7 +393,7 @@ void main() {
       // Tap-anywhere on the countdown scrim cancels back to idle.
       await tester.tapAt(const Offset(200, 200));
       await tester.pump();
-      expect(find.text('START'), findsOneWidget);
+      expect(runIdleShowing.value, isTrue);
 
       await recordAndFinish(tester, store);
       expect(store.captured.single.metadata?[cm.MetadataKeys.planWorkoutId],
@@ -427,8 +428,7 @@ void main() {
       await pumpRunScreen(tester, routes: [_loop], initialRoute: _loop);
 
       await openPicker(tester);
-      await tester.tap(find.descendant(
-          of: find.byType(AppBar), matching: find.text('No route')));
+      await tester.tap(find.byKey(const ValueKey('route-picker-no-route')));
       await tester.pumpAndSettle();
 
       expect(find.text('FOLLOWING'), findsNothing);
@@ -497,29 +497,6 @@ void main() {
       for (final key in _workoutKeys) {
         expect(meta.containsKey(key), isFalse, reason: key);
       }
-      await unmount(tester);
-    });
-
-    testWidgets("loading today's workout swaps its card for the loaded one",
-        (tester) async {
-      await pumpRunScreen(tester, todayWorkout: _workout);
-      await pumpUntil(
-          tester, () => find.byType(TodaysWorkoutCard).evaluate().isNotEmpty,
-          describe: "today's workout card");
-
-      await tester.tap(find.byKey(const Key('todaysWorkoutStart')));
-      await pumpUntil(tester,
-          () => find.text('Workout loaded: Intervals').evaluate().isNotEmpty,
-          describe: 'the loaded-workout card');
-      expect(find.byType(TodaysWorkoutCard), findsNothing,
-          reason: 'one card for one workout');
-
-      await tester.tap(find.byTooltip('Unload workout'));
-      await tester.pump();
-      expect(find.byType(TodaysWorkoutCard), findsOneWidget,
-          reason: 'unloaded, the workout is offered again');
-      // Let the "workout loaded" banner's timer run out.
-      await tester.pump(kTopBannerMaxDuration);
       await unmount(tester);
     });
   });
@@ -650,18 +627,23 @@ void main() {
   });
 
   group('the card stack', () {
-    testWidgets("a followed route keeps today's workout card on screen",
-        (tester) async {
+    testWidgets("holds what the run carries, and leaves today's workout to "
+        'Home', (tester) async {
       await pumpRunScreen(tester,
           routes: [_loop], initialRoute: _loop, todayWorkout: _workout);
       await pumpUntil(
-          tester, () => find.byType(TodaysWorkoutCard).evaluate().isNotEmpty,
-          describe: "today's workout card");
+          tester,
+          () => find.widgetWithText(IdleSetupChip, 'Autumn 10K block')
+              .evaluate()
+              .isNotEmpty,
+          describe: 'the plan read');
 
       expect(find.text('FOLLOWING'), findsOneWidget);
-      expect(find.byType(TodaysWorkoutCard), findsOneWidget,
-          reason: 'a runner on their route on a plan day still needs the '
-              'card that loads the workout');
+      expect(find.byType(TodaysWorkoutCard), findsNothing,
+          reason: "Home's Today carries today's workout and its Start "
+              '(issue #1374); the start page no longer repeats it');
+      expect(find.byKey(const ValueKey('run-idle-start')), findsNothing,
+          reason: 'docked, the centre button is the Start');
       await unmount(tester);
     });
   });

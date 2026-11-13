@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
+	import ListRow from '#lib/components/ListRow.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -205,9 +208,9 @@
 
 <PrefsPage heading={m('prefs.unitsDisplayHeading')} tagline={m('prefs.displayTagline')} page={prefs}>
 	<section class="card">
-		<h2>{m('prefs.languageThemeHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.languageThemeHeading')} label={m('prefs.languageThemeHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.language')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.language')}</span>
 					<select
@@ -223,7 +226,7 @@
 				</label>
 				<p class="hint" id="language-hint">{m('prefs.languageHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.theme')} class="field">
 				<span class="label-text">{m('prefs.theme')}</span>
 				<div class="toggle-row" role="group" aria-label={m('prefs.theme')} aria-describedby="theme-hint">
 					<button class="toggle-btn" class:active={theme === 'auto'} onclick={() => changeTheme('auto')} type="button">{m('prefs.themeAuto')}</button>
@@ -236,9 +239,9 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.unitsHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.unitsHeading')} label={m('prefs.unitsHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.distanceUnit')} class="field">
 				<span class="label-text">{m('prefs.distanceUnit')}</span>
 				<div class="toggle-row" role="group" aria-label={m('prefs.distanceUnit')} aria-describedby="distance-unit-hint">
 					<button class="toggle-btn" class:active={preferredUnit === 'km'} onclick={() => pickDistanceUnit('km')} type="button">{m('prefs.kilometres')}</button>
@@ -246,7 +249,7 @@
 				</div>
 				<p class="hint" id="distance-unit-hint">{m('prefs.distanceUnitHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.weightUnit')} class="field">
 				<span class="label-text">{m('prefs.weightUnit')}</span>
 				<div class="toggle-row" role="group" aria-label={m('prefs.weightUnit')} aria-describedby="weight-unit-hint">
 					<button class="toggle-btn" class:active={weightUnit === 'kg'} onclick={() => pickWeightUnit('kg')} type="button">{m('prefs.kilograms')}</button>
@@ -254,7 +257,7 @@
 				</div>
 				<p class="hint" id="weight-unit-hint">{m('prefs.weightUnitHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.paceFormat')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.paceFormat')}</span>
 					<select bind:value={paceFormat} onchange={() => prefs.save({ units_pace_format: paceFormat })} aria-describedby="pace-format-hint">
@@ -266,7 +269,7 @@
 				</label>
 				<p class="hint" id="pace-format-hint">{m('prefs.paceFormatHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.weekStartsOn')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.weekStartsOn')}</span>
 					<select bind:value={weekStartDay} onchange={() => prefs.save({ week_start_day: weekStartDay })} aria-describedby="week-start-hint">
@@ -280,9 +283,9 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.mapsPagesHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.mapsPagesHeading')} label={m('prefs.mapsPagesHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.disclosureLevel')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.disclosureLevel')}</span>
 					<select
@@ -299,7 +302,7 @@
 				</label>
 				<p class="hint" id="disclosure-hint">{m('prefs.disclosureHint', { level: m(DISCLOSURE_LABELS[derivedDisclosure]) })}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.mapStyle')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.mapStyle')}</span>
 					<select
@@ -318,7 +321,7 @@
 				</label>
 				<p class="hint" id="map-style-hint">{m('prefs.mapStyleHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.undoWindow')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.undoWindow')}</span>
 					<select
@@ -338,32 +341,30 @@
 				<p class="hint" id="undo-window-hint">{m('prefs.undoWindowHelp')}</p>
 			</div>
 		</div>
-		<label class="checkbox-row">
-			<input type="checkbox" bind:checked={showCalories} onchange={() => prefs.save({ show_calories: showCalories })} />
-			<span>
-				{m('prefs.showCalories')}
-				<span class="hint">{m('prefs.showCaloriesHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={showMascot}
-				data-testid="show-mascot"
-				onchange={() => prefs.save({ show_mascot: showMascot })}
-			/>
-			<span>
-				{m('prefs.showMascot')}
-				<span class="hint">{m('prefs.showMascotHint')}</span>
-			</span>
-		</label>
+		<ListRow
+			kind="toggle"
+			id={settingRowId('prefs.showCalories')}
+			title={m('prefs.showCalories')}
+			subtitle={m('prefs.showCaloriesHint')}
+			bind:checked={showCalories}
+			onchange={() => prefs.save({ show_calories: showCalories })}
+		/>
+		<ListRow
+			kind="toggle"
+			id={settingRowId('prefs.showMascot')}
+			title={m('prefs.showMascot')}
+			subtitle={m('prefs.showMascotHint')}
+			bind:checked={showMascot}
+			testid="show-mascot"
+			onchange={() => prefs.save({ show_mascot: showMascot })}
+		/>
 	</section>
 
 	{#if coachOn}
 		<section class="card" id="messages-coach">
-			<h2>{m('prefs.messagesHeading')}</h2>
+			<SectionHeader id={settingRowId('prefs.messagesHeading')} label={m('prefs.messagesHeading')} class="prefs-section-head" />
 			<div class="form-grid">
-				<div class="field">
+				<div id={settingRowId('prefs.coachInMessages')} class="field">
 					<label>
 						<span class="label-text">{m('prefs.coachInMessages')}</span>
 						<select
@@ -384,45 +385,37 @@
 	{/if}
 
 	<section class="card" id="gym-nutrition">
-		<h2>{m('prefs.modalitiesHeading')}</h2>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				checked={modalityVisible('gym')}
-				onchange={(e) => pickModality('gym', e.currentTarget.checked)}
-			/>
-			<span>
-				{m('prefs.showGym')}
-				<span class="hint">{m('prefs.showGymHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				checked={modalityVisible('nutrition')}
-				onchange={(e) => pickModality('nutrition', e.currentTarget.checked)}
-			/>
-			<span>
-				{m('prefs.showNutrition')}
-				<span class="hint">{m('prefs.showNutritionHint')}</span>
-			</span>
-		</label>
+		<SectionHeader id={settingRowId('prefs.modalitiesHeading')} label={m('prefs.modalitiesHeading')} class="prefs-section-head" />
+		<ListRow
+			kind="toggle"
+			id={settingRowId('prefs.showGym')}
+			title={m('prefs.showGym')}
+			subtitle={m('prefs.showGymHint')}
+			checked={modalityVisible('gym')}
+			onchange={(on) => pickModality('gym', on)}
+		/>
+		<ListRow
+			kind="toggle"
+			id={settingRowId('prefs.showNutrition')}
+			title={m('prefs.showNutrition')}
+			subtitle={m('prefs.showNutritionHint')}
+			checked={modalityVisible('nutrition')}
+			onchange={(on) => pickModality('nutrition', on)}
+		/>
 	</section>
 
 	<section class="card" id="home-cards">
-		<h2>{m('prefs.homeCardsHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.homeCardsHeading')} label={m('prefs.homeCardsHeading')} class="prefs-section-head" />
 		<p class="hint" id="home-cards-hint">{m('prefs.homeCardsHint')}</p>
 		{#each HIDEABLE_DASHBOARD_CARDS as id (id)}
-			<label class="checkbox-row">
-				<input
-					type="checkbox"
-					checked={!hiddenCards.includes(id)}
-					aria-describedby="home-cards-hint"
-					data-testid="home-card-{id}"
-					onchange={(e) => pickHomeCard(id, e.currentTarget.checked)}
-				/>
-				<span>{m(HOME_CARD_LABELS[id])}</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				title={m(HOME_CARD_LABELS[id])}
+				checked={!hiddenCards.includes(id)}
+				describedby="home-cards-hint"
+				testid="home-card-{id}"
+				onchange={(on) => pickHomeCard(id, on)}
+			/>
 		{/each}
 	</section>
 </PrefsPage>

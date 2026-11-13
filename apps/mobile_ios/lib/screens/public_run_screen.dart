@@ -138,27 +138,26 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
     final row = _row;
     final viewerId = widget.api.userId;
     final canReport = row != null && viewerId != null && viewerId != row.userId;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.publicRunTitle),
-        actions: [
-          if (canReport)
-            IconButton(
-              tooltip: l10n.runDetailReportRun,
-              icon: const Icon(Icons.flag_outlined),
-              onPressed: () => showReportSheet(
-                context,
-                api: widget.api,
-                targetKind: 'run',
-                targetId: row.id,
-              ),
+    return DetailPage(
+      title: _runTitle(l10n, row),
+      actions: [
+        if (canReport)
+          AppBarAction(
+            icon: const Icon(Icons.flag_outlined),
+            label: l10n.runDetailReportRun,
+            destructive: true,
+            onPressed: () => showReportSheet(
+              context,
+              api: widget.api,
+              targetKind: 'run',
+              targetId: row.id,
             ),
-        ],
-      ),
+          ),
+      ],
       body: _loading
           ? MapDetailSkeleton(label: l10n.commonLoading)
           : _loadError != null
-              ? ErrorState(
+              ? AppErrorState(
                   message: l10n.publicRunLoadError,
                   onRetry: _load,
                 )
@@ -180,6 +179,16 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
                           _buildBody(theme, l10n, _row!, viewport.maxHeight),
                     ),
     );
+  }
+
+  /// The run's own name when its owner gave it one, else "Run".
+  static String _runTitle(AppLocalizations l10n, RunRow? row) {
+    final metadata = row?.metadata;
+    final title =
+        metadata is Map ? metadata[MetadataKeys.title] as String? : null;
+    return (title == null || title.trim().isEmpty)
+        ? l10n.publicRunTitle
+        : title;
   }
 
   Widget _buildBody(ThemeData theme, AppLocalizations l10n, RunRow row,
@@ -212,29 +221,22 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
               child: SharedWithYouChip(),
             ),
           ),
-        if (_author != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _author!.displayName ?? l10n.publicRunAuthorFallback,
-                    style: theme.textTheme.titleMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Text(
-                  formatDateTime(row.startedAt.toLocal(),
-                      localeToTag(Localizations.localeOf(context))),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+        DetailHero(
+          title: _runTitle(l10n, row),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          meta: [
+            if (_author != null)
+              DetailMeta(
+                icon: Icons.person_outline,
+                text: _author!.displayName ?? l10n.publicRunAuthorFallback,
+              ),
+            DetailMeta(
+              icon: Icons.event,
+              text: formatDateTime(row.startedAt.toLocal(),
+                  localeToTag(Localizations.localeOf(context))),
             ),
-          ),
+          ],
+        ),
         Padding(
           padding: const EdgeInsets.all(20),
           child: StatGrid(
@@ -259,8 +261,7 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
         const Divider(),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text(l10n.publicRunSectionSegments,
-              style: theme.textTheme.titleMedium),
+          child: SectionHeader.title(label: l10n.publicRunSectionSegments),
         ),
         RunSegmentEfforts(
           api: widget.api,
@@ -320,14 +321,10 @@ class _LiveBanner extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final live = AppSemanticColors.of(context).success;
-    return Container(
+    return ListCard(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: live.withValues(alpha: 0.12),
-        border: Border.all(color: live),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      color: live.withValues(alpha: 0.12),
+      outline: live,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -339,10 +336,12 @@ class _LiveBanner extends StatelessWidget {
                 decoration: BoxDecoration(shape: BoxShape.circle, color: live),
               ),
               const SizedBox(width: 8),
-              Text(
-                l10n.publicRunLiveTitle,
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700, color: live),
+              Flexible(
+                child: Text(
+                  l10n.publicRunLiveTitle,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700, color: live),
+                ),
               ),
             ],
           ),

@@ -1,6 +1,6 @@
 // Pure date parsing for the Strava bulk-export `activities.csv` "Activity
 // Date" column. Extracted from strava-zip.ts so it can be unit-tested without
-// the JSZip / supabase import chain (same reason strava-zip-header.ts and
+// the zip-reader / supabase import chain (same reason strava-zip-header.ts and
 // strava-zip-classify.ts are standalone).
 //
 // The bug this fixes: Strava emits "Activity Date" as a UTC wall-clock string

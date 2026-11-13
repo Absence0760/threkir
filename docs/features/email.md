@@ -189,7 +189,7 @@ Shared pieces:
 - **Preference** — `user_settings.prefs.email_notifications` (`all | important
   | off`, default `important`) gates the **notification** channel only;
   transactional/lifecycle mail ignores it (you can't opt out of a receipt).
-  Toggle on web `/settings/notifications` + mobile Settings → Preferences.
+  Toggle on web `/settings/notifications` + mobile You → Notifications.
   Registry: `docs/backend/settings.md`.
 - **Per-kind mutes** — `mailer.go` `kindMutePrefKey` maps a notification kind to
   a prefs-bag key that silences it on the OUTBOUND channels (email + both
@@ -259,6 +259,7 @@ Shared pieces:
 | Notification → email (kudos, comment, reaction, comment like, mention, follow, follow request, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
 | **Event-day reminders** (scheduled) | `notification_email` (`event_reminder`) | hourly pg_cron `enqueue_event_reminders()` over `going` RSVPs in the next 24 h | ✓ | §117 |
 | **Today's-workout reminder** (scheduled) | `notification_email` (`workout_reminder`) | hourly pg_cron `enqueue_workout_reminders()`: one per runner per local morning (07:00-11:59 in `prefs.time_zone`, nobody without a known zone) when the active plan's day holds an outstanding workout; emailed only under `email_notifications = all` (pushed under the default); `notify_workout_reminder = 'off'` withholds the row itself | ✓ | §2087 |
+| **Park course month closed** (scheduled, bell-only by default) | `notification_email` (`park_course_month_closed`) | hourly pg_cron `enqueue_park_course_month_notices()`: in the first three local days of a month, one per runner per park course they ran in the month that just closed, with their best time and no rank; in neither default set, so emailed and pushed only under `all`; mute `notify_park_course_month`; held off by the `park_course_month_notices` flag until the clients render it (issue #1343) | ✓ | §2426, §2511 |
 | **Race starting soon / start moved** (scheduled race, push only) | `notification_email` rail skipped: `race_starting_soon` / `race_start_moved` are in `pushOnlyKinds`, so no mode emails them | per-minute pg_cron `race_sessions_tick()` about 10 minutes before a scheduled GO (skipped after an `event_reminder` within the hour; `notify_race_starting_soon = 'off'` withholds the row); a Delay's `race_sessions_notify_start_moved_trg` | ✓ (push copy) | §2400 |
 | **Welcome** ("thanks for signing up") | `lifecycle_email` (`welcome`) | `user_profiles` AFTER INSERT | ✓ | §119 |
 | **Pro-purchase receipt** | `lifecycle_email` (`pro_welcome`) | `user_profiles` AFTER UPDATE, `subscription_tier` → paid | ✓ | §121 |
@@ -503,7 +504,7 @@ neither, and neither carries a `List-Unsubscribe` header.
   with Japanese ordering platform before browser through indexed verbs.
 - **Opt-out:** `email_new_device_alerts` (`docs/backend/settings.md`), opt-OUT
   and default on; only the literal `'off'` mutes. Web Settings → Notifications
-  and mobile Settings → Preferences.
+  and mobile You → Notifications.
 - **Layered resilience:** the trigger traps every error and returns, so the
   bookkeeping can never fail a sign-in; the worst case is one missed alert.
 - **Volume bound:** at most one mail per class per account per retention
@@ -590,8 +591,8 @@ neither, and neither carries a `List-Unsubscribe` header.
   credential** (jobs drain to `done` without `SMTP_HOST`); enabling an actual
   send is the operator's SMTP provisioning + the CISO/counsel sign-off (the cron
   is harmless no-op churn until then). The **opt-in preference toggle** ships on
-  web Settings → Preferences (`email-lifecycle-drip` checkbox) + mobile
-  Settings → Preferences (`prefsEmailLifecycleDrip` switch, default off),
+  web Settings → Notifications (`email-lifecycle-drip` checkbox) + mobile
+  You → Notifications (`prefsEmailLifecycleDrip` switch, default off),
   i18n'd across every web locale + every ARB — the in-app equivalent of the one-click
   unsubscribe, mirroring the digest toggle.
 - [x] **Account-deletion receipt** — SHIPPED 2026-06-20 (migration
@@ -651,7 +652,7 @@ neither, and neither carries a `List-Unsubscribe` header.
   silent AND lets the already-built branch re-ask (repairing a crash between the
   finish write and the announcement). A failed announcement never fails the
   export. The **opt-OUT** `notify_data_export_ready` pref is the per-kind mute
-  (default on, web Settings → Preferences), deliberately the opposite direction
+  (default on, web Settings → Notifications), deliberately the opposite direction
   from the engagement streams' opt-IN — see `docs/backend/settings.md` and the
   ADR for why. Goes live with the shared `SMTP_HOST` worker gate like every
   other notification kind; no new credential.
@@ -760,6 +761,23 @@ neither, and neither carries a `List-Unsubscribe` header.
   closure, course-direction or notice) is in `importantKinds` with the
   opt-OUT mute `notify_course_alert`. Deep link `/course-alerts/{id}`, the
   web resolver that opens the race or route. Copy in all seven locales.
+- [x] **Park course month closed** — issue #1343, `decisions.md § 2426` /
+  `§ 2511`, migrations `20271226011343`-`41343`. `park_course_month_closed`
+  is raised by the hourly `enqueue_park_course_month_notices()` cron, not a
+  trigger: one notice per runner, park course and closed month, carrying the
+  course, the month and the runner's best time, never a rank. It is in
+  neither `importantKinds` nor `pushImportantKinds`, so it stays in the bell
+  unless the runner chose `all`. Its opt-OUT mute `notify_park_course_month`
+  is applied before the row exists (like `notify_workout_reminder`) and in
+  `kindMuted`. Deep link `/parks/{region}/{park}/{course}?period=YYYY-MM`,
+  built from the course slugs the three notification projections embed
+  (`park_course:park_courses(slug,park:parks(slug,region_code))`). Copy in
+  all seven locales. The kind widen is the `NOT VALID` half in
+  `20271226011343` and the `VALIDATE` in `20271226021343`. **Off in every
+  environment** until `park_course_month_notices` is declared in
+  `apps/backend/ops/prod_config.json`; the web bell and inbox and the phone
+  inbox render the kind, and both Notifications pages carry the mute
+  (#1343 phase 2), so the flag is the owner's sign-off step alone.
 - [x] **Race start notices** — `race_starting_soon` and `race_start_moved`
   (issue #1306, `decisions.md § 2400`, migration `20271121002400`, the kind
   widen's `VALIDATE` in `…2401`). Raised for a Scheduled GO race: about 10
@@ -769,7 +787,7 @@ neither, and neither carries a `List-Unsubscribe` header.
   `pushImportantKinds` and the new `pushOnlyKinds`, which `shouldEmail`
   refuses under every mode, `all` included: a ten-minute warning is stale in a
   mailbox. One opt-OUT mute covers both, `notify_race_starting_soon` (web
-  Settings → Notifications, mobile Settings → Preferences); the tick reads it
+  Settings → Notifications, mobile You → Notifications); the tick reads it
   and raises no starting-soon row for a muted runner. The copy is static like
   every other kind and names no time: the start can move again before the
   push is read, so the time is one tap away on the event page, which is the

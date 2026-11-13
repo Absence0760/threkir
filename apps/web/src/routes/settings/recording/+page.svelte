@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
+	import ListRow from '#lib/components/ListRow.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { effective } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
@@ -78,9 +81,9 @@
 
 <PrefsPage heading={m('prefs.activityRecordingHeading')} tagline={m('prefs.recordingTagline')} page={prefs}>
 	<section class="card">
-		<h2>{m('prefs.startingRunHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.startingRunHeading')} label={m('prefs.startingRunHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.defaultActivity')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.defaultActivity')}</span>
 					<select bind:value={defaultActivity} onchange={() => prefs.save({ default_activity_type: defaultActivity })} aria-describedby="default-activity-hint">
@@ -95,17 +98,19 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.voiceFeedbackHeading')}</h2>
+		<SectionHeader id={settingRowId('prefs.voiceFeedbackHeading')} label={m('prefs.voiceFeedbackHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<label class="checkbox-row master-toggle">
-				<input type="checkbox" bind:checked={voiceFeedbackEnabled} onchange={() => prefs.save({ voice_feedback_enabled: voiceFeedbackEnabled })} />
-				<span>
-					{m('prefs.spokenSplits')}
-					<span class="hint">{m('prefs.spokenSplitsHint')}</span>
-				</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				id={settingRowId('prefs.spokenSplits')}
+				title={m('prefs.spokenSplits')}
+				subtitle={m('prefs.spokenSplitsHint')}
+				bind:checked={voiceFeedbackEnabled}
+				onchange={() => prefs.save({ voice_feedback_enabled: voiceFeedbackEnabled })}
+				class="recording-master-toggle"
+			/>
 			{#if voiceFeedbackEnabled}
-				<div class="field">
+				<div id={settingRowId('prefs.cueDetail')} class="field">
 					<label>
 						<span class="label-text">{m('prefs.cueDetail')}</span>
 						<select bind:value={voiceFeedbackVerbosity} onchange={() => prefs.save({ voice_feedback_verbosity: voiceFeedbackVerbosity })} aria-describedby="cue-detail-hint">
@@ -115,7 +120,7 @@
 					</label>
 					<p class="hint" id="cue-detail-hint">{m('prefs.cueDetailHint')}</p>
 				</div>
-				<div class="field">
+				<div id={settingRowId('prefs.splitInterval')} class="field">
 					<label>
 						<span class="label-text">{m('prefs.splitInterval', { unit: preferredUnit })}</span>
 						<!-- min/max/step are in the displayed unit by design — a 0.5–10
@@ -142,7 +147,7 @@
 					</label>
 					<p class="hint" id="split-interval-hint">{m('prefs.splitIntervalHint')}</p>
 				</div>
-				<div class="field">
+				<div id={settingRowId('prefs.splitPaceMode')} class="field">
 					<label>
 						<span class="label-text">{m('prefs.splitPaceMode')}</span>
 						<select
@@ -159,22 +164,18 @@
 					</label>
 					<p class="hint" id="split-pace-mode-hint">{m('prefs.splitPaceModeHint')}</p>
 				</div>
-				<fieldset class="cue-list" data-testid="voice-cue-types">
+				<fieldset id={settingRowId('prefs.voiceCueTypes')} class="cue-list" data-testid="voice-cue-types">
 					<legend class="label-text">{m('prefs.voiceCueTypes')}</legend>
 					<p class="section-hint">{m('prefs.voiceCueTypesHint')}</p>
 					{#each VOICE_CUE_IDS as cueId (cueId)}
-						<label class="checkbox-row">
-							<input
-								type="checkbox"
-								data-testid="voice-cue-{cueId}"
-								checked={isVoiceCueEnabled(voiceCueTypes, cueId)}
-								onchange={(e) => toggleVoiceCue(cueId, e.currentTarget.checked)}
-							/>
-							<span>
-								{m(VOICE_CUE_LABELS[cueId].label)}
-								<span class="hint">{m(VOICE_CUE_LABELS[cueId].hint)}</span>
-							</span>
-						</label>
+						<ListRow
+							kind="toggle"
+							title={m(VOICE_CUE_LABELS[cueId].label)}
+							subtitle={m(VOICE_CUE_LABELS[cueId].hint)}
+							testid="voice-cue-{cueId}"
+							checked={isVoiceCueEnabled(voiceCueTypes, cueId)}
+							onchange={(on) => toggleVoiceCue(cueId, on)}
+						/>
 					{/each}
 				</fieldset>
 			{/if}
@@ -183,7 +184,7 @@
 </PrefsPage>
 
 <style>
-	.master-toggle { grid-column: 1 / -1; }
+	:global(.recording-master-toggle) { grid-column: 1 / -1; }
 	.cue-list {
 		grid-column: 1 / -1;
 		display: flex;

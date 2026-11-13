@@ -32,7 +32,7 @@ import 'package:flutter_test/flutter_test.dart';
 const _notTiles = <String, String>{
   // A Card whose label sits ABOVE the value and which carries two further
   // sub-detail lines and a tap target — a card body, not a cell in a row.
-  'lib/screens/dashboard_screen.dart::_PeriodStatCard':
+  'lib/screens/progress_screen.dart::_PeriodStatCard':
       'label-above card with sub-detail lines and a tap target',
   // Start-aligned inside a feed card, with an uppercased label: the feed
   // card's own grammar, not the centred cell of a stat row.
@@ -80,11 +80,6 @@ const _mustUseStatTile = <String>[
 
 /// `path::ClassName` -> why it is not a `SectionHeader`.
 const _notSectionHeaders = <String, String>{
-  // `titleMedium` heading of a block inside a scrolling body. A section TITLE
-  // is a heading; SectionHeader is the uppercased eyebrow that names a list
-  // group, and collapsing the two would need a kind flag.
-  'lib/screens/dashboard_screen.dart::_SectionHeader':
-      'titleMedium section title, not a list-group eyebrow',
 };
 
 Iterable<File> _sources() => Directory('lib')

@@ -125,6 +125,10 @@ test.describe('/routes/new — AI route request', () => {
 
 		await expect(page.locator('.ai-request-error')).toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.ai-request-error')).toContainText(/Pro/i);
+		await expect(page.locator('.ai-request-error').getByRole('link', { name: 'See Pro' })).toHaveAttribute(
+			'href',
+			'/settings/upgrade',
+		);
 		// The manual distance slider + Generate button are still present and
 		// usable — the NL box is purely additive.
 		await expect(page.locator('.target-slider')).toBeVisible();

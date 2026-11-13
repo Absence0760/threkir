@@ -14,8 +14,10 @@ function make(overrides: {
 	challenge_id?: string | null;
 	course_alert_id?: string | null;
 	conversation_id?: string | null;
+	park_course_month?: string | null;
 	event_club_slug?: string | null;
 	club_slug?: string | null;
+	park_course_path?: string | null;
 }): NotificationLinkInput {
 	return {
 		row: {
@@ -29,9 +31,11 @@ function make(overrides: {
 			challenge_id: overrides.challenge_id ?? null,
 			course_alert_id: overrides.course_alert_id ?? null,
 			conversation_id: overrides.conversation_id ?? null,
+			park_course_month: overrides.park_course_month ?? null,
 		},
 		event_club_slug: overrides.event_club_slug ?? null,
 		club_slug: overrides.club_slug ?? null,
+		park_course_path: overrides.park_course_path ?? null,
 	};
 }
 
@@ -271,6 +275,8 @@ test('every routed kind reaches a destination when it has its ids', () => {
 		achievement_id: 'a-1',
 		challenge_id: 'c-1',
 		course_alert_id: 'ca-1',
+		park_course_month: '2026-10-01',
+		park_course_path: 'us-va/pocahontas/beaver-lake-trail',
 		event_club_slug: 'club',
 		club_slug: 'club',
 	};
@@ -302,6 +308,24 @@ test('the unlinked register does not name a kind the column dropped', () => {
 	}
 });
 
+
+test('park_course_month_closed opens the course on the closed month, and nothing without its course', () => {
+	assert.equal(
+		notificationLinkFor(
+			make({
+				kind: 'park_course_month_closed',
+				park_course_month: '2026-10-01',
+				park_course_path: 'us-va/pocahontas/beaver-lake-trail',
+			}),
+		),
+		'/parks/us-va/pocahontas/beaver-lake-trail?period=2026-10',
+	);
+	assert.equal(notificationLinkFor(make({ kind: 'park_course_month_closed', park_course_month: '2026-10-01' })), null);
+	assert.equal(
+		notificationLinkFor(make({ kind: 'park_course_month_closed', park_course_path: 'us-va/pocahontas/beaver-lake-trail' })),
+		null,
+	);
+});
 
 test('course_alert opens the stable-id resolver, and nothing without its id', () => {
 	assert.equal(notificationLinkFor(make({ kind: 'course_alert', course_alert_id: 'ca-1' })), '/course-alerts/ca-1');

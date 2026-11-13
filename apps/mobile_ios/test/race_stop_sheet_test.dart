@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 
 import '../lib/help_guides.dart';
 import '../lib/help_loader.dart';
@@ -100,7 +101,7 @@ void main() {
     expect(find.byType(HelpForRouteScreen), findsOneWidget);
     // The organiser's paid-class guide shares the event route; a runner
     // mid-race gets only the guide written for participants.
-    expect(find.text('Racing an event'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Racing an event'), findsOneWidget);
     expect(find.text('Charging for a class'), findsNothing);
   });
 }

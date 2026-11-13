@@ -100,6 +100,24 @@ test('"link is invalid or has expired" message (no code) → linkExpired', () =>
 	assert.equal(classifyAuthError(authError('Email link is invalid or has expired')), 'linkExpired');
 });
 
+test('a dead PKCE sign-in link → linkExpired (Sentry THREKIR-CLIENT-6)', () => {
+	// The code exchange of an emailed or OAuth link that was already spent,
+	// expired, or opened in a browser that never held its verifier.
+	for (const e of [
+		authError('code challenge does not exist', { status: 404 }),
+		authError('invalid flow state, no valid flow state found', { code: 'flow_state_not_found', status: 404 }),
+		authError('flow state has expired', { code: 'flow_state_expired', status: 403 }),
+		authError('code challenge does not match previously saved code verifier', {
+			code: 'bad_code_verifier',
+			status: 400
+		}),
+		authError('PKCE code verifier not found in storage.'),
+		authError('Code verifier could not be found in local storage.')
+	]) {
+		assert.equal(classifyAuthError(e), 'linkExpired', e.message);
+	}
+});
+
 test('weak_password code → weakPassword', () => {
 	assert.equal(
 		classifyAuthError(

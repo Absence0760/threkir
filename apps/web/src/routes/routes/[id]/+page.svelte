@@ -1,5 +1,7 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { siteOrigin } from '#lib/core/site_url.ts';
+	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
@@ -44,7 +46,7 @@
 		shownDescription,
 	} from '#lib/routes/route_description.ts';
 	import { requestAiDescription } from '#lib/routes/route_describe_client.ts';
-	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
+	import { AI_CONSENT_HREF, AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 
 	// The "Describe this route" button always works (offline template); the
@@ -126,7 +128,7 @@
 		const id = route?.is_official ? route.id : null;
 		courseCredit = null;
 		if (!id) return;
-		fetchParkCourseCredit({ routeId: id })
+		fetchParkCourseCredit(id)
 			.then((credit) => {
 				if (route?.id === id) courseCredit = credit;
 			})
@@ -352,6 +354,7 @@
 	let genSource = $state<'ai' | 'template' | null>(null);
 	let describing = $state(false);
 	let describeError = $state<string | null>(null);
+	let describeNeedsConsent = $state(false);
 	let showUpgradeHint = $state(false);
 
 	/// Map the loaded route into the describer's input shape. Endpoints
@@ -386,6 +389,7 @@
 		if (!route || describing) return;
 		describing = true;
 		describeError = null;
+		describeNeedsConsent = false;
 		showUpgradeHint = false;
 		const input = describeInput();
 		const parts = describeRoute(input);
@@ -406,10 +410,10 @@
 			// without clobbering the description. A consent gap is not a
 			// failure the runner can retry away, so it gets its own copy
 			// pointing at where they can act on it.
-			describeError =
-				e instanceof Error && e.message === AI_DISCLOSURE_ERROR
-					? m('routeDetail.describeConsentRequired')
-					: m('routeDetail.describeFailed');
+			describeNeedsConsent = e instanceof Error && e.message === AI_DISCLOSURE_ERROR;
+			describeError = describeNeedsConsent
+				? m('routeDetail.describeConsentRequired')
+				: m('routeDetail.describeFailed');
 		} finally {
 			describing = false;
 		}
@@ -995,12 +999,14 @@
 						{/if}
 						{#if showUpgradeHint && coachOn}
 							<p class="desc-upgrade">
-								{m('routeDetail.enhanceUpgradeHint')}
-								<a href="/settings/upgrade">{m('routeDetail.enhanceAi')}</a>
+								<ProUpsellLink message={m('routeDetail.enhanceUpgradeHint')} testid="route-enhance-upsell" />
 							</p>
 						{/if}
 						{#if describeError}
-							<p class="desc-error" role="alert">{describeError}</p>
+							<p class="desc-error" role="alert">
+								{describeError}
+								{#if describeNeedsConsent}<a href={AI_CONSENT_HREF}>{m('planEditor.aiErrorConsentLink')}</a>{/if}
+							</p>
 						{/if}
 					{:else}
 						<button
@@ -1178,7 +1184,7 @@
 				 above the page fold. -->
 			{#if displayWaypoints.length > 1}
 				<section class="section preview-section">
-					<h2>{m('routeDetail.previewHeading')}</h2>
+					<SectionHeader label={m('routeDetail.previewHeading')} class="route-section-head" />
 					<RoutePreviewScrubber
 						totalDistanceM={shownDistanceM}
 						fraction={scrubFraction}
@@ -1190,7 +1196,7 @@
 
 			{#if route.elevation_m != null && route.elevation_m > 0}
 				<section class="section">
-					<h2>{m('routeDetail.elevationHeading')}</h2>
+					<SectionHeader label={m('routeDetail.elevationHeading')} class="route-section-head" />
 					<div class="elev-grid">
 						<div class="elev-tile">
 							<span class="elev-label">
@@ -1294,19 +1300,20 @@
 
 			<!-- Reviews -->
 			<section class="section">
-				<div class="reviews-header">
-					<h2>
-						{m('routeDetail.reviewsHeading')}
+				<SectionHeader label={m('routeDetail.reviewsHeading')} class="route-section-head">
+					{#snippet badge()}
 						{#if avgRating}
 							<span class="avg-rating">{m('routeDetail.avgRating', { rating: avgRating })}</span>
 						{/if}
-					</h2>
-					{#if auth.loggedIn}
-						<button class="btn btn-outline btn-sm" onclick={() => showReviewForm = !showReviewForm}>
-							{showReviewForm ? m('routeDetail.cancel') : m('routeDetail.rate')}
-						</button>
-					{/if}
-				</div>
+					{/snippet}
+					{#snippet trailing()}
+						{#if auth.loggedIn}
+							<button class="btn btn-outline btn-sm" onclick={() => showReviewForm = !showReviewForm}>
+								{showReviewForm ? m('routeDetail.cancel') : m('routeDetail.rate')}
+							</button>
+						{/if}
+					{/snippet}
+				</SectionHeader>
 
 				{#if showReviewForm}
 					<div class="review-form">
@@ -1633,20 +1640,12 @@
 		.detail-header :global(h1) {
 			font-size: 1.35rem;
 		}
-		.route-meta {
-			gap: var(--space-xs) var(--space-sm);
-			font-size: 0.85rem;
-		}
 	}
 	@container stats (max-width: 380px) {
 		/* Very narrow: stack title + star, wrap meta items each on
 		 * their own line for readability, tighten section padding. */
 		.detail-header :global(.title-row) {
 			flex-wrap: wrap;
-		}
-		.route-meta {
-			gap: 0.3rem;
-			font-size: 0.8rem;
 		}
 		.detail-header :global(h1) {
 			font-size: 1.2rem;
@@ -1767,13 +1766,8 @@
 		margin-bottom: var(--space-xs);
 	}
 
-	h2 {
-		font-size: 0.85rem;
-		font-weight: 600;
+	:global(.route-section-head) {
 		margin-bottom: var(--space-md);
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
 	}
 
 	.section {
@@ -1784,22 +1778,6 @@
 		margin: var(--space-xs) 0 0;
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
-	}
-
-	.route-meta {
-		display: flex;
-		align-items: center;
-		gap: var(--space-xs);
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-	}
-
-	.meta-sep {
-		color: var(--color-text-tertiary);
-	}
-
-	.surface-tag {
-		text-transform: capitalize;
 	}
 
 	.route-description {
@@ -1960,11 +1938,6 @@
 		font-size: 3rem;
 	}
 
-	.reviews-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
 
 	.avg-rating {
 		font-size: 0.75rem;
@@ -2075,15 +2048,6 @@
 		font-family: 'Material Symbols Outlined';
 	}
 
-	.featured-pill {
-		background: var(--color-primary);
-		color: white;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		padding: 0.15rem 0.5rem;
-		border-radius: 9999px;
-		letter-spacing: 0.04em;
-	}
 	.tags-row {
 		display: flex;
 		flex-wrap: wrap;

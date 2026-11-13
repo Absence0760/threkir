@@ -73,6 +73,7 @@ Future<_FakeSettingsSync> _pumpPreferences(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SettingsPreferencesScreen(
+        page: PreferencesPage.display,
         preferences: prefs,
         settingsSync: sync,
         runStore: runStore,

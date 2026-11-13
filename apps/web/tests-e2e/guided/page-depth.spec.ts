@@ -49,7 +49,7 @@ test.describe('/guided — index↔detail cue-count parity (anon)', () => {
 			const rows = page.locator('ol.timeline li.cue');
 			await expect(rows).toHaveCount(r.cueCount);
 			// The detail's own cue-count chip agrees too.
-			await expect(page.locator('.script-head .cue-count')).toContainText(
+			await expect(page.locator('.guided-script-head .cue-count')).toContainText(
 				`${r.cueCount}`
 			);
 		});

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -61,11 +62,8 @@ class NextRaceCard extends StatelessWidget {
 
   static String relation(AppLocalizations l10n, PlanRaceCountdown c) =>
       switch (c.kind) {
-        PlanRaceCountdownKind.startsIn => c.days == 1
-            ? l10n.homePlanStartsTomorrow
-            : l10n.homePlanStartsInDays(c.days),
-        PlanRaceCountdownKind.raceIn =>
-          c.days == 1 ? l10n.homeRaceTomorrow : l10n.homeRaceInDays(c.days),
+        PlanRaceCountdownKind.startsIn => l10n.homePlanStartsInDays(c.days),
+        PlanRaceCountdownKind.raceIn => l10n.homeRaceInDays(c.days),
         PlanRaceCountdownKind.raceDay => l10n.homeRaceDay,
         PlanRaceCountdownKind.racePast => '',
       };
@@ -80,61 +78,56 @@ class NextRaceCard extends StatelessWidget {
     final raceDate =
         race == null ? overview.plan.endDate : parseIsoDate(race.date);
     final raceDay = countdown.kind == PlanRaceCountdownKind.raceDay;
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Row(
-            children: [
-              Icon(Icons.flag_outlined, color: theme.colorScheme.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.homeTrainingPlanLabel,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      race?.name ?? overview.plan.name,
-                      key: const Key('nextRaceName'),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      formatDateMed(raceDate, tag),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  relation(l10n, countdown),
-                  key: const Key('nextRaceCountdown'),
-                  textAlign: TextAlign.end,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: raceDay
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface,
+    return ListCard(
+      onTap: onTap,
+      dense: true,
+      child: Row(
+        children: [
+          Icon(Icons.flag_outlined, color: theme.colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.homeTrainingPlanLabel,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-              ),
-            ],
+                Text(
+                  race?.name ?? overview.plan.name,
+                  key: const Key('nextRaceName'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  formatDateMed(raceDate, tag),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              relation(l10n, countdown),
+              key: const Key('nextRaceCountdown'),
+              textAlign: TextAlign.end,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: raceDay
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

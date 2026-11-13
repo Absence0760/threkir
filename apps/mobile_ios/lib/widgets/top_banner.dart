@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show PinnedHeaderScope;
+
+import '../return_to_shell.dart' show topRoute;
 
 /// Top-anchored notification pill — the canonical replacement for
 /// `ScaffoldMessenger.of(context).showSnackBar(...)` across the mobile
@@ -77,8 +80,10 @@ void showTopBanner(
       ? MediaQueryData.fromView(view).padding.top
       : MediaQuery.paddingOf(context).top;
   final appBarBottom = _appBarBottomFor(context, overlay);
-  final topInset =
-      (appBarBottom > statusBar ? appBarBottom : statusBar) + 12;
+  final headerBottom = _pinnedHeaderBottomFor(context, overlay);
+  final topInset = [appBarBottom, headerBottom, statusBar]
+          .reduce((a, b) => a > b ? a : b) +
+      12;
 
   _current?.dismiss();
   _current = null;
@@ -153,13 +158,8 @@ double _appBarBottomFor(BuildContext context, OverlayState overlay) {
   if (route == null) {
     // Above every route — a banner said after its screen was popped. Without
     // this it drew over the title of whatever screen was left showing.
-    // A predicate that holds at once pops nothing: it reads the top route.
-    Route<dynamic>? top;
-    Navigator.maybeOf(context, rootNavigator: true)?.popUntil((r) {
-      top = r;
-      return true;
-    });
-    final candidate = top;
+    final navigator = Navigator.maybeOf(context, rootNavigator: true);
+    final candidate = navigator == null ? null : topRoute(navigator);
     if (candidate is ModalRoute) route = candidate;
   }
   final subtree = route?.subtreeContext;
@@ -173,6 +173,21 @@ double _appBarBottomFor(BuildContext context, OverlayState overlay) {
 
   subtree.visitChildElements(visit);
   return bottom;
+}
+
+/// The bottom of the calling page's pinned header (a hub's tab strip, under
+/// its large title), in the overlay's coordinates, or 0 on a page without
+/// one. The strip is not an app bar, so a banner placed under the bar alone
+/// covered it at 2x text (issue #1374).
+double _pinnedHeaderBottomFor(BuildContext context, OverlayState overlay) {
+  final box = PinnedHeaderScope.headerKeyOf(context)?.currentContext
+      ?.findRenderObject();
+  if (box is! RenderBox || !box.attached || !box.hasSize) return 0;
+  final overlayBox = overlay.context.findRenderObject();
+  return box
+      .localToGlobal(Offset(0, box.size.height),
+          ancestor: overlayBox is RenderBox ? overlayBox : null)
+      .dy;
 }
 
 /// Dismiss the currently visible banner, if any. Safe to call from
@@ -314,13 +329,15 @@ class _TopBannerWidgetState extends State<_TopBannerWidget> {
                     ),
                     if (widget.actionLabel != null) ...[
                       const SizedBox(width: 8),
+                      // A time-limited Undo / Retry: Material's 48 dp target,
+                      // not the 28 dp shrink-wrapped one it had (#1374
+                      // A11Y-15).
                       TextButton(
+                        key: const Key('topBannerAction'),
                         onPressed: widget.onAction,
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          tapTargetSize: MaterialTapTargetSize.padded,
                         ),
                         child: Text(
                           widget.actionLabel!,

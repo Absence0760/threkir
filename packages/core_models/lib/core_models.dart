@@ -28,6 +28,7 @@ export 'src/food.dart';
 export 'src/gear.dart';
 export 'src/generated/db_rows.dart';
 export 'src/gym.dart';
+export 'src/heart_rate_consent.dart';
 export 'src/import_completeness.dart';
 export 'src/iso_parse.dart';
 export 'src/keyset_page.dart';

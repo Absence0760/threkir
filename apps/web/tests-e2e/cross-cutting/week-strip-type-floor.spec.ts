@@ -75,7 +75,7 @@ test.describe('week ribbons — 11px micro-label floor at phone width', () => {
 
 	test('ThisWeekStrip day labels and distances clear the floor', async ({ page }) => {
 		// The strip lives in the weekly summary the week lead opens (§ 2283).
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await page.getByTestId('dash-week-lead-open').click({ timeout: 10_000 });
 		await expect(page.locator('.week-strip')).toBeVisible({ timeout: 10_000 });
 

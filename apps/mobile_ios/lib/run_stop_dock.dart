@@ -49,3 +49,36 @@ class RunSummaryDismissRequests extends ChangeNotifier {
 
 final RunSummaryDismissRequests runSummaryDismissRequests =
     RunSummaryDismissRequests();
+
+/// What a tap on the shell's docked centre button asks of a recorder that is
+/// not recording: start the 3-2-1 countdown, or cancel one already running.
+enum RunStartRequest { start, cancel }
+
+/// A tap on the docked centre button while the Run page shows its start
+/// screen, or Home's quick Start, delivered to the recorder (issue #1374).
+///
+/// While the Run page is idle the docked button IS the recorder's Start, the
+/// way it is the Stop mid-run, so the panel draws no START circle of its own.
+/// The start still runs behind the recorder's own permission checks and its
+/// cancellable countdown; nothing here starts a session.
+///
+/// Held until the recorder takes it, because Home's Start can fire before the
+/// lazily built Run page exists, and spent on arrival either way: a request
+/// the recorder cannot honour (it is already recording, or showing a summary)
+/// is dropped rather than starting a run later, when nobody asked.
+class RunStartRequests extends ChangeNotifier {
+  RunStartRequest? _pending;
+
+  void request(RunStartRequest request) {
+    _pending = request;
+    notifyListeners();
+  }
+
+  RunStartRequest? take() {
+    final pending = _pending;
+    _pending = null;
+    return pending;
+  }
+}
+
+final RunStartRequests runStartRequests = RunStartRequests();

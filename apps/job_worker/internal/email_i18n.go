@@ -411,6 +411,10 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		// A paid occurrence's freed seat offered to a waitlister (migration
 		// 20270726000002). Its own block for the same gofmt reason as above.
 		"event_waitlist_slot": {"A place opened up — it's held for you", "Pay before the hold runs out to claim your place.", "A place is held for you", "Claim your place", []string{"A place has opened in an event you're on the waitlist for, and we're holding it for you.", "Pay to claim it before the hold runs out — the event page shows exactly when. If you don't, the place goes to the next person on the waitlist and you leave the waitlist. You won't be charged unless you pay."}},
+
+		// A calendar month closed on a park course the recipient ran (issue
+		// #1343): best time, never a rank. Its own block for the same gofmt reason.
+		"park_course_month_closed": {"A park course month has closed", "Last month's board on a park course you ran is complete.", "Your park course month", "See the month's board", []string{"A calendar month has ended at a park course you ran, and the course's board for that month is now complete. Your best time from the month is on it.", "A new month's board is already open on the same course."}},
 	},
 	"de": {
 		"event_reminder":          {"Erinnerung: dein Event steht bevor", "Ein Event, für das du zugesagt hast, beginnt bald.", "Dein Event steht bevor", "Event ansehen", []string{"Ein Event, für das du zugesagt hast, beginnt bald.", "Öffne es für Treffpunkt, Uhrzeit und wer noch dabei ist."}},
@@ -466,6 +470,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 
 		"event_cancel_refunded": {"Ein bezahltes Event wurde abgesagt – du bekommst dein Geld zurück", "Deine Zahlung für den abgesagten Termin wird erstattet.", "Event abgesagt, Erstattung unterwegs", "Event ansehen", []string{"Ein Event, für das du bezahlt hattest, wurde abgesagt, und wir erstatten dir deine Zahlung.", "Das Geld geht auf die Karte zurück, mit der du bezahlt hast. Wie lange die Gutschrift dauert, hängt von deiner Bank ab – meist ein paar Werktage."}},
 		"event_waitlist_slot":   {"Ein Platz ist frei geworden – er ist für dich reserviert", "Bezahle, bevor die Reservierung abläuft, um deinen Platz zu sichern.", "Ein Platz ist für dich reserviert", "Platz sichern", []string{"Bei einem Event, auf dessen Warteliste du stehst, ist ein Platz frei geworden, und wir halten ihn für dich frei.", "Bezahle, bevor die Reservierung abläuft – wann genau, steht auf der Event-Seite. Sonst geht der Platz an die nächste Person auf der Warteliste, und du wirst von der Warteliste genommen. Es wird nichts abgebucht, solange du nicht bezahlst."}},
+
+		"park_course_month_closed": {"Ein Parkstrecken-Monat ist abgeschlossen", "Die Monatswertung einer Parkstrecke, die du gelaufen bist, ist vollständig.", "Dein Monat auf der Parkstrecke", "Monatswertung ansehen", []string{"Ein Kalendermonat ist dort zu Ende gegangen, wo eine Parkstrecke liegt, die du gelaufen bist, und ihre Wertung für diesen Monat ist vollständig. Deine beste Zeit aus dem Monat steht darin.", "Die Wertung für den neuen Monat ist auf derselben Strecke schon offen."}},
 	},
 	"fr": {
 		"event_reminder":          {"Rappel : votre événement approche", "Un événement auquel vous avez répondu présent commence bientôt.", "Votre événement approche", "Voir l'événement", []string{"Un événement auquel vous avez répondu présent commence bientôt.", "Ouvrez-le pour le point de rendez-vous, l'horaire et les autres participants."}},
@@ -521,6 +527,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 
 		"event_cancel_refunded": {"Un événement payé a été annulé — vous allez être remboursé", "Votre paiement pour la séance annulée est en cours de remboursement.", "Événement annulé, remboursement en cours", "Voir l'événement", []string{"Un événement pour lequel vous aviez payé a été annulé, et nous vous remboursons votre paiement.", "Le remboursement est versé sur la carte utilisée pour payer. Le délai dépend de votre banque, généralement quelques jours ouvrés."}},
 		"event_waitlist_slot":   {"Une place s'est libérée — elle vous est réservée", "Payez avant la fin de la réservation pour obtenir votre place.", "Une place vous est réservée", "Obtenir ma place", []string{"Une place s'est libérée pour un événement sur la liste d'attente duquel vous êtes inscrit, et nous la gardons pour vous.", "Payez avant la fin de la réservation — l'heure exacte figure sur la page de l'événement. Sinon, la place revient à la personne suivante sur la liste d'attente et vous en êtes retiré. Rien ne vous est prélevé tant que vous ne payez pas."}},
+
+		"park_course_month_closed": {"Un mois sur un parcours de parc est terminé", "Le classement du mois dernier d'un parcours de parc que vous avez couru est complet.", "Votre mois sur un parcours de parc", "Voir le classement du mois", []string{"Un mois civil s'est terminé là où se trouve un parcours de parc que vous avez couru, et son classement pour ce mois est complet. Votre meilleur temps du mois y figure.", "Le classement du nouveau mois est déjà ouvert sur le même parcours."}},
 	},
 	"es": {
 		"event_reminder":          {"Recordatorio: tu evento se acerca", "Un evento al que confirmaste asistencia empieza pronto.", "Tu evento se acerca", "Ver evento", []string{"Tienes un evento que empieza pronto y al que confirmaste asistencia.", "Ábrelo para ver el punto de encuentro, la hora y quién más va."}},
@@ -558,7 +566,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"data_export_ready":       {"Tu exportación de datos está lista", "Tu exportación de cuenta ha terminado: recógela en Ajustes.", "Tu exportación de datos está lista", "Abrir Ajustes", []string{"La exportación de cuenta que pediste ha terminado de generarse.", "Abre Ajustes y luego Cuenta para descargarla. El enlace de descarga se crea al llegar allí, así que nada de este correo caduca mientras espera; el archivo se conserva 7 días."}},
 		"refund_failed":           {"Un reembolso que iniciamos no se pudo completar", "El dinero sigue con nosotros: buscaremos otra forma de devolvértelo.", "Tu reembolso no te ha llegado", "Ver detalles", []string{"Un reembolso que iniciamos para ti fue devuelto por el banco, así que el dinero no ha llegado a tu cuenta.", "No ha fallado nada por tu parte y no tienes que volver a pagar. Responde a este correo o escribe a billing@threkir.com y buscaremos otra forma de devolvértelo."}},
 		"welcome":                 {"Te damos la bienvenida a Threkir", "Todo listo: así puedes empezar.", "Te damos la bienvenida a Threkir", "Abrir Threkir", []string{"Gracias por registrarte. Ya puedes registrar tu primera carrera, crear rutas y seguir a amigos.", "Pulsa el botón para empezar."}},
-		"pro_welcome":             {"Ya tienes Threkir Pro", "Gracias por mejorar tu plan: esto es lo que se desbloquea.", "Te damos la bienvenida a Threkir Pro", "Descubrir Pro", []string{"Gracias por mejorar tu plan: tus funciones de Threkir Pro ya están activas.", "Descubre los análisis de entrenamiento avanzados, el entrenador con IA y mucho más."}},
+		"pro_welcome":             {"Ya tienes Threkir Pro", "Gracias por mejorar tu plan: esto es lo que se desbloquea.", "Te damos la bienvenida a Threkir Pro", "Descubrir Pro", []string{"Gracias por mejorar tu plan: tus funciones de Threkir Pro ya están activas.", "Descubre los análisis de entrenamiento avanzados, el Entrenador IA y mucho más."}},
 		"payment_failed":          {"Hubo un problema con tu pago", "Actualiza tu método de pago para mantener Threkir Pro.", "Problema con el pago", "Actualizar pago", []string{"No pudimos procesar tu último pago de Threkir Pro.", "Actualiza tu método de pago para mantener tus funciones Pro: tu suscripción podría pausarse hasta resolverlo."}},
 		"default":                 {"Tienes una notificación nueva", "Tienes una notificación nueva en Threkir.", "Notificación nueva", "Abrir Threkir", []string{"Tienes una notificación nueva en Threkir."}},
 		"safety_finish":           {"%s terminó una carrera", "Ha terminado una carrera de la que eres contacto de seguridad.", "%s terminó una carrera", "Abrir Threkir", []string{"Distancia %s · tiempo %s.", "Eres contacto de seguridad de esta persona, así que recibes un aviso cuando termina una carrera, incluso si es privada. No tienes que hacer nada."}},
@@ -576,6 +584,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 
 		"event_cancel_refunded": {"Se canceló un evento que pagaste: te estamos reembolsando", "Tu pago por la sesión cancelada se está reembolsando.", "Evento cancelado, reembolso en camino", "Ver evento", []string{"Se ha cancelado un evento por el que habías pagado y te estamos reembolsando el pago.", "El dinero vuelve a la tarjeta con la que pagaste. El plazo depende de tu banco; suele ser de unos pocos días hábiles."}},
 		"event_waitlist_slot":   {"Se ha liberado una plaza: te la estamos guardando", "Paga antes de que venza la reserva para quedarte con tu plaza.", "Tienes una plaza reservada", "Conseguir mi plaza", []string{"Se ha liberado una plaza en un evento en cuya lista de espera estás, y te la estamos guardando.", "Paga antes de que venza la reserva; la hora exacta aparece en la página del evento. Si no, la plaza pasará a la siguiente persona de la lista de espera y saldrás de ella. No se te cobrará nada a menos que pagues."}},
+
+		"park_course_month_closed": {"Ha terminado un mes en un recorrido de parque", "La clasificación del mes pasado de un recorrido de parque que corriste está completa.", "Tu mes en el recorrido de parque", "Ver la clasificación del mes", []string{"Ha terminado un mes natural donde está un recorrido de parque que corriste, y su clasificación de ese mes está completa. Tu mejor tiempo del mes aparece en ella.", "La clasificación del nuevo mes ya está abierta en el mismo recorrido."}},
 	},
 	"ja": {
 		"event_reminder":          {"リマインダー：イベントがもうすぐ始まります", "参加予定のイベントがまもなく始まります。", "イベントがもうすぐ始まります", "イベントを見る", []string{"参加予定のイベントがまもなく始まります。", "集合場所・時間・参加者を確認しましょう。"}},
@@ -631,6 +641,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 
 		"event_cancel_refunded": {"支払い済みのイベントが中止されました（返金手続き中）", "中止された回のお支払いを返金しています。", "イベント中止・返金手続き中", "イベントを見る", []string{"お支払い済みのイベントが中止されたため、お支払い金額を返金しています。", "返金はお支払いに使用したカードに戻ります。反映までの期間はカード会社によって異なりますが、通常は数営業日です。"}},
 		"event_waitlist_slot":   {"空きが出ました（あなたのために確保中）", "確保期限までにお支払いいただくと参加が確定します。", "あなたの枠を確保しています", "枠を確定する", []string{"キャンセル待ちに登録しているイベントに空きが出たため、あなたのために枠を確保しています。", "確保期限までにお支払いください。正確な期限はイベントページに表示されています。期限までにお支払いがない場合、枠は次の方に回り、あなたはキャンセル待ちから外れます。お支払いいただくまで料金は発生しません。"}},
+
+		"park_course_month_closed": {"公園コースの1か月が終わりました", "走った公園コースの先月のランキングが確定しました。", "公園コースでの1か月", "月間ランキングを見る", []string{"走った公園コースの現地で暦月が終わり、その月のランキングが確定しました。その月のあなたのベストタイムが載っています。", "同じコースで新しい月のランキングがすでに始まっています。"}},
 	},
 	"pt-BR": {
 		"event_reminder":          {"Lembrete: seu evento está chegando", "Um evento que você confirmou presença começa em breve.", "Seu evento está chegando", "Ver evento", []string{"Você tem um evento que começa em breve e que você confirmou presença.", "Abra para ver o ponto de encontro, o horário e quem mais vai."}},
@@ -686,6 +698,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 
 		"event_cancel_refunded": {"Um evento que você pagou foi cancelado — você será reembolsado", "Seu pagamento pela sessão cancelada está sendo reembolsado.", "Evento cancelado, reembolso a caminho", "Ver evento", []string{"Um evento pelo qual você pagou foi cancelado, e estamos reembolsando seu pagamento.", "O valor volta para o cartão usado no pagamento. O prazo depende do seu banco — normalmente alguns dias úteis."}},
 		"event_waitlist_slot":   {"Abriu uma vaga — ela está reservada para você", "Pague antes que a reserva expire para garantir sua vaga.", "Uma vaga está reservada para você", "Garantir minha vaga", []string{"Abriu uma vaga em um evento em cuja lista de espera você está, e estamos guardando-a para você.", "Pague antes que a reserva expire — o horário exato está na página do evento. Caso contrário, a vaga passa para a próxima pessoa da lista de espera e você sai dela. Nada é cobrado a menos que você pague."}},
+
+		"park_course_month_closed": {"Um mês em um percurso de parque terminou", "A classificação do mês passado de um percurso de parque que você correu está completa.", "Seu mês no percurso de parque", "Ver a classificação do mês", []string{"Um mês do calendário terminou onde fica um percurso de parque que você correu, e a classificação desse mês está completa. Seu melhor tempo do mês está nela.", "A classificação do novo mês já está aberta no mesmo percurso."}},
 	},
 	"pt-PT": {
 		"event_reminder":          {"Lembrete: o seu evento está a chegar", "Um evento a que confirmou presença começa em breve.", "O seu evento está a chegar", "Ver evento", []string{"Tem um evento a começar em breve a que confirmou presença.", "Abra-o para ver o ponto de encontro, o horário e quem mais vai."}},
@@ -741,5 +755,7 @@ var emailCatalogue = map[string]map[string]emailStrings{
 
 		"event_cancel_refunded": {"Um evento que pagou foi cancelado — vai ser reembolsado", "O seu pagamento pela sessão cancelada está a ser reembolsado.", "Evento cancelado, reembolso a caminho", "Ver evento", []string{"Um evento pelo qual pagou foi cancelado e estamos a reembolsar o seu pagamento.", "O valor volta para o cartão com que pagou. O prazo depende do seu banco — normalmente alguns dias úteis."}},
 		"event_waitlist_slot":   {"Abriu um lugar — está reservado para si", "Pague antes de a reserva expirar para garantir o seu lugar.", "Tem um lugar reservado", "Garantir o meu lugar", []string{"Abriu um lugar num evento em cuja lista de espera está, e estamos a guardá-lo para si.", "Pague antes de a reserva expirar — a hora exata está na página do evento. Caso contrário, o lugar passa para a pessoa seguinte da lista de espera e sai da lista. Nada lhe é cobrado se não pagar."}},
+
+		"park_course_month_closed": {"Terminou um mês num percurso de parque", "A classificação do mês passado de um percurso de parque que correu está completa.", "O seu mês no percurso de parque", "Ver a classificação do mês", []string{"Terminou um mês civil onde fica um percurso de parque que correu, e a classificação desse mês está completa. O seu melhor tempo do mês está nela.", "A classificação do novo mês já está aberta no mesmo percurso."}},
 	},
 }

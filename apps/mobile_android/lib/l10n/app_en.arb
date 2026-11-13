@@ -168,15 +168,12 @@
       }
     }
   },
-  "recapAcrossRuns": "across {count} {runWord}",
+  "recapAcrossRuns": "{count, plural, one{across {count} run} other{across {count} runs}}",
   "@recapAcrossRuns": {
     "description": "Subtitle under the hero distance giving the run count",
     "placeholders": {
       "count": {
-        "type": "Object"
-      },
-      "runWord": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -188,15 +185,12 @@
   "@recapBestStreakLabel": {
     "description": "Stat card label for the best running streak"
   },
-  "recapStreakDays": "{days} {dayWord}",
+  "recapStreakDays": "{days, plural, one{{days} day} other{{days} days}}",
   "@recapStreakDays": {
-    "description": "Stat card value for the best streak length in days",
+    "description": "Recap best-streak stat value",
     "placeholders": {
       "days": {
-        "type": "Object"
-      },
-      "dayWord": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -435,7 +429,7 @@
   "@importRefusedBackupTooNew": {
     "description": "Error detail inside a restore-failed status when the backup was written by a newer app version than this one"
   },
-  "importStatusRestoringBackup": "Restoring backup...",
+  "importStatusRestoringBackup": "Restoring backup…",
   "@importStatusRestoringBackup": {
     "description": "Status while restoring from a full-backup ZIP"
   },
@@ -541,9 +535,13 @@
   "@importBackupCardSubtitle": {
     "description": "Card subtitle describing the full-backup restore"
   },
-  "importBackupCardDescription": "Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do. Make a backup from Settings → Full backup.",
+  "importBackupCardDescription": "Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do.",
   "@importBackupCardDescription": {
     "description": "Body copy explaining the full-backup restore behaviour"
+  },
+  "importBackupMakeOne": "Make a backup",
+  "@importBackupMakeOne": {
+    "description": "Link on the Restore backup card; opens the Account page, where Full backup makes one"
   },
   "importBackupButton": "Restore backup ZIP",
   "@importBackupButton": {
@@ -765,6 +763,15 @@
       }
     }
   },
+  "importHeartRateNotKept": "{count, plural, one{1 activity was imported without its heart rate} other{{count} activities were imported without their heart rate}}: Threkir keeps heart rate only with your health-data consent.",
+  "@importHeartRateNotKept": {
+    "description": "Note after an import whose activities were stored without heart rate, for want of health-data consent",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "importHealthSubtitleIos": "Pull workouts you've recorded on Apple Watch, Nike Run Club, Strava, and other apps that write to Apple Health",
   "@importHealthSubtitleIos": {
     "description": "iOS subtitle naming apps that write to Apple Health"
@@ -907,13 +914,13 @@
   "@peopleNearbyEmptyTitle": {
     "description": "Empty-state title when the runners-nearby list comes back with no one"
   },
-  "peopleNearbyEmptyBody": "Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.",
+  "peopleNearbyEmptyBody": "Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.",
   "@peopleNearbyEmptyBody": {
     "description": "Empty-state body for the runners-nearby list, pointing at the opt-in and area setter"
   },
-  "peopleNearbyEmptyAction": "Open Preferences",
+  "peopleNearbyEmptyAction": "Open privacy settings",
   "@peopleNearbyEmptyAction": {
-    "description": "Button on the runners-nearby empty state that opens the Preferences settings screen"
+    "description": "Button on the runners-nearby empty state that opens the Privacy & sharing preferences page"
   },
   "peopleNearbyLoadFailed": "Could not load runners nearby.",
   "@peopleNearbyLoadFailed": {
@@ -937,7 +944,7 @@
       }
     }
   },
-  "prefsDiscoverableNearby": "Show me to runners nearby",
+  "prefsDiscoverableNearby": "Show me in Runners nearby",
   "@prefsDiscoverableNearby": {
     "description": "Toggle title for opting in to coarse-location runners-nearby discovery"
   },
@@ -1058,9 +1065,143 @@
   "@readinessContributorRestingHr": {
     "description": "Readiness breakdown: the points resting heart rate added to the score"
   },
-  "dashboardTrendsDivider": "Trends",
-  "@dashboardTrendsDivider": {
-    "description": "Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header."
+  "readinessAdviceLine": "{reason}. {next}",
+  "@readinessAdviceLine": {
+    "description": "The readiness advice line: the reason, then what to do",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "readinessAdviceNoSignal": "Connect sleep + HR data for a real readiness picture.",
+  "@readinessAdviceNoSignal": {
+    "description": "Readiness advice with no inputs, below the high band"
+  },
+  "readinessAdviceNoSignalHigh": "Looks like a good day to push the pace.",
+  "@readinessAdviceNoSignalHigh": {
+    "description": "Readiness advice with no inputs, in the high band"
+  },
+  "readinessNextLow": "Consider an easy day or a rest day.",
+  "@readinessNextLow": {
+    "description": "What the low readiness band suggests"
+  },
+  "readinessNextModerate": "A steady or moderate effort fits today.",
+  "@readinessNextModerate": {
+    "description": "What the moderate readiness band suggests"
+  },
+  "readinessNextHigh": "You’re primed for a harder effort if planned.",
+  "@readinessNextHigh": {
+    "description": "What the high readiness band suggests"
+  },
+  "readinessReasonHeavyFatigue": "Heavy fatigue — recent training stress is well above your fitness",
+  "@readinessReasonHeavyFatigue": {
+    "description": "Why an input moved readiness (heavyFatigue)"
+  },
+  "readinessReasonFatigued": "Fatigued from recent training",
+  "@readinessReasonFatigued": {
+    "description": "Why an input moved readiness (fatigued)"
+  },
+  "readinessReasonSlightFatigue": "Slight fatigue",
+  "@readinessReasonSlightFatigue": {
+    "description": "Why an input moved readiness (slightFatigue)"
+  },
+  "readinessReasonFormNeutral": "Form is neutral",
+  "@readinessReasonFormNeutral": {
+    "description": "Why an input moved readiness (formNeutral)"
+  },
+  "readinessReasonFresh": "Fresh and well-recovered",
+  "@readinessReasonFresh": {
+    "description": "Why an input moved readiness (fresh)"
+  },
+  "readinessReasonVeryFresh": "Very fresh — borderline tapered",
+  "@readinessReasonVeryFresh": {
+    "description": "Why an input moved readiness (veryFresh)"
+  },
+  "readinessReasonOverTapered": "Over-tapered — edge may be blunted",
+  "@readinessReasonOverTapered": {
+    "description": "Why an input moved readiness (overTapered)"
+  },
+  "readinessReasonVeryLittleSleep": "Very little sleep — recovery is compromised",
+  "@readinessReasonVeryLittleSleep": {
+    "description": "Why an input moved readiness (veryLittleSleep)"
+  },
+  "readinessReasonShortSleep": "Short on sleep",
+  "@readinessReasonShortSleep": {
+    "description": "Why an input moved readiness (shortSleep)"
+  },
+  "readinessReasonUnderSleep": "A little under target sleep",
+  "@readinessReasonUnderSleep": {
+    "description": "Why an input moved readiness (underSleep)"
+  },
+  "readinessReasonWellRested": "Well rested",
+  "@readinessReasonWellRested": {
+    "description": "Why an input moved readiness (wellRested)"
+  },
+  "readinessReasonExtendedSleep": "Extended sleep — recovery should be solid",
+  "@readinessReasonExtendedSleep": {
+    "description": "Why an input moved readiness (extendedSleep)"
+  },
+  "readinessReasonHrWellAbove": "Resting HR {bpm} bpm above baseline — strong sign of illness or under-recovery",
+  "@readinessReasonHrWellAbove": {
+    "description": "Why an input moved readiness (hrWellAbove)",
+    "placeholders": {
+      "bpm": {
+        "type": "int"
+      }
+    }
+  },
+  "readinessReasonHrAbove": "Resting HR {bpm} bpm above baseline",
+  "@readinessReasonHrAbove": {
+    "description": "Why an input moved readiness (hrAbove)",
+    "placeholders": {
+      "bpm": {
+        "type": "int"
+      }
+    }
+  },
+  "readinessReasonHrSlightlyHigh": "Resting HR slightly elevated",
+  "@readinessReasonHrSlightlyHigh": {
+    "description": "Why an input moved readiness (hrSlightlyHigh)"
+  },
+  "readinessReasonHrBaseline": "Resting HR at baseline",
+  "@readinessReasonHrBaseline": {
+    "description": "Why an input moved readiness (hrBaseline)"
+  },
+  "readinessReasonHrBelow": "Resting HR below baseline — well recovered",
+  "@readinessReasonHrBelow": {
+    "description": "Why an input moved readiness (hrBelow)"
+  },
+  "todayTitle": "Today",
+  "@todayTitle": {
+    "description": "Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary"
+  },
+  "progressTitle": "Progress",
+  "@progressTitle": {
+    "description": "Title of the Progress page, reached from the progress summary card on Today: trends, personal bests, streak, goals and the recap"
+  },
+  "progressSummaryTitle": "Your progress",
+  "@progressSummaryTitle": {
+    "description": "Heading of the one progress summary card on Today; a tap opens the Progress page"
+  },
+  "progressSummaryOpenHint": "Open your progress",
+  "@progressSummaryOpenHint": {
+    "description": "Screen-reader hint on the progress summary card: what a tap does"
+  },
+  "progressSummaryWeek": "This week",
+  "@progressSummaryWeek": {
+    "description": "Label under this calendar week's distance on Today's progress summary card"
+  },
+  "progressSummaryMonth": "This month",
+  "@progressSummaryMonth": {
+    "description": "Label under this calendar month's distance on Today's progress summary card"
+  },
+  "todayGoalsMore": "More goals in Progress",
+  "@todayGoalsMore": {
+    "description": "Quiet line under Today's goals strip when the runner has more goals than it lists; the strip opens the Progress page, which lists them all"
   },
   "dashboardTrendGroupVolume": "Volume",
   "@dashboardTrendGroupVolume": {
@@ -1151,11 +1292,11 @@
       }
     }
   },
-  "dashboardHideFromHome": "Hide from Home",
-  "@dashboardHideFromHome": {
-    "description": "Long-press action on a Home trend group that hides it from Home"
+  "progressHideGroup": "Hide from Progress",
+  "@progressHideGroup": {
+    "description": "Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Progress cards on the Units & display page brings it back"
   },
-  "dashboardCardHidden": "{name} is hidden. You can bring it back in Settings.",
+  "dashboardCardHidden": "{name} is hidden from Progress.",
   "@dashboardCardHidden": {
     "description": "Banner after hiding a Home trend group; {name} is the group title",
     "placeholders": {
@@ -1163,6 +1304,10 @@
         "type": "String"
       }
     }
+  },
+  "dashboardCardHiddenAction": "Manage cards",
+  "@dashboardCardHiddenAction": {
+    "description": "Action on the banner after hiding a trend group on Progress; opens the Units & display page, where Progress cards brings a group back"
   },
   "dashboardHideCardFailed": "Couldn't hide that card. Try again.",
   "@dashboardHideCardFailed": {
@@ -1258,27 +1403,27 @@
   },
   "navStartRun": "Start run",
   "@navStartRun": {
-    "description": "Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun \"Run\", which decisions § 1649 keeps out of the tab-label set"
+    "description": "Caption of the Today hero's quick Start, whose tap starts a run (the countdown with tap-to-cancel). Only a control that starts the run says Start (issue #1374); the centre nav button names the activity instead"
   },
   "navStartWalk": "Start walk",
   "@navStartWalk": {
-    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is walk. Same slot and rules as navStartRun"
+    "description": "As navStartRun, when the default activity is walk"
   },
   "navStartRide": "Start ride",
   "@navStartRide": {
-    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is cycle. Same slot and rules as navStartRun"
+    "description": "As navStartRun, when the default activity is cycle"
   },
   "navStartTrailRun": "Start trail run",
   "@navStartTrailRun": {
-    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is hike (shown as Trail run). Same slot and rules as navStartRun"
+    "description": "As navStartRun, when the default activity is hike (shown as Trail run)"
   },
   "navStartStroller": "Start stroller run",
   "@navStartStroller": {
-    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is stroller. Same slot and rules as navStartRun"
+    "description": "As navStartRun, when the default activity is stroller"
   },
   "startRecordingRun": "Start a run",
   "@startRecordingRun": {
-    "description": "Action that starts recording a run: the centre nav button's screen-reader label and the empty Home's primary button"
+    "description": "Action that starts recording a run: the empty Home's primary button"
   },
   "startRecordingWalk": "Start a walk",
   "@startRecordingWalk": {
@@ -1311,6 +1456,32 @@
   "navStop": "Stop",
   "@navStop": {
     "description": "Caption under the centre nav button while a run is recording on the Run page, where the button is the hold-to-stop control. Must fit the 72dp centre slot"
+  },
+  "navStart": "Start",
+  "@navStart": {
+    "description": "Caption under the centre nav button while the Run page shows its start screen, where a tap starts the 3-2-1 countdown. Must fit the 72dp centre slot"
+  },
+  "navStarting": "Starting",
+  "@navStarting": {
+    "description": "Caption under the centre nav button after its Start was tapped on the Run page, while the permission, GPS, background-location and battery checks (or a planned workout loading) stand between the tap and the 3-2-1; a second tap does nothing. Must fit the 72dp centre slot"
+  },
+  "runStartingA11yLabel": "Starting the run",
+  "@runStartingA11yLabel": {
+    "description": "Screen-reader label for the centre nav button while a start is in its pre-countdown checks (navStarting)"
+  },
+  "navOpenRecorderA11yLabel": "Open the recording screen ({activity})",
+  "@navOpenRecorderA11yLabel": {
+    "description": "Screen-reader label for the centre nav button away from the Run page, when a tap opens the recording screen (it starts nothing; the caption is the activity name)",
+    "placeholders": {
+      "activity": {
+        "type": "String",
+        "example": "Run"
+      }
+    }
+  },
+  "runCancelStartA11yLabel": "Cancel the start",
+  "@runCancelStartA11yLabel": {
+    "description": "Screen-reader label for the centre nav button during the 3-2-1 countdown; a tap cancels the start"
   },
   "logReturnToRunA11yLabel": "Return to your run",
   "@logReturnToRunA11yLabel": {
@@ -1388,6 +1559,14 @@
   "@homeAskCoachSubtitleRunOnly": {
     "description": "Subtitle of the pinned Ask your coach card on Home while Gym and Nutrition are both hidden, so it names only what this runner records"
   },
+  "homeCoachTitle": "Coach",
+  "@homeCoachTitle": {
+    "description": "Title of the Coach row on Today when the AI coach is not live on this deploy or the runner is signed out: the Coach screen still holds guided runs and athletes & coaches"
+  },
+  "homeCoachSubtitleTools": "Guided runs, athletes and coaches",
+  "@homeCoachSubtitleTools": {
+    "description": "Subtitle of the Coach row on Today when the AI coach is not available: what the Coach screen holds instead"
+  },
   "youProfileTitle": "Your profile",
   "@youProfileTitle": {
     "description": "Title of the profile entry at the top of the You tab"
@@ -1396,31 +1575,18 @@
   "@homeTrainingPlanLabel": {
     "description": "Eyebrow on the Home card for the active training plan, above the plan's name"
   },
-  "homeRaceInDays": "{days, plural, one{Race in {days} day} other{Race in {days} days}}",
+  "homeRaceInDays": "{days, plural, =1{Race tomorrow} other{Race in {days} days}}",
   "@homeRaceInDays": {
-    "description": "Countdown on the Home plan card: whole days until the plan's race day (always 2 or more; 1 is homeRaceTomorrow)",
+    "description": "Countdown on the Home plan card: whole days until the plan's race day, \"tomorrow\" at 1",
     "placeholders": {
       "days": {
         "type": "int"
       }
     }
-  },
-  "homeRaceTomorrow": "Race tomorrow",
-  "@homeRaceTomorrow": {
-    "description": "Countdown on the Home plan card when race day is tomorrow"
   },
   "homeRaceDay": "Race day",
   "@homeRaceDay": {
     "description": "Countdown on the Home plan card on race day itself"
-  },
-  "homePlanStartsInDays": "{days, plural, one{Starts in {days} day} other{Starts in {days} days}}",
-  "@homePlanStartsInDays": {
-    "description": "Home plan card before the plan's first day: whole days until it starts",
-    "placeholders": {
-      "days": {
-        "type": "int"
-      }
-    }
   },
   "homePlanUpNext": "Up next: {name}, starts {date}",
   "@homePlanUpNext": {
@@ -1434,13 +1600,54 @@
       }
     }
   },
-  "homePlanStartsTomorrow": "Starts tomorrow",
-  "@homePlanStartsTomorrow": {
-    "description": "Home plan card when the plan starts tomorrow"
+  "homePlanStartsInDays": "{days, plural, =1{Starts tomorrow} other{Starts in {days} days}}",
+  "@homePlanStartsInDays": {
+    "description": "Home plan card before the plan's first day: whole days until it starts, tomorrow at 1",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "youViewProfile": "View profile",
   "@youViewProfile": {
     "description": "Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile"
+  },
+  "youEditProfile": "Edit profile",
+  "@youEditProfile": {
+    "description": "Button on the You tab identity card that opens the name and photo editor"
+  },
+  "editProfileSubtitle": "Photo, name and username",
+  "@editProfileSubtitle": {
+    "description": "Account row subtitle: what the Edit profile page edits"
+  },
+  "editProfileUsername": "Username",
+  "@editProfileUsername": {
+    "description": "Edit profile: label of the public @username field (web settingsAccount.handleLabel)"
+  },
+  "editProfileUsernameHelp": "Your public @username — 3–30 lowercase letters, numbers, or underscores. Others can find you by it.",
+  "@editProfileUsernameHelp": {
+    "description": "Edit profile: help under the username field"
+  },
+  "editProfileUsernameTaken": "That username is already taken.",
+  "@editProfileUsernameTaken": {
+    "description": "Edit profile: the username belongs to someone else"
+  },
+  "editProfileUsernameInvalid": "Use 3–30 lowercase letters, numbers, or underscores.",
+  "@editProfileUsernameInvalid": {
+    "description": "Edit profile: the username breaks the 3-30 [a-z0-9_] rule"
+  },
+  "editProfileSaving": "Saving…",
+  "@editProfileSaving": {
+    "description": "Edit profile: the Save button while saving"
+  },
+  "editProfileSaved": "Profile saved",
+  "@editProfileSaved": {
+    "description": "Banner after Edit profile saves"
+  },
+  "editProfileSaveFailed": "Couldn't save your profile. Please try again.",
+  "@editProfileSaveFailed": {
+    "description": "Banner when Edit profile's save fails for a reason other than the username"
   },
   "logSheetTitle": "Log",
   "@logSheetTitle": {
@@ -1502,7 +1709,7 @@
   "@bodyMetricsConsentTitle": {
     "description": "Toggle title for the GDPR Art 9 health-data consent gate"
   },
-  "bodyMetricsConsentSubtitle": "Height and weight are special-category health data. Turn this off to erase them.",
+  "bodyMetricsConsentSubtitle": "Threkir stores your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and uses them and your date of birth as health data (GDPR Art 9(2)(a)) to personalise your training and nutrition targets and to place you in gender and age-band segment leaderboards, only while this is on. Turn it off and save to withdraw consent and erase them; your date of birth stays as your age record.",
   "@bodyMetricsConsentSubtitle": {
     "description": "Explanation under the health-data consent toggle"
   },
@@ -1548,8 +1755,20 @@
   },
   "bodyMetricsConsentRequired": "Turn on health-data storage to save height and weight.",
   "bodyMetricsWithdrawTitle": "Withdraw health-data consent?",
-  "bodyMetricsWithdrawBody": "This permanently erases your saved height and your entire weight history. This can't be undone.",
+  "bodyMetricsWithdrawBody": "This permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log. Your activities themselves are kept, and your date of birth stays as your age record but is no longer used as health data. This can't be undone.",
   "bodyMetricsWithdrawConfirm": "Withdraw & erase",
+  "healthConsentFoodTitle": "Your food log is health data",
+  "@healthConsentFoodTitle": {
+    "description": "Title of the dialog asking for health-data consent before the first food is logged (decisions § 2514)"
+  },
+  "healthConsentFoodBody": "Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.",
+  "@healthConsentFoodBody": {
+    "description": "Body of the dialog asking for health-data consent before food is logged"
+  },
+  "healthConsentGiveAction": "Review consent",
+  "@healthConsentGiveAction": {
+    "description": "Button that opens the screen where health-data consent is reviewed and given; tapping it does not give consent itself"
+  },
   "@bodyMetricsConsentRequired": {
     "description": "Error shown when saving body data without consent"
   },
@@ -1701,6 +1920,10 @@
   "safetyEmpty": "No safety contacts yet.",
   "@safetyEmpty": {
     "description": "Empty-state text when the user has no safety contacts"
+  },
+  "safetyLoadFailed": "Couldn't load your safety contacts. Nothing has been removed. Check your connection and try again.",
+  "@safetyLoadFailed": {
+    "description": "Inline error on Settings > Safety when the contact lists could not be read; distinct from the empty state, and says nothing was lost"
   },
   "safetyStatusPending": "Pending — waiting for them to confirm",
   "@safetyStatusPending": {
@@ -1903,25 +2126,31 @@
   "@homeTodaysLift": {
     "description": "Home card header above today's logged gym workout"
   },
-  "settingsSectionTraining": "Training",
-  "@settingsSectionTraining": {
-    "description": "Section header on the You tab above coaching and guided runs"
-  },
-  "settingsSectionSettings": "Settings",
-  "@settingsSectionSettings": {
-    "description": "Section header on the You tab above Account, Preferences and Safety contacts"
-  },
   "settingsSectionAppsData": "Apps & data",
   "@settingsSectionAppsData": {
     "description": "Settings landing section header grouping Integrations + Devices + Gear"
   },
+  "settingsSectionProfile": "Profile",
+  "@settingsSectionProfile": {
+    "description": "You tab group: Account, Body metrics, Safety contacts, Follow requests (web Settings → Profile)"
+  },
+  "settingsSearchHint": "Search settings",
+  "@settingsSearchHint": {
+    "description": "Hint of the search field at the top of the You tab, which finds a row on You or on any Preferences page"
+  },
+  "settingsSearchNoResults": "No settings match “{query}”.",
+  "@settingsSearchNoResults": {
+    "description": "Shown under the You tab settings search when nothing matches",
+    "placeholders": {
+      "query": {
+        "type": "String",
+        "example": "zones"
+      }
+    }
+  },
   "settingsSectionAccountLegal": "Account & legal",
   "@settingsSectionAccountLegal": {
     "description": "Settings landing section header grouping Pro & support + Licenses"
-  },
-  "prefsSectionUnitsDisplay": "Units & display",
-  "@prefsSectionUnitsDisplay": {
-    "description": "Settings > Preferences section header for units, pace format, map style, language, theme"
   },
   "authEmailLabel": "Email",
   "@authEmailLabel": {
@@ -2195,7 +2424,7 @@
   "@onboardingAccountTitle": {
     "description": "Title of the final onboarding page, which offers account creation before the dashboard"
   },
-  "onboardingAccountBody": "An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.",
+  "onboardingAccountBody": "An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You.",
   "@onboardingAccountBody": {
     "description": "Body of the onboarding account page — what an account buys and that the app works without one"
   },
@@ -2413,7 +2642,7 @@
   "@setupWeightPlaceholder": {
     "description": "Setup wizard weight field placeholder"
   },
-  "setupHealthConsent": "I consent to Threkir using my gender and date of birth to personalise pace, heart-rate and calorie estimates (special-category health data, GDPR Art 9).",
+  "setupHealthConsent": "I consent to Threkir storing my gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with my activities, the heart-rate targets in my plans, my heart-rate medication setting and my food log, and using them and my date of birth as health data (GDPR Art 9(2)(a)) to personalise my training and nutrition targets and to place me in gender and age-band segment leaderboards. I can withdraw this consent at any time.",
   "@setupHealthConsent": {
     "description": "Setup wizard health-data (GDPR Art 9) consent checkbox label"
   },
@@ -2512,10 +2741,6 @@
   "runStartA11yLabel": "Start run",
   "@runStartA11yLabel": {
     "description": "Screen-reader label for the start-run button"
-  },
-  "runLastRunOpenA11yLabel": "Open last run details",
-  "@runLastRunOpenA11yLabel": {
-    "description": "Screen-reader label for the tappable recent-run card on the start-run screen"
   },
   "runChooseRoute": "Choose route",
   "@runChooseRoute": {
@@ -2665,14 +2890,6 @@
   "@runTapToCancel": {
     "description": "Hint shown during the pre-run countdown — tapping anywhere aborts the start"
   },
-  "runFirstRunPrompt": "Your first run is one tap away.",
-  "@runFirstRunPrompt": {
-    "description": "Empty-state encouragement on the idle run screen when there is no recent run, event, or plan"
-  },
-  "runLastActivity": "Last activity",
-  "@runLastActivity": {
-    "description": "Label on the last-run card when the recorded distance is negligible (treated as a generic activity)"
-  },
   "runLastRun": "Last run",
   "@runLastRun": {
     "description": "Label on the last-run card on the idle run screen"
@@ -2802,6 +3019,10 @@
   "@runSyncing": {
     "description": "Status on the finish summary while the run is uploading"
   },
+  "runHeartRateNotSaved": "Heart rate from this activity wasn't saved: Threkir keeps heart rate only with your health-data consent.",
+  "@runHeartRateNotSaved": {
+    "description": "Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2514)"
+  },
   "runDone": "Done",
   "@runDone": {
     "description": "Button on the finish summary that dismisses back to the idle run screen"
@@ -2929,6 +3150,15 @@
   "@runA11yStarted": {
     "description": "Screen-reader status announcement when recording begins"
   },
+  "runA11yStartingIn": "{seconds, plural, one{Starting in {seconds} second. Tap to cancel.} other{Starting in {seconds} seconds. Tap to cancel.}}",
+  "@runA11yStartingIn": {
+    "description": "Screen-reader announcement when the 3-2-1 countdown before a recording begins",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "runA11yResumed": "Run resumed",
   "@runA11yResumed": {
     "description": "Screen-reader status announcement when a paused run resumes"
@@ -3036,9 +3266,9 @@
   "@runWorkoutNoStructure": {
     "description": "Banner shown when a selected workout has no runnable steps"
   },
-  "runWorkoutLoaded": "Workout loaded · {count, plural, one{{count} step} other{{count} steps}} — tap GO to start",
+  "runWorkoutLoaded": "Workout loaded · {count, plural, one{{count} step} other{{count} steps}}",
   "@runWorkoutLoaded": {
-    "description": "Banner shown when a structured workout is loaded and ready to start",
+    "description": "Banner shown when a structured workout is loaded on the recorder, before its run starts (the centre button's Start, or the countdown a Start on the workout already began)",
     "placeholders": {
       "count": {
         "type": "int"
@@ -3249,59 +3479,6 @@
   "@runGpsSensorFailed": {
     "description": "Banner shown when the GPS sensor could not start for an unknown reason"
   },
-  "runAgoJustNow": "Just now",
-  "@runAgoJustNow": {
-    "description": "Relative-time label for an event within the last minute"
-  },
-  "runAgoMinutes": "{count} min ago",
-  "@runAgoMinutes": {
-    "description": "Relative-time label in minutes",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoHours": "{count, plural, one{{count} hour ago} other{{count} hours ago}}",
-  "@runAgoHours": {
-    "description": "Relative-time label in hours",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoYesterday": "Yesterday",
-  "@runAgoYesterday": {
-    "description": "Relative-time label for one day ago"
-  },
-  "runAgoDays": "{count} days ago",
-  "@runAgoDays": {
-    "description": "Relative-time label in days (2-6 days)",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoWeeks": "{count, plural, one{{count} week ago} other{{count} weeks ago}}",
-  "@runAgoWeeks": {
-    "description": "Relative-time label in weeks",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoMonths": "{count, plural, one{{count} month ago} other{{count} months ago}}",
-  "@runAgoMonths": {
-    "description": "Relative-time label in months",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "runWorkoutAbandonedBand": "Workout abandoned · running freely",
   "@runWorkoutAbandonedBand": {
     "description": "Workout-execution band text after the structured workout is abandoned"
@@ -3360,6 +3537,26 @@
   "runWorkoutAbandon": "Abandon",
   "@runWorkoutAbandon": {
     "description": "Button to abandon the structured workout and continue as a free run"
+  },
+  "workoutPaceOnPace": "On pace",
+  "@workoutPaceOnPace": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
+  },
+  "workoutPaceAhead": "Ahead of pace",
+  "@workoutPaceAhead": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
+  },
+  "workoutPaceBehind": "Behind pace",
+  "@workoutPaceBehind": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
+  },
+  "workoutPaceWayAhead": "Well ahead of pace",
+  "@workoutPaceWayAhead": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
+  },
+  "workoutPaceWayBehind": "Well behind pace",
+  "@workoutPaceWayBehind": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
   },
   "runWorkoutMoreActions": "More workout actions",
   "@runWorkoutMoreActions": {
@@ -3512,13 +3709,13 @@
   "@historyAddPastRun": {
     "description": "Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
   },
-  "historyEmptyBodyRunPrimary": "Tap {button} to start recording, or add one you have already finished",
+  "historyEmptyBodyRunPrimary": "Tap {button} to record one, or add one you have already finished",
   "@historyEmptyBodyRunPrimary": {
-    "description": "Empty Runs list body when the centre button starts recording, so it names that button by its caption (navStartRun / navStartWalk / ...) rather than Log",
+    "description": "Empty Runs list body when a tap on the centre button opens the recording screen, so it names that button by its caption (the default activity: Run / Walk / ...) rather than Log",
     "placeholders": {
       "button": {
         "type": "String",
-        "example": "Start run"
+        "example": "Run"
       }
     }
   },
@@ -3786,7 +3983,7 @@
   "@historyQueuedToSync": {
     "description": "Tooltip on the per-row unsynced icon in the runs list"
   },
-  "historySignInToSync": "Sign in from Settings to sync runs",
+  "historySignInToSync": "Sign in on the You tab to sync runs",
   "@historySignInToSync": {
     "description": "Banner shown when tapping sync while signed out"
   },
@@ -3855,10 +4052,6 @@
   "addRunTitle": "Add run",
   "@addRunTitle": {
     "description": "AppBar title for the manual add-run form"
-  },
-  "addRunSave": "Save",
-  "@addRunSave": {
-    "description": "AppBar save button on the manual add-run form"
   },
   "addRunSectionWhen": "When",
   "@addRunSectionWhen": {
@@ -4124,6 +4317,36 @@
   "@runDetailSectionElevation": {
     "description": "Section header for the elevation chart on run-detail"
   },
+  "elevationChartSummary": "Elevation over {distance}: lowest {min}, highest {max}, {gain} climbed",
+  "@elevationChartSummary": {
+    "description": "Screen-reader summary of the elevation chart on run detail and park courses",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      },
+      "gain": {
+        "type": "String"
+      }
+    }
+  },
+  "elevationChartPoint": "{elevation} at {distance}",
+  "@elevationChartPoint": {
+    "description": "Screen-reader value of the elevation chart's cursor as it is stepped along the track",
+    "placeholders": {
+      "elevation": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
   "runDetailPaceBandFaster": "Faster",
   "@runDetailPaceBandFaster": {
     "description": "Fast end of the run-detail map's pace-colour legend"
@@ -4242,13 +4465,13 @@
       }
     }
   },
-  "runDetailHrDisclaimer": "Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you've measured your max HR, set it in Preferences for accurate zones.",
+  "runDetailHrDisclaimer": "Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you've measured your max HR, set it for accurate zones.",
   "@runDetailHrDisclaimer": {
     "description": "Info note under the run-detail HR-zone breakdown when zones fall back to an age-estimated max HR (no hr_zones or max_hr_bpm override set)"
   },
   "runDetailHrDisclaimerAction": "Set max HR",
   "@runDetailHrDisclaimerAction": {
-    "description": "Button under the HR-zone disclaimer that opens Settings to set max HR / zones"
+    "description": "Button under the HR-zone disclaimer that opens the Training preferences page to set max HR / zones"
   },
   "runDetailSectionSplits": "Splits",
   "@runDetailSectionSplits": {
@@ -4431,6 +4654,36 @@
     "description": "A park course chip's place on that season's fastest board, e.g. #3 in 2027 (runDetail.parkCourseRank)",
     "placeholders": {
       "rank": {
+        "type": "String"
+      },
+      "season": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseMonthRank": "#{rank} in {month}",
+  "@runDetailParkCourseMonthRank": {
+    "description": "A park course chip's place on that month's fastest board, e.g. #2 in November (runDetail.parkCourseMonthRank)",
+    "placeholders": {
+      "rank": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseRanks": "#{monthRank} in {month}, #{seasonRank} in {season}",
+  "@runDetailParkCourseRanks": {
+    "description": "A park course chip's places on its month's and its season's boards, e.g. #2 in November, #9 in 2026 (runDetail.parkCourseRanks)",
+    "placeholders": {
+      "monthRank": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "seasonRank": {
         "type": "String"
       },
       "season": {
@@ -4664,6 +4917,10 @@
   "runDetailDeleteQueued": "Couldn't delete from the cloud; the run is kept for now — will retry when back online.",
   "@runDetailDeleteQueued": {
     "description": "Banner shown when the cloud-side delete of a run fails: the run stays on the device and the delete is queued for the sync retry"
+  },
+  "runDetailDeleting": "Deleting run…",
+  "@runDetailDeleting": {
+    "description": "Screen-reader label of the spinner that replaces the run's overflow menu while a delete is in flight"
   },
   "runDetailSuggestLink": "Link",
   "@runDetailSuggestLink": {
@@ -4916,7 +5173,19 @@
   },
   "routesDiscover": "Discover",
   "@routesDiscover": {
-    "description": "Section header for the Explore / Heatmap discovery strip in the embedded routes view"
+    "description": "Screen-reader name of the strip of discovery maps (routes heatmap, run heatmap) heading Routes → Explore"
+  },
+  "routesViewGroup": "Routes section",
+  "@routesViewGroup": {
+    "description": "Screen-reader name of the Mine / Explore chip pair at the top of the Routes tab. Same text as web routesPage.sectionLabel"
+  },
+  "routesViewMine": "Mine",
+  "@routesViewMine": {
+    "description": "Chip on the Routes tab showing the runner's own and saved routes (\"my routes\"), beside Explore. Kept short so both chips fit one line at 2x text on a 360 dp phone. Same text as web routesPage.tabMine"
+  },
+  "routesViewExplore": "Explore",
+  "@routesViewExplore": {
+    "description": "Chip on the Routes tab showing public routes and the segment catalogue (with Routes / Segments chips). Same text as web routesPage.tabExplore"
   },
   "routesSyncFromCloud": "Sync from cloud",
   "@routesSyncFromCloud": {
@@ -5144,6 +5413,42 @@
   "routeBuilderPinAlreadyThere": "Pin already there — tap further apart to add another.",
   "@routeBuilderPinAlreadyThere": {
     "description": "Banner shown when a tapped waypoint would duplicate an existing one"
+  },
+  "routeBuilderWaypoint": "Point {index} of {total}",
+  "@routeBuilderWaypoint": {
+    "description": "Screen-reader name of a route-builder waypoint pin between the start and the end",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "routeBuilderWaypointStart": "Point {index} of {total}, start",
+  "@routeBuilderWaypointStart": {
+    "description": "Screen-reader name of the route-builder start pin",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "routeBuilderWaypointEnd": "Point {index} of {total}, finish",
+  "@routeBuilderWaypointEnd": {
+    "description": "Screen-reader name of the route-builder end pin",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
   },
   "routeBuilderTargetTooLong": "Enter a target distance up to 1000 km.",
   "@routeBuilderTargetTooLong": {
@@ -5723,7 +6028,7 @@
   "@routeDetailReviewDisclosure": {
     "description": "Button that opens the AI disclosure from the route-description fallback notice"
   },
-  "routeDetailEnhanceUpgradeHint": "AI descriptions are a Pro feature. Upgrade to enhance.",
+  "routeDetailEnhanceUpgradeHint": "AI descriptions are a Pro feature.",
   "@routeDetailEnhanceUpgradeHint": {
     "description": "Upsell shown to free users; the templated description still shows"
   },
@@ -6218,10 +6523,6 @@
   "@exploreRoutesTitle": {
     "description": "AppBar title for the explore-public-routes screen"
   },
-  "exploreRoutesModeSearch": "Search",
-  "@exploreRoutesModeSearch": {
-    "description": "Mode-toggle label for the search-by-name mode"
-  },
   "exploreRoutesModeNearMe": "Near Me",
   "@exploreRoutesModeNearMe": {
     "description": "Mode-toggle label for the near-me mode"
@@ -6403,6 +6704,10 @@
   "@heatmapNoRoutesHere": {
     "description": "Pill text shown when no routes are in view on the heatmap"
   },
+  "heatmapLoadFailed": "Couldn't load routes. Tap to retry",
+  "@heatmapLoadFailed": {
+    "description": "Discovery map results pill (and results list) when the routes read failed; tapping retries. Replaces 'No routes here', which was false"
+  },
   "heatmapNoRoutesHint": "No routes here. Pan the map or change the filters.",
   "@heatmapNoRoutesHint": {
     "description": "Empty-state shown in the heatmap results list"
@@ -6561,18 +6866,9 @@
   "@runHeatmapLegendTitle": {
     "description": "Legend title on the personal run-track heatmap"
   },
-  "runHeatmapLegendSummaryOne": "{n} mapped run — brighter where you run most.",
-  "@runHeatmapLegendSummaryOne": {
-    "description": "Legend summary on the personal heatmap for a single mapped run",
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "runHeatmapLegendSummaryMany": "{n} mapped runs — brighter where you run most.",
-  "@runHeatmapLegendSummaryMany": {
-    "description": "Legend summary on the personal heatmap for multiple mapped runs",
+  "runHeatmapLegendSummary": "{n, plural, one{{n} mapped run — brighter where you run most.} other{{n} mapped runs — brighter where you run most.}}",
+  "@runHeatmapLegendSummary": {
+    "description": "Heatmap legend: how many runs are drawn",
     "placeholders": {
       "n": {
         "type": "int"
@@ -6692,6 +6988,10 @@
   "feedEveryoneYouFollow": "Everyone you follow",
   "@feedEveryoneYouFollow": {
     "description": "Default option in the feed author-filter dropdown"
+  },
+  "feedFilterAuthor": "Whose activity",
+  "@feedFilterAuthor": {
+    "description": "Heading of the Feed filter sheet's group that picks whose activity the feed shows: everyone you follow, or one person"
   },
   "feedRunnerFallback": "Runner",
   "@feedRunnerFallback": {
@@ -7561,9 +7861,9 @@
   "@socialTabRoutes": {
     "description": "Social hub sub-tab label — routes"
   },
-  "socialTabDiscover": "Discover",
-  "@socialTabDiscover": {
-    "description": "Social hub sub-tab label — cross-club activity discovery"
+  "socialTabEvents": "Events",
+  "@socialTabEvents": {
+    "description": "Social hub sub-tab label: club events and classes from every public club, searched across clubs (named Discover before issue #1374)"
   },
   "discoverSearchPlaceholder": "Search classes, clubs…",
   "@discoverSearchPlaceholder": {
@@ -7837,9 +8137,9 @@
       }
     }
   },
-  "clubDetailNameHintAction": "You can add your name in your account settings.",
+  "clubDetailNameHintAction": "Add your name to your account.",
   "@clubDetailNameHintAction": {
-    "description": "Second line of the club name hint, pointing at Settings > Account; web clubHome.nameHintAction"
+    "description": "Second line of the club name hint; tapping the hint opens the Account page; web clubHome.nameHintAction"
   },
   "clubRoleOwner": "Owner",
   "@clubRoleOwner": {
@@ -8109,6 +8409,10 @@
   "@clubDetailRoutesEmpty": {
     "description": "Empty routes tab for members"
   },
+  "clubDetailRoutesLoadFailed": "Couldn't load this club's routes. Check your connection and try again.",
+  "@clubDetailRoutesLoadFailed": {
+    "description": "Routes tab of a club when the read failed; shown with a Retry button instead of the empty state"
+  },
   "clubDetailTemplateAdded": "Template added to your plans.",
   "@clubDetailTemplateAdded": {
     "description": "Banner shown after adopting a plan template"
@@ -8129,6 +8433,10 @@
   "clubDetailNoTemplates": "No plan templates yet for this club.",
   "@clubDetailNoTemplates": {
     "description": "Empty templates tab for members"
+  },
+  "clubDetailTemplatesLoadFailed": "Couldn't load this club's templates. Check your connection and try again.",
+  "@clubDetailTemplatesLoadFailed": {
+    "description": "Templates tab of a club when the read failed; shown with a Retry button instead of the empty state"
   },
   "clubDetailAdopt": "Adopt",
   "@clubDetailAdopt": {
@@ -8398,9 +8706,14 @@
   "@eventAttendanceFailed": {
     "description": "Error banner when marking attendance fails"
   },
-  "eventRsvpFailed": "Couldn't update your RSVP. Please try again.",
+  "eventRsvpFailed": "Couldn't update your RSVP: {error}",
   "@eventRsvpFailed": {
-    "description": "Error banner when an RSVP write fails"
+    "description": "Error banner when an RSVP write fails; {error} is the classified reason (offline, signed out, generic)",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "eventRsvpGoing": "I'm in",
   "@eventRsvpGoing": {
@@ -9376,10 +9689,6 @@
   },
   "planLibraryLoadError": "Couldn’t load the library. Retry.",
   "@planLibraryLoadError": {
-    "description": "Public plan library"
-  },
-  "planLibraryRetry": "Retry",
-  "@planLibraryRetry": {
     "description": "Public plan library"
   },
   "planLibraryEmpty": "No published plans yet.",
@@ -10756,7 +11065,7 @@
   "@coachConsentBulletPlanEdit": {
     "description": "Consent gate bullet: AI plan edits (the active plan's upcoming workouts and the typed change request, sent to propose edits the runner reviews)"
   },
-  "coachConsentProcessing": "The items marked “only if you've given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir's behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time in Settings → Account; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.",
+  "coachConsentProcessing": "The items marked “only if you've given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir's behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time under Account in the You tab; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.",
   "@coachConsentProcessing": {
     "description": "Consent gate data-processing paragraph"
   },
@@ -10925,9 +11234,9 @@
   "@coachLimitReachedPro": {
     "description": "Daily-cap banner for Pro tier"
   },
-  "coachLimitReachedFree": "Daily limit reached. Pro gets a higher cap — upgrade in Settings.",
+  "coachLimitReachedFree": "Daily limit reached. Pro gets a higher cap.",
   "@coachLimitReachedFree": {
-    "description": "Daily-cap banner for free tier"
+    "description": "Daily-cap banner for free tier; followed by the See Pro link, so it gives no directions"
   },
   "coachMessagesLeft": "{count, plural, one{{count} message left today} other{{count} messages left today}}",
   "@coachMessagesLeft": {
@@ -11088,13 +11397,21 @@
       }
     }
   },
+  "coachUnavailable": "Coach is unavailable right now. Try again in a moment.",
+  "@coachUnavailable": {
+    "description": "Error when /api/coach answers 5xx before streaming"
+  },
+  "coachStaleThread": "This conversation is out of date. Reopen the Coach and try again.",
+  "@coachStaleThread": {
+    "description": "Error on 409 from /api/coach: a regenerate or edit was refused because the thread on this phone is out of date; reopening the Coach screen reloads it"
+  },
   "coachTransportError": "Could not reach the Coach. Check your connection and try again.",
   "@coachTransportError": {
     "description": "Error on transport-layer failure"
   },
-  "coachStreamFailed": "stream failed",
+  "coachStreamFailed": "The Coach's reply was cut off. Try sending your message again.",
   "@coachStreamFailed": {
-    "description": "Fallback error message from the SSE error event"
+    "description": "Shown when the Coach reply stream fails part-way; the server sends no text of its own"
   },
   "coachNewConversationFailed": "Could not start a new conversation.",
   "@coachNewConversationFailed": {
@@ -11343,7 +11660,7 @@
   "@settingsAccountBackupPreparing": {
     "description": "Banner shown while the backup archive is being prepared"
   },
-  "settingsAccountBackupShareText": "Run app backup",
+  "settingsAccountBackupShareText": "Threkir backup",
   "@settingsAccountBackupShareText": {
     "description": "Share-sheet caption for the full backup archive"
   },
@@ -11538,10 +11855,6 @@
   "@guidedRunsTitle": {
     "description": "Tile title for guided runs"
   },
-  "guidedRunsSubtitle": "Coach-voice scripted workouts with TTS cues",
-  "@guidedRunsSubtitle": {
-    "description": "Subtitle of the Guided runs tile"
-  },
   "privacyZonesTitle": "Privacy zones",
   "@privacyZonesTitle": {
     "description": "AppBar title for the Settings > Privacy zones screen, and the title of the Settings tile that opens it"
@@ -11647,7 +11960,7 @@
   "@settingsAccountExportUnavailable": {
     "description": "Banner when no export service is configured"
   },
-  "settingsAccountExportUnsyncedWarning": "{count} runs haven't synced yet. The account export is built on the server, so it won't include them — use Full backup to keep those.",
+  "settingsAccountExportUnsyncedWarning": "{count, plural, one{{count} run hasn't synced yet. The account export is built on the server, so it won't include it — use Full backup to keep it.} other{{count} runs haven't synced yet. The account export is built on the server, so it won't include them — use Full backup to keep those.}}",
   "@settingsAccountExportUnsyncedWarning": {
     "description": "Persistent notice under the account-export tile when the device holds undrained runs",
     "placeholders": {
@@ -12225,6 +12538,10 @@
   "proTitle": "Pro & support",
   "@proTitle": {
     "description": "AppBar title for the Settings > Pro & support screen"
+  },
+  "proUpsellAction": "See Pro",
+  "@proUpsellAction": {
+    "description": "Link after every upsell message (coach limit, AI route descriptions, plate photo) that opens the Pro & support screen"
   },
   "proCouldNotOpen": "Could not open: {error}",
   "@proCouldNotOpen": {
@@ -12835,6 +13152,10 @@
   "@gearRotationsEmpty": {
     "description": "Empty-state copy on the rotations screen"
   },
+  "gearRotationsLoadFailed": "Couldn't load your rotations. Nothing has been removed. Check your connection and try again.",
+  "@gearRotationsLoadFailed": {
+    "description": "Rotations screen when the read failed; shown with Retry instead of the empty list"
+  },
   "gearRotationName": "Rotation name",
   "@gearRotationName": {
     "description": "Label/hint for the rotation-name field"
@@ -12896,6 +13217,15 @@
     "placeholders": {
       "error": {
         "type": "Object"
+      }
+    }
+  },
+  "gearRotationDeleteFailed": "Couldn't delete rotation: {error}",
+  "@gearRotationDeleteFailed": {
+    "description": "Banner when deleting a rotation fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
       }
     }
   },
@@ -12997,6 +13327,18 @@
       }
     }
   },
+  "privacyZonesRaisedToFloor": "{count, plural, one{{count} zone was smaller than {meters} m and now covers {meters} m, the smallest a zone can be.} other{{count} zones were smaller than {meters} m and now cover {meters} m, the smallest a zone can be.}}",
+  "@privacyZonesRaisedToFloor": {
+    "description": "Privacy-zone editor note: zones saved under the 100 m minimum (the app once allowed 50 m) are read as the minimum, never smaller.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
   "privacyZonesCount": "{count, plural, one{{count} zone — tap a marker to remove.} other{{count} zones — tap a marker to remove.}}",
   "@privacyZonesCount": {
     "description": "Footer summarising the number of zones",
@@ -13035,9 +13377,53 @@
   "@discardChangesDiscard": {
     "description": "Confirm button that leaves the form discarding unsaved edits"
   },
+  "discardChangesBusy": "Still saving. You can leave when it finishes.",
+  "@discardChangesBusy": {
+    "description": "Banner shown when the person tries to leave a form while its save or create is still running; the page stays open until it finishes"
+  },
   "prefsTitle": "Preferences",
   "@prefsTitle": {
     "description": "AppBar title for the Settings > Preferences screen"
+  },
+  "prefsPageDisplay": "Units & display",
+  "@prefsPageDisplay": {
+    "description": "Title of the Units & display preferences page and its row on You"
+  },
+  "prefsPageDisplaySummary": "Language, theme, distance and weight units, pace format, maps and the undo timer.",
+  "@prefsPageDisplaySummary": {
+    "description": "What the Units & display page holds, under its row on You"
+  },
+  "prefsPageRecording": "Recording & voice",
+  "@prefsPageRecording": {
+    "description": "Title of the Recording & voice preferences page and its row on You"
+  },
+  "prefsPageRecordingSummary": "The activity a new recording starts as, and what your phone or watch says out loud while you run.",
+  "@prefsPageRecordingSummary": {
+    "description": "What the Recording & voice page holds, under its row on You"
+  },
+  "prefsPageTraining": "Training",
+  "@prefsPageTraining": {
+    "description": "Title of the Training preferences page and its row on You"
+  },
+  "prefsPageTrainingSummary": "Your weekly distance goal, heart rate and heart rate zones, race fuelling and the coach's tone.",
+  "@prefsPageTrainingSummary": {
+    "description": "What the Training page holds, under its row on You"
+  },
+  "prefsPagePrivacy": "Privacy & sharing",
+  "@prefsPagePrivacy": {
+    "description": "Title of the Privacy & sharing preferences page and its row on You"
+  },
+  "prefsPagePrivacySummary": "Who sees your runs, whether other runners can find you, privacy zones and error reports.",
+  "@prefsPagePrivacySummary": {
+    "description": "What the Privacy & sharing page holds, under its row on You"
+  },
+  "prefsPageNotifications": "Notifications",
+  "@prefsPageNotifications": {
+    "description": "Title of the Notifications preferences page and its row on You"
+  },
+  "prefsPageNotificationsSummary": "Which emails and push alerts you get, and the optional emails you can sign up for.",
+  "@prefsPageNotificationsSummary": {
+    "description": "What the Notifications page holds, under its row on You"
   },
   "prefsOfflineNotice": "Offline — edits stay on this device and sync when you reconnect.",
   "@prefsOfflineNotice": {
@@ -13265,10 +13651,6 @@
   "@prefsCoachAnalytical": {
     "description": "Coach-personality option: analytical"
   },
-  "prefsSectionNotifications": "Notifications",
-  "@prefsSectionNotifications": {
-    "description": "Settings section label for notification preferences"
-  },
   "prefsEmailNotifications": "Email notifications",
   "@prefsEmailNotifications": {
     "description": "Tile and picker title for the email-notification preference"
@@ -13424,17 +13806,57 @@
   "@prefsSectionActivityRecording": {
     "description": "Section header for activity and recording settings"
   },
-  "prefsSectionTrainingDemographics": "Training & demographics",
-  "@prefsSectionTrainingDemographics": {
-    "description": "Section header for training and demographics settings"
-  },
-  "prefsSectionPrivacySharing": "Privacy & sharing",
-  "@prefsSectionPrivacySharing": {
-    "description": "Section header for privacy and sharing settings"
-  },
   "prefsSectionAiCoach": "AI coach",
   "@prefsSectionAiCoach": {
     "description": "Section header for AI coach settings"
+  },
+  "prefsGroupLanguageTheme": "Language & theme",
+  "@prefsGroupLanguageTheme": {
+    "description": "Group label on the Units & display page"
+  },
+  "prefsGroupUnits": "Units",
+  "@prefsGroupUnits": {
+    "description": "Group label on the Units & display page"
+  },
+  "prefsGroupMapsPages": "Maps & pages",
+  "@prefsGroupMapsPages": {
+    "description": "Group label on the Units & display page: detail level, home cards, map style, undo"
+  },
+  "prefsGroupVoiceFeedback": "Voice feedback",
+  "@prefsGroupVoiceFeedback": {
+    "description": "Group label on the Recording & voice page"
+  },
+  "prefsGroupWeeklyGoal": "Weekly goal",
+  "@prefsGroupWeeklyGoal": {
+    "description": "Group label on the Training page"
+  },
+  "prefsGroupHeartRate": "Heart rate zones",
+  "@prefsGroupHeartRate": {
+    "description": "Group label on the Training page: date of birth, resting and max HR, zones"
+  },
+  "prefsGroupPlans": "Training plans",
+  "@prefsGroupPlans": {
+    "description": "Group label on the Training page: plan recovery"
+  },
+  "prefsGroupYourRuns": "Your runs",
+  "@prefsGroupYourRuns": {
+    "description": "Group label on the Privacy & sharing page"
+  },
+  "prefsGroupBeingFound": "Being found",
+  "@prefsGroupBeingFound": {
+    "description": "Group label on the Privacy & sharing page: private profile, search, nearby"
+  },
+  "prefsGroupTelemetry": "Privacy & telemetry",
+  "@prefsGroupTelemetry": {
+    "description": "Group label on the Privacy & sharing page over the error-reports switch"
+  },
+  "prefsGroupEmailPush": "Email and push",
+  "@prefsGroupEmailPush": {
+    "description": "Group label on the Notifications page"
+  },
+  "prefsGroupOptionalEmails": "Optional emails",
+  "@prefsGroupOptionalEmails": {
+    "description": "Group label on the Notifications page"
   },
   "prefsSignInToEdit": "Sign in to edit profile-level settings that sync across devices.",
   "@prefsSignInToEdit": {
@@ -13536,17 +13958,9 @@
   "@dashboardCoachTooltip": {
     "description": "Dashboard toolbar tooltip for the AI Coach action"
   },
-  "dashboardFeedTooltip": "Activity feed",
-  "@dashboardFeedTooltip": {
-    "description": "Dashboard toolbar tooltip for the activity-feed action"
-  },
   "dashboardRecapTooltip": "Year in running",
   "@dashboardRecapTooltip": {
     "description": "Dashboard toolbar tooltip for the year-in-running recap action"
-  },
-  "dashboardProfileTooltip": "Your profile",
-  "@dashboardProfileTooltip": {
-    "description": "Dashboard toolbar tooltip for opening the user's own profile"
   },
   "dashboardWelcomeTitle": "Welcome!",
   "@dashboardWelcomeTitle": {
@@ -13777,13 +14191,14 @@
   "@dashboardStreakHistory": {
     "description": "Caption under the best/history run-streak figure"
   },
-  "dashboardStreakDayUnit": "day",
+  "dashboardStreakDayUnit": "{count, plural, one{day} other{days}}",
   "@dashboardStreakDayUnit": {
-    "description": "Singular day unit beside the current streak count"
-  },
-  "dashboardStreakDaysUnit": "days",
-  "@dashboardStreakDaysUnit": {
-    "description": "Plural days unit beside the current streak count"
+    "description": "Unit word under the streak day count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "dashboardStreakBest": "best {count, plural, one{{count} day} other{{count} days}}",
   "@dashboardStreakBest": {
@@ -13931,13 +14346,47 @@
       }
     }
   },
-  "trainingLoadSubtitleVolume": "Volume-based — set resting + max HR in preferences and record with a strap to upgrade to TRIMP.",
+  "trainingLoadSubtitleVolume": "Volume-based — set resting + max HR and record with a strap to upgrade to TRIMP.",
   "@trainingLoadSubtitleVolume": {
     "description": "Training-load subtitle when only volume-based load is available"
+  },
+  "trainingLoadSetHeartRate": "Set heart rate",
+  "@trainingLoadSetHeartRate": {
+    "description": "Link under the volume-based training load subtitle; opens the Training preferences page, where resting and max HR are set"
   },
   "trainingLoadEmpty": "Record a few runs to see your fitness trend.",
   "@trainingLoadEmpty": {
     "description": "Empty-state text for the training-load chart"
+  },
+  "trainingLoadChartSummary": "Fitness {ctlFrom} to {ctlTo}, fatigue {atlFrom} to {atlTo}, form {tsbFrom} to {tsbTo}, {from} to {to}",
+  "@trainingLoadChartSummary": {
+    "description": "Screen-reader summary of the training-load chart: where each line started and ended over the window",
+    "placeholders": {
+      "ctlFrom": {
+        "type": "String"
+      },
+      "ctlTo": {
+        "type": "String"
+      },
+      "atlFrom": {
+        "type": "String"
+      },
+      "atlTo": {
+        "type": "String"
+      },
+      "tsbFrom": {
+        "type": "String"
+      },
+      "tsbTo": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   },
   "trainingLoadLegendFitness": "Fitness",
   "@trainingLoadLegendFitness": {
@@ -14037,6 +14486,38 @@
   "@fitnessTitle": {
     "description": "Title of the dashboard fitness card"
   },
+  "fitnessRecoveryAdviceNoData": "Not enough data yet — log a few runs with HR and try again.",
+  "@fitnessRecoveryAdviceNoData": {
+    "description": "Fitness card advice line when the training-load kind is noData"
+  },
+  "fitnessRecoveryAdviceWelcomeBack": "Welcome back. Your form numbers reset after the break — rebuild gradually with easy, consistent running before any hard sessions.",
+  "@fitnessRecoveryAdviceWelcomeBack": {
+    "description": "Fitness card advice line when the training-load kind is welcomeBack"
+  },
+  "fitnessRecoveryAdviceHeavyLoad": "You're heavily loaded — easy running or a rest day today.",
+  "@fitnessRecoveryAdviceHeavyLoad": {
+    "description": "Fitness card advice line when the training-load kind is heavyLoad"
+  },
+  "fitnessRecoveryAdviceBuilding": "Fitness is still building. Focus on consistency; one quality session a week is plenty for now.",
+  "@fitnessRecoveryAdviceBuilding": {
+    "description": "Fitness card advice line when the training-load kind is building"
+  },
+  "fitnessRecoveryAdviceLoaded": "Loaded but within build territory. Easy / steady is right for today.",
+  "@fitnessRecoveryAdviceLoaded": {
+    "description": "Fitness card advice line when the training-load kind is loaded"
+  },
+  "fitnessRecoveryAdviceSweetSpot": "Sweet spot — a steady run or a tempo effort works.",
+  "@fitnessRecoveryAdviceSweetSpot": {
+    "description": "Fitness card advice line when the training-load kind is sweetSpot"
+  },
+  "fitnessRecoveryAdviceTapering": "Tapering / freshening up — a race or hard workout will land well in the next few days.",
+  "@fitnessRecoveryAdviceTapering": {
+    "description": "Fitness card advice line when the training-load kind is tapering"
+  },
+  "fitnessRecoveryAdviceVeryFresh": "Very fresh — if you've been tapering on purpose, race soon. Otherwise, it's time to build again.",
+  "@fitnessRecoveryAdviceVeryFresh": {
+    "description": "Fitness card advice line when the training-load kind is veryFresh"
+  },
   "fitnessStatVo2Max": "VO₂ max",
   "@fitnessStatVo2Max": {
     "description": "Fitness card stat label for VO2 max"
@@ -14060,6 +14541,15 @@
   "fitnessStatRunsTooltip": "Recent runs long enough to count toward your fitness estimate.",
   "@fitnessStatRunsTooltip": {
     "description": "Tooltip explaining the qualifying run count"
+  },
+  "fitnessNextHardSession": "{days, plural, one{Next hard session in ~{days} day of easy running.} other{Next hard session in ~{days} days of easy running.}}",
+  "@fitnessNextHardSession": {
+    "description": "Fitness card, under the recovery advice: days of easy running until the next hard session",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "fitnessStatCtl": "Fitness (CTL)",
   "@fitnessStatCtl": {
@@ -14944,6 +15434,38 @@
   "@eventFormRecurOneOff": {
     "description": "Recurrence option: one-off"
   },
+  "eventRecurrenceOneOff": "One-off event",
+  "@eventRecurrenceOneOff": {
+    "description": "How an event repeats, on its detail page (OneOff)"
+  },
+  "eventRecurrenceMonthly": "Repeats monthly",
+  "@eventRecurrenceMonthly": {
+    "description": "How an event repeats, on its detail page (Monthly)"
+  },
+  "eventRecurrenceWeekly": "Every week",
+  "@eventRecurrenceWeekly": {
+    "description": "How an event repeats, on its detail page (Weekly)"
+  },
+  "eventRecurrenceBiweekly": "Every other week",
+  "@eventRecurrenceBiweekly": {
+    "description": "How an event repeats, on its detail page (Biweekly)"
+  },
+  "eventRecurrenceWithDays": "{base} · {days}",
+  "@eventRecurrenceWithDays": {
+    "description": "How an event repeats, on its detail page (WithDays)",
+    "placeholders": {
+      "base": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRecurrenceDaySeparator": ", ",
+  "@eventRecurrenceDaySeparator": {
+    "description": "How an event repeats, on its detail page (DaySeparator)"
+  },
   "eventFormRecurWeekly": "Weekly",
   "@eventFormRecurWeekly": {
     "description": "Recurrence option: weekly"
@@ -14955,10 +15477,6 @@
   "eventFormRecurMonthly": "Monthly",
   "@eventFormRecurMonthly": {
     "description": "Recurrence option: monthly"
-  },
-  "eventFormCancel": "Cancel",
-  "@eventFormCancel": {
-    "description": "Button to cancel the event form"
   },
   "eventFormCreate": "Create event",
   "@eventFormCreate": {
@@ -15047,10 +15565,6 @@
   "clubFormJoinInvite": "Invite only",
   "@clubFormJoinInvite": {
     "description": "Join policy option: invite only"
-  },
-  "clubFormCancel": "Cancel",
-  "@clubFormCancel": {
-    "description": "Button to cancel the club form"
   },
   "clubFormCreate": "Create",
   "@clubFormCreate": {
@@ -15169,7 +15683,7 @@
       }
     }
   },
-  "gearBackfillBody": "We found {count, plural, one{{count} {activity} activity} other{{count} {activity} activities}} after you bought them. Uncheck any you weren't wearing them for.",
+  "gearBackfillBody": "We found {count, plural, one{{count} {activity} activity} other{{count} {activity} activities}} since you bought this gear. Uncheck any it wasn't used for.",
   "@gearBackfillBody": {
     "description": "Body explaining the matched activities found",
     "placeholders": {
@@ -15408,11 +15922,7 @@
       }
     }
   },
-  "upcomingEventInOneHour": "In 1 hour",
-  "@upcomingEventInOneHour": {
-    "description": "Relative time: in one hour"
-  },
-  "upcomingEventInHours": "In {count} hours",
+  "upcomingEventInHours": "{count, plural, one{In {count} hour} other{In {count} hours}}",
   "@upcomingEventInHours": {
     "description": "Relative time: in N hours",
     "placeholders": {
@@ -15703,7 +16213,7 @@
   "@runGearChipsPickerTitle": {
     "description": "Header of the tag-gear bottom sheet"
   },
-  "runGearChipsEmpty": "You haven't registered any gear yet. Add some in Settings → Gear.",
+  "runGearChipsEmpty": "You haven't registered any gear yet.",
   "@runGearChipsEmpty": {
     "description": "Empty state in the gear picker"
   },
@@ -15784,10 +16294,6 @@
   "gearFormNotesLabel": "Notes",
   "@gearFormNotesLabel": {
     "description": "Label for the gear notes field"
-  },
-  "gearFormCancel": "Cancel",
-  "@gearFormCancel": {
-    "description": "Button to cancel the gear form"
   },
   "gearFormSaving": "Saving…",
   "@gearFormSaving": {
@@ -15887,6 +16393,15 @@
   "notificationBellTooltip": "Notifications",
   "@notificationBellTooltip": {
     "description": "Tooltip on the notification bell"
+  },
+  "notificationBellUnread": "{count, plural, one{Notifications, {count} unread} other{Notifications, {count} unread}}",
+  "@notificationBellUnread": {
+    "description": "Tooltip and screen-reader name of the notifications bell when there are unread notifications",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "liveRunMapWaitingGps": "Waiting for GPS...",
   "@liveRunMapWaitingGps": {
@@ -16035,6 +16550,15 @@
       }
     }
   },
+  "ttsDistanceWholeKm": "{count, plural, one{{count} kilometre} other{{count} kilometres}}",
+  "@ttsDistanceWholeKm": {
+    "description": "Spoken distance in whole kilometres",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "ttsDistanceMetres": "{value} metres",
   "@ttsDistanceMetres": {
     "description": "Spoken distance in metres",
@@ -16044,12 +16568,12 @@
       }
     }
   },
-  "ttsDistanceMileSingular": "{value} mile",
-  "@ttsDistanceMileSingular": {
-    "description": "Spoken distance of exactly one mile",
+  "ttsDistanceWholeMiles": "{count, plural, one{{count} mile} other{{count} miles}}",
+  "@ttsDistanceWholeMiles": {
+    "description": "Spoken distance in whole miles",
     "placeholders": {
-      "value": {
-        "type": "String"
+      "count": {
+        "type": "int"
       }
     }
   },
@@ -16640,10 +17164,6 @@
   "@settingsTabAccountSubtitle": {
     "description": "Settings landing: Account tile subtitle when signed out"
   },
-  "settingsTabPreferencesSubtitle": "Units, theme, recording, training, privacy",
-  "@settingsTabPreferencesSubtitle": {
-    "description": "Settings landing: Preferences tile subtitle"
-  },
   "settingsTabIntegrationsSubtitle": "Strava, race calendar, heart-rate strap, treadmill, watch",
   "@settingsTabIntegrationsSubtitle": {
     "description": "Settings landing: Integrations tile subtitle"
@@ -16655,10 +17175,6 @@
   "settingsTabGearSubtitle": "Track shoes + bikes and per-item mileage",
   "@settingsTabGearSubtitle": {
     "description": "Settings landing: Gear tile subtitle"
-  },
-  "settingsTabCoachingSubtitle": "Coach athletes or follow your own coach",
-  "@settingsTabCoachingSubtitle": {
-    "description": "Settings landing: Coaching tile subtitle"
   },
   "settingsTabProSubtitle": "Subscribe, restore purchases, manage billing",
   "@settingsTabProSubtitle": {
@@ -16805,7 +17321,7 @@
       }
     }
   },
-  "gymRecordsSessions": "{count, plural, one{1 session} other{{count} sessions}}",
+  "gymRecordsSessions": "{count, plural, one{{count} session} other{{count} sessions}}",
   "@gymRecordsSessions": {
     "description": "Records card: distinct session count for an exercise",
     "placeholders": {
@@ -17152,9 +17668,17 @@
   "@gymLibraryAdopting": {
     "description": "Busy label while adopting a public routine"
   },
+  "gymLibraryAdopted": "Added to my routines",
+  "@gymLibraryAdopted": {
+    "description": "Adopt button label once the routine has been copied, so a second tap cannot make another copy"
+  },
   "gymLibraryAdoptFailed": "Couldn't adopt the routine.",
   "@gymLibraryAdoptFailed": {
     "description": "Error after a failed public-routine adopt"
+  },
+  "gymLibraryAdoptedNotSynced": "Added to your routines. It will show there once this phone syncs.",
+  "@gymLibraryAdoptedNotSynced": {
+    "description": "Banner when the routine was copied on the server but this phone could not fetch the copy yet; the adopt itself succeeded"
   },
   "gymRoutineDelete": "Delete",
   "gymRoutineDeleteConfirmTitle": "Delete routine?",
@@ -17397,7 +17921,7 @@
   "@platePhotoSaving": {
     "description": "Button label while saving"
   },
-  "platePhotoErrorConsent": "The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.",
+  "platePhotoErrorConsent": "The plate-photo logger needs the updated AI disclosure.",
   "@platePhotoErrorConsent": {
     "description": "The endpoint refused for want of AI disclosure v5"
   },
@@ -17492,10 +18016,10 @@
   "nutritionWater": "Water",
   "nutritionWaterAdd": "Add water",
   "nutritionWaterRemove": "Remove water",
-  "nutritionNoTargets": "Add your height, weight, age and sex to see calorie + macro targets.",
+  "nutritionNoTargets": "Add your height, weight, age and gender to see calorie + macro targets.",
   "nutritionAddBodyMetrics": "Add body metrics",
   "@nutritionAddBodyMetrics": {
-    "description": "CTA on the nutrition rings card that opens Settings > Body metrics"
+    "description": "CTA on the nutrition rings card that opens the Body metrics page"
   },
   "nutritionTargetsLink": "Targets",
   "@nutritionTargetsLink": {
@@ -17576,13 +18100,13 @@
   "@nutritionTargetsMetricsHeading": {
     "description": "Heading of the read-only body-metrics card"
   },
-  "nutritionTargetsMetricsHint": "Height, weight, date of birth and sex are health data, so they're edited in Settings behind their consent gate.",
+  "nutritionTargetsMetricsHint": "Height, weight, date of birth and gender are health data, so they're edited behind their consent gate.",
   "@nutritionTargetsMetricsHint": {
-    "description": "Hint explaining that body metrics are health data edited in Settings behind the consent gate"
+    "description": "Hint explaining that body metrics are health data edited behind the consent gate; the Edit body metrics button beside the heading opens them"
   },
-  "nutritionTargetsEditMetrics": "Edit in Settings",
+  "nutritionTargetsEditMetrics": "Edit body metrics",
   "@nutritionTargetsEditMetrics": {
-    "description": "Action opening the consent-gated body-metrics editor in Settings"
+    "description": "Action opening the consent-gated Body metrics page"
   },
   "nutritionTargetsUnset": "Not set",
   "@nutritionTargetsUnset": {
@@ -17592,7 +18116,7 @@
   "@nutritionTargetsEmptyTitle": {
     "description": "Title of the no-targets-yet state on the targets screen"
   },
-  "nutritionTargetsEmptyBody": "Add your height, weight, date of birth and sex and your calorie + macro targets appear here.",
+  "nutritionTargetsEmptyBody": "Add your height, weight, date of birth and gender and your calorie + macro targets appear here.",
   "@nutritionTargetsEmptyBody": {
     "description": "Body of the no-targets-yet state on the targets screen"
   },
@@ -17777,6 +18301,15 @@
   "nutritionLogTitle": "Log food",
   "nutritionSearchHint": "Search for a food",
   "nutritionSearching": "Searching…",
+  "nutritionSearchKcalPer100g": "{kcal} kcal / 100 g",
+  "@nutritionSearchKcalPer100g": {
+    "description": "A food search result's energy, per 100 g of the food",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
+      }
+    }
+  },
   "nutritionNoResults": "No matches. Try another term or enter it manually below.",
   "nutritionSearchFailed": "Search failed. Check your connection, then retry or enter it manually below.",
   "nutritionSearchRetry": "Retry search",
@@ -18412,6 +18945,10 @@
   "coachingRosterSubtitle": "Every athlete at a glance — load, plan compliance, and injury risk.",
   "@coachingRosterSubtitle": {
     "description": "Athlete roster card subtitle"
+  },
+  "coachingRosterLoadFailed": "Couldn't load your athlete roster.",
+  "@coachingRosterLoadFailed": {
+    "description": "Inline error on the coaching roster card when its read failed, beside a Retry button"
   },
   "coachingRosterNeverRun": "No runs yet",
   "@coachingRosterNeverRun": {
@@ -19459,18 +19996,14 @@
       }
     }
   },
-  "challengesEndsIn": "Ends in {n} days",
+  "challengesEndsIn": "{n, plural, =1{Ends today} other{Ends in {n} days}}",
   "@challengesEndsIn": {
-    "description": "Days-left label",
+    "description": "Challenge window: days left, rounded up; 1 reads as ending today",
     "placeholders": {
       "n": {
         "type": "int"
       }
     }
-  },
-  "challengesEndsToday": "Ends today",
-  "@challengesEndsToday": {
-    "description": "Ends-today label"
   },
   "challengesEnded": "Ended",
   "@challengesEnded": {
@@ -19692,13 +20225,9 @@
       }
     }
   },
-  "challengesStandingTiedOne": "Tied with 1 other",
-  "@challengesStandingTiedOne": {
-    "description": "Standing card: exactly one other entrant shares the viewer rank"
-  },
-  "challengesStandingTiedMany": "Tied with {n} others",
-  "@challengesStandingTiedMany": {
-    "description": "Standing card: several other entrants share the viewer rank",
+  "challengesStandingTied": "{n, plural, one{Tied with {n} other} other{Tied with {n} others}}",
+  "@challengesStandingTied": {
+    "description": "Standing card: how many other entrants share the viewer rank",
     "placeholders": {
       "n": {
         "type": "int"
@@ -19895,6 +20424,36 @@
   "@racesSectionAnyTime": {
     "description": "Heading of the park-courses section on Races & courses: standing courses that can be run on any day, unlike a race. Mirrors web races.sectionAnyTime"
   },
+  "racesShowGroup": "Show",
+  "@racesShowGroup": {
+    "description": "Accessible name of the All / Races / Courses switch at the top of Races & courses. Mirrors web races.showGroup"
+  },
+  "racesShowAll": "All",
+  "@racesShowAll": {
+    "description": "Switch option on Races & courses: show both the race calendar and the park courses. Mirrors web races.showAll"
+  },
+  "racesShowRaces": "Races",
+  "@racesShowRaces": {
+    "description": "Switch option on Races & courses: show only the race calendar. Mirrors web races.showRaces"
+  },
+  "racesShowCourses": "Courses",
+  "@racesShowCourses": {
+    "description": "Switch option on Races & courses: show only the park courses, every one of them. Mirrors web races.showCourses"
+  },
+  "racesAnyTimeParks": "Parks",
+  "@racesAnyTimeParks": {
+    "description": "Heading of the row of park cards that leads the Courses view of Races & courses. Mirrors web races.anyTimeParks"
+  },
+  "racesAnyTimeParkLink": "{park}: park page",
+  "@racesAnyTimeParkLink": {
+    "description": "Screen-reader name of a park's name shown as a link to its park screen, on a course card or a course screen. {park} is the visible text, kept first. Mirrors web races.anyTimeParkLink",
+    "placeholders": {
+      "park": {
+        "type": "String",
+        "example": "Pocahontas State Park, Virginia"
+      }
+    }
+  },
   "racesAnyTimeFastest": "Fastest in {year}: {time}",
   "@racesAnyTimeFastest": {
     "description": "A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest",
@@ -19949,28 +20508,6 @@
   "@racesSearchPlaceholder": {
     "description": "Placeholder for the race name search field"
   },
-  "racesFilters": "Filters",
-  "@racesFilters": {
-    "description": "Label of the button that opens the race calendar's filter sheet"
-  },
-  "racesFiltersCount": "{count, plural, one{Filters, 1 on} other{Filters, {count} on}}",
-  "@racesFiltersCount": {
-    "description": "Screen-reader label of the Filters button when filters are on. {count} is how many.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "racesRemoveFilter": "Remove filter: {filter}",
-  "@racesRemoveFilter": {
-    "description": "Tooltip and screen-reader label of the remove action on an active race-calendar filter chip. {filter} is the chip's own label.",
-    "placeholders": {
-      "filter": {
-        "type": "String"
-      }
-    }
-  },
   "racesNearChip": "Near {place}",
   "@racesNearChip": {
     "description": "Active-filter chip for the near-a-place filter. {place} is what the runner typed.",
@@ -19979,10 +20516,6 @@
         "type": "String"
       }
     }
-  },
-  "racesFiltersDone": "Done",
-  "@racesFiltersDone": {
-    "description": "Button that closes the race calendar's filter sheet"
   },
   "racesDistanceGroup": "Distance",
   "@racesDistanceGroup": {
@@ -20040,6 +20573,91 @@
   "racesTailorWithAi": "Tailor it with AI",
   "@racesTailorWithAi": {
     "description": "Race detail: secondary action opening the AI plan assistant prefilled with this race. Shown only while the AI plan assistant is live."
+  },
+  "racePlanDescribeRace": "Race: {name} on {date}.",
+  "@racePlanDescribeRace": {
+    "description": "A sentence of the AI plan box prefill a race opens (Race)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeDistance": "Distance: {distance}.",
+  "@racePlanDescribeDistance": {
+    "description": "A sentence of the AI plan box prefill a race opens (Distance)",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeGoal": "Goal time: {time}.",
+  "@racePlanDescribeGoal": {
+    "description": "A sentence of the AI plan box prefill a race opens (Goal)",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeRecent": "Recent effort: {distance} in {time}, {days, plural, =0{today} one{{days} day ago} other{{days} days ago}}.",
+  "@racePlanDescribeRecent": {
+    "description": "A sentence of the AI plan box prefill a race opens (Recent)",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "racePlanDescribeCourse": "Course: {parts}.",
+  "@racePlanDescribeCourse": {
+    "description": "A sentence of the AI plan box prefill a race opens (Course)",
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeAscent": "{climb} ascent",
+  "@racePlanDescribeAscent": {
+    "description": "A sentence of the AI plan box prefill a race opens (Ascent)",
+    "placeholders": {
+      "climb": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeDescent": "{climb} descent",
+  "@racePlanDescribeDescent": {
+    "description": "A sentence of the AI plan box prefill a race opens (Descent)",
+    "placeholders": {
+      "climb": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeSurface": "surface: {surface}",
+  "@racePlanDescribeSurface": {
+    "description": "A sentence of the AI plan box prefill a race opens (Surface)",
+    "placeholders": {
+      "surface": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeListSeparator": ", ",
+  "@racePlanDescribeListSeparator": {
+    "description": "A sentence of the AI plan box prefill a race opens (ListSeparator)"
   },
   "racesAddToSeason": "Add to my season",
   "@racesAddToSeason": {
@@ -20615,6 +21233,10 @@
   "@routeConditionsEmpty": {
     "description": "Empty state for the route condition-reports panel"
   },
+  "routeConditionsLoadFailed": "Couldn't load condition reports. Check your connection and try again.",
+  "@routeConditionsLoadFailed": {
+    "description": "Inline error in the route condition-reports panel when the reports could not be read; distinct from the empty state"
+  },
   "routeConditionsLoading": "Loading…",
   "@routeConditionsLoading": {
     "description": "Loading state for the route condition-reports panel"
@@ -20815,6 +21437,10 @@
       }
     }
   },
+  "feedBadgesLoadFailed": "Couldn't load the latest badges from people you follow.",
+  "@feedBadgesLoadFailed": {
+    "description": "One-line error in place of the feed's badge strip when the read of recent badges from followed people failed; a Retry button sits beside it"
+  },
   "badgesARunner": "A runner",
   "@badgesARunner": {
     "description": "Fallback name when a badge awardee has no display name"
@@ -20839,65 +21465,125 @@
   "@badgesDistanceSingle5kLabel": {
     "description": "Badge label"
   },
-  "badgesDistanceSingle5kDesc": "Ran 5 km in a single run",
+  "badgesDistanceSingle5kDesc": "Ran {distance} in a single run",
   "@badgesDistanceSingle5kDesc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "badgesDistanceSingleHalfLabel": "Half marathon",
   "@badgesDistanceSingleHalfLabel": {
     "description": "Badge label"
   },
-  "badgesDistanceSingleHalfDesc": "Ran 21.1 km in a single run",
+  "badgesDistanceSingleHalfDesc": "Ran {distance} in a single run",
   "@badgesDistanceSingleHalfDesc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "badgesDistanceSingleMarathonLabel": "Marathon",
   "@badgesDistanceSingleMarathonLabel": {
     "description": "Badge label"
   },
-  "badgesDistanceSingleMarathonDesc": "Ran 42.2 km in a single run",
+  "badgesDistanceSingleMarathonDesc": "Ran {distance} in a single run",
   "@badgesDistanceSingleMarathonDesc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "badgesDistanceSingleUltraLabel": "Ultra",
   "@badgesDistanceSingleUltraLabel": {
     "description": "Badge label"
   },
-  "badgesDistanceSingleUltraDesc": "Ran 50 km or more in a single run",
+  "badgesDistanceSingleUltraDesc": "Ran {distance} or more in a single run",
   "@badgesDistanceSingleUltraDesc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime100Label": "100 km club",
+  "badgesDistanceLifetime100Label": "{distance} club",
   "@badgesDistanceLifetime100Label": {
-    "description": "Badge label"
+    "description": "Badge label; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime100Desc": "100 km logged all-time",
+  "badgesDistanceLifetime100Desc": "{distance} logged all-time",
   "@badgesDistanceLifetime100Desc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime500Label": "500 km",
+  "badgesDistanceLifetime500Label": "{distance}",
   "@badgesDistanceLifetime500Label": {
-    "description": "Badge label"
+    "description": "Badge label; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime500Desc": "500 km logged all-time",
+  "badgesDistanceLifetime500Desc": "{distance} logged all-time",
   "@badgesDistanceLifetime500Desc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime1000Label": "1,000 km club",
+  "badgesDistanceLifetime1000Label": "{distance} club",
   "@badgesDistanceLifetime1000Label": {
-    "description": "Badge label"
+    "description": "Badge label; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime1000Desc": "1,000 km logged all-time",
+  "badgesDistanceLifetime1000Desc": "{distance} logged all-time",
   "@badgesDistanceLifetime1000Desc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime5000Label": "5,000 km",
+  "badgesDistanceLifetime5000Label": "{distance}",
   "@badgesDistanceLifetime5000Label": {
-    "description": "Badge label"
+    "description": "Badge label; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime5000Desc": "5,000 km logged all-time",
+  "badgesDistanceLifetime5000Desc": "{distance} logged all-time",
   "@badgesDistanceLifetime5000Desc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "badgesStreak7Label": "Week streak",
   "@badgesStreak7Label": {
@@ -21059,6 +21745,38 @@
   "@badgesParkPassport10Desc": {
     "description": "Park courses phase 5 (badges.parkPassport10.desc)"
   },
+  "badgesParkMonths3Label": "Park months",
+  "@badgesParkMonths3Label": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths3.label)"
+  },
+  "badgesParkMonths3Desc": "Completed a park course in 3 different months",
+  "@badgesParkMonths3Desc": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths3.desc)"
+  },
+  "badgesParkMonths6Label": "Half a year of parks",
+  "@badgesParkMonths6Label": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths6.label)"
+  },
+  "badgesParkMonths6Desc": "Completed a park course in 6 different months",
+  "@badgesParkMonths6Desc": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths6.desc)"
+  },
+  "badgesParkMonths12Label": "A year of parks",
+  "@badgesParkMonths12Label": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths12.label)"
+  },
+  "badgesParkMonths12Desc": "Completed a park course in 12 different months",
+  "@badgesParkMonths12Desc": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths12.desc)"
+  },
+  "badgesParkMonths24Label": "Two years of parks",
+  "@badgesParkMonths24Label": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths24.label)"
+  },
+  "badgesParkMonths24Desc": "Completed a park course in 24 different months",
+  "@badgesParkMonths24Desc": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths24.desc)"
+  },
   "racePredictorTitle": "Race-time predictor",
   "@racePredictorTitle": {
     "description": "Title of the dashboard race-time predictor card"
@@ -21122,6 +21840,248 @@
   "racePredictorFootnote": "Riegel equivalence from your best recent effort, recency-weighted. Closer distances are more reliable.",
   "@racePredictorFootnote": {
     "description": "Race predictor explanatory footnote"
+  },
+  "lineCalibrationEntryTitle": "Line calibration",
+  "@lineCalibrationEntryTitle": {
+    "description": "Debug-build Settings row that opens the timing-line calibration tool"
+  },
+  "lineCalibrationEntrySubtitle": "Debug build: timing-line error figures",
+  "@lineCalibrationEntrySubtitle": {
+    "description": "Subtitle of the debug-build calibration row"
+  },
+  "lineCalibrationTitle": "Line calibration (debug)",
+  "@lineCalibrationTitle": {
+    "description": "Title of the debug-build timing-line calibration screen"
+  },
+  "lineCalibrationIntro": "Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.",
+  "@lineCalibrationIntro": {
+    "description": "How a calibration session runs; the quoted tab is navRun"
+  },
+  "lineCalibrationCapturing": "{count, plural, one{Capturing: {count} fix} other{Capturing: {count} fixes}}",
+  "@lineCalibrationCapturing": {
+    "description": "Capture status while recording; count is GPS fixes held",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lineCalibrationIdle": "{count, plural, one{Idle: {count} fix held} other{Idle: {count} fixes held}}",
+  "@lineCalibrationIdle": {
+    "description": "Capture status while stopped; count is GPS fixes held",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lineCalibrationStart": "Start capture",
+  "@lineCalibrationStart": {
+    "description": "Button that starts a calibration capture"
+  },
+  "lineCalibrationStop": "Stop capture",
+  "@lineCalibrationStop": {
+    "description": "Button that stops a calibration capture"
+  },
+  "lineCalibrationRefresh": "Refresh",
+  "@lineCalibrationRefresh": {
+    "description": "Button that redraws the capture status"
+  },
+  "lineCalibrationLatLabel": "Line centre latitude",
+  "@lineCalibrationLatLabel": {
+    "description": "Field label: latitude of the timing line centre"
+  },
+  "lineCalibrationLngLabel": "Line centre longitude",
+  "@lineCalibrationLngLabel": {
+    "description": "Field label: longitude of the timing line centre"
+  },
+  "lineCalibrationBearingLabel": "Bearing of travel (degrees)",
+  "@lineCalibrationBearingLabel": {
+    "description": "Field label: compass bearing a runner crosses the line in, in degrees"
+  },
+  "lineCalibrationHalfWidthLabel": "Half-width (m)",
+  "@lineCalibrationHalfWidthLabel": {
+    "description": "Field label: half the timing line width, in metres"
+  },
+  "lineCalibrationHere": "Centre at my position",
+  "@lineCalibrationHere": {
+    "description": "Button that fills the line centre from the current position"
+  },
+  "lineCalibrationMeasure": "{count, plural, one{Measure server clock ({count} round trip)} other{Measure server clock ({count} round trips)}}",
+  "@lineCalibrationMeasure": {
+    "description": "Button that measures the device-to-server clock offset over count round trips",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lineCalibrationOffsetLabel": "Clock offset (ms)",
+  "@lineCalibrationOffsetLabel": {
+    "description": "Field label: the clock offset, in milliseconds"
+  },
+  "lineCalibrationOffsetHelper": "Server minus device",
+  "@lineCalibrationOffsetHelper": {
+    "description": "Helper under the clock offset field: which clock is subtracted from which"
+  },
+  "lineCalibrationApproachLabel": "Approach",
+  "@lineCalibrationApproachLabel": {
+    "description": "Dropdown label: the angle the runner approaches the line at"
+  },
+  "lineCalibrationApproach90": "At 90° to the line",
+  "@lineCalibrationApproach90": {
+    "description": "Approach option: crossing square to the line"
+  },
+  "lineCalibrationApproach30": "At 30° to the line",
+  "@lineCalibrationApproach30": {
+    "description": "Approach option: crossing at a shallow angle"
+  },
+  "lineCalibrationApproachParallel20": "Parallel, 20 m away",
+  "@lineCalibrationApproachParallel20": {
+    "description": "Approach option: running alongside the line 20 m off it, never crossing"
+  },
+  "lineCalibrationApproachParallel40": "Parallel, 40 m away",
+  "@lineCalibrationApproachParallel40": {
+    "description": "Approach option: running alongside the line 40 m off it, never crossing"
+  },
+  "lineCalibrationApproachStanding": "Standing on the line",
+  "@lineCalibrationApproachStanding": {
+    "description": "Approach option: standing still on the line"
+  },
+  "lineCalibrationPaceLabel": "Pace",
+  "@lineCalibrationPaceLabel": {
+    "description": "Dropdown label: how fast the tester moves"
+  },
+  "lineCalibrationPaceWalk": "Walk",
+  "@lineCalibrationPaceWalk": {
+    "description": "Pace option"
+  },
+  "lineCalibrationPaceRun": "Run",
+  "@lineCalibrationPaceRun": {
+    "description": "Pace option"
+  },
+  "lineCalibrationPaceStill": "Standing still",
+  "@lineCalibrationPaceStill": {
+    "description": "Pace option: not moving"
+  },
+  "lineCalibrationCarryLabel": "Carry",
+  "@lineCalibrationCarryLabel": {
+    "description": "Dropdown label: where the phone is carried"
+  },
+  "lineCalibrationCarryHand": "Phone in hand",
+  "@lineCalibrationCarryHand": {
+    "description": "Carry option"
+  },
+  "lineCalibrationCarryPocket": "Phone in pocket",
+  "@lineCalibrationCarryPocket": {
+    "description": "Carry option"
+  },
+  "lineCalibrationInstantsLabel": "True crossing instants",
+  "@lineCalibrationInstantsLabel": {
+    "description": "Field label: the true crossing times, typed one per line"
+  },
+  "lineCalibrationInstantsHint": "{time} or {instant}",
+  "@lineCalibrationInstantsHint": {
+    "description": "Field hint: two example formats, a time of day and an ISO-8601 instant",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "instant": {
+        "type": "String"
+      }
+    }
+  },
+  "lineCalibrationInstantsHelper": "One per line. A time of day is read in this phone's time zone on the capture day; give an ISO instant with its zone across midnight or when the reference clock shows UTC.",
+  "@lineCalibrationInstantsHelper": {
+    "description": "Field helper: how a bare time of day is read"
+  },
+  "lineCalibrationClockFailed": "Could not reach the server clock; enter the offset by hand.",
+  "@lineCalibrationClockFailed": {
+    "description": "Problem: the server clock could not be reached"
+  },
+  "lineCalibrationNoFix": "No position fix.",
+  "@lineCalibrationNoFix": {
+    "description": "Problem: no GPS position for Centre at my position"
+  },
+  "lineCalibrationLineMissing": "Enter the line: centre, bearing of travel, half-width.",
+  "@lineCalibrationLineMissing": {
+    "description": "Problem: the line fields are empty or invalid"
+  },
+  "lineCalibrationOffsetMissing": "Measure or enter the clock offset.",
+  "@lineCalibrationOffsetMissing": {
+    "description": "Problem: no clock offset"
+  },
+  "lineCalibrationInstantsInvalid": "One instant per line: {time} or ISO-8601.",
+  "@lineCalibrationInstantsInvalid": {
+    "description": "Problem: the instants do not parse; time is the HH:MM:SS.fff pattern",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "lineCalibrationFewFixes": "The capture holds fewer than two fixes.",
+  "@lineCalibrationFewFixes": {
+    "description": "Problem: the capture has fewer than two GPS fixes"
+  },
+  "lineCalibrationLineUnusable": "That line is not usable.",
+  "@lineCalibrationLineUnusable": {
+    "description": "Problem: the line geometry is degenerate"
+  },
+  "lineCalibrationScore": "Score this capture",
+  "@lineCalibrationScore": {
+    "description": "Button that scores the capture against the entered instants"
+  },
+  "lineCalibrationResult": "{matched} of {total} matched, {missed} missed, {falseCount} false, {near} near; median {median} ms, |err| p50 {p50} ms, p95 {p95} ms; offset ±{offset} ms",
+  "@lineCalibrationResult": {
+    "description": "One scored capture's figures; median, p50, p95 and offset are a number or a dash",
+    "placeholders": {
+      "matched": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "missed": {
+        "type": "int"
+      },
+      "falseCount": {
+        "type": "int"
+      },
+      "near": {
+        "type": "int"
+      },
+      "median": {
+        "type": "String"
+      },
+      "p50": {
+        "type": "String"
+      },
+      "p95": {
+        "type": "String"
+      },
+      "offset": {
+        "type": "String"
+      }
+    }
+  },
+  "lineCalibrationNothingMatched": "Nothing matched, yet detections sit a median {ms} ms from the truths: check the clock, the offset and the time zone.",
+  "@lineCalibrationNothingMatched": {
+    "description": "Under a result that matched nothing: detections sit a median of ms milliseconds from the true crossings",
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "lineCalibrationShare": "Share CSV",
+  "@lineCalibrationShare": {
+    "description": "Button that shares the results CSV"
+  },
+  "lineCalibrationCopy": "Copy CSV",
+  "@lineCalibrationCopy": {
+    "description": "Button that copies the results CSV"
   },
   "settingsSectionDeveloper": "Developer",
   "settingsTabSimWatchSubtitle": "Live status from the simulated custom watch",
@@ -22220,6 +23180,16 @@
   "@segmentCatalogueStatSurface": {
     "description": "Stat label for a catalogue segment’s surface"
   },
+  "segmentCatalogueParkCourseLink": "Park course at {park}",
+  "@segmentCatalogueParkCourseLink": {
+    "description": "Link on a catalogue segment's screen to the park course built on it. Mirrors web segmentDetail.parkCourseLink",
+    "placeholders": {
+      "park": {
+        "type": "String",
+        "example": "Pocahontas State Park"
+      }
+    }
+  },
   "segmentCatalogueLeaderboard": "Leaderboard",
   "@segmentCatalogueLeaderboard": {
     "description": "Section header for a catalogue segment’s leaderboard"
@@ -22692,6 +23662,10 @@
   "confirmAgeContinue": "Continue",
   "@confirmAgeContinue": {
     "description": "Consent gate: button that records both confirmations"
+  },
+  "confirmAgeBackHint": "Confirm both to continue, or sign out to leave.",
+  "@confirmAgeBackHint": {
+    "description": "Top banner (with a Sign out action) when Back is pressed on the age and terms gate, which cannot be dismissed"
   },
   "confirmAgeRecordError": "Could not record consent.",
   "@confirmAgeRecordError": {
@@ -23742,6 +24716,18 @@
   "@messagesEmptyBody": {
     "description": "Inbox empty state body: how a conversation starts"
   },
+  "messagesNewMessage": "New message",
+  "@messagesNewMessage": {
+    "description": "The Messages inbox's primary action and the title of the sheet it opens, which picks the person to write to"
+  },
+  "messagesNewMessageNobody": "Nobody to message yet. You can message people you follow or who follow you.",
+  "@messagesNewMessageNobody": {
+    "description": "The New message sheet when the runner follows nobody and nobody follows them"
+  },
+  "messagesNewMessageLoadFailed": "Couldn't load the people you can message.",
+  "@messagesNewMessageLoadFailed": {
+    "description": "The New message sheet when the follow lists failed to load"
+  },
   "messagesLoadError": "Couldn't load your conversations.",
   "@messagesLoadError": {
     "description": "Inbox failed to load"
@@ -24198,6 +25184,10 @@
   "followRequestsTitle": "Follow requests",
   "@followRequestsTitle": {
     "description": "Title of the screen listing requests to follow the user's private profile"
+  },
+  "youFollowRequestsSubtitle": "People asking to follow your private profile",
+  "@youFollowRequestsSubtitle": {
+    "description": "Subtitle of the Follow requests row in the You tab Profile group"
   },
   "followRequestsEmptyTitle": "No pending requests",
   "@followRequestsEmptyTitle": {
@@ -25563,6 +26553,27 @@
   "@commonStaleRefreshFailed": {
     "description": "Top banner when a screen already showing data fails to refresh for a reason other than being offline; the old data stays on screen"
   },
+  "commonSavedOnPhone": "Saved on this phone. It will sync when you're back online.",
+  "@commonSavedOnPhone": {
+    "description": "Confirmation after a save that landed on the phone but has not reached the server yet; the sync carries on in the background"
+  },
+  "commonDeletedOnPhone": "Deleted on this phone. It will sync when you're back online.",
+  "@commonDeletedOnPhone": {
+    "description": "Confirmation after a delete that landed on the phone but has not reached the server yet"
+  },
+  "pushTargetOpening": "Opening…",
+  "@pushTargetOpening": {
+    "description": "Top banner while a tapped notification is looked up before its screen opens (a club or event read on a slow connection)"
+  },
+  "pushTargetOpenFailed": "Couldn't open that notification: {error}",
+  "@pushTargetOpenFailed": {
+    "description": "Top banner, with Retry, when a tapped notification could not be opened; {error} is the classified reason",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailMoreActions": "More plan actions",
   "@planDetailMoreActions": {
     "description": "Tooltip on the plan detail app-bar overflow menu"
@@ -26608,12 +27619,12 @@
   "planNewDobHintAbsent": "Plans give runners aged 50 and over more recovery automatically.",
   "planNewDobHintAbsentAction": "Add your date of birth",
   "@planNewDobHintAbsentAction": {
-    "description": "Button opening Settings → Preferences, where the date of birth is edited."
+    "description": "Button opening the Training preferences page, where the date of birth is edited."
   },
   "planNewDobHintHealthData": "Plans can only use your date of birth to adjust for age with your consent to health-data use.",
   "planNewDobHintHealthDataAction": "Review consent",
   "@planNewDobHintHealthDataAction": {
-    "description": "Button opening Settings → Body metrics, where health-data consent is reviewed."
+    "description": "Button opening the Body metrics page, where health-data consent is reviewed."
   },
   "messagesAiTag": "AI",
   "@messagesAiTag": {
@@ -26675,13 +27686,13 @@
   "@prefsDisclosureLevel": {
     "description": "Settings > Preferences tile title for the progressive-disclosure level (universal disclosure_level key)"
   },
-  "prefsHomeCards": "Home cards",
-  "@prefsHomeCards": {
-    "description": "Settings row and sheet title listing the Home trend groups to show or hide"
+  "prefsProgressCards": "Progress cards",
+  "@prefsProgressCards": {
+    "description": "Units & display row and dialog title listing the Progress page's trend groups to show or hide"
   },
-  "prefsHomeCardsHint": "Untick a group to take it off Home. The choice follows you to every device.",
-  "@prefsHomeCardsHint": {
-    "description": "Explanation under the Home cards setting"
+  "prefsProgressCardsHint": "Untick a group to take it off the Progress page. The choice follows you to every device.",
+  "@prefsProgressCardsHint": {
+    "description": "Explanation under the Progress cards setting"
   },
   "prefsDisclosureAuto": "Automatic",
   "@prefsDisclosureAuto": {
@@ -26713,9 +27724,13 @@
   "@dashboardTrainingLoadSection": {
     "description": "Title of the Home expander that folds the fitness card and training-load chart at the Just the basics level"
   },
-  "dashboardTrainingLoadSectionHint": "Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.",
+  "dashboardTrainingLoadSectionHint": "Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it.",
   "@dashboardTrainingLoadSectionHint": {
-    "description": "One-line explanation under the Training load expander title on Home; names where the level is changed"
+    "description": "One-line explanation under the Training load expander title on Progress; the link below it opens the page where the level is changed"
+  },
+  "dashboardTrainingLoadSectionAction": "Change how much detail",
+  "@dashboardTrainingLoadSectionAction": {
+    "description": "Link under the folded Training load section on Progress; opens the Units & display page where the How much detail level is set"
   },
   "recapCardKicker": "My {period} in running",
   "@recapCardKicker": {
@@ -26991,6 +28006,42 @@
   "@streamerOverlayDelayFailed": {
     "description": "Error when changing the overlay delay fails"
   },
+  "streamerOverlayShowMap": "Show a route trace",
+  "@streamerOverlayShowMap": {
+    "description": "Switch on the streamer overlay sheet: draw the route trace on the OBS overlay"
+  },
+  "streamerOverlayShowMapHelp": "Draws the route so far, with your privacy zones left out. No map tiles are loaded.",
+  "@streamerOverlayShowMapHelp": {
+    "description": "Under the route-trace switch"
+  },
+  "streamerOverlayShowHeartRate": "Show heart rate",
+  "@streamerOverlayShowHeartRate": {
+    "description": "Switch on the streamer overlay sheet: show heart rate on the overlay"
+  },
+  "streamerOverlayShowHeartRateHelp": "Heart rate is health data. It's shown only while your health-data consent is on.",
+  "@streamerOverlayShowHeartRateHelp": {
+    "description": "Under the heart-rate switch while health-data consent is on"
+  },
+  "streamerOverlayHeartRateNeedsConsent": "Heart rate is health data. Turn on health-data consent to show it.",
+  "@streamerOverlayHeartRateNeedsConsent": {
+    "description": "Under the heart-rate switch while health-data consent is off; a Review consent button follows"
+  },
+  "streamerOverlayReviewConsent": "Review consent",
+  "@streamerOverlayReviewConsent": {
+    "description": "Button: opens Body metrics, where health-data consent is turned on"
+  },
+  "streamerOverlaySettingsSaved": "Overlay settings saved",
+  "@streamerOverlaySettingsSaved": {
+    "description": "Notice after the heart-rate switch is saved"
+  },
+  "streamerOverlayLinkChanged": "Saved. The link changed: copy it into your streaming app again.",
+  "@streamerOverlayLinkChanged": {
+    "description": "Notice after the route-trace switch is saved: the overlay URL now differs"
+  },
+  "streamerOverlaySaveFailed": "Couldn't save the overlay settings. Please try again.",
+  "@streamerOverlaySaveFailed": {
+    "description": "Notice when saving an overlay switch fails"
+  },
   "streamerOverlayLoadFailed": "Couldn't load your streamer overlay.",
   "@streamerOverlayLoadFailed": {
     "description": "Error when the overlay settings cannot be read"
@@ -27002,10 +28053,6 @@
   "streamerOverlayUnavailable": "The streamer overlay isn't available right now.",
   "@streamerOverlayUnavailable": {
     "description": "Error when the server has the overlay switched off"
-  },
-  "streamerOverlayMapHeartRateNote": "Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.",
-  "@streamerOverlayMapHeartRateNote": {
-    "description": "Note naming the web settings page where the route trace and heart rate are turned on"
   },
   "liveSpectatorHeartRate": "Heart rate",
   "@liveSpectatorHeartRate": {
@@ -27118,11 +28165,29 @@
   "@shareCardCourseKicker": {
     "description": "Park courses phase 5 (runShare.courseKicker)"
   },
-  "shareCardCourseRank": "#{rank} in {season}",
-  "@shareCardCourseRank": {
-    "description": "Park courses phase 5 (runShare.courseRank)",
+  "shareCardCourseMonthRank": "#{rank} in {month}",
+  "@shareCardCourseMonthRank": {
+    "description": "Park course monthly boards (#1343): the sticker's month place (runShare.courseMonthRank)",
     "placeholders": {
       "rank": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCardCourseRanks": "#{monthRank} in {month} · #{seasonRank} in {season}",
+  "@shareCardCourseRanks": {
+    "description": "Park course monthly boards (#1343): the sticker's month place with a top-10 year place (runShare.courseRanks)",
+    "placeholders": {
+      "monthRank": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "seasonRank": {
         "type": "String"
       },
       "season": {
@@ -27798,6 +28863,10 @@
   "@parksBoardCompletions": {
     "description": "Park courses (#1313): web key parks.boardCompletions."
   },
+  "parksPeriodThisMonth": "This month",
+  "@parksPeriodThisMonth": {
+    "description": "Park course monthly boards (#1343): web key parks.periodThisMonth."
+  },
   "parksSeasonThisYear": "This year ({year})",
   "@parksSeasonThisYear": {
     "description": "Park courses (#1313): web key parks.seasonThisYear.",
@@ -27811,6 +28880,14 @@
   "@parksSeasonAllTime": {
     "description": "Park courses (#1313): web key parks.seasonAllTime."
   },
+  "parksPeriodPrevMonth": "Previous month",
+  "@parksPeriodPrevMonth": {
+    "description": "Park course monthly boards (#1343): the month arrow back. Web key parks.periodPrevMonth."
+  },
+  "parksPeriodNextMonth": "Next month",
+  "@parksPeriodNextMonth": {
+    "description": "Park course monthly boards (#1343): the month arrow forward. Web key parks.periodNextMonth."
+  },
   "parksCompletionDays": "{n, plural, one {{n} day} other {{n} days}}",
   "@parksCompletionDays": {
     "description": "Park courses (#1313): web key parks.completionDays.",
@@ -27819,6 +28896,19 @@
         "type": "int"
       }
     }
+  },
+  "parksMonthRunners": "{n, plural, one {{n} runner this month} other {{n} runners this month}}",
+  "@parksMonthRunners": {
+    "description": "Park course monthly boards (#1343): how many runners have a time on a course this month, on its park page. Web key parks.monthRunners.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksMonthRunnersFailed": "Couldn't load how many ran each course this month.",
+  "@parksMonthRunnersFailed": {
+    "description": "Park course monthly boards (#1343): the park page could not read how many ran each course this month. Web key parks.monthRunnersFailed."
   },
   "parksNoEfforts": "No times on this board yet. Run the course and yours is the first.",
   "@parksNoEfforts": {
@@ -27856,7 +28946,6 @@
   "@parksSharedUseSaturdayMorningGroup": {
     "description": "Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation."
   },
-
   "parksAttributionOsm": "Course line © OpenStreetMap contributors",
   "@parksAttributionOsm": {
     "description": "Park courses (#1313): web key parks.attributionOsm."
@@ -28239,6 +29328,14 @@
   "prefsNotifyRaceStartingSoonHint": "A push about 10 minutes before a scheduled race you're going to starts, and when its start moves. Never emailed.",
   "@prefsNotifyRaceStartingSoonHint": {
     "description": "Settings switch subtitle for the race-starting-soon push"
+  },
+  "prefsNotifyParkCourseMonth": "Park course months",
+  "@prefsNotifyParkCourseMonth": {
+    "description": "Notifications: the switch for the park course month-close notice (notify_park_course_month). Web key prefs.notifyParkCourseMonth."
+  },
+  "prefsNotifyParkCourseMonthHint": "When a month ends at a park course you ran, a note in your inbox with your best time from it.",
+  "@prefsNotifyParkCourseMonthHint": {
+    "description": "Notifications: hint under the park course month-close switch."
   },
   "clubVerificationStatusTitle": "Official verification",
   "@clubVerificationStatusTitle": {
@@ -29058,6 +30155,25 @@
   "@profileNotifParkCourseReport": {
     "description": "Notification text, app admins only: someone reported a problem with a park course"
   },
+  "profileNotifParkCourseMonthClosed": "A month has closed on a park course you ran",
+  "@profileNotifParkCourseMonthClosed": {
+    "description": "Notification text: a calendar month closed at a park course you ran, when the course cannot be named (notificationBell.parkCourseMonthClosed)"
+  },
+  "profileNotifParkCourseMonthClosedNamed": "{course}: the {month} board has closed. Your best: {time}",
+  "@profileNotifParkCourseMonthClosedNamed": {
+    "description": "Notification text: a calendar month closed at a park course you ran, with your best time from it; month is a month and year such as November 2026 (notificationBell.parkCourseMonthClosedNamed)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "rateLimitReaction": "You're reacting too quickly — please wait {wait} and try again.",
   "@rateLimitReaction": {
     "description": "Rate-limit refusal when the direct-message reaction bucket is spent",
@@ -29105,6 +30221,10 @@
   "prefsMessageRequestsFailed": "Couldn't update message requests.",
   "@prefsMessageRequestsFailed": {
     "description": "Banner when the message requests switch could not be saved; the switch reverts"
+  },
+  "asyncSwitchLoadFailed": "Couldn't load this setting. Tap to retry.",
+  "@asyncSwitchLoadFailed": {
+    "description": "Subtitle of a settings row whose saved value could not be read; the switch is hidden and tapping the row retries the read"
   },
   "messagesReact": "React",
   "@messagesReact": {
@@ -29682,5 +30802,55 @@
         "type": "String"
       }
     }
+  },
+  "filterBarFilters": "Filters",
+  "@filterBarFilters": {
+    "description": "Label of the button at the start of a list's filter row that opens its filter sheet"
+  },
+  "filterBarFiltersCount": "{count, plural, one{Filters, 1 on} other{Filters, {count} on}}",
+  "@filterBarFiltersCount": {
+    "description": "Screen-reader label of a list's Filters button when filters are on. {count} is how many.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filterBarRemoveFilter": "Remove filter: {filter}",
+  "@filterBarRemoveFilter": {
+    "description": "Tooltip of the remove button on an active-filter chip. {filter} is the chip's label.",
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
+  "filterBarDone": "Done",
+  "@filterBarDone": {
+    "description": "Button that closes a list's filter sheet; the filters already applied as they changed"
+  },
+  "filterBarSurface": "Surface",
+  "@filterBarSurface": {
+    "description": "Heading of the surface choices in a list's filter sheet (routes, segments)"
+  },
+  "filterBarDistance": "Distance",
+  "@filterBarDistance": {
+    "description": "Heading of the distance choices in a list's filter sheet"
+  },
+  "filterBarSort": "Sort",
+  "@filterBarSort": {
+    "description": "Heading of the sort-order choices in a list's filter sheet"
+  },
+  "filterBarSource": "Source",
+  "@filterBarSource": {
+    "description": "Heading of the run-source choices (recorded, watch, Strava, parkrun, Health) in the run list's filter sheet"
+  },
+  "runsSearchHint": "Search run names",
+  "@runsSearchHint": {
+    "description": "Placeholder of the Runs tab's search field, which matches the names runners give their runs"
+  },
+  "filterBarRegion": "Region",
+  "@filterBarRegion": {
+    "description": "Heading of the region choices in a list's filter sheet (the segment catalogue)"
   }
 }

@@ -126,11 +126,11 @@ class _HelpLibraryBuilderState extends State<HelpLibraryBuilder> {
           return widget.builder(context, library);
         }
         final loading = snap.connectionState != ConnectionState.done;
-        return Scaffold(
-          appBar: AppBar(title: Text(widget.title)),
+        return PushedPage(
+          title: widget.title,
           body: loading
               ? ListSkeleton(label: l10n.helpLoading)
-              : ErrorState(
+              : AppErrorState(
                   icon: Icons.menu_book_outlined,
                   message: l10n.helpUnavailable,
                   onRetry: () => setState(() {
@@ -152,8 +152,8 @@ class HelpScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return HelpLibraryBuilder(
       title: l10n.helpTitle,
-      builder: (context, library) => Scaffold(
-        appBar: AppBar(title: Text(l10n.helpTitle)),
+      builder: (context, library) => PushedPage(
+        title: l10n.helpTitle,
         body: HelpBrowser(library: library),
       ),
     );
@@ -238,6 +238,8 @@ class _HelpBrowserState extends State<HelpBrowser> {
     return ListView(
       padding: _pagePadding,
       children: [
+        PageHeading(l10n.helpTitle),
+        const SizedBox(height: 12),
         TextField(
           key: const Key('help-search'),
           controller: _query,
@@ -305,8 +307,8 @@ class GuideScreen extends StatelessWidget {
       title: l10n.helpTitle,
       builder: (context, library) {
         final guide = library.byId(guideId);
-        return Scaffold(
-          appBar: AppBar(title: Text(l10n.helpTitle)),
+        return PushedPage(
+          title: guide?.title ?? l10n.helpTitle,
           body: guide == null
               ? EmptyState(
                   icon: Icons.menu_book_outlined,
@@ -339,18 +341,22 @@ class HelpForRouteScreen extends StatelessWidget {
       builder: (context, library) {
         final matches = library.guidesForRoutes(routes, audience: audience);
         if (matches.isEmpty) {
-          return Scaffold(
-            appBar: AppBar(title: Text(l10n.helpTitle)),
+          return PushedPage(
+            title: l10n.helpTitle,
             body: HelpBrowser(library: library),
           );
         }
-        return Scaffold(
-          appBar: AppBar(title: Text(l10n.helpHowThisWorks)),
+        return PushedPage(
+          title: matches.length == 1
+              ? matches.single.title
+              : l10n.helpHowThisWorks,
           body: matches.length == 1
               ? GuideView(guide: matches.single, library: library)
               : ListView(
                   padding: _pagePadding,
                   children: [
+                    PageHeading(l10n.helpHowThisWorks),
+                    const SizedBox(height: 12),
                     SectionHeader(label: l10n.helpForThisScreen),
                     ...matches.map((g) => GuideTile(guide: g)),
                     ListTile(
@@ -392,10 +398,7 @@ class GuideView extends StatelessWidget {
     return ListView(
       padding: _pagePadding,
       children: [
-        Semantics(
-          header: true,
-          child: Text(guide.title, style: theme.textTheme.headlineSmall),
-        ),
+        PageHeading(guide.title),
         if (guide.summary.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(

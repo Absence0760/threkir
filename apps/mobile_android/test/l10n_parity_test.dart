@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 
 /// Pull the real message keys out of a parsed ARB map — drop `@@locale`
 /// and the `@key` metadata entries.
@@ -34,11 +35,62 @@ Set<String> _placeholders(String value) => _IcuArgs(value).parse();
 /// does support `#`, which is how the shorthand keeps arriving in ports.
 bool _hashInPlural(String value) => (_IcuArgs(value)..parse()).hashInPlural;
 
+/// The text of every `one{…}` branch of a `plural` (not `selectordinal`, not
+/// `select`) argument in [value], paired with that argument's name.
+List<(String, String)> _oneBranches(String value) =>
+    (_IcuArgs(value)..parse()).oneBranches;
+
+/// The argument of every plural that is the whole message, whose `one`
+/// branch never names that argument and which has no `=0` / `zero` branch.
+/// Such a `one` branch is the sentence for exactly one ("Invitation sent",
+/// "This week runs again next week"), and where `one` also takes 0 it is
+/// what a count of 0 renders. A plural set inside a longer sentence is not
+/// listed: there the `one` branch is agreement ("is in" / "are in"), and a
+/// singular for 0 is what CLDR asks of fr and pt.
+List<String> _countlessOne(String value) => [
+  for (final p in (_IcuArgs(value)..parse()).plurals)
+    if (p.whole &&
+        p.branches.containsKey('one') &&
+        !p.branches['one']!.contains('{${p.arg}}') &&
+        !p.branches.containsKey('=0') &&
+        !p.branches.containsKey('zero'))
+      p.arg,
+];
+
+/// A `1` standing as a number of its own: not part of `10`, `1.5`, `1RM` or
+/// `x1`. A literal count in a `one` branch is what this finds.
+final _literalOne = RegExp(r'(?<![\p{L}\p{N}.,])1(?![\p{L}\p{N}.,])', unicode: true);
+
+/// Whether [locale]'s CLDR `one` category, as gen-l10n's generated getters
+/// resolve it through `Intl.pluralLogic`, covers a count other than 1. In
+/// such a locale (`fr` and `pt` take 0 as well) a `one` branch that spells
+/// out "1" renders "1 …" for a count of 0.
+bool _oneCoversMoreThanOne(String locale) => [
+  for (var n = 0; n <= 100; n++) n,
+].any(
+  (n) =>
+      n != 1 &&
+      Intl.pluralLogic(n, locale: locale, one: 'one', other: 'other') ==
+          'one',
+);
+
+class _Plural {
+  _Plural(this.arg, this.whole, this.branches);
+
+  final String arg;
+
+  /// Nothing but whitespace stands outside the plural.
+  final bool whole;
+  final Map<String, String> branches;
+}
+
 class _IcuArgs {
   _IcuArgs(this.s);
 
   final String s;
   final Set<String> names = {};
+  final List<(String, String)> oneBranches = [];
+  final List<_Plural> plurals = [];
   var i = 0;
   var _pluralDepth = 0;
   var hashInPlural = false;
@@ -85,6 +137,7 @@ class _IcuArgs {
   }
 
   void _argument() {
+    final open = i - 1;
     final name = _token(_word);
     if (name == null) return _skipToClose();
     names.add(name);
@@ -100,30 +153,43 @@ class _IcuArgs {
     final counts = type != 'select';
     if (counts) _pluralDepth++;
     try {
-      _branches();
+      final branches = _branches(type == 'plural' ? name : null);
+      if (type == 'plural') {
+        final whole =
+            s.substring(0, open).trim().isEmpty &&
+            s.substring(i).trim().isEmpty;
+        plurals.add(_Plural(name, whole, branches));
+      }
     } finally {
       if (counts) _pluralDepth--;
     }
   }
 
-  void _branches() {
+  Map<String, String> _branches(String? pluralArg) {
+    final out = <String, String>{};
     _ws();
     if (i < s.length && s[i] == ',') i++;
     while (true) {
       _ws();
-      if (i >= s.length) return;
+      if (i >= s.length) return out;
       if (s[i] == '}') {
         i++;
-        return;
+        return out;
       }
       final selector = _token(RegExp(r'[^\s{}]+'));
       if (selector != null && selector.startsWith('offset:')) continue;
       _ws();
       if (selector == null || i >= s.length || s[i] != '{') {
-        return _skipToClose();
+        _skipToClose();
+        return out;
       }
       i++;
+      final start = i;
       _message(nested: true);
+      out[selector] = s.substring(start, i);
+      if (pluralArg != null && selector == 'one') {
+        oneBranches.add((pluralArg, s.substring(start, i)));
+      }
       if (i < s.length) i++;
     }
   }
@@ -192,6 +258,55 @@ void main() {
     );
     expect(_hashInPlural('Lap #3 {n}'), isFalse);
     expect(_hashInPlural('{k, select, a {#1} other {x}}'), isFalse);
+  });
+
+  test('the one-branch scan reads plural one{} branches only', () {
+    expect(_oneBranches('{n, plural, one{1 run} other{{n} runs}}'), [
+      ('n', '1 run'),
+    ]);
+    expect(
+      _oneBranches('{a} {n, plural, =1{x} one{{n} y} other{z}}'),
+      [('n', '{n} y')],
+    );
+    expect(_oneBranches('{n, selectordinal, one{#st} other{#th}}'), isEmpty);
+    expect(_oneBranches('{k, select, one{1} other{2}}'), isEmpty);
+    expect(_literalOne.hasMatch('Filtres, 1 actif'), isTrue);
+    expect(_literalOne.hasMatch('1 minute'), isTrue);
+    for (final ok in ['10 km', '1.5 km', '1RM', 'x1', '{count} actif']) {
+      expect(_literalOne.hasMatch(ok), isFalse, reason: ok);
+    }
+  });
+
+  test('the countless-one scan reads whole-message plurals only', () {
+    expect(_countlessOne('{n, plural, one {Sent} other {{n} sent}}'), ['n']);
+    expect(
+      _countlessOne('  {n, plural, one{Sent} other{{n} sent}} '),
+      ['n'],
+    );
+    for (final ok in [
+      '{n, plural, one {{n} sent} other {{n} sent}}',
+      '{n, plural, =0 {None} one {Sent} other {{n} sent}}',
+      '{n, plural, zero {None} one {Sent} other {{n} sent}}',
+      '{n, plural, other {{n} sent}}',
+      'All {n, plural, one {is} other {are}} in',
+      '{k, select, one {Sent} other {Kept}}',
+    ]) {
+      expect(_countlessOne(ok), isEmpty, reason: ok);
+    }
+  });
+
+  test('one-category locales are derived from the plural rules', () {
+    // Pins the derivation the plural guard below rests on, so a change in
+    // intl's rules cannot quietly empty the set it checks.
+    expect(
+      [
+        for (final tag in localeTags)
+          if (_oneCoversMoreThanOne(tag)) tag,
+      ],
+      containsAll(['fr', 'pt', 'pt_BR']),
+    );
+    expect(_oneCoversMoreThanOne('en'), isFalse);
+    expect(_oneCoversMoreThanOne('de'), isFalse);
   });
 
   test('no catalogue declares the same key twice', () {
@@ -282,6 +397,49 @@ void main() {
           reason:
               'app_$tag.arb uses # inside a plural; gen-l10n prints it '
               'literally. Name the argument instead: other {{n} weeks}',
+        );
+      });
+
+      // gen-l10n resolves a plural through `Intl.pluralLogic` for the
+      // catalogue's locale, and in fr and pt CLDR's `one` covers 0 as well
+      // as 1. A `one` branch that copies the English "1" therefore renders
+      // "Filtres, 1 actif" when no filter is on. Name the argument instead:
+      // one{{count} actif}. Locales whose `one` is exactly 1 are exempt.
+      test('no plural one branch spells out a literal 1', () {
+        if (!_oneCoversMoreThanOne(tag)) return;
+        final offenders = [
+          for (final key in keys)
+            for (final (arg, text) in _oneBranches(arb[key] as String))
+              if (_literalOne.hasMatch(text)) '$key ($arg): $text',
+        ]..sort();
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'app_$tag.arb: `one` also covers counts other than 1 here, so '
+              'a literal 1 is wrong for them. Use the argument: one{{n} …}',
+        );
+      });
+
+      // The same 0, reached without a digit: a plural that is the whole
+      // message and whose `one` branch is the sentence for exactly one
+      // ("Invitation envoyée") says one was sent when none was. Name the
+      // count in the branch, or give 0 its own `=0{…}` (intl answers an
+      // exact 0 from it before the plural rule runs). A plural inside a
+      // longer sentence is agreement and is left alone — see _countlessOne.
+      test('no whole-message plural leaves 0 to a count-free one branch', () {
+        if (!_oneCoversMoreThanOne(tag)) return;
+        final offenders = [
+          for (final key in keys)
+            for (final arg in _countlessOne(arb[key] as String)) '$key ($arg)',
+        ]..sort();
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'app_$tag.arb: `one` also covers 0 here, so a `one` branch '
+              'with no {count} is what 0 renders. Name the argument in it, '
+              'or add =0{…}',
         );
       });
 

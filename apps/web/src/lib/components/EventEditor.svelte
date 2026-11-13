@@ -44,7 +44,7 @@
 	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import { toMinorUnits } from '#lib/format/minor_units.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { WEEKDAY_CHOICES } from '#lib/social/recurrence.ts';
+	import { WEEKDAY_CODES, weekdayLabel } from '#lib/social/recurrence.ts';
 	import { EVENT_CATEGORIES, isAthleticCategory } from '#lib/social/event_category.ts';
 	import { gymTemplateFromInputs } from '#lib/social/event_gym_template.ts';
 	import {
@@ -54,7 +54,7 @@
 		startIsoIfMoved
 	} from '#lib/social/event_start_fields.ts';
 	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '#lib/types.ts';
 	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
@@ -1091,14 +1091,14 @@
 		{#if recurrence === 'weekly' || recurrence === 'biweekly'}
 			<div class="byday-row">
 				<span class="hint">{m('eventEditor.onTheseDays')}</span>
-				{#each WEEKDAY_CHOICES as wd}
+				{#each WEEKDAY_CODES as wd (wd)}
 					<button
 						type="button"
 						class="byday-chip"
-						class:active={byday.includes(wd.code)}
-						onclick={() => toggleByday(wd.code)}
+						class:active={byday.includes(wd)}
+						onclick={() => toggleByday(wd)}
 					>
-						{wd.label}
+						{weekdayLabel(wd, currentLocale())}
 					</button>
 				{/each}
 			</div>

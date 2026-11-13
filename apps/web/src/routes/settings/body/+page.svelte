@@ -1,11 +1,13 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
-	import { fetchLatestWeightKg, recordWeightKg } from '#lib/core/data.ts';
+	import { fetchLatestWeightKg, recordWeightKg, forgetHealthDataConsent } from '#lib/core/data.ts';
 	import {
 		kgToDisplay,
 		displayToKg,
@@ -171,6 +173,7 @@
 					return;
 				}
 				if (stampedAt) healthDataConsentAt = stampedAt as string;
+				forgetHealthDataConsent();
 			}
 			if (!healthDataConsent) {
 				// Art 7(3): one SECURITY DEFINER RPC nulls the consent stamp +
@@ -182,6 +185,7 @@
 					'withdraw_health_data_consent',
 				);
 				if (withdrawErr) throw dbError(withdrawErr);
+				forgetHealthDataConsent();
 				healthDataConsentAt = null;
 				loadedWeightKg = null;
 				weightInput = null;
@@ -250,7 +254,7 @@
 	}
 </script>
 
-<PrefsPage heading={m('prefs.demographicsHeading')} tagline={m('prefs.bodyTagline')} page={prefs}>
+<PrefsPage heading={m('prefs.demographicsHeading')} headingId={settingRowId('prefs.demographicsHeading')} tagline={m('prefs.bodyTagline')} page={prefs}>
 	<!-- Gender, height and weight are special-category data under GDPR Art 9,
 	     so the explicit-consent checkbox is the precondition for saving any of
 	     them. The DOB field is deliberately NOT disabled with them: the column
@@ -268,7 +272,7 @@
 			<span>{m('prefs.demographicsConsent')}</span>
 		</label>
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.gender')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.gender')}</span>
 					<select bind:value={gender} disabled={!healthDataConsent} aria-describedby="gender-hint">
@@ -279,11 +283,11 @@
 				</label>
 				<p class="hint" id="gender-hint">{m('prefs.genderHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.dateOfBirth')} class="field">
 				<DateOfBirthInput bind:value={dateOfBirth} label={m('prefs.dateOfBirth')} describedby="dob-purpose" />
 				<p class="hint" id="dob-purpose">{m('prefs.dateOfBirthPurpose')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.heightCm')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.heightCm')}</span>
 					<input
@@ -305,7 +309,7 @@
 				</label>
 				<p class="hint" id="height-hint">{m('prefs.heightHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.weight')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.weight')} ({weightUnit})</span>
 					<input
@@ -362,20 +366,21 @@
 	     /nutrition. Effort labels, not body measurements, so they auto-save
 	     and aren't consent-gated. -->
 	<section class="card">
-		<div class="card-head">
-			<h2>{m('prefs.nutritionTargetsHeading')}</h2>
-			<p class="autosave-note" role="status" aria-live="polite" data-testid="nutrition-save-status">
-				{#if prefs.status === 'saving'}
-					<span class="material-symbols spin" aria-hidden="true">progress_activity</span> {m('prefs.saving')}
-				{:else if prefs.status === 'saved'}
-					<span class="material-symbols" aria-hidden="true">check_circle</span> {m('prefs.saved')}
-				{:else}
-					{m('prefs.nutritionAutosaveHint')}
-				{/if}
-			</p>
-		</div>
+		<SectionHeader id={settingRowId('prefs.nutritionTargetsHeading')} label={m('prefs.nutritionTargetsHeading')} class="prefs-section-head">
+			{#snippet trailing()}
+				<p class="autosave-note" role="status" aria-live="polite" data-testid="nutrition-save-status">
+					{#if prefs.status === 'saving'}
+						<span class="material-symbols spin" aria-hidden="true">progress_activity</span> {m('prefs.saving')}
+					{:else if prefs.status === 'saved'}
+						<span class="material-symbols" aria-hidden="true">check_circle</span> {m('prefs.saved')}
+					{:else}
+						{m('prefs.nutritionAutosaveHint')}
+					{/if}
+				</p>
+			{/snippet}
+		</SectionHeader>
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.activityLevel')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.activityLevel')}</span>
 					<select
@@ -391,7 +396,7 @@
 				</label>
 				<p class="hint" id="activity-level-hint">{m('prefs.activityLevelHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.weightGoal')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.weightGoal')}</span>
 					<select
@@ -447,14 +452,6 @@
 	.save-hint strong { color: var(--color-text); font-weight: 600; }
 	.save-hint .material-symbols,
 	.autosave-note .material-symbols { font-size: 1.1rem; }
-	.card-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-xs) var(--space-md);
-	}
-	.card-head h2 { margin-bottom: 0; }
 	.spin { animation: spin 1s linear infinite; }
 	@keyframes spin { to { transform: rotate(360deg); } }
 	@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

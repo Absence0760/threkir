@@ -1,5 +1,6 @@
 import { supabase } from '../core/supabase';
 import { dbError } from '../core/supabase_error';
+import { localStore } from '../core/browser_storage';
 import {
 	effective,
 	effectivePreferredUnit,
@@ -43,7 +44,7 @@ const DEVICE_ID_KEY = 'run_app.device_id';
 /// Module-level cache. `localStorage` on the client, in-memory on the
 /// server (SSR / prerender). Exposed for tests via `__setCacheForTests`.
 let cache: PrefsCache =
-	typeof localStorage === 'undefined' ? new InMemoryPrefsCache() : new LocalStoragePrefsCache();
+	localStore() === null ? new InMemoryPrefsCache() : new LocalStoragePrefsCache();
 
 /** @internal — test seam */
 export function __setCacheForTests(next: PrefsCache): void {
@@ -52,24 +53,29 @@ export function __setCacheForTests(next: PrefsCache): void {
 
 /** @internal — test seam */
 export function __resetCacheForTests(): void {
-	cache =
-		typeof localStorage === 'undefined' ? new InMemoryPrefsCache() : new LocalStoragePrefsCache();
+	cache = localStore() === null ? new InMemoryPrefsCache() : new LocalStoragePrefsCache();
 }
 
 /// Stable per-browser device identifier. Minted once and cached in
 /// `localStorage` so a return visit in the same browser keeps the same
 /// per-device preferences. Clearing site data resets it.
 export function getDeviceId(): string {
-	if (typeof localStorage === 'undefined') {
-		// SSR / prerender — return a throwaway so imports don't crash. Any
-		// actual read/write happens from the client after hydration.
+	const store = localStore();
+	if (store === null) {
+		// SSR / prerender, or site data blocked — a throwaway so imports
+		// don't crash. Blocked, every visit is a new device, which is what
+		// the visitor asked for by blocking the storage that remembers one.
 		return 'ssr-placeholder';
 	}
-	const existing = localStorage.getItem(DEVICE_ID_KEY);
-	if (existing) return existing;
-	const minted = crypto.randomUUID();
-	localStorage.setItem(DEVICE_ID_KEY, minted);
-	return minted;
+	try {
+		const existing = store.getItem(DEVICE_ID_KEY);
+		if (existing) return existing;
+		const minted = crypto.randomUUID();
+		store.setItem(DEVICE_ID_KEY, minted);
+		return minted;
+	} catch {
+		return 'ssr-placeholder';
+	}
 }
 
 /// Drop every cached entry for [userId]. Wired into the auth store's

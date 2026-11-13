@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../lib/fitness_surface_requests.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
@@ -80,6 +81,7 @@ void main() {
     List<Map<String, dynamic>> meals = const [],
     FitnessTab initialTab = FitnessTab.history,
     ValueNotifier<FitnessTab>? selectedTab,
+    FitnessHubViews? views,
     Map<String, Object> storedPrefs = const {
       'show_gym': true,
       'show_nutrition': true,
@@ -122,28 +124,34 @@ void main() {
         preferences: prefs,
         training: TrainingService(),
         selectedTab: selectedTab ?? ValueNotifier(initialTab),
+        views: views,
       ),
     ));
     await tester.pumpAndSettle();
     return prefs;
   }
 
-  /// The run surface's tabs, in strip order (issue #1354).
-  const runSurface = [
-    'Runs',
-    'Plans',
-    'Races & courses',
-    'Routes',
-    'Segments',
-  ];
+  /// The strip for a given modality visibility: History with either, then
+  /// Runs, then Gym and Nutrition beside it, then the run surface's planning
+  /// tabs (issue #1354; issue #1374 owner decision 1 moved Gym and Nutrition
+  /// to 3-4 and folded Segments into Routes).
+  List<String> strip({bool gym = false, bool nutrition = false}) => [
+        if (gym || nutrition) 'History',
+        'Runs',
+        if (gym) 'Gym',
+        if (nutrition) 'Nutrition',
+        'Plans',
+        'Races & courses',
+        'Routes',
+      ];
 
   List<String?> stripLabels(WidgetTester tester) => [
         for (final t in tester.widget<TabBar>(find.byType(TabBar)).tabs)
           (t as Tab).text,
       ];
 
-  testWidgets('with gym and food on, one flat strip: History, the run '
-      'surface, then Gym and Nutrition', (tester) async {
+  testWidgets('with gym and food on, one flat strip: History, Runs, Gym and '
+      'Nutrition, then the planning tabs', (tester) async {
     await pump(tester, runs: [runRow('r1')]);
     // One strip, not the hub's strip over a second peer strip inside Runs.
     expect(find.byType(TabBar), findsOneWidget);
@@ -153,13 +161,14 @@ void main() {
     expect(stripLabels(tester), [
       'History',
       'Runs',
+      'Gym',
+      'Nutrition',
       'Plans',
       'Races & courses',
       'Routes',
-      'Segments',
-      'Gym',
-      'Nutrition',
     ]);
+    expect(find.text('Segments'), findsNothing,
+        reason: 'the catalogue is Routes → Explore, not a tab');
   });
 
   testWidgets('History tab shows the unified timeline when stores are seeded',
@@ -171,10 +180,11 @@ void main() {
     // chips suppressed (the hub TabBar owns that axis).
     expect(find.byType(ActivityTimelineList), findsOneWidget);
     expect(find.text('Leg day'), findsOneWidget);
-    // The tab and the AppBar 48dp below it now say the same thing. This is
-    // the mount where the contradiction showed: the timeline title only
-    // renders once a second modality has data (#666 I9).
-    expect(find.text('History'), findsNWidgets(2));
+    // The strip names the tab; the body draws no title bar of its own under
+    // it (#666 I9 showed two names stacked here; issue #1374 removed the
+    // second bar altogether).
+    expect(find.text('History'), findsOneWidget);
+    expect(find.byType(AppBar), findsOneWidget, reason: 'only the hub\'s');
     // No in-screen kind chips — the hub TabBar is the single kind selector.
     expect(find.text('Lifts'), findsNothing);
   });
@@ -187,6 +197,9 @@ void main() {
     await tester.tap(tab(label));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    // A tab body hands the hub its primary action after the frame it first
+    // builds in, so the hub's FAB lands one frame later.
+    await tester.pump();
   }
 
   int routeCount(WidgetTester tester) {
@@ -206,7 +219,6 @@ void main() {
     ('Plans', PlansScreen, FitnessTab.plans),
     ('Races & courses', RacesScreen, FitnessTab.races),
     ('Routes', RoutesScreen, FitnessTab.routes),
-    ('Segments', GlobalSegmentsScreen, FitnessTab.segments),
   ]) {
     testWidgets('tapping $label mounts it as a tab body, not a pushed route',
         (tester) async {
@@ -235,8 +247,9 @@ void main() {
     // swipeable, and the filter header scrolls sideways.
     await pump(tester, storedPrefs: const {}, selectedTab: selected);
     final view = tester.getRect(find.byType(TabBarView));
+    // From the middle: the hub's FAB sits at the bottom-right.
     await tester.flingFrom(
-        Offset(view.right - 40, view.bottom - 60), const Offset(-600, 0), 2000);
+        Offset(view.center.dx, view.bottom - 60), const Offset(-600, 0), 2000);
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
@@ -245,17 +258,16 @@ void main() {
     expect(routeCount(tester), 1);
   });
 
-  // The hub owns only the strip: each surface keeps its own toolbar actions
-  // and add button inside its tab, as Social's tabs do.
-  testWidgets("each run surface keeps its own actions and FAB in its tab",
-      (tester) async {
+  // The hub owns the strip and the one FAB, as Social does: a tab body keeps
+  // its secondary actions in its own control row, hands its primary action to
+  // the hub, and draws no app bar of its own (issue #1374).
+  testWidgets('the hub owns the only app bar and the FAB; each tab keeps its '
+      'secondary actions', (tester) async {
     await pump(tester, runs: [runRow('r1')], storedPrefs: const {});
     await openTab(tester, 'Races & courses');
-    expect(
-        find.descendant(
-            of: find.byType(RacesScreen),
-            matching: find.byType(FloatingActionButton)),
-        findsOneWidget);
+    expect(find.byType(AppBar), findsOneWidget);
+    // Add a race is rare, so it waits in the overflow and the tab has no FAB.
+    expect(find.byType(FloatingActionButton), findsNothing);
     expect(
         find.descendant(
             of: find.byType(RacesScreen),
@@ -263,13 +275,24 @@ void main() {
         findsOneWidget);
 
     await openTab(tester, 'Routes');
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(find.widgetWithText(FloatingActionButton, 'Import'), findsOneWidget);
     expect(
         find.descendant(
             of: find.byType(RoutesScreen),
             matching: find.byType(FloatingActionButton)),
-        findsWidgets);
+        findsNothing,
+        reason: 'the FAB is the hub\'s, not drawn inside the tab');
 
-    await openTab(tester, 'Segments');
+    // Explore has no primary action, and its Segments chip keeps the Park
+    // courses link in its control row.
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(FloatingActionButton), findsNothing);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Segments'));
+    await tester.pump();
+    expect(find.byType(AppBar), findsOneWidget);
     expect(
         find.descendant(
             of: find.byType(GlobalSegmentsScreen),
@@ -293,6 +316,85 @@ void main() {
         fitnessHubTabs(gymShown: false, nutritionShown: false)
             .indexOf(FitnessTab.plans));
     expect(find.byType(PlansScreen), findsOneWidget);
+    expect(routeCount(tester), 1);
+  });
+
+  // Park courses live in Races & courses (decisions § 2480): Segments' Park
+  // courses action asks the shell for that tab on its Courses view, and the
+  // hub hands the view to the tab, with no route pushed.
+  testWidgets('Park courses on Segments selects Races & courses on Courses',
+      (tester) async {
+    final selected = ValueNotifier(FitnessTab.runs);
+    final views = FitnessHubViews();
+    addTearDown(selected.dispose);
+    addTearDown(views.dispose);
+    void shell() {
+      final request = fitnessSurfaceRequests.take();
+      if (request == null) return;
+      views.apply(request);
+      selected.value = request.tab;
+    }
+
+    fitnessSurfaceRequests.addListener(shell);
+    addTearDown(() => fitnessSurfaceRequests.removeListener(shell));
+    views.routes.value = RoutesShow.segments;
+    await pump(tester,
+        runs: [runRow('r1')],
+        storedPrefs: const {},
+        selectedTab: selected,
+        views: views);
+    await openTab(tester, 'Routes');
+    await tester.tap(find.byKey(const Key('segments-parks-link')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(selected.value, FitnessTab.races);
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index,
+        fitnessHubTabs(gymShown: false, nutritionShown: false)
+            .indexOf(FitnessTab.races));
+    expect(tester.widget<RacesScreen>(find.byType(RacesScreen)).show!.value,
+        RacesShow.courses);
+    expect(routeCount(tester), 1);
+  });
+
+  // The segment catalogue is Routes → Explore on Segments (issue #1374, owner
+  // decision 1). A link to it (a run's Browse all) asks the shell for that
+  // tab and view, and the hub shows it with nothing pushed.
+  testWidgets('a request for the catalogue selects Routes on Explore → '
+      'Segments with no route pushed', (tester) async {
+    final selected = ValueNotifier(FitnessTab.runs);
+    final views = FitnessHubViews();
+    addTearDown(selected.dispose);
+    addTearDown(views.dispose);
+    void shell() {
+      final request = fitnessSurfaceRequests.take();
+      if (request == null) return;
+      views.apply(request);
+      selected.value = request.tab;
+    }
+
+    fitnessSurfaceRequests.addListener(shell);
+    addTearDown(() => fitnessSurfaceRequests.removeListener(shell));
+    await pump(tester,
+        runs: [runRow('r1')],
+        storedPrefs: const {},
+        selectedTab: selected,
+        views: views);
+    expect(
+        fitnessSurfaceRequests.request(FitnessTab.routes,
+            routesShow: RoutesShow.segments),
+        isTrue);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(selected.value, FitnessTab.routes);
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index,
+        fitnessHubTabs(gymShown: false, nutritionShown: false)
+            .indexOf(FitnessTab.routes));
+    expect(find.byType(GlobalSegmentsScreen), findsOneWidget);
+    expect(
+        tester
+            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Segments'))
+            .selected,
+        isTrue);
     expect(routeCount(tester), 1);
   });
 
@@ -379,18 +481,12 @@ void main() {
     ));
     await tester.pump();
     expect(tester.widget<TabBar>(find.byType(TabBar)).isScrollable, isTrue);
-    for (final label in ['Plans', 'Races & courses', 'Routes', 'Segments']) {
+    for (final label in ['Plans', 'Races & courses', 'Routes']) {
       await openTab(tester, label);
       expect(tester.takeException(), isNull, reason: '$label overflowed');
     }
     // Every tab still carries its name for a screen reader.
-    for (final label in [
-      'Runs',
-      'Plans',
-      'Races & courses',
-      'Routes',
-      'Segments'
-    ]) {
+    for (final label in ['Runs', 'Plans', 'Races & courses', 'Routes']) {
       expect(find.bySemanticsLabel(RegExp('^${RegExp.escape(label)}')),
           findsWidgets);
     }
@@ -410,17 +506,19 @@ void main() {
   });
 
   testWidgets(
-      'Runs sub-tab titles itself "Runs" and moves the range status into '
-      'the filter header', (tester) async {
+      'Runs sub-tab carries no title of its own and shows the range status '
+      'in the filter header', (tester) async {
     await pump(tester, runs: [runRow('r1')]);
     await openTab(tester, 'Runs');
-    // "Runs" appears twice: the hub's tab label and the sub-tab's static
-    // AppBar title (matching the Gym / Nutrition siblings). There is no
-    // second, in-body peer strip any more.
-    expect(find.text('Runs'), findsNWidgets(2));
-    // The range + count status the title otherwise carries renders as the
-    // filter header's leading row instead (default range = This week).
-    expect(find.text('This week · 1 run'), findsOneWidget);
+    // "Runs" appears once, on the strip: the tab draws no title bar of its
+    // own under it.
+    expect(find.text('Runs'), findsOneWidget);
+    // The range, count and totals share the filter header's one summary
+    // line (default range = This week).
+    expect(
+      find.textContaining(RegExp(r'^This week · 1 run · ')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Gym sub-tab hosts GymScreen with its empty-onboarding state',
@@ -537,7 +635,7 @@ void main() {
       await pump(tester,
           runs: [runRow('r1')], storedPrefs: const {}, selectedTab: selected);
       expect(find.byType(TabBar), findsOneWidget);
-      expect(stripLabels(tester), runSurface);
+      expect(stripLabels(tester), strip());
       expect(find.byType(RunsScreen), findsOneWidget);
       expect(find.byType(GymScreen), findsNothing);
       expect(find.byType(NutritionScreen), findsNothing);
@@ -560,20 +658,16 @@ void main() {
       await pump(tester,
           unsyncedRuns: [runRow('r1')],
           storedPrefs: const {'show_gym': true});
-      expect(stripLabels(tester), [
-        'History',
-        ...runSurface,
-        'Gym',
-      ]);
+      expect(stripLabels(tester), strip(gym: true));
       expect(find.byIcon(Icons.cloud_upload), findsOneWidget);
       await openTab(tester, 'Runs');
       expect(find.byIcon(Icons.cloud_upload), findsNothing);
     });
 
-    testWidgets('Runs standing alone tells a runner with no runs to tap Start '
-        'run, which is what the centre button now says', (tester) async {
+    testWidgets('Runs standing alone tells a runner with no runs to tap Run, '
+        'which is what the centre button now says', (tester) async {
       await pump(tester, storedPrefs: const {});
-      expect(find.textContaining('Tap Start run'), findsOneWidget);
+      expect(find.textContaining('Tap Run'), findsOneWidget);
       expect(find.textContaining('Tap Log'), findsNothing);
     });
 
@@ -581,11 +675,7 @@ void main() {
         'opening Settings', (tester) async {
       await pump(tester,
           lifts: [liftRow('l1', 'Leg day')], storedPrefs: const {});
-      expect(stripLabels(tester), [
-        'History',
-        ...runSurface,
-        'Gym',
-      ]);
+      expect(stripLabels(tester), strip(gym: true));
     });
 
     testWidgets('an explicit off hides a modality that has data',
@@ -593,7 +683,7 @@ void main() {
       await pump(tester,
           lifts: [liftRow('l1', 'Leg day')],
           storedPrefs: const {'show_gym': false});
-      expect(stripLabels(tester), runSurface);
+      expect(stripLabels(tester), strip());
       expect(find.byType(RunsScreen), findsOneWidget);
     });
 
@@ -601,12 +691,12 @@ void main() {
       (
         'Gym',
         (Preferences p) => p.setShowGym(true),
-        ['History', ...runSurface, 'Gym'],
+        strip(gym: true),
       ),
       (
         'Nutrition',
         (Preferences p) => p.setShowNutrition(true),
-        ['History', ...runSurface, 'Nutrition'],
+        strip(nutrition: true),
       ),
     ]) {
       testWidgets('History returns as soon as $name is switched on, and a '
@@ -615,7 +705,7 @@ void main() {
         addTearDown(selected.dispose);
         final prefs = await pump(tester,
             runs: [runRow('r1')], storedPrefs: const {}, selectedTab: selected);
-        expect(stripLabels(tester), runSurface);
+        expect(stripLabels(tester), strip());
         expect(selected.value, FitnessTab.runs);
 
         await turnOn(prefs);
@@ -639,18 +729,14 @@ void main() {
       await prefs.setShowNutrition(true);
       await tester.pumpAndSettle();
       expect(
-          stripLabels(tester), ['History', ...runSurface, 'Gym', 'Nutrition']);
+          stripLabels(tester), strip(gym: true, nutrition: true));
 
       await openTab(tester, 'Nutrition');
       expect(selected.value, FitnessTab.nutrition);
 
       await prefs.setShowNutrition(false);
       await tester.pumpAndSettle();
-      expect(stripLabels(tester), [
-        'History',
-        ...runSurface,
-        'Gym',
-      ]);
+      expect(stripLabels(tester), strip(gym: true));
       expect(selected.value, FitnessTab.history,
           reason: 'a hidden tab cannot stay selected');
       expect(
@@ -669,27 +755,66 @@ void main() {
 
       await prefs.setShowNutrition(false);
       await tester.pumpAndSettle();
-      expect(stripLabels(tester), runSurface);
+      expect(stripLabels(tester), strip());
       expect(find.byType(NutritionScreen), findsNothing);
       expect(find.byType(RunsScreen), findsOneWidget);
       expect(selected.value, FitnessTab.runs);
     });
 
+    // Sentry THREKIR-CLIENT-A: a strip that shrinks while a tap's animation
+    // is still running. The pager was still sliding towards the old index,
+    // wrote it back to the new, shorter controller, and the strip built a
+    // tab that no longer existed (a RangeError in release, where the
+    // controller's own range assert is compiled out).
+    for (final settle in [false, true])
+      testWidgets(
+          'the strip shrinking ${settle ? 'after' : 'during'} a jump to the '
+          'last tab keeps that tab selected and never indexes past the strip',
+          (tester) async {
+        final selected = ValueNotifier(FitnessTab.history);
+        addTearDown(selected.dispose);
+        final prefs = await pump(tester,
+            runs: [runRow('r1')], selectedTab: selected);
+        expect(stripLabels(tester), strip(gym: true, nutrition: true));
+
+        await tester.ensureVisible(tab('Routes'));
+        await tester.tap(tab('Routes'));
+        await tester.pump();
+        await tester.pump(
+            settle ? const Duration(seconds: 1) : const Duration(milliseconds: 60));
+
+        await prefs.setShowGym(false);
+        await prefs.setShowNutrition(false);
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(stripLabels(tester), strip());
+        final controller =
+            tester.widget<TabBar>(find.byType(TabBar)).controller!;
+        expect(controller.length, strip().length);
+        expect(controller.index, strip().indexOf('Routes'));
+        expect(selected.value, FitnessTab.routes);
+        expect(find.byType(RoutesScreen), findsOneWidget);
+      });
+
     test('fitnessHubTabs: the run surface always, History with either '
-        'modality, Gym and Nutrition last',
+        'modality, Gym and Nutrition third and fourth',
         () {
-      const run = [
-        FitnessTab.runs,
+      const planning = [
         FitnessTab.plans,
         FitnessTab.races,
         FitnessTab.routes,
-        FitnessTab.segments,
       ];
-      expect(fitnessHubTabs(gymShown: false, nutritionShown: false), run);
+      expect(fitnessHubTabs(gymShown: false, nutritionShown: false),
+          [FitnessTab.runs, ...planning]);
       expect(fitnessHubTabs(gymShown: true, nutritionShown: false),
-          [FitnessTab.history, ...run, FitnessTab.gym]);
-      expect(fitnessHubTabs(gymShown: false, nutritionShown: true),
-          [FitnessTab.history, ...run, FitnessTab.nutrition]);
+          [FitnessTab.history, FitnessTab.runs, FitnessTab.gym, ...planning]);
+      expect(fitnessHubTabs(gymShown: false, nutritionShown: true), [
+        FitnessTab.history,
+        FitnessTab.runs,
+        FitnessTab.nutrition,
+        ...planning,
+      ]);
       expect(fitnessHubTabs(gymShown: true, nutritionShown: true),
           FitnessTab.values);
     });

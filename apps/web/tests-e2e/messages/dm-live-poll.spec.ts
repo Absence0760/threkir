@@ -1,3 +1,5 @@
+import type { Request } from '@playwright/test';
+
 import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -98,11 +100,47 @@ test.describe('/messages — live updates by polling', () => {
 	});
 
 	test('the inbox picks up a new conversation preview on its poll', async ({ page }) => {
+		// The heading draws before the inbox's opening reads land: the list
+		// read, and a second one once group_messages_enabled() answers true
+		// (messages_inbox.svelte.ts loadGroups). A message planted while either
+		// is in flight arrives without any poll, so plant only once a list read
+		// issued after the flag answered has finished and none is in flight.
+		// The sidebar's unread badge reads dm_threads() too, so reads are
+		// counted rather than identified.
+		let threadReads = 0;
+		let threadReadsDone = 0;
+		let readsAtFlag = -1;
+		const isThreadRead = (url: string) => url.includes('/rest/v1/rpc/dm_threads');
+		page.on('request', (r) => {
+			if (isThreadRead(r.url())) threadReads++;
+		});
+		const settle = (r: Request) => {
+			if (isThreadRead(r.url())) threadReadsDone++;
+		};
+		page.on('requestfinished', settle);
+		page.on('requestfailed', settle);
+		page.on('response', (r) => {
+			if (r.url().includes('/rest/v1/rpc/group_messages_enabled')) readsAtFlag = threadReads;
+		});
+		const flagRead = page.waitForResponse((r) =>
+			r.url().includes('/rest/v1/rpc/group_messages_enabled')
+		);
+
 		await page.clock.install();
 		await page.goto('/messages');
 		await expect(page.getByRole('heading', { name: 'Messages', level: 2 })).toBeVisible({
 			timeout: 10_000
 		});
+		const groupsOn = (await (await flagRead).json()) === true;
+		await expect
+			.poll(
+				() =>
+					threadReadsDone === threadReads &&
+					threadReadsDone > 0 &&
+					(!groupsOn || threadReads > readsAtFlag),
+				{ timeout: 10_000 }
+			)
+			.toBe(true);
 
 		const body = `e2e inbox poll ${Date.now()}`;
 		await seed({ sender_id: USER_C_PRO.id, recipient_id: USER_A.id, body });

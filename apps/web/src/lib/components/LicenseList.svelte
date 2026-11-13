@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from './PageHeader.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 
 	const deps = [
@@ -48,15 +49,6 @@
 			license: 'MIT',
 			url: 'https://github.com/anthropics/anthropic-sdk-typescript',
 			fullText: 'MIT License. Copyright (c) Anthropic, PBC. See upstream repository for the full text.',
-		},
-		{
-			name: 'JSZip',
-			license: 'MIT (elected)',
-			url: 'https://github.com/Stuk/jszip',
-			fullText:
-				'JSZip is dual-licensed under the MIT license or GPL-3.0-or-later; this project elects and ' +
-				'uses it under the MIT option. MIT License. Copyright (c) Stuart Knightley, David Duponchel, ' +
-				'Franz Buchinger, Antonio Villar Cloquell. See upstream repository for the full text of both licenses.',
 		},
 		{
 			name: 'DOMPurify',
@@ -178,12 +170,7 @@
 </script>
 
 <div class="page">
-	<header class="page-header">
-		<h1>{m('licenseList.title')}</h1>
-		<p class="subtitle">
-			{m('licenseList.subtitle')}
-		</p>
-	</header>
+	<PageHeader title={m('licenseList.title')} subtitle={m('licenseList.subtitle')} />
 
 	<section class="card">
 		<ul class="lic-list">
@@ -265,21 +252,10 @@
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 42rem;
 	}
-	h1 {
-		font-size: 1.6rem;
-		font-weight: 800;
-		margin: 0 0 var(--space-xs);
-	}
 	h2 {
 		font-size: 1rem;
 		font-weight: 700;
 		margin: 0 0 0.5rem;
-	}
-	.subtitle {
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-		line-height: 1.5;
-		margin: 0 0 var(--space-xl);
 	}
 	.card {
 		background: var(--color-surface);

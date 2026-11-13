@@ -111,11 +111,60 @@ test.describe('Legal pages', () => {
 		// pseudonymous user id, which matched none of them.
 		await page.goto('/privacy');
 		const body = await page.locator('.legal-page').innerText();
-		expect(body).toContain('Settings → Account → Send error reports');
+		expect(body).toMatch(/Send error reports on the\s+Privacy & sharing page, in Preferences on the app's You tab/);
 		expect(body).toMatch(/iPhone and Android apps it is on by default/);
 		expect(body).toMatch(/website, client-side error monitoring stays off until\s+you accept/);
 		expect(body).not.toContain('pseudonymous user id');
 		expect(body).not.toContain('remains gated on your telemetry');
+	});
+
+	test('each consent and data right names where it lives on the web and in the app', async ({
+		page
+	}) => {
+		// The app has no Settings screen since #1374 (decisions § 2494), and the
+		// legal pages are English while the app is not, so a control is named by
+		// its screen and its place on it, with its English label in brackets.
+		// The #1373 consent-wording review (M1-M5) found the export, withdrawal
+		// and marketing sentences each naming a control the product did not have
+		// or describing one that did something else.
+		await page.goto('/privacy');
+		const privacy = (await page.locator('.legal-page').innerText()).replace(/\s+/g, ' ');
+		expect(privacy).toContain(
+			"Withdraw consent on the Account page (Settings → Account on the web, Account in the app's You tab)"
+		);
+		// M1 / M5: health-data withdrawal is a toggle, a Save and a confirm, and
+		// it erases rather than merely stopping collection.
+		expect(privacy).toContain(
+			'open Body metrics under Profile in the You tab, turn off the switch at the top of the screen (in English it reads "Store health data"'
+		);
+		expect(privacy).toContain(
+			'Every path then asks you to confirm, because withdrawing permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log'
+		);
+		expect(privacy).not.toContain('withdrawing blocks the corresponding processing immediately');
+		// M3: the full copy is the server-built archive, named as each platform
+		// names it, and it is JSON, not GPX.
+		expect(privacy).toContain(
+			"Download full account archive under Data Export on the Account page on the web (Settings → Account), or Account export on the Account page in the app's You tab"
+		);
+		expect(privacy).not.toContain('JSON plus GPX');
+		expect(privacy).not.toContain('use Data Export on the Account page');
+		// M4: the marketing switches are the two optional emails, on both.
+		expect(privacy).toContain(
+			"Our marketing emails are the weekly digest and the tips and encouragement emails"
+		);
+		expect(privacy).toContain(
+			"under Optional emails on the Notifications page (Settings → Notifications on the web, Notifications in Preferences on the app's You tab)"
+		);
+		expect(privacy).not.toContain('Settings → Export your data');
+		expect(privacy).not.toContain('Settings → Profile');
+
+		await page.goto('/health-data-notice');
+		const notice = (await page.locator('.legal-page').innerText()).replace(/\s+/g, ' ');
+		expect(notice).toContain('turn off the switch at the top of the screen (in English it reads "Store health data"');
+		expect(notice).toContain('You are then asked to confirm, because withdrawing permanently erases');
+		expect(notice).not.toContain('blocks further collection');
+		expect(notice).toContain("Account export on the Account page in the app's You tab");
+		expect(notice).not.toContain("or Account in the app's You tab;");
 	});
 
 	test('/terms states the subscription pillars + marketplace + DMCA clauses', async ({
@@ -211,8 +260,9 @@ test.describe('Legal pages', () => {
 		// requirement: reachable logged-out, a working path to the in-app
 		// deletion, and a fallback for users who can no longer sign in.
 		await page.goto('/delete-account');
+		// The link names the page, not a menu path (decisions § 2496).
 		await expect(
-			page.getByRole('link', { name: 'Settings → Account' })
+			page.getByRole('link', { name: 'your Account settings' })
 		).toHaveAttribute('href', '/settings/account');
 		await expect(
 			page.getByRole('link', { name: /privacy@threkir\.com/ }).first()
@@ -221,6 +271,13 @@ test.describe('Legal pages', () => {
 		// Retention carve-outs must not silently drift from /privacy §7.
 		expect(body).toMatch(/backups[^\n]*28 days/i);
 		expect(body).toContain('permanent and cannot be undone');
+		// The app has no Settings screen; deletion is under the You tab.
+		expect(body).toContain('open Account in the You tab and choose Delete account');
+		// Both dialogs ask for one localized word, never the account email
+		// (ConfirmDialog requireText on web, issue #1064 in the app).
+		expect(body).toContain('The dialog asks you to type the word DELETE to confirm');
+		expect(body).toContain('The app asks you to type the same word');
+		expect(body).not.toContain('account email');
 	});
 
 	test('/delete-account reads in the browser language, not only in English', async ({
@@ -232,13 +289,14 @@ test.describe('Legal pages', () => {
 		const page = await context.newPage();
 		await page.goto('/delete-account');
 		await expect(page.getByRole('heading', { level: 1, name: 'Konto löschen' })).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Einstellungen → Konto' })).toHaveAttribute(
+		await expect(page.getByRole('link', { name: 'deine Kontoeinstellungen' })).toHaveAttribute(
 			'href',
 			'/settings/account'
 		);
 		await expect(page.locator('.legal-page')).toContainText(
 			'endgültig und kann nicht rückgängig gemacht werden'
 		);
+		await expect(page.locator('.legal-page')).toContainText('das Wort „LÖSCHEN“');
 		await context.close();
 	});
 

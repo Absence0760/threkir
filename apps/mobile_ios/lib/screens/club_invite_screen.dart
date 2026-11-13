@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave;
 
 import '../auth_error.dart';
 import '../club_invite_link.dart';
@@ -135,48 +136,36 @@ class _ClubInviteScreenState extends State<ClubInviteScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.clubInviteTitle)),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.clubInviteIntro,
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _tokenCtl,
-              decoration: InputDecoration(
-                labelText: l10n.clubInviteCodeLabel,
-              ),
-              autocorrect: false,
-              enableSuggestions: false,
-              autofocus: widget.initialToken == null,
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
-            ],
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _busy ? null : _redeem,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: _busy
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(l10n.clubInviteJoinButton),
-            ),
-          ],
-        ),
+    // A short form, but it still scrolls and pins Join above the keyboard,
+    // so a large text size or landscape cannot push Join out of reach
+    // (issue #1374 IK-11).
+    return EditorPage(
+      title: l10n.clubInviteTitle,
+      save: EditorSave(
+        label: l10n.clubInviteJoinButton,
+        busy: _busy,
+        onPressed: _redeem,
       ),
+      fields: [
+        Text(
+          l10n.clubInviteIntro,
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _tokenCtl,
+          decoration: InputDecoration(
+            labelText: l10n.clubInviteCodeLabel,
+          ),
+          autocorrect: false,
+          enableSuggestions: false,
+          autofocus: widget.initialToken == null,
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+        ],
+      ],
     );
   }
 }

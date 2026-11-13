@@ -33,7 +33,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración.',
+						'Abre [[route:/settings/privacy|Privacidad y uso compartido]] en Ajustes.',
 						'En **Zonas de privacidad**, selecciona **Añadir una zona**.',
 						'Haz clic en el mapa donde quieras centrar la zona, o selecciona **Usar ubicación actual**, y luego arrastra el marcador para ajustarla.',
 						'Fija el **Radio**. Todo lo que quede dentro del círculo rojo se oculta en lo que compartes públicamente.',
@@ -52,7 +52,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Abre la pestaña **Tú**, luego **Preferencias**, y en **Privacidad y uso compartido** toca **Zonas de privacidad**.',
+						'Abre la pestaña **Tú**, luego **Privacidad y uso compartido**, y toca **Zonas de privacidad**.',
 						'Toca el mapa para colocar una zona. Usa **Buscar lugares…** o **Ubicarme** para mover antes el mapa.',
 						'Ajusta el control deslizante de **Radio**.',
 						'Toca **Guardar**. No cambia nada hasta que guardes.',
@@ -100,7 +100,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i4': '150b03da903ccf27',
 		's1.b1': 'b395019ec1836f1e',
 		's2.heading': 'd50fe7d487cde78b',
-		's2.b0.i0': '0f37a464ec66cdc7',
+		's2.b0.i0': '012a8f29f3d8755b',
 		's2.b0.i1': 'e3478863d167e8fe',
 		's2.b0.i2': 'ca9cc061ff309425',
 		's2.b0.i3': '2f1655078cb4ae12',

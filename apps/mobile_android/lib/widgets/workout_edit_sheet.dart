@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import 'package:ui_kit/ui_kit.dart' show FieldColumn;
 
 import '../backend_timeout.dart';
 import '../auth_error.dart';
@@ -40,6 +41,7 @@ Future<bool> showWorkoutEditSheet(
     context,
     title: AppLocalizations.of(context).workoutEditTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) => _WorkoutEditSheet(
       key: formKey,
       workout: workout,
@@ -143,6 +145,9 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
         _hrMaxCtl.text,
       ].join('\u0000');
 
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
+
   bool get isDirty => _snapshot() != _initialSnapshot;
 
   @override
@@ -163,62 +168,66 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    // Heading lives in the host AppBar (showFullScreenForm).
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.workoutEditSave,
+        busy: _saving,
+        onPressed: _save,
+      ),
       children: [
-          DropdownButtonFormField<WorkoutKind>(
-            initialValue: _kind,
-            decoration: InputDecoration(labelText: l10n.workoutEditKindLabel),
-            items: [
-              for (final k in WorkoutKind.values)
-                DropdownMenuItem(value: k, child: Text(workoutKindLabel(l10n, k))),
-            ],
-            onChanged: (v) {
-              if (v != null) setState(() => _kind = v);
-            },
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            key: const Key('workoutEditDistance'),
-            controller: _distanceCtl,
-            enabled: _kind != WorkoutKind.rest,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: l10n.workoutEditDistanceLabel(_unitLabel),
-              hintText: l10n.workoutEditDistanceHint,
-              errorText: _distanceError,
+          FieldColumn(children: [
+            DropdownButtonFormField<WorkoutKind>(
+              isExpanded: true,
+              initialValue: _kind,
+              decoration: InputDecoration(labelText: l10n.workoutEditKindLabel),
+              items: [
+                for (final k in WorkoutKind.values)
+                  DropdownMenuItem(value: k, child: Text(workoutKindLabel(l10n, k))),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => _kind = v);
+              },
             ),
-            onChanged: (_) {
-              if (_distanceError != null) {
-                setState(() => _distanceError = null);
-              }
-            },
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            key: const Key('workoutEditPace'),
-            controller: _paceCtl,
-            enabled: _kind != WorkoutKind.rest,
-            keyboardType: TextInputType.text,
-            decoration: InputDecoration(
-              labelText: l10n.workoutEditPaceLabel(_unitLabel),
-              hintText: l10n.workoutEditPaceHint,
-              errorText: _paceError,
+            TextField(
+              key: const Key('workoutEditDistance'),
+              controller: _distanceCtl,
+              enabled: _kind != WorkoutKind.rest,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: l10n.workoutEditDistanceLabel(_unitLabel),
+                hintText: l10n.workoutEditDistanceHint,
+                errorText: _distanceError,
+              ),
+              onChanged: (_) {
+                if (_distanceError != null) {
+                  setState(() => _distanceError = null);
+                }
+              },
             ),
-            onChanged: (_) {
-              if (_paceError != null) {
-                setState(() => _paceError = null);
-              }
-            },
-          ),
-          if (_kind != WorkoutKind.rest) ..._targetRangeFields(l10n),
-          if (_kind == WorkoutKind.race) ..._raceFields(l10n),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _notesCtl,
-            maxLines: 2,
-            decoration: InputDecoration(labelText: l10n.workoutEditNotesLabel),
-          ),
+            TextField(
+              key: const Key('workoutEditPace'),
+              controller: _paceCtl,
+              enabled: _kind != WorkoutKind.rest,
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                labelText: l10n.workoutEditPaceLabel(_unitLabel),
+                hintText: l10n.workoutEditPaceHint,
+                errorText: _paceError,
+              ),
+              onChanged: (_) {
+                if (_paceError != null) {
+                  setState(() => _paceError = null);
+                }
+              },
+            ),
+            if (_kind != WorkoutKind.rest) ..._targetRangeFields(l10n),
+            if (_kind == WorkoutKind.race) ..._raceFields(l10n),
+            TextField(
+              controller: _notesCtl,
+              maxLines: 2,
+              decoration: InputDecoration(labelText: l10n.workoutEditNotesLabel),
+            ),
+          ]),
           if (widget.moveDays.isNotEmpty) ...[
             const SizedBox(height: 8),
             Align(
@@ -236,32 +245,6 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
             Text(_error!,
                 style: TextStyle(color: theme.colorScheme.error)),
           ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _saving
-                      ? null
-                      : () => Navigator.of(context).maybePop(false),
-                  child: Text(l10n.workoutEditCancel),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.workoutEditSave),
-                ),
-              ),
-            ],
-          ),
         ],
       );
   }
@@ -303,46 +286,52 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
     );
   }
 
+  /// Each range row with its hint under it, one item of the form's
+  /// [FieldColumn].
   List<Widget> _targetRangeFields(AppLocalizations l10n) => [
-        const SizedBox(height: 8),
-        _rangeRow(
-          fromKey: const Key('workoutEditRpeMin'),
-          toKey: const Key('workoutEditRpeMax'),
-          fromCtl: _rpeMinCtl,
-          toCtl: _rpeMaxCtl,
-          fromLabel: l10n.workoutEditRpeFromLabel,
-          toLabel: l10n.workoutEditRpeToLabel,
-          error: _rpeError,
-          onEdit: () {
-            if (_rpeError != null) setState(() => _rpeError = null);
-          },
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(l10n.workoutEditRpeHint,
-              style: Theme.of(context).textTheme.bodySmall),
-        ),
-        if (widget.hrPrescription) ...[
-          const SizedBox(height: 8),
+        _withHint(
           _rangeRow(
-            fromKey: const Key('workoutEditHrMin'),
-            toKey: const Key('workoutEditHrMax'),
-            fromCtl: _hrMinCtl,
-            toCtl: _hrMaxCtl,
-            fromLabel: l10n.workoutEditHrFromLabel,
-            toLabel: l10n.workoutEditHrToLabel,
-            error: _hrError,
+            fromKey: const Key('workoutEditRpeMin'),
+            toKey: const Key('workoutEditRpeMax'),
+            fromCtl: _rpeMinCtl,
+            toCtl: _rpeMaxCtl,
+            fromLabel: l10n.workoutEditRpeFromLabel,
+            toLabel: l10n.workoutEditRpeToLabel,
+            error: _rpeError,
             onEdit: () {
-              if (_hrError != null) setState(() => _hrError = null);
+              if (_rpeError != null) setState(() => _rpeError = null);
             },
           ),
+          l10n.workoutEditRpeHint,
+        ),
+        if (widget.hrPrescription)
+          _withHint(
+            _rangeRow(
+              fromKey: const Key('workoutEditHrMin'),
+              toKey: const Key('workoutEditHrMax'),
+              fromCtl: _hrMinCtl,
+              toCtl: _hrMaxCtl,
+              fromLabel: l10n.workoutEditHrFromLabel,
+              toLabel: l10n.workoutEditHrToLabel,
+              error: _hrError,
+              onEdit: () {
+                if (_hrError != null) setState(() => _hrError = null);
+              },
+            ),
+            l10n.workoutEditHrHint,
+          ),
+      ];
+
+  Widget _withHint(Widget field, String hint) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          field,
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(l10n.workoutEditHrHint,
-                style: Theme.of(context).textTheme.bodySmall),
+            child: Text(hint, style: Theme.of(context).textTheme.bodySmall),
           ),
         ],
-      ];
+      );
 
   /// Read one end of a typed range: empty is an open end, anything that is
   /// not a finite number is refused as not whole.
@@ -372,7 +361,6 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
   }
 
   List<Widget> _raceFields(AppLocalizations l10n) => [
-        const SizedBox(height: 8),
         TextField(
           key: const Key('workoutEditRaceName'),
           controller: _raceNameCtl,
@@ -382,6 +370,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
               InputDecoration(labelText: l10n.workoutEditRaceNameLabel),
         ),
         DropdownButtonFormField<String?>(
+          isExpanded: true,
           key: const Key('workoutEditRacePriority'),
           initialValue: _racePriority,
           decoration:
@@ -399,7 +388,6 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
           ],
           onChanged: (v) => setState(() => _racePriority = v),
         ),
-        const SizedBox(height: 8),
         TextField(
           key: const Key('workoutEditRaceGoal'),
           controller: _raceGoalCtl,

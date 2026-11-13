@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_models/core_models.dart' as cm show Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,11 +13,13 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/club_detail_screen.dart';
 import '../lib/widgets/official_badge.dart';
 import '../lib/widgets/error_state.dart';
+import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'realtime_drain.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 
@@ -112,6 +115,29 @@ class _FakeApi extends ApiClient {
   }
 }
 
+class _FlakyRoutesSocial extends _FakeSocial {
+  bool fail = true;
+  @override
+  Future<List<cm.Route>> fetchClubRoutes(String clubId) async {
+    if (fail) throw Exception('offline');
+    return const [];
+  }
+}
+
+class _FlakyTemplatesApi extends _FakeApi {
+  bool fail = true;
+  _FlakyTemplatesApi() : super([_routine('r-1', 'Club push day', 3)]);
+  @override
+  Future<List<GymRoutineRow>> fetchClubGymRoutineTemplates(
+    String clubId,
+  ) async {
+    if (fail) throw Exception('offline');
+    return super.fetchClubGymRoutineTemplates(clubId);
+  }
+}
+
+final _l10n = lookupAppLocalizations(const Locale('en'));
+
 class _FakeTraining extends TrainingService {
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
@@ -184,6 +210,74 @@ class _PendingSocial extends SocialService {
 
 /// Admin club with one pending request that records deny calls so the
 /// deny-confirm dialog flow can be asserted.
+/// An admin club with a row in every list the detail page draws, for the
+/// worst-case walk: a pending request, upcoming events, a post, a club
+/// route, and plan, session and routine templates.
+class _FullClubSocial extends _PendingSocial {
+  @override
+  Future<List<EventView>> fetchUpcomingEvents(String clubId) async => [
+        EventView(
+          row: EventRow(
+            raceStartMode: 'host_go',
+            id: 'event-1',
+            clubId: 'club-1',
+            title: 'Saturday long run along the river and back to the clubhouse',
+            startsAt: DateTime.utc(2026, 3, 28, 10, 35),
+            authorId: 'owner',
+            category: 'run',
+            isPublic: true,
+            meetLabel: 'Riverside car park by the old boathouse',
+          ),
+          byday: null,
+          attendeeCount: 1234,
+          viewerRsvp: 'going',
+          nextInstanceStart: DateTime.utc(2026, 3, 28, 10, 35),
+        ),
+      ];
+  @override
+  Future<List<ClubPostView>> fetchClubPosts(
+    String clubId, {
+    int limit = 20,
+  }) async => [
+        ClubPostView(
+          row: ClubPostRow(
+            id: 'post-1',
+            clubId: 'club-1',
+            authorId: 'someone',
+            body: 'Saturday long run? Meet at the boathouse at nine.',
+            createdAt: DateTime.utc(2026, 5, 1),
+          ),
+          authorName: 'Samantha Featherstonehaugh',
+          replyCount: 12,
+        ),
+      ];
+  @override
+  Future<List<ClubVerificationRequestRow>> fetchClubVerificationRequests(
+          String clubId) async =>
+      const [];
+}
+
+class _FullClubTraining extends TrainingService {
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async => [
+        TrainingPlanRow(
+          id: 'tpl-1',
+          userId: 'owner',
+          name: 'Club half marathon build with hills and tempo blocks',
+          goalEvent: 'half',
+          goalDistanceM: 21097,
+          source: 'generated',
+          isTemplate: true,
+          isPublicTemplate: false,
+          startDate: DateTime.utc(2026, 1, 5),
+          endDate: DateTime.utc(2026, 3, 29),
+          daysPerWeek: 4,
+          status: 'active',
+          notes: 'Twelve weeks, four runs a week, one long run on Sunday.',
+        ),
+      ];
+}
+
 class _DenySocial extends SocialService {
   int denyCalls = 0;
 
@@ -508,6 +602,43 @@ class _RosterSocial extends SocialService {
 }
 
 void main() {
+
+  worstCaseTestWidgets('Club detail lists', (tester, locale) async {
+    await _ensureSupabase();
+    final l10n = l10nFor(locale);
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ClubDetailScreen(
+        social: _FullClubSocial(),
+        training: _FullClubTraining(),
+        apiClient: _FakeApi(
+          [_routine('r-1', 'Club push day with accessory supersets', 12)],
+          officialRoutineIds: const {'r-1'},
+        ),
+        slug: 'track-club',
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    for (final (label, row) in [
+      (l10n.clubDetailTabFeed, 'Samantha Featherstonehaugh'),
+      (l10n.clubDetailTabEvents, 'Riverside car park by the old boathouse'),
+      (l10n.clubDetailTabMembers, 'Pat Pending'),
+      (l10n.clubDetailTabTemplates, 'Club push day with accessory supersets'),
+    ]) {
+      final tab = find.text(label);
+      await tester.ensureVisible(tab);
+      await tester.tap(tab);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.dragUntilVisible(
+          find.text(row), find.byType(TabBarView), const Offset(0, -150));
+      await tester.pump();
+      tester.takeException();
+    }
+    await drainRealtimeTimers(tester);
+  },
+      layoutOnly: true);
   setUpAll(_ensureSupabase);
 
   group('ClubDetailScreen — initial render', () {
@@ -692,6 +823,73 @@ void main() {
     );
   });
 
+  // Issue #1374 FS-3: a failed read became "No routes shared with this club
+  // yet" for good, since the tab was marked loaded and the empty state could
+  // not be pulled.
+  group('ClubDetailScreen — Routes and Templates tabs on a failed read', () {
+    Future<void> openTab(WidgetTester tester, String tab,
+        {required SocialService social, ApiClient? api,
+        TrainingService? training}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: social,
+            training: training ?? _FakeTraining(),
+            apiClient: api,
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text(tab));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+    }
+
+    realtimeWidgetTest('Routes shows an error with Retry, then the result',
+        (tester) async {
+      final social = _FlakyRoutesSocial();
+      await openTab(tester, 'Routes', social: social);
+      expect(find.text(_l10n.clubDetailRoutesLoadFailed), findsOneWidget);
+      expect(find.text(_l10n.clubDetailRoutesEmpty), findsNothing);
+
+      social.fail = false;
+      await tester.tap(find.text(_l10n.errorStateRetry));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text(_l10n.clubDetailRoutesLoadFailed), findsNothing);
+      expect(find.text(_l10n.clubDetailRoutesEmpty), findsOneWidget);
+      // The empty state can be pulled, so it is never a dead end.
+      expect(
+        find.ancestor(
+          of: find.text(_l10n.clubDetailRoutesEmpty),
+          matching: find.byType(RefreshIndicator),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    realtimeWidgetTest('Templates shows an error with Retry, then the rows',
+        (tester) async {
+      final api = _FlakyTemplatesApi();
+      await openTab(tester, 'Templates', social: _FakeSocial(), api: api);
+      expect(find.text(_l10n.clubDetailTemplatesLoadFailed), findsOneWidget);
+      expect(find.text(_l10n.clubDetailNoTemplates), findsNothing);
+
+      api.fail = false;
+      await tester.tap(find.text(_l10n.errorStateRetry));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text(_l10n.clubDetailTemplatesLoadFailed), findsNothing);
+      expect(find.text('Club push day'), findsOneWidget);
+    });
+  });
+
   group('ClubDetailScreen — pending approve double-submit guard', () {
     realtimeWidgetTest('rapid double-tap of Approve only fires the RPC once', (
       tester,
@@ -848,10 +1046,15 @@ void main() {
         find.text('Club members see you as Runner #ABCD.'),
         findsOneWidget,
       );
-      expect(
-        find.text('You can add your name in your account settings.'),
-        findsOneWidget,
-      );
+      expect(find.text('Add your name to your account.'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the name hint opens the Account page', (tester) async {
+      pendingSettingsDestination.value = null;
+      addTearDown(() => pendingSettingsDestination.value = null);
+      await openMembers(tester);
+      await tester.tap(find.byKey(const Key('club-name-hint')));
+      expect(pendingSettingsDestination.value, SettingsDestination.account);
     });
 
     realtimeWidgetTest('a named member sees no hint', (tester) async {
@@ -1048,6 +1251,9 @@ void main() {
 
         final sendBtn = find.widgetWithText(FilledButton, 'Send');
         expect(sendBtn, findsOneWidget);
+        // The hero above the tabs pushes the composer below the fold.
+        await tester.ensureVisible(sendBtn);
+        await tester.pump();
 
         await tester.tap(sendBtn);
         await tester.pump();

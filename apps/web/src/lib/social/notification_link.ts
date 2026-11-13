@@ -22,9 +22,15 @@ export interface NotificationLinkInput {
 		course_alert_id?: string | null;
 		/// The group a message or invite is about (migration 20271217000001).
 		conversation_id?: string | null;
+		/// A park course month-close notice's month, the park-local 1st as
+		/// YYYY-MM-DD (migration 20271226011343).
+		park_course_month?: string | null;
 	};
 	event_club_slug: string | null;
 	club_slug: string | null;
+	/// `<region>/<park>/<course>` of the row's park course, lower-case region,
+	/// resolved by the reader from `park_course_id` like `event_club_slug`.
+	park_course_path?: string | null;
 }
 
 export function notificationLinkFor(item: NotificationLinkInput): string | null {
@@ -119,6 +125,12 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			// The stable-id resolver opens the race or route the alert is on
 			// (decisions § 2407); the row carries only the alert's id.
 			return r.course_alert_id ? `/course-alerts/${r.course_alert_id}` : null;
+		case 'park_course_month_closed':
+			// The course page on the closed month's board (issue #1343), the
+			// same target the worker's email and push carry.
+			return item.park_course_path && r.park_course_month && /^\d{4}-\d{2}/.test(r.park_course_month)
+				? `/parks/${item.park_course_path}?period=${r.park_course_month.slice(0, 7)}`
+				: null;
 		case 'park_course_report':
 			// Sent to app admins only; the queue sorts land-manager requests by
 			// their deadline (decisions § 2449).

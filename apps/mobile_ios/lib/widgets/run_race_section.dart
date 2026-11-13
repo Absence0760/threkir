@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show AppInsets, AppSpace, ListCard, TermValueRow;
 
 import '../l10n/gen/app_localizations.dart';
 import '../race_match.dart';
@@ -148,32 +150,30 @@ class _RunRaceSectionState extends State<RunRaceSection> {
 
     final candidate = _candidate;
     if (candidate != null && !_dismissed) {
-      return Card(
-        margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l.racesMatchPrompt(candidate.name)),
-              const SizedBox(height: 8),
-              OverflowBar(
-                alignment: MainAxisAlignment.end,
-                overflowAlignment: OverflowBarAlignment.end,
-                spacing: 8,
-                children: [
-                  TextButton(
-                    onPressed: () => setState(() => _dismissed = true),
-                    child: Text(l.racesMatchDismiss),
-                  ),
-                  FilledButton(
-                    onPressed: _confirmMatch,
-                    child: Text(l.racesMatchConfirm),
-                  ),
-                ],
-              ),
-            ],
-          ),
+      return ListCard(
+        margin: const EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.smPlus,
+          AppInsets.gutter, AppSpace.xs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.racesMatchPrompt(candidate.name)),
+            const SizedBox(height: 8),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              overflowAlignment: OverflowBarAlignment.end,
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () => setState(() => _dismissed = true),
+                  child: Text(l.racesMatchDismiss),
+                ),
+                FilledButton(
+                  onPressed: _confirmMatch,
+                  child: Text(l.racesMatchConfirm),
+                ),
+              ],
+            ),
+          ],
         ),
       );
     }
@@ -181,26 +181,11 @@ class _RunRaceSectionState extends State<RunRaceSection> {
     return const SizedBox.shrink();
   }
 
+  /// A result line: the term and its value share a line while they fit,
+  /// and the value drops under the term when not, so the place the runner
+  /// came for is never the part that is cut (#1374 TO-5).
   Widget _row(String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ),
+        child: TermValueRow(term: label, value: value),
       );
 }

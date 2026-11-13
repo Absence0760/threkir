@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
@@ -85,14 +86,9 @@
 			{m('eventNew.backToNamedClub', { name: club.name })}
 		</a>
 
-		<header class="page-header">
-			<span class="kicker">{club.name}</span>
-			<h1>{m('eventNew.title')}</h1>
-			<HelpLink route="/clubs/[slug]/events/new" />
-			<p class="tagline">
-				{m('eventNew.tagline')}
-			</p>
-		</header>
+		<PageHeader kicker={club.name} title={m('eventNew.title')} subtitle={m('eventNew.tagline')}>
+			{#snippet help()}<HelpLink route="/clubs/[slug]/events/new" />{/snippet}
+		</PageHeader>
 
 		<EventEditor
 			clubId={club.id}
@@ -120,33 +116,6 @@
 	}
 	.back:hover { color: var(--color-primary); }
 	.back .material-symbols { font-size: 1.05rem; }
-
-	.page-header {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2xs);
-		margin-bottom: var(--space-lg);
-	}
-	.kicker {
-		font-size: var(--font-size-section-label);
-		letter-spacing: 0.1em;
-		color: var(--color-primary);
-		font-weight: 700;
-		text-transform: uppercase;
-	}
-	h1 {
-		font-size: 1.75rem;
-		font-weight: 700;
-		line-height: 1.15;
-		margin: 0;
-	}
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		max-width: 44rem;
-		margin: var(--space-2xs) 0 0 0;
-	}
 
 	.back-skel {
 		display: inline-flex;

@@ -135,6 +135,7 @@ void main() {
       matching: find.text(l10n.coachAssistConsentWhat),
     );
     await tester.ensureVisible(what);
+    await tester.pump();
     await tester.tap(what);
     await tester.pumpAndSettle();
     for (final line in [

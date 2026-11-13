@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 
 import '../auth_error.dart' show friendlyError;
@@ -362,133 +363,131 @@ class _PlanChangeRequestCardState extends State<PlanChangeRequestCard> {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
     final note = widget.request.coachNote;
-    return Card(
+    return ListCard(
       key: const Key('plan-change-request'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.tune, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    l10n.planChangeTitle,
-                    style: theme.textTheme.titleSmall,
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.tune, size: 18),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  l10n.planChangeTitle,
+                  style: theme.textTheme.titleSmall,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(_status(l10n), style: TextStyle(color: muted)),
+          const SizedBox(height: 6),
+          for (final l in widget.lines.workouts)
+            _line(
+              context,
+              l.workoutId,
+              _describe(l10n, l.before),
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(
+                    text: _describe(l10n, l.before),
+                    style: TextStyle(
+                      color: muted,
+                      decoration: TextDecoration.lineThrough,
+                    ),
                   ),
+                  const TextSpan(text: '  →  '),
+                  TextSpan(
+                    text: l.after.skipped
+                        ? l10n.planChangeSkipped
+                        : _describe(l10n, l.after),
+                  ),
+                ]),
+              ),
+            ),
+          for (final w in widget.lines.weeks)
+            _line(
+              context,
+              w.weekId,
+              l10n.planChangeWeekLabel(w.weekIndex + 1),
+              Text(l10n.planChangeWeekTarget(
+                w.weekIndex + 1,
+                fmtKm(w.beforeM ?? 0),
+                fmtKm(w.afterM ?? 0),
+              )),
+            ),
+          if (widget.lines.unreadable > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(l10n.planChangeUnreadable,
+                  style: TextStyle(color: muted)),
+            ),
+          if (note != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(l10n.planChangeCoachNote(note)),
+            ),
+          if (_pending && _isCoach) ...[
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('plan-change-note-input'),
+              controller: _note,
+              enabled: !_busy,
+              minLines: 1,
+              maxLines: 3,
+              inputFormatters: [LengthLimitingTextInputFormatter(500)],
+              decoration: InputDecoration(
+                labelText: l10n.planChangeNoteLabel,
+                hintText: l10n.planChangeNotePlaceholder,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              children: [
+                OutlinedButton(
+                  key: const Key('plan-change-decline'),
+                  onPressed: _busy ? null : () => _decline(l10n),
+                  child: Text(l10n.planChangeDecline),
+                ),
+                FilledButton(
+                  key: const Key('plan-change-approve'),
+                  onPressed: _busy || _excluded.length >= _total
+                      ? null
+                      : () => _approve(l10n),
+                  child: Text(_excluded.isEmpty
+                      ? l10n.planChangeApprove
+                      : l10n.planChangeApproveSelected),
                 ),
               ],
             ),
-            const SizedBox(height: 2),
-            Text(_status(l10n), style: TextStyle(color: muted)),
-            const SizedBox(height: 6),
-            for (final l in widget.lines.workouts)
-              _line(
-                context,
-                l.workoutId,
-                _describe(l10n, l.before),
-                Text.rich(
-                  TextSpan(children: [
-                    TextSpan(
-                      text: _describe(l10n, l.before),
-                      style: TextStyle(
-                        color: muted,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                    const TextSpan(text: '  →  '),
-                    TextSpan(
-                      text: l.after.skipped
-                          ? l10n.planChangeSkipped
-                          : _describe(l10n, l.after),
-                    ),
-                  ]),
+          ] else if (_pending) ...[
+            const SizedBox(height: 8),
+            Text(l10n.planChangeApplyMyselfHint,
+                style: TextStyle(color: muted)),
+            const SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              children: [
+                OutlinedButton(
+                  key: const Key('plan-change-withdraw'),
+                  onPressed: _busy ? null : () => _withdraw(l10n),
+                  child: Text(l10n.planChangeWithdraw),
                 ),
-              ),
-            for (final w in widget.lines.weeks)
-              _line(
-                context,
-                w.weekId,
-                l10n.planChangeWeekLabel(w.weekIndex + 1),
-                Text(l10n.planChangeWeekTarget(
-                  w.weekIndex + 1,
-                  fmtKm(w.beforeM ?? 0),
-                  fmtKm(w.afterM ?? 0),
-                )),
-              ),
-            if (widget.lines.unreadable > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(l10n.planChangeUnreadable,
-                    style: TextStyle(color: muted)),
-              ),
-            if (note != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(l10n.planChangeCoachNote(note)),
-              ),
-            if (_pending && _isCoach) ...[
-              const SizedBox(height: 8),
-              TextField(
-                key: const Key('plan-change-note-input'),
-                controller: _note,
-                enabled: !_busy,
-                minLines: 1,
-                maxLines: 3,
-                inputFormatters: [LengthLimitingTextInputFormatter(500)],
-                decoration: InputDecoration(
-                  labelText: l10n.planChangeNoteLabel,
-                  hintText: l10n.planChangeNotePlaceholder,
+                FilledButton.tonal(
+                  key: const Key('plan-change-apply-myself'),
+                  onPressed: _busy ? null : () => _applyMyself(l10n),
+                  child: Text(l10n.planChangeApplyMyself),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                children: [
-                  OutlinedButton(
-                    key: const Key('plan-change-decline'),
-                    onPressed: _busy ? null : () => _decline(l10n),
-                    child: Text(l10n.planChangeDecline),
-                  ),
-                  FilledButton(
-                    key: const Key('plan-change-approve'),
-                    onPressed: _busy || _excluded.length >= _total
-                        ? null
-                        : () => _approve(l10n),
-                    child: Text(_excluded.isEmpty
-                        ? l10n.planChangeApprove
-                        : l10n.planChangeApproveSelected),
-                  ),
-                ],
-              ),
-            ] else if (_pending) ...[
-              const SizedBox(height: 8),
-              Text(l10n.planChangeApplyMyselfHint,
-                  style: TextStyle(color: muted)),
-              const SizedBox(height: 8),
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                children: [
-                  OutlinedButton(
-                    key: const Key('plan-change-withdraw'),
-                    onPressed: _busy ? null : () => _withdraw(l10n),
-                    child: Text(l10n.planChangeWithdraw),
-                  ),
-                  FilledButton.tonal(
-                    key: const Key('plan-change-apply-myself'),
-                    onPressed: _busy ? null : () => _applyMyself(l10n),
-                    child: Text(l10n.planChangeApplyMyself),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

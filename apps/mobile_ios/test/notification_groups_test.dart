@@ -162,6 +162,14 @@ void main() {
       expect(groups.length, 2);
     });
 
+    test('park course month-close notices never collapse', () {
+      final groups = groupNotifications([
+        n(id: 'm1', kind: 'park_course_month_closed', createdAt: ago(1000)),
+        n(id: 'm2', kind: 'park_course_month_closed', createdAt: ago(2000)),
+      ], nowMs: now);
+      expect(groups.length, 2);
+    });
+
     test('event RSVPs collapse per event, distinct events split', () {
       final groups = groupNotifications([
         n(id: 'e1a', kind: 'event_rsvp', eventId: 'ev1', createdAt: ago(1000)),

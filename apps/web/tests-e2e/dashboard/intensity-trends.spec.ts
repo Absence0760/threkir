@@ -73,7 +73,7 @@ test.describe('dashboard intensity-balance + trend-delta cards', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 
 			const balance = page.getByTestId('intensity-balance');
 			await expect(balance).toBeVisible({ timeout: 15_000 });
@@ -105,7 +105,7 @@ test.describe('dashboard intensity-balance + trend-delta cards', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await page.waitForLoadState('networkidle');
 			await expect(page.getByTestId('intensity-balance')).toHaveCount(0);
 		} finally {

@@ -50,7 +50,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Ein Lauf, den du nicht als deinen Versuch markierst, nimmt nie am Rennen teil: Er sendet keine Live-Position und bekommt kein Ergebnis. So landet ein Lauf, den du gar nicht als Rennen laufen wolltest, nie in der Rangliste.',
+					text: 'Ein Lauf, den du nicht als deinen Versuch markierst, nimmt nie am Rennen teil: Er sendet keine Live-Position und bekommt kein Ergebnis. So landet ein Lauf, den du gar nicht als Rennen laufen wolltest, nie in der Bestenliste.',
 				},
 			],
 		},
@@ -68,7 +68,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Was die Zeiten in der Rangliste bedeuten, steht in [[guide:race-results-explained|Rennergebnisse erklärt]].',
+					text: 'Was die Zeiten in der Bestenliste bedeuten, steht in [[guide:race-results-explained|Rennergebnisse erklärt]].',
 				},
 			],
 		},

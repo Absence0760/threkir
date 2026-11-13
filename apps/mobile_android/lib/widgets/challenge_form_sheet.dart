@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show FieldColumn;
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../activity_type_labels.dart';
@@ -77,6 +78,7 @@ Future<String?> showChallengeFormSheet(
     context,
     title: AppLocalizations.of(context).challengesCreate,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (_) => _ChallengeForm(key: formKey, social: social),
   );
 }
@@ -151,6 +153,9 @@ class _ChallengeFormState extends State<_ChallengeForm> {
         _starts.toIso8601String(),
         _ends.toIso8601String(),
       ].join('|');
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _busy;
 
   bool get isDirty => _snapshot() != _initialSnapshot;
 
@@ -308,29 +313,35 @@ class _ChallengeFormState extends State<_ChallengeForm> {
     final tag = localeToTag(Localizations.localeOf(context));
     final unit = activeDistanceUnit;
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.challengesCreate,
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
-        TextField(
-          key: const Key('challenge-title'),
-          controller: _title,
-          autofocus: true,
-          maxLength: 120,
-          decoration: InputDecoration(
-            labelText: l10n.challengesTitleLabel,
-            errorText: _titleError,
+        FieldColumn(children: [
+          TextField(
+            key: const Key('challenge-title'),
+            controller: _title,
+            autofocus: true,
+            maxLength: 120,
+            decoration: InputDecoration(
+              labelText: l10n.challengesTitleLabel,
+              errorText: _titleError,
+            ),
+            onChanged: (_) {
+              if (_titleError != null) setState(() => _titleError = null);
+            },
           ),
-          onChanged: (_) {
-            if (_titleError != null) setState(() => _titleError = null);
-          },
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          key: const Key('challenge-description'),
-          controller: _description,
-          maxLines: 3,
-          maxLength: 2000,
-          decoration:
-              InputDecoration(labelText: l10n.challengesDescriptionLabel),
-        ),
+          TextField(
+            key: const Key('challenge-description'),
+            controller: _description,
+            maxLines: 3,
+            maxLength: 2000,
+            decoration:
+                InputDecoration(labelText: l10n.challengesDescriptionLabel),
+          ),
+        ]),
         const SizedBox(height: 12),
         Text(l10n.challengesMetricLabel, style: theme.textTheme.labelLarge),
         const SizedBox(height: 4),
@@ -377,55 +388,56 @@ class _ChallengeFormState extends State<_ChallengeForm> {
           Text(hint, style: theme.textTheme.bodySmall),
         ],
         const SizedBox(height: 12),
-        DropdownButtonFormField<String?>(
-          initialValue: _activityType,
-          decoration:
-              InputDecoration(labelText: l10n.challengesActivityTypeLabel),
-          items: [
-            DropdownMenuItem<String?>(
-              value: null,
-              child: Text(l10n.challengesActivityAny),
-            ),
-            for (final a in ActivityType.values)
-              DropdownMenuItem<String?>(
-                value: a.name,
-                child: Text(activityTypeLabel(l10n, a)),
-              ),
-          ],
-          onChanged: (v) => setState(() => _activityType = v),
-        ),
-        if (_scope != 'club_vs_club' && _adminClubs.isNotEmpty) ...[
-          const SizedBox(height: 12),
+        FieldColumn(children: [
           DropdownButtonFormField<String?>(
-            initialValue: _clubId,
-            decoration: InputDecoration(labelText: l10n.challengesClubLabel),
+            isExpanded: true,
+            initialValue: _activityType,
+            decoration:
+                InputDecoration(labelText: l10n.challengesActivityTypeLabel),
             items: [
               DropdownMenuItem<String?>(
                 value: null,
-                child: Text(l10n.challengesClubNone),
+                child: Text(l10n.challengesActivityAny),
               ),
-              for (final c in _adminClubs)
+              for (final a in ActivityType.values)
                 DropdownMenuItem<String?>(
-                  value: c.row.id,
-                  child: Text(c.row.name),
+                  value: a.name,
+                  child: Text(activityTypeLabel(l10n, a)),
                 ),
             ],
-            onChanged: (v) => setState(() => _clubId = v),
+            onChanged: (v) => setState(() => _activityType = v),
           ),
-        ],
-        const SizedBox(height: 12),
-        _windowRow(
-          label: l10n.challengesStartLabel,
-          value: formatDateTime(_starts, tag),
-          onTap: () => _pickWindowBound(start: true),
-        ),
-        const SizedBox(height: 8),
-        _windowRow(
-          label: l10n.challengesEndLabel,
-          value: formatDateTime(_ends, tag),
-          onTap: () => _pickWindowBound(start: false),
-          errorText: _windowError,
-        ),
+          if (_scope != 'club_vs_club' && _adminClubs.isNotEmpty) ...[
+            DropdownButtonFormField<String?>(
+              isExpanded: true,
+              initialValue: _clubId,
+              decoration: InputDecoration(labelText: l10n.challengesClubLabel),
+              items: [
+                DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text(l10n.challengesClubNone),
+                ),
+                for (final c in _adminClubs)
+                  DropdownMenuItem<String?>(
+                    value: c.row.id,
+                    child: Text(c.row.name),
+                  ),
+              ],
+              onChanged: (v) => setState(() => _clubId = v),
+            ),
+          ],
+          _windowRow(
+            label: l10n.challengesStartLabel,
+            value: formatDateTime(_starts, tag),
+            onTap: () => _pickWindowBound(start: true),
+          ),
+          _windowRow(
+            label: l10n.challengesEndLabel,
+            value: formatDateTime(_ends, tag),
+            onTap: () => _pickWindowBound(start: false),
+            errorText: _windowError,
+          ),
+        ]),
         if (_error != null) ...[
           const SizedBox(height: 12),
           Text(
@@ -434,28 +446,6 @@ class _ChallengeFormState extends State<_ChallengeForm> {
                 ?.copyWith(color: theme.colorScheme.error),
           ),
         ],
-        const SizedBox(height: 20),
-        OverflowBar(
-          alignment: MainAxisAlignment.end,
-          overflowAlignment: OverflowBarAlignment.end,
-          spacing: 8,
-          children: [
-            TextButton(
-              onPressed: _busy ? null : () => Navigator.maybePop(context),
-              child: Text(l10n.commonCancel),
-            ),
-            FilledButton(
-              onPressed: _busy ? null : _submit,
-              child: _busy
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(l10n.challengesCreate),
-            ),
-          ],
-        ),
       ],
     );
   }

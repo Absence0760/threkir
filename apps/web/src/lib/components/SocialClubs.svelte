@@ -135,7 +135,7 @@
 				<div class="card-foot">
 					<span class="members">
 						<span class="material-symbols" aria-hidden="true">group</span>
-						{m(club.member_count === 1 ? 'socialClubs.memberCountOne' : 'socialClubs.memberCountMany', { n: club.member_count })}
+						{m('socialClubs.memberCount', { n: club.member_count })}
 					</span>
 					{#if club.viewer_role}
 						<span class="chip chip-mine">{clubRoleLabel(club.viewer_role)}</span>

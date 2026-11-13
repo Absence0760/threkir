@@ -496,6 +496,12 @@ const VARIANT_WORD_PAIRS: Record<string, string> = {
 	// "this backup": the demonstrative agrees with the noun, feminine `cópia de
 	// segurança` in Portugal and masculine `backup` in Brazil.
 	esta: "este",
+	// "in this backup", "its manifest", "trust it": the same agreement with the
+	// feminine `cópia de segurança` (pt-PT, settled 2026-11-13) against the
+	// masculine `backup` (pt-BR).
+	nesta: "neste",
+	dela: "dele",
+	nela: "nele",
 	// "this request": masculine `pedido` in Portugal, feminine `solicitação`
 	// in Brazil.
 	este: "esta",
@@ -959,6 +965,9 @@ const NOUN_CAPITALISING_LOCALES = new Set(["de"]);
  * companion test drops an entry that has stopped covering anything.
  */
 const INTERPOLATED_CAPITAL_EXEMPT: Record<string, string> = {
+	"races.register":
+		"is a button's label, quoted inside races.fieldEntryUrlHint so the hint names " +
+		"the button exactly as it reads on the card; a label keeps its capital in quotes.",
 	"coachingAthlete.runnerFallback":
 		"stands in for a person's display name. What normally lands in that slot is " +
 		"`Alice`, so the stand-in takes a name's case, not the sentence's.",

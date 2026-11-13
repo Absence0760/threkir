@@ -21,6 +21,7 @@ import type { Run } from '../types';
 import { paceMinutesSeconds } from '../format/pace_format';
 import { formatHoursMinutes } from '../format/time';
 import { isPlausibleRunDuration } from '../runs/run_duration';
+import { localStore } from '../core/browser_storage';
 
 export type GoalPeriod = 'week' | 'month';
 
@@ -99,8 +100,8 @@ function goalFromWire(raw: Record<string, unknown>): RunGoal {
 	};
 }
 
-function readGoalsFromKey(key: string): RunGoal[] | null {
-	const raw = localStorage.getItem(key);
+function readGoalsFromKey(store: Storage, key: string): RunGoal[] | null {
+	const raw = store.getItem(key);
 	if (!raw) return null;
 	const list = JSON.parse(raw);
 	if (!Array.isArray(list)) return null;
@@ -110,9 +111,10 @@ function readGoalsFromKey(key: string): RunGoal[] | null {
 }
 
 export function loadGoals(userId: string | null | undefined): RunGoal[] {
-	if (!userId || typeof localStorage === 'undefined') return [];
+	const store = localStore();
+	if (!userId || store === null) return [];
 	try {
-		const scoped = readGoalsFromKey(storageKey(userId));
+		const scoped = readGoalsFromKey(store, storageKey(userId));
 		if (scoped !== null) return scoped;
 		// First load with the new key. If there's still a value at the
 		// pre-scoping key, take ownership of it for the current user
@@ -121,10 +123,10 @@ export function loadGoals(userId: string | null | undefined): RunGoal[] {
 		// sign in inherits any leftover goals; subsequent users start
 		// clean — a one-time blip but no longer a recurring cross-user
 		// leak.
-		const legacy = readGoalsFromKey(LEGACY_STORAGE_KEY);
+		const legacy = readGoalsFromKey(store, LEGACY_STORAGE_KEY);
 		if (legacy !== null) {
 			saveGoals(userId, legacy);
-			localStorage.removeItem(LEGACY_STORAGE_KEY);
+			store.removeItem(LEGACY_STORAGE_KEY);
 			return legacy;
 		}
 		return [];
@@ -134,9 +136,10 @@ export function loadGoals(userId: string | null | undefined): RunGoal[] {
 }
 
 export function saveGoals(userId: string | null | undefined, goals: RunGoal[]): void {
-	if (!userId || typeof localStorage === 'undefined') return;
+	const store = localStore();
+	if (!userId || store === null) return;
 	try {
-		localStorage.setItem(storageKey(userId), JSON.stringify(goals.map(goalToWire)));
+		store.setItem(storageKey(userId), JSON.stringify(goals.map(goalToWire)));
 	} catch {
 		/* quota — noop */
 	}

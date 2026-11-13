@@ -23,7 +23,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'illustration',
 					id: 'import-your-history',
-					alt: '時計、連携したアカウント、ファイルからのランがすべて1つのラン一覧にまとまります。',
+					alt: 'ウォッチ、連携したアカウント、ファイルからのランがすべて1つのラン一覧にまとまります。',
 				},
 			],
 		},

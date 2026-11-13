@@ -51,7 +51,7 @@
           {
             "type": "steps",
             "items": [
-              "On the web, open [[route:/settings/notifications|Notifications]] in Settings. In the phone app, open **Preferences** in the **You** tab and scroll to **Notifications**.",
+              "On the web, open [[route:/settings/notifications|Notifications]] in Settings. In the phone app, open **Notifications** in the **You** tab.",
               "Set **Email notifications** and **Push notifications** separately."
             ]
           },
@@ -137,7 +137,7 @@
             "type": "steps",
             "items": [
               "On the web, open [[route:/settings/privacy|Privacy & sharing]] in Settings and tick **Private profile** under **Being found**.",
-              "In the phone app, open **Preferences** in the **You** tab and turn on **Private profile** under **Privacy & sharing**."
+              "In the phone app, open **Privacy & sharing** in the **You** tab and turn on **Private profile**."
             ]
           },
           {
@@ -313,7 +313,7 @@
               "**Priority map-matching**: your GPS tracks are snapped to roads ahead of free accounts, so they are ready sooner.",
               "**Priority cloud exports**: up to 8 GPX bundle exports an hour instead of 2.",
               "**Server route generation**: loops traced on the real street network when you generate a route by distance. Free accounts still get loop generation, worked out in the browser.",
-              "Richer route descriptions: on a route's page, **Enhance with AI** turns the standard description into a fuller paragraph.",
+              "Richer route descriptions: on a route's page, **Describe this route** writes a fuller paragraph in place of the standard description.",
               "**Log from a photo**: photograph a meal and get your food log filled in for you to check. See [[guide:log-a-meal-from-a-photo|Log a meal from a photo]]."
             ]
           },
@@ -416,7 +416,7 @@
           {
             "type": "steps",
             "items": [
-              "On the web open [[route:/settings/privacy|Privacy & sharing]] in Settings and pick a **Default Visibility for New Runs**. In the phone app, it is **Default run privacy** under **Preferences** in the **You** tab.",
+              "On the web open [[route:/settings/privacy|Privacy & sharing]] in Settings and pick a **Default Visibility for New Runs**. In the phone app, it is **Default run privacy** under **Privacy & sharing** in the **You** tab.",
               "To change a single run later, open it and tap the **Private** or **Public** chip under its title. Making a run public asks first, and shows what your privacy zones will hide."
             ]
           },
@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Open [[route:/settings/payouts|Settings, Payouts]] on the web.",
+              "Open [[route:/settings/payouts|Payouts]] on the web.",
               "Press **Set up payments**. You are taken to Stripe to enter your details and the bank account you want paid into.",
               "Finish Stripe's steps. When you come back, the page shows your status.",
               "If it says **Onboarding incomplete — finish to start charging** or **Your payout account needs attention before you can take payment**, press **Finish setting up payments** to go back to Stripe and pick up where you left off."
@@ -1926,7 +1926,7 @@
           },
           {
             "type": "p",
-            "text": "Runners turn both off with **Race starting soon**: on the web in [[route:/settings/notifications|Notifications]], in the phone app under **Preferences** in the **You** tab."
+            "text": "Runners turn both off with **Race starting soon**: on the web in [[route:/settings/notifications|Notifications]], in the phone app under **Notifications** in the **You** tab."
           }
         ]
       },
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "Logging from a photo is part of Pro. Logging food by hand stays free.",
-              "It uses AI, so it needs the latest AI disclosure. If you are asked to accept it, open Settings → Account and accept it there.",
+              "It uses AI, so it needs the latest AI disclosure. If you are asked to accept it, the message comes with a link to your account page, where you can accept it.",
               "The photo is used only to estimate what is on the plate. Location and camera details are removed before it is sent, and Threkir does not keep the photo."
             ]
           },
@@ -3752,8 +3752,8 @@
   {
     "id": "park-courses",
     "lang": "en",
-    "title": "Park courses: checkpoints, seasons and the boards",
-    "summary": "How a park course times your run, why every checkpoint counts, when a season starts, and how the Fastest and Most completions boards rank people.",
+    "title": "Park courses: checkpoints, seasons, months and the boards",
+    "summary": "How a park course times your run, why every checkpoint counts, when a season and a month start, and how the Fastest and Most completions boards rank people.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3776,7 +3776,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under **Run any time** on [[route:/races|Races & courses]], nearest first when you set a place, or browse every one under [[route:/parks|Park courses]]."
+            "text": "A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under **Run any time** on [[route:/races|Races & courses]], nearest first when you set a place, or browse every one under [[route:/parks|Park courses]]. Select **Courses** at the top of Races & courses to list every course on its own, without the race calendar."
           },
           {
             "type": "list",
@@ -3827,7 +3827,7 @@
             "type": "list",
             "items": [
               "**Fastest** ranks each runner by their best time on the course. You appear once, with your best run.",
-              "It shows this year by default. Select **All time** for the best times ever.",
+              "It shows this year by default. Select **This month** for the month so far, or **All time** for the best times ever.",
               "Filter by gender or age band. The age filter only includes runners who have agreed to share health data, so it may be shorter than the full board."
             ]
           }
@@ -3839,6 +3839,25 @@
           {
             "type": "p",
             "text": "**Most completions** rewards the regulars. It counts the days you completed the course, in the park's time zone, so running several laps on one day counts as one."
+          }
+        ]
+      },
+      {
+        "heading": "Months: a fresh board every month",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Both boards also run month by month. A month is a calendar month in the park's time zone, from midnight on the 1st to midnight on the 1st of the next month, so a run at 23:30 on 31 October where the park is counts for October."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Select **This month** to see the month so far, and use the arrows beside the month's name to look back at earlier months.",
+              "Each course on a park's page shows how many people have run it this month.",
+              "A park course time on your run's page shows its place that month and that year, such as #2 in November, #9 in 2026. The **Park course** sticker on a shared image shows the month's place, and the year's place too when it is in the top 10.",
+              "When a month ends where the park is, your inbox gets a notice with your best time that month on each course you ran. Turn it off with **Park course months**: on the web in [[route:/settings/notifications|Notifications]], in the phone app under **Notifications** in the **You** tab.",
+              "The park months badges count the months in which you completed a park course, at 3, 6, 12 and 24 months. They count completions, never places."
+            ]
           }
         ]
       },
@@ -3933,7 +3952,7 @@
           {
             "type": "steps",
             "items": [
-              "Open the **You** tab, then **Preferences**, and under **Privacy & sharing** tap **Privacy zones**.",
+              "Open the **You** tab, then **Privacy & sharing**, and tap **Privacy zones**.",
               "Tap the map to drop a zone. Use **Search places…** or **Locate me** to move the map first.",
               "Adjust the **Radius** slider.",
               "Tap **Save**. Nothing changes until you save."

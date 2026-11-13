@@ -143,7 +143,7 @@ test.describe('a walk-run plan', () => {
 			// Each session states its minutes, the last its 5K, and no week a km
 			// volume: 300 + 8 × 60 + 7 × 90 + 300 = 1710 s reads as 29 min.
 			const sizes = page.getByTestId('plan-day-size');
-			await expect(sizes).toHaveText(['29 min', '29 min', '29 min', '29 min', '29 min', '5.0 km']);
+			await expect(sizes).toHaveText(['29 min', '29 min', '29 min', '29 min', '29 min', '5 km']);
 			await expect(page.getByTestId('plan-week-volume')).toHaveCount(0);
 		} finally {
 			await page.context().close();

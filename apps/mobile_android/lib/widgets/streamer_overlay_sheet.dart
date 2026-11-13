@@ -3,15 +3,18 @@ import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 import '../rate_limit_message.dart';
+import '../settings_destination.dart';
 import '../streamer_overlay.dart';
 import 'confirm_destructive.dart';
 
 /// Opens the streamer-overlay sheet from the live-share sheet: create, copy,
 /// replace and turn off the OBS browser-source link, and pick the delay the
-/// server holds pings back by (decisions § 2265). Mirrors web's Settings card.
+/// server holds pings back by (decisions § 2265), and switch the route trace
+/// and heart rate on or off. Mirrors web's Settings card.
 Future<void> showStreamerOverlaySheet(
   BuildContext context, {
   required StreamerOverlayController controller,
@@ -35,11 +38,16 @@ class StreamerOverlaySheet extends StatefulWidget {
   final String webBase;
   final DistanceUnit? unit;
 
+  /// Opens the page where health-data consent is turned on; tests pass a
+  /// fake. Heart rate is health data, so its switch waits on that consent.
+  final VoidCallback? onReviewHealthConsent;
+
   const StreamerOverlaySheet({
     super.key,
     required this.controller,
     required this.webBase,
     this.unit,
+    this.onReviewHealthConsent,
   });
 
   @override
@@ -76,6 +84,17 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _reviewHealthConsent() {
+    final open = widget.onReviewHealthConsent;
+    if (open != null) {
+      open();
+      return;
+    }
+    // On mobile the consent is Body metrics' Store health data switch.
+    Navigator.of(context).maybePop();
+    openSettings(SettingsDestination.bodyMetrics);
   }
 
   void _say(String text, {bool error = false}) {
@@ -170,21 +189,50 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
     }
   }
 
-  Future<void> _setDelay(int seconds) async {
+  /// Saves one change. The switch or chip shows the new value at once and
+  /// goes back when the save fails, as web's card does.
+  Future<void> _save({int? delaySeconds, bool? showMap, bool? showHeartRate}) async {
     final l10n = AppLocalizations.of(context);
-    final current = _overlay;
-    if (current == null || current.delaySeconds == seconds) return;
-    setState(() => _busy = true);
+    final before = _overlay;
+    if (before == null) return;
+    setState(() {
+      _busy = true;
+      _overlay = before.copyWith(
+        delaySeconds: delaySeconds,
+        showMap: showMap,
+        showHeartRate: showHeartRate,
+      );
+    });
     try {
-      final saved = await widget.controller.setDelay(seconds);
+      final saved = await widget.controller.save(
+        delaySeconds: delaySeconds,
+        showMap: showMap,
+        showHeartRate: showHeartRate,
+      );
       if (!mounted) return;
       setState(() => _overlay = saved);
-      if (saved != null) _say(l10n.streamerOverlayDelaySaved);
-    } catch (e) {
-      debugPrint('streamer overlay: delay failed: $e');
-      if (mounted) {
-        _say(_failure(e, l10n.streamerOverlayDelayFailed), error: true);
+      if (saved == null) return;
+      if (delaySeconds != null) {
+        _say(l10n.streamerOverlayDelaySaved);
+      } else if (showMap != null) {
+        // The trace is part of the link, so the copy in OBS is now stale.
+        _say(l10n.streamerOverlayLinkChanged);
+      } else {
+        _say(l10n.streamerOverlaySettingsSaved);
       }
+    } catch (e) {
+      debugPrint('streamer overlay: save failed: $e');
+      if (!mounted) return;
+      setState(() => _overlay = before);
+      _say(
+        _failure(
+          e,
+          delaySeconds != null
+              ? l10n.streamerOverlayDelayFailed
+              : l10n.streamerOverlaySaveFailed,
+        ),
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -218,15 +266,7 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
     final List<Widget> body;
     if (_loading) {
       body = [
-        Semantics(
-          label: l10n.commonLoading,
-          child: const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ),
-          ),
-        ),
+        ListSkeleton.section(label: l10n.commonLoading, rows: 3),
       ];
     } else if (_loadFailed) {
       body = [
@@ -252,8 +292,11 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
         ),
       ];
     } else {
-      final url =
-          streamerOverlayUrl(widget.webBase, overlay.token, unit: widget.unit);
+      final url = streamerOverlayUrl(widget.webBase, overlay.token,
+          unit: widget.unit, showMap: overlay.showMap);
+      // Off and without consent the switch cannot be turned on; on without
+      // consent it can still be turned off, as on web.
+      final hrLocked = !overlay.heartRateConsent && !overlay.showHeartRate;
       body = [
         Text(l10n.streamerOverlayUrlLabel, style: theme.textTheme.titleSmall),
         const SizedBox(height: 4),
@@ -301,50 +344,76 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
                 key: ValueKey('streamer-overlay-delay-$seconds'),
                 label: Text(_delayLabel(l10n, seconds)),
                 selected: overlay.delaySeconds == seconds,
-                onSelected: _busy ? null : (_) => _setDelay(seconds),
+                onSelected: _busy || overlay.delaySeconds == seconds
+                    ? null
+                    : (_) => _save(delaySeconds: seconds),
               ),
           ],
         ),
-        const SizedBox(height: 12),
-        Text(l10n.streamerOverlayMapHeartRateNote, style: muted),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          key: const ValueKey('streamer-overlay-map'),
+          contentPadding: EdgeInsets.zero,
+          title: Text(l10n.streamerOverlayShowMap),
+          subtitle: Text(l10n.streamerOverlayShowMapHelp),
+          value: overlay.showMap,
+          onChanged: _busy ? null : (v) => _save(showMap: v),
+        ),
+        SwitchListTile(
+          key: const ValueKey('streamer-overlay-heart-rate'),
+          contentPadding: EdgeInsets.zero,
+          title: Text(l10n.streamerOverlayShowHeartRate),
+          subtitle: Text(overlay.heartRateConsent
+              ? l10n.streamerOverlayShowHeartRateHelp
+              : l10n.streamerOverlayHeartRateNeedsConsent),
+          value: overlay.showHeartRate,
+          onChanged:
+              _busy || hrLocked ? null : (v) => _save(showHeartRate: v),
+        ),
+        if (!overlay.heartRateConsent)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              key: const ValueKey('streamer-overlay-review-consent'),
+              onPressed: _reviewHealthConsent,
+              child: Text(l10n.streamerOverlayReviewConsent),
+            ),
+          ),
       ];
     }
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-            20, 4, 20, 16 + MediaQuery.viewInsetsOf(context).bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                l10n.streamerOverlayTitle,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              l10n.streamerOverlayTitle,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 4),
-            Text(l10n.streamerOverlayIntro, style: muted),
+          ),
+          const SizedBox(height: 4),
+          Text(l10n.streamerOverlayIntro, style: muted),
+          const SizedBox(height: 12),
+          ...body,
+          if (_notice != null) ...[
             const SizedBox(height: 12),
-            ...body,
-            if (_notice != null) ...[
-              const SizedBox(height: 12),
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  _notice!,
-                  key: const ValueKey('streamer-overlay-notice'),
-                  style: TextStyle(
-                    color: _noticeIsError ? theme.colorScheme.error : null,
-                  ),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _notice!,
+                key: const ValueKey('streamer-overlay-notice'),
+                style: TextStyle(
+                  color: _noticeIsError ? theme.colorScheme.error : null,
                 ),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

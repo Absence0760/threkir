@@ -99,6 +99,7 @@ void main() {
       parkCourseCount: 30,
       completeParkCount: 12,
       passportRegionCount: 12,
+      parkMonthCount: 30,
     ));
     expect(all.length, kBadgeCatalogue.length);
     for (final b in kBadgeCatalogue) {
@@ -119,6 +120,7 @@ void main() {
       parkCourseCount: 1,
       completeParkCount: 1,
       passportRegionCount: 1,
+      parkMonthCount: 3,
     ));
     expect(all.map((e) => e.badgeKey).toList(),
         kBadgeCatalogue.map((b) => b.id).toList());
@@ -141,6 +143,15 @@ void main() {
   test('park course families are absent at zero', () {
     final all = evaluateBadges(const BadgeInput());
     expect(all.where((e) => e.badgeKey.startsWith('park_')), isEmpty);
+  });
+
+  test('park months: 3 bronze, 6 silver, 12 gold, 24 platinum, nothing below 3', () {
+    expect(_find(const BadgeInput(parkMonthCount: 2), 'park_months'), isNull);
+    expect(_find(const BadgeInput(parkMonthCount: 3), 'park_months')?.tier, 'bronze');
+    expect(_find(const BadgeInput(parkMonthCount: 6), 'park_months')?.tier, 'silver');
+    expect(_find(const BadgeInput(parkMonthCount: 12), 'park_months')?.tier, 'gold');
+    expect(_find(const BadgeInput(parkMonthCount: 24), 'park_months')?.tier, 'platinum');
+    expect(_find(const BadgeInput(parkMonthCount: 3), 'park_months')?.sourceKind, 'segment');
   });
 
   test('park passport tops out at gold', () {

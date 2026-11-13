@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show FieldColumn;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -55,6 +56,7 @@ Future<GearFormResult?> showGearFormSheet({
             ? l10n.gearFormTitleAddShoes
             : l10n.gearFormTitleAddBike),
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (_) => _GearFormSheet(
       key: formKey,
       store: store,
@@ -139,6 +141,9 @@ class _GearFormSheetState extends State<_GearFormSheet> {
         _notes.text,
         _purchasedAt?.toIso8601String() ?? '',
       ].join('\u0000');
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
 
   // The wear-note composer commits through its own Add button, so pending
   // text / area there is loseable work too.
@@ -326,71 +331,81 @@ class _GearFormSheetState extends State<_GearFormSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final unitLabel = widget.preferences.unit == DistanceUnit.mi ? 'mi' : 'km';
-    // Heading lives in the host AppBar (showFullScreenForm).
     return FullScreenFormBody(
+      save: EditorSave(
+        label: _saving
+            ? l10n.gearFormSaving
+            : widget.existing != null
+                ? l10n.gearFormSave
+                : l10n.gearFormAdd,
+        busy: _saving,
+        onPressed: _save,
+      ),
       children: [
-            TextField(
-              controller: _name,
-              decoration: InputDecoration(
-                labelText: l10n.gearFormNameLabel,
-                hintText: l10n.gearFormNameHint,
+            FieldColumn(children: [
+              TextField(
+                controller: _name,
+                decoration: InputDecoration(
+                  labelText: l10n.gearFormNameLabel,
+                  hintText: l10n.gearFormNameHint,
+                ),
+                maxLength: 80,
               ),
-              maxLength: 80,
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _brand,
-                    decoration:
-                        InputDecoration(labelText: l10n.gearFormBrandLabel),
-                    maxLength: 60,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _model,
-                    decoration:
-                        InputDecoration(labelText: l10n.gearFormModelLabel),
-                    maxLength: 60,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: _pickDate,
-                    child: InputDecorator(
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _brand,
                       decoration:
-                          InputDecoration(labelText: l10n.gearFormBoughtLabel),
-                      child: Text(_purchasedAt == null
-                          ? l10n.gearFormBoughtPick
-                          : _purchasedAt!.toIso8601String().substring(0, 10)),
+                          InputDecoration(labelText: l10n.gearFormBrandLabel),
+                      maxLength: 60,
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _target,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: l10n.gearFormRetireAt(unitLabel),
-                      hintText: l10n.gearFormRetireHint,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _model,
+                      decoration:
+                          InputDecoration(labelText: l10n.gearFormModelLabel),
+                      maxLength: 60,
                     ),
                   ),
-                ),
-              ],
-            ),
-            TextField(
-              controller: _notes,
-              decoration: InputDecoration(labelText: l10n.gearFormNotesLabel),
-              maxLength: 500,
-              maxLines: 3,
-            ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickDate,
+                      child: InputDecorator(
+                        decoration:
+                            InputDecoration(labelText: l10n.gearFormBoughtLabel),
+                        child: Text(_purchasedAt == null
+                            ? l10n.gearFormBoughtPick
+                            : _purchasedAt!.toIso8601String().substring(0, 10)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _target,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l10n.gearFormRetireAt(unitLabel),
+                        hintText: l10n.gearFormRetireHint,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              TextField(
+                controller: _notes,
+                decoration: InputDecoration(labelText: l10n.gearFormNotesLabel),
+                maxLength: 500,
+                maxLines: 3,
+              ),
+            ]),
             if (_gearId != null && widget.api != null) ...[
               const SizedBox(height: 8),
               const Divider(),
@@ -404,32 +419,35 @@ class _GearFormSheetState extends State<_GearFormSheet> {
                     color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _wearNote,
-                decoration: InputDecoration(
-                  labelText: l10n.gearWearLogAddNote,
-                  hintText: l10n.gearWearLogNoteHint,
-                ),
-                maxLength: 500,
-                maxLines: 2,
-              ),
-              DropdownButtonFormField<String?>(
-                initialValue: _wearArea,
-                decoration:
-                    InputDecoration(labelText: l10n.gearWearLogArea),
-                items: [
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text(l10n.gearWearLogAreaNone),
+              FieldColumn(children: [
+                TextField(
+                  controller: _wearNote,
+                  decoration: InputDecoration(
+                    labelText: l10n.gearWearLogAddNote,
+                    hintText: l10n.gearWearLogNoteHint,
                   ),
-                  for (final a in _wearAreas)
+                  maxLength: 500,
+                  maxLines: 2,
+                ),
+                DropdownButtonFormField<String?>(
+                  isExpanded: true,
+                  initialValue: _wearArea,
+                  decoration:
+                      InputDecoration(labelText: l10n.gearWearLogArea),
+                  items: [
                     DropdownMenuItem<String?>(
-                      value: a,
-                      child: Text(_wearAreaLabel(l10n, a)),
+                      value: null,
+                      child: Text(l10n.gearWearLogAreaNone),
                     ),
-                ],
-                onChanged: (v) => setState(() => _wearArea = v),
-              ),
+                    for (final a in _wearAreas)
+                      DropdownMenuItem<String?>(
+                        value: a,
+                        child: Text(_wearAreaLabel(l10n, a)),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => _wearArea = v),
+                ),
+              ]),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
@@ -472,26 +490,6 @@ class _GearFormSheetState extends State<_GearFormSheet> {
                     ),
                   ),
             ],
-            const SizedBox(height: 16),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              spacing: 8,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.maybePop(context),
-                  child: Text(l10n.gearFormCancel),
-                ),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: Text(_saving
-                      ? l10n.gearFormSaving
-                      : widget.existing != null
-                          ? l10n.gearFormSave
-                          : l10n.gearFormAdd),
-                ),
-              ],
-            ),
           ],
         );
   }

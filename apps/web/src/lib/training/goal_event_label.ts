@@ -36,7 +36,5 @@ export function goalEventLabel(
 /// "12 weeks · 4 days/week" — the plan-length fact in one string, so the
 /// list, the library card and the library preview cannot drift apart.
 export function planLengthLabel(t: Translate, weeks: number, daysPerWeek: number): string {
-	return weeks === 1
-		? t('plansPage.metaWeeksSingular', { days: daysPerWeek })
-		: t('plansPage.metaWeeksPlural', { total: weeks, days: daysPerWeek });
+	return t('plansPage.metaWeeks', { total: weeks, days: daysPerWeek });
 }

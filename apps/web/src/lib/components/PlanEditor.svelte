@@ -1,9 +1,12 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, untrack } from 'svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
@@ -873,6 +876,35 @@
 	/// therefore never replaced without being named first.
 	let overlapping = $state<OverlapPlan[]>([]);
 
+	// Unsaved-changes guard (issue #1374 NS-6, twin of mobile's New plan
+	// guard, decisions § 2500): every field the runner sets, plus a count of
+	// edits made in the preview outline. The outline itself is regenerated
+	// from the fields, so a snapshot of it would read the first generation
+	// as an edit. The extra-recovery switch saves itself and is left out.
+	let previewEdits = $state(0);
+	const dirty = trackDirty(() => ({
+		name,
+		goalEvent,
+		ultraChoice,
+		ultraDistanceM,
+		startDate,
+		daysPerWeek,
+		targetHours,
+		targetMin,
+		targetSec,
+		recent5kMin,
+		recent5kSec,
+		recent5kConfirmed,
+		beginnerWalkRun,
+		startingPoint,
+		weekOverride,
+		easeBack,
+		aiRequest,
+		importText,
+		importedMode,
+		previewEdits,
+	}));
+
 	async function submit(e: Event) {
 		e.preventDefault();
 		if (!name.trim() || !plan || busy) return;
@@ -932,7 +964,13 @@
 			);
 			if (outcome.kind === 'overlap') overlapping = outcome.overlapping;
 			else if (outcome.kind === 'trimBlocked') error = trimBlockedMessage(outcome.overlapping, startDate);
-			else oncreated?.(outcome.value);
+			else {
+				// Created: leaving now loses nothing, and the host navigates away,
+				// which the busy half of the guard would otherwise refuse.
+				dirty.rebaseline();
+				busy = false;
+				oncreated?.(outcome.value);
+			}
 		} catch (e: unknown) {
 			error = describeError(e);
 		} finally {
@@ -944,6 +982,8 @@
 		overlapping = [];
 	}
 </script>
+
+<UnsavedChangesGuard isDirty={dirty.isDirty} isBusy={() => busy} />
 
 <form onsubmit={submit} class="plan-editor">
 	<!-- Spans both columns: a pasted plan is a wide Markdown table, and the
@@ -1270,7 +1310,11 @@
 			</div>
 		</section>
 
-		<aside class="preview">
+		<aside
+			class="preview"
+			oninput={() => previewEdits++}
+			onchange={() => previewEdits++}
+		>
 			<h2>{t('planEditor.previewAndEdit')}</h2>
 			{#if plan}
 				{#if !isWalkRunPlan}
@@ -1295,7 +1339,7 @@
 
 				{#if returnMessage}
 					<div class="ramp-note" role="status" data-testid="plan-return-note">
-						<h3>{t('planEditor.returnTitle')}</h3>
+						<SectionHeader label={t('planEditor.returnTitle')} level={3} class="plan-ramp-note-head" />
 						<p id="plan-return-body">{returnMessage}</p>
 						<label class="confirm-recent">
 							<input type="checkbox" bind:checked={easeBack} aria-describedby="plan-return-body" />
@@ -1307,12 +1351,12 @@
 					</div>
 				{:else if rampMessage}
 					<div class="ramp-note" role="status">
-						<h3>{t('planEditor.rampLabel')}</h3>
+						<SectionHeader label={t('planEditor.rampLabel')} level={3} class="plan-ramp-note-head" />
 						<p>{rampMessage}</p>
 					</div>
 				{:else if thinHistoryMessage}
 					<div class="ramp-note" role="status" data-testid="plan-thin-history-note">
-						<h3>{t('planEditor.rampLabel')}</h3>
+						<SectionHeader label={t('planEditor.rampLabel')} level={3} class="plan-ramp-note-head" />
 						<p>{thinHistoryMessage}</p>
 						<button type="button" class="btn btn-secondary" onclick={() => setWalkRun(true)}>
 							{t('planEditor.thinHistoryWalkRun')}
@@ -1320,10 +1364,11 @@
 					</div>
 				{/if}
 
-				<div class="outline-head">
-					<h3>{t('planEditor.weekOutline')}</h3>
-					<MetricLabel metric="planPhases" />
-				</div>
+				<SectionHeader label={t('planEditor.weekOutline')} level={3} class="plan-outline-head" flush>
+					{#snippet trailing()}
+						<MetricLabel metric="planPhases" />
+					{/snippet}
+				</SectionHeader>
 				<p class="outline-hint" id="week-outline-hint">
 					{t('planEditor.outlineHint')}
 				</p>
@@ -1342,7 +1387,7 @@
 								<span class="week-phase">{planPhaseLabel(w.phase)}</span>
 								<span class="week-km">{fmtKm(w.target_volume_m, 0)}</span>
 								<span class="week-workouts">
-									{t(sessionCount === 1 ? 'planEditor.nSessionsOne' : 'planEditor.nSessionsMany', { n: sessionCount })}
+									{t('planEditor.nSessions', { n: sessionCount })}
 								</span>
 								<span class="caret material-symbols" aria-hidden="true">
 									{expandedWeek === weekIdx ? 'expand_less' : 'expand_more'}
@@ -1655,13 +1700,6 @@
 	.preview h2 {
 		font-size: 1.1rem;
 	}
-	.preview h3 {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
-		margin-top: var(--space-md);
-	}
 	.paces {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
@@ -1688,18 +1726,10 @@
 		font-size: 0.82rem;
 		margin: 0;
 	}
-	.outline-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-xs) var(--space-md);
+	:global(.plan-outline-head) {
 		margin-top: var(--space-md);
 	}
-	.outline-head h3 {
-		margin: 0;
-	}
-	.outline-head :global(.metric-label) {
+	:global(.plan-outline-head .metric-label) {
 		font-size: 0.78rem;
 		color: var(--color-text-secondary);
 	}
@@ -1717,7 +1747,7 @@
 		padding-inline-start: 0.7rem;
 		margin: 0.6rem 0 0 0;
 	}
-	.ramp-note h3 {
+	:global(.plan-ramp-note-head) {
 		margin: 0 0 0.2rem 0;
 	}
 	.ramp-note p {

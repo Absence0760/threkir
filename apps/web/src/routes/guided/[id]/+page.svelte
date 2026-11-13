@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
 	import { findGuidedRun } from '#lib/training/guided_runs.ts';
@@ -77,10 +78,11 @@
 		</header>
 
 		<section class="script" aria-label={t('guidedDetail.cueScript')}>
-			<header class="script-head">
-				<h2>{t('guidedDetail.fullScript')}</h2>
-				<span class="cue-count">{t(run.cues.length === 1 ? 'guidedDetail.cueCountOne' : 'guidedDetail.cueCountMany', { n: run.cues.length })}</span>
-			</header>
+			<SectionHeader label={t('guidedDetail.fullScript')} class="guided-script-head">
+				{#snippet trailing()}
+					<span class="cue-count">{t('guidedDetail.cueCount', { n: run.cues.length })}</span>
+				{/snippet}
+			</SectionHeader>
 			<ol class="timeline">
 				{#each run.cues as cue, i (cue.at_sec)}
 					<li class="cue" class:cue-first={i === 0} class:cue-last={i === run.cues.length - 1}>
@@ -174,20 +176,8 @@
 		margin: 0;
 	}
 
-	.script-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-md);
+	:global(.guided-script-head) {
 		margin-bottom: var(--space-md);
-	}
-	.script-head h2 {
-		font-size: 0.85rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-secondary);
-		margin: 0;
 	}
 	.cue-count {
 		font-size: 0.78rem;

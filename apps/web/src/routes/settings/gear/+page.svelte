@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchMyGear,
@@ -156,6 +159,11 @@
 	// `is_default` current pair. A rotation can span both shoes and bikes
 	// in principle, so the rotation section + filter are not tab-scoped.
 	let rotations = $state<GearRotationWithMembers[]>([]);
+	// A failed first read is an error with Retry, never "No rotations yet"; a
+	// failed refresh keeps the rows and says so (issue #1374 FS-4).
+	let rotationsLoaded = $state(false);
+	let rotationsFailed = $state(false);
+	let rotationsRetrying = $state(false);
 	let rotationFilter = $state<string | null>(null);
 	let newRotationName = $state('');
 	let creatingRotation = $state(false);
@@ -168,10 +176,32 @@
 	let savingMembers = $state(false);
 
 	async function reloadRotations() {
-		rotations = await fetchMyGearRotations();
+		try {
+			rotations = await fetchMyGearRotations();
+			rotationsLoaded = true;
+			rotationsFailed = false;
+		} catch (e) {
+			console.error('settings/gear: rotations read failed', e);
+			if (rotationsLoaded) {
+				showToast(t('settingsGear.rotationsStale'), 'error');
+			} else {
+				rotationsFailed = true;
+			}
+			return;
+		}
 		// Drop a stale filter if its rotation was deleted.
 		if (rotationFilter && !rotations.some((r) => r.id === rotationFilter)) {
 			rotationFilter = null;
+		}
+	}
+
+	async function retryRotations() {
+		if (rotationsRetrying) return;
+		rotationsRetrying = true;
+		try {
+			await reloadRotations();
+		} finally {
+			rotationsRetrying = false;
 		}
 	}
 
@@ -211,7 +241,7 @@
 			await deleteGearRotation(r.id);
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
+			showToast(t('settingsGear.rotationDeleteFailed', { error: errorCopy(e, t, 'settingsGear.rotationDeleteFailed') }), 'error');
 		} finally {
 			confirmingRotationDelete = null;
 		}
@@ -407,7 +437,7 @@
 		backfill = null;
 		if (count <= 0) return;
 		showToast(
-			t(count === 1 ? 'settingsGear.backfillAttachedOne' : 'settingsGear.backfillAttached', {
+			t('settingsGear.backfillAttached', {
 				name,
 				n: count,
 			}),
@@ -509,16 +539,11 @@
 </script>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{t('shell.settings')}</p>
-		<h1>{t('settingsGear.title')}</h1>
-		<p class="tagline">
-			{t('settingsGear.tagline')}
-		</p>
-	</header>
+	<PageHeader kicker={t('shell.settings')} title={t('settingsGear.title')} subtitle={t('settingsGear.tagline')} />
 
 	<div class="tabs">
 		<button
+			id={settingRowId('settingsGear.tabShoes')}
 			class="tab"
 			class:active={activeTab === 'shoe'}
 			onclick={() => (activeTab = 'shoe')}
@@ -526,6 +551,7 @@
 			<span class="material-symbols" aria-hidden="true">directions_run</span> {t('settingsGear.tabShoes')}
 		</button>
 		<button
+			id={settingRowId('settingsGear.tabBikes')}
 			class="tab"
 			class:active={activeTab === 'bike'}
 			onclick={() => (activeTab = 'bike')}
@@ -624,7 +650,7 @@
 							{/if}
 							<div class="gear-meta">
 								<span>{prog.label}</span>
-								<span class="muted">{t(g.run_count === 1 ? 'settingsGear.runCountOne' : 'settingsGear.runCountMany', { n: g.run_count })}</span>
+								<span class="muted">{t('settingsGear.runCount', { n: g.run_count })}</span>
 							</div>
 						</button>
 						<div class="gear-actions">
@@ -655,7 +681,7 @@
 		{/if}
 
 		{#if retired.length > 0}
-			<h3 class="section-title">{t('settingsGear.retiredSection')}</h3>
+			<SectionHeader id={settingRowId('settingsGear.retiredSection')} label={t('settingsGear.retiredSection')} class="gear-section-head" />
 			<ul class="gear-list retired-list">
 				{#each retired as g (g.id)}
 					{@const prog = progressFor(g)}
@@ -688,7 +714,7 @@
 
 	{#if !loading}
 		<section class="rotations">
-			<h2 class="section-title">{t('settingsGear.rotationsHeading')}</h2>
+			<SectionHeader id={settingRowId('settingsGear.rotationsHeading')} label={t('settingsGear.rotationsHeading')} class="gear-section-head" />
 			<p class="rotations-hint">{t('settingsGear.rotationsHint')}</p>
 
 			<form
@@ -710,7 +736,14 @@
 				</button>
 			</form>
 
-			{#if rotations.length === 0}
+			{#if rotationsFailed && rotations.length === 0}
+				<div class="rotations-error" role="alert" data-testid="rotations-load-error">
+					<p>{t('settingsGear.rotationsLoadFailed')}</p>
+					<button class="btn-secondary btn-sm" type="button" onclick={retryRotations} disabled={rotationsRetrying}>
+						{t('settingsGear.rotationsRetry')}
+					</button>
+				</div>
+			{:else if rotations.length === 0}
 				<p class="rotations-empty">{t('settingsGear.rotationsEmpty')}</p>
 			{:else}
 				<ul class="rotation-list">
@@ -720,7 +753,7 @@
 							<div class="rotation-info">
 								<strong>{r.name}</strong>
 								<span class="muted">
-									{t(r.gear_ids.length === 1 ? 'settingsGear.rotationMemberCount' : 'settingsGear.rotationMemberCountMany', { n: r.gear_ids.length })}
+									{t('settingsGear.rotationMemberCount', { n: r.gear_ids.length })}
 								</span>
 								{#if next}
 									<div class="rotation-next" data-testid="rotation-next">
@@ -1009,23 +1042,6 @@
 		max-width: 64rem;
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
-	.page-head { margin-bottom: var(--space-xl); }
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	.page-head h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 var(--space-xs); }
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
-	}
 	.tabs {
 		display: flex;
 		flex-wrap: wrap;
@@ -1220,12 +1236,8 @@
 		font-family: 'Material Symbols Outlined';
 		font-size: 1.3rem;
 	}
-	.section-title {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
-		margin: var(--space-lg) 0 var(--space-sm) 0;
+	:global(.gear-section-head) {
+		margin-top: var(--space-lg);
 	}
 	.gear-form {
 		display: flex;
@@ -1403,6 +1415,17 @@
 		font-size: 0.9rem;
 		background: var(--color-bg);
 		color: var(--color-text);
+	}
+	.rotations-error {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
+		margin: var(--space-md) 0;
+		color: var(--color-danger-text);
+	}
+	.rotations-error p {
+		margin: 0;
 	}
 	.rotations-empty {
 		color: var(--color-text-tertiary);

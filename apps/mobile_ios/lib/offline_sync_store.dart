@@ -8,6 +8,8 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'backend_timeout.dart';
+
 /// Sync state for a single offline-first row. Mirrors the lifecycle of an
 /// offline CRUD entry: a freshly-created row is `pendingCreate` until the
 /// INSERT succeeds; an edit becomes `pendingUpdate`; a deleted row is kept
@@ -532,6 +534,26 @@ abstract class OfflineSyncStore<S extends SyncEntry> extends ChangeNotifier {
   }
 
   bool _syncing = false;
+
+  /// Drains for at most [wait], then answers whether row [id] has reached the
+  /// server (a deleted row counts once it is gone). The drain keeps running
+  /// past [wait]; only the caller stops waiting for it. A save that has
+  /// already landed on the phone confirms within [wait] and says whether it
+  /// also synced, instead of holding its spinner for a whole-store drain on a
+  /// weak signal (issue #1374 FS-15).
+  Future<bool> syncRowBriefly(
+    ApiClient api,
+    String id, {
+    Duration wait = kLocalSaveSyncWait,
+  }) async {
+    try {
+      await syncWithServer(api).timeout(wait);
+    } on TimeoutException {
+      debugPrint('$debugLabel: drain still running after ${wait.inSeconds}s');
+    }
+    final row = rowsById[id];
+    return row == null || row.syncState == SyncState.synced;
+  }
 
   /// Flip [pushed] to `synced` — but only while it is still the resident copy.
   ///

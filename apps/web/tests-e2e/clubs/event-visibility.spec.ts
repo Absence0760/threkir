@@ -115,7 +115,7 @@ test.describe('/clubs — event-level visibility', () => {
 		const privId = (priv as { id: string }).id;
 
 		try {
-			await page.goto('/social?tab=discover');
+			await page.goto('/social?tab=events');
 			const results = page.getByTestId('discover-results');
 
 			// The public event surfaces.

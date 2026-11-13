@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import {
 		COMPARE_SECTIONS,
 		COMPARE_HEADLINE,
@@ -57,7 +58,7 @@
 
 	{#each COMPARE_SECTIONS as section (section.title)}
 		<section class="cmp-section">
-			<h2>{section.title}</h2>
+			<SectionHeader label={section.title} />
 			<table class="cmp-table">
 				<thead>
 					<tr>
@@ -181,14 +182,6 @@
 	.price-sub { font-size: 0.85rem; color: var(--color-text-tertiary); }
 
 	.cmp-section { margin-bottom: var(--space-xl); }
-	.cmp-section h2 {
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
-		margin: 0 0 var(--space-sm);
-	}
 	.cmp-table {
 		width: 100%;
 		border-collapse: collapse;

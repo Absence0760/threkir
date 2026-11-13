@@ -27,7 +27,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Linien erscheinen, sobald das Event mit mindestens einer Strecke gespeichert ist. Öffne das Event, wähle **Veranstaltung bearbeiten** und suche **Start- und Ziellinien**. Jede Strecke hat eine Karte und eine Zeile pro Linie, die angibt, woher die Linie stammt: **Aus der Route**, **Von einem Organisator gesetzt** oder **Keine**.',
+					text: 'Linien erscheinen, sobald das Event mit mindestens einer Strecke gespeichert ist. Öffne das Event, wähle **Event bearbeiten** und suche **Start- und Ziellinien**. Jede Strecke hat eine Karte und eine Zeile pro Linie, die angibt, woher die Linie stammt: **Aus der Route**, **Von einem Organisator gesetzt** oder **Keine**.',
 				},
 				{
 					type: 'note',

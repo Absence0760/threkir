@@ -1,9 +1,11 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show FieldColumn, SheetScaffold;
 import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
 import '../l10n/gen/app_localizations.dart';
 import '../park_course_report.dart';
+import 'form_sheet.dart';
 import 'top_banner.dart';
 
 /// "Report a problem with this course" (issue #1346, decisions § 2449): the
@@ -17,10 +19,8 @@ Future<void> showParkCourseReportSheet(
   required String courseId,
   required String courseName,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
+  return showFormSheet<void>(
+    context,
     builder: (ctx) => ParkCourseReportSheet(
       api: api,
       courseId: courseId,
@@ -144,14 +144,42 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _notesCtl.text.trim().isNotEmpty || _emailCtl.text.trim().isNotEmpty,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final insets = MediaQuery.of(context).viewInsets;
-    return SingleChildScrollView(
+    return SheetScaffold(
       key: const Key('park-course-report-sheet'),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + insets.bottom),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      actions: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _busy ? null : () => Navigator.of(context).maybePop(),
+              child: Text(l10n.parkCourseReportCancel),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton(
+              key: const Key('park-course-report-submit'),
+              onPressed: _canSubmit ? _submit : null,
+              child: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.parkCourseReportSubmit),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -189,41 +217,42 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
               contentPadding: EdgeInsets.zero,
             ),
           const SizedBox(height: 12),
-          TextField(
-            key: const Key('park-course-report-notes'),
-            controller: _notesCtl,
-            maxLines: 4,
-            maxLength: kCourseReportNotesMax,
-            enabled: !_busy,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              labelText: l10n.parkCourseReportNotesLabel,
-              hintText: l10n.parkCourseReportNotesHint,
+          FieldColumn(children: [
+            TextField(
+              key: const Key('park-course-report-notes'),
+              controller: _notesCtl,
+              maxLines: 4,
+              maxLength: kCourseReportNotesMax,
+              enabled: !_busy,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: l10n.parkCourseReportNotesLabel,
+                hintText: l10n.parkCourseReportNotesHint,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            key: const Key('park-course-report-email'),
-            controller: _emailCtl,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            maxLength: kCourseReportEmailMax,
-            enabled: !_busy,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              labelText: _emailRequired
-                  ? l10n.parkCourseReportEmailLabelRequired
-                  : l10n.parkCourseReportEmailLabel,
-              helperText: !_emailShapeOk
-                  ? null
-                  : _emailRequired
-                      ? l10n.parkCourseReportEmailHintRequired
-                      : l10n.parkCourseReportEmailHint,
-              helperMaxLines: 3,
-              errorText:
-                  _emailShapeOk ? null : l10n.parkCourseReportErrorEmail,
+            TextField(
+              key: const Key('park-course-report-email'),
+              controller: _emailCtl,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              maxLength: kCourseReportEmailMax,
+              enabled: !_busy,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: _emailRequired
+                    ? l10n.parkCourseReportEmailLabelRequired
+                    : l10n.parkCourseReportEmailLabel,
+                helperText: !_emailShapeOk
+                    ? null
+                    : _emailRequired
+                        ? l10n.parkCourseReportEmailHintRequired
+                        : l10n.parkCourseReportEmailHint,
+                helperMaxLines: 3,
+                errorText:
+                    _emailShapeOk ? null : l10n.parkCourseReportErrorEmail,
+              ),
             ),
-          ),
+          ]),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(
@@ -232,31 +261,6 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
               style: TextStyle(color: theme.colorScheme.error),
             ),
           ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
-                  child: Text(l10n.parkCourseReportCancel),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  key: const Key('park-course-report-submit'),
-                  onPressed: _canSubmit ? _submit : null,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.parkCourseReportSubmit),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

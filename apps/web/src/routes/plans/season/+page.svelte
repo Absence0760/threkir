@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SeasonPlanner from '#lib/components/SeasonPlanner.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 </script>
@@ -12,11 +13,11 @@
 		<span class="material-symbols" aria-hidden="true">arrow_back</span>
 		{m('seasonPlanner.back')}
 	</a>
-	<p class="kicker">{m('plansNew.kicker')}</p>
-	<header class="page-header">
-		<h1>{m('seasonPlanner.heading')}</h1>
-		<p class="tagline">{m('seasonPlanner.tagline')}</p>
-	</header>
+	<PageHeader
+		kicker={m('plansNew.kicker')}
+		title={m('seasonPlanner.heading')}
+		subtitle={m('seasonPlanner.tagline')}
+	/>
 	<SeasonPlanner />
 </div>
 
@@ -40,29 +41,5 @@
 	}
 	.back-link .material-symbols {
 		font-size: 1.1rem;
-	}
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		margin: 0 0 var(--space-sm);
-	}
-	.page-header {
-		margin-bottom: var(--space-xl);
-	}
-	h1 {
-		font-size: 1.75rem;
-		font-weight: 800;
-		line-height: 1.2;
-		margin: 0 0 var(--space-xs);
-	}
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
 	}
 </style>

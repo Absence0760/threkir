@@ -4,7 +4,7 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton, TextLane;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, PageHeading, TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
@@ -15,6 +15,7 @@ import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 PlanWorkoutRow _completedWorkout({String? completedRunId = 'run-current'}) {
   return PlanWorkoutRow(
@@ -123,6 +124,60 @@ Future<void> _pump(WidgetTester tester) {
 
 void main() {
   setUpAll(_ensureSupabase);
+
+  for (final (name, row) in [
+    (
+      'a done race',
+      PlanWorkoutRow(
+        id: 'fake-workout-id',
+        weekId: 'week-1',
+        scheduledDate: DateTime(2026, 4, 5),
+        kind: 'race',
+        raceName: 'Comrades Marathon up run, Durban to Pietermaritzburg',
+        racePriority: 'A',
+        targetDistanceM: 87700,
+        targetDurationSeconds: 39600,
+        targetRpeMin: 7,
+        targetRpeMax: 9,
+        notes: 'Walk every hill past halfway; eat every 40 minutes.',
+        completedRunId: 'run-current',
+        completedAt: DateTime(2026, 4, 5, 8),
+        manuallyCompleted: false,
+      ),
+    ),
+    (
+      'a planned tempo',
+      PlanWorkoutRow(
+        id: 'fake-workout-id',
+        weekId: 'week-1',
+        scheduledDate: DateTime(2026, 4, 5),
+        kind: 'tempo',
+        targetPaceSecPerKm: 245,
+        targetPaceEndSecPerKm: 238,
+        targetPaceToleranceSec: 5,
+        paceZone: 'T',
+        targetDistanceM: 12000,
+        targetDurationSeconds: 2940,
+        manuallyCompleted: false,
+      ),
+    ),
+  ]) {
+    worstCaseTestWidgets('Workout detail, $name', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: WorkoutDetailScreen(
+          training: _FakeTraining(row, const []),
+          planId: 'fake-plan-id',
+          workoutId: 'fake-workout-id',
+        ),
+      ));
+      await pumpUntil(
+          tester, () => find.byType(PageHeading).evaluate().isNotEmpty,
+          describe: 'the workout to load');
+      await walkScrollable(
+          tester, primaryScrollable(), 'Workout detail, $name');
+    });
+  }
 
   group('WorkoutDetailScreen — initial render', () {
     testWidgets('first frame shows the full-body loader', (tester) async {
@@ -359,7 +414,7 @@ void main() {
               raceWorkout(name: 'Two Oceans Ultra', priority: 'B'), const []));
       await tester.pumpAndSettle();
       expect(
-          tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
+          tester.widget<Text>(find.descendant(of: find.byType(PageHeading), matching: find.byType(Text))).data,
           'Two Oceans Ultra');
       expect(find.text('RACE PRIORITY'), findsOneWidget);
       expect(find.text('B — important race'), findsOneWidget);
@@ -372,7 +427,7 @@ void main() {
       await _pumpWith(tester, _FakeTraining(raceWorkout(), const []));
       await tester.pumpAndSettle();
       expect(
-          tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
+          tester.widget<Text>(find.descendant(of: find.byType(PageHeading), matching: find.byType(Text))).data,
           'Race');
       expect(find.text('RACE PRIORITY'), findsNothing);
     });
@@ -523,15 +578,27 @@ void main() {
           manuallyCompleted: false,
         );
 
-    testWidgets('the date is localized, not ISO, and the kind is not repeated '
-        'in the AppBar', (tester) async {
+    testWidgets('the date is localized, not ISO, and the kind is the heading '
+        'the AppBar keeps hidden until it scrolls away', (tester) async {
       await _pumpWith(tester, _FakeTraining(row(), const []));
       await tester.pumpAndSettle();
       expect(
-          tester.widget<Text>(find.byKey(const Key('workoutDetailDate'))).data,
+          tester.widget<Text>(find.descendant(of: find.byKey(const Key('workoutDetailDate')), matching: find.byType(Text))).data,
           'Apr 5, 2026');
       expect(find.text('2026-04-05'), findsNothing);
-      expect(find.text('Tempo'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('workoutDetailHeading')),
+              matching: find.text('Tempo')),
+          findsOneWidget);
+      expect(
+          tester
+              .widget<AnimatedOpacity>(find.ancestor(
+                  of: find.descendant(
+                      of: find.byType(AppBar), matching: find.text('Tempo')),
+                  matching: find.byType(AnimatedOpacity)))
+              .opacity,
+          0);
     });
 
     testWidgets('a Daniels zone code is explained, free text is kept',
@@ -574,7 +641,7 @@ void main() {
 
       expect(
           tester
-              .getSemantics(find.byKey(const Key('workoutDetailHeading')))
+              .getSemantics(find.byType(PageHeading))
               .flagsCollection
               .isHeader,
           isTrue);

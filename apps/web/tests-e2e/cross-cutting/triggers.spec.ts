@@ -428,13 +428,9 @@ test.describe('database triggers via UI', () => {
 			expect(selfRows.length).toBe(0);
 		} finally {
 			// run_id is on delete cascade, so deleting the run clears
-			// the notification; drop the test follow too.
+			// the notification. The follow is seed state (alex follows
+			// runner), which later specs rely on, so it stays.
 			await admin.from('runs').delete().eq('id', runId);
-			await admin
-				.from('user_follows')
-				.delete()
-				.eq('follower_id', USER_B.id)
-				.eq('followee_id', USER_A.id);
 		}
 	});
 });

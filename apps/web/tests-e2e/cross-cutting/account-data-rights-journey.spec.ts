@@ -99,7 +99,7 @@ test.describe('saga: account data-rights cradle-to-grave (export → delete)', (
 	let clubId: string | null = null;
 
 	test.beforeAll(async () => {
-		[user, other] = await createSagaUsers(2, {
+		[user, other] = await createSagaUsers(2, { healthConsent: true,
 			displayNames: ['Saga Data Rights', 'Saga Counterpart'],
 		});
 	});

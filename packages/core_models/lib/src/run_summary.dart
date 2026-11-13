@@ -18,9 +18,10 @@ import 'run_source.dart';
 /// recap), `indoor` (fitness excludes indoor runs from the VDOT pool),
 /// `routeId` (run-detail route-comparison / attempt history), `lastModifiedAt`
 /// (newer-wins clock), `createdByUserId` (owner tag, decisions §67), `synced`
-/// (unsynced badge + sync drain). Excluded — recovered on demand via the
-/// store's `runById`: `track`, `createdAt`, every other metadata key (`title`,
-/// `notes`, `laps`, `workout_step_results`, …).
+/// (unsynced badge + sync drain), `title` (the run list's search, issue
+/// #1374). Excluded — recovered on demand via the store's `runById`: `track`,
+/// `createdAt`, every other metadata key (`notes`, `laps`,
+/// `workout_step_results`, …).
 class RunSummary {
   final String id;
   final DateTime startedAt;
@@ -35,6 +36,10 @@ class RunSummary {
   final String? routeId;
   final String? lastModifiedAt;
   final String? createdByUserId;
+
+  /// `metadata.title`, the name a runner gave the run (or a Strava import's
+  /// activity name), so the run list can search the whole history.
+  final String? title;
   final bool synced;
 
   const RunSummary({
@@ -51,6 +56,7 @@ class RunSummary {
     this.routeId,
     this.lastModifiedAt,
     this.createdByUserId,
+    this.title,
     this.synced = false,
   });
 
@@ -86,6 +92,7 @@ class RunSummary {
       routeId: run.routeId,
       lastModifiedAt: _string(meta?[MetadataKeys.lastModifiedAt]),
       createdByUserId: _string(meta?[MetadataKeys.createdByUserId]),
+      title: _string(meta?[MetadataKeys.title]),
       synced: synced,
     );
   }
@@ -106,6 +113,7 @@ class RunSummary {
         routeId: routeId,
         lastModifiedAt: lastModifiedAt,
         createdByUserId: createdByUserId,
+        title: title,
         synced: value,
       );
 
@@ -126,6 +134,7 @@ class RunSummary {
       if (indoor) MetadataKeys.indoor: true,
       if (lastModifiedAt != null) MetadataKeys.lastModifiedAt: lastModifiedAt,
       if (createdByUserId != null) MetadataKeys.createdByUserId: createdByUserId,
+      if (title != null) MetadataKeys.title: title,
     };
     return Run(
       id: id,
@@ -156,6 +165,7 @@ class RunSummary {
         'route_id': routeId,
         'last_modified_at': lastModifiedAt,
         'created_by_user_id': createdByUserId,
+        'title': title,
         'synced': synced,
       };
 
@@ -189,7 +199,25 @@ class RunSummary {
   /// calendar rather than refusing it, so a corrupt date never threw, never
   /// reached the rebuild, sorted the run list by a day the runner never ran
   /// and was written back on the next flush.
-  factory RunSummary.fromIndexJson(Map<String, dynamic> j) => RunSummary(
+  ///
+  /// `title` must be present as a key, null or not. An index written before
+  /// the summary carried it has none, and reading such a row as "no title"
+  /// would leave every older run out of the run list's search until it was
+  /// next saved; refusing it sends the store down the same lossless rebuild,
+  /// once, which reads every title from the run files.
+  factory RunSummary.fromIndexJson(Map<String, dynamic> j) {
+    if (!j.containsKey('title')) {
+      throw const FormatException('index row: title is not usable');
+    }
+    final title = j['title'];
+    if (title != null && title is! String) {
+      throw FormatException('index row: title is not usable', title);
+    }
+    return RunSummary._fromIndex(j, title as String?);
+  }
+
+  factory RunSummary._fromIndex(Map<String, dynamic> j, String? title) =>
+      RunSummary(
         id: _required<String>(j, 'id'),
         startedAt: parseIsoStrictRequired(j['started_at'], 'started_at'),
         duration: Duration(
@@ -204,6 +232,7 @@ class RunSummary {
         routeId: j['route_id'] as String?,
         lastModifiedAt: j['last_modified_at'] as String?,
         createdByUserId: j['created_by_user_id'] as String?,
+        title: title,
         synced: j['synced'] == true,
       );
 

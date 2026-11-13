@@ -8,6 +8,7 @@
 /// A different device finds nothing and lands on the default, as before.
 
 import { DEFAULT_RETURN_TO, safeReturnTo } from './safe_redirect';
+import { localStore } from './browser_storage';
 
 export const PENDING_RETURN_KEY = 'threkir.pending_return_to';
 export const PENDING_RETURN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -58,9 +59,5 @@ export function takePendingReturn(
 /// localStorage, or null where reading it throws (sandboxed frames, blocked
 /// site data).
 export function browserReturnStore(): ReturnStore | null {
-	try {
-		return typeof localStorage === 'undefined' ? null : localStorage;
-	} catch {
-		return null;
-	}
+	return localStore();
 }

@@ -13,10 +13,15 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
-| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races`, the `/segments` header link and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
-| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight courses with distance, shape and this season's record, nearest first once the page has a place or the runner's location, otherwise region, park, distance, name; closed courses last (`orderAnyTimeCourses` in `lib/parks/any_time_courses.ts`). Its own loading, error and `EmptyState`, independent of the race calendar above it | Shipped |
+| Monthly boards: `p_month` on both boards, `park_month` computed field, `month` / `month_rank` on `run_park_course_times` (issue #1343, migration `20271226001343`, decisions § 2426 / § 2511). See *Months* | Shipped: backend, and on web and mobile the This month / This year / All time control with month arrows (`?period=YYYY-MM` on web), the run-detail places and the sticker |
+| Month-close notice `park_course_month_closed` (migrations `20271226011343`..`41343`). See *Months* | Shipped: backend, worker, the web bell and inbox, the phone inbox, and the `notify_park_course_month` switch on both platforms' Notifications. Off behind `park_course_month_notices` until the owner declares it in `prod_config.json` with sign-off |
+| Official monthly passport "Run 3 Virginia park courses in {period}" (official catalogue, issue #1343) | Shipped; published by the release's official catalogue stage |
+| `park_months` badge (distinct local months with a completion, 3 / 6 / 12 / 24; migration `20271227001343`) | Shipped: `achievement_tiers_met`, `badges.ts`, `badges.dart` and labels in every locale. See *Months* |
+| Runners this month per course on the park page (`park_course_month_runners`, migration `20271227011343`) | Shipped, web and mobile, signed in |
+| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races` (the Courses view's park cards, each course card's park link and "All park courses") and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
+| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight courses with distance, shape and this season's record, nearest first once the page has a place or the runner's location, otherwise region, park, distance, name; closed courses last (`orderAnyTimeCourses` in `lib/parks/any_time_courses.ts`). Its own loading, error and `EmptyState`, independent of the race calendar above it. An **All · Races · Courses** switch (`?show=`, `lib/races/races_show.ts`; decisions § 2480) shows either section alone, and Courses lists every course with the place control beside them; mobile has the same switch on the Races & courses tab | Shipped |
 | `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
-| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the **Parks** peer on the Fitness hub's Runs strip, and the segment catalogue's app bar) | Shipped |
+| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from Races & courses: the Courses view's park cards, each course card's park link and "All park courses"; a course screen's park name links back to its park; decisions § 2480) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
 | Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
@@ -182,6 +187,100 @@ Every run is scored on the server (decisions § 2392):
   board's rules; a course with nothing this season has no row, and the card
   says no time yet. A failed read leaves the courses listed without records.
 
+## Months
+
+Issue #1343, [decisions § 2426](../architecture/decisions.md) and § 2511. A
+month is a filter on the same boards, not a stored period and not an entry.
+
+- **The boards.** `global_segment_leaderboard(..., p_season, p_month)` and
+  `global_segment_completions(p_segment_id, p_season, p_limit, p_month)`.
+  `p_month` is trailing on both, so every older call shape resolves, named or
+  positional (the issue sketched `p_month` before `p_limit` on the completions
+  board, which would have read an existing positional limit as a month). A
+  month is the calendar month of the effort's `started_at` in the park's
+  timezone, local midnight on the 1st to local midnight on the next 1st, read
+  with the same `at time zone` the season uses, so DST is handled (pinned
+  across 8 March and the repeated hour of 1 November 2026 in New York). A
+  month without a season, or outside 1-12, raises `22023`.
+- **This month.** Clients read `park_month` beside `park_season` in one select
+  and pass both back, so no client carries a timezone database.
+- **Nothing is stored per month**, so a late import lands on its own month's
+  board and no board is ever frozen.
+- **Privacy.** Every rule comes from the recreated bodies: run visibility, the
+  block filter, shadow-hidden masking, the consent-gated age band, own-row
+  demographics, and 42501 for anon. The month narrows the year and exposes
+  nothing new, so there is no opt-in.
+- **The run's month place.** `run_park_course_times` returns `month` and
+  `month_rank` after its old columns, read from the monthly board the way
+  `season_rank` is read from the yearly one. Owner-only, like the rest of it.
+  Run detail shows both places on each course chip ("#2 in November, #9 in
+  2026", the month name in the reader's language) and opens the course on
+  the effort's month. The sticker prints the month place, plus the year place
+  only when it is in the top 10 (`shareCoursePlaces`,
+  `SHARE_COURSE_YEAR_PLACE_MAX`), and `pickShareCourse` picks the run's best
+  month place, the year place breaking a tie. The issue's "2nd" ordinals were
+  not taken: neither catalogue format has an ordinal selector, so the places
+  read "#2" as the yearly chip always has.
+- **The period control.** Both boards on the course page have **This month /
+  This year / All time**; This month shows the park's current month with
+  arrows to step back a month at a time (to January 2000, the boards' first
+  season) and forward to the park's current month, never past it. On web the
+  choice is a shallow navigation to `?period=YYYY-MM` or `?period=all`; the
+  year, the default, keeps the URL bare. A `?period=` the page cannot use (a
+  malformed value, a month after the park's current one) opens on the year.
+  On mobile it is screen state, and `ParkCourseScreen.initialPeriod` opens a
+  month from a notice or a run's chip. The parse, the parameter, the
+  `p_season` / `p_month` pair and the step are pure helpers in the
+  `park_courses` parity pair (`parseBoardPeriod`, `boardPeriodParam`,
+  `boardPeriodArgs`, `stepBoardMonth`); each platform words the month
+  itself.
+- **Runners this month.** The park page shows, under each course, how many
+  runners the reader can see with a time on it this month where the park is
+  (`park_course_month_runners(p_park_id)`, one call per park page, migration
+  `20271227011343`): run visibility, blocks both ways and an active segment,
+  as the monthly completions board applies them. A course nobody ran shows no
+  line; a failed read says so with Retry and the course list stands. Signed
+  out, nothing is asked for.
+- **Month-close notice.** `park_course_month_closed`, raised by the hourly
+  `enqueue_park_course_month_notices()` (at :29) in the first three local days
+  of the month where the park is, for the month that just closed: one notice
+  per runner and course, with the course, the month (`notifications.park_course_month`,
+  the local 1st) and the runner's best time (`park_course_time_s`), never a
+  rank. The window lets a missed tick or an import on the 2nd still reach its
+  runner, and stops a backlog: turning the job on mid-month sends nothing for
+  an older month. `private.park_course_month_notices` claims each
+  (course, month, runner) once, so a re-run or a cleared notice raises nothing
+  more. An empty month raises nothing; `notify_park_course_month = 'off'`
+  raises nothing, and the worker holds the same mute on email and push. It is
+  bell-only by default (email and push only under `all`), and the email and
+  push deep-link to `/parks/<region>/<park>/<course>?period=YYYY-MM`. The web
+  bell and inbox and the phone inbox read "{course}: the {month} board has
+  closed. Your best: {time}" (the plain "A month has closed on a park course
+  you ran" when the course is hidden or a part is missing), open the course on
+  that month, and never collapse two notices into one. The mute is the **Park
+  course months** switch on Notifications, web and phone. **Off** until the
+  `park_course_month_notices` flag is declared in
+  `apps/backend/ops/prod_config.json`; every client now renders the kind, so
+  that is the owner's sign-off step alone.
+- **Monthly passport.** An ordinary official challenge,
+  `scripts/official/catalogue/challenges/virginia-park-courses-a-month.json`
+  (3 Virginia park courses a month), published a board per month by the
+  official catalogue stage. Its window is the UTC month, as every challenge's
+  is; each course's board runs on the park's local time.
+- **`park_months` badge.** Distinct park-local months with a park course
+  completion, 3 / 6 / 12 / 24 (bronze to platinum), completions never rank,
+  so an award never moves (migration `20271227001343`). Each effort's month is
+  read in its own park's timezone, private runs count, DNF runs do not, and
+  the award names a count with no source, like the other park families. The
+  ladder is a three-way rail with `badges.ts` and `badges.dart`
+  (`check_shared_constants.mjs`).
+- **No index.** EXPLAIN on 300,000 efforts (180,000 on one course over four
+  years) read the course's efforts in 23 ms by the existing segment index; the
+  monthly board took 0.41 s against 1.81 s for the yearly one, the difference
+  being the per-effort visibility check on fewer rows, and the close job 0.41 s
+  for 20 courses. A `(global_segment_id, started_at)` index would not change
+  either, so none was added (decisions § 2511).
+
 ## Where courses are surfaced
 
 Owner decision on #1352 (decisions § 2436): park courses live with races,
@@ -194,12 +293,33 @@ because a course is something you go and do, not a stretch you happen to run.
   distance and name order, closed courses last. Each card shows distance,
   shape, the park and this season's record, and opens the course page. An
   "All park courses" link goes to `/parks`. Each section loads and fails on
-  its own.
+  its own. A switch under the intro, **All · Races · Courses**, shows both or
+  either alone (decisions § 2480). Courses hides the race calendar and its
+  filters, lists every course rather than eight, and puts the place field and
+  Use my location at the top of the courses so they still order them. On web
+  the choice is `?show=races|courses` (none, or an unknown value, is All),
+  written by a shallow navigation, so a link, a refresh and back from a course
+  page reopen it; on mobile it is the tab's own state and the courses are
+  ordered by the phone's fix, as before.
 - **`/parks`** stays the full index and the deep-link target for share pages
   and posts, with a back-link to Races & courses and no strip.
-- **`/segments`** keeps its header link to `/parks`.
-- The run-surface strip has no Parks tab (five tabs: Runs · Plans · Races &
-  courses · Routes · Segments, in the mobile order).
+- **Segments**' Park courses action (web header link and empty state, mobile
+  control-row action and empty state; the catalogue is Routes → Explore →
+  Segments since issue #1374) opens Races & courses on its Courses view:
+  `/races?show=courses` on web, and on mobile the Races & courses tab with
+  Courses selected, through `openFitnessSurface(..., racesShow:)` rather than
+  a pushed copy of the park index (decisions § 2437, § 2480).
+- **Courses view** leads with a scrolling row of park cards (the `/parks`
+  card, `ParkCard` on both platforms), in the order of each park's first
+  course, so a set place or fix brings the nearest park first. Each course
+  card's park name is a link of its own to the park. All keeps the short list
+  with no park row.
+- **Segment page**: a catalogue segment a park course is built on links to
+  that course (`fetchParkCourseForSegment` on both platforms, one read that
+  also carries the course credit; no migration).
+- The run-surface strip has no Parks tab, and since issue #1374 no Segments
+  tab either (four tabs: Runs · Plans · Races & courses · Routes, in the
+  mobile order; the catalogue is Routes → Explore → Segments).
 
 ## The pages (web, issue #1352)
 
@@ -786,7 +906,17 @@ These gate going live, not the code:
   strip, both sections, a course card with its record and its link, no time
   yet, each section's error leaving the other standing, the empty state, failed
   records, nearest first from the granted location, `/parks` from Run any
-  time, Segments and directly).
+  time, Segments and directly, the Show switch and its `?show=` links, every
+  course in the Courses view against eight in All, back from a course to the
+  Courses view, Use my location inside it, the park row and each card's park
+  link, Segments' Park courses opening the Courses view);
+  `apps/web/src/lib/races/races_show.test.ts`
+  (parsing, the query string, the course limit per view); Flutter
+  `apps/mobile_android/test/races_courses_screen_test.dart` (the switch hides
+  either section and Courses lists every course without reloading, the park
+  row and park links, a host notifier choosing the view); the hub, segments
+  and course-screen tests pin the Segments action landing on Courses, the
+  segment-to-course link and the course screen's link back to its park.
 - Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
   (creation, an unchanged re-run, changed geometry in place with efforts
   kept, status untouched, a deleted route recreated, the backfill flag, the
@@ -913,8 +1043,38 @@ These gate going live, not the code:
   `nps` park and refused for any other); Playwright
   `parks/park-nps-alerts.spec.ts` (a runner refused, the link from the reports
   queue, close with a note, dismiss).
+- Months: pgTAP `park_course_months_test.sql` (52: 23:30 on 31 October in
+  New York is October, February and March across the DST change and the
+  repeated hour on 1 November, the 22023 refusals, every older call shape,
+  distinct local days, shadow-hidden, block and private-run rules, anon
+  refused, `month_rank` owner-only, and the close job: gated off, one notice
+  per runner, best time and no rank, mute, empty month, idempotent, the late
+  import inside the window, nothing after it, the window in the park's zone,
+  ledger sweep; then the `park_months` tiers, the badge awarded by the effort
+  trigger, the month read in the park's zone, private runs counted and DNF
+  runs not; then the runner counts: distinct runners, blocks, private runs,
+  last month, a pulled park, anon and a subject-less caller refused); Go
+  `notification_park_course_month_test.go` (bell-only by default, the mute,
+  the deep link resolving against the web routes, copy in every locale
+  without a rank). Parity: `park_courses.test.ts` / `park_courses_test.dart`
+  (`pickShareCourse` by month place, `shareCoursePlaces`, `parseBoardPeriod`,
+  `boardPeriodParam`, `boardPeriodArgs`, `stepBoardMonth`), `badges.test.ts` /
+  `badges_test.dart` (the `park_months` ladder), `notification_groups`
+  (month-close notices never collapse). Web: `park_month_notice_copy.test.ts`,
+  `calendar.test.ts` (`monthYearLabel`); Playwright
+  `parks/park-course-monthly.spec.ts` (the control, the arrows and the
+  address, a `?period=` deep link and a future month, the runner counts and
+  their failed read, the bell notice opening its month, signed out asking
+  nothing), the month case in `runs/share-image-editor.spec.ts` and the mute
+  in `settings/preferences.spec.ts`. Flutter: `park_courses_screen_test.dart`
+  (the month board and arrows, opening on a notice's month, runner counts and
+  their failed read, worst-case runs of the month board and the park cards),
+  `run_share_card_test.dart` (the month place, the top-10 year place),
+  `run_park_course_chips_test.dart`, `park_month_notice_copy_test.dart`,
+  `settings_park_course_month_mute_test.dart`; `api_client`
+  `park_course_month_reads_test.dart`.
 - Run detail chips: Playwright `parks/run-park-course-chips.spec.ts` (time,
-  season place and link; a failed read with Retry; no chips for a run with no
+  month and season places and the month board link; a failed read with Retry; no chips for a run with no
   course; never asked for by anyone else); Flutter
   `test/run_park_course_chips_test.dart`; `api_client`
   `park_course_reads_test.dart` (`fetchParkCourseBySlugs`).

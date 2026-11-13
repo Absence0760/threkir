@@ -35,7 +35,7 @@ export const guide: Guide = {
 					type: 'steps',
 					items: [
 						'On the web, open [[route:/settings/privacy|Privacy & sharing]] in Settings and tick **Private profile** under **Being found**.',
-						'In the phone app, open **Preferences** in the **You** tab and turn on **Private profile** under **Privacy & sharing**.',
+						'In the phone app, open **Privacy & sharing** in the **You** tab and turn on **Private profile**.',
 					],
 				},
 				{

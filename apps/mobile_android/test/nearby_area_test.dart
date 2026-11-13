@@ -21,6 +21,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/nearby_area_screen.dart';
 import '../lib/screens/settings_preferences_screen.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 Future<void> _ensureSupabase() async {
@@ -120,6 +121,7 @@ Future<void> _pumpPrefs(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SettingsPreferencesScreen(
+        page: PreferencesPage.privacy,
         apiClient: api,
         preferences: prefs,
         settingsSync: null,
@@ -141,7 +143,7 @@ void main() {
       final api = _FakeApi(label: 'Richmond, VA');
       await _pumpPrefs(tester, await _prefs(), api: api);
 
-      expect(find.text('Show me to runners nearby'), findsNothing);
+      expect(find.text('Show me in Runners nearby'), findsNothing);
       expect(find.text('Your area'), findsNothing);
       // The label read is itself a person-location read; it must not happen.
       expect(api.readCalls, 0);
@@ -156,7 +158,7 @@ void main() {
       final api = _FakeApi(label: 'Richmond, VA');
       await _pumpPrefs(tester, await _prefs(), api: api);
 
-      expect(find.text('Show me to runners nearby'), findsOneWidget);
+      expect(find.text('Show me in Runners nearby'), findsOneWidget);
       expect(find.text('Your area'), findsOneWidget);
       expect(find.text('Current area: Richmond, VA'), findsOneWidget);
       expect(api.readCalls, 1);
@@ -169,12 +171,25 @@ void main() {
 
       // The definer RPCs are unreachable without a client, so the row that
       // exists only to call them must not be offered.
-      expect(find.text('Show me to runners nearby'), findsOneWidget);
+      expect(find.text('Show me in Runners nearby'), findsOneWidget);
       expect(find.text('Your area'), findsNothing);
     });
   });
 
   group('NearbyAreaScreen', () {
+    worstCaseTestWidgets('the current area card', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: NearbyAreaScreen(
+          api: _FakeApi(label: 'Richmond, Virginia, United States'),
+          geocodingFetcher: _fetcher('[]'),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await walkScrollable(tester, primaryScrollable(), 'Nearby area');
+    });
+
     testWidgets('shows the stored label', (tester) async {
       await tester.pumpWidget(_wrapArea(NearbyAreaScreen(
         api: _FakeApi(label: 'Richmond, VA'),

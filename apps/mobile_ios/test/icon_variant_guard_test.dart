@@ -49,12 +49,27 @@ const _roots = ['lib', '../../packages/ui_kit/lib'];
 /// `verified` is a status toggle: `club_verification_status_card.dart` draws
 /// it filled while the club is verified and outlined while it is not, so the
 /// variant IS the state.
+///
 const _selectionPairs = <String>{
   'cloud_upload',
   'emoji_events',
   'push_pin',
   'verified',
 };
+
+/// The shell's `NavigationBar` / `NavigationRail` destinations (Home, the
+/// Fitness or Training hub, Social) are outlined while unselected and filled
+/// while selected, M3's `icon:` / `selectedIcon:` pair, so selection is a
+/// shape as well as a colour (issue #1374 finding 12). The pair is allowed in
+/// [_shellNavFile] only: anywhere else these stems keep one variant.
+/// `person` / `person_outline` for You are already two stems.
+const _shellNavPairs = <String>{
+  'dashboard',
+  'directions_run',
+  'fitness_center',
+  'public',
+};
+const _shellNavFile = 'lib/screens/home_screen.dart';
 
 String _stem(String name) =>
     name.replaceAll(RegExp(r'_(outlined|rounded|sharp)$'), '');
@@ -63,6 +78,7 @@ void main() {
   test('every icon stem is drawn with one variant', () {
     final variants = <String, Set<String>>{};
     final where = <String, Set<String>>{};
+    final outsideShell = <String, Set<String>>{};
 
     for (final root in _roots.where(rootExists)) {
       for (final file in dartFiles(root)) {
@@ -72,6 +88,9 @@ void main() {
           final stem = _stem(name);
           variants.putIfAbsent(stem, () => <String>{}).add(name);
           where.putIfAbsent(stem, () => <String>{}).add(file.path);
+          if (!file.path.endsWith(_shellNavFile)) {
+            outsideShell.putIfAbsent(stem, () => <String>{}).add(name);
+          }
         }
       }
     }
@@ -88,6 +107,10 @@ void main() {
     final offenders = <String>[];
     variants.forEach((stem, names) {
       if (names.length < 2 || _selectionPairs.contains(stem)) return;
+      if (_shellNavPairs.contains(stem) &&
+          (outsideShell[stem]?.length ?? 0) < 2) {
+        return;
+      }
       final files = where[stem]!.toList()..sort();
       offenders.add('$stem -> ${(names.toList()..sort()).join(', ')} '
           '(${files.length} file(s))');

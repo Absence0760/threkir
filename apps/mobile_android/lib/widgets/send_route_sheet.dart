@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show UserProfileRow;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSearchField, IdentityAvatar, ListSkeleton, SheetScaffold;
 
 import '../dm_recipients.dart';
 import '../dm_send_error.dart';
@@ -61,7 +62,7 @@ class _SendRouteSheetState extends State<SendRouteSheet> {
   bool _loading = true;
   bool _loadFailed = false;
   List<DmRecipient> _candidates = const [];
-  String _query = '';
+  final _search = TextEditingController();
   String? _sendingTo;
   String? _sendError;
   DmRecipient? _sentTo;
@@ -70,6 +71,12 @@ class _SendRouteSheetState extends State<SendRouteSheet> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -86,18 +93,15 @@ class _SendRouteSheetState extends State<SendRouteSheet> {
       _loadFailed = false;
     });
     try {
-      final pages = await Future.wait([
-        widget.api.fetchFollowers(me, limit: 500),
-        widget.api.fetchFollowing(me, limit: 500),
-      ]);
+      final graph = await widget.api.fetchFollowGraph(me);
       DmCandidateProfile candidate(UserProfileRow p) => DmCandidateProfile(
         id: p.id,
         displayName: p.displayName,
         avatarUrl: p.avatarUrl,
       );
       final candidates = dmRecipientCandidates(
-        pages[0].rows.map(candidate),
-        pages[1].rows.map(candidate),
+        graph.followers.map(candidate),
+        graph.following.map(candidate),
         selfId: me,
       );
       if (!mounted) return;
@@ -170,19 +174,11 @@ class _SendRouteSheetState extends State<SendRouteSheet> {
     );
     final sent = _sentTo;
 
-    final children = <Widget>[
-      Semantics(
-        header: true,
-        child: Text(
-          l10n.routeDetailSendDmTitle,
-          style: theme.textTheme.titleLarge,
-        ),
-      ),
-      const SizedBox(height: 8),
-    ];
+    final children = <Widget>[];
+    Widget? actions;
 
     if (sent != null) {
-      children.addAll([
+      children.add(
         Semantics(
           liveRegion: true,
           child: Text(
@@ -190,24 +186,25 @@ class _SendRouteSheetState extends State<SendRouteSheet> {
             key: const ValueKey('send-route-sent'),
           ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton(
-              key: const ValueKey('send-route-open-thread'),
-              onPressed: () => Navigator.of(context).pop(sent),
-              child: Text(l10n.routeDetailSendDmOpenThread),
-            ),
-            OutlinedButton(
-              key: const ValueKey('send-route-done'),
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.routeDetailSendDmDone),
-            ),
-          ],
-        ),
-      ]);
+      );
+      actions = OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        overflowSpacing: 8,
+        children: [
+          OutlinedButton(
+            key: const ValueKey('send-route-done'),
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.routeDetailSendDmDone),
+          ),
+          FilledButton(
+            key: const ValueKey('send-route-open-thread'),
+            onPressed: () => Navigator.of(context).pop(sent),
+            child: Text(l10n.routeDetailSendDmOpenThread),
+          ),
+        ],
+      );
     } else {
       children.addAll([
         Text(l10n.routeDetailSendDmIntro),
@@ -237,21 +234,15 @@ class _SendRouteSheetState extends State<SendRouteSheet> {
       ]);
     }
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: SingleChildScrollView(
-          key: const ValueKey('send-route-sheet'),
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: children,
-          ),
-        ),
+    return SheetScaffold(
+      key: const ValueKey('send-route-sheet'),
+      title: Semantics(header: true, child: Text(l10n.routeDetailSendDmTitle)),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: children,
       ),
+      actions: actions,
     );
   }
 
@@ -279,17 +270,14 @@ class _SendRouteSheetState extends State<SendRouteSheet> {
         ),
       ];
     }
-    final shown = filterDmRecipients(_candidates, _query);
+    final shown = filterDmRecipients(_candidates, _search.text);
     return [
-      TextField(
+      AppSearchField(
         key: const ValueKey('send-route-search'),
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search),
-          hintText: l10n.routeDetailSendDmSearchPlaceholder,
-          border: const OutlineInputBorder(),
-          isDense: true,
-        ),
-        onChanged: (v) => setState(() => _query = v),
+        controller: _search,
+        hint: l10n.routeDetailSendDmSearchPlaceholder,
+        clearTooltip: l10n.commonClearSearch,
+        onChanged: (_) => setState(() {}),
       ),
       const SizedBox(height: 8),
       if (shown.isEmpty)

@@ -31,32 +31,22 @@ class _FakeApiClient extends ApiClient {
   String? get userId => 'me';
 
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowers(
-    String userId, {
-    int limit = 100,
-    List<Object?>? after,
-  }) async {
+  Future<({List<UserProfileRow> followers, List<UserProfileRow> following})>
+      fetchFollowGraph(String userId) async {
     loads++;
     if (fail) throw Exception('offline');
-    return KeysetPage([
-      _p('ana', 'Ana Lopez'),
-      _p('ben', 'Ben Ortiz'),
-      _p('me', 'Me Myself'),
-    ], null);
-  }
-
-  @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(
-    String userId, {
-    int limit = 100,
-    List<Object?>? after,
-  }) async {
-    if (fail) throw Exception('offline');
-    return KeysetPage([
-      _p('ben', 'Ben Ortiz'),
-      _p('cat', 'Cat Ng'),
-      _p('dee', 'Dee Anand'),
-    ], null);
+    return (
+      followers: [
+        _p('ana', 'Ana Lopez'),
+        _p('ben', 'Ben Ortiz'),
+        _p('me', 'Me Myself'),
+      ],
+      following: [
+        _p('ben', 'Ben Ortiz'),
+        _p('cat', 'Cat Ng'),
+        _p('dee', 'Dee Anand'),
+      ],
+    );
   }
 }
 

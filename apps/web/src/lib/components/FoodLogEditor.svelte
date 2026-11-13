@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppSearchField from './AppSearchField.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { searchFoodSources, scalePortion, type FoodSearchResult } from '#lib/nutrition/food_search.ts';
 	import { entryTimestampFor } from '#lib/nutrition/diary_day.ts';
@@ -233,15 +234,12 @@
 	{:else}
 		<div class="search-card">
 			<div class="search-field">
-				<span class="material-symbols search-icon" aria-hidden="true">search</span>
-				<input
-					type="search"
+				<AppSearchField
 					bind:value={query}
 					oninput={onQueryInput}
-					placeholder={m('nutrition.searchPlaceholder')}
-					data-testid="food-search"
-					aria-label={m('nutrition.searchPlaceholder')}
-					aria-describedby="food-search-hint"
+					label={m('nutrition.searchPlaceholder')}
+					testid="food-search"
+					describedby="food-search-hint"
 				/>
 			</div>
 			<span class="field-hint" id="food-search-hint">{m('nutrition.searchHint')}</span>
@@ -422,28 +420,6 @@
 		position: relative;
 		display: flex;
 		align-items: center;
-	}
-	.search-icon {
-		position: absolute;
-		inset-inline-start: var(--space-md);
-		color: var(--color-text-tertiary);
-		font-size: 1.25rem;
-		pointer-events: none;
-	}
-	.search-field input {
-		width: 100%;
-		padding: var(--space-sm) var(--space-md) var(--space-sm) calc(var(--space-md) + 1.75rem);
-		font-size: 1rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-bg-secondary);
-		color: var(--color-text);
-	}
-	.search-field input:focus-visible {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
-		background: var(--color-surface);
 	}
 	.slot-select {
 		display: flex;

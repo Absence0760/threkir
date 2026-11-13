@@ -51,7 +51,7 @@
           {
             "type": "steps",
             "items": [
-              "Na web, abra [[route:/settings/notifications|Notificações]] nas Definições. Na app do telemóvel, abra **Preferências** no separador **Tu** e desloque-se até **Notificações**.",
+              "Na web, abra [[route:/settings/notifications|Notificações]] nas Definições. Na app do telemóvel, abra **Notificações** no separador **Tu**.",
               "Defina **Notificações por e-mail** e **Notificações push** em separado."
             ]
           },
@@ -137,7 +137,7 @@
             "type": "steps",
             "items": [
               "Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e marque **Perfil privado** em **Ser encontrado**.",
-              "Na app do telemóvel, abra **Preferências** no separador **Tu** e ative **Perfil privado** em **Privacidade e partilha**."
+              "Na app do telemóvel, abra **Privacidade e partilha** no separador **Tu** e ative **Perfil privado**."
             ]
           },
           {
@@ -298,7 +298,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Quase nada na app está bloqueado pelo Pro. As contas gratuitas têm gravação ilimitada no telemóvel e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contactos de segurança, importações e backups."
+            "text": "Quase nada na app está bloqueado pelo Pro. As contas gratuitas têm gravação ilimitada no telemóvel e no relógio, rotas, planos de treino e os números por trás deles, clubes e eventos, o feed social, contactos de segurança, importações e cópias de segurança."
           }
         ]
       },
@@ -313,7 +313,7 @@
               "**Map-matching prioritário**: os seus trajetos GPS são ajustados às estradas antes dos das contas gratuitas, por isso ficam prontos mais cedo.",
               "**Exportações para a nuvem prioritárias**: até 8 exportações de pacotes GPX por hora em vez de 2.",
               "**Geração de rotas no servidor**: circuitos traçados na rede viária real quando gera uma rota por distância. As contas gratuitas continuam a ter geração de circuitos, calculada no navegador.",
-              "Descrições de rotas mais ricas: na página de uma rota, **Melhorar com IA** transforma a descrição normal num parágrafo mais completo.",
+              "Descrições de rotas mais ricas: na página de uma rota, **Descrever esta rota** escreve um parágrafo mais completo em vez da descrição normal.",
               "**Registar a partir de uma fotografia**: fotografe uma refeição e o seu registo alimentar é preenchido para o verificar. Consulte [[guide:log-a-meal-from-a-photo|Registar uma refeição a partir de uma fotografia]]."
             ]
           },
@@ -416,7 +416,7 @@
           {
             "type": "steps",
             "items": [
-              "Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Preferências**, no separador **Tu**.",
+              "Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Privacidade e partilha**, no separador **Tu**.",
               "Para alterar uma única corrida mais tarde, abra-a e toque em **Privado** ou **Público** por baixo do título. Antes de tornar uma corrida pública, pedimos confirmação e mostramos o que as suas zonas de privacidade vão esconder."
             ]
           },
@@ -445,7 +445,7 @@
             "type": "list",
             "items": [
               "**Transferir ficheiro completo da conta** (no telemóvel, **Exportação da conta**): tudo o que guardamos sobre si, incluindo conversas com o treinador, mensagens, integrações e contactos de segurança, num único zip. É gerado no nosso servidor, por isso pode fechar a página e voltar mais tarde para o obter. Uma exportação concluída é mantida durante 7 dias.",
-              "**Transferir backup completo** (no telemóvel, **Backup completo**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de um backup**.",
+              "**Transferir cópia de segurança completa** (no telemóvel, **Cópia de segurança completa**): todas as corridas com o respetivo trajeto GPS, mais as suas rotas, perfil e preferências, num ficheiro que pode restaurar mais tarde com **Restaurar de uma cópia de segurança**.",
               "**Exportação na nuvem (zip GPX)**: um ficheiro GPX por corrida, com frequência cardíaca, pronto a importar noutras apps. As contas gratuitas podem exportar duas vezes por hora; as contas Pro, oito vezes.",
               "**Exportar todas as corridas (CSV)** (no telemóvel, **Exportar corridas como CSV**): uma linha por corrida para uma folha de cálculo, sem trajetos GPS."
             ]
@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra [[route:/settings/payouts|Definições, Pagamentos]] na web.",
+              "Abra [[route:/settings/payouts|Pagamentos]] na web.",
               "Prima **Configurar pagamentos**. É encaminhado para o Stripe para introduzir os seus dados e a conta bancária onde quer receber.",
               "Conclua os passos do Stripe. Quando voltar, a página mostra o seu estado.",
               "Se indicar **Registo incompleto — conclua para começar a cobrar** ou **A sua conta de pagamentos precisa de atenção antes de poder receber**, prima **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar onde ficou."
@@ -1926,7 +1926,7 @@
           },
           {
             "type": "p",
-            "text": "Os corredores desligam ambos com **Prova prestes a começar**: na web, em [[route:/settings/notifications|Notificações]]; na app do telemóvel, em **Preferências**, no separador **Tu**."
+            "text": "Os corredores desligam ambos com **Prova prestes a começar**: na web, em [[route:/settings/notifications|Notificações]]; na app do telemóvel, em **Notificações**, no separador **Tu**."
           }
         ]
       },
@@ -3508,7 +3508,7 @@
   {
     "id": "location-permission",
     "lang": "pt-PT",
-    "title": "Acesso à localização para registar corridas",
+    "title": "Acesso à localização para gravar corridas",
     "summary": "Que opção de localização escolher no Android e no iPhone, o que cada uma muda nas suas corridas e como alterá-la mais tarde nas definições.",
     "kind": "how-to",
     "category": "running",
@@ -3525,7 +3525,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "A sua localização desenha o mapa de uma corrida e mede a distância e o ritmo. Sem ela, a corrida continua a registar tempo e passos, mas sem mapa, distância ou ritmo."
+            "text": "A sua localização desenha o mapa de uma corrida e mede a distância e o ritmo. Sem ela, a corrida continua a gravar tempo e passos, mas sem mapa, distância ou ritmo."
           },
           {
             "type": "p",
@@ -3550,7 +3550,7 @@
           },
           {
             "type": "p",
-            "text": "Se tocar em **Iniciar mesmo assim**, a corrida é registada normalmente enquanto a app estiver no ecrã. Com o ecrã desligado ou noutra app, o Android pode deixar de enviar a sua localização: o tempo continua a contar e nada do que já foi registado se perde, mas a distância percorrida entretanto não é contabilizada. Quando isso acontece, ao voltar surge uma mensagem que começa por **O registo foi pausado enquanto esteve fora**, com um botão **Definições**."
+            "text": "Se tocar em **Iniciar mesmo assim**, a corrida é gravada normalmente enquanto a app estiver no ecrã. Com o ecrã desligado ou noutra app, o Android pode deixar de enviar a sua localização: o tempo continua a contar e nada do que já foi gravado se perde, mas a distância percorrida entretanto não é contabilizada. Quando isso acontece, ao voltar surge uma mensagem que começa por **A gravação da localização foi pausada enquanto esteve fora**, com um botão **Definições**."
           },
           {
             "type": "note",
@@ -3562,7 +3562,7 @@
             "items": [
               "Com **Aproximada**, a localização é demasiado imprecisa para medir uma corrida: verá **Localização aproximada — distância pausada** durante toda a corrida.",
               "**Apenas desta vez** vale para a corrida que vai iniciar, e da próxima vez o telemóvel volta a perguntar.",
-              "Com **Não permitir**, as corridas registam apenas tempo e passos."
+              "Com **Não permitir**, as corridas gravam apenas tempo e passos."
             ]
           }
         ]
@@ -3572,7 +3572,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "No iPhone, o acesso durante a utilização da app é suficiente: a corrida continua a ser registada com o ecrã bloqueado ou enquanto utiliza outra app. A app nunca pede **Sempre**, e não precisa dessa opção."
+            "text": "No iPhone, o acesso durante a utilização da app é suficiente: a corrida continua a ser gravada com o ecrã bloqueado ou enquanto utiliza outra app. A app nunca pede **Sempre**, e não precisa dessa opção."
           },
           {
             "type": "steps",
@@ -3583,7 +3583,7 @@
           },
           {
             "type": "p",
-            "text": "**Permitir uma vez** vale apenas para esta corrida, e da próxima vez o iPhone volta a perguntar. Com **Não permitir**, as corridas registam apenas tempo e passos."
+            "text": "**Permitir uma vez** vale apenas para esta corrida, e da próxima vez o iPhone volta a perguntar. Com **Não permitir**, as corridas gravam apenas tempo e passos."
           }
         ]
       },
@@ -3593,7 +3593,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Alguns telemóveis Android (Samsung, Xiaomi, OnePlus e outros) põem as apps a dormir para poupar bateria, o que pode interromper o registo de uma corrida longa com o ecrã desligado, mesmo com **Permitir sempre**. Antes da sua primeira corrida, a app mostra uma vez **Manter a gravação ativa em segundo plano**: toque em **Abrir definições** e exclua o Threkir da otimização da bateria. Se tocou em **Agora não**, abra a página da app nas definições do telemóvel, toque em **Bateria** e escolha **Sem restrições**. Os nomes variam um pouco de fabricante para fabricante."
+            "text": "Alguns telemóveis Android (Samsung, Xiaomi, OnePlus e outros) põem as apps a dormir para poupar bateria, o que pode interromper a gravação de uma corrida longa com o ecrã desligado, mesmo com **Permitir sempre**. Antes da sua primeira corrida, a app mostra uma vez **Manter a gravação ativa em segundo plano**: toque em **Abrir definições** e exclua o Threkir da otimização da bateria. Se tocou em **Agora não**, abra a página da app nas definições do telemóvel, toque em **Bateria** e escolha **Sem restrições**. Os nomes variam um pouco de fabricante para fabricante."
           }
         ]
       },
@@ -3636,8 +3636,8 @@
           {
             "type": "list",
             "items": [
-              "Lê a sua localização enquanto regista uma corrida e quando um mapa se centra em si, por exemplo ao criar um percurso ou ao colocar uma zona de privacidade. Não o segue entre corridas.",
-              "No Android, surge uma notificação enquanto uma corrida está a ser registada, se permitir notificações.",
+              "A app lê a sua localização enquanto grava uma corrida e quando um mapa se centra em si, por exemplo ao criar uma rota ou ao colocar uma zona de privacidade. Não o segue entre corridas.",
+              "No Android, surge uma notificação enquanto uma corrida está a ser gravada, se permitir notificações.",
               "O traçado de uma corrida fica no seu telemóvel até ser sincronizado com a sua conta ou até o partilhar, e quem o pode ver segue as suas definições de privacidade: veja [[guide:your-data-and-privacy|os seus dados e a sua privacidade]].",
               "Para esconder onde mora, configure [[guide:privacy-zones|zonas de privacidade]]. A sua posição em direto só é partilhada se ativar o [[guide:live-tracking-and-safety|seguimento em direto]]."
             ]
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "Registar a partir de uma fotografia faz parte do Pro. Registar alimentos à mão continua gratuito.",
-              "Usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, abra Definições → Conta e aceite-o aí.",
+              "Esta funcionalidade usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, a mensagem inclui uma ligação para a página da sua conta, onde o pode aceitar.",
               "A fotografia só é usada para estimar o que está no prato. Os dados de localização e da câmara são removidos antes do envio, e o Threkir não guarda a fotografia."
             ]
           },
@@ -3752,8 +3752,8 @@
   {
     "id": "park-courses",
     "lang": "pt-PT",
-    "title": "Percursos de parques: pontos de controlo, épocas e classificações",
-    "summary": "Como um percurso de parque cronometra a sua corrida, porque conta cada ponto de controlo, quando começa uma época e como ordenam as classificações Mais rápidos e Mais conclusões.",
+    "title": "Percursos de parques: pontos de controlo, épocas, meses e classificações",
+    "summary": "Como um percurso de parque cronometra a sua corrida, porque conta cada ponto de controlo, quando começam uma época e um mês e como ordenam as classificações Mais rápidos e Mais conclusões.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3776,7 +3776,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando indica um local, ou veja todos em [[route:/parks|Percursos de parques]]."
+            "text": "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada nele. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando define um local, ou veja todos em [[route:/parks|Percursos de parques]]. Selecione **Percursos** no topo de Provas e percursos para listar todos os percursos à parte, sem o calendário de provas."
           },
           {
             "type": "list",
@@ -3827,7 +3827,7 @@
             "type": "list",
             "items": [
               "**Mais rápidos** ordena cada corredor pelo seu melhor tempo no percurso. Aparece uma vez, com a sua melhor corrida.",
-              "Por predefinição mostra este ano. Selecione **Desde sempre** para ver os melhores tempos de sempre.",
+              "Por predefinição mostra este ano. Selecione **Este mês** para ver o mês até agora, ou **Desde sempre** para ver os melhores tempos de sempre.",
               "Filtre por género ou escalão etário. O filtro de idade só inclui quem aceitou partilhar dados de saúde, por isso pode ser mais curto do que a classificação completa."
             ]
           }
@@ -3839,6 +3839,25 @@
           {
             "type": "p",
             "text": "**Mais conclusões** premeia os habituais. Conta os dias em que concluiu o percurso, no fuso horário do parque, por isso várias voltas no mesmo dia contam como uma."
+          }
+        ]
+      },
+      {
+        "heading": "Meses: uma classificação nova todos os meses",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "As duas classificações também funcionam mês a mês. Um mês é um mês civil no fuso horário do parque, da meia-noite do dia 1 à meia-noite do dia 1 do mês seguinte, por isso uma corrida às 23:30 de 31 de outubro na hora do parque conta para outubro."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Selecione **Este mês** para ver o mês até agora, e use as setas junto ao nome do mês para recuar a meses anteriores.",
+              "Cada percurso na página de um parque mostra quantas pessoas o correram este mês.",
+              "Um tempo num percurso de parque, na página da sua corrida, mostra o lugar nesse mês e nesse ano, por exemplo N.º 2 em novembro, n.º 9 em 2026. O autocolante **Percurso de parque** de uma imagem partilhada mostra o lugar do mês, e também o do ano quando está entre os 10 primeiros.",
+              "Quando termina um mês na hora do parque, recebe na caixa de entrada uma mensagem com o seu melhor tempo desse mês em cada percurso que correu. Desligue-a com **Meses nos percursos de parque**: na web, em [[route:/settings/notifications|Notificações]]; na app do telemóvel, em **Notificações**, no separador **Tu**.",
+              "As medalhas de meses de parque contam os meses em que concluiu um percurso de parque, aos 3, 6, 12 e 24 meses. Contam conclusões, nunca lugares."
+            ]
           }
         ]
       },
@@ -3933,7 +3952,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra o separador **Tu**, depois **Preferências** e, em **Privacidade e partilha**, toque em **Zonas de privacidade**.",
+              "Abra o separador **Tu**, depois **Privacidade e partilha**, e toque em **Zonas de privacidade**.",
               "Toque no mapa para colocar uma zona. Use **Procurar lugares…** ou **Localizar-me** para mover o mapa primeiro.",
               "Ajuste o controlo deslizante **Raio**.",
               "Toque em **Guardar**. Nada muda até guardar."

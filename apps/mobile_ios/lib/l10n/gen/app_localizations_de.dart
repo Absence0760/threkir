@@ -122,8 +122,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String recapAcrossRuns(Object count, Object runWord) {
-    return 'über $count $runWord';
+  String recapAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count Läufen',
+      one: 'in $count Lauf',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -133,8 +139,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get recapBestStreakLabel => 'Beste Serie';
 
   @override
-  String recapStreakDays(Object days, Object dayWord) {
-    return '$days $dayWord';
+  String recapStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days Tage',
+      one: '$days Tag',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -292,7 +304,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieses Backup wurde mit einer neueren Version der App erstellt. Aktualisiere die App und stelle es dann wieder her.';
 
   @override
-  String get importStatusRestoringBackup => 'Backup wird wiederhergestellt...';
+  String get importStatusRestoringBackup => 'Backup wird wiederhergestellt…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
@@ -366,7 +378,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Verlustfreier Roundtrip. Funktioniert ohne Anmeldung — wiederhergestellte Läufe werden beim nächsten Anmelden mit deinem Konto synchronisiert. Erstelle ein Backup unter Einstellungen → Vollständiges Backup.';
+      'Verlustfreier Roundtrip. Funktioniert ohne Anmeldung — wiederhergestellte Läufe werden beim nächsten Anmelden mit deinem Konto synchronisiert.';
+
+  @override
+  String get importBackupMakeOne => 'Backup erstellen';
 
   @override
   String get importBackupButton => 'Backup-ZIP wiederherstellen';
@@ -523,6 +538,17 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aktivitäten wurden ohne Herzfrequenz importiert',
+      one: '1 Aktivität wurde ohne Herzfrequenz importiert',
+    );
+    return '$_temp0: Threkir speichert die Herzfrequenz nur mit deiner Einwilligung zu Gesundheitsdaten.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Hole Workouts, die du auf der Apple Watch, in Nike Run Club, Strava und anderen Apps aufgezeichnet hast, die in Apple Health schreiben';
 
@@ -660,17 +686,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get peopleNearbySubtitle =>
-      'Läufer, die sich in der Nähe des von dir gesetzten Gebiets angemeldet haben. Nur ungefähre Entfernung — niemals ein Live-Standort.';
+      'Läufer in der Nähe der von dir festgelegten Gegend, die sich für die Entdeckung entschieden haben. Nur ungefähre Entfernung — niemals ein Live-Standort.';
 
   @override
   String get peopleNearbyEmptyTitle => 'Noch niemand in der Nähe';
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Aktiviere „Mich Läufern in der Nähe zeigen“ und setze dein Gebiet. Nur Läufer, die dasselbe getan haben, können dich finden.';
+      'Aktiviere „Mich unter ‚Läufer in der Nähe‘ anzeigen“ und lege deine Gegend fest. Nur Läufer, die dasselbe getan haben, können dich finden.';
 
   @override
-  String get peopleNearbyEmptyAction => 'Voreinstellungen öffnen';
+  String get peopleNearbyEmptyAction => 'Datenschutzeinstellungen öffnen';
 
   @override
   String get peopleNearbyLoadFailed =>
@@ -687,25 +713,26 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Mich Läufern in der Nähe zeigen';
+  String get prefsDiscoverableNearby =>
+      'Mich unter „Läufer in der Nähe“ anzeigen';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
-      'Standardmäßig aus. Wenn aktiviert, sehen andere Läufer, die sich ebenfalls angemeldet haben, dass du ungefähr in der Nähe bist — eine ungefähre Entfernung zu dem von dir gesetzten Gebiet, niemals dein Standort.';
+      'Standardmäßig aus. Wenn aktiviert, sehen andere teilnehmende Läufer, dass du ungefähr in der Nähe bist — eine ungefähre Entfernung zu der von dir festgelegten Gegend, niemals dein Standort.';
 
   @override
-  String get nearbyAreaTitle => 'Dein Gebiet';
+  String get nearbyAreaTitle => 'Deine Gegend';
 
   @override
   String get nearbyAreaExplainer =>
       'Wähle die Stadt oder das Viertel, in dem du läufst. Es wird auf etwa einen Kilometer gerundet gespeichert und ist niemals dein Live-Standort. Andere Läufer sehen nur eine ungefähre Entfernung, niemals das Gebiet selbst.';
 
   @override
-  String get nearbyAreaNone => 'Kein Gebiet gesetzt';
+  String get nearbyAreaNone => 'Keine Gegend festgelegt';
 
   @override
   String nearbyAreaCurrent(String label) {
-    return 'Aktuelles Gebiet: $label';
+    return 'Aktuelle Gegend: $label';
   }
 
   @override
@@ -719,31 +746,32 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nearbyAreaNoResults => 'Keine Orte für diese Suche gefunden.';
 
   @override
-  String get nearbyAreaSaved => 'Gebiet gespeichert';
+  String get nearbyAreaSaved => 'Gegend gespeichert';
 
   @override
   String get nearbyAreaSaveFailed =>
-      'Dein Gebiet konnte nicht gespeichert werden.';
+      'Deine Gegend konnte nicht gespeichert werden.';
 
   @override
-  String get nearbyAreaLoadFailed => 'Dein Gebiet konnte nicht geladen werden.';
+  String get nearbyAreaLoadFailed =>
+      'Deine Gegend konnte nicht geladen werden.';
 
   @override
-  String get nearbyAreaForget => 'Mein Gebiet vergessen';
+  String get nearbyAreaForget => 'Meine Gegend vergessen';
 
   @override
-  String get nearbyAreaForgetConfirmTitle => 'Dein Gebiet vergessen?';
+  String get nearbyAreaForgetConfirmTitle => 'Deine Gegend vergessen?';
 
   @override
   String get nearbyAreaForgetConfirmBody =>
-      'Du erscheinst Läufern in der Nähe nicht mehr, bis du wieder ein Gebiet setzt.';
+      'Du erscheinst Läufern in der Nähe nicht mehr, bis du wieder eine Gegend festlegst.';
 
   @override
-  String get nearbyAreaForgotten => 'Gebiet vergessen';
+  String get nearbyAreaForgotten => 'Gegend vergessen';
 
   @override
   String get nearbyAreaForgetFailed =>
-      'Dein Gebiet konnte nicht vergessen werden.';
+      'Deine Gegend konnte nicht vergessen werden.';
 
   @override
   String get peopleFallbackDisplayName => 'Läufer';
@@ -784,7 +812,110 @@ class AppLocalizationsDe extends AppLocalizations {
   String get readinessContributorRestingHr => 'Ruhepuls';
 
   @override
-  String get dashboardTrendsDivider => 'Trends';
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason. $next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal =>
+      'Verbinde Schlaf- und Herzfrequenzdaten für ein echtes Bild deiner Bereitschaft.';
+
+  @override
+  String get readinessAdviceNoSignalHigh =>
+      'Sieht nach einem guten Tag aus, um aufs Tempo zu drücken.';
+
+  @override
+  String get readinessNextLow =>
+      'Denk über einen lockeren Tag oder einen Ruhetag nach.';
+
+  @override
+  String get readinessNextModerate =>
+      'Ein gleichmäßiger oder moderater Lauf passt heute.';
+
+  @override
+  String get readinessNextHigh =>
+      'Du bist bereit für eine härtere Einheit, falls geplant.';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      'Starke Ermüdung – die Trainingsbelastung der letzten Zeit liegt deutlich über deiner Fitness';
+
+  @override
+  String get readinessReasonFatigued => 'Ermüdet vom Training der letzten Zeit';
+
+  @override
+  String get readinessReasonSlightFatigue => 'Leichte Ermüdung';
+
+  @override
+  String get readinessReasonFormNeutral => 'Deine Form ist neutral';
+
+  @override
+  String get readinessReasonFresh => 'Frisch und gut erholt';
+
+  @override
+  String get readinessReasonVeryFresh => 'Sehr frisch – fast schon getapert';
+
+  @override
+  String get readinessReasonOverTapered =>
+      'Zu lange getapert – die Schärfe kann nachlassen';
+
+  @override
+  String get readinessReasonVeryLittleSleep =>
+      'Sehr wenig Schlaf – die Erholung leidet';
+
+  @override
+  String get readinessReasonShortSleep => 'Zu wenig Schlaf';
+
+  @override
+  String get readinessReasonUnderSleep => 'Etwas unter deinem Schlafziel';
+
+  @override
+  String get readinessReasonWellRested => 'Gut ausgeruht';
+
+  @override
+  String get readinessReasonExtendedSleep =>
+      'Langer Schlaf – die Erholung sollte gut sein';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return 'Ruhepuls $bpm bpm über deinem Basiswert – ein deutliches Zeichen für Krankheit oder unzureichende Erholung';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return 'Ruhepuls $bpm bpm über deinem Basiswert';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh => 'Ruhepuls leicht erhöht';
+
+  @override
+  String get readinessReasonHrBaseline => 'Ruhepuls auf deinem Basiswert';
+
+  @override
+  String get readinessReasonHrBelow =>
+      'Ruhepuls unter deinem Basiswert – gut erholt';
+
+  @override
+  String get todayTitle => 'Heute';
+
+  @override
+  String get progressTitle => 'Fortschritt';
+
+  @override
+  String get progressSummaryTitle => 'Dein Fortschritt';
+
+  @override
+  String get progressSummaryOpenHint => 'Deinen Fortschritt öffnen';
+
+  @override
+  String get progressSummaryWeek => 'Diese Woche';
+
+  @override
+  String get progressSummaryMonth => 'Diesen Monat';
+
+  @override
+  String get todayGoalsMore => 'Weitere Ziele unter Fortschritt';
 
   @override
   String get dashboardTrendGroupVolume => 'Umfang';
@@ -858,12 +989,15 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'Auf der Startseite ausblenden';
+  String get progressHideGroup => 'Unter Fortschritt ausblenden';
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name ist ausgeblendet. In den Einstellungen kannst du es wieder einblenden.';
+    return '$name ist unter Fortschritt ausgeblendet.';
   }
+
+  @override
+  String get dashboardCardHiddenAction => 'Karten verwalten';
 
   @override
   String get dashboardHideCardFailed =>
@@ -980,6 +1114,23 @@ class AppLocalizationsDe extends AppLocalizations {
   String get navStop => 'Stopp';
 
   @override
+  String get navStart => 'Start';
+
+  @override
+  String get navStarting => 'Startet';
+
+  @override
+  String get runStartingA11yLabel => 'Lauf wird gestartet';
+
+  @override
+  String navOpenRecorderA11yLabel(String activity) {
+    return 'Aufzeichnungsbildschirm öffnen ($activity)';
+  }
+
+  @override
+  String get runCancelStartA11yLabel => 'Start abbrechen';
+
+  @override
   String get logReturnToRunA11yLabel => 'Zurück zu deinem Lauf';
 
   @override
@@ -1039,6 +1190,12 @@ class AppLocalizationsDe extends AppLocalizations {
       'Tipps zu Läufen, Training und Erholung';
 
   @override
+  String get homeCoachTitle => 'Coach';
+
+  @override
+  String get homeCoachSubtitleTools => 'Geführte Läufe, Athleten und Coachs';
+
+  @override
   String get youProfileTitle => 'Dein Profil';
 
   @override
@@ -1050,27 +1207,13 @@ class AppLocalizationsDe extends AppLocalizations {
       days,
       locale: localeName,
       other: 'Rennen in $days Tagen',
-      one: 'Rennen in $days Tag',
+      one: 'Rennen morgen',
     );
     return '$_temp0';
   }
-
-  @override
-  String get homeRaceTomorrow => 'Rennen morgen';
 
   @override
   String get homeRaceDay => 'Renntag';
-
-  @override
-  String homePlanStartsInDays(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Beginnt in $days Tagen',
-      one: 'Beginnt in $days Tag',
-    );
-    return '$_temp0';
-  }
 
   @override
   String homePlanUpNext(String name, String date) {
@@ -1078,10 +1221,49 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get homePlanStartsTomorrow => 'Beginnt morgen';
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Beginnt in $days Tagen',
+      one: 'Beginnt morgen',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get youViewProfile => 'Profil ansehen';
+
+  @override
+  String get youEditProfile => 'Profil bearbeiten';
+
+  @override
+  String get editProfileSubtitle => 'Foto, Name und Benutzername';
+
+  @override
+  String get editProfileUsername => 'Benutzername';
+
+  @override
+  String get editProfileUsernameHelp =>
+      'Dein öffentlicher @Benutzername — 3–30 Kleinbuchstaben, Zahlen oder Unterstriche. Andere können dich darüber finden.';
+
+  @override
+  String get editProfileUsernameTaken =>
+      'Dieser Benutzername ist bereits vergeben.';
+
+  @override
+  String get editProfileUsernameInvalid =>
+      'Verwende 3–30 Kleinbuchstaben, Zahlen oder Unterstriche.';
+
+  @override
+  String get editProfileSaving => 'Wird gespeichert…';
+
+  @override
+  String get editProfileSaved => 'Profil gespeichert';
+
+  @override
+  String get editProfileSaveFailed =>
+      'Dein Profil konnte nicht gespeichert werden. Bitte versuche es erneut.';
 
   @override
   String get logSheetTitle => 'Erfassen';
@@ -1134,7 +1316,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Größe und Gewicht sind besondere Gesundheitsdaten. Zum Löschen ausschalten.';
+      'Threkir speichert dein Geschlecht, deine Größe, deinen Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in deinen Plänen, deine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und dein Ernährungstagebuch und nutzt sie zusammen mit deinem Geburtsdatum als Gesundheitsdaten (Art. 9 Abs. 2 lit. a DSGVO), um dein Training und deine Ernährungsziele zu personalisieren und dich in Segment-Bestenlisten nach Geschlecht und Altersgruppe einzuordnen – nur solange diese Option aktiviert ist. Schalte sie aus und speichere, um die Einwilligung zu widerrufen und diese Daten zu löschen; dein Geburtsdatum bleibt als Altersangabe gespeichert.';
 
   @override
   String get bodyMetricsHeight => 'Größe';
@@ -1180,10 +1362,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Dadurch werden deine gespeicherte Größe und dein gesamter Gewichtsverlauf dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.';
+      'Dadurch werden dein Geschlecht, deine Größe, dein Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in deinen Plänen, deine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und dein Ernährungstagebuch dauerhaft gelöscht. Deine Aktivitäten selbst bleiben erhalten, und dein Geburtsdatum bleibt als Altersangabe gespeichert, wird aber nicht mehr als Gesundheitsdatum genutzt. Das kann nicht rückgängig gemacht werden.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Widerrufen & löschen';
+
+  @override
+  String get healthConsentFoodTitle =>
+      'Dein Ernährungstagebuch zählt zu den Gesundheitsdaten';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir speichert ein Ernährungstagebuch nur mit deiner Einwilligung zu Gesundheitsdaten. Bis du sie erteilst, wird nichts erfasst.';
+
+  @override
+  String get healthConsentGiveAction => 'Einwilligung prüfen';
 
   @override
   String get bodyMetricsSaved => 'Gespeichert';
@@ -1299,6 +1492,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get safetyEmpty => 'Noch keine Sicherheitskontakte.';
+
+  @override
+  String get safetyLoadFailed =>
+      'Deine Sicherheitskontakte konnten nicht geladen werden. Es wurde nichts entfernt. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get safetyStatusPending => 'Ausstehend — wartet auf Bestätigung';
@@ -1454,19 +1651,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homeTodaysLift => 'Heutiges Training';
 
   @override
-  String get settingsSectionTraining => 'Training';
-
-  @override
-  String get settingsSectionSettings => 'Einstellungen';
-
-  @override
   String get settingsSectionAppsData => 'Apps & Daten';
 
   @override
-  String get settingsSectionAccountLegal => 'Konto & Rechtliches';
+  String get settingsSectionProfile => 'Profil';
 
   @override
-  String get prefsSectionUnitsDisplay => 'Einheiten & Anzeige';
+  String get settingsSearchHint => 'Einstellungen durchsuchen';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Keine Einstellung passt zu „$query“.';
+  }
+
+  @override
+  String get settingsSectionAccountLegal => 'Konto & Rechtliches';
 
   @override
   String get authEmailLabel => 'E-Mail';
@@ -1692,7 +1891,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'Ein Konto synchronisiert deine Läufe mit der Web-App und deinen anderen Geräten – und holt sie zurück, falls du dieses hier verlierst. Du kannst auch ohne Konto laufen: Hier funktioniert alles offline, und du kannst später unter „Du“ › Einstellungen eines anlegen.';
+      'Ein Konto synchronisiert deine Läufe mit der Web-App und deinen anderen Geräten – und holt sie zurück, falls du dieses hier verlierst. Du kannst auch ohne Konto laufen: Hier funktioniert alles offline, und du kannst später unter „Du“ eines anlegen.';
 
   @override
   String get onboardingAccountCreate => 'Kostenloses Konto erstellen';
@@ -1860,7 +2059,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'Ich willige ein, dass Threkir mein Geschlecht und Geburtsdatum verwendet, um Tempo-, Herzfrequenz- und Kalorienschätzungen zu personalisieren (besondere Gesundheitsdaten, DSGVO Art. 9).';
+      'Ich willige ein, dass Threkir mein Geschlecht, meine Größe, meinen Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit meinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in meinen Plänen, meine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und mein Ernährungstagebuch speichert und sie zusammen mit meinem Geburtsdatum als Gesundheitsdaten (Art. 9 Abs. 2 lit. a DSGVO) nutzt, um mein Training und meine Ernährungsziele zu personalisieren und mich in Segment-Bestenlisten nach Geschlecht und Altersgruppe einzuordnen. Ich kann diese Einwilligung jederzeit widerrufen.';
 
   @override
   String get setupPrivacyTitle => 'Wer sieht deine Läufe?';
@@ -1945,9 +2144,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runStartA11yLabel => 'Lauf starten';
-
-  @override
-  String get runLastRunOpenA11yLabel => 'Details des letzten Laufs öffnen';
 
   @override
   String get runChooseRoute => 'Route wählen';
@@ -2069,13 +2265,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runTapToCancel => 'Zum Abbrechen tippen';
 
   @override
-  String get runFirstRunPrompt =>
-      'Dein erster Lauf ist nur einen Tipp entfernt.';
-
-  @override
-  String get runLastActivity => 'Letzte Aktivität';
-
-  @override
   String get runLastRun => 'Letzter Lauf';
 
   @override
@@ -2167,6 +2356,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runSyncing => 'Synchronisiere …';
 
   @override
+  String get runHeartRateNotSaved =>
+      'Die Herzfrequenz dieser Aktivität wurde nicht gespeichert: Threkir speichert die Herzfrequenz nur mit deiner Einwilligung zu Gesundheitsdaten.';
+
+  @override
   String get runDone => 'Fertig';
 
   @override
@@ -2256,6 +2449,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runA11yStarted => 'Lauf gestartet';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Start in $seconds Sekunden. Zum Abbrechen tippen.',
+      one: 'Start in $seconds Sekunde. Zum Abbrechen tippen.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'Lauf fortgesetzt';
 
   @override
@@ -2326,7 +2530,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$count Schritte',
       one: '$count Schritt',
     );
-    return 'Workout geladen · $_temp0 — zum Starten GO tippen';
+    return 'Workout geladen · $_temp0';
   }
 
   @override
@@ -2493,55 +2697,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aufzeichnung ohne GPS — der Sensor konnte nicht gestartet werden.';
 
   @override
-  String get runAgoJustNow => 'Gerade eben';
-
-  @override
-  String runAgoMinutes(int count) {
-    return 'vor $count Min.';
-  }
-
-  @override
-  String runAgoHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'vor $count Stunden',
-      one: 'vor $count Stunde',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get runAgoYesterday => 'Gestern';
-
-  @override
-  String runAgoDays(int count) {
-    return 'vor $count Tagen';
-  }
-
-  @override
-  String runAgoWeeks(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'vor $count Wochen',
-      one: 'vor $count Woche',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String runAgoMonths(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'vor $count Monaten',
-      one: 'vor $count Monat',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get runWorkoutAbandonedBand => 'Workout abgebrochen · freier Lauf';
 
   @override
@@ -2571,6 +2726,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runWorkoutAbandon => 'Abbrechen';
+
+  @override
+  String get workoutPaceOnPace => 'Im Zieltempo';
+
+  @override
+  String get workoutPaceAhead => 'Schneller als das Zieltempo';
+
+  @override
+  String get workoutPaceBehind => 'Langsamer als das Zieltempo';
+
+  @override
+  String get workoutPaceWayAhead => 'Deutlich schneller als das Zieltempo';
+
+  @override
+  String get workoutPaceWayBehind => 'Deutlich langsamer als das Zieltempo';
 
   @override
   String get runWorkoutMoreActions => 'Weitere Workout-Aktionen';
@@ -2687,7 +2857,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return 'Tippe auf $button, um die Aufzeichnung zu starten, oder füge einen bereits absolvierten hinzu';
+    return 'Tippe auf $button, um einen aufzuzeichnen, oder füge einen bereits absolvierten hinzu';
   }
 
   @override
@@ -2904,7 +3074,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historySignInToSync =>
-      'Melde dich in den Einstellungen an, um Läufe zu synchronisieren';
+      'Melde dich im Tab „Du“ an, um Läufe zu synchronisieren';
 
   @override
   String get historyRefreshFailed =>
@@ -2961,9 +3131,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get addRunTitle => 'Lauf hinzufügen';
-
-  @override
-  String get addRunSave => 'Speichern';
 
   @override
   String get addRunSectionWhen => 'Wann';
@@ -3162,6 +3329,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailSectionElevation => 'Höhenmeter';
 
   @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return 'Höhenprofil über $distance: tiefster Punkt $min, höchster Punkt $max, $gain Anstieg';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$elevation bei $distance';
+  }
+
+  @override
   String get runDetailPaceBandFaster => 'Schneller';
 
   @override
@@ -3236,10 +3418,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Die Zonen verwenden eine altersgeschätzte maximale HF. Wenn du Herzfrequenzmedikamente nimmst (z. B. Betablocker) oder deine maximale HF gemessen hast, lege sie in den Präferenzen fest, um genaue Zonen zu erhalten.';
+      'Die Zonen beruhen auf einem altersgeschätzten Maximalpuls. Wenn du Medikamente nimmst, die die Herzfrequenz beeinflussen (z. B. Betablocker), oder deinen Maximalpuls gemessen hast, lege ihn fest, um genaue Zonen zu erhalten.';
 
   @override
-  String get runDetailHrDisclaimerAction => 'Max. HF festlegen';
+  String get runDetailHrDisclaimerAction => 'Maximalpuls festlegen';
 
   @override
   String get runDetailSectionSplits => 'Splits';
@@ -3374,6 +3556,21 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String runDetailParkCourseRank(String rank, String season) {
     return 'Platz $rank in $season';
+  }
+
+  @override
+  String runDetailParkCourseMonthRank(String rank, String month) {
+    return 'Platz $rank im $month';
+  }
+
+  @override
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return 'Platz $monthRank im $month, Platz $seasonRank im Jahr $season';
   }
 
   @override
@@ -3543,6 +3740,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get runDetailDeleteQueued =>
       'Löschen in der Cloud fehlgeschlagen; der Lauf bleibt vorerst erhalten – wird erneut versucht, sobald du wieder online bist.';
+
+  @override
+  String get runDetailDeleting => 'Lauf wird gelöscht…';
 
   @override
   String get runDetailSuggestLink => 'Verknüpfen';
@@ -3729,6 +3929,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routesDiscover => 'Entdecken';
+
+  @override
+  String get routesViewGroup => 'Routen-Bereich';
+
+  @override
+  String get routesViewMine => 'Meine';
+
+  @override
+  String get routesViewExplore => 'Entdecken';
 
   @override
   String get routesSyncFromCloud => 'Aus der Cloud synchronisieren';
@@ -3919,6 +4128,21 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get routeBuilderPinAlreadyThere =>
       'Hier ist bereits ein Punkt — tippe weiter entfernt, um einen weiteren hinzuzufügen.';
+
+  @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Punkt $index von $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Punkt $index von $total, Start';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Punkt $index von $total, Ziel';
+  }
 
   @override
   String get routeBuilderTargetTooLong =>
@@ -4311,7 +4535,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailAiAttribution =>
-      'Von KI aus den Streckendaten verfasst';
+      'Von KI aus den Daten dieser Route verfasst';
 
   @override
   String get routeDetailDescribeFailed =>
@@ -4326,7 +4550,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'KI-Beschreibungen sind eine Pro-Funktion. Upgrade zum Verbessern.';
+      'KI-Beschreibungen sind eine Pro-Funktion.';
 
   @override
   String get routeDetailDescShapeLoop => 'Rundkurs';
@@ -4738,9 +4962,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get exploreRoutesTitle => 'Routen erkunden';
 
   @override
-  String get exploreRoutesModeSearch => 'Suche';
-
-  @override
   String get exploreRoutesModeNearMe => 'In meiner Nähe';
 
   @override
@@ -4883,6 +5104,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get heatmapNoRoutesHere => 'Hier keine Routen';
 
   @override
+  String get heatmapLoadFailed =>
+      'Routen konnten nicht geladen werden. Tippe, um es erneut zu versuchen';
+
+  @override
   String get heatmapNoRoutesHint =>
       'Hier keine Routen. Verschiebe die Karte oder ändere die Filter.';
 
@@ -4971,7 +5196,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get runHeatmapEmptyTitle => 'Noch keine erfassten Läufe';
+  String get runHeatmapEmptyTitle => 'Noch keine Läufe auf der Karte';
 
   @override
   String get runHeatmapEmptyBody =>
@@ -5000,13 +5225,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runHeatmapLegendTitle => 'Deine Heatmap';
 
   @override
-  String runHeatmapLegendSummaryOne(int n) {
-    return '$n erfasster Lauf – heller, wo du am häufigsten läufst.';
-  }
-
-  @override
-  String runHeatmapLegendSummaryMany(int n) {
-    return '$n erfasste Läufe – heller, wo du am häufigsten läufst.';
+  String runHeatmapLegendSummary(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Läufe auf der Karte – heller, wo du am häufigsten läufst.',
+      one: '$n Lauf auf der Karte – heller, wo du am häufigsten läufst.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5092,6 +5318,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get feedEveryoneYouFollow => 'Alle, denen du folgst';
+
+  @override
+  String get feedFilterAuthor => 'Aktivitäten von';
 
   @override
   String get feedRunnerFallback => 'Läufer';
@@ -5642,7 +5871,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get profileNotifEventReminder =>
-      'Eine Veranstaltung, zu der du gehst, steht bevor';
+      'Ein Event, zu dem du gehst, steht bevor';
 
   @override
   String get profileNotifAchievement => 'Du hast einen neuen Erfolg erzielt';
@@ -5681,7 +5910,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get socialTabRoutes => 'Routen';
 
   @override
-  String get socialTabDiscover => 'Entdecken';
+  String get socialTabEvents => 'Events';
 
   @override
   String get discoverSearchPlaceholder => 'Kurse, Clubs suchen…';
@@ -5895,7 +6124,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get clubDetailNameHintAction =>
-      'Du kannst deinen Namen in deinen Kontoeinstellungen hinzufügen.';
+      'Füge deinem Konto deinen Namen hinzu.';
 
   @override
   String get clubRoleOwner => 'Inhaber';
@@ -6098,6 +6327,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Mit diesem Club wurden noch keine Routen geteilt.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Die Routen dieses Clubs konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get clubDetailTemplateAdded => 'Vorlage zu deinen Plänen hinzugefügt.';
 
   @override
@@ -6112,6 +6345,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Noch keine Planvorlagen für diesen Club.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Die Vorlagen dieses Clubs konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get clubDetailAdopt => 'Übernehmen';
@@ -6302,8 +6539,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Teilnahme konnte nicht aktualisiert werden. Bitte erneut versuchen.';
 
   @override
-  String get eventRsvpFailed =>
-      'Deine Zusage konnte nicht aktualisiert werden. Bitte erneut versuchen.';
+  String eventRsvpFailed(String error) {
+    return 'Deine Zusage konnte nicht aktualisiert werden: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Bin dabei';
@@ -6402,7 +6640,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventRemoveResultBody =>
-      'Deine eingereichte Zielzeit wird aus der Bestenliste dieser Veranstaltung entfernt. Du kannst später erneut einreichen.';
+      'Deine eingereichte Zielzeit wird aus der Bestenliste dieses Events entfernt. Du kannst später erneut einreichen.';
 
   @override
   String get eventRemoveResultConfirm => 'Ergebnis entfernen';
@@ -6938,7 +7176,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewAiErrorConsent =>
-      'Der Plan-Assistent benötigt die aktualisierte KI-Information.';
+      'Der Plan-Assistent benötigt die aktualisierten KI-Hinweise.';
 
   @override
   String get planNewAiReviewDisclosure => 'Hinweise ansehen';
@@ -7034,9 +7272,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get planLibraryLoadError =>
       'Bibliothek konnte nicht geladen werden. Erneut versuchen.';
-
-  @override
-  String get planLibraryRetry => 'Erneut versuchen';
 
   @override
   String get planLibraryEmpty => 'Noch keine veröffentlichten Pläne.';
@@ -7397,7 +7632,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get planDetailPublishTooltip => 'Als Vereinsvorlage veröffentlichen';
+  String get planDetailPublishTooltip => 'Als Club-Vorlage veröffentlichen';
 
   @override
   String get planDetailRacesTitle => 'Wettkämpfe in diesem Plan';
@@ -7713,19 +7948,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailPublishLoadClubsTimeout =>
-      'Deine Vereine konnten nicht geladen werden — prüfe dein Netzwerk.';
+      'Deine Clubs konnten nicht geladen werden — prüfe dein Netzwerk.';
 
   @override
   String get planDetailPublishLoadClubsFailed =>
-      'Deine Vereine konnten nicht geladen werden.';
+      'Deine Clubs konnten nicht geladen werden.';
 
   @override
   String get planDetailPublishNoClubs =>
-      'Du musst Inhaber oder Admin eines Vereins sein, um eine Vorlage zu veröffentlichen.';
+      'Du musst Inhaber oder Admin eines Clubs sein, um eine Vorlage zu veröffentlichen.';
 
   @override
   String planDetailPublishSuccess(String name) {
-    return '„$name“ als Vereinsvorlage veröffentlicht.';
+    return '„$name“ als Club-Vorlage veröffentlicht.';
   }
 
   @override
@@ -7734,11 +7969,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get planDetailPublishPickerTitle => 'Im Verein veröffentlichen';
+  String get planDetailPublishPickerTitle => 'Im Club veröffentlichen';
 
   @override
   String get planDetailPublishPickerBody =>
-      'Mitglieder des Vereins können diesen Plan als eigenen übernehmen.';
+      'Mitglieder des Clubs können diesen Plan als eigenen übernehmen.';
 
   @override
   String planDetailPublishPickerMembers(int count) {
@@ -7988,19 +8223,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Die KI-Funktionen von Threkir leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA, damit er die Antworten des Coaches und die Vorschläge der anderen KI-Funktionen für dich verfassen kann. Je nach genutzter Funktion umfasst dieser Teil:';
+      'Die KI-Funktionen von Threkir leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA, damit er die Antworten des Coachs und die Vorschläge der anderen KI-Funktionen für dich verfassen kann. Je nach genutzter Funktion umfasst dieser Teil:';
 
   @override
   String get coachConsentBulletProfile =>
-      'Nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast: dein Geburtsdatum und deine konfigurierten HF-Zonen, falls eingestellt.';
+      'Nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast: dein Geburtsdatum und deine konfigurierten HF-Zonen, falls eingestellt.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Ein Ausschnitt deiner letzten Läufe: das Datum, die Distanz, die Dauer, der Aktivitätstyp, die Höhenmeter, ob der Lauf drinnen stattfand und wie er im Vergleich zu einer geplanten Einheit lief, sowie deine durchschnittliche Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
+      'Ein Ausschnitt deiner letzten Läufe: das Datum, die Distanz, die Dauer, der Aktivitätstyp, die Höhenmeter, ob der Lauf drinnen stattfand und wie er im Vergleich zu einer geplanten Einheit lief, sowie deine durchschnittliche Herzfrequenz (nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletPlan =>
-      'Der Trainingsplan oder die Trainingspläne, die du ausgewählt hast: für jeden Plan sein Name, sein Status, das Zielrennen und die Zielzeit, die aktuelle 5-km-Zeit und der Fitnesswert, auf denen er beruht, seine Datumsangaben, Trainingstage, Regeln und Notizen; für jede Woche die Phase, die Zieldistanz und die Notizen; und für jede Einheit das Datum, die Art, die Vorgaben, der Aufbau, die Notizen, der Name und die Priorität des Rennens und ob du sie absolviert oder übersprungen hast, sowie die Herzfrequenzvorgaben (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
+      'Der Trainingsplan oder die Trainingspläne, die du ausgewählt hast: für jeden Plan sein Name, sein Status, das Zielrennen und die Zielzeit, die aktuelle 5-km-Zeit und der Fitnesswert, auf denen er beruht, seine Datumsangaben, Trainingstage, Regeln und Notizen; für jede Woche die Phase, die Zieldistanz und die Notizen; und für jede Einheit das Datum, die Art, die Vorgaben, der Aufbau, die Notizen, der Name und die Priorität des Rennens und ob du sie absolviert oder übersprungen hast, sowie die Herzfrequenzvorgaben (nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -8020,7 +8255,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Deine Distanzeinheit, deine Ruheherzfrequenz und deine maximale Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
+      'Deine Distanzeinheit, dein Ruhe- und Maximalpuls (nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
 
   @override
   String get coachConsentBulletLifts =>
@@ -8028,7 +8263,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletNutrition =>
-      'Nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast: eine 7-Tage-Zusammenfassung deines Ernährungstagebuchs (erfasste Tage sowie Durchschnittswerte für Kalorien, Eiweiß, Kohlenhydrate und Fett), niemals einzelne Mahlzeiten.';
+      'Nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast: eine 7-Tage-Zusammenfassung deines Ernährungstagebuchs (erfasste Tage sowie Durchschnittswerte für Kalorien, Eiweiß, Kohlenhydrate und Fett), niemals einzelne Mahlzeiten.';
 
   @override
   String get coachConsentBulletPlanEdit =>
@@ -8036,7 +8271,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Die mit „nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast“ gekennzeichneten Angaben sind Gesundheitsdaten: Mit deiner Zustimmung willigst du ausdrücklich ein, dass sie für diese Funktionen an Anthropic übermittelt werden. Anthropic verarbeitet die Daten im Auftrag von Threkir gemäß seinen Auftragsverarbeitungsbedingungen, trainiert seine Modelle nicht damit und löscht sie innerhalb von 30 Tagen (länger nur bei Inhalten, die seine Sicherheitssysteme markieren). Du kannst diese Einwilligung jederzeit unter Einstellungen → Konto widerrufen; dadurch wird nichts weiter übermittelt, bereits Übermitteltes wird jedoch nicht rückgängig gemacht. Alle Details, einschließlich der Garantien für die Datenübermittlung, findest du in unserer Datenschutzerklärung.';
+      'Die mit „nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast“ gekennzeichneten Angaben sind Gesundheitsdaten: Mit deiner Zustimmung willigst du ausdrücklich ein, dass sie für diese Funktionen an Anthropic übermittelt werden. Anthropic verarbeitet die Daten im Auftrag von Threkir gemäß seinen Auftragsverarbeitungsbedingungen, trainiert seine Modelle nicht damit und löscht sie innerhalb von 30 Tagen (länger nur bei Inhalten, die seine Sicherheitssysteme markieren). Du kannst diese Einwilligung jederzeit unter Konto im Tab „Du“ widerrufen; dadurch wird nichts weiter übermittelt, bereits Übermitteltes wird jedoch nicht rückgängig gemacht. Alle Details, einschließlich der Garantien für die Datenübermittlung, findest du in unserer Datenschutzerklärung.';
 
   @override
   String get coachConsentAction =>
@@ -8151,7 +8386,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachLimitReachedFree =>
-      'Tageslimit erreicht. Pro hat ein höheres Limit — upgrade in den Einstellungen.';
+      'Tageslimit erreicht. Pro hat ein höheres Limit.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -8290,11 +8525,20 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'Der Coach ist gerade nicht erreichbar. Versuche es gleich noch einmal.';
+
+  @override
+  String get coachStaleThread =>
+      'Diese Unterhaltung ist nicht mehr aktuell. Öffne den Coach erneut und versuche es noch einmal.';
+
+  @override
   String get coachTransportError =>
       'Coach konnte nicht erreicht werden. Prüfe deine Verbindung und versuche es erneut.';
 
   @override
-  String get coachStreamFailed => 'Stream fehlgeschlagen';
+  String get coachStreamFailed =>
+      'Die Antwort des Coachs wurde abgebrochen. Sende deine Nachricht noch einmal.';
 
   @override
   String get coachNewConversationFailed =>
@@ -8485,7 +8729,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsAccountBackupPreparing => 'Backup wird vorbereitet…';
 
   @override
-  String get settingsAccountBackupShareText => 'Run-App-Backup';
+  String get settingsAccountBackupShareText => 'Threkir-Backup';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8611,10 +8855,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get guidedRunsTitle => 'Geführte Läufe';
 
   @override
-  String get guidedRunsSubtitle =>
-      'Skriptgesteuerte Workouts mit Coach-Stimme und TTS-Hinweisen';
-
-  @override
   String get privacyZonesTitle => 'Datenschutzzonen';
 
   @override
@@ -8709,7 +8949,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count Läufe sind noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält sie daher nicht — nutze das vollständige Backup, um sie zu sichern.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Läufe sind noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält sie daher nicht — nutze das vollständige Backup, um sie zu sichern.',
+      one:
+          '$count Lauf ist noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält ihn daher nicht — nutze das vollständige Backup, um ihn zu sichern.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -9117,6 +9365,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro & Support';
+
+  @override
+  String get proUpsellAction => 'Pro ansehen';
 
   @override
   String proCouldNotOpen(Object error) {
@@ -9585,6 +9836,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Noch keine Rotationen. Erstelle eine, um eine Gruppe von Schuhen oder Rädern zusammenzufassen.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Deine Rotationen konnten nicht geladen werden. Es wurde nichts entfernt. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get gearRotationName => 'Name der Rotation';
 
   @override
@@ -9630,6 +9885,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Rotation konnte nicht gespeichert werden: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Rotation konnte nicht gelöscht werden: $error';
   }
 
   @override
@@ -9699,6 +9959,19 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String privacyZonesRaisedToFloor(int count, int meters) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Zonen waren kleiner als $meters m und decken jetzt $meters m ab, die kleinste mögliche Größe.',
+      one:
+          '$count Zone war kleiner als $meters m und deckt jetzt $meters m ab, die kleinste mögliche Größe.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String privacyZonesCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -9731,14 +10004,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyZonesDiscardBody =>
-      'Sie haben nicht gespeicherte Datenschutzzonen. Ohne Speichern verlassen?';
+      'Du hast ungespeicherte Datenschutzzonen. Ohne Speichern verlassen?';
 
   @override
   String get discardChangesTitle => 'Änderungen verwerfen?';
 
   @override
   String get discardChangesBody =>
-      'Sie haben nicht gespeicherte Änderungen. Ohne Speichern verlassen?';
+      'Du hast ungespeicherte Änderungen. Ohne Speichern verlassen?';
 
   @override
   String get discardChangesCancel => 'Abbrechen';
@@ -9747,7 +10020,46 @@ class AppLocalizationsDe extends AppLocalizations {
   String get discardChangesDiscard => 'Verwerfen';
 
   @override
+  String get discardChangesBusy =>
+      'Wird noch gespeichert. Du kannst die Seite verlassen, sobald der Vorgang abgeschlossen ist.';
+
+  @override
   String get prefsTitle => 'Voreinstellungen';
+
+  @override
+  String get prefsPageDisplay => 'Einheiten & Anzeige';
+
+  @override
+  String get prefsPageDisplaySummary =>
+      'Sprache, Design, Distanz- und Gewichtseinheiten, Tempoformat, Karten und das Zeitfenster für Rückgängig.';
+
+  @override
+  String get prefsPageRecording => 'Aufzeichnung & Ansagen';
+
+  @override
+  String get prefsPageRecordingSummary =>
+      'Die Aktivität, mit der eine neue Aufzeichnung startet, und was dein Handy oder deine Uhr beim Laufen ansagt.';
+
+  @override
+  String get prefsPageTraining => 'Training';
+
+  @override
+  String get prefsPageTrainingSummary =>
+      'Dein wöchentliches Distanzziel, Herzfrequenz und Herzfrequenzzonen, Wettkampfverpflegung und der Ton des Coachs.';
+
+  @override
+  String get prefsPagePrivacy => 'Datenschutz & Teilen';
+
+  @override
+  String get prefsPagePrivacySummary =>
+      'Wer deine Läufe sieht, ob andere Läufer dich finden können, Datenschutzzonen und Fehlerberichte.';
+
+  @override
+  String get prefsPageNotifications => 'Benachrichtigungen';
+
+  @override
+  String get prefsPageNotificationsSummary =>
+      'Welche E-Mails und Push-Benachrichtigungen du bekommst und welche optionalen E-Mails du abonnieren kannst.';
 
   @override
   String get prefsOfflineNotice =>
@@ -9904,9 +10216,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get prefsCoachAnalytical => 'Analytisch';
 
   @override
-  String get prefsSectionNotifications => 'Benachrichtigungen';
-
-  @override
   String get prefsEmailNotifications => 'E-Mail-Benachrichtigungen';
 
   @override
@@ -10025,14 +10334,43 @@ class AppLocalizationsDe extends AppLocalizations {
   String get prefsSectionActivityRecording => 'Aktivität & Aufzeichnung';
 
   @override
-  String get prefsSectionTrainingDemographics =>
-      'Training & demografische Daten';
-
-  @override
-  String get prefsSectionPrivacySharing => 'Datenschutz & Teilen';
-
-  @override
   String get prefsSectionAiCoach => 'KI-Coach';
+
+  @override
+  String get prefsGroupLanguageTheme => 'Sprache & Design';
+
+  @override
+  String get prefsGroupUnits => 'Einheiten';
+
+  @override
+  String get prefsGroupMapsPages => 'Karten & Seiten';
+
+  @override
+  String get prefsGroupVoiceFeedback => 'Sprachausgabe';
+
+  @override
+  String get prefsGroupWeeklyGoal => 'Wochenziel';
+
+  @override
+  String get prefsGroupHeartRate => 'Herzfrequenzzonen';
+
+  @override
+  String get prefsGroupPlans => 'Trainingspläne';
+
+  @override
+  String get prefsGroupYourRuns => 'Deine Läufe';
+
+  @override
+  String get prefsGroupBeingFound => 'Gefunden werden';
+
+  @override
+  String get prefsGroupTelemetry => 'Datenschutz & Telemetrie';
+
+  @override
+  String get prefsGroupEmailPush => 'E-Mail und Push';
+
+  @override
+  String get prefsGroupOptionalEmails => 'Optionale E-Mails';
 
   @override
   String get prefsSignInToEdit =>
@@ -10122,13 +10460,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dashboardCoachTooltip => 'Coach';
 
   @override
-  String get dashboardFeedTooltip => 'Aktivitäten-Feed';
-
-  @override
   String get dashboardRecapTooltip => 'Jahresrückblick im Laufen';
-
-  @override
-  String get dashboardProfileTooltip => 'Dein Profil';
 
   @override
   String get dashboardWelcomeTitle => 'Willkommen!';
@@ -10290,10 +10622,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dashboardStreakHistory => 'Verlauf';
 
   @override
-  String get dashboardStreakDayUnit => 'Tag';
-
-  @override
-  String get dashboardStreakDaysUnit => 'Tage';
+  String dashboardStreakDayUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Tage',
+      one: 'Tag',
+    );
+    return '$_temp0';
+  }
 
   @override
   String dashboardStreakBest(int count) {
@@ -10413,11 +10750,28 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Volumenbasiert — lege Ruhe- und Maximalpuls in den Einstellungen fest und zeichne mit einem Gurt auf, um auf TRIMP zu wechseln.';
+      'Volumenbasiert — lege Ruhe- und Maximalpuls fest und zeichne mit einem Gurt auf, um auf TRIMP zu wechseln.';
+
+  @override
+  String get trainingLoadSetHeartRate => 'Herzfrequenz festlegen';
 
   @override
   String get trainingLoadEmpty =>
       'Zeichne ein paar Läufe auf, um deinen Fitness-Trend zu sehen.';
+
+  @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'Fitness von $ctlFrom auf $ctlTo, Ermüdung von $atlFrom auf $atlTo, Form von $tsbFrom auf $tsbTo, $from bis $to';
+  }
 
   @override
   String get trainingLoadLegendFitness => 'Fitness';
@@ -10497,6 +10851,38 @@ class AppLocalizationsDe extends AppLocalizations {
   String get fitnessTitle => 'Fitness';
 
   @override
+  String get fitnessRecoveryAdviceNoData =>
+      'Noch nicht genug Daten – erfasse ein paar Läufe mit Herzfrequenz und versuche es erneut.';
+
+  @override
+  String get fitnessRecoveryAdviceWelcomeBack =>
+      'Willkommen zurück. Deine Formwerte haben sich nach der Pause zurückgesetzt – baue mit lockerem, regelmäßigem Laufen langsam wieder auf, bevor du harte Einheiten machst.';
+
+  @override
+  String get fitnessRecoveryAdviceHeavyLoad =>
+      'Du bist stark belastet – heute locker laufen oder einen Ruhetag einlegen.';
+
+  @override
+  String get fitnessRecoveryAdviceBuilding =>
+      'Deine Fitness baut sich noch auf. Konzentriere dich auf Regelmäßigkeit; eine Qualitätseinheit pro Woche reicht vorerst.';
+
+  @override
+  String get fitnessRecoveryAdviceLoaded =>
+      'Belastet, aber noch im Aufbaubereich. Locker oder gleichmäßig passt heute.';
+
+  @override
+  String get fitnessRecoveryAdviceSweetSpot =>
+      'Idealbereich – ein gleichmäßiger Lauf oder ein Tempolauf passt.';
+
+  @override
+  String get fitnessRecoveryAdviceTapering =>
+      'Tapering – du wirst frischer; ein Rennen oder ein hartes Training sitzt in den nächsten Tagen gut.';
+
+  @override
+  String get fitnessRecoveryAdviceVeryFresh =>
+      'Sehr frisch – wenn du absichtlich getapert hast, lauf bald ein Rennen. Sonst ist es Zeit, wieder aufzubauen.';
+
+  @override
   String get fitnessStatVo2Max => 'VO₂ max';
 
   @override
@@ -10516,6 +10902,17 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get fitnessStatRunsTooltip =>
       'Aktuelle Läufe, die lang genug sind, um in deine Fitness-Schätzung einzufließen.';
+
+  @override
+  String fitnessNextHardSession(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Nächste harte Einheit nach ~$days Tagen lockeren Laufens.',
+      one: 'Nächste harte Einheit nach ~$days Tag lockeren Laufens.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get fitnessStatCtl => 'Fitness (CTL)';
@@ -11122,7 +11519,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get goalEditorDeletedAnnounce => 'Ziel gelöscht';
 
   @override
-  String get eventFormTitle => 'Neue Veranstaltung';
+  String get eventFormTitle => 'Neues Event';
 
   @override
   String get eventFormTitleLabel => 'Titel';
@@ -11152,6 +11549,26 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventFormRecurOneOff => 'Einmalig';
 
   @override
+  String get eventRecurrenceOneOff => 'Einmaliges Event';
+
+  @override
+  String get eventRecurrenceMonthly => 'Wiederholt sich monatlich';
+
+  @override
+  String get eventRecurrenceWeekly => 'Jede Woche';
+
+  @override
+  String get eventRecurrenceBiweekly => 'Alle zwei Wochen';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => ', ';
+
+  @override
   String get eventFormRecurWeekly => 'Wöchentlich';
 
   @override
@@ -11161,13 +11578,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventFormRecurMonthly => 'Monatlich';
 
   @override
-  String get eventFormCancel => 'Abbrechen';
+  String get eventFormCreate => 'Event erstellen';
 
   @override
-  String get eventFormCreate => 'Veranstaltung erstellen';
-
-  @override
-  String get eventEditorCategory => 'Veranstaltungstyp';
+  String get eventEditorCategory => 'Event-Typ';
 
   @override
   String get eventEditorCatRun => 'Gruppenlauf';
@@ -11183,14 +11597,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventEditorCategoryHint =>
-      'Wähle die Art der Veranstaltung – ein Kurs oder Treffen lässt Strecke, Distanz, Tempo und Rennergebnisse weg.';
+      'Wähle die Art des Events – ein Kurs oder Treffen lässt Route, Distanz, Tempo und Rennergebnisse weg.';
 
   @override
   String get eventEditorMembersOnlyToggle => 'Nur für Mitglieder';
 
   @override
   String get eventEditorMembersOnlyHint =>
-      'Nur Vereinsmitglieder können dieses Event sehen; es erscheint nicht in der öffentlichen Suche.';
+      'Nur Clubmitglieder können dieses Event sehen; es erscheint nicht in der öffentlichen Suche.';
 
   @override
   String get eventEditorDiscipline => 'Disziplin';
@@ -11231,9 +11645,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get clubFormJoinInvite => 'Nur mit Einladung';
-
-  @override
-  String get clubFormCancel => 'Abbrechen';
 
   @override
   String get clubFormCreate => 'Erstellen';
@@ -11334,7 +11745,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$count $activity-Aktivitäten',
       one: '$count $activity-Aktivität',
     );
-    return 'Wir haben $_temp0 nach dem Kauf gefunden. Entferne das Häkchen bei allen, bei denen du sie nicht getragen hast.';
+    return 'Wir haben $_temp0 nach dem Kauf gefunden. Entferne das Häkchen bei allen, bei denen du die Ausrüstung nicht benutzt hast.';
   }
 
   @override
@@ -11410,7 +11821,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get workoutEditHrHint =>
-      'Lass das untere Ende leer für eine Obergrenze, etwa 125. Die Herzfrequenz ist ein Gesundheitsdatum, deshalb braucht ein Zielwert die Gesundheitsdaten-Einwilligung der laufenden Person.';
+      'Lass das untere Ende leer für eine Obergrenze, etwa 125. Die Herzfrequenz ist ein Gesundheitsdatum, deshalb braucht ein Zielwert die Einwilligung der laufenden Person zu Gesundheitsdaten.';
 
   @override
   String workoutEditErrRangeBounds(int min, int max) {
@@ -11423,7 +11834,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get workoutEditErrHrNeedsConsent =>
-      'Ein Herzfrequenz-Ziel braucht die Gesundheitsdaten-Einwilligung der laufenden Person. Lösche es oder bitte sie, in ihren Einstellungen einzuwilligen.';
+      'Eine Herzfrequenzvorgabe braucht die Einwilligung der laufenden Person zu Gesundheitsdaten. Lösche sie oder bitte die Person, in ihren Einstellungen einzuwilligen.';
 
   @override
   String get workoutEditNotesLabel => 'Notizen';
@@ -11489,11 +11900,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get upcomingEventInOneHour => 'In 1 Stunde';
-
-  @override
   String upcomingEventInHours(int count) {
-    return 'In $count Stunden';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'In $count Stunden',
+      one: 'In $count Stunde',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -11629,7 +12043,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareCardStatClimb => 'Anstieg';
 
   @override
-  String get shareCardStatHeartRate => 'Ø Puls';
+  String get shareCardStatHeartRate => 'Ø HF';
 
   @override
   String get shareCardSave => 'In Fotos sichern';
@@ -11705,8 +12119,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Bei diesem Lauf verwendete Ausrüstung markieren';
 
   @override
-  String get runGearChipsEmpty =>
-      'Du hast noch keine Ausrüstung registriert. Füge welche unter Einstellungen → Ausrüstung hinzu.';
+  String get runGearChipsEmpty => 'Du hast noch keine Ausrüstung registriert.';
 
   @override
   String get runGearChipsCancel => 'Abbrechen';
@@ -11762,9 +12175,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get gearFormNotesLabel => 'Notizen';
-
-  @override
-  String get gearFormCancel => 'Abbrechen';
 
   @override
   String get gearFormSaving => 'Wird gespeichert…';
@@ -11836,6 +12246,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get notificationBellTooltip => 'Benachrichtigungen';
+
+  @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Benachrichtigungen, $count ungelesen',
+      one: 'Benachrichtigungen, $count ungelesen',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get liveRunMapWaitingGps => 'Warte auf GPS...';
@@ -11925,13 +12346,30 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String ttsDistanceWholeKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Kilometer',
+      one: '$count Kilometer',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String ttsDistanceMetres(int value) {
     return '$value Meter';
   }
 
   @override
-  String ttsDistanceMileSingular(String value) {
-    return '$value Meile';
+  String ttsDistanceWholeMiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Meilen',
+      one: '$count Meile',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12335,10 +12773,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Anmeldung, Profil, Import und Backup, Konto löschen';
 
   @override
-  String get settingsTabPreferencesSubtitle =>
-      'Einheiten, Design, Aufzeichnung, Training, Datenschutz';
-
-  @override
   String get settingsTabIntegrationsSubtitle =>
       'Strava, Rennkalender, Herzfrequenzgurt, Laufband, Uhr';
 
@@ -12349,10 +12783,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get settingsTabGearSubtitle =>
       'Schuhe + Räder und Laufleistung pro Artikel verfolgen';
-
-  @override
-  String get settingsTabCoachingSubtitle =>
-      'Athleten betreuen oder dem eigenen Coach folgen';
 
   @override
   String get settingsTabProSubtitle =>
@@ -12519,7 +12949,7 @@ class AppLocalizationsDe extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count Einheiten',
-      one: '1 Einheit',
+      one: '$count Einheit',
     );
     return '$_temp0';
   }
@@ -12885,7 +13315,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get gymLibraryAdopting => 'Wird übernommen…';
 
   @override
+  String get gymLibraryAdopted => 'Zu meinen Routinen hinzugefügt';
+
+  @override
   String get gymLibraryAdoptFailed => 'Routine konnte nicht übernommen werden.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Zu deinen Routinen hinzugefügt. Sie erscheint dort, sobald dieses Handy synchronisiert.';
 
   @override
   String get gymRoutineDelete => 'Löschen';
@@ -13195,7 +13632,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise. Akzeptiere sie unter Einstellungen → Konto.';
+      'Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise.';
 
   @override
   String get platePhotoErrorPro =>
@@ -13350,10 +13787,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Größe, Gewicht, Geburtsdatum und Geschlecht sind Gesundheitsdaten und werden daher in den Einstellungen hinter der Einwilligung bearbeitet.';
+      'Größe, Gewicht, Geburtsdatum und Geschlecht sind Gesundheitsdaten und lassen sich daher erst nach deiner Einwilligung bearbeiten.';
 
   @override
-  String get nutritionTargetsEditMetrics => 'In Einstellungen bearbeiten';
+  String get nutritionTargetsEditMetrics => 'Körperdaten bearbeiten';
 
   @override
   String get nutritionTargetsUnset => 'Nicht angegeben';
@@ -13470,11 +13907,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsHrMedicationNeedsConsent =>
-      'Das ist ein Gesundheitsdatum und braucht zuerst deine Gesundheitsdaten-Einwilligung.';
+      'Das ist ein Gesundheitsdatum und braucht zuerst deine Einwilligung zu Gesundheitsdaten.';
 
   @override
   String get prefsHrMedicationSetMaxHr =>
-      'Trag eine gemessene maximale Herzfrequenz ein, aus einer harten Belastung oder einem Test, damit deine Zonen zu dir passen.';
+      'Trag einen gemessenen Maximalpuls ein, aus einer harten Belastung oder einem Test, damit deine Zonen zu dir passen.';
 
   @override
   String get nutritionEmptyTitle => 'Heute noch nichts erfasst';
@@ -13533,6 +13970,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get nutritionSearching => 'Suche läuft…';
+
+  @override
+  String nutritionSearchKcalPer100g(int kcal) {
+    return '$kcal kcal / 100 g';
+  }
 
   @override
   String get nutritionNoResults =>
@@ -14037,6 +14479,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Alle Athleten auf einen Blick – Belastung, Plantreue und Verletzungsrisiko.';
 
   @override
+  String get coachingRosterLoadFailed =>
+      'Deine Athletenübersicht konnte nicht geladen werden.';
+
+  @override
   String get coachingRosterNeverRun => 'Noch keine Läufe';
 
   @override
@@ -14057,7 +14503,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachingRosterHrDriftHint =>
-      'Bei geplanten lockeren Läufen der letzten zwei Wochen ist die Herzfrequenz beim gleichen Tempo höher als in den sechs Wochen davor. Nur für Athleten mit Gesundheitsdaten-Einwilligung angezeigt.';
+      'Bei geplanten lockeren Läufen der letzten zwei Wochen ist die Herzfrequenz beim gleichen Tempo höher als in den sechs Wochen davor. Nur für Athleten mit Einwilligung zu Gesundheitsdaten angezeigt.';
 
   @override
   String get metricEasyHrDriftLabel => 'Puls-Drift bei lockeren Läufen';
@@ -14100,10 +14546,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachingRemove => 'Entfernen';
 
   @override
-  String get coachingMyCoaches => 'Meine Coaches';
+  String get coachingMyCoaches => 'Meine Coachs';
 
   @override
-  String get coachingMyCoachesSub => 'Coaches, die dein Training sehen können';
+  String get coachingMyCoachesSub => 'Coachs, die dein Training sehen können';
 
   @override
   String get coachingNoCoaches =>
@@ -14577,7 +15023,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get roadbookWeightUnavailable =>
-      'Um die Flüssigkeit an deinem Körpergewicht auszurichten, trage dein Gewicht unter Körperdaten ein und erteile dort die Einwilligung für Gesundheitsdaten.';
+      'Um die Flüssigkeit an deinem Körpergewicht auszurichten, trage dein Gewicht unter Körperdaten ein und erteile dort die Einwilligung zu Gesundheitsdaten.';
 
   @override
   String get roadbookColTarget => 'Zielzeit';
@@ -14756,11 +15202,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String challengesEndsIn(int n) {
-    return 'Endet in $n Tagen';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Endet in $n Tagen',
+      one: 'Endet heute',
+    );
+    return '$_temp0';
   }
-
-  @override
-  String get challengesEndsToday => 'Endet heute';
 
   @override
   String get challengesEnded => 'Beendet';
@@ -14945,11 +15394,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get challengesStandingTiedOne => 'Gleichauf mit 1 weiteren';
-
-  @override
-  String challengesStandingTiedMany(int n) {
-    return 'Gleichauf mit $n weiteren';
+  String challengesStandingTied(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Gleichauf mit $n weiteren Personen',
+      one: 'Gleichauf mit $n weiteren Person',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -15082,6 +15534,26 @@ class AppLocalizationsDe extends AppLocalizations {
   String get racesSectionAnyTime => 'Jederzeit laufen';
 
   @override
+  String get racesShowGroup => 'Anzeigen';
+
+  @override
+  String get racesShowAll => 'Alle';
+
+  @override
+  String get racesShowRaces => 'Rennen';
+
+  @override
+  String get racesShowCourses => 'Strecken';
+
+  @override
+  String get racesAnyTimeParks => 'Parks';
+
+  @override
+  String racesAnyTimeParkLink(String park) {
+    return '$park: Parkseite';
+  }
+
+  @override
   String racesAnyTimeFastest(String year, String time) {
     return 'Schnellste Zeit $year: $time';
   }
@@ -15108,31 +15580,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get racesSearchPlaceholder => 'Rennen nach Name suchen…';
 
   @override
-  String get racesFilters => 'Filter';
-
-  @override
-  String racesFiltersCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Filter, $count aktiv',
-      one: 'Filter, 1 aktiv',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String racesRemoveFilter(String filter) {
-    return 'Filter entfernen: $filter';
-  }
-
-  @override
   String racesNearChip(String place) {
     return 'In der Nähe von $place';
   }
-
-  @override
-  String get racesFiltersDone => 'Fertig';
 
   @override
   String get racesDistanceGroup => 'Distanz';
@@ -15174,6 +15624,56 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get racesTailorWithAi => 'Mit KI anpassen';
+
+  @override
+  String racePlanDescribeRace(String name, String date) {
+    return 'Rennen: $name am $date.';
+  }
+
+  @override
+  String racePlanDescribeDistance(String distance) {
+    return 'Distanz: $distance.';
+  }
+
+  @override
+  String racePlanDescribeGoal(String time) {
+    return 'Zielzeit: $time.';
+  }
+
+  @override
+  String racePlanDescribeRecent(String distance, String time, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'vor $days Tagen',
+      one: 'vor $days Tag',
+      zero: 'heute',
+    );
+    return 'Letzte Leistung: $distance in $time, $_temp0.';
+  }
+
+  @override
+  String racePlanDescribeCourse(String parts) {
+    return 'Strecke: $parts.';
+  }
+
+  @override
+  String racePlanDescribeAscent(String climb) {
+    return '$climb Aufstieg';
+  }
+
+  @override
+  String racePlanDescribeDescent(String climb) {
+    return '$climb Abstieg';
+  }
+
+  @override
+  String racePlanDescribeSurface(String surface) {
+    return 'Untergrund: $surface';
+  }
+
+  @override
+  String get racePlanDescribeListSeparator => ', ';
 
   @override
   String get racesAddToSeason => 'Zu meiner Saison hinzufügen';
@@ -15250,14 +15750,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseClaimTitle =>
-      'Dieses Rennen für deinen Verein beanspruchen';
+      'Dieses Rennen für deinen Club beanspruchen';
 
   @override
   String get raceCourseClaimBody =>
-      'Mit dem Beanspruchen wird das Rennen verifiziert und dein Verein kann seine Strecke verknüpfen. Beanspruche nur ein Rennen, das dein Verein ausrichtet oder für das er Strecken zeichnet.';
+      'Mit dem Beanspruchen wird das Rennen verifiziert und dein Club kann seine Strecke verknüpfen. Beanspruche nur ein Rennen, das dein Club ausrichtet oder für das er Strecken zeichnet.';
 
   @override
-  String get raceCourseClaimClub => 'Verein';
+  String get raceCourseClaimClub => 'Club';
 
   @override
   String get raceCourseClaimConfirm => 'Rennen beanspruchen';
@@ -15283,7 +15783,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseLinkNoRoutes =>
-      'Dein Verein hat noch keine öffentlichen Routen. Erstelle eine im Tab „Routen“ des Vereins, mach sie öffentlich und verknüpfe sie dann hier.';
+      'Dein Club hat noch keine öffentlichen Routen. Erstelle eine im Tab „Routen“ des Clubs, mach sie öffentlich und verknüpfe sie dann hier.';
 
   @override
   String get raceCourseLinkSourceLabel => 'Woher die Strecke stammt';
@@ -15321,7 +15821,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseSuggestBody =>
-      'Wähle eine deiner öffentlichen Routen. Der Veranstalter prüft sie – oder ein verifizierter Verein, solange niemand das Rennen beansprucht hat.';
+      'Wähle eine deiner öffentlichen Routen. Der Veranstalter prüft sie – oder ein verifizierter Club, solange niemand das Rennen beansprucht hat.';
 
   @override
   String get raceCourseSuggestRoute => 'Deine Route';
@@ -15371,7 +15871,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String raceCourseReviewApproveBody(String route) {
-    return 'Die Strecke muss eine öffentliche Route deines Vereins sein. Wähle die Vereinskopie von $route.';
+    return 'Die Strecke muss eine öffentliche Route deines Clubs sein. Wähle die Clubkopie von $route.';
   }
 
   @override
@@ -15578,7 +16078,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get integrationsChronotrackConnect =>
-      'Rennergebnisse von ChronoTrack-gemessenen Veranstaltungen importieren.';
+      'Ergebnisse von Rennen mit ChronoTrack-Zeitmessung importieren.';
 
   @override
   String get integrationsChronotrackOpen => 'Rennkalender öffnen';
@@ -15605,6 +16105,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeConditionsEmpty => 'Noch keine Meldungen.';
+
+  @override
+  String get routeConditionsLoadFailed =>
+      'Zustandsmeldungen konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get routeConditionsLoading => 'Wird geladen…';
@@ -15694,13 +16198,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get ttsTurnRightNow => 'Rechts abbiegen';
 
   @override
-  String get ttsSlightLeft => 'Halten Sie sich links';
+  String get ttsSlightLeft => 'Halte dich links';
 
   @override
-  String get ttsSlightRight => 'Halten Sie sich rechts';
+  String get ttsSlightRight => 'Halte dich rechts';
 
   @override
-  String get ttsUturn => 'Wenden Sie';
+  String get ttsUturn => 'Wenden';
 
   @override
   String routeOfflinePackDownloading(int done, int total) {
@@ -15742,6 +16246,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get feedBadgesLoadFailed =>
+      'Die neuesten Abzeichen von Leuten, denen du folgst, konnten nicht geladen werden.';
+
+  @override
   String get badgesARunner => 'Ein Läufer';
 
   @override
@@ -15760,51 +16268,73 @@ class AppLocalizationsDe extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => 'Erste 5 km';
 
   @override
-  String get badgesDistanceSingle5kDesc => '5 km in einem Lauf gelaufen';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return '$distance in einem Lauf gelaufen';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'Halbmarathon';
 
   @override
-  String get badgesDistanceSingleHalfDesc => '21,1 km in einem Lauf gelaufen';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return '$distance in einem Lauf gelaufen';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'Marathon';
 
   @override
-  String get badgesDistanceSingleMarathonDesc =>
-      '42,2 km in einem Lauf gelaufen';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return '$distance in einem Lauf gelaufen';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'Ultra';
 
   @override
-  String get badgesDistanceSingleUltraDesc =>
-      '50 km oder mehr in einem Lauf gelaufen';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return '$distance oder mehr in einem Lauf gelaufen';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => '100-km-Club';
+  String badgesDistanceLifetime100Label(String distance) {
+    return 'Club der $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => 'Insgesamt 100 km gelaufen';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return '$distance insgesamt erfasst';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500 km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => 'Insgesamt 500 km gelaufen';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return '$distance insgesamt erfasst';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => '1.000-km-Club';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return 'Club der $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => 'Insgesamt 1.000 km gelaufen';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return '$distance insgesamt erfasst';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5.000 km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => 'Insgesamt 5.000 km gelaufen';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return '$distance insgesamt erfasst';
+  }
 
   @override
   String get badgesStreak7Label => 'Wochenserie';
@@ -15932,6 +16462,34 @@ class AppLocalizationsDe extends AppLocalizations {
       'Einen Parkpass in 10 Bundesstaaten vollendet';
 
   @override
+  String get badgesParkMonths3Label => 'Parkmonate';
+
+  @override
+  String get badgesParkMonths3Desc =>
+      'In 3 verschiedenen Monaten eine Parkstrecke absolviert';
+
+  @override
+  String get badgesParkMonths6Label => 'Ein halbes Parkjahr';
+
+  @override
+  String get badgesParkMonths6Desc =>
+      'In 6 verschiedenen Monaten eine Parkstrecke absolviert';
+
+  @override
+  String get badgesParkMonths12Label => 'Ein Parkjahr';
+
+  @override
+  String get badgesParkMonths12Desc =>
+      'In 12 verschiedenen Monaten eine Parkstrecke absolviert';
+
+  @override
+  String get badgesParkMonths24Label => 'Zwei Parkjahre';
+
+  @override
+  String get badgesParkMonths24Desc =>
+      'In 24 verschiedenen Monaten eine Parkstrecke absolviert';
+
+  @override
   String get racePredictorTitle => 'Wettkampfzeit-Prognose';
 
   @override
@@ -15979,6 +16537,190 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get racePredictorFootnote =>
       'Riegel-Äquivalenz aus deinem besten aktuellen Lauf, aktualitätsgewichtet. Näher liegende Distanzen sind verlässlicher.';
+
+  @override
+  String get lineCalibrationEntryTitle => 'Linienkalibrierung';
+
+  @override
+  String get lineCalibrationEntrySubtitle =>
+      'Debug-Build: Fehlerwerte der Zeitmesslinie';
+
+  @override
+  String get lineCalibrationTitle => 'Linienkalibrierung (Debug)';
+
+  @override
+  String get lineCalibrationIntro =>
+      'Starte eine Aufzeichnung, nimm einen Lauf über die Linie auf und beende die Aufzeichnung dann hier. Miss jede echte Überquerung per Video gegen eine NTP-synchronisierte Uhr und gib diese Zeitpunkte ein. Die CSV enthält nur Fehlerwerte und Anzahlen.';
+
+  @override
+  String lineCalibrationCapturing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Aufzeichnung läuft: $count Positionen',
+      one: 'Aufzeichnung läuft: $count Position',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String lineCalibrationIdle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Angehalten: $count Positionen gespeichert',
+      one: 'Angehalten: $count Position gespeichert',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationStart => 'Aufzeichnung starten';
+
+  @override
+  String get lineCalibrationStop => 'Aufzeichnung beenden';
+
+  @override
+  String get lineCalibrationRefresh => 'Aktualisieren';
+
+  @override
+  String get lineCalibrationLatLabel => 'Breitengrad der Linienmitte';
+
+  @override
+  String get lineCalibrationLngLabel => 'Längengrad der Linienmitte';
+
+  @override
+  String get lineCalibrationBearingLabel => 'Laufrichtung (Grad)';
+
+  @override
+  String get lineCalibrationHalfWidthLabel => 'Halbe Breite (m)';
+
+  @override
+  String get lineCalibrationHere => 'Mitte auf meine Position setzen';
+
+  @override
+  String lineCalibrationMeasure(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Serveruhr messen ($count Abfragen)',
+      one: 'Serveruhr messen ($count Abfrage)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationOffsetLabel => 'Uhrenabweichung (ms)';
+
+  @override
+  String get lineCalibrationOffsetHelper => 'Server minus Gerät';
+
+  @override
+  String get lineCalibrationApproachLabel => 'Annäherung';
+
+  @override
+  String get lineCalibrationApproach90 => 'Im 90°-Winkel zur Linie';
+
+  @override
+  String get lineCalibrationApproach30 => 'Im 30°-Winkel zur Linie';
+
+  @override
+  String get lineCalibrationApproachParallel20 => 'Parallel, 20 m entfernt';
+
+  @override
+  String get lineCalibrationApproachParallel40 => 'Parallel, 40 m entfernt';
+
+  @override
+  String get lineCalibrationApproachStanding => 'Auf der Linie stehend';
+
+  @override
+  String get lineCalibrationPaceLabel => 'Tempo';
+
+  @override
+  String get lineCalibrationPaceWalk => 'Gehen';
+
+  @override
+  String get lineCalibrationPaceRun => 'Laufen';
+
+  @override
+  String get lineCalibrationPaceStill => 'Stillstehen';
+
+  @override
+  String get lineCalibrationCarryLabel => 'Tragweise';
+
+  @override
+  String get lineCalibrationCarryHand => 'Telefon in der Hand';
+
+  @override
+  String get lineCalibrationCarryPocket => 'Telefon in der Tasche';
+
+  @override
+  String get lineCalibrationInstantsLabel => 'Echte Überquerungszeitpunkte';
+
+  @override
+  String lineCalibrationInstantsHint(String time, String instant) {
+    return '$time oder $instant';
+  }
+
+  @override
+  String get lineCalibrationInstantsHelper =>
+      'Einer pro Zeile. Eine Uhrzeit gilt in der Zeitzone dieses Telefons am Tag der Aufzeichnung; gib über Mitternacht oder wenn die Referenzuhr UTC zeigt einen ISO-Zeitpunkt mit Zeitzone an.';
+
+  @override
+  String get lineCalibrationClockFailed =>
+      'Die Serveruhr ist nicht erreichbar; gib die Abweichung von Hand ein.';
+
+  @override
+  String get lineCalibrationNoFix => 'Keine Positionsbestimmung.';
+
+  @override
+  String get lineCalibrationLineMissing =>
+      'Gib die Linie ein: Mitte, Laufrichtung, halbe Breite.';
+
+  @override
+  String get lineCalibrationOffsetMissing =>
+      'Miss die Uhrenabweichung oder gib sie ein.';
+
+  @override
+  String lineCalibrationInstantsInvalid(String time) {
+    return 'Ein Zeitpunkt pro Zeile: $time oder ISO-8601.';
+  }
+
+  @override
+  String get lineCalibrationFewFixes =>
+      'Die Aufzeichnung enthält weniger als zwei Positionen.';
+
+  @override
+  String get lineCalibrationLineUnusable => 'Diese Linie ist nicht verwendbar.';
+
+  @override
+  String get lineCalibrationScore => 'Diese Aufzeichnung auswerten';
+
+  @override
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  ) {
+    return '$matched von $total erkannt, $missed verpasst, $falseCount falsch, $near knapp; Median $median ms, |Fehler| p50 $p50 ms, p95 $p95 ms; Abweichung ±$offset ms';
+  }
+
+  @override
+  String lineCalibrationNothingMatched(int ms) {
+    return 'Nichts erkannt, doch die Erkennungen liegen im Median $ms ms von den echten Zeitpunkten entfernt: Prüfe die Uhr, die Abweichung und die Zeitzone.';
+  }
+
+  @override
+  String get lineCalibrationShare => 'CSV teilen';
+
+  @override
+  String get lineCalibrationCopy => 'CSV kopieren';
 
   @override
   String get settingsSectionDeveloper => 'Entwickler';
@@ -16780,19 +17522,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get commonMore => 'Mehr';
 
   @override
-  String get undoAction => 'Widerrufen';
+  String get undoAction => 'Rückgängig';
 
   @override
   String get undoDismiss => 'Schließen';
 
   @override
-  String get undoHint => 'Widerrufen ist kurze Zeit möglich.';
+  String get undoHint => 'Rückgängig machen ist für kurze Zeit möglich.';
 
   @override
   String get undoRestored => 'Wiederhergestellt';
 
   @override
-  String get prefsUndoWindow => 'Widerruf-Zeitfenster';
+  String get prefsUndoWindow => 'Zeitfenster für Rückgängig';
 
   @override
   String get prefsUndoWindow8s => '8 Sekunden';
@@ -17018,6 +17760,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get segmentCatalogueStatSurface => 'Untergrund';
 
   @override
+  String segmentCatalogueParkCourseLink(String park) {
+    return 'Parkstrecke im $park';
+  }
+
+  @override
   String get segmentCatalogueLeaderboard => 'Bestenliste';
 
   @override
@@ -17025,7 +17772,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String rateLimitCreateClub(String wait) {
-    return 'Du erstellst zu schnell Vereine – bitte warte $wait und versuche es erneut.';
+    return 'Du erstellst zu schnell Clubs – bitte warte $wait und versuche es erneut.';
   }
 
   @override
@@ -17336,7 +18083,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailSectionShareHint =>
-      'Vereinsvorlage und öffentliche Planbibliothek';
+      'Club-Vorlage und öffentliche Planbibliothek';
 
   @override
   String get confirmAgeHeading => 'Nur noch ein Schritt';
@@ -17347,6 +18094,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get confirmAgeContinue => 'Weiter';
+
+  @override
+  String get confirmAgeBackHint =>
+      'Bestätige beides, um fortzufahren, oder melde dich ab, um zu gehen.';
 
   @override
   String get confirmAgeRecordError =>
@@ -17710,7 +18461,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventResultEditHelp =>
-      'Deine Änderung ersetzt diese Zeit in der Rangliste und wird als vom Veranstalter bearbeitet markiert.';
+      'Deine Änderung ersetzt diese Zeit in der Bestenliste und wird als vom Veranstalter bearbeitet markiert.';
 
   @override
   String get eventResultEditTime => 'Zeit (h:mm:ss)';
@@ -17743,18 +18494,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventCancelOccurrence => 'Diesen Termin absagen';
 
   @override
-  String get eventCancelEvent => 'Veranstaltung absagen';
+  String get eventCancelEvent => 'Event absagen';
 
   @override
   String get eventCancelSeries => 'Ganze Serie absagen';
 
   @override
   String get eventCancelOccurrenceBody =>
-      'Nur dieser Termin wird abgesagt — der Rest der Serie bleibt unberührt. Alle, die zugesagt haben (zugesagt, vielleicht oder Warteliste), werden benachrichtigt.';
+      'Nur dieser Termin wird abgesagt — der Rest der Serie bleibt unberührt. Alle mit einer Rückmeldung (zugesagt, vielleicht oder auf der Warteliste) werden benachrichtigt.';
 
   @override
   String get eventCancelEventBody =>
-      'Die Veranstaltung wird abgesagt. Alle, die zugesagt haben (zugesagt, vielleicht oder Warteliste), werden benachrichtigt.';
+      'Das Event wird abgesagt. Alle mit einer Rückmeldung (zugesagt, vielleicht oder auf der Warteliste) werden benachrichtigt.';
 
   @override
   String get eventCancelSeriesBody =>
@@ -17789,9 +18540,9 @@ class AppLocalizationsDe extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count Erstattungen konnten',
-      one: '1 Erstattung konnte',
+      one: '$count Erstattung konnte',
     );
-    return 'Abgesagt, aber $_temp0 nicht gestartet werden. Versuche es auf der Veranstaltungsseite im Web erneut.';
+    return 'Abgesagt, aber $_temp0 nicht gestartet werden. Versuche es auf der Event-Seite im Web erneut.';
   }
 
   @override
@@ -17816,14 +18567,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventReinstateOccurrence => 'Diesen Termin wiederherstellen';
 
   @override
-  String get eventReinstateEvent => 'Diese Veranstaltung wiederherstellen';
+  String get eventReinstateEvent => 'Dieses Event wiederherstellen';
 
   @override
   String get eventReinstateFailed =>
       'Dieser Termin konnte nicht wiederhergestellt werden';
 
   @override
-  String get eventEventCancelled => 'Diese Veranstaltung wurde abgesagt.';
+  String get eventEventCancelled => 'Dieses Event wurde abgesagt.';
 
   @override
   String get eventSeriesWasCancelled => 'Diese Serie wurde abgesagt.';
@@ -17885,11 +18636,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventFormChargeHint =>
-      'Erhebt bei der Anmeldung eine Gebühr. Das Geld geht auf dein eigenes Auszahlungskonto, nicht auf das des Clubs — und nur Veranstaltungen vor Ort dürfen Gebühren nehmen.';
+      'Erhebt bei der Anmeldung eine Gebühr. Das Geld geht auf dein eigenes Auszahlungskonto, nicht auf das des Clubs — und nur Events vor Ort dürfen Gebühren nehmen.';
 
   @override
   String get eventFormChargeNeedsPayout =>
-      'Richte im Web Auszahlungen ein, um für Veranstaltungen Geld zu verlangen.';
+      'Richte im Web Auszahlungen ein, um für Events Geld zu verlangen.';
 
   @override
   String get eventFormPrice => 'Preis';
@@ -17931,11 +18682,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventFormPricingFailed =>
-      'Veranstaltung erstellt, aber der Preis konnte nicht gespeichert werden. Lege den Preis auf der Veranstaltungsseite im Web fest.';
+      'Event erstellt, aber der Preis konnte nicht gespeichert werden. Lege den Preis auf der Event-Seite im Web fest.';
 
   @override
   String get eventFormSessionPlanFailed =>
-      'Veranstaltung erstellt, aber der Session-Plan konnte nicht angehängt werden. Hänge ihn auf der Veranstaltungsseite an.';
+      'Event erstellt, aber der Session-Plan konnte nicht angehängt werden. Hänge ihn auf der Event-Seite an.';
 
   @override
   String get eventFormGymRoutine => 'Gym-Routine';
@@ -17953,7 +18704,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventFormGymRoutineFailed =>
-      'Veranstaltung erstellt, aber die Routine konnte nicht angehängt werden. Hänge sie auf der Veranstaltungsseite an.';
+      'Event erstellt, aber die Routine konnte nicht angehängt werden. Hänge sie auf der Event-Seite an.';
 
   @override
   String get clubEventGymRoutineTitle => 'Kursroutine';
@@ -18181,6 +18932,17 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get messagesEmptyBody =>
       'Öffne das Profil eines Läufers und tippe auf Nachricht, um eine Unterhaltung zu beginnen.';
+
+  @override
+  String get messagesNewMessage => 'Neue Nachricht';
+
+  @override
+  String get messagesNewMessageNobody =>
+      'Noch niemand, dem du schreiben kannst. Du kannst Personen schreiben, denen du folgst oder die dir folgen.';
+
+  @override
+  String get messagesNewMessageLoadFailed =>
+      'Die Personen, denen du schreiben kannst, konnten nicht geladen werden.';
 
   @override
   String get messagesLoadError =>
@@ -18511,7 +19273,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Folge $name, um die Läufe zu sehen und wem diese Person folgt. Jede Anfrage wird einzeln bestätigt.';
+    return 'Folge $name, um die Läufe dieser Person zu sehen und wem sie folgt. Diese Person bestätigt jede Anfrage einzeln.';
   }
 
   @override
@@ -18536,6 +19298,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get followRequestsTitle => 'Follower-Anfragen';
+
+  @override
+  String get youFollowRequestsSubtitle =>
+      'Personen, die deinem privaten Profil folgen möchten';
 
   @override
   String get followRequestsEmptyTitle => 'Keine offenen Anfragen';
@@ -18694,7 +19460,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get seasonPlanErrorConsent =>
-      'Der Saison-Assistent braucht den aktualisierten KI-Hinweis. Du kannst deine Rennen trotzdem unten eintragen.';
+      'Der Saison-Assistent braucht die aktualisierten KI-Hinweise. Du kannst deine Rennen trotzdem unten eintragen.';
 
   @override
   String get seasonPlanErrorDailyLimit =>
@@ -18925,7 +19691,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get seasonPlanReviewDisclosure => 'KI-Hinweis ansehen';
+  String get seasonPlanReviewDisclosure => 'KI-Hinweise ansehen';
 
   @override
   String get seasonPlanRaceDatePick => 'Renntag wählen';
@@ -19348,7 +20114,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewReadyMadeBody =>
-      'Ein integrierter Plan oder einer, den ein Verein, in dem du Mitglied bist, veröffentlicht hat. Du kannst ihn danach bearbeiten.';
+      'Ein integrierter Plan oder einer, den ein Club, in dem du Mitglied bist, veröffentlicht hat. Du kannst ihn danach bearbeiten.';
 
   @override
   String get planNewReadyMadeButton => 'Fertige Pläne ansehen';
@@ -19357,7 +20123,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planNewReadyMadeBuiltIn => 'Integrierte Pläne';
 
   @override
-  String get planNewReadyMadeClubs => 'Aus deinen Vereinen';
+  String get planNewReadyMadeClubs => 'Aus deinen Clubs';
 
   @override
   String get planNewBuildOwn => 'Oder stell dir deinen eigenen zusammen';
@@ -19477,6 +20243,22 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt geladene Stand.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Auf diesem Handy gespeichert. Wird synchronisiert, sobald du wieder online bist.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Auf diesem Handy gelöscht. Wird synchronisiert, sobald du wieder online bist.';
+
+  @override
+  String get pushTargetOpening => 'Wird geöffnet…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Diese Benachrichtigung konnte nicht geöffnet werden: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'Weitere Planaktionen';
@@ -20288,7 +21070,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthData =>
-      'Pläne können dein Geburtsdatum nur mit deiner Einwilligung zur Nutzung von Gesundheitsdaten an dein Alter anpassen.';
+      'Pläne können dein Geburtsdatum nur mit deiner Einwilligung zu Gesundheitsdaten nutzen, um sich an dein Alter anzupassen.';
 
   @override
   String get planNewDobHintHealthDataAction => 'Einwilligung prüfen';
@@ -20311,7 +21093,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get messagesCoachPlacementFailed =>
-      'Die Position des KI-Coaches konnte nicht gespeichert werden. Versuche es erneut.';
+      'Die Position des KI-Coachs konnte nicht gespeichert werden. Versuche es erneut.';
 
   @override
   String get prefsSectionMessages => 'Nachrichten';
@@ -20343,11 +21125,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get prefsDisclosureLevel => 'Wie viele Details';
 
   @override
-  String get prefsHomeCards => 'Karten auf der Startseite';
+  String get prefsProgressCards => 'Karten unter Fortschritt';
 
   @override
-  String get prefsHomeCardsHint =>
-      'Entferne den Haken bei einer Gruppe, um sie von der Startseite zu nehmen. Die Auswahl gilt auf all deinen Geräten.';
+  String get prefsProgressCardsHint =>
+      'Entferne den Haken bei einer Gruppe, um sie unter Fortschritt auszublenden. Die Auswahl gilt auf all deinen Geräten.';
 
   @override
   String get prefsDisclosureAuto => 'Automatisch';
@@ -20371,7 +21153,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“.';
+      'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — klapp den Bereich jederzeit auf.';
+
+  @override
+  String get dashboardTrainingLoadSectionAction => 'Detailgrad ändern';
 
   @override
   String recapCardKicker(String period) {
@@ -20592,6 +21377,39 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Verzögerung konnte nicht geändert werden. Versuch es noch einmal.';
 
   @override
+  String get streamerOverlayShowMap => 'Streckenverlauf anzeigen';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'Zeichnet die bisherige Strecke ohne deine Datenschutzzonen. Es werden keine Kartenkacheln geladen.';
+
+  @override
+  String get streamerOverlayShowHeartRate => 'Herzfrequenz anzeigen';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      'Die Herzfrequenz ist ein Gesundheitsdatum. Sie wird nur angezeigt, solange deine Einwilligung zu Gesundheitsdaten aktiv ist.';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      'Die Herzfrequenz ist ein Gesundheitsdatum. Erteile die Einwilligung zu Gesundheitsdaten, um sie anzuzeigen.';
+
+  @override
+  String get streamerOverlayReviewConsent => 'Einwilligung prüfen';
+
+  @override
+  String get streamerOverlaySettingsSaved =>
+      'Overlay-Einstellungen gespeichert';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      'Gespeichert. Der Link hat sich geändert: Kopiere ihn erneut in deine Streaming-App.';
+
+  @override
+  String get streamerOverlaySaveFailed =>
+      'Die Overlay-Einstellungen konnten nicht gespeichert werden. Bitte versuche es erneut.';
+
+  @override
   String get streamerOverlayLoadFailed =>
       'Dein Streamer-Overlay konnte nicht geladen werden.';
 
@@ -20601,10 +21419,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get streamerOverlayUnavailable =>
       'Das Streamer-Overlay ist gerade nicht verfügbar.';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'Schalte die Streckenspur und die Herzfrequenz im Web unter Einstellungen → Datenschutz & Teilen ein.';
 
   @override
   String get liveSpectatorHeartRate => 'Herzfrequenz';
@@ -20682,8 +21496,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareCardCourseKicker => 'Parkstrecken-Zeit';
 
   @override
-  String shareCardCourseRank(String rank, String season) {
-    return 'Platz $rank in $season';
+  String shareCardCourseMonthRank(String rank, String month) {
+    return 'Platz $rank im $month';
+  }
+
+  @override
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return 'Platz $monthRank im $month · Platz $seasonRank im Jahr $season';
   }
 
   @override
@@ -20800,7 +21624,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailLineLoadFailed =>
-      'Die Streckenlinie konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+      'Die Linie der Route konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get routeDetailLineEmpty =>
@@ -21173,12 +21997,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksBoardCompletions => 'Meiste Läufe';
 
   @override
+  String get parksPeriodThisMonth => 'Dieser Monat';
+
+  @override
   String parksSeasonThisYear(int year) {
     return 'Dieses Jahr ($year)';
   }
 
   @override
   String get parksSeasonAllTime => 'Gesamt';
+
+  @override
+  String get parksPeriodPrevMonth => 'Vorheriger Monat';
+
+  @override
+  String get parksPeriodNextMonth => 'Nächster Monat';
 
   @override
   String parksCompletionDays(int n) {
@@ -21190,6 +22023,21 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String parksMonthRunners(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Läufer diesen Monat',
+      one: '$n Läufer diesen Monat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksMonthRunnersFailed =>
+      'Wie viele diesen Monat jede Strecke gelaufen sind, konnte nicht geladen werden.';
 
   @override
   String get parksNoEfforts =>
@@ -21219,7 +22067,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksTimesNotEventResults =>
-      'Die Zeiten hier sind Threkir-Zeiten auf diesen Wegen. Sie sind keine Ergebnisse einer Veranstaltung, die auf ihnen stattfindet.';
+      'Die Zeiten hier sind Threkir-Zeiten auf diesen Wegen. Sie sind keine Ergebnisse eines Events, das auf ihnen stattfindet.';
 
   @override
   String get parksSharedUseSaturdayMorningGroup =>
@@ -21507,6 +22355,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Eine Push-Nachricht etwa 10 Minuten vor dem Start eines geplanten Rennens, für das du zugesagt hast, und wenn sich der Start verschiebt. Nie per E-Mail.';
 
   @override
+  String get prefsNotifyParkCourseMonth => 'Parkstrecken-Monate';
+
+  @override
+  String get prefsNotifyParkCourseMonthHint =>
+      'Wenn an einer Parkstrecke, die du gelaufen bist, ein Monat endet, eine Nachricht im Posteingang mit deiner Bestzeit daraus.';
+
+  @override
   String get clubVerificationStatusTitle => 'Offizielle Verifizierung';
 
   @override
@@ -21700,7 +22555,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachShareIntro =>
-      'Wähle die Abschnitte dieser Antwort aus, die du senden möchtest. Dein Coach sieht sie als Zitat deines KI-Coaches, nicht als deine eigenen Worte.';
+      'Wähle die Abschnitte dieser Antwort aus, die du senden möchtest. Dein Coach sieht sie als Zitat deines KI-Coachs, nicht als deine eigenen Worte.';
 
   @override
   String get coachShareCoachLegend => 'Senden an';
@@ -21740,7 +22595,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachShareDone => 'Fertig';
 
   @override
-  String get coachShareCardLabel => 'Antwort des KI-Coaches';
+  String get coachShareCardLabel => 'Antwort des KI-Coachs';
 
   @override
   String get coachShareCardFromMe => 'Du hast dies aus deinem KI-Coach geteilt';
@@ -21759,7 +22614,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachAssist =>
-      'Für Coaches, die den Coach-Assistenten nutzen: was du ihn fragst und, nur bei Athleten, die es für deine Coaching-Verknüpfung erlaubt haben, deren letzte Nachrichten mit dir, deren Plan und anstehende Einheiten sowie deren letzte Läufe, nur verwendet, um eine Nachricht zu entwerfen, die nur du siehst. Du bearbeitest und sendest sie selbst, und sie wird als KI-gestützt gekennzeichnet.';
+      'Für Coachs, die den Coach-Assistenten nutzen: was du ihn fragst und, nur bei Athleten, die es für deine Coaching-Verknüpfung erlaubt haben, deren letzte Nachrichten mit dir, deren Plan und anstehende Einheiten sowie deren letzte Läufe, nur verwendet, um eine Nachricht zu entwerfen, die nur du siehst. Du bearbeitest und sendest sie selbst, und sie wird als KI-gestützt gekennzeichnet.';
 
   @override
   String get coachAssistMarker => 'KI-gestützt';
@@ -22070,6 +22925,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get profileNotifParkCourseReport => 'Eine Parkstrecke wurde gemeldet';
 
   @override
+  String get profileNotifParkCourseMonthClosed =>
+      'Ein Monat auf einer Parkstrecke, die du gelaufen bist, ist abgeschlossen';
+
+  @override
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  ) {
+    return '$course: Die Bestenliste für $month ist abgeschlossen. Deine Bestzeit: $time';
+  }
+
+  @override
   String rateLimitReaction(String wait) {
     return 'Du reagierst zu schnell – bitte warte $wait und versuche es erneut.';
   }
@@ -22099,6 +22967,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get prefsMessageRequestsFailed =>
       'Nachrichtenanfragen konnten nicht geändert werden.';
+
+  @override
+  String get asyncSwitchLoadFailed =>
+      'Diese Einstellung konnte nicht geladen werden. Tippe, um es erneut zu versuchen.';
 
   @override
   String get messagesReact => 'Reagieren';
@@ -22525,4 +23397,44 @@ class AppLocalizationsDe extends AppLocalizations {
   String profileNotifGroupInvite(String name) {
     return '$name hat dich in eine Gruppe eingeladen';
   }
+
+  @override
+  String get filterBarFilters => 'Filter';
+
+  @override
+  String filterBarFiltersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Filter, $count aktiv',
+      one: 'Filter, 1 aktiv',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String filterBarRemoveFilter(String filter) {
+    return 'Filter entfernen: $filter';
+  }
+
+  @override
+  String get filterBarDone => 'Fertig';
+
+  @override
+  String get filterBarSurface => 'Untergrund';
+
+  @override
+  String get filterBarDistance => 'Distanz';
+
+  @override
+  String get filterBarSort => 'Sortieren';
+
+  @override
+  String get filterBarSource => 'Quelle';
+
+  @override
+  String get runsSearchHint => 'Läufe nach Namen suchen';
+
+  @override
+  String get filterBarRegion => 'Region';
 }

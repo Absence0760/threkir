@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/sign_in_screen.dart';
 import '../lib/screens/sign_up_screen.dart';
+import 'worst_case_layout.dart';
 
 class _FakeApiClient extends ApiClient {
   String? capturedEmail;
@@ -457,5 +458,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(l10n.signUpHeadline), findsOneWidget);
     });
+  });
+
+  worstCaseTestWidgets('the sign-in form', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+        locale: locale, home: SignInScreen(apiClient: _FakeApiClient())));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Sign in');
   });
 }

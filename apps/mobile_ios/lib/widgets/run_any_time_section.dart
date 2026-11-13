@@ -4,7 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' show Position;
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard, ListSkeleton;
 
 import '../any_time_courses.dart';
 import '../backend_timeout.dart';
@@ -34,7 +34,21 @@ class RunAnyTimeSection extends StatefulWidget {
   /// Test seam; production reads the quiet browse fix, which never prompts.
   final Stream<Position> Function()? positions;
 
-  const RunAnyTimeSection({super.key, required this.api, this.positions});
+  /// How many courses to list; null lists every one, as Races & courses
+  /// does when the courses are all it shows.
+  final int? limit;
+
+  /// Lead with a row of the parks the courses are in, for the Courses view;
+  /// the section under the race calendar stays a short list.
+  final bool showParks;
+
+  const RunAnyTimeSection({
+    super.key,
+    required this.api,
+    this.positions,
+    this.limit = kRunAnyTimeLimit,
+    this.showParks = false,
+  });
 
   @override
   State<RunAnyTimeSection> createState() => _RunAnyTimeSectionState();
@@ -151,6 +165,12 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
         ),
       );
 
+  void _openPark(ParkListing park) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ParkScreen(api: widget.api, listing: park),
+        ),
+      );
+
   void _openAll() => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ParksScreen(api: widget.api),
@@ -209,8 +229,22 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
         ),
       ];
     }
-    final ordered =
-        orderAnyTimeCourses(_courses, _key, _origin).take(kRunAnyTimeLimit);
+    final all = orderAnyTimeCourses(_courses, _key, _origin);
+    final limit = widget.limit;
+    final ordered = limit == null ? all : all.take(limit);
+    // In the order their first course lists, so a fix brings the nearest
+    // park first too.
+    final parks =
+        <String, ({ParkListing park, List<ParkCourseListing> courses})>{};
+    if (widget.showParks) {
+      for (final row in all) {
+        final e = row.course;
+        parks
+            .putIfAbsent(e.park.park.id, () => (park: e.park, courses: []))
+            .courses
+            .add(e.course);
+      }
+    }
     if (ordered.isEmpty) {
       return [
         Padding(
@@ -221,6 +255,38 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
     }
     final signedIn = widget.api.userId != null;
     return [
+      if (parks.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          child: Semantics(
+            header: true,
+            child: Text(l10n.racesAnyTimeParks,
+                style: theme.textTheme.titleSmall),
+          ),
+        ),
+        // A scrolling Row rather than a fixed-height lane, so the row takes
+        // its height from the cards at any OS text scale.
+        SingleChildScrollView(
+          key: const Key('races-any-time-parks'),
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final p in parks.values)
+                SizedBox(
+                  width: 260,
+                  child: ParkCard(
+                    key: ValueKey('races-any-time-park-${p.park.park.id}'),
+                    listing: p.park,
+                    courses: p.courses,
+                    onTap: () => _openPark(p.park),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
       if (_recordsFailed)
         _InlineFailure(
           key: const Key('races-any-time-records-failed'),
@@ -235,6 +301,7 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
           record: _records[row.course.course.course.id],
           showRecord: signedIn && !_recordsFailed,
           onTap: () => _open(row.course),
+          onOpenPark: () => _openPark(row.course.park),
         ),
     ];
   }
@@ -246,6 +313,7 @@ class _CourseCard extends StatelessWidget {
   final ParkCourseRecord? record;
   final bool showRecord;
   final VoidCallback onTap;
+  final VoidCallback onOpenPark;
 
   const _CourseCard({
     required this.entry,
@@ -253,6 +321,7 @@ class _CourseCard extends StatelessWidget {
     required this.record,
     required this.showRecord,
     required this.onTap,
+    required this.onOpenPark,
   });
 
   @override
@@ -290,29 +359,52 @@ class _CourseCard extends StatelessWidget {
                     '${r.season}', formatEffortTime(r.timeSeconds));
     final muted = theme.textTheme.bodySmall
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    return Card(
+    // The content form, not ListCard.row: the park name is a link of its own
+    // inside the card, which a row would merge into the card's label.
+    return ListCard(
       key: ValueKey('races-any-time-course-${course.id}'),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: const Icon(Icons.park_outlined),
-        title: Text(segment.name),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${park.name}, ${regionName(park.regionCode)}', style: muted),
-            Text(meta, style: muted),
-            if (pills.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Wrap(spacing: 6, runSpacing: 4, children: pills),
-              ),
-            if (recordLine != null) Text(recordLine),
-          ],
-        ),
-        trailing: course.status == 'open'
-            ? const Icon(Icons.chevron_right)
-            : Chip(label: Text(courseStatusLabel(l10n, course.status))),
-        onTap: onTap,
+      margin: ListCard.listMargin,
+      dense: true,
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(Icons.park_outlined, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  segment.name,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                ParkNameLink(
+                  key: ValueKey('races-any-time-park-link-${course.id}'),
+                  label: '${park.name}, ${regionName(park.regionCode)}',
+                  onTap: onOpenPark,
+                ),
+                Text(meta, style: muted),
+                if (pills.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.xs),
+                    child: Wrap(spacing: 6, runSpacing: 4, children: pills),
+                  ),
+                if (recordLine != null) Text(recordLine),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          if (course.status == 'open')
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            )
+          else
+            Flexible(
+              child: Chip(label: Text(courseStatusLabel(l10n, course.status))),
+            ),
+        ],
       ),
     );
   }

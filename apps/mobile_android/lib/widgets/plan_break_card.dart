@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart' show SettingsKeys;
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../backend_timeout.dart';
 import '../auth_error.dart';
@@ -335,108 +336,106 @@ class _PlanBreakCardState extends State<PlanBreakCard> {
     final tag = localeToTag(Localizations.localeOf(context));
     final weeks = (_weeksChoice ?? found.maxWeeks).clamp(1, found.maxWeeks);
     final race = found.raceDateIso;
-    return Card(
+    return ListCard(
       key: const Key('planBreakCard'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.history, color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.planBreakTitle,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.history, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.planBreakTitle,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.planBreakBody(
-                          found.days,
-                          formatDateMed(parseIsoDate(found.fromIso), tag),
-                        ),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        race != null
-                            ? l10n.planBreakHintRace(
-                                formatDateMed(parseIsoDate(race), tag),
-                              )
-                            : l10n.planBreakHintNoRace,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                FilledButton(
-                  key: const Key('planBreakRepeat'),
-                  onPressed: _busy ? null : () => _propose(found, 1),
-                  child: Text(l10n.planBreakRepeat),
-                ),
-                if (found.maxWeeks >= 2) ...[
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(l10n.planBreakWeeksLabel),
-                      IconButton(
-                        key: const Key('planBreakWeeksMinus'),
-                        tooltip: l10n.planBreakWeeksFewer,
-                        icon: const Icon(Icons.remove),
-                        onPressed: _busy || weeks <= 1
-                            ? null
-                            : () => setState(() => _weeksChoice = weeks - 1),
-                      ),
-                      Text('$weeks', key: const Key('planBreakWeeks')),
-                      IconButton(
-                        key: const Key('planBreakWeeksPlus'),
-                        tooltip: l10n.planBreakWeeksMore,
-                        icon: const Icon(Icons.add),
-                        onPressed: _busy || weeks >= found.maxWeeks
-                            ? null
-                            : () => setState(() => _weeksChoice = weeks + 1),
-                      ),
-                    ],
-                  ),
-                  OutlinedButton(
-                    key: const Key('planBreakMore'),
-                    onPressed: _busy ? null : () => _propose(found, weeks),
-                    child: Text(
-                      race != null
-                          ? l10n.planBreakShortenBuild
-                          : l10n.planBreakPushBack,
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.planBreakBody(
+                        found.days,
+                        formatDateMed(parseIsoDate(found.fromIso), tag),
+                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      race != null
+                          ? l10n.planBreakHintRace(
+                              formatDateMed(parseIsoDate(race), tag),
+                            )
+                          : l10n.planBreakHintNoRace,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilledButton(
+                key: const Key('planBreakRepeat'),
+                onPressed: _busy ? null : () => _propose(found, 1),
+                child: Text(l10n.planBreakRepeat),
+              ),
+              if (found.maxWeeks >= 2) ...[
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.planBreakWeeksLabel),
+                    IconButton(
+                      key: const Key('planBreakWeeksMinus'),
+                      tooltip: l10n.planBreakWeeksFewer,
+                      icon: const Icon(Icons.remove),
+                      onPressed: _busy || weeks <= 1
+                          ? null
+                          : () => setState(() => _weeksChoice = weeks - 1),
+                    ),
+                    Text('$weeks', key: const Key('planBreakWeeks')),
+                    IconButton(
+                      key: const Key('planBreakWeeksPlus'),
+                      tooltip: l10n.planBreakWeeksMore,
+                      icon: const Icon(Icons.add),
+                      onPressed: _busy || weeks >= found.maxWeeks
+                          ? null
+                          : () => setState(() => _weeksChoice = weeks + 1),
+                    ),
+                  ],
+                ),
+                OutlinedButton(
+                  key: const Key('planBreakMore'),
+                  onPressed: _busy ? null : () => _propose(found, weeks),
+                  child: Text(
+                    race != null
+                        ? l10n.planBreakShortenBuild
+                        : l10n.planBreakPushBack,
                   ),
-                ],
-                TextButton(
-                  key: const Key('planBreakDismiss'),
-                  onPressed: _busy ? null : () => _dismiss(found),
-                  child: Text(l10n.planBreakDismiss),
                 ),
               ],
-            ),
-          ],
-        ),
+              TextButton(
+                key: const Key('planBreakDismiss'),
+                onPressed: _busy ? null : () => _dismiss(found),
+                child: Text(l10n.planBreakDismiss),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

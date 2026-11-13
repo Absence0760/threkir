@@ -75,57 +75,53 @@ class IntensityCard extends StatelessWidget {
 
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ChartCardHeader(
-              title: l10n.intensityTitle,
-              note: l10n.intensityWindow(windowDays),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ChartCardHeader(
+            title: l10n.intensityTitle,
+            note: l10n.intensityWindow(windowDays),
+          ),
+          const SizedBox(height: 10),
+          _SegmentedBar(breakdown: breakdown),
+          const SizedBox(height: 12),
+          _ZoneLegend(breakdown: breakdown),
+          const SizedBox(height: 8),
+          Text(
+            l10n.intensityBasedOn(breakdown.hrTrackedRuns),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 10),
-            _SegmentedBar(breakdown: breakdown),
-            const SizedBox(height: 12),
-            _ZoneLegend(breakdown: breakdown),
-            const SizedBox(height: 8),
+          ),
+          if (_zonesAreAgeEstimated()) ...[
+            const SizedBox(height: 6),
             Text(
-              l10n.intensityBasedOn(breakdown.hrTrackedRuns),
+              l10n.runDetailHrDisclaimer,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            if (_zonesAreAgeEstimated()) ...[
-              const SizedBox(height: 6),
-              Text(
-                l10n.runDetailHrDisclaimer,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+            // Run-detail shows this same caveat WITH a "Set max HR" button,
+            // because that screen happens to carry the Preferences and
+            // ApiClient the settings screen takes. This card carries only a
+            // SettingsSyncService, so it names the destination and lets the
+            // shell open it (decisions § 710) rather than the same advice
+            // being actionable on one surface and inert on the other.
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  minimumSize: const Size(0, 44),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
+                onPressed: () => openSettingsRow(PreferencesRow.maxHr),
+                child: Text(l10n.runDetailHrDisclaimerAction),
               ),
-              // Run-detail shows this same caveat WITH a "Set max HR" button,
-              // because that screen happens to carry the Preferences and
-              // ApiClient the settings screen takes. This card carries only a
-              // SettingsSyncService, so it names the destination and lets the
-              // shell open it (decisions § 710) rather than the same advice
-              // being actionable on one surface and inert on the other.
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    minimumSize: const Size(0, 44),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  onPressed: () =>
-                      openSettings(SettingsDestination.preferences),
-                  child: Text(l10n.runDetailHrDisclaimerAction),
-                ),
-              ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

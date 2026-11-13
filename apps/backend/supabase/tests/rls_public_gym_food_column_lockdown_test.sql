@@ -36,6 +36,12 @@ values
   ('dddddddd-0000-0000-0000-0000000000f1', 'authenticated', 'authenticated',
    'owner@gymfood.local', '', now(), now());
 
+-- Food and heart rate are stored only with health-data consent (decisions § 2514).
+insert into user_profiles (id, health_data_consent_at)
+values
+  ('dddddddd-0000-0000-0000-0000000000f1', now())
+on conflict (id) do update set health_data_consent_at = excluded.health_data_consent_at;
+
 set local role service_role;
 
 -- One public gym workout carrying the internal columns the view must strip.

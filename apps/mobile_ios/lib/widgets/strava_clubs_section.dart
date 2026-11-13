@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
+import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListCard;
 
 import '../l10n/gen/app_localizations.dart';
 import '../settings_destination.dart';
@@ -322,57 +322,22 @@ class _StravaClubsSectionState extends State<StravaClubsSection> {
       ];
     }
 
-    return Container(
+    return ListCard.row(
       key: ValueKey('strava-club-${club.stravaClubId}'),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              // Seeded, like web: Strava's image CDN is not drawn there
-              // (CSP), and both clients show the same face for a club.
-              IdentityAvatar(
-                  seed: '${club.stravaClubId}', name: club.name, size: 40),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      club.name,
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    if (location.isNotEmpty || club.memberCount != null)
-                      Text(
-                        [
-                          if (location.isNotEmpty) location,
-                          if (club.memberCount != null)
-                            l10n.clubsMemberCount(club.memberCount!),
-                        ].join(' · '),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: actions,
-          ),
-        ],
-      ),
+      margin: EdgeInsets.zero,
+      // Seeded, like web: Strava's image CDN is not drawn there (CSP), and
+      // both clients show the same face for a club.
+      leading:
+          IdentityAvatar(seed: '${club.stravaClubId}', name: club.name, size: 40),
+      title: club.name,
+      subtitle: location.isNotEmpty || club.memberCount != null
+          ? [
+              if (location.isNotEmpty) location,
+              if (club.memberCount != null)
+                l10n.clubsMemberCount(club.memberCount!),
+            ].join(' · ')
+          : null,
+      actions: actions,
     );
   }
 }

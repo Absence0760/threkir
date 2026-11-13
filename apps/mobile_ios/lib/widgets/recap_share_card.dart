@@ -4,7 +4,8 @@ import 'dart:io';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show ChoiceChipOption, ChoiceChipRow, SheetScaffold;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
@@ -357,118 +358,116 @@ class _RecapShareSheetState extends State<_RecapShareSheet> {
     final theme = Theme.of(context);
     final mq = MediaQuery.of(context);
     final previewHeight = (mq.size.height * 0.45).clamp(220.0, 460.0);
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.recapShareSheetTitle,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            ChoiceChipRow<_RecapShareStyle>(
-              alignment: WrapAlignment.center,
-              options: [
-                ChoiceChipOption(
-                  value: _RecapShareStyle.square,
-                  label: l10n.recapShareAspectSquare,
-                  icon: Icons.crop_square,
-                ),
-                ChoiceChipOption(
-                  value: _RecapShareStyle.story,
-                  label: l10n.recapShareAspectStory,
-                  icon: Icons.crop_portrait,
-                ),
-                ChoiceChipOption(
-                  value: _RecapShareStyle.video,
-                  label: l10n.recapShareStyleVideo,
-                  icon: Icons.movie_outlined,
-                ),
-              ],
-              selected: _style,
-              onChanged: _busy ? null : (v) => setState(() => _style = v),
-            ),
-            const SizedBox(height: 12),
-            if (_style == _RecapShareStyle.video) ...[
-              Container(
-                constraints: BoxConstraints(minHeight: previewHeight * 0.6),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.movie_outlined,
-                        size: 40, color: theme.colorScheme.onSurfaceVariant),
-                    const SizedBox(height: 12),
-                    Text(
-                      l10n.recapShareVideoBody,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
+    return SheetScaffold(
+      padding: const EdgeInsets.all(16),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.recapShareSheetTitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          ChoiceChipRow<_RecapShareStyle>(
+            alignment: WrapAlignment.center,
+            options: [
+              ChoiceChipOption(
+                value: _RecapShareStyle.square,
+                label: l10n.recapShareAspectSquare,
+                icon: Icons.crop_square,
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _openVideoExport,
-                icon: const Icon(Icons.open_in_new),
-                label: Text(l10n.shareCardVideoOpen),
+              ChoiceChipOption(
+                value: _RecapShareStyle.story,
+                label: l10n.recapShareAspectStory,
+                icon: Icons.crop_portrait,
               ),
-            ] else ...[
-              // Fixed canvas scaled into the preview, text scaling pinned off:
-              // the OS text size is the viewer's setting, not part of the image.
-              Semantics(
-                label: l10n.recapSharePreviewLabel,
-                child: SizedBox(
-                  height: previewHeight,
-                  child: FittedBox(
-                    fit: BoxFit.contain,
-                    child: MediaQuery.withNoTextScaling(
-                      child: RepaintBoundary(
-                        key: _cardKey,
-                        child: RecapShareCard(text: widget.text, aspect: _aspect),
-                      ),
+              ChoiceChipOption(
+                value: _RecapShareStyle.video,
+                label: l10n.recapShareStyleVideo,
+                icon: Icons.movie_outlined,
+              ),
+            ],
+            selected: _style,
+            onChanged: _busy ? null : (v) => setState(() => _style = v),
+          ),
+          const SizedBox(height: 12),
+          if (_style == _RecapShareStyle.video) ...[
+            Container(
+              constraints: BoxConstraints(minHeight: previewHeight * 0.6),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.movie_outlined,
+                      size: 40, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n.recapShareVideoBody,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _openVideoExport,
+              icon: const Icon(Icons.open_in_new),
+              label: Text(l10n.shareCardVideoOpen),
+            ),
+          ] else ...[
+            // Fixed canvas scaled into the preview, text scaling pinned off:
+            // the OS text size is the viewer's setting, not part of the image.
+            Semantics(
+              excludeSemantics: true,
+              label: l10n.recapSharePreviewLabel,
+              child: SizedBox(
+                height: previewHeight,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: MediaQuery.withNoTextScaling(
+                    child: RepaintBoundary(
+                      key: _cardKey,
+                      child: RecapShareCard(text: widget.text, aspect: _aspect),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _busy ? null : _shareImage,
-                icon: _busy
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.ios_share),
-                label: Text(l10n.recapShareImage),
-              ),
-            ],
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () {
-                      Navigator.of(context).pop();
-                      unawaited(widget.shareText());
-                    },
-              icon: const Icon(Icons.notes),
-              label: Text(l10n.recapShareAsText),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _busy ? null : _shareImage,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.ios_share),
+              label: Text(l10n.recapShareImage),
             ),
           ],
-        ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _busy
+                ? null
+                : () {
+                    Navigator.of(context).pop();
+                    unawaited(widget.shareText());
+                  },
+            icon: const Icon(Icons.notes),
+            label: Text(l10n.recapShareAsText),
+          ),
+        ],
       ),
     );
   }

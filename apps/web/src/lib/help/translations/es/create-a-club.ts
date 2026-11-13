@@ -83,7 +83,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Solo un administrador del club en Strava puede vincularlo, y solo a un club del que sea propietario o administrador aquí. Si no aparece la sección, conecta primero Strava en [[route:/settings/integrations|Integraciones]], dentro de Configuración.',
+					text: 'Solo un administrador del club en Strava puede vincularlo, y solo a un club del que sea propietario o administrador aquí. Si no aparece la sección, conecta primero Strava en [[route:/settings/integrations|Integraciones]], dentro de Ajustes.',
 				},
 			],
 		},

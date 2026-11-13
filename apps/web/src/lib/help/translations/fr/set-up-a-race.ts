@@ -25,7 +25,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Ouvrez votre club et choisissez **Nouvel événement**.',
-						'Sous **Type d\'événement**, choisissez **Sortie en groupe** (ou **Vélo**). Les cours et les événements sociaux n\'ont ni itinéraire, ni distance, ni contrôle de course, ni résultats.',
+						'Sous **Type d\'événement**, choisissez **Course en groupe** (ou **Vélo**). Les cours et les événements sociaux n\'ont ni itinéraire, ni distance, ni contrôle de course, ni résultats.',
 						'Donnez-lui un **Titre** et une **Date**. Ne définissez une répétition que si la course a vraiment lieu régulièrement ; chaque occurrence est courue séparément.',
 						'Choisissez un **Parcours** et renseignez la **Distance**. Ensemble, ils forment votre *parcours principal*.',
 						'Saisissez éventuellement un **Nom du parcours principal** sous **Parcours de la course** (par exemple « Semi-marathon »). Si vous le laissez vide, le nom de l\'itinéraire est utilisé.',
@@ -85,7 +85,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Sur la page de l\'événement, les coureurs voient les parcours. S\'il y en a plusieurs, ils doivent en choisir un dans **Votre parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisissez d\'abord votre parcours. »',
-						'Dans l\'app mobile, toucher **Je viens** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.',
+						'Dans l\'app mobile, toucher **Je participe** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.',
 						'Avec un seul parcours, personne n\'a rien à choisir.',
 						'Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Votre parcours**.',
 					],

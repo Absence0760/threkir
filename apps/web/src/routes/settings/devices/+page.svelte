@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -155,9 +158,9 @@
 		// device-id + any in-flight settings caches. Previously the
 		// row was deleted server-side but the browser kept its minted
 		// device id, so the next write re-created the empty row.
-		if (isSelf && typeof localStorage !== 'undefined') {
+		if (isSelf) {
 			try {
-				localStorage.removeItem('run_app.device_id');
+				localStore()?.removeItem('run_app.device_id');
 			} catch (_) {
 				/* quota / access denied — noop */
 			}
@@ -410,13 +413,7 @@
 </script>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{m('shell.settings')}</p>
-		<h1>{m('settingsDevices.title')}</h1>
-		<p class="tagline">
-			{m('settingsDevices.tagline')}
-		</p>
-	</header>
+	<PageHeader kicker={m('shell.settings')} title={m('settingsDevices.title')} subtitle={m('settingsDevices.tagline')} />
 
 	{#if loading}
 		<div class="skeleton-stack" aria-hidden="true">
@@ -434,7 +431,7 @@
 	{:else if devices.length === 0}
 		<EmptyState icon="devices_other" title={m('settingsDevices.emptyTitle')} text={m('settingsDevices.emptyText')} />
 	{:else}
-		<div class="device-list">
+		<div id={settingRowId('settingsDevices.addOverride')} class="device-list">
 			{#each devices as d (d.device_id)}
 				<div
 					class="device"
@@ -470,9 +467,7 @@
 								class="override-link"
 								onclick={() => toggleExpand(d.device_id)}
 							>
-								{overrideCount(d.prefs) === 1
-									? m('settingsDevices.overrideCountOne', { count: overrideCount(d.prefs) })
-									: m('settingsDevices.overrideCountOther', { count: overrideCount(d.prefs) })}
+								{m('settingsDevices.overrideCount', { count: overrideCount(d.prefs) })}
 								<span class="material-symbols chev" aria-hidden="true">
 									{expanded === d.device_id ? 'expand_less' : 'expand_more'}
 								</span>
@@ -636,24 +631,6 @@
 
 <style>
 	.page { padding: var(--page-padding-y) var(--page-padding-x); max-width: 64rem; }
-	.page-head { margin-bottom: var(--space-xl); }
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 var(--space-xs); }
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
-	}
-	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); }
 
 	.skeleton-stack { display: flex; flex-direction: column; gap: 0.5rem; }
 	.skel-row {
@@ -686,11 +663,6 @@
 		align-items: center;
 		gap: 0.5rem;
 		overflow: hidden;
-	}
-	.device-name strong {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 	.device-label-input {
 		font: inherit;
@@ -768,7 +740,6 @@
 		border-radius: var(--radius-sm);
 	}
 	.remove-btn:hover { color: var(--color-danger-text); background: var(--color-danger-light); }
-	.muted { color: var(--color-text-tertiary); }
 	.material-symbols { font-family: 'Material Symbols Outlined', system-ui; font-weight: normal; display: inline-block; line-height: 1; }
 
 	.override-link {

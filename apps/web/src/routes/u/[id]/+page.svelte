@@ -904,9 +904,7 @@
 				<p class="private-runs-note" data-testid="profile-private-runs-note">
 					<span class="material-symbols" aria-hidden="true">lock</span>
 					<span>
-						{runCounts.privateCount === 1
-							? m('profile.privateRunsNoteOne')
-							: m('profile.privateRunsNoteMany', { n: runCounts.privateCount })}
+						{m('profile.privateRunsNote', { n: runCounts.privateCount })}
 						<a href="/runs?view=list">{m('profile.privateRunsNoteLink')}</a>
 					</span>
 				</p>

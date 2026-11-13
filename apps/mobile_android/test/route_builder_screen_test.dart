@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
+import 'package:flutter/gestures.dart' show kDoubleTapTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart'
@@ -15,6 +17,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show AppTheme;
 import 'package:supabase_flutter/supabase_flutter.dart'
     show PostgrestException;
 
@@ -29,6 +32,7 @@ import '../lib/widgets/live_run_map.dart'
 import '../lib/widgets/map_attribution.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
+import 'three_button_nav_bar.dart';
 
 class _FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
   final Directory _tmp;
@@ -403,12 +407,14 @@ void main() {
     const navBar = 48.0;
     const screen = Size(360, 780);
 
-    Future<void> pumpPhone(WidgetTester tester, double textScale) async {
-      tester.view.physicalSize = screen;
+    Future<void> pumpPhone(WidgetTester tester, double textScale,
+        {Size size = screen,
+        FakeViewPadding inset =
+            const FakeViewPadding(top: 24, bottom: navBar)}) async {
+      tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
-      tester.view.padding = const FakeViewPadding(top: 24, bottom: navBar);
-      tester.view.viewPadding =
-          const FakeViewPadding(top: 24, bottom: navBar);
+      tester.view.padding = inset;
+      tester.view.viewPadding = inset;
       tester.platformDispatcher.textScaleFactorTestValue = textScale;
       addTearDown(tester.view.reset);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -529,6 +535,37 @@ void main() {
       expect(items, ['Generate loop', 'Route points', 'Clear']);
     });
 
+    // MapFirstPage stands the footer and the credit on the bar, and keeps
+    // them off a side bar in landscape (issue #1374, IK-10).
+    testWidgets('320 dp, 2x text: the footer and the credit clear the bar',
+        (tester) async {
+      await pumpPhone(tester, 2, size: const Size(320, 640));
+      expect(tester.takeException(), isNull);
+      final fab = tester.getRect(find.byType(FloatingActionButton));
+      expect(fab.bottom, lessThanOrEqualTo(640 - navBar));
+      expect(fab.right, lessThanOrEqualTo(320));
+      final strip = tester.getRect(find.byType(MapAttribution));
+      expect(strip.top, greaterThanOrEqualTo(fab.bottom));
+      expect(strip.bottom, lessThanOrEqualTo(640 - navBar));
+    });
+
+    testWidgets('landscape: the footer and the status pill clear a side bar',
+        (tester) async {
+      await pumpPhone(tester, 1,
+          size: const Size(780, 360),
+          inset: const FakeViewPadding(right: navBar));
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(find.byType(FloatingActionButton)).right,
+          lessThanOrEqualTo(780 - navBar));
+      expect(
+          tester
+              .getRect(find.byKey(const Key('route-builder-draw-toggle')))
+              .right,
+          lessThanOrEqualTo(780 - navBar));
+      expect(tester.getRect(find.textContaining('Tap the map to place waypoints')).right,
+          lessThanOrEqualTo(780 - navBar));
+    });
+
     testWidgets('a focused search field folds Undo too', (tester) async {
       await pumpPhone(tester, 1.3);
       await tester.tap(find.byType(TextField));
@@ -566,6 +603,51 @@ void main() {
     expect(line.strokeWidth, mapLineWidth);
     expect(casing.color, mapLineCasing);
     expect(casing.strokeWidth, greaterThan(line.strokeWidth));
+  });
+
+  // #1374 A11Y-7: white digits on Material green / red / amber / blueGrey
+  // measured 2.78 / 3.68 / 1.63 / 4.37:1, start and end differed by colour
+  // alone, and a pin had no name.
+  for (final (name, theme) in [('light', AppTheme.light), ('dark', AppTheme.dark)]) {
+    test('$name: every waypoint pin reads its number or glyph at AA', () {
+      for (final (start, end, drag) in [
+        (true, false, false),
+        (false, true, false),
+        (false, false, false),
+        (false, false, true),
+      ]) {
+        final c = waypointPinColors(theme, isStart: start, isEnd: end, isDragging: drag);
+        expect(_contrast(c.on, c.fill), greaterThanOrEqualTo(4.5),
+            reason: 'start=$start end=$end drag=$drag');
+      }
+    });
+  }
+
+  testWidgets('pins are named with their place, and start and end by glyph',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    final store = await _store();
+    await _pumpScreen(tester, store);
+    await tester.tap(find.text('Straight'));
+    await tester.pump();
+    final map = tester.getRect(find.byType(FlutterMap));
+    for (final dx in [-80.0, 0.0, 80.0]) {
+      await tester.tapAt(map.center.translate(dx, 0));
+      // The map holds a tap until the double-tap window closes.
+      await tester.pump(kDoubleTapTimeout);
+    }
+    Finder pin(String label) => find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == label);
+    await pumpUntil(tester, () => pin('Point 3 of 3, finish').evaluate().isNotEmpty,
+        describe: 'three named pins');
+    expect(pin('Point 1 of 3, start'), findsOneWidget);
+    expect(pin('Point 2 of 3'), findsOneWidget);
+    // The name reaches the node TalkBack reads, not a merged neighbour.
+    expect(tester.getSemantics(pin('Point 2 of 3')).getSemanticsData().label,
+        contains('Point 2 of 3'));
+    expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+    expect(find.byIcon(Icons.sports_score), findsOneWidget);
+    handle.dispose();
   });
 
   testWidgets('mode toggle has Trail / Road / Straight segments',
@@ -1640,6 +1722,23 @@ void _registerOfflineSaveTests() {
       );
     }
 
+    testWidgets('over a 3-button nav bar the last row clears the bar',
+        (tester) async {
+      await openSheetOverNavBar(
+        tester,
+        (context) => showModalBottomSheet<void>(
+          context: context,
+          builder: (_) => WaypointListSheet(
+            waypoints: wps,
+            onApply: (_) {},
+            announce: (_) {},
+          ),
+        ),
+      );
+      expectAboveNavBar(
+          tester, find.byTooltip('Delete point 3', skipOffstage: false));
+    });
+
     testWidgets('renders one numbered row per waypoint with start/end tags',
         (tester) async {
       await tester.pumpWidget(
@@ -1913,4 +2012,16 @@ void _registerOfflineSaveTests() {
       });
     }
   });
+}
+
+double _luminance(Color c) {
+  double chan(double v) =>
+      v <= 0.03928 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+  return 0.2126 * chan(c.r) + 0.7152 * chan(c.g) + 0.0722 * chan(c.b);
+}
+
+double _contrast(Color a, Color b) {
+  final la = _luminance(a);
+  final lb = _luminance(b);
+  return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
 }

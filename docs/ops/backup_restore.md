@@ -177,10 +177,11 @@ migrations — see `personal_data_export_profile_guard_test.go` and
 ## Where it's wired today
 
 - **Web** → `/settings/account` → "Download full backup" + "Restore from
-  backup". Implemented in `apps/web/src/lib/backup/backup.ts`. Uses `JSZip`.
+  backup". Implemented in `apps/web/src/lib/backup/backup.ts`. Uses `@zip.js/zip.js`
+  both ways (`ZipWriter` to write, `openZip` in `core/zip_archive.ts` to read).
   Both paths require an authenticated session — there's no local
   persistence to stage into.
-- **Mobile Android** → Settings → Account → "Full backup" / "Restore from backup".
+- **Mobile Android** → You → Account → "Full backup" / "Restore from backup".
   Implemented in `apps/mobile_android/lib/backup.dart`. Uses the
   `archive` package. **Restore works offline** — if the user isn't
   signed in, runs + routes are hydrated into `LocalRunStore` /
@@ -216,7 +217,7 @@ migrations — see `personal_data_export_profile_guard_test.go` and
 
 - Both clients stream tracks — a 10-hour run's track is multi-megabyte,
   and holding every track for a heavy user (hundreds of runs) in memory
-  during export is a hazard. JSZip writes incrementally; the Dart
+  during export is a hazard. zip.js's `ZipWriter` writes incrementally; the Dart
   `archive.writeZipBytes` also accepts a streaming builder.
 - Restore is **additive**. It never deletes runs that aren't in the
   archive, and (offline path, `generateNewIds: false`) it never overwrites a

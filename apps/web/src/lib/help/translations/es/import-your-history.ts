@@ -11,7 +11,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'En la web, abre [[route:/settings/integrations|Integraciones]] en Configuración y selecciona **Conectar** en la tarjeta de Strava; en la app del móvil, abre **Integraciones** en la pestaña **Tú** y toca Strava.',
+						'En la web, abre [[route:/settings/integrations|Integraciones]] en Ajustes y selecciona **Conectar** en la tarjeta de Strava; en la app del móvil, abre **Integraciones** en la pestaña **Tú** y toca Strava.',
 						'Inicia sesión en Strava y permite el acceso.',
 						'Se copian tus carreras, caminatas y excursiones de los últimos 90 días, y las nuevas actividades de Strava llegan automáticamente.',
 					],

@@ -343,6 +343,9 @@ class _Band extends StatelessWidget {
   }
 }
 
+/// The pace pip: a glyph per band plus the signed delta, so the band is not
+/// told by hue alone (#1374 A11Y-8), and one screen-reader node that names
+/// the band and reads the delta as its value.
 class _PacePip extends StatelessWidget {
   final PaceAdherence adherence;
   final int? delta;
@@ -351,33 +354,53 @@ class _PacePip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final semantic = AppSemanticColors.of(context);
-    final color = switch (adherence) {
-      PaceAdherence.onPace => semantic.success,
-      PaceAdherence.ahead || PaceAdherence.behind => semantic.warning,
-      PaceAdherence.wayAhead || PaceAdherence.wayBehind =>
-        theme.colorScheme.error,
+    final (color, glyph, status) = switch (adherence) {
+      PaceAdherence.onPace =>
+        (semantic.success, Icons.check, l10n.workoutPaceOnPace),
+      PaceAdherence.ahead =>
+        (semantic.warning, Icons.keyboard_arrow_up, l10n.workoutPaceAhead),
+      PaceAdherence.behind =>
+        (semantic.warning, Icons.keyboard_arrow_down, l10n.workoutPaceBehind),
+      PaceAdherence.wayAhead => (
+          theme.colorScheme.error,
+          Icons.keyboard_double_arrow_up,
+          l10n.workoutPaceWayAhead,
+        ),
+      PaceAdherence.wayBehind => (
+          theme.colorScheme.error,
+          Icons.keyboard_double_arrow_down,
+          l10n.workoutPaceWayBehind,
+        ),
     };
     final label = delta == null
         ? '—'
         : UnitFormat.paceDelta(delta!, activeDistanceUnit);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
+    final style = theme.textTheme.labelSmall?.copyWith(
+      color: color,
+      fontWeight: FontWeight.w700,
+    );
+    return Semantics(
+      key: const Key('workoutBandPacePip'),
+      container: true,
+      label: status,
+      value: delta == null ? null : label,
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // The glyph tracks the label's size, so it scales with the text.
+          Icon(
+            glyph,
+            size: MediaQuery.textScalerOf(context)
+                .scale((style?.fontSize ?? 11) + 2),
             color: color,
-            fontWeight: FontWeight.w700,
           ),
-        ),
-      ],
+          const SizedBox(width: 4),
+          Text(label, style: style),
+        ],
+      ),
     );
   }
 }

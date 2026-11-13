@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/dm_drafts.dart';
 import '../lib/orphaned_recording.dart';
 import '../lib/tile_cache.dart';
 import 'hermetic_tile_provider.dart';
@@ -34,5 +35,8 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // run on (decisions § 2352). Left set, it would open the next test's run
   // screen on a Resume prompt for a run that test never recorded.
   tearDown(() => orphanedRecording.value = null);
+  // Message drafts live for the app's life; one test's typing must not open
+  // the next test's thread with text in it.
+  tearDown(DmDrafts.clear);
   await testMain();
 }

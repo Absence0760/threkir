@@ -79,15 +79,11 @@
 	const bodyText = $derived(
 		gearKind === 'bike'
 			? m(
-					candidates.length === 1
-						? 'settingsGear.backfillBodyBikeOne'
-						: 'settingsGear.backfillBodyBike',
+					'settingsGear.backfillBodyBike',
 					{ n: candidates.length },
 				)
 			: m(
-					candidates.length === 1
-						? 'settingsGear.backfillBodyShoeOne'
-						: 'settingsGear.backfillBodyShoe',
+					'settingsGear.backfillBodyShoe',
 					{ n: candidates.length },
 				),
 	);

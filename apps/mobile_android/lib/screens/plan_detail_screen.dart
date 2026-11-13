@@ -25,13 +25,13 @@ import '../rate_limit_message.dart' show rateLimitErrorMessage;
 import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
 import '../cycle_plan_config.dart';
 import '../share_sheet.dart';
+import '../start_planned_workout.dart';
 import '../plan_serialize.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../local_run_store.dart';
-import '../main.dart' show pendingStartWorkout;
 import '../plan_adherence.dart';
 import '../plan_current.dart';
 import '../plan_progress.dart';
@@ -2087,9 +2087,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
 
     try {
+      // No client timeout: the publish is a multi-row insert a timeout cannot
+      // cancel, so "failed" over a template that landed invited a duplicate
+      // (issue #1374 FS-8; conventions § Write timeouts).
       await widget.training
-          .publishPlanAsTemplate(planId: plan.id, clubId: clubId)
-          .timeout(kBackendLoadTimeout);
+          .publishPlanAsTemplate(planId: plan.id, clubId: clubId);
       if (!mounted) return;
       setState(() => _publishing = false);
       showTopBanner(context, l10n.planDetailPublishSuccess(plan.name));
@@ -2168,9 +2170,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     if (_loading) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: SectionedDetailSkeleton(
+      return DetailPage.placeholder(
+        child: SectionedDetailSkeleton(
           label: l10n.commonLoading,
           statCells: 3,
           rows: 5,
@@ -2179,9 +2180,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       );
     }
     if (_error != null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: ErrorState(
+      return DetailPage.placeholder(
+        child: AppErrorState(
             message: switch (_error!) {
               _PlanDetailLoadError.timeout => l10n.planDetailTimeoutError,
               _PlanDetailLoadError.offline => l10n.authErrorOffline,
@@ -2192,9 +2192,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
     final p = _plan;
     if (p == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: EmptyState(
+      return DetailPage.placeholder(
+        child: EmptyState(
           icon: Icons.calendar_month,
           title: l10n.planDetailNotFound,
         ),
@@ -2212,61 +2211,54 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final body = _bodyList(theme, l10n, p, progress.pct, progress.completed,
         progress.total, currentWeek, todayWorkout);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(p.name),
-        actions: [
-          if (_isOwner(p) && !p.isTemplate)
-            PopupMenuButton<_PlanMenu>(
-              key: const Key('planDetailMenu'),
-              tooltip: l10n.planDetailMoreActions,
-              enabled: !_bulkBusy,
-              onSelected: (a) => _onPlanMenu(a, p),
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                    value: _PlanMenu.adjust,
-                    child: Text(l10n.planDetailAdjustPlan)),
-                PopupMenuItem(
-                    value: _PlanMenu.editDetails,
-                    child: Text(l10n.planDetailEditDetails)),
-                PopupMenuItem(
-                    value: _PlanMenu.shift,
-                    child: Text(l10n.planDetailShiftDates)),
-                if (_raceDateOffer(p) != null)
-                  PopupMenuItem(
-                      key: const Key('planDetailChangeRaceDate'),
-                      value: _PlanMenu.raceDate,
-                      child: Text(l10n.planDetailChangeRaceDate)),
-                PopupMenuItem(
-                    value: _PlanMenu.exportMarkdown,
-                    child: Text(l10n.planDetailExportMarkdown)),
-                PopupMenuItem(
-                    value: _PlanMenu.exportJson,
-                    child: Text(l10n.planDetailExportJson)),
-                PopupMenuItem(
-                    value: _PlanMenu.restart,
-                    child: Text(l10n.planDetailRestartPlan)),
-                if (p.assignedByCoachId != null &&
-                    p.assignedByCoachId != _viewerId() &&
-                    _assigningCoachName != null)
-                  PopupMenuItem(
-                      key: const Key('planDetailMenuCoach'),
-                      value: _PlanMenu.coach,
-                      child: Text(
-                          l10n.planDetailAssignedBy(_assigningCoachName!))),
-                const PopupMenuDivider(),
-                if (p.status == 'active' || p.status == 'paused')
-                  PopupMenuItem(
-                      key: const Key('planDetailMenuAbandon'),
-                      value: _PlanMenu.abandon,
-                      child: Text(l10n.planDetailAbandonPlan)),
-                PopupMenuItem(
-                    value: _PlanMenu.delete,
-                    child: Text(l10n.planDetailDeletePlan)),
-              ],
-            ),
+    final owns = _isOwner(p) && !p.isTemplate;
+    AppBarAction item(_PlanMenu action, String label, IconData icon,
+            {Key? key, bool destructive = false}) =>
+        AppBarAction(
+          key: key,
+          icon: Icon(icon),
+          label: label,
+          menuOnly: true,
+          destructive: destructive,
+          onPressed: _bulkBusy ? null : () => _onPlanMenu(action, p),
+        );
+    return DetailPage(
+      title: p.name,
+      moreTooltip: l10n.planDetailMoreActions,
+      moreKey: const Key('planDetailMenu'),
+      // A plan's own actions are all occasional, so they stay in the menu.
+      actions: [
+        if (owns) ...[
+          item(_PlanMenu.adjust, l10n.planDetailAdjustPlan, Icons.tune),
+          item(_PlanMenu.editDetails, l10n.planDetailEditDetails,
+              Icons.edit_outlined),
+          item(_PlanMenu.shift, l10n.planDetailShiftDates,
+              Icons.date_range),
+          if (_raceDateOffer(p) != null)
+            item(_PlanMenu.raceDate, l10n.planDetailChangeRaceDate,
+                Icons.event,
+                key: const Key('planDetailChangeRaceDate')),
+          item(_PlanMenu.exportMarkdown, l10n.planDetailExportMarkdown,
+              Icons.description),
+          item(_PlanMenu.exportJson, l10n.planDetailExportJson,
+              Icons.data_object),
+          item(_PlanMenu.restart, l10n.planDetailRestartPlan, Icons.replay),
+          if (p.assignedByCoachId != null &&
+              p.assignedByCoachId != _viewerId() &&
+              _assigningCoachName != null)
+            item(_PlanMenu.coach,
+                l10n.planDetailAssignedBy(_assigningCoachName!),
+                Icons.person_outline,
+                key: const Key('planDetailMenuCoach')),
+          if (p.status == 'active' || p.status == 'paused')
+            item(_PlanMenu.abandon, l10n.planDetailAbandonPlan,
+                Icons.flag_outlined,
+                key: const Key('planDetailMenuAbandon'), destructive: true),
+          item(_PlanMenu.delete, l10n.planDetailDeletePlan,
+              Icons.delete_outline,
+              destructive: true),
         ],
-      ),
+      ],
       body: RefreshIndicator(
         onRefresh: _load,
         child: contentColumn(context, body, maxWidth: _kExpandedBodyMaxWidth),
@@ -2284,8 +2276,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         : null;
     return ListView(
       controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
+        DetailHero(
+          title: p.name,
+          padding: const EdgeInsets.only(top: 12, bottom: 12),
+        ),
         _heroCard(theme, l10n, p, pct, done, total,
             heroRace: _heroRace(p, races)),
         if (p.assignedByCoachId != null && _planChangeApi != null) ...[
@@ -2453,45 +2449,39 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       String? meta,
       VoidCallback? onTap,
     }) =>
-        Card(
+        ListCard(
           key: key,
           margin: EdgeInsets.zero,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(icon,
-                      size: AppIconSize.material,
-                      color: theme.colorScheme.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(label,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            )),
-                        Text(title,
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700)),
-                        if (meta != null)
-                          Text(meta,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )),
-                      ],
-                    ),
-                  ),
-                  if (onTap != null)
-                    Icon(Icons.chevron_right,
-                        color: theme.colorScheme.onSurfaceVariant),
-                ],
+          onTap: onTap,
+          child: Row(
+            children: [
+              Icon(icon,
+                  size: AppIconSize.material,
+                  color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        )),
+                    Text(title,
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    if (meta != null)
+                      Text(meta,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          )),
+                  ],
+                ),
               ),
-            ),
+              if (onTap != null)
+                Icon(Icons.chevron_right,
+                    color: theme.colorScheme.onSurfaceVariant),
+            ],
           ),
         );
 
@@ -2966,8 +2956,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                   ),
                 ),
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              OverflowBar(
+                alignment: MainAxisAlignment.end,
+                overflowAlignment: OverflowBarAlignment.end,
+                spacing: 8,
                 children: [
                   TextButton(
                     onPressed: _bulkBusy
@@ -2975,7 +2967,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                         : () => setState(() => _taperPreview = null),
                     child: Text(l10n.planDetailReplanCancel),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _bulkBusy ? null : () => _applyRaceTaper(p),
                     child: Text(l10n.planDetailReplanApply),
@@ -3053,8 +3044,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                   ),
                 ),
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              OverflowBar(
+                alignment: MainAxisAlignment.end,
+                overflowAlignment: OverflowBarAlignment.end,
+                spacing: 8,
                 children: [
                   TextButton(
                     onPressed: _bulkBusy
@@ -3066,7 +3059,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                             }),
                     child: Text(l10n.planDetailReplanCancel),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _bulkBusy ? null : () => _applyReplan(p),
                     child: Text(l10n.planDetailReplanApply),
@@ -3295,7 +3287,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       children: [
         Icon(icon, size: AppIconSize.dense, color: theme.colorScheme.outline),
         const SizedBox(width: 3),
-        Text(text, style: theme.textTheme.bodySmall),
+        // Flexible, so a long fact wraps inside the line rather than running
+        // off it at 2x on 320 dp (#1374 TO-6).
+        Flexible(child: Text(text, style: theme.textTheme.bodySmall)),
       ],
     );
   }
@@ -3394,19 +3388,31 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         children: [
           Row(
             children: [
-              Text(l10n.planDetailWeek(w.weekIndex + 1),
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(width: 8),
+              // The week and its phase share a line while they fit and the
+              // phase drops under the week when they don't. As an Expanded
+              // beside an unflexed "Semaine 12" the phase got 0 dp at 2x on
+              // 320 dp, and it is the card's only training-block cue
+              // (#1374 TO-9).
               Expanded(
-                child: Text(planPhaseLabel(l10n, phase).toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      letterSpacing: 0.6,
-                      fontWeight: FontWeight.w700,
-                    )),
+                child: Wrap(
+                  key: ValueKey('planDetailWeekHeading-${w.weekIndex}'),
+                  spacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(l10n.planDetailWeek(w.weekIndex + 1),
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(planPhaseLabel(l10n, phase).toUpperCase(),
+                        key: ValueKey('planDetailWeekPhase-${w.weekIndex}'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          letterSpacing: 0.6,
+                          fontWeight: FontWeight.w700,
+                        )),
+                  ],
+                ),
               ),
               if (weekJudgedByDistance(workouts.map((x) => x.kind)))
                 Text(fmtKm(w.targetVolumeM, 0),
@@ -3521,33 +3527,47 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: isToday ? FontWeight.w700 : null,
                   ))),
+          // The kind, then its size and any overrun at the end of the line
+          // while they fit; at large text the size drops under the kind
+          // rather than pushing the row off the card (#1374 TO-6).
           Expanded(
-            child: Text(
-              workoutKindLabel(l10n, kind),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: (isRest || isSkipped)
-                    ? theme.colorScheme.onSurfaceVariant
-                    : null,
-                fontWeight: isRest ? FontWeight.w400 : FontWeight.w600,
-                decoration: isSkipped ? TextDecoration.lineThrough : null,
-              ),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              children: [
+                Text(
+                  workoutKindLabel(l10n, kind),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: (isRest || isSkipped)
+                        ? theme.colorScheme.onSurfaceVariant
+                        : null,
+                    fontWeight: isRest ? FontWeight.w400 : FontWeight.w600,
+                    decoration: isSkipped ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                if (size != null || overrun != null)
+                  Wrap(
+                    spacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (size != null)
+                        Text(size,
+                            key: ValueKey('planDetailWorkoutSize-${wo.id}'),
+                            style: theme.textTheme.bodySmall),
+                      if (overrun != null)
+                        Text(
+                          l10n.planWorkoutOverrun(overrun),
+                          key: ValueKey('planDetailOverrun-${wo.id}'),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                    ],
+                  ),
+              ],
             ),
           ),
-          if (size != null) ...[
-            Text(size,
-                key: ValueKey('planDetailWorkoutSize-${wo.id}'),
-                style: theme.textTheme.bodySmall),
-            const SizedBox(width: 6),
-          ],
-          if (overrun != null) ...[
-            Text(
-              l10n.planWorkoutOverrun(overrun),
-              key: ValueKey('planDetailOverrun-${wo.id}'),
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(width: 6),
-          ],
+          const SizedBox(width: 6),
           if (look.glyph != null)
             Icon(look.glyph, color: look.glyphColor, size: AppIconSize.inline),
         ],
@@ -3631,11 +3651,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (ok) await _load();
   }
 
-  /// Push WorkoutDetailScreen, then either kick the structured runner
-  /// (when the user tapped Start) or just refresh the plan. The runner
-  /// lives on the Run tab — popping back to root and signalling
-  /// `pendingStartWorkout` lets HomeScreen switch tabs and RunScreen
-  /// load the workout.
   /// The recap's "Build your next plan": the wizard on the start past the
   /// race's recovery, with the race's 5K equivalent filled but unconfirmed.
   void _openNextPlan(String startIso, int? seed5kSec) {
@@ -3648,9 +3663,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     ));
   }
 
+  /// Push WorkoutDetailScreen, then refresh the plan. Its Start returns to
+  /// the shell and starts the run itself (`start_planned_workout.dart`).
   Future<void> _openWorkout(PlanWorkoutRow wo) async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute<PlanWorkoutRow?>(
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
         builder: (_) => WorkoutDetailScreen(
           training: widget.training,
           planId: widget.planId,
@@ -3660,17 +3677,13 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       ),
     );
     if (!mounted) return;
-    if (result != null) {
-      _startWorkout(result);
-      return;
-    }
     _load();
   }
 
-  void _startWorkout(PlanWorkoutRow wo) {
-    pendingStartWorkout.value = wo;
-    Navigator.of(context).popUntil((r) => r.isFirst);
-  }
+  /// Today's card Start: the run starts with the workout armed, behind the
+  /// recorder's own checks and countdown (issue #1374).
+  Future<void> _startWorkout(PlanWorkoutRow wo) =>
+      startPlannedWorkout(Navigator.of(context), wo);
 }
 
 enum _PlanDetailLoadError { timeout, offline, generic }
@@ -3704,56 +3717,47 @@ class PublishClubPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.planDetailPublishPickerTitle,
-                style: theme.textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              l10n.planDetailPublishPickerBody,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      title: Text(l10n.planDetailPublishPickerTitle),
+      scrollBody: false,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.planDetailPublishPickerBody, style: muted),
+          const SizedBox(height: 12),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: clubs.length,
+              itemBuilder: (_, i) {
+                final c = clubs[i];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.group),
+                  title: Text(c.row.name),
+                  subtitle: Text(
+                    '${c.row.locationLabel ?? c.row.slug} · '
+                    '${l10n.planDetailPublishPickerMembers(c.memberCount)}',
+                    style: muted,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.pop(context, c.row.id),
+                );
+              },
             ),
-            const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 360),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: clubs.length,
-                itemBuilder: (_, i) {
-                  final c = clubs[i];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.group),
-                    title: Text(c.row.name),
-                    subtitle: Text(
-                      '${c.row.locationLabel ?? c.row.slug} · '
-                      '${l10n.planDetailPublishPickerMembers(c.memberCount)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.pop(context, c.row.id),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.planDetailPublishCancel),
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+      actions: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.planDetailPublishCancel),
         ),
       ),
     );

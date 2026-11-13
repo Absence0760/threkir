@@ -26,7 +26,7 @@ EAA + ADA + state laws (Colorado Privacy Act §6-1-1305, NY Human Rights Law §2
 ### Flutter (mobile_android + mobile_ios)
 
 11. **Semantics widgets.** Every `IconButton`, gesture detector, custom-painted tappable needs a `Semantics(label: ..., button: true, ...)` wrapper.
-12. **Screen-reader labels.** Icon-only buttons in `RunScreen` (start, pause, lap, stop), `DashboardScreen` cards, `RouteBuilderScreen` mode toggle.
+12. **Screen-reader labels.** Icon-only buttons in `RunScreen` (start, pause, lap, stop), `TodayScreen` cards, `RouteBuilderScreen` mode toggle.
 13. **Dynamic type.** `MediaQuery.textScaleFactor` respected — text doesn't overflow at 200%.
 14. **Colour contrast.** Same bar as web.
 15. **Touch targets.** Min 44×44 px (Apple HIG, Material).

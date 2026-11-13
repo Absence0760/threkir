@@ -10,7 +10,7 @@
 
 begin;
 
-select plan(11);
+select plan(14);
 
 -- Seed users: A has a consented profile + Art 9 columns + a weight series;
 -- B and C have NO profile row (the client-provisioned-row gap).
@@ -21,7 +21,9 @@ values
   ('00000000-0000-0000-0000-0000000ccd12', 'authenticated', 'authenticated',
    'hdc-b@test.local', '', now(), now()),
   ('00000000-0000-0000-0000-0000000ccd13', 'authenticated', 'authenticated',
-   'hdc-c@test.local', '', now(), now());
+   'hdc-c@test.local', '', now(), now()),
+  ('00000000-0000-0000-0000-0000000ccd14', 'authenticated', 'authenticated',
+   'hdc-d@test.local', '', now(), now());
 insert into user_profiles (id, display_name, preferred_unit, health_data_consent_at,
                            height_cm, gender, date_of_birth)
 values ('00000000-0000-0000-0000-0000000ccd11', 'HDC A', 'km',
@@ -29,6 +31,18 @@ values ('00000000-0000-0000-0000-0000000ccd11', 'HDC A', 'km',
 insert into body_metrics (user_id, weight_kg)
 values ('00000000-0000-0000-0000-0000000ccd11', 65.5),
        ('00000000-0000-0000-0000-0000000ccd11', 66.0);
+-- A's settings bag holds every Art 9 copy beside a key that is not one.
+-- D never consented and holds a weight typed at onboarding.
+insert into user_settings (user_id, prefs)
+values ('00000000-0000-0000-0000-0000000ccd11', jsonb_build_object(
+          'date_of_birth', '1990-01-15', 'body_weight_kg', 66.0,
+          'cycle_tracking_mode', 'cycle', 'cycle_length_days', 28,
+          'cycle_last_period_start', '2026-10-01', 'pregnancy_due_date', '2027-03-01',
+          'weight_unit', 'kg')),
+       ('00000000-0000-0000-0000-0000000ccd14', jsonb_build_object(
+          'body_weight_kg', 80.0, 'weight_unit', 'kg'));
+insert into user_profiles (id, display_name, preferred_unit)
+values ('00000000-0000-0000-0000-0000000ccd14', 'HDC D', 'km');
 
 -- ── 1. Direct non-null write is still blocked (flag not yet raised) ──
 set local role authenticated;
@@ -107,6 +121,31 @@ select is(
     where user_id = '00000000-0000-0000-0000-0000000ccd11'),
   0,
   'withdrawal erased the body_metrics series'
+);
+
+-- ── 6b. The settings bag's Art 9 copies go with it ───────────────────
+-- The date-of-birth and weight mirrors and the cycle and pregnancy inputs
+-- were each cleared by some clients only; the RPC strips them all.
+select is(
+  (select prefs from user_settings
+    where user_id = '00000000-0000-0000-0000-0000000ccd11'),
+  '{"weight_unit": "kg"}'::jsonb,
+  'withdrawal stripped every Art 9 key from the settings bag and kept the rest'
+);
+
+-- ── 6c. A runner who never consented keeps the onboarding weight ─────
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccd14","role":"authenticated"}';
+select lives_ok(
+  $$ select withdraw_health_data_consent() $$,
+  'withdraw_health_data_consent() succeeds for a runner who never consented'
+);
+reset role;
+select is(
+  (select prefs from user_settings
+    where user_id = '00000000-0000-0000-0000-0000000ccd14'),
+  '{"weight_unit": "kg", "body_weight_kg": 80.0}'::jsonb,
+  'a withdrawal with no consent to withdraw leaves the onboarding weight'
 );
 
 -- ── 7. Withdrawal with NO profile row lands a withdrawn row (user C) ─

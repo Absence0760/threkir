@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../l10n/gen/app_localizations.dart';
 import '../local_gym_store.dart';
@@ -21,14 +22,11 @@ class GymSummaryCard extends StatelessWidget {
     final title = workout.workout.title?.trim();
     final exercises = gymExerciseCount(workout);
     final volume = gymWorkoutVolume(workout);
-    return Card(
+    return ListCard(
       margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-          child: Row(
+      onTap: onTap,
+      dense: true,
+      child: Row(
             children: [
               Icon(Icons.fitness_center, color: theme.colorScheme.primary),
               const SizedBox(width: 14),
@@ -66,8 +64,6 @@ class GymSummaryCard extends StatelessWidget {
               Icon(Icons.chevron_right, color: theme.colorScheme.outline),
             ],
           ),
-        ),
-      ),
     );
   }
 }

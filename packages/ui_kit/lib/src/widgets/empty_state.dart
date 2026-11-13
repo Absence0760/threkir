@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Shared whole-surface empty state — the "no data yet" sibling of the
-/// app-side ErrorState, reusing its icon size (48) and padding (32) so
+/// Shared whole-surface empty state — the "no data yet" sibling of
+/// [ErrorState], reusing its icon size (48) and padding (32) so
 /// empty and errored surfaces read as one family instead of drifting per
 /// screen; the titleMedium title + bodySmall body split is this widget's
 /// own.

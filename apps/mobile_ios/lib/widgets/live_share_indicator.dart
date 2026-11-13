@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
+import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 
@@ -29,6 +29,7 @@ class LiveShareIndicator extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Semantics(
+          excludeSemantics: true,
           button: true,
           label: l10n.runLiveShareActiveSemantics,
           child: Container(
@@ -93,8 +94,9 @@ Future<LiveShareAction?> showLiveShareSheet(
     context: context,
     builder: (ctx) {
       final theme = Theme.of(ctx);
-      return SafeArea(
-        child: Column(
+      return SheetScaffold(
+        padding: EdgeInsets.zero,
+        body: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(

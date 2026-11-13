@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ProgressBar;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, ListCard, ProgressBar;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../fundraiser_progress.dart';
@@ -98,93 +99,89 @@ class _FundraiserSectionState extends State<FundraiserSection> {
     final raisedStr = _money(raised, f.currency);
     final goalStr = _money(goal, f.currency);
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(f.title, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 2),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(f.title, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 2),
+          Text(
+            f.charityName,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ProgressBar(
+            value: progress.fillPct / 100,
+            fill: progress.state == ThermometerState.exceeded
+                ? AppSemanticColors.of(context).success
+                : null,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.fundraiserRaisedOfGoal(raisedStr, goalStr),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text('${progress.rawPct.round()}%'),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.fundraiserDonorCount(donors),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+              if (progress.state == ThermometerState.exceeded)
+                Text(
+                  l10n.fundraiserOverGoal,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppSemanticColors.of(context).success,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+          if (f.isClosed) ...[
+            const SizedBox(height: 12),
             Text(
-              f.charityName,
+              l10n.fundraiserClosed,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _donateOnWeb,
+              child: Text(l10n.fundraiserDonateOnWeb),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Text(l10n.fundraiserFeedTitle, style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          if (_feed.isEmpty)
+            Text(
+              l10n.fundraiserFeedEmpty,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
-            ),
-            const SizedBox(height: 12),
-            ProgressBar(
-              value: progress.fillPct / 100,
-              fill: progress.state == ThermometerState.exceeded
-                  ? AppSemanticColors.of(context).success
-                  : null,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.fundraiserRaisedOfGoal(raisedStr, goalStr),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Text('${progress.rawPct.round()}%'),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.fundraiserDonorCount(donors),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-                if (progress.state == ThermometerState.exceeded)
-                  Text(
-                    l10n.fundraiserOverGoal,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppSemanticColors.of(context).success,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-              ],
-            ),
-            if (f.isClosed) ...[
-              const SizedBox(height: 12),
-              Text(
-                l10n.fundraiserClosed,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ] else ...[
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: _donateOnWeb,
-                child: Text(l10n.fundraiserDonateOnWeb),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Text(l10n.fundraiserFeedTitle, style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            if (_feed.isEmpty)
-              Text(
-                l10n.fundraiserFeedEmpty,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              )
-            else
-              ..._feed.map((e) => _DonationRow(entry: e, money: _money)),
-          ],
-        ),
+            )
+          else
+            ..._feed.map((e) => _DonationRow(entry: e, money: _money)),
+        ],
       ),
     );
   }

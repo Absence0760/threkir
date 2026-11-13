@@ -45,6 +45,7 @@
 		step="0.001"
 		value={fraction}
 		aria-label={m('routePreview.scrubLabel')}
+		aria-valuetext={formatDistance(totalDistanceM * fraction)}
 		data-testid="route-scrubber"
 		oninput={(e) => {
 			const v = parseFloat((e.target as HTMLInputElement).value);

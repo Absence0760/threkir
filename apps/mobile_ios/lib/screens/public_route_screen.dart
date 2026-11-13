@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show StatGrid, StatTile;
+import 'package:ui_kit/ui_kit.dart'
+    show AppBarAction, DetailHero, DetailPage, StatGrid, StatTile;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -14,7 +15,6 @@ import '../widgets/error_state.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
-import '../widgets/scrolled_away_title.dart';
 import '../widgets/segments_panel.dart';
 import '../widgets/shared_with_you_chip.dart';
 import '../widgets/top_banner.dart';
@@ -68,8 +68,6 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
   bool? _bookmarked;
   bool _bookmarkBusy = false;
   final ScrollController _scrollController = ScrollController();
-  late final ScrolledAwayTitleController _nameTitle =
-      ScrolledAwayTitleController(_scrollController);
 
   @override
   void initState() {
@@ -79,7 +77,6 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
 
   @override
   void dispose() {
-    _nameTitle.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -207,27 +204,20 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
     // library. Starting a run needs no sign-in (offline recording is fine).
     final canBookmark =
         route != null && !_isOwner && widget.api.userId != null;
-    return Scaffold(
-      appBar: AppBar(
-        title: route == null
-            ? Text(l10n.publicRouteFallbackTitle)
-            : ScrolledAwayTitle(
-                controller: _nameTitle,
-                child: Text(route.name),
-              ),
-        actions: [
-          if (canBookmark)
-            IconButton(
-              icon: Icon(
-                (_bookmarked ?? false) ? Icons.bookmark : Icons.bookmark_border,
-              ),
-              tooltip: (_bookmarked ?? false)
-                  ? l10n.routeDetailRemoveBookmark
-                  : l10n.routeDetailBookmarkRoute,
-              onPressed: _bookmarkBusy ? null : _toggleBookmark,
+    return DetailPage(
+      title: route?.name ?? l10n.publicRouteFallbackTitle,
+      actions: [
+        if (canBookmark)
+          AppBarAction(
+            icon: Icon(
+              (_bookmarked ?? false) ? Icons.bookmark : Icons.bookmark_border,
             ),
-        ],
-      ),
+            label: (_bookmarked ?? false)
+                ? l10n.routeDetailRemoveBookmark
+                : l10n.routeDetailBookmarkRoute,
+            onPressed: _bookmarkBusy ? null : _toggleBookmark,
+          ),
+      ],
       floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: canStartRun
           ? FloatingActionButton.extended(
@@ -243,7 +233,7 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
       body: _loading
           ? MapDetailSkeleton(label: l10n.commonLoading)
           : _loadError != null
-              ? ErrorState(
+              ? AppErrorState(
                   message: l10n.publicRouteLoadError, onRetry: _load)
               : _route == null
                   ? Center(
@@ -281,9 +271,8 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
             followRunner: false,
           ),
         ),
-        ScrolledAwayHeading(
-          controller: _nameTitle,
-          text: route.name,
+        DetailHero(
+          title: route.name,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         ),
         if (sharedWithMe)

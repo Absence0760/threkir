@@ -2,9 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
 import '../lib/screens/import_screen.dart';
+import '../lib/settings_destination.dart';
+import 'worst_case_layout.dart';
 
 late Directory _runsDir;
 
@@ -36,6 +39,17 @@ Future<void> _pump(WidgetTester tester, LocalRunStore runStore) async {
 }
 
 void main() {
+  // Issue #1374: every import source is a ListCard.
+  worstCaseTestWidgets('Import', (tester, locale) async {
+    final runStore = (await tester.runAsync(_makeStore))!;
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ImportScreen(apiClient: null, runStore: runStore),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Import');
+  });
+
   tearDown(() {
     if (_runsDir.existsSync()) _runsDir.deleteSync(recursive: true);
   });
@@ -44,7 +58,7 @@ void main() {
     testWidgets('renders Import runs app-bar title', (tester) async {
       final store = await _makeStore();
       await _pump(tester, store);
-      expect(find.text('Import runs'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Import runs'), findsOneWidget);
     });
 
     testWidgets('shows Strava import card with heading and description',
@@ -53,6 +67,43 @@ void main() {
       await _pump(tester, store);
       expect(find.text('Strava'), findsOneWidget);
       expect(find.textContaining('Strava data export ZIP'), findsOneWidget);
+    });
+
+    testWidgets('the backup card links to where a backup is made',
+        (tester) async {
+      // Full backup lives on the Account page; the card used to recite
+      // "Settings → Full backup", which no longer leads anywhere (§ 2494).
+      pendingSettingsDestination.value = null;
+      addTearDown(() => pendingSettingsDestination.value = null);
+      final store = await _makeStore();
+      await _pump(tester, store);
+      final link = find.byKey(const Key('importBackupMakeOne'));
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      expect(pendingSettingsDestination.value, SettingsDestination.account);
+    });
+
+    testWidgets('the Account page sends Make a backup back to itself',
+        (tester) async {
+      // Opened from Account, the link pops back to the Full backup row
+      // rather than stacking a second Account page.
+      pendingSettingsDestination.value = null;
+      addTearDown(() => pendingSettingsDestination.value = null);
+      final store = await _makeStore();
+      var made = 0;
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ImportScreen(runStore: store, onMakeBackup: () => made++),
+      ));
+      await tester.pump();
+      final link = find.byKey(const Key('importBackupMakeOne'));
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      expect(made, 1);
+      expect(pendingSettingsDestination.value, isNull);
     });
 
     testWidgets('shows Health Connect import card with heading', (tester) async {

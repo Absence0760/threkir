@@ -200,7 +200,7 @@ const AT_OR_UNDER_TOKEN = <Record<string, number>>{
 	// two week ribbons and `PlanCalendar` have now lost) and `.source-badge` —
 	// the last member of its family still under the floor, the other three being
 	// `PeriodSummary`, `RunShareView` and `/runs`, all now on the token.
-	'routes/dashboard/+page.svelte': 3,
+	'routes/dashboard/DashboardView.svelte': 3,
 	// `.collapse-toggle-label`, the sidebar section-label toggle.
 	'routes/+layout.svelte': 1,
 	// `.segment-eyebrow` and `.segment-stat-label`.

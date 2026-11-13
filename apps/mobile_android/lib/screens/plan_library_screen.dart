@@ -2,7 +2,20 @@ import 'dart:async';
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, ProgressBar;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppSpace,
+        DetailHero,
+        DetailMeta,
+        DetailPage,
+        EmptyState,
+        ListCard,
+        ListSkeleton,
+        PageHeader,
+        ProgressBar,
+        PushedPage,
+        SectionHeader,
+        TermValueRow;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -15,6 +28,7 @@ import '../training.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
+import '../widgets/stale_refresh_banner.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/plan_meta_item.dart';
 import '../widgets/plan_overlap_dialog.dart';
@@ -102,13 +116,7 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
       // a banner over them rather than an error page that drops them.
       if (_loaded) {
         setState(() => _loading = false);
-        final l10n = AppLocalizations.of(context);
-        showTopBanner(
-          context,
-          e is TimeoutException || classifyAuthError(e) == AuthErrorKind.offline
-              ? l10n.commonStaleOffline
-              : l10n.commonStaleRefreshFailed,
-        );
+        showStaleRefreshBanner(context, e);
         return;
       }
       setState(() {
@@ -137,20 +145,13 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final showControls = !_signedOut;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.planLibraryTitle)),
+    return PushedPage(
+      title: l10n.planLibraryTitle,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          PageHeader(title: l10n.planLibraryTitle),
           if (showControls) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Text(
-                l10n.planLibrarySubheading,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
@@ -184,7 +185,7 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
                 : _signedOut
                     ? SignInRequiredState(onSignedIn: _load)
                     : _error
-                    ? ErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
+                    ? AppErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
                     : _plans.isEmpty
                         ? RefreshIndicator(
                             onRefresh: _load,
@@ -201,19 +202,28 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
                             onRefresh: _load,
                             child: ListView.separated(
                               padding: const EdgeInsets.all(16),
-                              itemCount: _plans.length,
+                              // The subheading scrolls with the cards: pinned
+                              // above the search, it left the list no room at
+                              // 320 dp and 2x (issue #1374).
+                              itemCount: _plans.length + 1,
                               separatorBuilder: (_, __) => const SizedBox(height: 8),
-                              itemBuilder: (_, i) => _LibraryCard(
-                                entry: _plans[i],
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => PlanLibraryPreviewScreen(
-                                      training: widget.training,
-                                      entry: _plans[i],
+                              itemBuilder: (_, i) => i == 0
+                                  ? Text(
+                                      l10n.planLibrarySubheading,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant),
+                                    )
+                                  : _LibraryCard(
+                                      entry: _plans[i - 1],
+                                      onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => PlanLibraryPreviewScreen(
+                                            training: widget.training,
+                                            entry: _plans[i - 1],
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ),
                             ),
                           ),
           ),
@@ -270,23 +280,21 @@ class _LibraryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final p = entry.plan;
     final author = entry.authorHandle ?? l10n.planLibraryAnonymous;
-    return Card(
-      child: ListTile(
-        onTap: onTap,
-        title: Text(p.name, style: theme.textTheme.titleMedium),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (entry.isOfficial) const OfficialBadge(),
-              Text(l10n.planLibraryByAuthor(author)),
-              const SizedBox(height: 6),
-              _PlanFacts(plan: p),
-            ],
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
+    return ListCard.row(
+      margin: EdgeInsets.zero,
+      onTap: onTap,
+      title: p.name,
+      chevron: true,
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (entry.isOfficial) const OfficialBadge(),
+          Text(l10n.planLibraryByAuthor(author),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: AppSpace.xs),
+          _PlanFacts(plan: p),
+        ],
       ),
     );
   }
@@ -431,20 +439,24 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
     final theme = Theme.of(context);
     final p = widget.entry.plan;
     final author = widget.entry.authorHandle ?? l10n.planLibraryAnonymous;
-    return Scaffold(
-      appBar: AppBar(title: Text(p.name)),
+    return DetailPage(
+      title: p.name,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (widget.entry.isOfficial) ...[
-            const Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: OfficialBadge(size: 16),
-            ),
-            const SizedBox(height: 4),
-          ],
-          Text(l10n.planLibraryByAuthor(author), style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 12),
+          DetailHero(
+            title: p.name,
+            padding: const EdgeInsets.only(bottom: 12),
+            badges: [
+              if (widget.entry.isOfficial) const OfficialBadge(size: 16),
+            ],
+            meta: [
+              DetailMeta(
+                icon: Icons.person_outline,
+                text: l10n.planLibraryByAuthor(author),
+              ),
+            ],
+          ),
           _PlanFacts(plan: p, weeks: _weeks.isEmpty ? null : _weeks.length),
           const SizedBox(height: 24),
           ListTile(
@@ -468,11 +480,7 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
             label: Text(_cloning ? l10n.planLibraryCloning : l10n.planLibraryClone),
           ),
           const SizedBox(height: 24),
-          Semantics(
-            header: true,
-            child: Text(l10n.planLibraryPreviewWeeks,
-                style: theme.textTheme.titleMedium),
-          ),
+          SectionHeader.title(label: l10n.planLibraryPreviewWeeks),
           const SizedBox(height: 8),
           if (_weeksLoading)
             ListSkeleton.section(
@@ -481,25 +489,23 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
               hasLeading: false,
             )
           else if (_weeksError)
-            Row(
-              children: [
-                Expanded(child: Text(l10n.planLibraryLoadError)),
-                TextButton(
-                  onPressed: _loadWeeks,
-                  child: Text(l10n.planLibraryRetry),
-                ),
-              ],
+            AppErrorState.inline(
+              message: l10n.planLibraryLoadError,
+              onRetry: _loadWeeks,
             )
           else
+            // A week and its summary share a line while they fit; at large
+            // text the summary drops under the week. A ListTile's trailing
+            // summary took the whole row at 2x on 320 dp and threw.
             for (final w in _weeks)
-              ListTile(
+              Padding(
                 key: Key('planLibraryWeek-${w.weekIndex}'),
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(l10n.planLibraryPreviewWeek(w.weekIndex + 1)),
-                trailing: Text(
-                  _weekSummary(l10n, w.id),
-                  style: theme.textTheme.bodySmall?.copyWith(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: TermValueRow(
+                  term: l10n.planLibraryPreviewWeek(w.weekIndex + 1),
+                  value: _weekSummary(l10n, w.id),
+                  termStyle: theme.textTheme.bodyMedium,
+                  valueStyle: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),
@@ -573,16 +579,15 @@ class _PlanLibraryLinkScreenState extends State<PlanLibraryLinkScreen> {
           training: widget.training, entry: entry, shareRef: widget.shareRef);
     }
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.planLibraryTitle)),
-      body: _loading
+    return DetailPage.placeholder(
+      child: _loading
           ? ListSkeleton.section(
               label: l10n.commonLoading,
               rowHeight: 40,
               hasLeading: false,
             )
           : _error
-              ? ErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
+              ? AppErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
               : Center(
                   key: const Key('planLibraryLinkNotFound'),
                   child: EmptyState(

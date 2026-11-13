@@ -1,6 +1,12 @@
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/l10n/gen/app_localizations.dart';
+
 import '../lib/readiness.dart';
+
+String _advice(Readiness r) =>
+    readinessAdviceText(r, lookupAppLocalizations(const Locale('en')));
 
 void main() {
   group('computeReadiness', () {
@@ -15,7 +21,7 @@ void main() {
       final r = computeReadiness(const ReadinessInputs(tsb: null));
       expect(r.score, 75);
       expect(r.contributors, isEmpty);
-      expect(r.advice, matches(RegExp(r'good day|push the pace', caseSensitive: false)));
+      expect(_advice(r), matches(RegExp(r'good day|push the pace', caseSensitive: false)));
     });
 
     test('heavy fatigue + bad sleep → low band', () {
@@ -25,7 +31,7 @@ void main() {
       // -20 (TSB) + -25 (sleep) = -45 → 75-45 = 30 → low.
       expect(r.score, 30);
       expect(r.band, ReadinessBand.low);
-      expect(r.advice, matches(RegExp('easy|rest', caseSensitive: false)));
+      expect(_advice(r), matches(RegExp('easy|rest', caseSensitive: false)));
     });
 
     test('fresh + great sleep → high band', () {
@@ -40,7 +46,7 @@ void main() {
       // 75 + 8 + 5 + 3 = 91.
       expect(r.score, 91);
       expect(r.band, ReadinessBand.high);
-      expect(r.advice, matches(RegExp('harder effort')));
+      expect(_advice(r), matches(RegExp('harder effort')));
     });
 
     test('clamps to 0..100 on extreme inputs', () {
@@ -72,7 +78,7 @@ void main() {
       final tsb = r.contributors
           .firstWhere((c) => c.kind == ReadinessContributorKind.form);
       expect(tsb.delta, -3);
-      expect(tsb.note, matches(RegExp('Over-tapered')));
+      expect(tsb.reason, ReadinessReason.overTapered);
     });
 
     test('resting HR +12 above baseline → strong negative', () {
@@ -85,7 +91,7 @@ void main() {
       );
       expect(r.score, 75 - 18);
       expect(r.band, ReadinessBand.moderate);
-      expect(r.advice,
+      expect(_advice(r),
           matches(RegExp('illness|under-recovery', caseSensitive: false)));
     });
 
@@ -93,7 +99,7 @@ void main() {
       final r = computeReadiness(
         const ReadinessInputs(tsb: -3, sleepHours: 4),
       );
-      expect(r.advice,
+      expect(_advice(r),
           matches(RegExp('Very little sleep|compromised', caseSensitive: false)));
     });
 
@@ -130,7 +136,7 @@ void main() {
           const ReadinessInputs(tsb: 5, sleepHours: 7));
       expect(a.score, b.score);
       expect(a.band, b.band);
-      expect(a.advice, b.advice);
+      expect(a.dominant?.reason, b.dominant?.reason);
     });
 
     test('a tie in |delta| is broken by insertion order, not by the sort', () {
@@ -142,7 +148,7 @@ void main() {
           const ReadinessInputs(tsb: -12, sleepHours: 6));
       expect(r.contributors[0].delta, -12);
       expect(r.contributors[1].delta, -12);
-      expect(r.advice, startsWith('Fatigued from recent training.'));
+      expect(_advice(r), startsWith('Fatigued from recent training.'));
     });
 
     test('an all-zero tie still resolves to the first contributor', () {
@@ -159,14 +165,14 @@ void main() {
         ReadinessContributorKind.restingHr,
       ]);
       expect(r.contributors.map((c) => c.delta).toList(), [0, 0, 0]);
-      expect(r.advice, startsWith('Form is neutral.'));
+      expect(_advice(r), startsWith('Form is neutral.'));
     });
 
     test('the tiebreak does not override a genuinely larger contributor', () {
       // Sleep at -25 beats a TSB of -12 even though TSB was added first.
       final r = computeReadiness(
           const ReadinessInputs(tsb: -12, sleepHours: 4));
-      expect(r.advice, startsWith('Very little sleep'));
+      expect(_advice(r), startsWith('Very little sleep'));
     });
   });
 }

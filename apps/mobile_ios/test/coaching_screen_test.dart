@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/coaching_screen.dart';
+import 'worst_case_layout.dart';
 
 /// Signed-in fake whose coaching reads return canned data so the roster
 /// screen renders without touching Supabase. Subclassing the real type keeps
@@ -28,8 +29,15 @@ class _FakeApi extends ApiClient {
   @override
   String? get userId => 'coach-1';
 
+  /// Page-level reads fail while set; the roster fails while [failRoster].
+  bool failReads = false;
+  bool failRoster = false;
+
   @override
-  Future<List<CoachAthleteLink>> fetchMyAthletes() async => athletes;
+  Future<List<CoachAthleteLink>> fetchMyAthletes() async {
+    if (failReads) throw Exception('offline');
+    return athletes;
+  }
 
   @override
   Future<List<PendingCoachInvite>> fetchPendingCoachInvites() async => pending;
@@ -38,7 +46,10 @@ class _FakeApi extends ApiClient {
   Future<List<CoachAthleteLink>> fetchMyCoaches() async => coaches;
 
   @override
-  Future<List<CoachRosterRow>> fetchCoachRosterSummary() async => roster;
+  Future<List<CoachRosterRow>> fetchCoachRosterSummary() async {
+    if (failRoster) throw Exception('offline');
+    return roster;
+  }
 }
 
 CoachAthleteLink _link(String id, String userId, String? name,
@@ -103,6 +114,30 @@ void main() {
   });
 
   setUpAll(() => initializeDateFormatting());
+
+  worstCaseTestWidgets('Coaching cards', (tester, locale) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      roster: [_rosterRow('a1', lastRunAt: DateTime.utc(2026, 1, 3))],
+      athletes: [_link('l1', 'a1', 'Alexandra Runner-Featherstonehaugh')],
+      pending: [
+        PendingCoachInvite(
+          id: 'inv-1',
+          inviteToken: 'tok-1',
+          note: null,
+          createdAt: DateTime.utc(2026, 1, 5),
+        ),
+      ],
+      coaches: [_link('l2', 'c1', 'Coach Bartholomew Longname')],
+    );
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: CoachingScreen(api: api, preferences: prefs),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Coaching');
+  });
 
   group('coachInviteLink', () {
     test('builds the accept URL with the default host', () {
@@ -184,6 +219,43 @@ void main() {
     expect(find.text(l10n.coachingNoAthletes), findsOneWidget);
     expect(find.text(l10n.coachingNoCoaches), findsOneWidget);
     expect(find.text(l10n.coachingInviteAnAthlete), findsOneWidget);
+  });
+
+  // Issue #1374 FS-7: a failed load faded out in a 3-second banner and left
+  // "No athletes yet", and a failed roster vanished without a word.
+  testWidgets('a failed load is a whole-page error with Retry, not "no athletes"',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(athletes: [_link('l1', 'a1', 'Alice Runner')])
+      ..failReads = true;
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.coachingNoAthletes), findsNothing);
+    expect(find.text(l10n.errorStateRetry), findsOneWidget);
+
+    api.failReads = false;
+    await tester.tap(find.text(l10n.errorStateRetry));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Alice Runner'), findsOneWidget);
+  });
+
+  testWidgets('a failed roster says so on its card while the rest loads',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(athletes: [_link('l1', 'a1', 'Alice Runner')])
+      ..failRoster = true;
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.coachingRosterTitle), findsOneWidget);
+    expect(find.text(l10n.coachingRosterLoadFailed), findsOneWidget);
+    expect(find.text('Alice Runner'), findsOneWidget);
+
+    api.failRoster = false;
+    await tester.tap(find.text(l10n.errorStateRetry));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text(l10n.coachingRosterLoadFailed), findsNothing);
   });
 
   testWidgets('lists athletes and coaches', (tester) async {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
@@ -10,6 +11,7 @@
 	import { periodStart } from '#lib/training/goals.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import RunEditor from '#lib/components/RunEditor.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { goto, replaceState } from '$app/navigation';
@@ -39,6 +41,9 @@
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type { Snapshot } from './$types';
 	import { runsFetchMode } from './fetch_mode';
+	import { runMatchesQuery } from './run_search';
+	import FilterBar from '#lib/components/FilterBar.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
 	// The full run list — filters, pagination, bulk-delete, manual entry.
@@ -59,6 +64,10 @@
 	// behind a filter they never set — their first view was the "No runs
 	// match these filters" dead-end (persona-hunt R5, casual).
 	let activityFilter = $state<string>('all');
+	/// The run-name search. Not remembered between visits, like mobile's: a
+	/// search is a question asked now, not a view to come back to. Back from a
+	/// run keeps it (the snapshot carries it).
+	let query = $state('');
 	type SortKey = 'newest' | 'oldest' | 'longest' | 'fastest';
 	let sortKey = $state<SortKey>('newest');
 	type DateRange = 'today' | 'week' | 'month' | 'year' | 'all' | 'custom';
@@ -127,7 +136,7 @@
 	/// backlog item once accounts grow past that bound.
 	/// See ./fetch_mode.ts for why the sort key belongs in this gate.
 	let fetchMode = $derived<'paginated' | 'full'>(
-		runsFetchMode({ effectiveDateRange, sourceFilter, activityFilter, sortKey })
+		runsFetchMode({ effectiveDateRange, sourceFilter, activityFilter, sortKey, query })
 	);
 
 	/// Filters persist across navigation via localStorage so the user
@@ -146,7 +155,7 @@
 		// user's in-session filter changes.
 		if (filtersHydrated) return;
 		try {
-			const raw = localStorage.getItem(FILTERS_KEY);
+			const raw = localStore()?.getItem(FILTERS_KEY) ?? null;
 			if (raw) {
 				const saved = JSON.parse(raw);
 				if (saved.sourceFilter) sourceFilter = saved.sourceFilter;
@@ -176,7 +185,7 @@
 	$effect(() => {
 		if (!filtersHydrated) return;
 		try {
-			localStorage.setItem(
+			localStore()?.setItem(
 				FILTERS_KEY,
 				JSON.stringify({ sourceFilter, activityFilter, dateRange, customFrom, customTo, sortKey, view }),
 			);
@@ -290,7 +299,7 @@
 		deleting = false;
 		if (failed.length === 0) {
 			showToast(
-				m(ids.length === 1 ? 'runs.deletedToastOne' : 'runs.deletedToastMany', { count: ids.length }),
+				m('runs.deletedToast', { count: ids.length }),
 				'success',
 			);
 			exitSelectMode();
@@ -307,6 +316,7 @@
 		const { from, to } = rangeBounds(dateRange);
 		const out = runs.filter((r) => {
 			if (sourceFilter !== 'all' && r.source !== sourceFilter) return false;
+			if (!runMatchesQuery(r.metadata, query)) return false;
 			if (activityFilter !== 'all') {
 				const type = r.activity_type ?? 'run';
 				if (type !== activityFilter) return false;
@@ -394,6 +404,7 @@
 		return [
 			sourceFilter,
 			activityFilter,
+			query,
 			dateRange,
 			sortKey,
 			customFrom,
@@ -575,6 +586,8 @@
 		lastFetchMode: 'paginated' | 'full' | '';
 		sourceFilter: RunSource | 'all';
 		activityFilter: string;
+		/** Absent from a snapshot captured before the list had a search. */
+		query?: string;
 		sortKey: SortKey;
 		dateRange: DateRange;
 		customFrom: string;
@@ -592,6 +605,7 @@
 			lastFetchMode,
 			sourceFilter,
 			activityFilter,
+			query,
 			sortKey,
 			dateRange,
 			customFrom,
@@ -604,6 +618,7 @@
 		restore: (s) => {
 			sourceFilter = s.sourceFilter;
 			activityFilter = s.activityFilter;
+			query = s.query ?? '';
 			sortKey = s.sortKey;
 			dateRange = s.dateRange;
 			customFrom = s.customFrom;
@@ -702,14 +717,11 @@
      Asserting the filtered count before this races the in-flight
      refetch. -->
 <div class="page" data-testid="runs-surface" data-list-state={loading ? 'loading' : `loaded-${lastFetchMode}`}>
+	<!-- A root page says its name, the sidebar's label for it, above its strip
+	     (issue #1374): the h1 used to be visually hidden, so nothing on the
+	     screen said which surface this was. -->
+	<PageHeader title={m('nav.runs')} testid="runs-page-header" />
 	<RunSurfaceTabs active="runs" />
-	<!--
-		audit/accessibility (May 2026) High — WCAG 1.3.1 + 2.4.6.
-		Run-list page needs an h1; visually-hidden because the
-		page-header already shows the activity-type toolbar as the
-		visual primary surface.
-	-->
-	<h1 class="visually-hidden">{m('history.heading')}</h1>
 
 	{#snippet listSkeleton()}
 		<div class="run-list run-list-skel" aria-hidden="true">
@@ -742,7 +754,7 @@
 		<p class="sr-only" role="status">{m('runs.loadingRuns')}</p>
 	{/snippet}
 
-	<header class="page-header">
+	<div class="surface-toolbar">
 		<div class="toolbar">
 			<div class="toolbar-filters">
 			<div class="activity-group seg-group" role="group" aria-label={m('runs.activityTypeGroup')}>
@@ -846,6 +858,18 @@
 			</div>
 		</div>
 
+		<!-- Hidden only for an account with no runs at all, where there is
+		     nothing to search; never while a search is typed. -->
+		{#if loading || loadError || runs.length > 0 || query !== ''}
+			<div class="runs-search">
+				<FilterBar idPrefix="runs">
+					{#snippet search()}
+						<AppSearchField bind:value={query} label={m('runs.searchPlaceholder')} testid="runs-search" />
+					{/snippet}
+				</FilterBar>
+			</div>
+		{/if}
+
 		{#if dateRange === 'custom' && (customFrom || customTo)}
 			<!-- Chip-row only appears once Custom dates are set. The
 			     dropdown itself auto-opens the picker on Custom selection
@@ -879,7 +903,7 @@
 					}}>{m('runs.clear')}</button>
 			</div>
 		{/if}
-	</header>
+	</div>
 
 	{#if loading}
 		{#if view === 'list'}
@@ -1046,7 +1070,7 @@
 
 		<ConfirmDialog
 			open={showBulkConfirm}
-			title={m(selected.size === 1 ? 'runs.bulkConfirmTitleOne' : 'runs.bulkConfirmTitleMany', { count: selected.size })}
+			title={m('runs.bulkConfirmTitle', { count: selected.size })}
 			message={m('runs.bulkConfirmMessage')}
 			confirmLabel={m('runs.delete')}
 			danger
@@ -1129,6 +1153,7 @@
 								dateRange = 'all';
 								sourceFilter = 'all';
 								activityFilter = 'all';
+								query = '';
 							}}
 						>
 							{m('runs.showAllRuns')}
@@ -1172,7 +1197,12 @@
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
 
-	.page-header {
+	.runs-search {
+		margin-top: var(--space-md);
+		max-width: 32rem;
+	}
+
+	.surface-toolbar {
 		margin-bottom: var(--space-xl);
 	}
 

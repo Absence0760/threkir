@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, IdentityAvatar, ListCard, LoadingState, PageHeader, PushedPage;
 import 'package:flutter/services.dart';
 
 import '../auth_error.dart';
@@ -18,6 +19,8 @@ import '../web_base_url.dart';
 import '../widgets/coach_assist_consent_switch.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/metric_label.dart';
+import '../widgets/error_state.dart';
+import '../widgets/stale_refresh_banner.dart';
 import '../widgets/top_banner.dart';
 import 'coaching_athlete_screen.dart';
 
@@ -90,6 +93,12 @@ class _CoachingScreenState extends State<CoachingScreen> {
   List<PendingCoachInvite> _pending = const [];
   List<CoachAthleteLink> _coaches = const [];
   List<CoachRosterRow> _roster = const [];
+  // A failed read is shown, never drawn as "No athletes yet" (issue #1374
+  // FS-7): the page-level reads fail as a whole-page error until something has
+  // loaded, and the roster, which can fail on its own, says so on its card.
+  bool _loaded = false;
+  Object? _loadError;
+  bool _rosterFailed = false;
   bool _coachAssist = false;
 
   @override
@@ -110,16 +119,26 @@ class _CoachingScreenState extends State<CoachingScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    if (!_loaded) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
+    // The roster fails on its own: its card shows the failure with Retry while
+    // the rest of the page still loads (mirrors web's rosterError).
+    var rosterFailed = false;
+    final roster = widget.api.fetchCoachRosterSummary().catchError((Object e) {
+      debugPrint('coaching roster load error: $e');
+      rosterFailed = true;
+      return _roster;
+    });
     try {
       final results = await Future.wait([
         widget.api.fetchMyAthletes(),
         widget.api.fetchPendingCoachInvites(),
         widget.api.fetchMyCoaches(),
-        // Roster failure is non-fatal — the rest of the screen still loads, the
-        // roster card just stays hidden (mirrors the web fail-soft section).
-        widget.api.fetchCoachRosterSummary().catchError(
-            (_) => const <CoachRosterRow>[]),
+        roster,
       ]);
       if (!mounted) return;
       setState(() {
@@ -127,14 +146,19 @@ class _CoachingScreenState extends State<CoachingScreen> {
         _pending = results[1] as List<PendingCoachInvite>;
         _coaches = results[2] as List<CoachAthleteLink>;
         _roster = results[3] as List<CoachRosterRow>;
+        _rosterFailed = rosterFailed;
+        _loaded = true;
+        _loadError = null;
         _loading = false;
       });
     } catch (e) {
       debugPrint('coaching load error: $e');
       if (!mounted) return;
-      setState(() => _loading = false);
-      showTopBanner(
-          context, AppLocalizations.of(context).coachingLoadError(friendlyError(AppLocalizations.of(context), e)));
+      setState(() {
+        _loading = false;
+        if (!_loaded) _loadError = e;
+      });
+      if (_loaded) showStaleRefreshBanner(context, e);
     }
   }
 
@@ -238,21 +262,26 @@ class _CoachingScreenState extends State<CoachingScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.coachingTitle)),
+    return PushedPage(
+      title: l10n.coachingTitle,
       body: _loading
-          ? ListSkeleton(label: l10n.commonLoading, hasLeading: false)
+          ? LoadingState.list(label: l10n.commonLoading, hasLeading: false)
+          : _loadError != null
+          ? AppErrorState(
+              message: l10n.coachingLoadError(friendlyError(l10n, _loadError!)),
+              onRetry: _load,
+            )
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text(l10n.coachingLede,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          )),
-                  const SizedBox(height: 20),
-                  if (_roster.isNotEmpty) ...[
+                  PageHeader(
+                    title: l10n.coachingTitle,
+                    subtitle: l10n.coachingLede,
+                    padding: const EdgeInsets.only(bottom: 20),
+                  ),
+                  if (_roster.isNotEmpty || _rosterFailed) ...[
                     _rosterCard(l10n),
                     const SizedBox(height: 16),
                   ],
@@ -269,24 +298,24 @@ class _CoachingScreenState extends State<CoachingScreen> {
     final theme = Theme.of(context);
     final unit = widget.preferences.unit;
     final rows = sortRosterByAttention(_roster);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.coachingRosterTitle,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 2),
-            Text(l10n.coachingRosterSubtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                )),
-            const SizedBox(height: 8),
-            for (final r in rows) _rosterRow(r, unit, l10n),
-          ],
-        ),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.coachingRosterTitle,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(l10n.coachingRosterSubtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              )),
+          const SizedBox(height: 8),
+          if (_rosterFailed)
+            AppErrorState.inline(
+                message: l10n.coachingRosterLoadFailed, onRetry: _load),
+          for (final r in rows) _rosterRow(r, unit, l10n),
+        ],
       ),
     );
   }
@@ -437,97 +466,74 @@ class _CoachingScreenState extends State<CoachingScreen> {
 
   Widget _athletesCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.coachingMyAthletes,
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 2),
-                      Text(l10n.coachingMyAthletesSub,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          )),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton(
-                  onPressed: _minting ? null : _mintInvite,
-                  child: Text(_minting
-                      ? l10n.coachingCreating
-                      : l10n.coachingInviteAnAthlete),
-                ),
-              ],
-            ),
-            if (_pending.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              for (final inv in _pending) _pendingRow(inv, l10n),
-            ],
-            const SizedBox(height: 8),
-            if (_athletes.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(l10n.coachingNoAthletes,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )),
-              )
-            else
-              for (final a in _athletes) _athleteRow(a, l10n),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.coachingMyAthletes,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: AppSpace.xxs),
+          Text(l10n.coachingMyAthletesSub,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              )),
+          const SizedBox(height: AppSpace.sm),
+          // Under the heading rather than beside it: at 2x on a 320 dp phone
+          // the button beside the heading ran 275 dp past the card.
+          FilledButton(
+            onPressed: _minting ? null : _mintInvite,
+            child: Text(_minting
+                ? l10n.coachingCreating
+                : l10n.coachingInviteAnAthlete),
+          ),
+          if (_pending.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            for (final inv in _pending) _pendingRow(inv, l10n),
           ],
-        ),
+          const SizedBox(height: 8),
+          if (_athletes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(l10n.coachingNoAthletes,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )),
+            )
+          else
+            for (final a in _athletes) _athleteRow(a, l10n),
+        ],
       ),
     );
   }
 
   Widget _pendingRow(PendingCoachInvite inv, AppLocalizations l10n) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-            style: BorderStyle.solid,
-          ),
+    // The three actions sit under the invite rather than in a ListTile's
+    // trailing slot, which at 2x left the title a few dp.
+    return ListCard.row(
+      dense: true,
+      margin: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+      leading: const Icon(Icons.link),
+      title: l10n.coachingPendingInvite,
+      subtitle: l10n.coachingPendingInviteSub(_sinceLabel(inv.createdAt)),
+      actions: [
+        IconButton(
+          tooltip: l10n.coachingCopyLink,
+          icon: const Icon(Icons.copy),
+          onPressed: () => _copyLink(inv.inviteToken),
         ),
-        leading: const Icon(Icons.link),
-        title: Text(l10n.coachingPendingInvite),
-        subtitle: Text(l10n.coachingPendingInviteSub(_sinceLabel(inv.createdAt))),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              tooltip: l10n.coachingCopyLink,
-              icon: const Icon(Icons.copy),
-              onPressed: () => _copyLink(inv.inviteToken),
-            ),
-            IconButton(
-              tooltip: l10n.coachingShareLink,
-              icon: const Icon(Icons.ios_share),
-              onPressed: () => _shareLink(inv.inviteToken),
-            ),
-            IconButton(
-              tooltip: l10n.coachingRevoke,
-              icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              onPressed: () => _revoke(inv),
-            ),
-          ],
+        IconButton(
+          tooltip: l10n.coachingShareLink,
+          icon: const Icon(Icons.ios_share),
+          onPressed: () => _shareLink(inv.inviteToken),
         ),
-      ),
+        IconButton(
+          tooltip: l10n.coachingRevoke,
+          icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+          onPressed: () => _revoke(inv),
+        ),
+      ],
     );
   }
 
@@ -577,61 +583,63 @@ class _CoachingScreenState extends State<CoachingScreen> {
 
   Widget _coachesCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.coachingMyCoaches,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 2),
-            Text(l10n.coachingMyCoachesSub,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                )),
-            const SizedBox(height: 8),
-            if (_coaches.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(l10n.coachingNoCoaches,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )),
-              )
-            else
-              for (final c in _coaches) ...[
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  leading: IdentityAvatar(
-                      seed: c.userId,
-                      name: c.displayName,
-                      imageUrl: c.avatarUrl,
-                      size: 40),
-                  title: Text(c.displayName ?? l10n.coachingCoach,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle:
-                      Text(l10n.coachingLinkedSince(_sinceLabel(c.acceptedAt))),
-                  trailing: OutlinedButton(
-                    onPressed: () => _leaveCoach(c),
-                    child: Text(l10n.coachingLeave),
-                  ),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.coachingMyCoaches,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(l10n.coachingMyCoachesSub,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              )),
+          const SizedBox(height: 8),
+          if (_coaches.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(l10n.coachingNoCoaches,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )),
+            )
+          else
+            for (final c in _coaches) ...[
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: IdentityAvatar(
+                    seed: c.userId,
+                    name: c.displayName,
+                    imageUrl: c.avatarUrl,
+                    size: 40),
+                title: Text(c.displayName ?? l10n.coachingCoach,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle:
+                    Text(l10n.coachingLinkedSince(_sinceLabel(c.acceptedAt))),
+              ),
+              // Under the row, not in its trailing slot: a ListTile caps
+              // that slot, and the label outgrew it at 2x.
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: OutlinedButton(
+                  onPressed: () => _leaveCoach(c),
+                  child: Text(l10n.coachingLeave),
                 ),
-                if (_coachAssist)
-                  CoachAssistConsentSwitch(
-                    key: ValueKey('coach-assist-consent-${c.id}'),
-                    api: widget.api,
-                    link: c,
-                    coachName: c.displayName ?? l10n.coachingCoach,
-                    onChanged: (v) => setState(() => _coaches = [
-                          for (final x in _coaches)
-                            x.id == c.id ? x.withAiAssistConsentVersion(v) : x,
-                        ]),
-                  ),
-              ],
-          ],
-        ),
+              ),
+              if (_coachAssist)
+                CoachAssistConsentSwitch(
+                  key: ValueKey('coach-assist-consent-${c.id}'),
+                  api: widget.api,
+                  link: c,
+                  coachName: c.displayName ?? l10n.coachingCoach,
+                  onChanged: (v) => setState(() => _coaches = [
+                        for (final x in _coaches)
+                          x.id == c.id ? x.withAiAssistConsentVersion(v) : x,
+                      ]),
+                ),
+            ],
+        ],
       ),
     );
   }

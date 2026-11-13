@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { formatPrice } from '#lib/format/format_price.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -97,18 +99,16 @@
 </script>
 
 <div class="page">
-	<header class="hero">
-		<p class="kicker">{m('shell.settings')}</p>
-		<h1>{m('upgrade.heroTitle')}</h1>
-		<p class="tagline">
-			{m('upgrade.heroTagline')}{#if donateHref}{' '}{m('upgrade.heroTaglineDonate')}{/if}
-		</p>
-	</header>
+	<PageHeader kicker={m('shell.settings')} title={m('upgrade.heroTitle')}>
+		{#snippet sub()}
+			<p>{m('upgrade.heroTagline')}{#if donateHref}{' '}{m('upgrade.heroTaglineDonate')}{/if}</p>
+		{/snippet}
+	</PageHeader>
 
 	<section class="tier-grid">
-		<article class="tier tier-free" aria-labelledby="tier-free-h">
+		<article class="tier tier-free" aria-labelledby={settingRowId('upgrade.tierFree')}>
 			<header class="tier-head">
-				<h2 id="tier-free-h">{m('upgrade.tierFree')}</h2>
+				<h2 id={settingRowId('upgrade.tierFree')}>{m('upgrade.tierFree')}</h2>
 				<p class="tier-price">
 					<span class="price-amount">{formatPrice(0)}</span>
 					<span class="price-period">{m('upgrade.forever')}</span>
@@ -263,7 +263,7 @@
 	{#if donateHref}
 	<section class="donate-card" data-testid="donate-card">
 		<div class="donate-text">
-			<h2>{m('upgrade.donateTitle')}</h2>
+			<h2 id={settingRowId('upgrade.donateTitle')}>{m('upgrade.donateTitle')}</h2>
 			<p>
 				{m('upgrade.donateBody')}
 			</p>
@@ -287,30 +287,6 @@
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 64rem;
-	}
-	.hero {
-		margin-bottom: var(--space-2xl);
-		max-width: 44rem;
-	}
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	.hero h1 {
-		font-size: 2rem;
-		font-weight: 800;
-		margin: 0 0 var(--space-sm);
-		line-height: 1.15;
-	}
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 1rem;
-		line-height: 1.55;
-		margin: 0;
 	}
 
 	.tier-grid {

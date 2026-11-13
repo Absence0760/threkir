@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard, AppSpace;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -17,15 +18,13 @@ class TrainForSomethingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        leading: Icon(Icons.event_note, color: theme.colorScheme.primary),
-        title: Text(l10n.dashboardTrainForSomething),
-        subtitle: Text(l10n.dashboardTrainForSomethingBody),
-        trailing: Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-        onTap: onTap,
-      ),
+    return ListCard.row(
+      leading: Icon(Icons.event_note, color: theme.colorScheme.primary),
+      title: l10n.dashboardTrainForSomething,
+      subtitle: l10n.dashboardTrainForSomethingBody,
+      subtitleMaxLines: 4,
+      chevron: true,
+      onTap: onTap,
     );
   }
 }
@@ -52,44 +51,35 @@ class Recent5kPlanCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final tag = localeToTag(Localizations.localeOf(context));
     final date = formatDateShort(DateTime.parse(suggestion.startedAt), tag);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.dashboardRecent5kTitle(fmtHms(suggestion.seconds), date),
-              key: const Key('dashboardRecent5kTitle'),
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.dashboardRecent5kBody,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              children: [
-                TextButton(
-                  key: const Key('dashboardRecent5kDismiss'),
-                  onPressed: onDismiss,
-                  child: Text(l10n.dashboardRecent5kDismiss),
-                ),
-                FilledButton(
-                  key: const Key('dashboardRecent5kBuild'),
-                  onPressed: onBuild,
-                  child: Text(l10n.dashboardRecent5kCta),
-                ),
-              ],
-            ),
-          ],
+    return ListCard(
+      actions: [
+        TextButton(
+          key: const Key('dashboardRecent5kDismiss'),
+          onPressed: onDismiss,
+          child: Text(l10n.dashboardRecent5kDismiss),
         ),
+        FilledButton(
+          key: const Key('dashboardRecent5kBuild'),
+          onPressed: onBuild,
+          child: Text(l10n.dashboardRecent5kCta),
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.dashboardRecent5kTitle(fmtHms(suggestion.seconds), date),
+            key: const Key('dashboardRecent5kTitle'),
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            l10n.dashboardRecent5kBody,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import {
 		amIAdmin,
 		fetchPendingReports,
@@ -407,13 +408,10 @@
 		<p class="muted">…</p>
 	{:else if !isAdmin}
 		<div class="card-elevated not-authorized" data-testid="admin-not-authorized">
-			<h1>{t('admin.reports.notAuthorized')}</h1>
-			<p class="muted">{t('admin.reports.notAuthorizedHint')}</p>
+			<PageHeader flush title={t('admin.reports.notAuthorized')} subtitle={t('admin.reports.notAuthorizedHint')} />
 		</div>
 	{:else}
-		<header>
-			<h1>{t('admin.reports.title')}</h1>
-			<p class="muted">{t('admin.reports.subtitle')}</p>
+		<PageHeader flush title={t('admin.reports.title')} subtitle={t('admin.reports.subtitle')}>
 			{#if npsPending > 0}
 				<p class="nps-pending">
 					<a href="/admin/park-alerts" data-testid="admin-park-alerts-link">
@@ -421,7 +419,7 @@
 					</a>
 				</p>
 			{/if}
-		</header>
+		</PageHeader>
 
 		<div class="tabs" role="group" aria-label={t('admin.reports.title')}>
 			<button
@@ -1023,17 +1021,14 @@
 		flex-direction: column;
 		gap: var(--space-lg);
 	}
-	header h1,
-	.not-authorized h1 {
-		margin: 0 0 0.25rem;
-		font-size: 1.4rem;
+	.nps-pending {
+		margin: 0;
 	}
 	.muted {
 		color: var(--color-text-secondary);
 	}
 	.not-authorized {
 		padding: var(--space-xl);
-		text-align: center;
 	}
 	table {
 		width: 100%;

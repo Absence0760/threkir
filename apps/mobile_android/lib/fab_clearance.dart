@@ -34,6 +34,15 @@ double fabScrollClearance(BuildContext context, {int fabCount = 1}) =>
     kFabScrollClearance +
     (fabCount - 1) * (kFabHeight + kFabStackGap);
 
+/// Bottom padding for a scroll view no floating action button of its own
+/// floats over: the system inset, the shell's docked centre button (which
+/// rises [kDockedFabOverhang] into every page above the bar) and a 16dp gap
+/// at the list's end. A hub tab with no primary action (Feed, Events,
+/// People) still sits under that button, and a list that padded only the
+/// system inset ended with its last row behind it.
+double listEndClearance(BuildContext context) =>
+    MediaQuery.paddingOf(context).bottom + DockedFabInset.of(context) + 16;
+
 /// Where every page puts its floating action button: end-floating, lifted
 /// by [DockedFabInset] so it clears the shell's docked centre button.
 ///

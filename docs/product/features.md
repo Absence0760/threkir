@@ -534,7 +534,7 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 
 **Why:** a creator streaming a run wants their distance, pace and time on screen without making the run public or showing where they are right now.
 
-**Spec:** `/live/overlay` is a transparent OBS browser source reached through one revocable token per user, carried in the URL fragment. The server returns only pings older than the creator's delay (0-900 s, default 60). The route trace and heart rate are opt-in; heart rate also needs health-data consent, and `bpm` is now stripped from every live ping unless both hold. Behind the default-off `live_overlay` flag. Full spec: [flows.md § Streamer overlay](../features/flows.md#streamer-overlay), decisions § 2265.
+**Spec:** `/live/overlay` is a transparent OBS browser source reached through one revocable token per user, carried in the URL fragment. The server returns only pings older than the creator's delay (0-900 s, default 60). The route trace and heart rate are opt-in, switched on from web's card or the phone's sheet alike (the phone's sheet sent people to the web for them until #1374 round 3); heart rate also needs health-data consent, its switch stays off without it with a Review consent button to Body metrics, and `bpm` is now stripped from every live ping unless both hold. The phone's link carries `map=1` while the trace is on. Behind the default-off `live_overlay` flag. Full spec: [flows.md § Streamer overlay](../features/flows.md#streamer-overlay), decisions § 2265.
 
 ### Share-link attribution and Your shares
 

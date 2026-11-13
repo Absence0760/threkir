@@ -1,15 +1,18 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show DetailHero;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/live_broadcast.dart';
 import '../lib/screens/live_spectator_screen.dart';
 import '../lib/screens/public_run_screen.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// Test seam: returns a canned public run + author profile so `_load`
 /// resolves without a backend. Track fetches are stubbed to empty so
@@ -47,6 +50,23 @@ RunRow _run() => RunRow(safetyAudience: false,
 
 /// A 100-hour, 240-mile ultra: the widest the stat cells ever get
 /// ("104:32:11" / "386.24"), which is what overflowed the row.
+/// A live stub its owner titled at length, the widest hero the page draws.
+RunRow _titledLiveStub() => RunRow(safetyAudience: false,
+      id: 'r1',
+      userId: 'u1',
+      startedAt: DateTime(2026, 6, 1, 8),
+      durationS: 0,
+      distanceM: 0,
+      source: 'app',
+      activityType: 'run',
+      isDnf: false,
+      followersOnly: false,
+      metadata: const {
+        'title': 'Sunrise long run over the Benjamin Franklin Bridge and '
+            'back along the Schuylkill',
+      },
+    );
+
 RunRow _ultraRun() => RunRow(safetyAudience: false, 
       id: 'r1',
       userId: 'u1',
@@ -115,6 +135,46 @@ Future<void> _pumpApi(WidgetTester tester, ApiClient api) {
 void main() {
   setUpAll(_ensureSupabase);
 
+  worstCaseTestWidgets('Public run', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: PublicRunScreen(
+        api: _FakeApi(
+          run: _titledLiveStub(),
+          author: _author('Bartholomew Featherstonehaugh-Montgomery'),
+        ),
+        runId: 'r1',
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Sunrise long run over the Benjamin Franklin Bridge and '
+        'back along the Schuylkill'), findsWidgets);
+    await walkScrollable(tester, primaryScrollable(), 'Public run');
+  }, layoutOnly: true);
+
+  // The owner-given title is public alongside the run: web's /share/run/[id]
+  // puts metadata.title in its <h1>, og:title and JSON-LD for anyone, and
+  // RunShareView shows it to every non-owner of /runs/[id].
+  testWidgets('a non-owner sees the run\'s own title in the hero',
+      (tester) async {
+    await _pumpApi(
+      tester,
+      _FakeApi(run: _titledLiveStub(), author: _author('Al')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      find.descendant(
+        of: find.byType(DetailHero),
+        matching: find.text('Sunrise long run over the Benjamin Franklin '
+            'Bridge and back along the Schuylkill'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   group('PublicRunScreen — initial render', () {
     testWidgets('renders the Run app-bar title', (tester) async {
       await _pump(tester);
@@ -131,7 +191,7 @@ void main() {
 
   group('PublicRunScreen — long author display name on a narrow phone', () {
     testWidgets(
-        'a long author name ellipsizes and stays inside the row',
+        'a long author name wraps and stays inside the hero',
         (tester) async {
       final view = tester.view;
       view.physicalSize = const Size(720, 1280);
@@ -154,9 +214,8 @@ void main() {
 
       final nameFinder = find.text(longName);
       expect(nameFinder, findsOneWidget);
-      final nameWidget = tester.widget<Text>(nameFinder);
-      expect(nameWidget.maxLines, 1);
-      expect(nameWidget.overflow, TextOverflow.ellipsis);
+      expect(tester.renderObject<RenderParagraph>(nameFinder).didExceedMaxLines,
+          isFalse);
       expect(tester.getRect(nameFinder).right, lessThanOrEqualTo(360.0));
     });
   });

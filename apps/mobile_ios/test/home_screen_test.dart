@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:ui' show Tristate;
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show AppTheme, PageBarTitle, PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
@@ -19,17 +22,26 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/main.dart'
-    show pendingArmGuidedRun, pendingPushTarget, pendingStartWorkout;
+    show
+        pendingArmGuidedRun,
+        pendingPushTarget,
+        pendingStartRunWithRoute,
+        pendingStartWorkout;
 import '../lib/push_target.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
 import '../lib/run_stop_dock.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
+import '../lib/unread_messages.dart';
+import '../lib/screens/club_detail_screen.dart';
+import '../lib/widgets/gym_summary_card.dart';
+import '../lib/widgets/run_list_tile.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/confirm_age_screen.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/gear_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/gym_screen.dart';
 import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';
@@ -48,6 +60,8 @@ import '../lib/screens/settings_pro_screen.dart';
 import '../lib/screens/settings_safety_screen.dart';
 import '../lib/screens/setup_wizard_screen.dart';
 import 'pump_until.dart';
+import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
+import 'worst_case_layout.dart';
 
 /// Drives auth transitions for the setup-wizard gate (#232): a fresh
 /// account (onboarded_at null) signs in after launch.
@@ -194,7 +208,8 @@ Future<({
   );
 }
 
-Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
+Future<void> _pump(WidgetTester tester, dynamic s,
+    {ApiClient? api, UnreadMessages? socialUnread}) async {
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -213,6 +228,7 @@ Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
         training: s.training,
         heartRate: s.heartRate,
         treadmill: s.treadmill,
+        socialUnread: socialUnread,
       ),
     ),
   );
@@ -229,6 +245,45 @@ Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
   await tester.runAsync(() async {
     await s.gymStore.createLocal(title: 'Push day', startedAt: DateTime.now());
   });
+}
+
+/// An unread count the test sets by hand, standing in for the shell's read.
+class _FakeUnread extends UnreadMessages {
+  _FakeUnread() : super(listenToLifecycle: false);
+
+  int _count = 0;
+  int refreshes = 0;
+
+  @override
+  int get value => _count;
+
+  set count(int value) {
+    _count = value;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> refresh() async => refreshes++;
+}
+
+/// Takes every [RunStartRequests] the shell sends before the mounted recorder
+/// can, so a test sees what the centre button asked for without a real
+/// countdown asking the platform for location. Must be called before
+/// [_pump]: listeners run in the order they were added.
+List<RunStartRequest> _captureStartRequests() {
+  final taken = <RunStartRequest>[];
+  void listener() {
+    final r = runStartRequests.take();
+    if (r != null) taken.add(r);
+  }
+
+  runStartRequests.addListener(listener);
+  addTearDown(() {
+    runStartRequests.removeListener(listener);
+    runIdleShowing.value = true;
+    runCountdownShowing.value = false;
+  });
+  return taken;
 }
 
 /// [text] inside the long-press menu's sheet, so a page's own copy of the
@@ -345,17 +400,322 @@ void main() {
     });
   });
 
-  group('HomeScreen multi-modal shell', () {
-    testWidgets('uses a BottomAppBar + a centre Log FAB, not a NavigationBar',
+  group("Home's links select tabs rather than push copies (issue #1374)", () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets("today's lift card selects the hub's Gym tab", (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      await pumpUntil(
+          tester, () => find.byType(GymSummaryCard).evaluate().isNotEmpty,
+          describe: "Today's lift card");
+
+      await tester.ensureVisible(find.byType(GymSummaryCard));
+      await tester.tap(find.byType(GymSummaryCard));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(shellPage(tester), 1, reason: 'the shell shows the Fitness hub');
+      expect(find.byType(GymScreen), findsOneWidget,
+          reason: "the hub's own Gym tab");
+      expect(find.byType(BackButton), findsNothing,
+          reason: 'no second Gym screen pushed over the shell');
+      tester.takeException();
+    });
+
+    testWidgets("Today's toolbar is its title and the overflow only",
         (tester) async {
-      // Phase 4 reshape (multi_modal.md § Bottom nav): Run leaves the nav as
-      // a top-level destination; the centre slot becomes the raised Log
-      // action button.
       final s = await _makeStores();
       await _pump(tester, s);
-      expect(find.byType(BottomAppBar), findsOneWidget);
-      expect(find.byType(NavigationBar), findsNothing);
+      // Scoped off the nav bar, whose You destination is a person glyph.
+      Finder inPage(IconData icon) => find.byWidgetPredicate((w) =>
+          w is Icon &&
+          w.icon == icon &&
+          find
+              .ancestor(
+                  of: find.byWidget(w), matching: find.byType(NavigationBar))
+              .evaluate()
+              .isEmpty);
+      expect(inPage(Icons.dynamic_feed_outlined), findsNothing);
+      expect(inPage(Icons.person_outline), findsNothing);
+      expect(inPage(Icons.notifications_outlined), findsNothing);
+      expect(find.byKey(const Key('dashboardMoreMenu')), findsOneWidget);
+    });
+  });
+
+  group('the Social nav item (issue #1374)', () {
+    SemanticsNode socialNode(WidgetTester tester) => tester.getSemantics(
+        find.descendant(
+            of: find.byType(NavigationBar), matching: find.text('Social')));
+
+    testWidgets('carries a dot while messages wait unread, said in its value',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      final unread = _FakeUnread();
+      final s = await _makeStores();
+      await _pump(tester, s, socialUnread: unread);
+      expect(find.byKey(const ValueKey('navUnreadDot')), findsNothing);
+      expect(socialNode(tester).value, isEmpty);
+
+      unread.count = 3;
+      await tester.pump();
+      final dot = find.byKey(const ValueKey('navUnreadDot'));
+      expect(dot, findsOneWidget);
+      expect(tester.widget<Badge>(dot).isLabelVisible, isTrue,
+          reason: 'a dot, a shape on the icon, not a tint');
+      expect(socialNode(tester).value, '3 unread messages');
+      expect(socialNode(tester).label, contains('Social'),
+          reason: 'the badge rides on the destination that hosts messages');
+
+      unread.count = 0;
+      await tester.pump();
+      expect(find.byKey(const ValueKey('navUnreadDot')), findsNothing);
+      handle.dispose();
+    });
+
+    testWidgets('re-reads the count on launch and on every page change',
+        (tester) async {
+      final unread = _FakeUnread();
+      final s = await _makeStores();
+      await _pump(tester, s, socialUnread: unread);
+      expect(unread.refreshes, 1);
+      await tester.tap(find.text('Social'));
+      await tester.pump();
+      expect(unread.refreshes, 2);
+      tester.takeException();
+    });
+
+    testWidgets('selection is a pill and a filled glyph, not only a colour',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final bar = find.byType(NavigationBar);
+      expect(tester.widget<NavigationBar>(bar).selectedIndex, 0);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.dashboard)),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.public)),
+          findsNothing);
+      expect(
+          find.descendant(of: bar, matching: find.byIcon(Icons.public_outlined)),
+          findsOneWidget);
+      expect(
+          tester
+              .getSemantics(find.descendant(of: bar, matching: find.text('Home')))
+              .flagsCollection
+              .isSelected,
+          Tristate.isTrue);
+
+      await tester.tap(find.text('Social'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.widget<NavigationBar>(bar).selectedIndex, 3);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.public)),
+          findsOneWidget,
+          reason: 'the filled glyph follows the selection');
+      expect(
+          find.descendant(of: bar, matching: find.byIcon(Icons.dashboard_outlined)),
+          findsOneWidget);
+      tester.takeException();
+      handle.dispose();
+    });
+
+    testWidgets('the bar is themed from app_theme, the rail likewise',
+        (tester) async {
+      // The navigationBarTheme sat unused while a hand-rolled bar drew its
+      // own pill (issue #1374 finding 12).
+      final theme = AppTheme.light;
+      expect(theme.navigationBarTheme.indicatorColor,
+          theme.navigationRailTheme.indicatorColor);
+      expect(
+          theme.navigationBarTheme.iconTheme!
+              .resolve({WidgetState.selected})!
+              .color,
+          theme.navigationRailTheme.selectedIconTheme!.color);
+    });
+  });
+
+  // #1374 finding 12: the bar at its worst case, with the 3-button bar.
+  group('the NavigationBar at its worst case', () {
+    Widget shell(dynamic s, Locale locale) => worstCaseApp(
+          locale: locale,
+          home: HomeScreen(
+            apiClient: null,
+            runStore: s.runStore,
+            routeStore: s.routeStore,
+            gearStore: s.gearStore,
+            gymStore: s.gymStore,
+            foodStore: s.foodStore,
+            preferences: s.prefs,
+            audioCues: s.audioCues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+            socialUnread: _FakeUnread()..count = 2,
+          ),
+        );
+
+    worstCaseTestWidgets('the shell nav bar', (tester, locale) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await tester.pumpWidget(shell(s, locale));
+      await tester.pump();
+      final bar = tester.getRect(find.byType(NavigationBar));
+      expect(bar.bottom, lessThanOrEqualTo(kWorstCasePhone.height),
+          reason: 'the bar pads itself above the 3-button bar');
+      final destinations = find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.byType(NavigationDestination));
+      expect(destinations, findsNWidgets(4));
+      for (final e in destinations.evaluate()) {
+        final r = tester.getRect(find.byWidget(e.widget));
+        expect(r.height, greaterThanOrEqualTo(48));
+        expect(r.width, greaterThanOrEqualTo(48));
+        expect(r.bottom,
+            lessThanOrEqualTo(kWorstCasePhone.height - kThreeButtonNavBar));
+      }
+      expect(find.byKey(const ValueKey('navUnreadDot')), findsOneWidget);
+      tester.takeException();
+    }, layoutOnly: true);
+
+    // Every root page has a title (issue #1374, owner findings 5 and 11):
+    // each bottom-nav destination opens on a large PageHeader that says the
+    // bar's label for it (Home's page is Today, as web's /dashboard is), and
+    // the title collapses into the slim bar as the page scrolls, the page's
+    // actions staying in reach.
+    worstCaseTestWidgets('every root tab, at rest and collapsed',
+        (tester, locale) async {
+      final s = await _makeStores();
+      await tester.pumpWidget(shell(s, locale));
+      await tester.pump();
+      final l10n = l10nFor(locale);
+      const width = 320.0;
+      bool onScreen(Finder f) {
+        final r = tester.getRect(f);
+        return r.left >= 0 && r.right <= width + 0.5;
+      }
+
+      final destinations = find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.byType(NavigationDestination));
+      for (var i = 0; i < 4; i++) {
+        final destination = destinations.at(i);
+        await tester.tap(destination);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        final label = tester.widget<NavigationDestination>(destination).label;
+        final title = i == 0 ? l10n.todayTitle : label;
+        final headers = find
+            .byWidgetPredicate((w) => w is PageHeader && w.title == title)
+            .evaluate()
+            .map((e) => find.byWidget(e.widget))
+            .where(onScreen);
+        expect(headers, isNotEmpty,
+            reason: 'root tab $i ($label) has no PageHeader saying "$title"');
+        expectNoLayoutOverflow(tester, 'root tab $i at rest');
+
+        final bars = find.byType(PageBarTitle).evaluate().map(
+            (e) => find.byWidget(e.widget)).where(onScreen).toList();
+        expect(bars, hasLength(1), reason: 'root tab $i has one slim bar');
+        double opacity() => tester
+            .widget<AnimatedOpacity>(find.descendant(
+                of: bars.single, matching: find.byType(AnimatedOpacity)))
+            .opacity;
+        expect(opacity(), 0, reason: 'at rest the title is the large one');
+
+        // Social signed out is one sign-in prompt with nothing to scroll.
+        if (i == 2) continue;
+        await tester.dragFrom(const Offset(width / 2, 400), const Offset(0, -300));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expectNoLayoutOverflow(tester, 'root tab $i collapsed');
+        expect(opacity(), 1,
+            reason: 'collapsed, root tab $i says its title in the bar');
+        if (i == 0) {
+          expect(find.byKey(const Key('dashboardMoreMenu')).hitTestable(),
+              findsOneWidget,
+              reason: "Today's overflow stays in reach when collapsed");
+        }
+      }
+      tester.takeException();
+    }, layoutOnly: true);
+
+    // Below 1.6x the labels show, clamped at 1.3x by the bar; they must fit a
+    // fifth of a 320 dp phone in every locale.
+    for (final locale in kWorstCaseLocales) {
+      testWidgets(
+          'labels fit at 1.5x on 320 dp [${locale.toLanguageTag()}]',
+          (tester) async {
+        tester.view.physicalSize = kWorstCasePhone;
+        tester.view.devicePixelRatio = 1;
+        tester.view.viewPadding =
+            const FakeViewPadding(bottom: kThreeButtonNavBar);
+        tester.view.padding = const FakeViewPadding(bottom: kThreeButtonNavBar);
+        tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final s = await _makeStores();
+        await _pump(tester, s);
+        final errors = <String>[];
+        Object? e;
+        while ((e = tester.takeException()) != null) {
+          if ('$e'.contains('overflowed')) errors.add('$e');
+        }
+        expect(errors, isEmpty);
+        final bar = tester.getRect(find.byType(NavigationBar));
+        for (final label in find
+            .descendant(
+                of: find.byType(NavigationBar), matching: find.byType(Text))
+            .evaluate()) {
+          final r = tester.getRect(find.byWidget(label.widget));
+          expect(r.top, greaterThanOrEqualTo(bar.top));
+          expect(r.bottom, lessThanOrEqualTo(bar.bottom));
+        }
+      });
+    }
+
+    testWidgets('the Run page is the centre tab: named, and selected there',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      SemanticsNode centre() => tester
+          .getSemantics(find.byKey(const ValueKey('navCentreCaption')));
+      expect(centre().label, 'Run');
+      expect(centre().flagsCollection.isSelected, isNot(Tristate.isTrue));
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.widget<NavigationBar>(find.byType(NavigationBar))
+          .selectedIndex, 2);
+      expect(centre().flagsCollection.isSelected, Tristate.isTrue);
+      tester.takeException();
+      handle.dispose();
+    });
+  });
+
+  group('HomeScreen multi-modal shell', () {
+    testWidgets('uses Material 3 NavigationBar + a docked centre FAB',
+        (tester) async {
+      // Phase 4 reshape (multi_modal.md § Bottom nav): Run leaves the nav as
+      // a labelled destination; the centre slot is the raised Log button.
+      // The bar itself is M3's NavigationBar under the app theme (#1374).
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(BottomAppBar), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(tester.widget<NavigationBar>(find.byType(NavigationBar))
+          .destinations, hasLength(5));
     });
 
     testWidgets(
@@ -364,12 +724,12 @@ void main() {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       for (final label in ['Home', 'Fitness', 'Social', 'You']) {
         expect(
           find.descendant(of: bar, matching: find.text(label)),
           findsOneWidget,
-          reason: 'expected "$label" nav label inside BottomAppBar',
+          reason: 'expected "$label" nav label inside NavigationBar',
         );
       }
       // History is absorbed into Fitness → All; Settings folds into You;
@@ -390,14 +750,18 @@ void main() {
       // routes, plans and races, and a runner scanned past a gym icon.
       final s = await _makeStores();
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(find.descendant(of: bar, matching: find.text('Training')),
           findsOneWidget);
       expect(find.descendant(of: bar, matching: find.text('Fitness')),
           findsNothing);
-      expect(find.descendant(of: bar, matching: find.byIcon(Icons.directions_run)),
+      expect(
+          find.descendant(
+              of: bar, matching: find.byIcon(Icons.directions_run_outlined)),
           findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+      expect(
+          find.descendant(
+              of: bar, matching: find.byIcon(Icons.fitness_center_outlined)),
           findsNothing);
 
       // Switching a modality on brings Fitness back, without a restart.
@@ -405,7 +769,9 @@ void main() {
       await tester.pump();
       expect(find.descendant(of: bar, matching: find.text('Fitness')),
           findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+      expect(
+          find.descendant(
+              of: bar, matching: find.byIcon(Icons.fitness_center_outlined)),
           findsOneWidget);
     });
 
@@ -417,7 +783,7 @@ void main() {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(
         find.descendant(of: bar, matching: find.text('Log')),
         findsOneWidget,
@@ -432,17 +798,24 @@ void main() {
       );
     });
 
-    testWidgets('when a tap starts a run, the centre button says so',
-        (tester) async {
+    testWidgets(
+        'when a tap opens the recorder, the centre button names it, never '
+        'Start (#1374)', (tester) async {
       // "+ Log" read as "add an entry" for a runner whose tap opened the GPS
-      // recorder; they only found out what it did by pressing it.
+      // recorder; they only found out what it did by pressing it. "Start run"
+      // then promised a start the tap never made: off the Run page it opens
+      // the start screen, so it names the page, and only a control that
+      // starts the run says Start.
       final s = await _makeStores();
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      final bar = find.byType(NavigationBar);
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.textContaining('Start')),
+          findsNothing);
       expect(find.descendant(of: bar, matching: find.text('Log')), findsNothing);
-      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(_semanticsLabelled('Open the recording screen (Run)'),
+          findsOneWidget);
       expect(
         find.descendant(
             of: find.byType(FloatingActionButton),
@@ -459,26 +832,28 @@ void main() {
       final s = await _makeStores();
       await tester.runAsync(() => s.prefs.setDefaultActivityType('cycle'));
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
-      expect(find.descendant(of: bar, matching: find.text('Start ride')),
+      final bar = find.byType(NavigationBar);
+      expect(find.descendant(of: bar, matching: find.text('Cycle')),
           findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsNothing);
-      expect(_semanticsLabelled('Start a ride'), findsOneWidget);
+      expect(_semanticsLabelled('Open the recording screen (Cycle)'),
+          findsOneWidget);
 
       await tester.runAsync(() => s.prefs.setDefaultActivityType('run'));
       await tester.pump();
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsOneWidget);
-      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(_semanticsLabelled('Open the recording screen (Run)'),
+          findsOneWidget);
     });
 
     testWidgets('the centre button turns back into Log once a lift exists',
         (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      final bar = find.byType(NavigationBar);
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsOneWidget);
 
       await _seedLoggedLift(tester, s);
@@ -486,7 +861,7 @@ void main() {
 
       expect(find.descendant(of: bar, matching: find.text('Log')),
           findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsNothing);
     });
 
@@ -514,8 +889,8 @@ void main() {
 
       expect(s.prefs.showGym, isTrue);
       expect(find.byType(GymScreen), findsOneWidget);
-      // The hub's tab label and the Gym screen's own title.
-      expect(find.text('Gym'), findsNWidgets(2));
+      // The hub's tab label only: the tab draws no title bar of its own.
+      expect(find.text('Gym'), findsOneWidget);
       // It changed what the centre button does, so it says so.
       expect(find.text('Gym is now shown'), findsOneWidget);
       // showTopBanner arms an auto-dismiss timer; let it run out.
@@ -618,11 +993,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       // Not a modal composer — the Log action navigates the PageView to the
       // Fitness hub's Gym tab (same dwell-in model as the run recorder), so
-      // the bottom nav stays visible alongside the surface's own "Gym" AppBar
-      // title. Twice: the hub's tab label, and that title 48dp below it.
-      expect(find.text('Gym'), findsNWidgets(2));
+      // the bottom nav stays visible. "Gym" once: the hub's tab label, with
+      // no title bar under it (issue #1374).
+      expect(find.text('Gym'), findsOneWidget);
       expect(find.byType(GymScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
     });
 
     testWidgets('picking Log food lands on the Nutrition dwell-in page',
@@ -637,9 +1012,9 @@ void main() {
       await tester.tap(find.byTooltip('Log food'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.text('Nutrition'), findsOneWidget);
       expect(find.byType(NutritionScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
     });
 
     testWidgets(
@@ -720,7 +1095,7 @@ void main() {
   });
 
   group('HomeScreen expanded (tablet) shell', () {
-    testWidgets('expanded swaps the BottomAppBar for a NavigationRail',
+    testWidgets('expanded swaps the NavigationBar for a NavigationRail',
         (tester) async {
       tester.view.physicalSize = const Size(2560, 1440);
       tester.view.devicePixelRatio = 2.0;
@@ -728,7 +1103,7 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s);
       expect(find.byType(NavigationRail), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.text('Home'), findsWidgets);
       // A pure runner's hub label; the rail derives it as the bar does.
@@ -765,7 +1140,7 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s);
       expect(find.byType(NavigationRail), findsNothing);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
     });
 
     // The derivation, not a dp figure: whichever shell is up, a page reads the
@@ -793,11 +1168,11 @@ void main() {
 
       addTearDown(tester.view.reset);
       final phone = await bottomPaddingOn(const Size(390, 844));
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
       final tablet = await bottomPaddingOn(const Size(1280, 800));
       expect(find.byType(NavigationRail), findsOneWidget);
 
-      expect(phone, 0, reason: 'the BottomAppBar already spent the inset');
+      expect(phone, 0, reason: 'the NavigationBar already spent the inset');
       expect(
         tablet,
         phone,
@@ -863,7 +1238,7 @@ void main() {
       runRecordingActive.value = true;
       await tester.pump();
 
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(find.descendant(of: bar, matching: find.text('Recording')),
           findsOneWidget);
       expect(_semanticsLabelled('Return to your run'), findsOneWidget);
@@ -913,6 +1288,211 @@ void main() {
     });
   });
 
+  group('the docked centre button is the Start on the idle Run page (#1374)',
+      () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    Finder caption(String text) => find.descendant(
+        of: find.byType(NavigationBar), matching: find.text(text));
+
+    for (final fanMode in [false, true]) {
+      final mode = fanMode ? 'the "+" fan' : 'run-primary';
+
+      testWidgets(
+          '$mode: one tap starts the countdown, and a tap during it cancels',
+          (tester) async {
+        final starts = _captureStartRequests();
+        final s = await _makeStores();
+        if (fanMode) await _seedLoggedLift(tester, s);
+        await _pump(tester, s);
+
+        if (fanMode) {
+          await tester.tap(find.byTooltip('Log'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          await tester.tap(find.byTooltip('Log run'));
+        } else {
+          await tester.tap(find.byType(FloatingActionButton));
+        }
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        tester.takeException();
+        expect(shellPage(tester), 2);
+        expect(starts, isEmpty,
+            reason: 'reaching the Run page does not start a run by itself');
+
+        expect(caption('Start'), findsOneWidget);
+        expect(_semanticsLabelled('Start run'), findsOneWidget);
+        expect(find.text('START'), findsNothing,
+            reason: 'the panel draws no second Start under the docked one');
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(starts, [RunStartRequest.start]);
+        expect(find.textContaining('already on'), findsNothing);
+
+        runIdleShowing.value = false;
+        runCountdownShowing.value = true;
+        await tester.pump();
+        expect(caption('Cancel'), findsOneWidget);
+        expect(_semanticsLabelled('Cancel the start'), findsOneWidget);
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(starts, [RunStartRequest.start, RunStartRequest.cancel]);
+        tester.takeException();
+      });
+    }
+
+    testWidgets('away from the Run page the button keeps its own meaning',
+        (tester) async {
+      final starts = _captureStartRequests();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(caption('Start'), findsNothing);
+      expect(caption('Run'), findsOneWidget);
+      expect(_semanticsLabelled('Open the recording screen (Run)'),
+          findsOneWidget);
+      expect(starts, isEmpty);
+    });
+
+    testWidgets(
+        'while the start is in its checks the button says Starting and a '
+        'second tap is not a second start', (tester) async {
+      final starts = _captureStartRequests();
+      addTearDown(() => runStartPending.value = false);
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(shellPage(tester), 2);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      expect(starts, [RunStartRequest.start]);
+      // The recorder raises this while a permission or battery prompt, or a
+      // planned workout still loading, stands before its countdown.
+      runStartPending.value = true;
+      await tester.pump();
+      expect(caption('Starting'), findsOneWidget);
+      expect(caption('Start'), findsNothing);
+      expect(_semanticsLabelled('Starting the run'), findsOneWidget);
+
+      await tester.tap(find.byType(FloatingActionButton), warnIfMissed: false);
+      await tester.pump();
+      await tester.longPress(find.byType(FloatingActionButton),
+          warnIfMissed: false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(starts, [RunStartRequest.start],
+          reason: 'the pending start is the only start');
+      expect(find.byType(BottomSheet), findsNothing,
+          reason: 'no runner menu over a start in progress');
+
+      // The countdown begins: the button is its Cancel again.
+      runStartPending.value = false;
+      runIdleShowing.value = false;
+      runCountdownShowing.value = true;
+      await tester.pump();
+      expect(caption('Cancel'), findsOneWidget);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      expect(starts, [RunStartRequest.start, RunStartRequest.cancel]);
+      tester.takeException();
+    });
+
+    testWidgets("Today's workout Start starts the run with the workout armed",
+        (tester) async {
+      final starts = _captureStartRequests();
+      final armed = <String>[];
+      void record() {
+        final w = pendingStartWorkout.value;
+        if (w != null) armed.add(w.id);
+      }
+
+      pendingStartWorkout.addListener(record);
+      addTearDown(() {
+        pendingStartWorkout.removeListener(record);
+        pendingStartWorkout.value = null;
+      });
+      final s =
+          await _makeStores(training: _PlanTraining(_planWithWorkoutToday()));
+      await _pump(tester, s);
+      await tester.runAsync(() async {});
+      await pumpUntil(
+          tester,
+          () => find
+              .byKey(const Key('todaysWorkoutStart'))
+              .evaluate()
+              .isNotEmpty,
+          describe: "the Today hero's workout Start");
+
+      await tester.tap(find.byKey(const Key('todaysWorkoutStart')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(armed, ['wo-today'], reason: 'the workout is loaded first');
+      expect(starts, [RunStartRequest.start],
+          reason: 'and the run starts behind the countdown');
+      expect(shellPage(tester), 2);
+    });
+
+    testWidgets("a route's Start run starts the run with the route selected",
+        (tester) async {
+      final starts = _captureStartRequests();
+      addTearDown(() => pendingStartRunWithRoute.value = null);
+      final s = await _makeStores();
+      await _pump(tester, s);
+      pendingStartRunWithRoute.value = const cm.Route(
+        id: 'r1',
+        userId: 'u1',
+        name: 'Park loop',
+        waypoints: [
+          cm.Waypoint(lat: 47.37, lng: 8.54),
+          cm.Waypoint(lat: 47.371, lng: 8.541),
+        ],
+        distanceMetres: 5000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(pendingStartRunWithRoute.value, isNull);
+      expect(starts, [RunStartRequest.start]);
+      expect(shellPage(tester), 2);
+    });
+
+    testWidgets("Home's Start asks for the start and lands on the Run page",
+        (tester) async {
+      final starts = _captureStartRequests();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.runAsync(() async {});
+      await pumpUntil(
+          tester,
+          () => find
+              .byKey(const Key('dashboardWelcomeStart'))
+              .evaluate()
+              .isNotEmpty,
+          describe: "the welcome state's Start");
+
+      await tester.tap(find.byKey(const Key('dashboardWelcomeStart')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(starts, [RunStartRequest.start],
+          reason: 'one tap on Home starts the run, behind the countdown');
+      expect(shellPage(tester), 2);
+    });
+  });
+
   group('the docked centre button is the Stop on the Run page', () {
     double shellPage(WidgetTester tester) {
       final controller =
@@ -923,7 +1503,7 @@ void main() {
     }
 
     Finder caption(String text) =>
-        find.descendant(of: find.byType(BottomAppBar), matching: find.text(text));
+        find.descendant(of: find.byType(NavigationBar), matching: find.text(text));
 
     // Identical whether the Log button is run-primary (Gym and Nutrition
     // hidden) or the "+" fan (a modality shown): mid-run the centre button is
@@ -1008,14 +1588,22 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         expect(find.byType(HoldToStopButton), findsOneWidget);
 
-        // The recorder's finished state releases the flag.
+        // The recorder's finished state releases the flag and shows the
+        // summary, which is not the start screen, so the docked button is
+        // not its Start (issue #1374).
+        addTearDown(() {
+          runSummaryShowing.value = false;
+          runIdleShowing.value = true;
+        });
         runRecordingActive.value = false;
+        runSummaryShowing.value = true;
+        runIdleShowing.value = false;
         await tester.pump();
 
         expect(find.byType(HoldToStopButton), findsNothing);
         expect(find.byType(FloatingActionButton), findsOneWidget);
         expect(caption('Stop'), findsNothing);
-        expect(caption(fanMode ? 'Log' : 'Start run'), findsOneWidget);
+        expect(caption(fanMode ? 'Log' : 'Run'), findsOneWidget);
         tester.takeException();
       });
     }
@@ -1202,7 +1790,17 @@ void main() {
     // Through the controller: at a large text size the scrolling strip can
     // hold the tab off-screen, and the geometry under test is the FAB's.
     Future<void> selectTab(WidgetTester tester, String tab) async {
-      final bar = find.byType(TabBar).hitTestable().first;
+      // The showing hub's strip, by where it is rather than by a hit test:
+      // the offline "Could not refresh" banner slides over the top of the
+      // page in this environment, and at 2x it covers the strip, which now
+      // sits under the hub's large title.
+      final width = tester.view.physicalSize.width /
+          tester.view.devicePixelRatio;
+      final bar = find.byWidgetPredicate((w) => w is TabBar).evaluate().where(
+          (e) {
+        final r = tester.getRect(find.byWidget(e.widget));
+        return r.left >= 0 && r.right <= width + 0.5;
+      }).map((e) => find.byWidget(e.widget)).first;
       final labels = find
           .descendant(of: bar, matching: find.byType(Text))
           .evaluate()
@@ -1217,12 +1815,10 @@ void main() {
     }
 
     Future<void> openPage(WidgetTester tester, String nav, String tab) async {
-      // By the item's semantics label: past text scale 1.6 the bar drops
-      // its visible labels.
-      await tester.tap(find.descendant(
-          of: find.byType(BottomAppBar),
-          matching: find.byWidgetPredicate(
-              (w) => w is Semantics && w.properties.label == nav)));
+      // By the destination's label: past text scale 1.6 the bar drops its
+      // visible labels.
+      await tester.tap(find.byWidgetPredicate(
+          (w) => w is NavigationDestination && w.label == nav));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await selectTab(tester, tab);
@@ -1269,10 +1865,12 @@ void main() {
         (tester) async {
       await pumpPhone(tester, textScale: 2.0);
       expect(tester.takeException(), isNull);
+      // M3 keeps hidden labels in the tree for their semantics; it draws
+      // none of them.
       expect(
-          find.descendant(
-              of: find.byType(BottomAppBar), matching: find.byType(Text)),
-          findsNothing);
+          tester.widget<NavigationBar>(find.byType(NavigationBar)).labelBehavior,
+          NavigationDestinationLabelBehavior.alwaysHide);
+      expect(find.byKey(const ValueKey('navCentreCaption')), findsNothing);
     });
 
     testWidgets('the rail docks nothing, so a page FAB stays at endFloat',
@@ -1308,7 +1906,7 @@ void main() {
         'later pop cannot restore it', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      final pageContext = tester.element(find.byType(DashboardScreen));
+      final pageContext = tester.element(find.byType(TodayScreen));
       final field = FocusNode(debugLabel: 'a field on the Home page');
       final attachment = field.attach(pageContext);
       attachment.reparent();
@@ -1349,7 +1947,7 @@ void main() {
     testWidgets('stays put on the page the runner is still on', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      final pageContext = tester.element(find.byType(DashboardScreen));
+      final pageContext = tester.element(find.byType(TodayScreen));
       final field = FocusNode(debugLabel: 'a field on the Home page');
       final attachment = field.attach(pageContext);
       attachment.reparent();
@@ -1421,6 +2019,83 @@ void main() {
 
       expect(shellPage(tester), 0, reason: 'back moves toward Home');
       expect(exits, isEmpty, reason: 'back from a tab must not close the app');
+    });
+
+    // Issue #1374 NS-2: Runs' own PopScope cleared the selection while the
+    // shell's moved to Home in the same press, and a selection left on a
+    // hidden tab ate Back on Home.
+    testWidgets('back in Runs select mode closes the selection and stays',
+        (tester) async {
+      final s = await _makeStores();
+      await tester.runAsync(() async {
+        await s.runStore.save(cm.Run(
+          id: 'run-select',
+          // Today, so the list's default this-week range shows it.
+          startedAt: DateTime.now(),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          track: const [],
+          source: cm.RunSource.app,
+        ));
+      });
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await goToFitness(tester);
+      final selectable = find.byType(RunListTile);
+      await pumpUntil(tester, () => selectable.evaluate().isNotEmpty,
+          describe: 'the run row');
+      await tester.longPress(selectable.first);
+      await tester.pump();
+      final selection = find.textContaining('selected');
+      expect(selection, findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(selection, findsNothing, reason: 'Back closes the selection');
+      expect(shellPage(tester), 1, reason: 'and the runner stays on the tab');
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(shellPage(tester), 0);
+      expect(exits, isEmpty);
+      tester.takeException();
+    });
+
+    testWidgets('a selection on a hidden tab does not swallow Back on Home',
+        (tester) async {
+      final s = await _makeStores();
+      await tester.runAsync(() async {
+        await s.runStore.save(cm.Run(
+          id: 'run-hidden',
+          // Today, so the list's default this-week range shows it.
+          startedAt: DateTime.now(),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          track: const [],
+          source: cm.RunSource.app,
+        ));
+      });
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await goToFitness(tester);
+      final selectable = find.byType(RunListTile);
+      await pumpUntil(tester, () => selectable.evaluate().isNotEmpty,
+          describe: 'the run row');
+      await tester.longPress(selectable.first);
+      await tester.pump();
+      expect(find.textContaining('selected'), findsOneWidget);
+
+      // Leave the selection standing on the kept-alive Runs tab.
+      await tester.tap(find.text('Home').last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 0);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(exits, ['SystemNavigator.pop'],
+          reason: 'Back on Home is Home\'s, whatever a hidden tab holds');
+      tester.takeException();
     });
 
     testWidgets('back from Home exits the app', (tester) async {
@@ -1612,9 +2287,11 @@ void main() {
       void listener() => dismissals++;
       runSummaryDismissRequests.addListener(listener);
       addTearDown(() => runSummaryDismissRequests.removeListener(listener));
+      final starts = _captureStartRequests();
       final s = await _makeStores();
       await _pump(tester, s);
       runSummaryShowing.value = true;
+      runIdleShowing.value = false;
 
       // From another page: the tap lands on Run with the summary closing.
       await tester.tap(find.byType(FloatingActionButton));
@@ -1632,15 +2309,16 @@ void main() {
       expect(find.textContaining('already on'), findsNothing);
       expect(shellPage(tester), 2);
 
-      // Once the start screen is what shows, the banner is true again.
+      // Once the start screen is what shows, the button is its Start.
       runSummaryShowing.value = false;
+      runIdleShowing.value = true;
+      await tester.pump();
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(dismissals, 2);
-      expect(find.text("You're already on Run"), findsOneWidget);
-      // showTopBanner arms an auto-dismiss timer; let it run out.
-      await tester.pump(const Duration(seconds: 8));
+      expect(starts, [RunStartRequest.start]);
+      expect(find.textContaining('already on'), findsNothing);
     });
 
     testWidgets('long-press for a pure runner opens the runner menu, not a '
@@ -1684,8 +2362,10 @@ void main() {
       expect(find.byType(AddRunScreen), findsOneWidget);
     });
 
-    testWidgets("today's plan workout is offered, and loads on the recorder",
-        (tester) async {
+    testWidgets(
+        "today's plan workout is offered, and its Start starts the run with "
+        'it armed (#1374)', (tester) async {
+      final starts = _captureStartRequests();
       final loaded = <String>[];
       void record() {
         final w = pendingStartWorkout.value;
@@ -1715,6 +2395,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(loaded, ['wo-today']);
+      expect(starts, [RunStartRequest.start],
+          reason: 'a control that says Start starts the run');
       expect(shellPage(tester), 2, reason: 'the workout loads on the recorder');
       tester.takeException();
     });
@@ -1820,8 +2502,8 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s);
 
-      final semantics =
-          tester.widget<Semantics>(_semanticsLabelled('Start a run'));
+      final semantics = tester.widget<Semantics>(
+          _semanticsLabelled('Open the recording screen (Run)'));
       expect(semantics.properties.hintOverrides?.onLongPressHint,
           'show more options');
       final actions = semantics.properties.customSemanticsActions!;
@@ -1902,9 +2584,9 @@ void main() {
       await tester.tap(_inMenu('Log food'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Nutrition'), findsNWidgets(2));
+      expect(find.text('Nutrition'), findsOneWidget);
       expect(find.byType(NutritionScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
       expect(shellPage(tester), 1);
     });
   });
@@ -1946,24 +2628,58 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('a parked preferences intent opens SettingsPreferencesScreen',
+    testWidgets('a parked Preferences page intent opens that page',
         (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
       expect(find.byType(SettingsPreferencesScreen), findsNothing);
 
-      openSettings(SettingsDestination.preferences);
+      openSettings(SettingsDestination.privacy);
       await openAndSettle(tester);
 
       expect(find.byType(SettingsPreferencesScreen), findsOneWidget,
           reason: 'the People tab holds neither a Preferences nor a '
               'SettingsSyncService — naming the destination has to be enough');
+      expect(
+        tester
+            .widget<SettingsPreferencesScreen>(
+                find.byType(SettingsPreferencesScreen))
+            .page,
+        PreferencesPage.privacy,
+      );
+    });
+
+    testWidgets('a parked row opens its page landed on that row',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      openSettingsRow(PreferencesRow.maxHr);
+      await openAndSettle(tester);
+
+      final page = tester.widget<SettingsPreferencesScreen>(
+          find.byType(SettingsPreferencesScreen));
+      expect(page.page, PreferencesPage.training);
+      expect(page.focus, PreferencesRow.maxHr);
+      expect(pendingSettingsRow, isNull,
+          reason: 'the row is taken with the destination, once');
+
+      // A page-only request after it lands at the top, not on a stale row.
+      openSettings(SettingsDestination.training);
+      await openAndSettle(tester);
+      expect(
+        tester
+            .widgetList<SettingsPreferencesScreen>(
+                find.byType(SettingsPreferencesScreen, skipOffstage: false))
+            .last
+            .focus,
+        isNull,
+      );
     });
 
     testWidgets('the shell clears the slot as it navigates', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      openSettings(SettingsDestination.preferences);
+      openSettings(SettingsDestination.privacy);
       await openAndSettle(tester);
 
       expect(pendingSettingsDestination.value, isNull,
@@ -1994,24 +2710,29 @@ void main() {
       // Same contract pendingPushTarget carries: a cold start drains on the
       // first frame, so an intent set before any Navigator existed is not lost.
       final s = await _makeStores();
-      openSettings(SettingsDestination.preferences);
+      openSettings(SettingsDestination.privacy);
       await _pump(tester, s);
       await openAndSettle(tester);
 
       expect(find.byType(SettingsPreferencesScreen), findsOneWidget);
     });
 
-    // Only `preferences` and `about` were ever driven end to end, so five of
-    // the seven arms of `_settingsDestinationScreen` were unexercised — a
+    // Only `preferences` and `about` were ever driven end to end, so the other
+    // arms of `_settingsDestinationScreen` were unexercised — a
     // switch wired to the wrong screen, or a new destination added with no
     // arm at all, would have shipped. The loop is over the enum rather than
     // over a hand-written list, so a destination added without a case here
     // fails at compile time in the map below and at run time in the switch.
     const expectedScreen = <SettingsDestination, Type>{
-      SettingsDestination.preferences: SettingsPreferencesScreen,
+      SettingsDestination.display: SettingsPreferencesScreen,
+      SettingsDestination.recording: SettingsPreferencesScreen,
+      SettingsDestination.training: SettingsPreferencesScreen,
+      SettingsDestination.privacy: SettingsPreferencesScreen,
+      SettingsDestination.notifications: SettingsPreferencesScreen,
       SettingsDestination.account: SettingsAccountScreen,
       SettingsDestination.safety: SettingsSafetyScreen,
       SettingsDestination.integrations: SettingsIntegrationsScreen,
+      SettingsDestination.gear: GearScreen,
       SettingsDestination.bodyMetrics: SettingsBodyMetricsScreen,
       SettingsDestination.about: SettingsAboutScreen,
       SettingsDestination.pro: SettingsProScreen,
@@ -2037,6 +2758,16 @@ void main() {
         expect(find.byType(entry.value), findsOneWidget,
             reason: 'the caller holds none of the dependencies '
                 '${entry.value} takes — naming it has to be enough');
+        // A Preferences page arm must build its own page, not a neighbour.
+        if (entry.key.preferencesPage case final page?) {
+          expect(
+            tester
+                .widget<SettingsPreferencesScreen>(
+                    find.byType(SettingsPreferencesScreen))
+                .page,
+            page,
+          );
+        }
         // No other settings screen came up: a switch arm returning its
         // neighbour would otherwise read as a pass on both.
         for (final other in expectedScreen.values.toSet()) {
@@ -2152,6 +2883,22 @@ void main() {
       expect(find.byType(RunDetailScreen), findsOneWidget);
       expect(find.byType(PublicRunScreen), findsNothing);
       expect(pendingEntityLink.value, isNull);
+      tester.takeException();
+    });
+
+    // Issue #1374 NS-12: a club or event push whose lookup failed did
+    // nothing at all, or dropped the runner on Clubs as if the club were gone.
+    testWidgets('a club push whose lookup fails says so and offers Retry',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s, api: _LinkApi());
+      pendingPushTarget.value = const PushTarget(PushTargetKind.club, 'club-7');
+      final failed = find.textContaining("Couldn't open that notification");
+      await pumpUntil(tester, () => failed.evaluate().isNotEmpty,
+          describe: 'the failed-open banner');
+      expect(find.text('Retry'), findsOneWidget);
+      expect(find.byType(ClubDetailScreen), findsNothing);
+      await tester.pump(const Duration(seconds: 7));
       tester.takeException();
     });
 

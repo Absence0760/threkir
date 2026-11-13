@@ -60,15 +60,15 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Esforços mais antigos',
+			heading: 'Tentativas mais antigas',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Os esforços registrados antes de os segmentos terem linhas foram medidos do jeito antigo, passando perto do início e do fim. Cada um é medido de novo pelas linhas na próxima vez que o corredor abrir a corrida no site. O tempo pode mudar, e o esforço pode sumir se a corrida nunca cruzou as linhas.',
+					text: 'As tentativas registradas antes de os segmentos terem linhas foram medidas do jeito antigo, passando perto do início e do fim. Cada uma é medida de novo pelas linhas na próxima vez que o corredor abrir a corrida no site. O tempo pode mudar, e a tentativa pode sumir se a corrida nunca cruzou as linhas.',
 				},
 				{
 					type: 'p',
-					text: 'Até que todos os esforços de um segmento tenham sido medidos de novo, a classificação dele avisa que alguns esforços mais antigos foram medidos do jeito antigo.',
+					text: 'Até que todas as tentativas de um segmento tenham sido medidas de novo, a classificação dele avisa que algumas tentativas mais antigas foram medidas do jeito antigo.',
 				},
 			],
 		},

@@ -10,6 +10,8 @@
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { formatPrice } from '#lib/format/format_price.ts';
 	import { fromMinorUnits } from '#lib/format/minor_units.ts';
+	import FilterBar, { type ActiveFilter, type FilterChip } from './FilterBar.svelte';
+	import AppSearchField from './AppSearchField.svelte';
 
 	let query = $state('');
 	let category = $state<'' | 'run' | 'cycle' | 'class' | 'social'>('');
@@ -49,6 +51,61 @@
 		SA: 'discover.daySat',
 		SU: 'discover.daySun',
 	};
+
+	const CADENCE_KEY: Record<Exclude<typeof cadence, ''>, MessageKey> = {
+		one_off: 'discover.oneOff',
+		weekly: 'discover.weekly',
+		biweekly: 'discover.biweekly',
+		monthly: 'discover.monthly',
+	};
+	const TIME_KEY: Record<Exclude<typeof time, ''>, MessageKey> = {
+		morning: 'discover.morning',
+		afternoon: 'discover.afternoon',
+		evening: 'discover.evening',
+	};
+
+	let filtersOpen = $state(false);
+
+	const categoryChips = $derived<FilterChip[]>(
+		CATEGORIES.map((c) => ({
+			key: c.v || 'all',
+			label: m(c.k),
+			pressed: category === c.v,
+			onclick: () => (category = c.v),
+			testid: `discover-cat-${c.v || 'all'}`,
+		})),
+	);
+
+	// The sheet's filters that are on, as removable chips on the bar's line.
+	const activeFilters = $derived.by<ActiveFilter[]>(() => {
+		const out: ActiveFilter[] = [];
+		if (nearLabel) {
+			out.push({
+				key: 'near',
+				label: `${m('discover.nearLabel')}: ${nearLabel}`,
+				onRemove: clearNear,
+				testid: 'discover-near-clear',
+			});
+		}
+		if (cadence) {
+			out.push({ key: 'cadence-filter', label: m(CADENCE_KEY[cadence]), onRemove: () => (cadence = ''), testid: 'discover-chip-cadence' });
+		}
+		if (byday) {
+			out.push({ key: 'day', label: m(WEEKDAY_KEY[byday]), onRemove: () => (byday = ''), testid: 'discover-chip-day' });
+		}
+		if (time) {
+			out.push({ key: 'time', label: m(TIME_KEY[time]), onRemove: () => (time = ''), testid: 'discover-chip-time' });
+		}
+		if (paid) {
+			out.push({
+				key: 'price',
+				label: m(paid === 'free' ? 'discover.free' : 'discover.paid'),
+				onRemove: () => (paid = ''),
+				testid: 'discover-chip-price',
+			});
+		}
+		return out;
+	});
 
 	async function run() {
 		loading = true;
@@ -95,7 +152,8 @@
 	// Driven by oninput, not a reactive effect, so the geolocation path can set
 	// `center` without an empty `nearPlace` clobbering it.
 	let placeTimer: ReturnType<typeof setTimeout> | undefined;
-	function onNearPlaceInput() {
+	function onNearPlaceInput(value: string) {
+		nearPlace = value;
 		clearTimeout(placeTimer);
 		const term = nearPlace.trim();
 		if (!term) {
@@ -186,125 +244,109 @@
 	}
 </script>
 
-<div class="discover">
-	<div class="filters">
-		<input
-			type="search"
-			class="search"
-			bind:value={query}
-			placeholder={m('discover.searchPlaceholder')}
-			aria-label={m('discover.searchPlaceholder')}
-			data-testid="discover-search"
-		/>
+{#snippet discoverSearch()}
+	<AppSearchField bind:value={query} label={m('discover.searchPlaceholder')} testid="discover-search" />
+{/snippet}
 
+{#snippet discoverFilters()}
+	<section class="sheet-field" aria-labelledby="discover-near-heading">
+		<h3 id="discover-near-heading">{m('discover.nearLabel')}</h3>
 		<div class="near-row">
-			<input
-				type="search"
-				class="search near-input"
-				bind:value={nearPlace}
+			<AppSearchField
+				value={nearPlace}
 				oninput={onNearPlaceInput}
+				label={m('discover.nearLabel')}
 				placeholder={m('discover.nearPlaceholder')}
-				aria-label={m('discover.nearLabel')}
-				data-testid="discover-near"
+				testid="discover-near"
 			/>
-			<button
-				type="button"
-				class="chip near-locate"
-				onclick={useMyLocation}
-				data-testid="discover-use-location"
-			>
+			<button type="button" class="chip near-locate" onclick={useMyLocation} data-testid="discover-use-location">
 				{m('discover.useMyLocation')}
 			</button>
 		</div>
-
-		{#if nearLabel}
-			<button
-				type="button"
-				class="near-active"
-				onclick={clearNear}
-				aria-label={m('discover.clearNear')}
-				data-testid="discover-near-clear"
-			>
-				<span>{m('discover.nearLabel')}: {nearLabel}</span>
-				<span aria-hidden="true">×</span>
-			</button>
-		{/if}
-
 		{#if geoError}
 			<p class="near-error" role="status" data-testid="discover-near-error">{geoError}</p>
 		{/if}
+	</section>
 
-		<div class="chip-row" role="group" aria-label={m('eventEditor.category')}>
-			{#each CATEGORIES as c (c.v)}
-				<button
-					type="button"
-					class="chip"
-					class:active={category === c.v}
-					aria-pressed={category === c.v}
-					onclick={() => (category = c.v)}
-					data-testid="discover-cat-{c.v || 'all'}"
-				>
-					{m(c.k)}
-				</button>
-			{/each}
-		</div>
+	<div class="select-row">
+		<label class="field">
+			<span>{m('discover.cadenceLabel')}</span>
+			<select bind:value={cadence} data-testid="discover-cadence">
+				<option value="">{m('discover.cadenceAny')}</option>
+				<option value="one_off">{m('discover.oneOff')}</option>
+				<option value="weekly">{m('discover.weekly')}</option>
+				<option value="biweekly">{m('discover.biweekly')}</option>
+				<option value="monthly">{m('discover.monthly')}</option>
+			</select>
+		</label>
+		<label class="field">
+			<span>{m('discover.dayLabel')}</span>
+			<select bind:value={byday} data-testid="discover-day">
+				<option value="">{m('discover.dayAny')}</option>
+				{#each WEEKDAYS as d (d)}
+					<option value={d}>{m(WEEKDAY_KEY[d])}</option>
+				{/each}
+			</select>
+		</label>
+		<label class="field">
+			<span>{m('discover.timeLabel')}</span>
+			<select bind:value={time} data-testid="discover-time">
+				<option value="">{m('discover.timeAny')}</option>
+				<option value="morning">{m('discover.morning')}</option>
+				<option value="afternoon">{m('discover.afternoon')}</option>
+				<option value="evening">{m('discover.evening')}</option>
+			</select>
+		</label>
+	</div>
 
-		<div class="select-row">
-			<label class="field">
-				<span>{m('discover.cadenceLabel')}</span>
-				<select bind:value={cadence} data-testid="discover-cadence">
-					<option value="">{m('discover.cadenceAny')}</option>
-					<option value="one_off">{m('discover.oneOff')}</option>
-					<option value="weekly">{m('discover.weekly')}</option>
-					<option value="biweekly">{m('discover.biweekly')}</option>
-					<option value="monthly">{m('discover.monthly')}</option>
-				</select>
-			</label>
-			<label class="field">
-				<span>{m('discover.dayLabel')}</span>
-				<select bind:value={byday} data-testid="discover-day">
-					<option value="">{m('discover.dayAny')}</option>
-					{#each WEEKDAYS as d (d)}
-						<option value={d}>{m(WEEKDAY_KEY[d])}</option>
-					{/each}
-				</select>
-			</label>
-			<label class="field">
-				<span>{m('discover.timeLabel')}</span>
-				<select bind:value={time} data-testid="discover-time">
-					<option value="">{m('discover.timeAny')}</option>
-					<option value="morning">{m('discover.morning')}</option>
-					<option value="afternoon">{m('discover.afternoon')}</option>
-					<option value="evening">{m('discover.evening')}</option>
-				</select>
-			</label>
-			<div class="field">
-				<span>{m('discover.priceLabel')}</span>
-				<div class="chip-row">
-					<button
-						type="button"
-						class="chip"
-						class:active={paid === ''}
-						aria-pressed={paid === ''}
-						onclick={() => (paid = '')}>{m('discover.priceAny')}</button
-					>
-					<button
-						type="button"
-						class="chip"
-						class:active={paid === 'free'}
-						aria-pressed={paid === 'free'}
-						onclick={() => (paid = 'free')}>{m('discover.free')}</button
-					>
-					<button
-						type="button"
-						class="chip"
-						class:active={paid === 'paid'}
-						aria-pressed={paid === 'paid'}
-						onclick={() => (paid = 'paid')}>{m('discover.paid')}</button
-					>
-				</div>
-			</div>
+	<section class="sheet-field" aria-labelledby="discover-price-heading">
+		<h3 id="discover-price-heading">{m('discover.priceLabel')}</h3>
+		<div class="chip-row" role="group" aria-labelledby="discover-price-heading">
+			<button
+				type="button"
+				class="chip"
+				class:active={paid === ''}
+				aria-pressed={paid === ''}
+				onclick={() => (paid = '')}
+				data-testid="discover-price-any">{m('discover.priceAny')}</button
+			>
+			<button
+				type="button"
+				class="chip"
+				class:active={paid === 'free'}
+				aria-pressed={paid === 'free'}
+				onclick={() => (paid = 'free')}
+				data-testid="discover-price-free">{m('discover.free')}</button
+			>
+			<button
+				type="button"
+				class="chip"
+				class:active={paid === 'paid'}
+				aria-pressed={paid === 'paid'}
+				onclick={() => (paid = 'paid')}
+				data-testid="discover-price-paid">{m('discover.paid')}</button
+			>
 		</div>
+	</section>
+{/snippet}
+
+<div class="discover">
+	<!-- Search and the category chips on the bar; place, cadence, day, time
+	     and price in the Filters sheet (conventions.md § Web lists). -->
+	<div class="discover-filter-bar">
+		<FilterBar
+			idPrefix="discover"
+			search={discoverSearch}
+			chips={categoryChips}
+			chipsLabel={m('eventEditor.category')}
+			{activeFilters}
+			filters={discoverFilters}
+			activeFilterCount={activeFilters.length}
+			bind:filtersOpen
+		/>
+		{#if geoError && !filtersOpen}
+			<p class="near-error" role="status">{geoError}</p>
+		{/if}
 	</div>
 
 	{#if loading}
@@ -350,51 +392,29 @@
 		flex-direction: column;
 		gap: var(--space-lg);
 	}
-	.filters {
+	.discover-filter-bar {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-md);
+		gap: var(--space-sm);
 	}
-	.search {
-		width: 100%;
-		padding: 0.6rem 0.85rem;
-		border: 1.5px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.95rem;
+	.sheet-field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
 	}
-	.search:focus-visible {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
+	.sheet-field h3 {
+		margin: 0;
+		font-size: var(--font-size-section-title);
+		font-weight: 600;
 	}
 	.near-row {
 		display: flex;
 		gap: 0.4rem;
 		align-items: stretch;
 	}
-	.near-input {
-		flex: 1 1 auto;
-		min-width: 0;
-	}
 	.near-locate {
 		flex-shrink: 0;
 		white-space: nowrap;
-	}
-	.near-active {
-		align-self: flex-start;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0.3rem 0.7rem;
-		border: 1.5px solid var(--color-primary);
-		border-radius: 999px;
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-		font-size: 0.85rem;
-		font-weight: 600;
-		cursor: pointer;
 	}
 	.near-error {
 		color: var(--color-danger-text);

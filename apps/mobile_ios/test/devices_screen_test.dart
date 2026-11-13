@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show UserDeviceSettingRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
@@ -6,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/devices_screen.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 
@@ -30,8 +32,44 @@ Future<void> _pump(WidgetTester tester) {
   );
 }
 
+class _DevicesApi extends ApiClient {
+  @override
+  Future<List<UserDeviceSettingRow>> fetchMyDevices() async => [
+        UserDeviceSettingRow(
+          userId: 'u',
+          deviceId: 'this-device-id',
+          platform: 'android',
+          label: 'Pixel 9 Pro XL with a very long custom device name',
+          prefs: const {'units': 'mi'},
+          lastSeenAt: DateTime.now().subtract(const Duration(hours: 3)),
+          updatedAt: DateTime.now(),
+        ),
+        UserDeviceSettingRow(
+          userId: 'u',
+          deviceId: 'watch',
+          platform: 'wear_os',
+          prefs: const {},
+          lastSeenAt: DateTime.now().subtract(const Duration(days: 2)),
+          updatedAt: DateTime.now(),
+        ),
+      ];
+}
+
 void main() {
   setUpAll(_ensureSupabase);
+
+  // Issue #1374: a device row is a ListCard.row; a long name, the "this
+  // device" pill and the last-seen line fit at the worst case.
+  worstCaseTestWidgets('Devices', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: DevicesScreen(api: _DevicesApi(), currentDeviceId: 'this-device-id'),
+    ));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Pixel 9 Pro XL with a very long custom device name'),
+        findsOneWidget);
+  });
 
   group('DevicesScreen — initial render', () {
     testWidgets('renders the Signed-in devices app-bar title', (tester) async {

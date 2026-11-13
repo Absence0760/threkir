@@ -5,7 +5,7 @@ import { setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /dashboard — gym-aware readiness (decisions §63 amendment, the "do them all"
+ * /dashboard/progress — gym-aware readiness (decisions §63 amendment, the "do them all"
  * cross-modality pass).
  *
  * Gym sessions feed the same fitness/fatigue/form curve as runs. This pins the
@@ -17,7 +17,7 @@ import { USER_A } from '../fixtures/users';
  * Self-seeds its own recent gym workout so the test doesn't depend on the
  * seed fixture's gym rows; cleans up the workout + resets the pref.
  */
-test.describe('/dashboard — gym-aware readiness', () => {
+test.describe('/dashboard/progress — gym-aware readiness', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('recent gym session shows on readiness; exclude pref flips the note', async ({
@@ -43,14 +43,14 @@ test.describe('/dashboard — gym-aware readiness', () => {
 		try {
 			// Default: gym counts toward fatigue → "factored in" note.
 			await setUserSetting(USER_A.id, 'exclude_gym_from_readiness', false);
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			const note = page.getByTestId('gym-readiness-note');
 			await expect(note).toBeVisible({ timeout: 10_000 });
 			await expect(note).toContainText(/factored into your fatigue/i);
 
 			// Opt out: the note flips to "excluded".
 			await setUserSetting(USER_A.id, 'exclude_gym_from_readiness', true);
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(note).toBeVisible({ timeout: 10_000 });
 			await expect(note).toContainText(/excluded/i);
 		} finally {

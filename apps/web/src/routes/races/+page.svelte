@@ -1,8 +1,11 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		fetchAllParkCourses,
 		fetchParkCourseRecords,
@@ -23,13 +26,43 @@
 	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import RaceListingEditor from '#lib/components/RaceListingEditor.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
+	import FilterBar, { type ActiveFilter, type FilterChip } from '#lib/components/FilterBar.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
 	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
 	import { orderAnyTimeCourses } from '#lib/parks/any_time_courses.ts';
+	import { anyTimeCourseLimit, parseRacesShow, racesShowSearch, type RacesShow } from '#lib/races/races_show.ts';
 	import { regionName, regionSlug } from '#lib/parks/park_courses.ts';
+	import ParkCard from '#lib/components/parks/ParkCard.svelte';
 	import { SHAPE_LABEL, STATUS_LABEL, labelKey } from '#lib/parks/park_labels.ts';
 	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
+
+	const SHOWS: { v: RacesShow; k: MessageKey }[] = [
+		{ v: 'all', k: 'races.showAll' },
+		{ v: 'races', k: 'races.showRaces' },
+		{ v: 'courses', k: 'races.showCourses' }
+	];
+	let show = $state<RacesShow>('all');
+
+	// The choice is a shallow navigation, so the address it wrote is
+	// `page.shallow.url`, which back from a course page restores too; a
+	// `?show=` link followed while /races is open lands in `page.url`.
+	const shownUrl = () => page.shallow?.url ?? page.url;
+	$effect(() => {
+		show = parseRacesShow(shownUrl().searchParams.get('show'));
+	});
+
+	function setShow(next: RacesShow) {
+		show = next;
+		// Shallow: the lists, the filters and the scroll stay as they are.
+		const url = shownUrl();
+		void goto(`${url.pathname}${racesShowSearch(url.search, next)}`, {
+			replace: true,
+			shallow: true
+		});
+	}
 
 	let query = $state('');
 	let distance = $state<'' | RaceDistanceBand>('');
@@ -67,6 +100,33 @@
 	let distanceLabel = $derived.by(() => {
 		const band = DISTANCES.find((d) => d.v === distance && d.v !== '');
 		return band ? m(band.k) : '';
+	});
+
+	const showChips = $derived<FilterChip[]>(
+		SHOWS.map((s) => ({
+			key: s.v,
+			label: m(s.k),
+			pressed: show === s.v,
+			onclick: () => setShow(s.v),
+			testid: `races-show-${s.v}`,
+		})),
+	);
+
+	// The race filters that are on, as removable chips on the bar's line. The
+	// Courses view hides the race calendar, so it hides them with it.
+	const activeFilters = $derived.by<ActiveFilter[]>(() => {
+		if (show === 'courses') return [];
+		const out: ActiveFilter[] = [];
+		if (when === 'recent') {
+			out.push({ key: 'when', label: m('races.whenRecent'), onRemove: () => (when = 'upcoming'), testid: 'races-chip-when' });
+		}
+		if (distanceLabel) {
+			out.push({ key: 'distance', label: distanceLabel, onRemove: () => (distance = ''), testid: 'races-chip-distance' });
+		}
+		if (nearLabel) {
+			out.push({ key: 'near', label: `${m('discover.nearLabel')}: ${nearLabel}`, onRemove: clearNear, testid: 'races-near-clear' });
+		}
+		return out;
 	});
 
 	async function run() {
@@ -112,6 +172,7 @@
 		center;
 		radiusM;
 		clearTimeout(timer);
+		if (show === 'courses') return;
 		timer = setTimeout(run, 250);
 		return () => clearTimeout(timer);
 	});
@@ -120,7 +181,6 @@
 	// search never hides them and a failed course read never hides the races.
 	// The season's records are a second, auxiliary read: when it fails the
 	// courses still list, without records.
-	const ANY_TIME_LIMIT = 8;
 	let courses = $state<ParkCourseWithPark[]>([]);
 	let coursesLoading = $state(true);
 	let coursesFailed = $state(false);
@@ -143,8 +203,28 @@
 				};
 			},
 			center,
-		).slice(0, ANY_TIME_LIMIT),
+		).slice(0, anyTimeCourseLimit(show) ?? undefined),
 	);
+
+	// The Courses view leads with the parks, in the order their first course
+	// lists, so a set place brings the nearest park first too.
+	const anyTimeParks = $derived.by(() => {
+		if (show !== 'courses') return [];
+		const byPark = new Map<string, ParkCourseWithPark[]>();
+		for (const c of courses) {
+			const list = byPark.get(c.park_id);
+			if (list) list.push(c);
+			else byPark.set(c.park_id, [c]);
+		}
+		const seen = new Set<string>();
+		const out: { park: ParkCourseWithPark['park']; courses: ParkCourseWithPark[] }[] = [];
+		for (const { course } of orderedCourses) {
+			if (seen.has(course.park_id)) continue;
+			seen.add(course.park_id);
+			out.push({ park: course.park, courses: byPark.get(course.park_id) ?? [] });
+		}
+		return out;
+	});
 
 	async function loadCourses() {
 		coursesLoading = true;
@@ -191,9 +271,10 @@
 	});
 
 	let placeTimer: ReturnType<typeof setTimeout> | undefined;
-	function onNearPlaceInput() {
+	function onNearPlaceInput(value: string) {
 		clearTimeout(placeTimer);
-		const term = nearPlace.trim();
+		nearPlace = value;
+		const term = value.trim();
 		if (!term) {
 			center = null;
 			radiusM = undefined;
@@ -267,251 +348,278 @@
 
 <svelte:head><title>{m('races.pageTitle')}</title></svelte:head>
 
-<div class="races-page">
-	<RunSurfaceTabs active="races" />
-	<header class="races-header">
-		<div>
-			<h1>{m('races.pageTitle')}</h1>
-			<HelpLink route="/races" />
-			<p class="subtitle">{m('races.pageSubtitle')}</p>
-			{#if suggestionsToReview > 0}
-				<a class="review-link" href="/races/course-suggestions" data-testid="race-course-queue-link">
-					{m('raceCourse.queueLink', { n: suggestionsToReview })}
-				</a>
-			{/if}
-		</div>
-		<button
-			type="button"
-			class="btn btn-primary"
-			onclick={() => (showEditor = true)}
-			data-testid="race-submit"
-		>
-			{m('races.submitRace')}
+<!-- One place field for both homes it has: the Filters sheet, and the top of
+     the courses in the Courses view, where the sheet is hidden with the race
+     calendar. Its description is `races-near-hint`, which each home renders and
+     never both at once. -->
+{#snippet nearInputs()}
+	<div class="near-row">
+		<AppSearchField
+			value={nearPlace}
+			oninput={onNearPlaceInput}
+			label={m('races.nearPlace')}
+			testid="races-near"
+			describedby="races-near-hint"
+		/>
+		<button type="button" class="chip near-locate" onclick={useMyLocation} data-testid="races-use-location">
+			{m('discover.useMyLocation')}
 		</button>
-	</header>
+	</div>
+{/snippet}
 
-	<section class="races-section" aria-labelledby="races-upcoming-heading" data-testid="races-upcoming">
-		<div class="section-head">
-			<h2 id="races-upcoming-heading">{m('races.sectionUpcoming')}</h2>
-			<p class="section-intro">{m('races.subtitle')}</p>
+{#snippet nearChip()}
+	<button
+		type="button"
+		class="chip active removable"
+		onclick={clearNear}
+		aria-label={m('filterBar.removeFilter', { filter: `${m('discover.nearLabel')}: ${nearLabel}` })}
+		data-testid="races-near-clear"
+	>
+		<span>{m('discover.nearLabel')}: {nearLabel}</span>
+		<span class="material-symbols" aria-hidden="true">close</span>
+	</button>
+{/snippet}
+
+<!-- The search's explanation is shown in the Filters sheet; a screen reader
+     hears it on the field too, which is the one place it is always present. -->
+{#snippet raceSearch()}
+	<AppSearchField
+		bind:value={query}
+		label={m('races.searchPlaceholder')}
+		testid="races-search"
+		describedby="races-search-desc"
+	/>
+	<span class="visually-hidden" id="races-search-desc">{m('races.searchHint')}</span>
+{/snippet}
+
+<!-- The Filters sheet. Every control's explanation sits here, beside it and
+     named by its aria-describedby, rather than under each control on the page
+     (issue #1374 owner decision; control_hints_guard.test.ts). The search and
+     the Show chips stay on the bar, so their explanations open here too. -->
+{#snippet raceFilters()}
+	<dl class="sheet-notes" data-testid="races-sheet-notes">
+		<div>
+			<dt>{m('filterBar.search')}</dt>
+			<dd>{m('races.searchHint')}</dd>
 		</div>
-
-		<div class="filters">
-			<div class="toolbar">
-				<input
-					type="search"
-					class="search"
-					bind:value={query}
-					placeholder={m('races.searchPlaceholder')}
-					aria-label={m('races.searchPlaceholder')}
-					data-testid="races-search"
-					aria-describedby="races-search-hint"
-				/>
-				<button
-					type="button"
-					class="filters-toggle"
-					class:active={activeCount > 0}
-					aria-expanded={filtersOpen}
-					aria-controls="races-filters-panel"
-					aria-label={activeCount > 0 ? m('races.filtersCount', { count: activeCount }) : m('races.filters')}
-					onclick={() => (filtersOpen = !filtersOpen)}
-					data-testid="races-filters-toggle"
-				>
-					<span class="material-symbols" aria-hidden="true">tune</span>
-					<span>{m('races.filters')}</span>
-					{#if activeCount > 0}
-						<span class="filter-count" aria-hidden="true" data-testid="races-filter-count">{activeCount}</span>
-					{/if}
-				</button>
-			</div>
-
-			{#if activeCount > 0}
-				<div class="active-filters" data-testid="races-active-filters">
-					{#if when === 'recent'}
-						<button
-							type="button"
-							class="chip active removable"
-							onclick={() => (when = 'upcoming')}
-							aria-label={m('races.removeFilter', { filter: m('races.whenRecent') })}
-							data-testid="races-chip-when"
-						>
-							<span>{m('races.whenRecent')}</span>
-							<span class="material-symbols" aria-hidden="true">close</span>
-						</button>
-					{/if}
-					{#if distanceLabel}
-						<button
-							type="button"
-							class="chip active removable"
-							onclick={() => (distance = '')}
-							aria-label={m('races.removeFilter', { filter: distanceLabel })}
-							data-testid="races-chip-distance"
-						>
-							<span>{distanceLabel}</span>
-							<span class="material-symbols" aria-hidden="true">close</span>
-						</button>
-					{/if}
-					{#if nearLabel}
-						<button
-							type="button"
-							class="chip active removable"
-							onclick={clearNear}
-							aria-label={m('races.removeFilter', { filter: `${m('discover.nearLabel')}: ${nearLabel}` })}
-							data-testid="races-near-clear"
-						>
-							<span>{m('discover.nearLabel')}: {nearLabel}</span>
-							<span class="material-symbols" aria-hidden="true">close</span>
-						</button>
-					{/if}
-				</div>
-			{/if}
-			{#if geoError}
-				<p class="near-error" role="status">{geoError}</p>
-			{/if}
-
-			<!-- `hidden`, not {#if}: the search field's description lives in here,
-			     and aria-describedby still resolves against a hidden element. -->
-			<div class="filters-panel" id="races-filters-panel" hidden={!filtersOpen} data-testid="races-filters-panel">
-				<p class="filter-hint" id="races-search-hint">{m('races.searchHint')}</p>
-
-				<div class="near-row">
-					<input
-						type="search"
-						class="search near-input"
-						bind:value={nearPlace}
-						oninput={onNearPlaceInput}
-						placeholder={m('races.nearPlace')}
-						aria-label={m('races.nearPlace')}
-						data-testid="races-near"
-						aria-describedby="races-near-hint"
-					/>
-					<button type="button" class="chip near-locate" onclick={useMyLocation} data-testid="races-use-location">
-						{m('discover.useMyLocation')}
-					</button>
-				</div>
-				<p class="filter-hint" id="races-near-hint">{m('races.nearPlaceHint')}</p>
-
-				<div
-					class="chip-row"
-					role="group"
-					aria-label={m('races.whenGroup')}
-					aria-describedby="races-when-hint"
-				>
-					<button
-						type="button"
-						class="chip"
-						class:active={when === 'upcoming'}
-						aria-pressed={when === 'upcoming'}
-						onclick={() => (when = 'upcoming')}
-						data-testid="races-when-upcoming"
-					>
-						{m('races.whenUpcoming')}
-					</button>
-					<button
-						type="button"
-						class="chip"
-						class:active={when === 'recent'}
-						aria-pressed={when === 'recent'}
-						onclick={() => (when = 'recent')}
-						data-testid="races-when-recent"
-					>
-						{m('races.whenRecent')}
-					</button>
-				</div>
-				<p class="filter-hint" id="races-when-hint">{m('races.whenHint', { days: RECENT_WINDOW_DAYS })}</p>
-
-				<div
-					class="chip-row"
-					role="group"
-					aria-label={m('races.distanceAny')}
-					aria-describedby="races-distance-hint"
-				>
-					{#each DISTANCES as d (d.v)}
-						<button
-							type="button"
-							class="chip"
-							class:active={distance === d.v}
-							aria-pressed={distance === d.v}
-							onclick={() => (distance = d.v)}
-							data-testid="races-dist-{d.v || 'any'}"
-						>
-							{m(d.k)}
-						</button>
-					{/each}
-				</div>
-				<p class="filter-hint" id="races-distance-hint">{m('races.distanceFilterHint')}</p>
-			</div>
+		<div>
+			<dt>{m('races.showGroup')}</dt>
+			<dd>{m('races.showHint')}</dd>
 		</div>
+	</dl>
 
-		{#if loading}
-			<p class="state-msg">{m('races.loading')}</p>
-		{:else if error}
-			<div class="races-error" role="alert" data-testid="races-error">
-				<span>{m('races.searchFailed')}</span>
-				<button type="button" class="btn btn-outline" onclick={run}>{m('races.retry')}</button>
-			</div>
-		{:else if results.length === 0}
-			<EmptyState
-				icon="event_busy"
-				title={when === 'recent' ? m('races.emptyRecent', { days: RECENT_WINDOW_DAYS }) : m('races.empty')}
-				data-testid="races-empty"
-			>
-				{#snippet actions()}
-					{#if activeCount > 0 || query.trim() !== ''}
-						<button type="button" class="btn btn-outline" onclick={clearFilters}>
-							{m('races.clearFilters')}
-						</button>
-					{/if}
-					<button type="button" class="btn btn-primary" onclick={() => (showEditor = true)}>
-						{m('races.submitRace')}
-					</button>
-				{/snippet}
-			</EmptyState>
-		{:else}
-			<ul class="results" data-testid="races-results">
-				{#each results as r (r.id)}
-					<RaceCalendarCard race={r} onimport={openImport} />
-				{/each}
-			</ul>
+	<section class="sheet-field" aria-labelledby="races-near-heading">
+		<h3 id="races-near-heading">{m('discover.nearLabel')}</h3>
+		{@render nearInputs()}
+		<p class="filter-hint" id="races-near-hint">{m('races.nearPlaceHint')}</p>
+		{#if geoError}
+			<p class="near-error" role="status">{geoError}</p>
 		{/if}
 	</section>
 
-	<section class="races-section" aria-labelledby="races-any-time-heading" data-testid="races-any-time">
-		<div class="section-head">
-			<h2 id="races-any-time-heading">{m('races.sectionAnyTime')}</h2>
-			<p class="section-intro">{m('races.anyTimeIntro')}</p>
+	<section class="sheet-field" aria-labelledby="races-when-heading">
+		<h3 id="races-when-heading">{m('races.whenGroup')}</h3>
+		<div class="chip-row" role="group" aria-labelledby="races-when-heading" aria-describedby="races-when-hint">
+			<button
+				type="button"
+				class="chip"
+				class:active={when === 'upcoming'}
+				aria-pressed={when === 'upcoming'}
+				onclick={() => (when = 'upcoming')}
+				data-testid="races-when-upcoming"
+			>
+				{m('races.whenUpcoming')}
+			</button>
+			<button
+				type="button"
+				class="chip"
+				class:active={when === 'recent'}
+				aria-pressed={when === 'recent'}
+				onclick={() => (when = 'recent')}
+				data-testid="races-when-recent"
+			>
+				{m('races.whenRecent')}
+			</button>
 		</div>
+		<p class="filter-hint" id="races-when-hint">{m('races.whenHint', { days: RECENT_WINDOW_DAYS })}</p>
+	</section>
 
-		{#if coursesLoading}
-			<p class="state-msg">{m('parks.loading')}</p>
-		{:else if coursesFailed}
-			<div class="races-error" role="alert" data-testid="races-any-time-error">
-				<span>{m('parks.loadFailed')}</span>
-				<button type="button" class="btn btn-outline" onclick={loadCourses}>{m('parks.retry')}</button>
+	<section class="sheet-field" aria-labelledby="races-distance-heading">
+		<h3 id="races-distance-heading">{m('races.distanceGroup')}</h3>
+		<div
+			class="chip-row"
+			role="group"
+			aria-labelledby="races-distance-heading"
+			aria-describedby="races-distance-hint"
+		>
+			{#each DISTANCES as d (d.v)}
+				<button
+					type="button"
+					class="chip"
+					class:active={distance === d.v}
+					aria-pressed={distance === d.v}
+					onclick={() => (distance = d.v)}
+					data-testid="races-dist-{d.v || 'any'}"
+				>
+					{m(d.k)}
+				</button>
+			{/each}
+		</div>
+		<p class="filter-hint" id="races-distance-hint">{m('races.distanceFilterHint')}</p>
+	</section>
+{/snippet}
+
+<div class="races-page">
+	<RunSurfaceTabs active="races" />
+	<PageHeader title={m('races.pageTitle')} subtitle={m('races.pageSubtitle')} flush>
+		{#snippet help()}<HelpLink route="/races" />{/snippet}
+		{#if suggestionsToReview > 0}
+			<a class="review-link" href="/races/course-suggestions" data-testid="race-course-queue-link">
+				{m('raceCourse.queueLink', { n: suggestionsToReview })}
+			</a>
+		{/if}
+		{#snippet actions()}
+			<button
+				type="button"
+				class="btn btn-primary"
+				onclick={() => (showEditor = true)}
+				data-testid="race-submit"
+			>
+				{m('races.submitRace')}
+			</button>
+		{/snippet}
+	</PageHeader>
+
+	<!-- The search and Filters belong to the race calendar, so the Courses
+	     view, which hides it, keeps only the Show chips. -->
+	<div class="races-filter-bar" data-testid="races-filter-bar">
+		<FilterBar
+			idPrefix="races"
+			search={show === 'courses' ? undefined : raceSearch}
+			chips={showChips}
+			chipsLabel={m('races.showGroup')}
+			{activeFilters}
+			filters={show === 'courses' ? undefined : raceFilters}
+			activeFilterCount={activeCount}
+			bind:filtersOpen
+		/>
+		{#if geoError && !filtersOpen && show !== 'courses'}
+			<p class="near-error" role="status">{geoError}</p>
+		{/if}
+	</div>
+
+	{#if show !== 'courses'}
+		<section class="races-section" aria-labelledby="races-upcoming-heading" data-testid="races-upcoming">
+			<div class="section-head">
+				<h2 id="races-upcoming-heading">{m('races.sectionUpcoming')}</h2>
+				<p class="section-intro">{m('races.subtitle')}</p>
 			</div>
-		{:else if orderedCourses.length === 0}
-			<EmptyState icon="park" title={m('parks.empty')} data-testid="races-any-time-empty" />
-		{:else}
-			{#if recordsFailed}
-				<p class="records-failed" role="status" data-testid="races-any-time-records-failed">
-					{m('races.anyTimeFastestFailed')}
-					<button type="button" class="btn btn-outline btn-sm" onclick={loadRecords}>{m('parks.retry')}</button>
-				</p>
+
+			{#if loading}
+				<p class="state-msg">{m('races.loading')}</p>
+			{:else if error}
+				<div class="races-error" role="alert" data-testid="races-error">
+					<span>{m('races.searchFailed')}</span>
+					<button type="button" class="btn btn-outline" onclick={run}>{m('races.retry')}</button>
+				</div>
+			{:else if results.length === 0}
+				<EmptyState
+					icon="event_busy"
+					title={when === 'recent' ? m('races.emptyRecent', { days: RECENT_WINDOW_DAYS }) : m('races.empty')}
+					data-testid="races-empty"
+				>
+					{#snippet actions()}
+						{#if activeCount > 0 || query.trim() !== ''}
+							<button type="button" class="btn btn-outline" onclick={clearFilters}>
+								{m('races.clearFilters')}
+							</button>
+						{/if}
+						<button type="button" class="btn btn-primary" onclick={() => (showEditor = true)}>
+							{m('races.submitRace')}
+						</button>
+					{/snippet}
+				</EmptyState>
+			{:else}
+				<ul class="results" data-testid="races-results">
+					{#each results as r (r.id)}
+						<RaceCalendarCard race={r} onimport={openImport} />
+					{/each}
+				</ul>
 			{/if}
-			<ul class="course-list" data-testid="races-any-time-list">
-				{#each orderedCourses as { course, awayM } (course.id)}
-					{@const shapeKey = courseShapeShown(course.course_shape) ? labelKey(SHAPE_LABEL, course.course_shape) : null}
-					{@const laps = courseLapsChip(course.laps)}
-					{@const statusKey = labelKey(STATUS_LABEL, course.status)}
-					{@const record = records.get(course.id)}
-					<li>
-						<a
-							class="course-card"
-							href="/parks/{regionSlug(course.park.region_code)}/{course.park.slug}/{course.slug}"
-							data-testid="races-any-time-course"
-						>
-							<span class="course-name">{course.segment.name}</span>
-							<span class="course-park">{course.park.name}, {regionName(course.park.region_code)}</span>
+		</section>
+	{/if}
+
+	{#if show !== 'races'}
+		<section class="races-section" aria-labelledby="races-any-time-heading" data-testid="races-any-time">
+			<div class="section-head">
+				<h2 id="races-any-time-heading">{m('races.sectionAnyTime')}</h2>
+				{#if show === 'courses'}
+					<p class="section-intro" id="races-near-hint">{m('races.anyTimeIntroCourses')}</p>
+				{:else}
+					<p class="section-intro">{m('races.anyTimeIntro')}</p>
+				{/if}
+			</div>
+
+			<!-- The race filters are hidden here, so the place that orders the
+			     courses comes with them. -->
+			{#if show === 'courses'}
+				<div class="filters" data-testid="races-any-time-near">
+					{@render nearInputs()}
+					{#if nearLabel}
+						<div class="active-filters">{@render nearChip()}</div>
+					{/if}
+					{#if geoError}
+						<p class="near-error" role="status">{geoError}</p>
+					{/if}
+				</div>
+			{/if}
+
+			{#if coursesLoading}
+				<p class="state-msg">{m('parks.loading')}</p>
+			{:else if coursesFailed}
+				<div class="races-error" role="alert" data-testid="races-any-time-error">
+					<span>{m('parks.loadFailed')}</span>
+					<button type="button" class="btn btn-outline" onclick={loadCourses}>{m('parks.retry')}</button>
+				</div>
+			{:else if orderedCourses.length === 0}
+				<EmptyState icon="park" title={m('parks.empty')} data-testid="races-any-time-empty" />
+			{:else}
+				{#if anyTimeParks.length > 0}
+					<div class="any-time-parks">
+						<SectionHeader label={m('races.anyTimeParks')} id="races-any-time-parks-heading" level={3} class="races-any-time-head" />
+						<ul class="park-row" aria-labelledby="races-any-time-parks-heading" data-testid="races-any-time-parks">
+							{#each anyTimeParks as p (p.park.id)}
+								<li><ParkCard park={p.park} courses={p.courses} /></li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+				{#if recordsFailed}
+					<p class="records-failed" role="status" data-testid="races-any-time-records-failed">
+						{m('races.anyTimeFastestFailed')}
+						<button type="button" class="btn btn-outline btn-sm" onclick={loadRecords}>{m('parks.retry')}</button>
+					</p>
+				{/if}
+				<ul class="course-list" data-testid="races-any-time-list">
+					{#each orderedCourses as { course, awayM } (course.id)}
+						{@const shapeKey = courseShapeShown(course.course_shape) ? labelKey(SHAPE_LABEL, course.course_shape) : null}
+						{@const laps = courseLapsChip(course.laps)}
+						{@const statusKey = labelKey(STATUS_LABEL, course.status)}
+						{@const record = records.get(course.id)}
+						<!-- The course name's link covers the card; the park name is a
+						     second link drawn above it, to the park's page. -->
+						<li class="course-card" data-testid="races-any-time-course">
+							<a
+								class="course-name"
+								href="/parks/{regionSlug(course.park.region_code)}/{course.park.slug}/{course.slug}"
+								data-testid="races-any-time-course-link"
+							>{course.segment.name}</a>
+							<a
+								class="course-park"
+								href="/parks/{regionSlug(course.park.region_code)}/{course.park.slug}"
+								aria-label={m('races.anyTimeParkLink', { park: `${course.park.name}, ${regionName(course.park.region_code)}` })}
+								data-testid="races-any-time-park-link"
+							>{course.park.name}, {regionName(course.park.region_code)}</a>
 							<span class="course-meta" data-testid="races-any-time-meta">
 								<span data-testid="races-any-time-distance">{fmtCourseDistance(course.segment.distance_m)}</span>{#if laps}&nbsp;·&nbsp;<span data-testid="races-any-time-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}{#if shapeKey}&nbsp;·&nbsp;{m(shapeKey)}{/if}{#if awayM !== null}&nbsp;·&nbsp;{m('races.anyTimeAway', { distance: fmtDist(awayM, 1) })}{/if}
 							</span>
@@ -529,16 +637,16 @@
 							{#if course.status !== 'open' && statusKey}
 								<span class="status-pill" class:closed={course.status === 'closed'}>{m(statusKey)}</span>
 							{/if}
-						</a>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-		<a class="see-all" href="/parks" data-testid="races-any-time-all">
-			{m('parks.backToParks')}
-			<span class="material-symbols" aria-hidden="true">arrow_forward</span>
-		</a>
-	</section>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			<a class="see-all" href="/parks" data-testid="races-any-time-all">
+				{m('parks.backToParks')}
+				<span class="material-symbols" aria-hidden="true">arrow_forward</span>
+			</a>
+		</section>
+	{/if}
 </div>
 
 <Modal
@@ -590,7 +698,24 @@
 		grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr));
 		gap: var(--space-sm);
 	}
+	:global(.races-any-time-head) {
+		margin-bottom: var(--space-xs);
+	}
+	/* One row that scrolls inside itself, so the parks lead the courses
+	   without pushing them a screen down. */
+	.park-row {
+		list-style: none;
+		margin: 0;
+		padding: 0 0 2px;
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: min(16rem, 80%);
+		gap: var(--space-sm);
+		overflow-x: auto;
+		scrollbar-width: thin;
+	}
 	.course-card {
+		position: relative;
 		display: grid;
 		grid-template-columns: 1fr auto;
 		align-items: start;
@@ -603,12 +728,31 @@
 		color: var(--color-text);
 		text-decoration: none;
 	}
-	.course-card:hover {
+	.course-card:hover,
+	.course-card:focus-within {
 		border-color: var(--color-primary);
 	}
 	.course-name {
 		grid-column: 1;
 		font-weight: 600;
+		color: var(--color-text);
+		text-decoration: none;
+	}
+	.course-name::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+	}
+	.course-park {
+		position: relative;
+		z-index: 1;
+		justify-self: start;
+		display: inline-flex;
+		align-items: center;
+		min-height: 24px;
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 	.course-park,
 	.course-meta,
@@ -642,17 +786,6 @@
 	.see-all .material-symbols {
 		font-size: 1.1rem;
 	}
-	.races-header {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-	}
-	.subtitle {
-		color: var(--color-text-secondary);
-		margin: 0.25rem 0 0;
-	}
 	.review-link {
 		display: inline-block;
 		margin-top: var(--space-xs);
@@ -662,61 +795,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
-	}
-	.toolbar {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
-		align-items: stretch;
-	}
-	.toolbar .search {
-		flex: 1 1 10rem;
-		min-width: 0;
-		width: auto;
-	}
-	.search {
-		width: 100%;
-		min-height: var(--tap-target-min);
-		padding: 0.6rem 0.85rem;
-		border: 1.5px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.95rem;
-	}
-	.filters-toggle {
-		appearance: none;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		min-height: var(--tap-target-min);
-		min-width: var(--tap-target-min);
-		padding: 0 0.85rem;
-		border: 1.5px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.9rem;
-		font-weight: 600;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-	.filters-toggle.active {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-	}
-	.filters-toggle .material-symbols {
-		font-size: 1.25rem;
-	}
-	.filter-count {
-		min-width: 1.4rem;
-		padding: 0 0.35rem;
-		border-radius: 999px;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		font-size: 0.8rem;
-		line-height: 1.4rem;
-		text-align: center;
 	}
 	/* One row that scrolls inside itself rather than wrapping: the state stays
 	   a single line however many filters are on. */
@@ -739,24 +817,11 @@
 	.removable .material-symbols {
 		font-size: 1rem;
 	}
-	.filters-panel:not([hidden]) {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-md);
-		padding: var(--space-md);
-		border: 1.5px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-	}
 	.near-row {
 		display: flex;
 		gap: 0.4rem;
 		align-items: stretch;
 		flex-wrap: wrap;
-	}
-	.near-input {
-		flex: 1 1 12rem;
-		min-width: 0;
 	}
 	.near-locate {
 		flex-shrink: 0;
@@ -813,13 +878,46 @@
 		gap: var(--space-md);
 		color: var(--color-danger-text);
 	}
+	.races-filter-bar {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	/* The Filters sheet: each control under its heading with its explanation
+	   right below it. */
+	.sheet-notes {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		margin: 0;
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-md);
+		background: var(--color-bg-secondary);
+	}
+	.sheet-notes dt {
+		font-weight: 600;
+		font-size: 0.85rem;
+	}
+	.sheet-notes dd {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+		line-height: 1.45;
+	}
+	.sheet-field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.sheet-field h3 {
+		margin: 0;
+		font-size: var(--font-size-section-title);
+		font-weight: 600;
+	}
 	.filter-hint {
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		line-height: 1.45;
-		margin: calc(var(--space-md) * -1 + 0.25rem) 0 0;
-	}
-	.filters-panel > .filter-hint:first-child {
-		margin-top: 0;
+		margin: 0;
 	}
 </style>

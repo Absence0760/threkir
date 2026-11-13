@@ -65,7 +65,7 @@ test.describe('dashboard training load — medication-affected heart rate', () =
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await expandTrainingLoad(page);
 		const chart = page.locator('.training-load');
 		await expect(chart).toBeVisible({ timeout: 15_000 });

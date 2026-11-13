@@ -7,10 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
+import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, LoadingState, PageHeading;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/nearby_flag.dart';
+import '../lib/follow_state.dart';
 import '../lib/screens/people_screen.dart';
 import '../lib/settings_destination.dart';
 import '../lib/widgets/error_state.dart';
@@ -204,7 +205,6 @@ void main() {
             avatarUrl: 'https://example.test/casey.jpg',
           ),
         ]),
-        embedded: true,
       )));
       await _settle(tester);
       // The test binding answers every HTTP request with a 400, so the
@@ -223,21 +223,21 @@ void main() {
           _person(id: 'a', name: 'Casey Marathon'),
           _person(id: 'b', name: 'Dana Trail'),
         ]),
-        embedded: true,
       )));
       await _settle(tester);
       expect(find.text('Casey Marathon'), findsOneWidget);
       expect(find.text('Dana Trail'), findsOneWidget);
     });
 
-    testWidgets('first frame shows the suggestions loading spinner',
+    testWidgets('first frame shows the suggestions loading skeleton',
         (tester) async {
       await tester.pumpWidget(_wrap(PeopleScreen(
         api: _FakeApi(suggestions: [_person()]),
-        embedded: true,
       )));
-      // Don't settle: the suggestions load is in flight.
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // Don't settle: the suggestions load is in flight. The shared loading
+      // frame, not a bare spinner (issue #1374).
+      expect(find.byType(LoadingState), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
     testWidgets('a suggestion with a handle renders its @handle (issue #465)',
@@ -246,7 +246,6 @@ void main() {
         api: _FakeApi(suggestions: [
           _person(id: 'a', name: 'Casey Marathon', handle: 'caseyruns'),
         ]),
-        embedded: true,
       )));
       await _settle(tester);
       expect(find.text('Casey Marathon'), findsOneWidget);
@@ -257,7 +256,6 @@ void main() {
         (tester) async {
       await tester.pumpWidget(_wrap(PeopleScreen(
         api: _FakeApi(suggestions: const []),
-        embedded: true,
       )));
       await _settle(tester);
       // groups_outlined is the suggestions empty glyph.
@@ -270,7 +268,7 @@ void main() {
         suggestions: const [],
         results: [_person(id: 's-1', name: 'Searched Sam')],
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       await tester.enterText(find.byType(TextField), 'sam');
@@ -285,7 +283,7 @@ void main() {
     testWidgets('a query with no matches shows the no-results empty state',
         (tester) async {
       final api = _FakeApi(suggestions: const [], results: const []);
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       await tester.enterText(find.byType(TextField), 'zzqq');
@@ -302,7 +300,7 @@ void main() {
         results: [_person(id: 's-1', name: 'Recovered Rae')],
         searchShouldThrow: true,
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       await tester.enterText(find.byType(TextField), 'rae');
@@ -329,7 +327,6 @@ void main() {
       final handle = tester.ensureSemantics();
       await tester.pumpWidget(_wrap(PeopleScreen(
         api: _FakeApi(suggestions: const []),
-        embedded: true,
       )));
       await _settle(tester);
       // The Semantics wrapper gives the field a name that survives once the
@@ -341,10 +338,34 @@ void main() {
       handle.dispose();
     });
 
+    // Issue #1374 NS-10: following from the profile left this row on Follow,
+    // and tapping it sent a second follow.
+    testWidgets('a follow made on the profile shows on the row here',
+        (tester) async {
+      FollowState.instance.clear();
+      addTearDown(FollowState.instance.clear);
+      final p = _person(follows: false);
+      final api = _FakeApi(suggestions: [p]);
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
+      await _settle(tester);
+      expect(find.text('Follow'), findsOneWidget);
+
+      // What ProfileScreen records once its follow lands.
+      FollowState.instance.put('me', p.id, following: true);
+      await tester.pump();
+      expect(find.text('Following'), findsOneWidget);
+      expect(api.followCalls, 0);
+
+      // Another account on the phone does not inherit it.
+      FollowState.instance.put('someone-else', p.id, following: false);
+      await tester.pump();
+      expect(find.text('Following'), findsOneWidget);
+    });
+
     testWidgets('tapping Follow optimistically flips the label + calls follow',
         (tester) async {
       final api = _FakeApi(suggestions: [_person(follows: false)]);
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(find.text('Follow'), findsOneWidget);
@@ -361,7 +382,7 @@ void main() {
         'Follow and the banner says a request went out', (tester) async {
       final api = _FakeApi(suggestions: [_person(follows: false)])
         ..followOutcome = FollowOutcome.requested;
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       await tester.tap(find.text('Follow'));
@@ -380,7 +401,7 @@ void main() {
         suggestions: [_person(follows: false)],
         followShouldThrow: true,
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       await tester.tap(find.text('Follow'));
@@ -400,7 +421,7 @@ void main() {
         'signed out (embedded) renders the sign-in state, not the search UI',
         (tester) async {
       final api = _FakeApi(signedIn: false);
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(find.byType(SignInRequiredState), findsOneWidget);
@@ -415,14 +436,14 @@ void main() {
     });
 
     testWidgets(
-        'signed out (standalone) shows a plain titled AppBar over the '
-        'sign-in state', (tester) async {
+        'signed out (standalone) shows its title over the sign-in state',
+        (tester) async {
       final api = _FakeApi(signedIn: false);
       await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(find.byType(SignInRequiredState), findsOneWidget);
-      expect(find.text('People'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'People'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
     });
 
@@ -435,7 +456,7 @@ void main() {
           code: '42501',
         ),
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       await tester.enterText(find.byType(TextField), 'sam');
@@ -454,7 +475,7 @@ void main() {
         suggestions: [_person(name: 'Recovered Rae')],
         suggestionsError: Exception('suggestions down'),
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       // A transient failure is NOT the misleading "no suggestions yet"
@@ -479,7 +500,7 @@ void main() {
           code: '42501',
         ),
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(find.byType(SignInRequiredState), findsOneWidget);
@@ -501,13 +522,13 @@ void main() {
         // A populated list the screen must never ask for.
         nearby: [_nearbyRunner()],
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       // No RPC call is the load-bearing half: person-location must not be read
       // at all before the owner + CISO/counsel sign-off flips the flag.
       expect(api.nearbyCalls, 0);
-      expect(find.text('Runners nearby'), findsNothing);
+      expect(find.text('RUNNERS NEARBY'), findsNothing);
       expect(find.text('Nearby Nia'), findsNothing);
       expect(find.byIcon(Icons.near_me), findsNothing);
     });
@@ -523,24 +544,24 @@ void main() {
           _nearbyRunner(id: 'n-3', name: 'Distant Dee', bucket: 4),
         ],
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(api.nearbyCalls, 1);
-      expect(find.text('Runners nearby'), findsOneWidget);
+      expect(find.text('RUNNERS NEARBY'), findsOneWidget);
       expect(find.text('Nearby Nia'), findsOneWidget);
       // Bucket UPPER BOUNDS, formatted in the reader's unit — never the exact
       // distance, which the RPC deliberately never sends.
-      expect(find.text('Within 2.00 km'), findsOneWidget);
-      expect(find.text('Within 10.00 km'), findsOneWidget);
-      expect(find.text('Beyond 25.00 km'), findsOneWidget);
+      expect(find.text('Within 2.00 km', skipOffstage: false), findsOneWidget);
+      expect(find.text('Within 10.00 km', skipOffstage: false), findsOneWidget);
+      expect(find.text('Beyond 25.00 km', skipOffstage: false), findsOneWidget);
     });
 
     testWidgets('an empty nearby list shows its own empty state',
         (tester) async {
       _setNearbyGate(true);
       final api = _FakeApi(suggestions: const [], nearby: const []);
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(find.byIcon(Icons.near_me), findsOneWidget);
@@ -549,7 +570,7 @@ void main() {
 
     testWidgets('the empty state offers a real way into Preferences',
         (tester) async {
-      // The tab is embedded in SocialScreen and holds neither a Preferences
+      // The tab is a Social hub tab and holds neither a Preferences
       // nor a SettingsSyncService, so it names the destination and the shell
       // opens it (decisions § 710) — matching web's empty card, which links
       // to /settings/preferences. Naming the path in prose was the old
@@ -558,22 +579,25 @@ void main() {
       pendingSettingsDestination.value = null;
       _setNearbyGate(true);
       final api = _FakeApi(suggestions: const [], nearby: const []);
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
-      final action = find.widgetWithText(OutlinedButton, 'Open Preferences');
+      final action = find.widgetWithText(FilledButton, 'Open privacy settings');
       expect(action, findsOneWidget);
+      await tester.ensureVisible(action);
+      await tester.pump();
       await tester.tap(action);
       await tester.pump();
 
-      expect(pendingSettingsDestination.value, SettingsDestination.preferences);
+      expect(pendingSettingsDestination.value, SettingsDestination.privacy);
+      expect(pendingSettingsRow, PreferencesRow.discoverableNearby);
     });
 
     testWidgets('the empty-state body no longer recites the Settings path',
         (tester) async {
       _setNearbyGate(true);
       final api = _FakeApi(suggestions: const [], nearby: const []);
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(find.textContaining('Settings \u2192'), findsNothing,
@@ -586,10 +610,10 @@ void main() {
       addTearDown(() => pendingSettingsDestination.value = null);
       pendingSettingsDestination.value = null;
       final api = _FakeApi(suggestions: const [], nearby: const []);
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
-      expect(find.text('Open Preferences'), findsNothing);
+      expect(find.text('Open privacy settings'), findsNothing);
       expect(pendingSettingsDestination.value, isNull,
           reason: 'the whole surface stays inert behind the sign-off gate');
     });
@@ -598,7 +622,7 @@ void main() {
       _setNearbyGate(true);
       final api = _FakeApi(suggestions: const [], nearby: const []);
       api.nearbyError = Exception('nearby down');
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       // A failed load is not the same claim as "nobody is nearby".
@@ -621,7 +645,7 @@ void main() {
         suggestions: const [],
         nearby: [_nearbyRunner(follows: false)],
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(find.text('Follow'), findsOneWidget);
@@ -639,16 +663,16 @@ void main() {
         results: [_person(id: 's-1', name: 'Searched Sam')],
         nearby: [_nearbyRunner()],
       );
-      await tester.pumpWidget(_wrap(PeopleScreen(api: api, embedded: true)));
+      await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
-      expect(find.text('Runners nearby'), findsOneWidget);
+      expect(find.text('RUNNERS NEARBY'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), 'sam');
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pump();
 
       expect(find.text('Searched Sam'), findsOneWidget);
-      expect(find.text('Runners nearby'), findsNothing);
+      expect(find.text('RUNNERS NEARBY'), findsNothing);
       expect(find.text('Nearby Nia'), findsNothing);
     });
   });

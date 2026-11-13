@@ -11,10 +11,12 @@ import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 import 'package:ui_kit/ui_kit.dart' show EmptyState;
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/park_courses.dart' show BoardPeriod;
 import '../lib/screens/park_courses_screen.dart';
 import '../lib/widgets/elevation_chart.dart';
 import '../lib/widgets/park_course_map.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 ParkListing _park({
   required String id,
@@ -36,6 +38,7 @@ ParkListing _park({
     createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
   ),
   season: 2026,
+  month: 11,
 );
 
 /// A loop north out of the park and back to where it began, with an
@@ -128,6 +131,8 @@ class _ParksApi extends ApiClient {
     this.emptyBoards = false,
     this.emptyThisSeasonOnly = false,
     this.seasonBoard,
+    this.monthRunners = const {},
+    this.failMonthRunners = false,
   }) : courses = courses ?? [_course()];
 
   final List<ParkListing> parks;
@@ -144,6 +149,11 @@ class _ParksApi extends ApiClient {
   final List<GlobalSegmentLeaderboardEntry>? seasonBoard;
   final List<int?> leaderboardSeasons = [];
   final List<int?> completionSeasons = [];
+  final List<int?> leaderboardMonths = [];
+  final List<int?> completionMonths = [];
+  Map<String, int> monthRunners;
+  bool failMonthRunners;
+  int monthRunnerReads = 0;
   final List<Map<String, Object?>> reports = [];
   FunctionException? reportRefusal;
 
@@ -184,6 +194,13 @@ class _ParksApi extends ApiClient {
   }
 
   @override
+  Future<Map<String, int>> fetchParkCourseMonthRunners(String parkId) async {
+    monthRunnerReads++;
+    if (failMonthRunners) throw StateError('month runners network down');
+    return monthRunners;
+  }
+
+  @override
   Future<Map<String, ParkCourseRecord>> fetchParkCourseRecords() async {
     if (failRecords) throw StateError('records network down');
     return records;
@@ -196,9 +213,11 @@ class _ParksApi extends ApiClient {
     String? ageBand,
     String? clubId,
     int? season,
+    int? month,
     int limit = 50,
   }) async {
     leaderboardSeasons.add(season);
+    leaderboardMonths.add(month);
     if (emptyBoards || (emptyThisSeasonOnly && season != null)) return [];
     final planted = seasonBoard;
     if (planted != null && season != null) return planted;
@@ -211,9 +230,11 @@ class _ParksApi extends ApiClient {
   Future<List<GlobalSegmentCompletionsEntry>> fetchGlobalSegmentCompletions(
     String segmentId, {
     int? season,
+    int? month,
     int limit = 50,
   }) async {
     completionSeasons.add(season);
+    completionMonths.add(month);
     if (emptyBoards) return [];
     return [
       GlobalSegmentCompletionsEntry(
@@ -284,6 +305,76 @@ Finder _inCard(String courseId, Finder f) =>
 
 void main() {
   setUpAll(_ensureEnvironment);
+
+  group('ListCard surfaces at the worst case', () {
+    worstCaseTestWidgets('the park cards', (tester, locale) async {
+      final api = _ParksApi(
+        parks: [
+          _park(id: 'p1', name: 'Pocahontas State Park'),
+          _park(id: 'p2', name: 'Umstead State Park', region: 'US-NC'),
+        ],
+        courses: [
+          _course(id: 'a', distanceM: 5000),
+          _course(id: 'b', distanceM: 21100),
+        ],
+      );
+      await tester.pumpWidget(
+          worstCaseApp(locale: locale, home: ParksScreen(api: api)));
+      await _settle(tester);
+      expect(find.byType(Card), findsWidgets);
+      await walkScrollable(tester, primaryScrollable(), 'Parks');
+      await _unmount(tester);
+    }, layoutOnly: true);
+
+    worstCaseTestWidgets('the course cards', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: ParkScreen(
+          api: _ParksApi(monthRunners: const {'beaver': 12, 'k10': 1}, courses: [
+            _course(id: 'beaver', name: 'Beaver Lake Trail', distanceM: 4000),
+            _course(id: 'k10', name: '10K', distanceM: 10000, laps: 2),
+            _course(id: 'shut', name: 'Closed loop', status: 'closed'),
+          ]),
+          listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+        ),
+      ));
+      await _settle(tester);
+      await walkScrollable(tester, primaryScrollable(), 'Park');
+      await _unmount(tester);
+    }, layoutOnly: true);
+
+    worstCaseTestWidgets('the month board and its arrows',
+        (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: ParkCourseScreen(
+          api: _ParksApi(),
+          listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+          course: _course(name: 'Beaver Lake Trail', distanceM: 3595),
+          initialPeriod: const BoardPeriod.month(2026, 10),
+        ),
+      ));
+      await _settle(tester);
+      await walkScrollable(tester, primaryScrollable(), 'Park course');
+      await _unmount(tester);
+    }, layoutOnly: true);
+
+    worstCaseTestWidgets('a closed course and its notices',
+        (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: ParkCourseScreen(
+          api: _ParksApi(),
+          listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+          course: _course(status: 'closed', distanceM: 50000),
+        ),
+      ));
+      await _settle(tester);
+      expect(find.byKey(const Key('park-course-closed')), findsOneWidget);
+      await walkScrollable(tester, primaryScrollable(), 'Park course');
+      await _unmount(tester);
+    }, layoutOnly: true);
+  });
 
   // Tall enough that the course page's boards, below the map, are built.
   void tallView(WidgetTester tester) {
@@ -467,6 +558,76 @@ void main() {
       await _unmount(tester);
     });
 
+    testWidgets('shows how many ran each course this month, and nothing for '
+        'a course nobody has', (tester) async {
+      tallView(tester);
+      final api = _ParksApi(
+        courses: [
+          _course(id: 'beaver', name: 'Beaver Lake Trail', distanceM: 4000),
+          _course(id: 'k5', name: '5K', distanceM: 5000),
+          _course(id: 'k10', name: '10K', distanceM: 10000),
+        ],
+        monthRunners: const {'beaver': 12, 'k10': 1},
+      );
+      await tester.pumpWidget(_host(ParkScreen(
+        api: api,
+        listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+      )));
+      await _settle(tester);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('park-course-month-runners-beaver'))).data,
+        '12 runners this month',
+      );
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('park-course-month-runners-k10'))).data,
+        '1 runner this month',
+      );
+      expect(find.byKey(const ValueKey('park-course-month-runners-k5')), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets('a failed runner count is said, with a retry, and the list '
+        'stands', (tester) async {
+      tallView(tester);
+      final api = _ParksApi(
+        courses: [_course(id: 'beaver', name: 'Beaver Lake Trail')],
+        monthRunners: const {'beaver': 4},
+        failMonthRunners: true,
+      );
+      await tester.pumpWidget(_host(ParkScreen(
+        api: api,
+        listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+      )));
+      await _settle(tester);
+      final failed = find.byKey(const Key('park-month-runners-failed'));
+      expect(failed, findsOneWidget);
+      expect(find.text('Beaver Lake Trail'), findsOneWidget);
+      expect(find.byKey(const ValueKey('park-course-month-runners-beaver')), findsNothing);
+
+      api.failMonthRunners = false;
+      await tester.tap(find.descendant(of: failed, matching: find.text('Retry')));
+      await _settle(tester);
+      expect(api.monthRunnerReads, 2);
+      expect(failed, findsNothing);
+      expect(find.text('4 runners this month'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('a signed-out reader is never asked for runner counts', (
+      tester,
+    ) async {
+      tallView(tester);
+      final api = _ParksApi(viewer: null, monthRunners: const {'c1': 3});
+      await tester.pumpWidget(_host(ParkScreen(
+        api: api,
+        listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+      )));
+      await _settle(tester);
+      expect(api.monthRunnerReads, 0);
+      expect(find.textContaining('this month'), findsNothing);
+      await _unmount(tester);
+    });
+
     testWidgets('a failed record read leaves the course list standing', (
       tester,
     ) async {
@@ -527,6 +688,59 @@ void main() {
   });
 
   group('ParkCourseScreen', () {
+    testWidgets('the park name is a link to the park screen', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Deep Run Park'),
+            course: _course(),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final link = find.byKey(const Key('park-course-park-link'));
+      expect(
+        tester.getSemantics(link),
+        matchesSemantics(
+          label: 'Deep Run Park · Virginia: park page',
+          isLink: true,
+          hasTapAction: true,
+        ),
+      );
+      await tester.tap(link);
+      await _settle(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ParkScreen), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('opened from its park, the park link goes back to it', (
+      tester,
+    ) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Deep Run Park'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      await tester.tap(find.text('Lake Loop'));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ParkCourseScreen), findsOneWidget);
+      await tester.tap(find.byKey(const Key('park-course-park-link')));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ParkCourseScreen), findsNothing);
+      expect(find.byType(ParkScreen), findsOneWidget);
+      await _unmount(tester);
+    });
+
     testWidgets(
       'a course an organised group shares gets the give-way note, naming no one',
       (tester) async {
@@ -615,6 +829,72 @@ void main() {
         await _unmount(tester);
       },
     );
+
+    testWidgets(
+      'This month narrows both boards to the park\'s month, and the arrows '
+      'step back and forward but never past it',
+      (tester) async {
+        tallView(tester);
+        final api = _ParksApi();
+        await tester.pumpWidget(
+          _host(
+            ParkCourseScreen(
+              api: api,
+              listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+              course: _course(),
+            ),
+          ),
+        );
+        await _settle(tester);
+        expect(find.byKey(const Key('park-board-month-nav')), findsNothing);
+
+        await tester.tap(find.text('This month'));
+        await _settle(tester);
+        expect(api.leaderboardSeasons.last, 2026);
+        expect(api.leaderboardMonths.last, 11);
+        expect(find.text('November 2026'), findsOneWidget);
+        final next = find.byKey(const Key('park-board-month-next'));
+        expect(tester.widget<IconButton>(next).onPressed, isNull);
+
+        await tester.tap(find.byKey(const Key('park-board-month-prev')));
+        await _settle(tester);
+        expect(api.leaderboardMonths.last, 10);
+        expect(find.text('October 2026'), findsOneWidget);
+        expect(tester.widget<IconButton>(next).onPressed, isNotNull);
+
+        await tester.tap(find.text('Most completions'));
+        await _settle(tester);
+        expect(api.completionSeasons.last, 2026);
+        expect(api.completionMonths.last, 10);
+
+        await tester.tap(find.text('All time'));
+        await _settle(tester);
+        expect(api.completionSeasons.last, isNull);
+        expect(api.completionMonths.last, isNull);
+        expect(find.byKey(const Key('park-board-month-nav')), findsNothing);
+        await _unmount(tester);
+      },
+    );
+
+    testWidgets('opens on the month a month-close notice names', (tester) async {
+      tallView(tester);
+      final api = _ParksApi();
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: api,
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(),
+            initialPeriod: const BoardPeriod.month(2026, 10),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(api.leaderboardSeasons, [2026]);
+      expect(api.leaderboardMonths, [10]);
+      expect(find.text('October 2026'), findsOneWidget);
+      await _unmount(tester);
+    });
 
     testWidgets(
         'a board row shows the time the server gave a real Beaver Lake run', (

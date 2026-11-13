@@ -7,6 +7,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/help_screen.dart';
 import '../lib/screens/onboarding_screen.dart';
+import 'worst_case_layout.dart';
 
 /// Stub the geolocator platform channel so the final-page "Grant
 /// permission" tap doesn't blow up on the missing native impl. Defaults to
@@ -187,6 +188,22 @@ void main() {
       // The privacy chooser now follows, so location is no longer final.
       expect(find.text('Next'), findsOneWidget);
       expect(find.text('Grant permission'), findsNothing);
+    });
+
+    // Issue #1374: each privacy choice is a ListCard around its radio row.
+    worstCaseTestWidgets('Onboarding privacy chooser', (tester, locale) async {
+      final prefs = await _makePrefs();
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: OnboardingScreen(preferences: prefs, onDone: () {}),
+      ));
+      final next = l10nFor(locale).onboardingNext;
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.text(next));
+        await tester.pumpAndSettle();
+      }
+      await walkScrollable(
+          tester, find.byType(Scrollable).last, 'Onboarding privacy');
     });
 
     testWidgets('the privacy chooser is the final page with the grant CTA',

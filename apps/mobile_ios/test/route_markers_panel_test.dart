@@ -10,6 +10,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/route_geometry.dart' show markerPointAtDistance;
 import '../lib/widgets/route_markers_panel.dart';
 import '../lib/widgets/undo_bar.dart';
+import 'worst_case_layout.dart';
 
 RouteMarkerRow _marker({
   required String id,
@@ -146,7 +147,29 @@ Widget _host({
   List<Waypoint> routeLine = const [],
   String? viewerId = 'owner-1',
   String? routeOwnerId = 'owner-1',
+  Locale? locale,
 }) {
+  if (locale != null) {
+    return worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: RouteMarkersPanel(
+            key: panelKey,
+            api: api,
+            routeId: 'route-1',
+            isOwner: isOwner,
+            viewerId: viewerId,
+            routeOwnerId: routeOwnerId,
+            routeLine: routeLine,
+            initialMarkers: markers,
+            onPinsChanged: (_) {},
+            onPlacingChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+  }
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -227,6 +250,27 @@ void main() {
       await tester.pump(const Duration(seconds: 9));
       expect(api.deletedIds, isEmpty);
     });
+  });
+
+  // Issue #1374 TO-6 (and decisions § 2482's note on line 377): the owner's
+  // marker schedule, and the placing controls, at the worst case.
+  worstCaseTestWidgets('the route marker panel', (tester, locale) async {
+    await tester.pumpWidget(_host(
+      isOwner: true,
+      api: _MarkersApi(),
+      locale: locale,
+      markers: [
+        _marker(id: 'm1', kind: 'aid_station', label: 'Water and gels at the bridge', positionM: 500),
+        _marker(id: 'm2', kind: 'aid_station', label: 'Second aid', positionM: 12500),
+      ],
+    ));
+    await tester.pump();
+    expectNoOverflow(tester, 'marker schedule');
+    final add = find.byIcon(Icons.add_location_alt);
+    if (add.evaluate().isNotEmpty) {
+      await tester.tap(add);
+      await tester.pump();
+    }
   });
 
   testWidgets('renders the schedule with kind labels + detail lines', (tester) async {
@@ -1253,8 +1297,9 @@ void main() {
   });
 
   test(
-      '_openEditor opens the marker sheet with useSafeArea so its Save button '
-      'clears the system nav bar', () {
+      '_openEditor opens the marker sheet through showFormSheet, which keeps '
+      'it under the status bar, gives it the keyboard room and guards its '
+      'fields', () {
     final source =
         File('lib/widgets/route_markers_panel.dart').readAsStringSync();
     final start = source.indexOf('Future<void> _openEditor(');
@@ -1264,13 +1309,9 @@ void main() {
     final end = source.indexOf('if (result == null) return;', start);
     expect(end, greaterThan(start));
     final openEditor = source.substring(start, end);
-    expect(openEditor.contains('showModalBottomSheet<_MarkerDraft>'), isTrue);
-    // Without useSafeArea the scroll-controlled sheet extends under the
-    // Samsung system nav bar and the Save button is occluded, so the tap
-    // misses and "Save does nothing". isScrollControlled must stay for the
-    // keyboard room.
-    expect(openEditor.contains('useSafeArea: true'), isTrue,
-        reason: 'the marker-editor bottom sheet must pass useSafeArea: true');
-    expect(openEditor.contains('isScrollControlled: true'), isTrue);
+    // showFormSheet opens scroll-controlled with useSafeArea (pinned in
+    // form_sheet_test.dart); without them the sheet ran under the Samsung
+    // nav bar and Save did nothing.
+    expect(openEditor.contains('showFormSheet<_MarkerDraft>'), isTrue);
   });
 }

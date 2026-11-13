@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/full_screen_form.dart';
+import 'package:ui_kit/ui_kit.dart' show EditorPage, PageHeading;
+
+import 'three_button_nav_bar.dart';
 
 Future<void> _open(
   WidgetTester tester, {
   required Widget body,
   String title = 'Form',
   bool Function()? isDirty,
+  bool Function()? isBusy,
+  EditorSave? save,
 }) async {
   await tester.binding.setSurfaceSize(const Size(400, 800));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -21,8 +26,9 @@ Future<void> _open(
             onPressed: () => showFullScreenForm<String>(
               ctx,
               title: title,
-              builder: (_) => body,
+              builder: (_) => FullScreenFormBody(save: save, children: [body]),
               isDirty: isDirty,
+              isBusy: isBusy,
             ),
             child: const Text('open'),
           ),
@@ -44,7 +50,7 @@ void main() {
       await _open(tester,
           title: 'Add gear', body: const Text('body-marker'));
       expect(find.byType(AppBar), findsOneWidget);
-      expect(find.text('Add gear'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Add gear'), findsOneWidget);
       expect(find.text('body-marker'), findsOneWidget);
       // fullscreenDialog injects a Close affordance, not a Back arrow.
       expect(find.byTooltip('Close'), findsOneWidget);
@@ -64,9 +70,12 @@ void main() {
                   result = await showFullScreenForm<String>(
                     ctx,
                     title: 'Form',
-                    builder: (inner) => TextButton(
-                      onPressed: () => Navigator.pop(inner, 'saved'),
-                      child: const Text('do-save'),
+                    builder: (inner) => FullScreenFormBody(
+                      save: EditorSave(
+                        label: 'do-save',
+                        onPressed: () => Navigator.pop(inner, 'saved'),
+                      ),
+                      children: const [],
                     ),
                   );
                 },
@@ -181,23 +190,57 @@ void main() {
   });
 
   group('FullScreenFormBody', () {
-    testWidgets('renders children in a scroll view', (tester) async {
+    testWidgets('lays the form out as an EditorPage with the route title',
+        (tester) async {
       await _open(
         tester,
-        body: const FullScreenFormBody(
-          children: [Text('a'), Text('b')],
+        title: 'Add gear',
+        body: const Column(children: [Text('a'), Text('b')]),
+        save: EditorSave(label: 'Save', onPressed: () {}),
+      );
+      expect(find.byType(EditorPage), findsOneWidget);
+      expect(tester.widget<EditorPage>(find.byType(EditorPage)).title,
+          'Add gear');
+      expect(find.text('a'), findsOneWidget);
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
+      // One primary action, in the pinned bar; no Cancel beside it.
+      expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+    });
+
+    testWidgets('Save clears a 3-button nav bar', (tester) async {
+      await openSheetOverNavBar(
+        tester,
+        (context) => showFullScreenForm<void>(
+          context,
+          title: 'Form',
+          builder: (_) => FullScreenFormBody(
+            save: EditorSave(label: 'Save', onPressed: () {}),
+            children: [for (var i = 0; i < 40; i++) Text('row $i')],
+          ),
         ),
       );
-      expect(find.text('a'), findsOneWidget);
-      expect(find.text('b'), findsOneWidget);
-      expect(find.byType(SingleChildScrollView), findsOneWidget);
+      expectAboveNavBar(tester, find.widgetWithText(FilledButton, 'Save'));
     });
   });
 
-  group('FormSectionLabel', () {
-    testWidgets('uppercases the label text', (tester) async {
-      await _open(tester, body: const FormSectionLabel('targets'));
-      expect(find.text('TARGETS'), findsOneWidget);
+  group('showFullScreenForm — a save in flight', () {
+    testWidgets('back is refused with a banner and the form stays',
+        (tester) async {
+      await _open(
+        tester,
+        body: const Text('body-marker'),
+        isBusy: () => true,
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('body-marker'), findsOneWidget);
+      expect(find.text('Still saving. You can leave when it finishes.'),
+          findsOneWidget);
+      expect(find.text('Discard changes?'), findsNothing);
+      // Let the banner's timer run out.
+      await tester.pump(const Duration(seconds: 6));
     });
   });
 }

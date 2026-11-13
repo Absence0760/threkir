@@ -154,6 +154,15 @@ export const DART_TEST_WRAPPERS = [
 			'timer check on teardown unless the test unmounts and pumps past it. The wrapper is ' +
 			'that teardown; 16 committed suites are written on it and counted 0 without this.',
 	},
+	{
+		call: 'worstCaseTestWidgets',
+		definedIn: 'apps/mobile_android/test/worst_case_layout.dart',
+		wraps: 'testWidgets',
+		reason:
+			'Runs a screen at 320 dp, 2x text and the 3-button bar once per shipped locale ' +
+			'(issue #1374 TO-6, decisions § 2502). Counted as one declaration, as written; ' +
+			'it expands to one test per locale at run time.',
+	},
 ];
 
 /**

@@ -37,7 +37,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Webでは、設定で[[route:/settings/notifications|通知]]を開きます。スマートフォンアプリでは、**あなた**タブの**環境設定**を開き、**通知**までスクロールします。',
+						'Webでは、設定で[[route:/settings/notifications|通知]]を開きます。スマートフォンアプリでは、**あなた**タブの**通知**を開きます。',
 						'**メール通知**と**プッシュ通知**を別々に設定します。',
 					],
 				},
@@ -82,7 +82,7 @@ export const translation: GuideTranslation = {
 		's1.heading': '074e9ceb824efc1f',
 		's1.b0': '93884f29ad0c80fc',
 		's2.heading': 'effb878df9e1a9ea',
-		's2.b0.i0': '1c0dfd20d4a186e9',
+		's2.b0.i0': 'cb34200fcb6ec620',
 		's2.b0.i1': '5a887c760fb14d6f',
 		's2.b1.i0': '3adf3c1bbb3ad28d',
 		's2.b1.i1': '20670a8e203c8f76',

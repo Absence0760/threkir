@@ -17,11 +17,15 @@ import 'audio_cues.dart';
 import 'auth_stream_error.dart';
 import 'background_sync.dart';
 import 'dev_auto_login.dart';
+import 'dm_drafts.dart';
+import 'engagement_cache.dart';
 import 'firebase_push_messaging.dart';
+import 'follow_state.dart';
 import 'foreign_row_cleanup.dart';
 import 'in_progress_recovery.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'l10n/locale_support.dart';
+import 'launch_trace.dart';
 import 'local_food_store.dart';
 import 'local_gear_store.dart';
 import 'local_gym_store.dart';
@@ -71,6 +75,7 @@ String? _lastSignedInUserId;
 PushMessagingBridge? _pushBridge;
 
 void main() async {
+  final launchTrace = LaunchTrace();
   WidgetsFlutterBinding.ensureInitialized();
   registerFontLicenses();
 
@@ -251,20 +256,24 @@ void main() async {
   // Parallel batch. Each of these is independent — the platform plugin
   // channels (`getApplicationDocumentsDirectory`, `getApplicationCacheDirectory`,
   // `SharedPreferences.getInstance`, etc.) multiplex fine.
+  launchTrace.mark('env');
   await Future.wait([
-    TileCache.init(),
-    store.init(),
-    routeStore.init(),
-    gearStore.init(),
-    gymStore.init(),
-    foodStore.init(),
-    prefs.init(),
-    watchQueue.init(),
+    launchTrace.time('tiles', () => TileCache.init()),
+    launchTrace.time('runs', () => store.init()),
+    launchTrace.time('routes', () => routeStore.init()),
+    launchTrace.time('gear', () => gearStore.init()),
+    launchTrace.time('gym', () => gymStore.init()),
+    launchTrace.time('food', () => foodStore.init()),
+    launchTrace.time('prefs', () => prefs.init()),
+    launchTrace.time('watch_queue', () => watchQueue.init()),
     if (hasSupabase)
-      ApiClient.initialize(url: supabaseUrl, anonKey: anonKey)
-          .catchError((Object e) {
-        debugPrint('Supabase init failed, running offline: $e');
-      }),
+      launchTrace.time(
+        'supabase',
+        () => ApiClient.initialize(url: supabaseUrl, anonKey: anonKey)
+            .catchError((Object e) {
+          debugPrint('Supabase init failed, running offline: $e');
+        }),
+      ),
     // Best-effort Firebase init for native push. Succeeds only when the
     // operator's google-services.json / GoogleService-Info.plist are present in
     // the native project (the credential gate); without them this throws and we
@@ -280,6 +289,16 @@ void main() async {
   // can read the user's unit pref via `activeDistanceUnit` /
   // `formatDistanceForPref()`. Idempotent.
   registerActivePreferences(prefs);
+
+  final coldLoad = store.coldLoad;
+  if (coldLoad != null) {
+    launchTrace.mark('runs.loaded', {
+      'rebuilt': coldLoad.rebuilt,
+      'files': coldLoad.files,
+      'resident': coldLoad.resident,
+      'resident_points': coldLoad.residentPoints,
+    });
+  }
 
   // Hydrate the theme-mode notifier from the persisted preference.
   // Must run before runApp so the first frame paints in the user's
@@ -554,6 +573,11 @@ void main() async {
         // The active plan saved for offline reads (today's workout on Home,
         // the Run tab and the dashboard) belongs to the departing account.
         unawaited(clearActivePlanCache());
+        // Unsent message drafts, and the kudos and follows remembered this
+        // session, are the departing account's too (issue #1374 round 2).
+        DmDrafts.clear();
+        EngagementCache.instance.clear();
+        FollowState.instance.clear();
         // So is the week the home-screen widget shows.
         unawaited(TodayWidgetBridge().clear());
         for (final s in <OfflineSyncStore>[gearStore, gymStore, foodStore]) {
@@ -591,7 +615,7 @@ void main() async {
         const ParkrunBarcodeCache().clear();
       }
     }, onError: (Object e) {
-      debugPrint('Auth state stream error: $e');
+      debugPrint('Auth state stream error: ${safeErrorLabel(e)}');
       showAuthStreamError(e);
     });
     WearAuthBridge().attach(url: supabaseUrl, anonKey: anonKey);
@@ -654,6 +678,7 @@ void main() async {
       kReleaseMode && sentryDsn.isNotEmpty && !prefs.sentryOptOut;
 
   Future<void> startApp() async {
+    launchTrace.mark('run_app');
     runApp(RunApp(
       apiClient: api,
       runStore: store,
@@ -701,6 +726,13 @@ void main() async {
       },
       appRunner: startApp,
     );
+    // Consent-gated with the rest of error reporting: an opted-out or debug
+    // launch never initialised Sentry, and its trace is never handed over.
+    launchTrace.flush((m) => Sentry.addBreadcrumb(Breadcrumb(
+          category: 'app.launch',
+          message: m.phase,
+          data: m.breadcrumbData,
+        )));
   } else {
     await startApp();
   }

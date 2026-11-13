@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 						'App de iPhone: usa el mismo código que la de Android, pero todavía no se ha probado en un iPhone en una carrera real.',
 						'Reloj Wear OS: compatibilidad completa en la muñeca, incluido el cronometraje por las líneas. Aun así, te apuntas y eliges tu recorrido en la web o en el móvil.',
 						'Apple Watch: solo compatibilidad inicial. Muestra el aviso de carrera, envía tu posición y comunica tu tiempo a través de tu iPhone, pero no detecta las líneas de salida y de meta, así que no tiene llegada automática, y no se ha probado en una carrera real. Lleva el móvil como respaldo, o vuelve a cronometrar tu resultado con tu traza en la web después.',
-						'Web: úsala para apuntarte, elegir un recorrido, ver los resultados y volver a cronometrar un resultado con la traza de una carrera. Un navegador no puede grabar una carrera.',
+						'Web: úsala para apuntarte, elegir un recorrido, ver los resultados y volver a cronometrar un resultado con la traza de una actividad. Un navegador no puede grabar una actividad.',
 					],
 				},
 			],
@@ -164,7 +164,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Si el organizador finaliza la carrera antes de que llegues, tu móvil te lo indica y tu reloj muestra «Carrera finalizada». Tu carrera sigue grabándose como una carrera normal, pero tu dispositivo no envía ningún resultado de competición. Si ya habías enviado una posición en directo, la carrera te marca como DNF.',
+					text: 'Si el organizador finaliza la carrera antes de que llegues, tu móvil te lo indica y tu reloj muestra «Carrera finalizada». Tu actividad sigue grabándose como cualquier otra, pero tu dispositivo no envía ningún resultado a la carrera. Si ya habías enviado una posición en directo, la carrera te marca como DNF.',
 				},
 			],
 		},

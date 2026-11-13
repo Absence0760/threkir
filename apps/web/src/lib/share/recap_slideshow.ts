@@ -7,7 +7,8 @@
 
 import type { YearInRunningRecap } from '../runs/recap';
 import { VIDEO_FPS } from '../video/frame_clock';
-import { recapActiveMonths, type RecapTranslate } from './recap_card_text';
+import { formatElevationIn } from '../format/elevation';
+import { recapActiveMonths, recapBadgeText, type RecapTranslate } from './recap_card_text';
 
 export interface RecapMonthBar {
 	month: number;
@@ -35,6 +36,10 @@ export interface RecapSlideFormat {
 	monthLetter: (month: number) => string;
 	/// Grouped whole number in the reader's locale.
 	count: (n: number) => string;
+	/// The reader's distance unit and number locale, for the climb and for
+	/// badge words that name a distance ("26.2 mi in one run").
+	unit: 'km' | 'mi';
+	locale?: string;
 	url: string;
 }
 
@@ -98,7 +103,7 @@ export function recapSlides(recap: YearInRunningRecap, f: RecapSlideFormat): Rec
 		middle.push({
 			kind: 'stat',
 			label: t('recap.cardClimbed'),
-			value: `${f.count(Math.round(recap.totalElevationM))} m`,
+			value: formatElevationIn(recap.totalElevationM, f.unit, f.locale),
 			sub: null,
 		});
 	}
@@ -115,7 +120,7 @@ export function recapSlides(recap: YearInRunningRecap, f: RecapSlideFormat): Rec
 			kind: 'badges',
 			label: t('recap.trophies'),
 			sub: t('recap.earnedInYear', { n: recap.badges.length, year: recap.year }),
-			items: recap.badges.slice(0, MAX_BADGES).map((b) => b.label),
+			items: recap.badges.slice(0, MAX_BADGES).map((b) => recapBadgeText(b, t, f.unit, f.locale).label),
 		});
 	}
 	return [
@@ -123,7 +128,7 @@ export function recapSlides(recap: YearInRunningRecap, f: RecapSlideFormat): Rec
 			kind: 'title',
 			kicker: f.kicker,
 			hero: f.distance(recap.totalDistanceM),
-			subhead: t(recap.runCount === 1 ? 'recap.acrossRunsOne' : 'recap.acrossRunsMany', { n: recap.runCount }),
+			subhead: t('recap.acrossRuns', { n: recap.runCount }),
 		},
 		...middle.slice(0, MAX_MIDDLE_SLIDES),
 		{ kind: 'end', line: f.kicker, url: f.url },

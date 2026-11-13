@@ -20,6 +20,8 @@ export interface RunsFetchModeInput {
 	sourceFilter: string;
 	activityFilter: string;
 	sortKey: string;
+	/// The run-name search; a non-blank one narrows like any filter.
+	query?: string;
 }
 
 export const PAGINATED_SORT_KEY = 'newest';
@@ -28,7 +30,8 @@ export function runsFetchMode(input: RunsFetchModeInput): RunsFetchMode {
 	const narrowed =
 		input.effectiveDateRange !== 'all' ||
 		input.sourceFilter !== 'all' ||
-		input.activityFilter !== 'all';
+		input.activityFilter !== 'all' ||
+		(input.query ?? '').trim() !== '';
 	const reordered = input.sortKey !== PAGINATED_SORT_KEY;
 	return narrowed || reordered ? 'full' : 'paginated';
 }

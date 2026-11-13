@@ -185,11 +185,12 @@ void main() {
       expect(training.lastUpdate!.targetPaceSecPerKm, 300);
     });
 
-    testWidgets('Cancel returns false and does not call updateWorkout',
+    testWidgets('Close returns false and does not call updateWorkout',
         (tester) async {
       final training = _FakeTraining();
       await _pumpSheet(tester, _workout(), training);
-      await tester.tap(find.text('Cancel'));
+      expect(find.text('Cancel'), findsNothing);
+      await tester.tap(find.byTooltip('Close'));
       await tester.pumpAndSettle();
       expect(training.lastUpdate, isNull);
     });
@@ -375,11 +376,11 @@ void main() {
   });
 
   group('WorkoutEditSheet — discard guard', () {
-    testWidgets('unedited form: Cancel pops with no discard confirm',
+    testWidgets('unedited form: Close pops with no discard confirm',
         (tester) async {
       final training = _FakeTraining();
       await _pumpSheet(tester, _workout(), training);
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.byTooltip('Close'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 800));
       expect(find.text('Discard changes?'), findsNothing);
@@ -400,7 +401,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Discard changes?'), findsOneWidget);
 
-      // The sheet has its own Cancel button — scope to the dialog's.
       await tester.tap(find.descendant(
           of: find.byType(AlertDialog), matching: find.text('Cancel')));
       await tester.pump();
@@ -410,14 +410,14 @@ void main() {
     });
 
     testWidgets(
-        'edited form: the Cancel button routes through the confirm; Discard pops without saving',
+        'edited form: the close button routes through the confirm; Discard pops without saving',
         (tester) async {
       final training = _FakeTraining();
       await _pumpSheet(tester, _workout(), training);
       await tester.enterText(find.widgetWithText(TextField, '8.0'), '12.0');
       await tester.pump();
 
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+      await tester.tap(find.byTooltip('Close'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Discard changes?'), findsOneWidget);

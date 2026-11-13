@@ -3,27 +3,46 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        ActiveFilter,
+        AppInsets,
+        AppSearchField,
         AppSemanticColors,
+        AppSpace,
+        AsyncView,
+        DetailHero,
+        DetailMeta,
+        DetailPage,
         EmptyState,
+        ListCard,
+        FilterBar,
+        HubTabBody,
         IdentityAvatar,
         ListSkeleton,
+        LoadingState,
         SkeletonBlock,
         StatGrid,
-        StatTile;
+        StatTile,
+        showFilterSheet;
 
 import '../backend_timeout.dart';
 import '../catalogue_browse.dart';
+import '../fab_clearance.dart';
+import '../fitness_surface_requests.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
+import '../race_service.dart';
 import '../route_surface_label.dart';
+import '../routes_views.dart';
 import '../widgets/error_state.dart';
 import '../widgets/help_button.dart';
 import 'park_courses_screen.dart';
+import 'races_screen.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
 import '../widgets/loading_skeletons.dart';
 import '../widgets/old_match_note.dart';
+import '../widgets/segments_panel.dart' show SegmentTierFilters;
 
 /// Browse list for the curated famous-segment catalogue (decisions §233).
 /// Mobile mirror of web `/segments`: search with accent folding, region and
@@ -33,10 +52,18 @@ import '../widgets/old_match_note.dart';
 ///
 /// The catalogue is world-readable, so this screen works signed out — unlike
 /// the leaderboard on [GlobalSegmentDetailScreen].
+///
+/// It is Routes → Explore on its Segments chip (issue #1374, owner decision
+/// 1), which hands it [chrome]; it was a Fitness tab of its own before.
+/// Mounted on its own, where no shell can select that view, it is a page
+/// titled Segments.
 class GlobalSegmentsScreen extends StatefulWidget {
   final ApiClient? api;
 
-  const GlobalSegmentsScreen({super.key, this.api});
+  /// The Routes tab's view row and Explore chips. Null on its own.
+  final RoutesExploreChrome? chrome;
+
+  const GlobalSegmentsScreen({super.key, this.api, this.chrome});
 
   @override
   State<GlobalSegmentsScreen> createState() => _GlobalSegmentsScreenState();
@@ -123,74 +150,197 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
         CatalogueSort.climb => l10n.segmentCatalogueSortClimb,
       };
 
-  void _openParks() => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => ParksScreen(api: widget.api),
+  /// Park courses live in Races & courses (decisions § 2436), so this opens
+  /// that tab on its Courses view rather than pushing a copy of the park
+  /// index over the hub (decisions § 2437, § 2480).
+  void _openParks() => openFitnessSurface(
+        context,
+        FitnessTab.races,
+        racesShow: RacesShow.courses,
+        fallback: () => RacesScreen(
+          service: RaceService(),
+          api: widget.api,
+          initialShow: RacesShow.courses,
         ),
       );
+
+  List<CatalogueSegment> get _catalogue => [
+        for (final s in _segments)
+          CatalogueSegment(
+            id: s.id,
+            name: s.name,
+            surface: s.surface,
+            region: s.region,
+            distanceM: s.distanceM,
+            elevationM: s.elevationM,
+          ),
+      ];
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.segmentCatalogueTitle),
-        actions: [
-          IconButton(
-            key: const Key('segments-parks-link'),
-            tooltip: l10n.parksBrowseLink,
-            icon: const Icon(Icons.park_outlined),
-            onPressed: _openParks,
-          ),
-        ],
+    final catalogue = _catalogue;
+    final bar = _filterBar(l10n, catalogue).withTrailing([
+      IconButton(
+        key: const Key('segments-parks-link'),
+        tooltip: l10n.parksBrowseLink,
+        icon: const Icon(Icons.park_outlined),
+        onPressed: _openParks,
       ),
-      body: _loading
-          ? ListView(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-                const SkeletonBlock(height: 14, radius: 4),
-                const SizedBox(height: 12),
-                const SkeletonBlock(height: 56),
-                const SizedBox(height: 12),
-                ListSkeleton.section(
-                  label: l10n.segmentsPanelLoading,
-                  rows: 6,
-                ),
-              ],
-            )
-          : _error
-              ? ErrorState(
-                  message: l10n.segmentCatalogueLoadFailed,
-                  onRetry: _load,
-                )
-              : _segments.isEmpty
-                  ? EmptyState(
-                      icon: Icons.terrain,
-                      title: l10n.segmentCatalogueEmpty,
-                      ctaLabel: l10n.parksBrowseLink,
-                      ctaIcon: Icons.park_outlined,
-                      onCta: _openParks,
-                    )
-                  : _buildCatalogue(context, l10n),
+    ]);
+    return HubTabBody(
+      // The chip's own name: "Famous segments" under a tab reading "Segments"
+      // was two names for one place (issue #1374 report 2).
+      title: l10n.runSurfaceTabSegments,
+      filters: widget.chrome?.above(bar) ?? bar,
+      onRefresh: _load,
+      body: AsyncView<List<CatalogueSegment>>(
+        loading: _loading,
+        error: _error ? true : null,
+        data: catalogue,
+        isEmpty: (c) => c.isEmpty,
+        loadingState: LoadingState.list(label: l10n.segmentsPanelLoading),
+        errorBuilder: (_, _) => AppErrorState(
+          message: l10n.segmentCatalogueLoadFailed,
+          onRetry: _load,
+        ),
+        empty: EmptyState(
+          icon: Icons.terrain,
+          title: l10n.segmentCatalogueEmpty,
+          ctaLabel: l10n.parksBrowseLink,
+          ctaIcon: Icons.park_outlined,
+          onCta: _openParks,
+        ),
+        builder: (context, c) => _buildCatalogue(context, l10n, c),
+      ),
     );
   }
 
-  Widget _buildCatalogue(BuildContext context, AppLocalizations l10n) {
-    final theme = Theme.of(context);
-    final catalogue = [
-      for (final s in _segments)
-        CatalogueSegment(
-          id: s.id,
-          name: s.name,
-          surface: s.surface,
-          region: s.region,
-          distanceM: s.distanceM,
-          elevationM: s.elevationM,
-        ),
+  /// Search, then Filters for region, surface and sort, whose non-default
+  /// values show as removable chips, after the Routes · Segments chips when
+  /// the Routes tab hosts this. A one-value choice filters nothing, so a
+  /// group with one value is left out of the sheet. With nothing loaded there
+  /// is nothing to search or filter, and only the chips stay.
+  FilterBar _filterBar(AppLocalizations l10n, List<CatalogueSegment> catalogue) {
+    if (catalogue.isEmpty) {
+      return FilterBar(
+        key: const Key('segments-filter-bar'),
+        chips: [...?widget.chrome?.chips],
+      );
+    }
+    ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
+          label: label,
+          onRemove: onRemove,
+          removeTooltip: l10n.filterBarRemoveFilter(label),
+        );
+    final filters = [
+      if (_region case final r?) active(r, () => setState(() => _region = null)),
+      if (_surface case final s?)
+        active(routeSurfaceLabel(l10n, s), () => setState(() => _surface = null)),
+      if (_sort != CatalogueSort.name)
+        active(_sortLabel(l10n, _sort),
+            () => setState(() => _sort = CatalogueSort.name)),
     ];
+    return FilterBar(
+      key: const Key('segments-filter-bar'),
+      search: AppSearchField(
+        controller: _search,
+        hint: l10n.segmentCatalogueSearchHint,
+        clearTooltip: l10n.commonClearSearch,
+        onChanged: (v) => setState(() => _query = v),
+      ),
+      chips: [...?widget.chrome?.chips],
+      activeFilters: filters,
+      filtersLabel: l10n.filterBarFilters,
+      filtersSemanticLabel:
+          filters.isEmpty ? null : l10n.filterBarFiltersCount(filters.length),
+      activeFilterCount: filters.length,
+      onOpenFilters: () => _openFilters(l10n, catalogue),
+    );
+  }
+
+  Future<void> _openFilters(
+      AppLocalizations l10n, List<CatalogueSegment> catalogue) {
     final regions = catalogueRegions(catalogue);
     final surfaces = catalogueSurfaces(catalogue);
+    return showFilterSheet(
+      context: context,
+      title: l10n.filterBarFilters,
+      doneLabel: l10n.filterBarDone,
+      resetLabel: l10n.segmentsPanelResetFilters,
+      onReset: _reset,
+      builder: (sheetContext, setSheet) {
+        final theme = Theme.of(sheetContext);
+        Widget group<T>(String heading, List<(T, String)> options, T selected,
+                ValueChanged<T> onPick) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(heading, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: AppSpace.sm),
+                  // semantics-children: a group name, read once before the controls inside it
+                  Semantics(
+                    container: true,
+                    label: heading,
+                    child: Wrap(
+                      spacing: AppSpace.sm,
+                      children: [
+                        for (final (value, label) in options)
+                          ChoiceChip(
+                            label: Text(label),
+                            selected: value == selected,
+                            onSelected: (_) {
+                              setState(() => onPick(value));
+                              setSheet(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (regions.length > 1)
+              group<String?>(
+                l10n.filterBarRegion,
+                [
+                  (null, l10n.segmentCatalogueAllRegions),
+                  for (final r in regions) (r, r),
+                ],
+                _region,
+                (v) => _region = v,
+              ),
+            if (surfaces.length > 1)
+              group<String?>(
+                l10n.filterBarSurface,
+                [
+                  (null, l10n.segmentCatalogueAllSurfaces),
+                  for (final s in surfaces) (s, routeSurfaceLabel(l10n, s)),
+                ],
+                _surface,
+                (v) => _surface = v,
+              ),
+            group<CatalogueSort>(
+              l10n.filterBarSort,
+              [for (final s in CatalogueSort.values) (s, _sortLabel(l10n, s))],
+              _sort,
+              (v) => _sort = v,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCatalogue(BuildContext context, AppLocalizations l10n,
+      List<CatalogueSegment> catalogue) {
+    final theme = Theme.of(context);
     final shown = sortCatalogue(
       filterCatalogue(
         catalogue,
@@ -200,98 +350,17 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
       ),
       _sort,
     );
-    final filtered =
-        _query.trim().isNotEmpty || _region != null || _surface != null;
-
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
+          AppInsets.gutter, fabScrollClearance(context)),
       children: [
         Text(
           l10n.segmentCatalogueIntro,
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _search,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search),
-            labelText: l10n.segmentCatalogueSearchLabel,
-            hintText: l10n.segmentCatalogueSearchHint,
-          ),
-          onChanged: (v) => setState(() => _query = v),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            // A one-value dropdown filters nothing — it only offers the
-            // selection the list already is.
-            if (regions.length > 1)
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _region,
-                  isDense: true,
-                  hint: Text(l10n.segmentCatalogueAllRegions),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.segmentCatalogueAllRegions),
-                    ),
-                    for (final r in regions)
-                      DropdownMenuItem(value: r, child: Text(r)),
-                  ],
-                  onChanged: (v) => setState(() => _region = v),
-                ),
-              ),
-            if (surfaces.length > 1)
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _surface,
-                  isDense: true,
-                  hint: Text(l10n.segmentCatalogueAllSurfaces),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.segmentCatalogueAllSurfaces),
-                    ),
-                    for (final s in surfaces)
-                      DropdownMenuItem(
-                        value: s,
-                        child: Text(routeSurfaceLabel(l10n, s)),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _surface = v),
-                ),
-              ),
-            DropdownButtonHideUnderline(
-              child: DropdownButton<CatalogueSort>(
-                value: _sort,
-                isDense: true,
-                items: [
-                  for (final s in CatalogueSort.values)
-                    DropdownMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
-                ],
-                onChanged: (v) =>
-                    v == null ? null : setState(() => _sort = v),
-              ),
-            ),
-            if (filtered || _sort != CatalogueSort.name)
-              TextButton.icon(
-                onPressed: _reset,
-                icon: const Icon(Icons.close, size: 16),
-                label: Text(l10n.segmentsPanelResetFilters),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.smPlus),
         // One live region whose CONTENTS swap rather than one per branch: a
         // status node that is removed when the result set empties announces
         // nothing on the transition that most needs announcing.
@@ -311,10 +380,10 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.sm),
         for (final segment in shown) ...[
           _CatalogueCard(segment: segment, onTap: () => _open(segment.id)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.sm),
         ],
       ],
     );
@@ -332,33 +401,23 @@ class _CatalogueCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final elevation = segment.elevationM;
-    return Card(
+    final region = segment.region?.trim();
+    return ListCard.row(
       margin: EdgeInsets.zero,
-      child: ListTile(
-        onTap: onTap,
-        title: Text(segment.name, style: theme.textTheme.titleMedium),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (segment.region != null && segment.region!.trim().isNotEmpty)
-                Text(segment.region!),
-              const SizedBox(height: 4),
-              Text(
-                [
-                  formatDistanceForPref((segment.distanceM ?? 0).toDouble()),
-                  if (elevation != null && elevation > 0)
-                    formatElevationForPref(elevation.toDouble()),
-                  routeSurfaceLabel(l10n, segment.surface),
-                ].join(' · '),
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
+      dense: true,
+      onTap: onTap,
+      chevron: true,
+      title: segment.name,
+      subtitle: region == null || region.isEmpty ? null : region,
+      meta: Text(
+        [
+          formatDistanceForPref((segment.distanceM ?? 0).toDouble()),
+          if (elevation != null && elevation > 0)
+            formatElevationForPref(elevation.toDouble()),
+          routeSurfaceLabel(l10n, segment.surface),
+        ].join(' · '),
+        style: theme.textTheme.bodySmall
+            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -394,31 +453,48 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
   String? _gender;
   String? _ageBand;
 
-  /// A park course's segment carries its source credit in its own column,
-  /// not in the description (decisions § 2438). Null until read, and when
-  /// the read fails: the credit is auxiliary on this screen.
-  String? _courseCredit;
+  /// The park course built on this segment, if any: the screen links to its
+  /// course page, and shows its source credit, which lives in the course's
+  /// own column rather than the description (decisions § 2438). Null until
+  /// read, and when the read fails: both are auxiliary on this screen.
+  ({ParkListing park, ParkCourseListing course})? _parkCourse;
+
+  String? get _courseCredit {
+    final credit = _parkCourse?.course.course.attribution?.trim();
+    return credit == null || credit.isEmpty ? null : credit;
+  }
 
   @override
   void initState() {
     super.initState();
     _loadSegment();
-    _loadCourseCredit();
+    _loadParkCourse();
   }
 
-  Future<void> _loadCourseCredit() async {
+  Future<void> _loadParkCourse() async {
     final api = widget.api;
     if (api == null) return;
     try {
-      final credit = await api.fetchParkCourseCredit(
-        segmentId: widget.segmentId,
-      );
-      if (!mounted || credit == null) return;
-      setState(() => _courseCredit = credit);
+      final found = await api
+          .fetchParkCourseForSegment(widget.segmentId)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted || found == null) return;
+      setState(() => _parkCourse = found);
     } catch (e) {
-      debugPrint('fetchParkCourseCredit failed: $e');
+      debugPrint('fetchParkCourseForSegment failed: $e');
     }
   }
+
+  void _openParkCourse(({ParkListing park, ParkCourseListing course}) pc) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ParkCourseScreen(
+            api: widget.api,
+            listing: pc.park,
+            course: pc.course,
+          ),
+        ),
+      );
 
   Future<void> _loadSegment() async {
     final api = widget.api;
@@ -482,11 +558,9 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final segment = _segment;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(segment?.name ?? l10n.segmentCatalogueTitle),
-        actions: const [HelpButton(routes: ['/segments/[id]'])],
-      ),
+    return DetailPage(
+      title: segment?.name ?? l10n.segmentCatalogueTitle,
+      pinned: const [HelpButton(routes: ['/segments/[id]'])],
       body: _loading
           ? ListView(
               physics: const NeverScrollableScrollPhysics(),
@@ -503,7 +577,7 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
               ],
             )
           : _loadFailed
-              ? ErrorState(
+              ? AppErrorState(
                   message: l10n.segmentCatalogueDetailFailedTitle,
                   onRetry: _loadSegment,
                 )
@@ -532,24 +606,14 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        if (segment.region != null && segment.region!.trim().isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Icon(Icons.place,
-                    size: 16, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    segment.region!,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        DetailHero(
+          title: segment.name,
+          meta: [
+            if (segment.region != null && segment.region!.trim().isNotEmpty)
+              DetailMeta(icon: Icons.place, text: segment.region!),
+          ],
+          padding: const EdgeInsets.only(bottom: 12),
+        ),
         StatGrid(
           cells: [
             StatTile.medium(
@@ -572,10 +636,22 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
           const SizedBox(height: 16),
           Text(segment.description!, style: theme.textTheme.bodyMedium),
         ],
-        if (_courseCredit != null) ...[
+        if (_parkCourse case final pc?) ...[
+          const SizedBox(height: 8),
+          ListCard.row(
+            key: const Key('segment-park-course-link'),
+            margin: EdgeInsets.zero,
+            dense: true,
+            leading: const Icon(Icons.park_outlined),
+            title: l10n.segmentCatalogueParkCourseLink(pc.park.park.name),
+            chevron: true,
+            onTap: () => _openParkCourse(pc),
+          ),
+        ],
+        if (_courseCredit case final credit?) ...[
           const SizedBox(height: 8),
           Text(
-            _courseCredit!,
+            credit,
             key: const Key('segment-course-credit'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -633,79 +709,31 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            DropdownButtonHideUnderline(
-              child: DropdownButton<String?>(
-                value: _gender,
-                isDense: true,
-                hint: Text(l10n.segmentsPanelAllGenders),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(l10n.segmentsPanelAllGenders),
-                  ),
-                  DropdownMenuItem(
-                    value: 'male',
-                    child: Text(l10n.segmentsPanelGenderMen),
-                  ),
-                  DropdownMenuItem(
-                    value: 'female',
-                    child: Text(l10n.segmentsPanelGenderWomen),
-                  ),
-                ],
-                onChanged: (v) {
-                  setState(() => _gender = v);
-                  _refreshBoard();
-                },
-              ),
-            ),
-            DropdownButtonHideUnderline(
-              child: DropdownButton<String?>(
-                value: _ageBand,
-                isDense: true,
-                hint: Text(l10n.segmentsPanelAllAges),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(l10n.segmentsPanelAllAges),
-                  ),
-                  for (final b in kSegmentAgeBands)
-                    DropdownMenuItem(value: b, child: Text(b)),
-                ],
-                onChanged: (v) {
-                  setState(() => _ageBand = v);
-                  _refreshBoard();
-                },
-              ),
-            ),
-            if (filtered)
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _gender = null;
-                    _ageBand = null;
-                  });
-                  _refreshBoard();
-                },
-                icon: const Icon(Icons.close, size: 16),
-                label: Text(l10n.segmentsPanelResetFilters),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-          ],
+        SegmentTierFilters(
+          framed: false,
+          genderFilter: _gender,
+          ageFilter: _ageBand,
+          onGenderChanged: (v) {
+            setState(() => _gender = v);
+            _refreshBoard();
+          },
+          onAgeChanged: (v) {
+            setState(() => _ageBand = v);
+            _refreshBoard();
+          },
+          onReset: () {
+            setState(() {
+              _gender = null;
+              _ageBand = null;
+            });
+            _refreshBoard();
+          },
         ),
         const SizedBox(height: 8),
         if (_segment case final segment?)
           OldMatchNote(api: api, segment: segment),
         if (_boardFailed)
-          ErrorState(
+          AppErrorState(
             message: l10n.segmentsPanelLeaderboardError,
             onRetry: _refreshBoard,
           )
@@ -820,29 +848,33 @@ class _BoardRow extends StatelessWidget {
             imageUrl: entry.athlete.avatarUrl,
           ),
           const SizedBox(width: 8),
+          // The viewer's "You" sits under the name, not beside it: inline
+          // at 320 dp and 2x it and the time left the name no width. The
+          // label and the weight are the cue; the row tint is too faint.
           Expanded(
-            child: Text(
-              entry.athlete.displayName ?? l10n.segmentsPanelRunnerFallback,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontWeight: isViewer ? FontWeight.w700 : null),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  entry.athlete.displayName ?? l10n.segmentsPanelRunnerFallback,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: isViewer ? FontWeight.w700 : null),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isViewer)
+                  Text(
+                    l10n.navYou,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
             ),
           ),
-          // The viewer tint is barely distinguishable from a neighbouring row,
-          // so the label and the weight are the cue — as on the route-segment
-          // leaderboard.
-          if (isViewer) ...[
-            const SizedBox(width: 6),
-            Text(
-              l10n.navYou,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 6),
-          ],
+          const SizedBox(width: 6),
           Text(
             formatEffortTime(entry.effort.timeSeconds),
             style: theme.textTheme.titleSmall

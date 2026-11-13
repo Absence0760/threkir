@@ -4,9 +4,14 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        AppSpace,
+        FieldColumn,
         IdentityAvatar,
+        ListCard,
         ListSkeleton,
+        PageHeader,
         ProgressBar,
+        PushedPage,
         StatusPill,
         StatusPillSize,
         TextLane;
@@ -245,10 +250,8 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.displayName ?? l10n.coachingAthleteAthleteFallback),
-      ),
+    return PushedPage(
+      title: widget.displayName ?? l10n.coachingAthleteAthleteFallback,
       body: _loading
           ? ListSkeleton(
               label: l10n.commonLoading,
@@ -273,59 +276,40 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   }
 
   Widget _header(AppLocalizations l10n) {
-    final theme = Theme.of(context);
     final since = widget.acceptedAt != null
         ? formatDateMed(widget.acceptedAt!, activeLocaleTag)
         : '—';
-    return Row(
-      children: [
-        IdentityAvatar(
-            seed: widget.athleteId,
-            name: widget.displayName,
-            imageUrl: widget.avatarUrl,
-            size: 48),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.displayName ?? l10n.coachingAthleteRunnerFallback,
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 2),
-              Text(l10n.coachingAthleteCoachingSince(since),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )),
-            ],
-          ),
-        ),
-      ],
+    return PageHeader(
+      leading: IdentityAvatar(
+          seed: widget.athleteId,
+          name: widget.displayName,
+          imageUrl: widget.avatarUrl,
+          size: 48),
+      title: widget.displayName ?? l10n.coachingAthleteRunnerFallback,
+      subtitle: l10n.coachingAthleteCoachingSince(since),
+      padding: EdgeInsets.zero,
     );
   }
 
   Widget _planCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.coachingAthletePlanCompliance,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            if (_overview == null)
-              Text(l10n.coachingAthleteNoActivePlan,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ))
-            else
-              _activePlanBody(_overview!, l10n),
-            _assignSection(l10n),
-          ],
-        ),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.coachingAthletePlanCompliance,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          if (_overview == null)
+            Text(l10n.coachingAthleteNoActivePlan,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ))
+          else
+            _activePlanBody(_overview!, l10n),
+          _assignSection(l10n),
+        ],
       ),
     );
   }
@@ -391,31 +375,32 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
           ),
         ],
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: _selectedPlanId,
-          isExpanded: true,
-          decoration: InputDecoration(
-            labelText: l10n.coachingAthleteAssignSelectLabel,
-          ),
-          hint: Text(l10n.coachingAthleteAssignSelectPlaceholder),
-          items: [
-            for (final p in _myPlans)
-              DropdownMenuItem(value: p.id, child: Text(p.name)),
-          ],
-          onChanged: _assigning
-              ? null
-              : (v) => setState(() => _selectedPlanId = v),
-        ),
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: _assigning ? null : _pickStartDate,
-          child: InputDecorator(
+        FieldColumn(children: [
+          DropdownButtonFormField<String>(
+            initialValue: _selectedPlanId,
+            isExpanded: true,
             decoration: InputDecoration(
-              labelText: l10n.coachingAthleteAssignStartLabel,
+              labelText: l10n.coachingAthleteAssignSelectLabel,
             ),
-            child: Text(formatDateMed(_startDate, activeLocaleTag)),
+            hint: Text(l10n.coachingAthleteAssignSelectPlaceholder),
+            items: [
+              for (final p in _myPlans)
+                DropdownMenuItem(value: p.id, child: Text(p.name)),
+            ],
+            onChanged: _assigning
+                ? null
+                : (v) => setState(() => _selectedPlanId = v),
           ),
-        ),
+          InkWell(
+            onTap: _assigning ? null : _pickStartDate,
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: l10n.coachingAthleteAssignStartLabel,
+              ),
+              child: Text(formatDateMed(_startDate, activeLocaleTag)),
+            ),
+          ),
+        ]),
         const SizedBox(height: 12),
         FilledButton(
           onPressed: (_selectedPlanId == null || _assigning) ? null : _assignPlan,
@@ -594,32 +579,29 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   Widget _runsCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final unit = widget.preferences.unit;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.coachingAthleteRecentRuns,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.coachingAthleteRecentRuns,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          if (_showMaps && _runs.any((r) => r.hasTrack)) ...[
+            Text(l10n.coachingAthleteMapsClippedNote,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                )),
             const SizedBox(height: 8),
-            if (_showMaps && _runs.any((r) => r.hasTrack)) ...[
-              Text(l10n.coachingAthleteMapsClippedNote,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )),
-              const SizedBox(height: 8),
-            ],
-            if (_runs.isEmpty)
-              Text(l10n.coachingAthleteNoRunsYet,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ))
-            else
-              for (final r in _runs) _runRow(r, unit, l10n),
           ],
-        ),
+          if (_runs.isEmpty)
+            Text(l10n.coachingAthleteNoRunsYet,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ))
+          else
+            for (final r in _runs) _runRow(r, unit, l10n),
+        ],
       ),
     );
   }
@@ -632,7 +614,11 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     final pace = paceSecPerKm == null
         ? '—'
         : '${UnitFormat.pace(paceSecPerKm, unit)} ${UnitFormat.paceLabel(unit)}';
-    final row = Row(
+    // A Wrap, not a Row: at 2x the two lanes alone take 296 dp of a 256 dp
+    // card, so the facts flow onto the next line instead of past the edge.
+    final row = Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: AppSpace.xxs,
         children: [
           TextLane(
             width: 84,
@@ -647,14 +633,12 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(fontWeight: FontWeight.w600)),
           ),
-          Expanded(
-            child: Text(
-                '${UnitFormat.distance(r.distanceM, unit)} · ${_formatDuration(r.durationS)} · $pace',
-                style: theme.textTheme.bodySmall),
-          ),
+          Text(
+              '${UnitFormat.distance(r.distanceM, unit)} · ${_formatDuration(r.durationS)} · $pace',
+              style: theme.textTheme.bodySmall),
           if (!r.isPublic)
             Padding(
-              padding: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsetsDirectional.only(start: 6),
               child: StatusPill(
                 label: l10n.coachingAthletePrivate,
                 foreground: theme.colorScheme.onSurfaceVariant,
@@ -673,6 +657,7 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
                 row,
                 const SizedBox(height: 6),
                 Semantics(
+                  excludeSemantics: true,
                   key: ValueKey('coach-run-map-${r.id}'),
                   image: true,
                   label: l10n.coachingAthleteRunMapLabel(

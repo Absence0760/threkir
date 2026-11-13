@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/screens/nutrition_meal_detail_screen.dart';
+import 'worst_case_layout.dart';
 
 Future<({LocalFoodStore store, Directory dir})> _store(String tag) async {
   final dir = Directory.systemTemp.createTempSync('meal_detail_$tag');
@@ -32,6 +34,41 @@ Widget _app(LocalFoodStore store, DateTime day, String slot,
 void main() {
   setUpAll(() => initializeDateFormatting());
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  worstCaseTestWidgets('Meal detail', (tester, locale) async {
+    final f = await _store('wc_');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    final today = DateTime.now();
+    await tester.runAsync(() async {
+      await f.store.createLocal(
+        startedAt: DateTime(today.year, today.month, today.day, 8),
+        itemName: 'Overnight oats with peanut butter, banana and honey',
+        mealSlot: 'breakfast',
+        calories: 1285,
+        proteinG: 148,
+        carbsG: 212,
+        fatG: 104,
+        fiberG: 12.5,
+        sugarG: 41,
+        saturatedFatG: 9,
+        sodiumMg: 1240,
+        cholesterolMg: 85,
+      );
+      await f.store.createLocal(
+        startedAt: DateTime(today.year, today.month, today.day - 2, 8),
+        itemName: 'Toast',
+        mealSlot: 'breakfast',
+        calories: 2400,
+      );
+    });
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: NutritionMealDetailScreen(
+          store: f.store, day: today, slot: 'breakfast'),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Meal detail');
+  });
 
   testWidgets('shows the slot title, macro total, items, and trend',
       (tester) async {
@@ -63,7 +100,8 @@ void main() {
       await tester.pumpWidget(_app(f.store, today, 'breakfast'));
       await tester.pump();
       // Slot title (AppBar) + the two breakfast items, not the lunch one.
-      expect(find.text('Breakfast'), findsOneWidget);
+      expect(find.descendant(of: find.byType(PageHeading), matching: find.text('Breakfast')),
+          findsOneWidget);
       expect(find.text('Oats'), findsOneWidget);
       expect(find.text('Berries'), findsOneWidget);
       expect(find.text('Sandwich'), findsNothing);

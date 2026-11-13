@@ -1,10 +1,10 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { handleTablistKeydown } from '#lib/util/tablist.ts';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { fetchRoutesWithError, setRouteStar } from '#lib/core/data.ts';
@@ -17,23 +17,29 @@
 	import ImportRoute from '#lib/components/ImportRoute.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import FilterBar, { type ActiveFilter, type FilterChip } from '#lib/components/FilterBar.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import RoutesViewNav from '#lib/components/RoutesViewNav.svelte';
 	import RouteExplorer from '#lib/components/RouteExplorer.svelte';
 	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
 	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 	import type { Snapshot } from './$types';
 	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
-	let tab = $state<'mine' | 'explore' | 'heatmap'>('mine');
+	// Mine or Explore, read from the URL: the view row is links
+	// (RoutesViewNav), so a link, a refresh and back all reopen the same view.
+	const tab = $derived<'mine' | 'explore'>(
+		page.url.searchParams.get('tab') === 'explore' ? 'explore' : 'mine',
+	);
 	let routes = $state<RouteListItem[]>([]);
 	let loading = $state(true);
 	let fetchError = $state<string | null>(null);
 	let showImport = $state(false);
 
-	// Filter state for the "My routes" tab. Composes a search box, a
-	// surface dropdown, a distance bucket, a sort key, and a starred-
-	// only toggle. Filtering is client-side because the list is fully
-	// resident — pagination is a separate follow-up.
+	// Filter state for the "My routes" tab: the search and the Starred
+	// toggle on the FilterBar, surface, distance and sort in its sheet.
+	// Filtering is client-side because the list is fully resident.
 	type SurfaceFilter = 'any' | 'road' | 'trail' | 'mixed';
 	type DistanceBucket = 'any' | 'lt5' | '5to10' | '10to20' | 'gt20';
 	type SortKey = 'newest' | 'longest' | 'shortest' | 'most_run' | 'az';
@@ -50,7 +56,7 @@
 	$effect(() => {
 		if (!filtersHydrated) return;
 		try {
-			localStorage.setItem(
+			localStore()?.setItem(
 				FILTERS_KEY,
 				JSON.stringify({ search, surfaceFilter, distanceFilter, sortKey, starredOnly }),
 			);
@@ -81,28 +87,8 @@
 		loading = false;
 	}
 
-	function setTab(next: 'mine' | 'explore' | 'heatmap') {
-		// Heatmap moved to its own route (May 2026) so it can own
-		// the full layout column without fighting the routes-page
-		// flex chain — see `/routes/heatmap/+page.svelte` for the
-		// rationale. Tab clicks navigate; the back button still
-		// returns to /routes with the previous tab restored.
-		if (next === 'heatmap') {
-			void goto('/routes/heatmap');
-			return;
-		}
-		tab = next;
-		const path = next === 'mine' ? '/routes' : `/routes?tab=${next}`;
-		goto(path, {
-			replace: true,
-			reset: false,
-		});
-	}
-
 	onMount(() => {
-		const initial = page.url.searchParams.get('tab');
-		if (initial === 'explore') tab = 'explore';
-		else if (initial === 'heatmap') {
+		if (page.url.searchParams.get('tab') === 'heatmap') {
 			// Deep-link compat: `/routes?tab=heatmap` now bounces to
 			// the standalone `/routes/heatmap` page. Use replaceState
 			// so the back button skips the redirect hop.
@@ -114,7 +100,7 @@
 		// read in that case — the snapshot is authoritative for this paint.
 		if (!filtersHydrated) {
 			try {
-				const raw = localStorage.getItem(FILTERS_KEY);
+				const raw = localStore()?.getItem(FILTERS_KEY) ?? null;
 				if (raw) {
 					const saved = JSON.parse(raw);
 					if (typeof saved.search === 'string') search = saved.search;
@@ -214,6 +200,58 @@
 			starredOnly,
 	);
 
+	const DISTANCE_BUCKETS: Exclude<DistanceBucket, 'any'>[] = ['lt5', '5to10', '10to20', 'gt20'];
+	function distanceBucketLabel(b: Exclude<DistanceBucket, 'any'>): string {
+		switch (b) {
+			case 'lt5':
+				return `< 5 ${distanceUnitLabel}`;
+			case '5to10':
+				return `5–10 ${distanceUnitLabel}`;
+			case '10to20':
+				return `10–20 ${distanceUnitLabel}`;
+			case 'gt20':
+				return `20+ ${distanceUnitLabel}`;
+		}
+	}
+
+	let filtersOpen = $state(false);
+
+	// Starred is the one quick chip; FilterBar draws a lone chip with an icon
+	// as a toggle in the search row (the mobile lone-chip rule).
+	const starredChip = $derived<FilterChip[]>([
+		{
+			key: 'starred',
+			label: m('routesPage.starred'),
+			pressed: starredOnly,
+			onclick: () => (starredOnly = !starredOnly),
+			testid: 'routes-starred',
+			icon: 'star',
+		},
+	]);
+
+	// The sheet's filters that are on, as removable chips on the bar's line.
+	const activeFilters = $derived.by<ActiveFilter[]>(() => {
+		const out: ActiveFilter[] = [];
+		if (surfaceFilter !== 'any') {
+			out.push({
+				key: 'surface',
+				label: routeSurfaceLabel(surfaceFilter),
+				onRemove: () => (surfaceFilter = 'any'),
+				testid: 'routes-chip-surface',
+			});
+		}
+		if (distanceFilter !== 'any') {
+			out.push({
+				key: 'distance',
+				label: distanceBucketLabel(distanceFilter),
+				onRemove: () => (distanceFilter = 'any'),
+				testid: 'routes-chip-distance',
+			});
+		}
+		return out;
+	});
+	const activeCount = $derived(activeFilters.length);
+
 	function clearFilters() {
 		search = '';
 		surfaceFilter = 'any';
@@ -249,7 +287,6 @@
 
 	export const snapshot: Snapshot<{
 		routes: RouteListItem[];
-		tab: 'mine' | 'explore' | 'heatmap';
 		search: string;
 		surfaceFilter: SurfaceFilter;
 		distanceFilter: DistanceBucket;
@@ -260,7 +297,6 @@
 	}> = {
 		capture: () => ({
 			routes,
-			tab,
 			search,
 			surfaceFilter,
 			distanceFilter,
@@ -270,7 +306,6 @@
 			listToken: loadedToken,
 		}),
 		restore: (s) => {
-			tab = s.tab;
 			search = s.search;
 			surfaceFilter = s.surfaceFilter;
 			distanceFilter = s.distanceFilter;
@@ -308,45 +343,66 @@
 	<ImportRoute onclose={() => (showImport = false)} onimport={load} />
 {/if}
 
+{#snippet routeSearch()}
+	<AppSearchField
+		bind:value={search}
+		label={m('routesPage.searchLabel')}
+		placeholder={m('routesPage.searchPlaceholder')}
+		clearLabel={m('routesPage.clearSearch')}
+		testid="routes-search"
+	/>
+{/snippet}
+
+{#snippet routeActions()}
+	<div class="toolbar-actions">
+		<button class="btn btn-outline btn-sm" type="button" onclick={() => (showImport = true)}>
+			<span class="material-symbols" aria-hidden="true">upload_file</span>
+			{m('routesPage.import')}
+		</button>
+		<a href="/routes/new" class="btn btn-primary btn-sm">
+			<span class="material-symbols" aria-hidden="true">add</span>
+			{m('routesPage.newRoute')}
+		</a>
+	</div>
+{/snippet}
+
+<!-- The Filters sheet: each choice applies at once, so the list behind it is
+     already right when Done closes it. -->
+{#snippet routeFilters()}
+	<p class="filter-hint">{m('routesPage.starredSyncTitle')}</p>
+	<div class="sheet-field">
+		<label for="routes-surface">{m('routesPage.surfaceLabel')}</label>
+		<select id="routes-surface" bind:value={surfaceFilter} class="sheet-select" data-testid="routes-surface">
+			<option value="any">{m('routesPage.surfaceAny')}</option>
+			<option value="road">{routeSurfaceLabel('road')}</option>
+			<option value="trail">{routeSurfaceLabel('trail')}</option>
+			<option value="mixed">{routeSurfaceLabel('mixed')}</option>
+		</select>
+	</div>
+	<div class="sheet-field">
+		<label for="routes-distance">{m('routesPage.distanceLabel')}</label>
+		<select id="routes-distance" bind:value={distanceFilter} class="sheet-select" data-testid="routes-distance">
+			<option value="any">{m('routesPage.distanceAny')}</option>
+			{#each DISTANCE_BUCKETS as b (b)}
+				<option value={b}>{distanceBucketLabel(b)}</option>
+			{/each}
+		</select>
+	</div>
+	<div class="sheet-field">
+		<label for="routes-sort">{m('routesPage.sortLabel')}</label>
+		<select id="routes-sort" bind:value={sortKey} class="sheet-select" data-testid="routes-sort">
+			<option value="newest">{m('routesPage.sortNewest')}</option>
+			<option value="longest">{m('routesPage.sortLongest')}</option>
+			<option value="shortest">{m('routesPage.sortShortest')}</option>
+			<option value="most_run">{m('routesPage.sortMostRun')}</option>
+			<option value="az">{m('routesPage.sortAz')}</option>
+		</select>
+	</div>
+{/snippet}
+
 <div class="page">
 	<RunSurfaceTabs active="routes" />
-	<header class="page-header">
-		<!-- tabindex=-1: keydown bubbles here from the focused tab; the
-		     tablist itself is never tab-stopped (the tabs carry the roving
-		     tabindex). Satisfies a11y_interactive_supports_focus. -->
-		<div class="tabs" role="tablist" aria-label={m('routesPage.sectionLabel')} tabindex={-1} onkeydown={handleTablistKeydown}>
-			<button
-				role="tab"
-				class="tab"
-				class:active={tab === 'mine'}
-				aria-selected={tab === 'mine'}
-				tabindex={tab === 'mine' ? 0 : -1}
-				onclick={() => setTab('mine')}
-			>
-				{m('routesPage.tabMine')}
-			</button>
-			<button
-				role="tab"
-				class="tab"
-				class:active={tab === 'explore'}
-				aria-selected={tab === 'explore'}
-				tabindex={tab === 'explore' ? 0 : -1}
-				onclick={() => setTab('explore')}
-			>
-				{m('routesPage.tabExplore')}
-			</button>
-			<button
-				role="tab"
-				class="tab"
-				class:active={tab === 'heatmap'}
-				aria-selected={tab === 'heatmap'}
-				tabindex={tab === 'heatmap' ? 0 : -1}
-				onclick={() => setTab('heatmap')}
-			>
-				{m('routesPage.tabHeatmap')}
-			</button>
-		</div>
-	</header>
+	<RoutesViewNav view={tab === 'explore' ? 'routes' : 'mine'} />
 
 	{#if tab === 'mine'}
 		{#if loading}
@@ -388,94 +444,32 @@
 						<span class="material-symbols" aria-hidden="true">upload_file</span>
 						{m('routesPage.importFile')}
 					</button>
-					<button
-						class="btn btn-outline"
-						type="button"
-						onclick={() => setTab('explore')}
-					>
+					<a class="btn btn-outline" href="/routes?tab=explore">
 						<span class="material-symbols" aria-hidden="true">explore</span>
 						{m('routesPage.browseCommunity')}
-					</button>
+					</a>
 				{/snippet}
 			</EmptyState>
 		{:else}
-			<!-- Single-rail toolbar: search grows to fill, selects + chips +
-			     meta share the same row so the toolbar never burns more than
-			     one horizontal line on a wide viewport. Matches the
-			     filter-row + space-between pattern used by /dashboard and
-			     /runs. -->
-			<div class="filter-row">
-				<div class="search-wrap">
-					<span class="material-symbols" aria-hidden="true">search</span>
-					<input
-						type="text"
-						class="search-input"
-						placeholder={m('routesPage.searchPlaceholder')}
-						bind:value={search}
-						aria-label={m('routesPage.searchLabel')}
-					/>
-					{#if search}
-						<button
-							type="button"
-							class="search-clear"
-							aria-label={m('routesPage.clearSearch')}
-							onclick={() => (search = '')}
-						>
-							<span class="material-symbols" aria-hidden="true">close</span>
-						</button>
-					{/if}
-				</div>
-				<div class="select-group">
-					<select bind:value={surfaceFilter} class="toolbar-select" aria-label={m('routesPage.surfaceLabel')}>
-						<option value="any">{m('routesPage.surfaceAny')}</option>
-						<option value="road">{routeSurfaceLabel('road')}</option>
-						<option value="trail">{routeSurfaceLabel('trail')}</option>
-						<option value="mixed">{routeSurfaceLabel('mixed')}</option>
-					</select>
-					<select bind:value={distanceFilter} class="toolbar-select" aria-label={m('routesPage.distanceLabel')}>
-						<option value="any">{m('routesPage.distanceAny')}</option>
-						<option value="lt5">&lt; 5 {distanceUnitLabel}</option>
-						<option value="5to10">5–10 {distanceUnitLabel}</option>
-						<option value="10to20">10–20 {distanceUnitLabel}</option>
-						<option value="gt20">20+ {distanceUnitLabel}</option>
-					</select>
-					<select bind:value={sortKey} class="toolbar-select" aria-label={m('routesPage.sortLabel')}>
-						<option value="newest">{m('routesPage.sortNewest')}</option>
-						<option value="longest">{m('routesPage.sortLongest')}</option>
-						<option value="shortest">{m('routesPage.sortShortest')}</option>
-						<option value="most_run">{m('routesPage.sortMostRun')}</option>
-						<option value="az">{m('routesPage.sortAz')}</option>
-					</select>
-					<button
-						type="button"
-						class="starred-toggle"
-						class:active={starredOnly}
-						onclick={() => (starredOnly = !starredOnly)}
-						aria-pressed={starredOnly}
-						aria-label={starredOnly ? m('routesPage.showAll') : m('routesPage.showStarredOnly')}
-						title={m('routesPage.starredSyncTitle')}
-					>
-						<span class="material-symbols" aria-hidden="true">star</span>
-						{m('routesPage.starred')}
-					</button>
-				</div>
-				<div class="toolbar-actions">
-					<button class="btn btn-outline btn-sm" type="button" onclick={() => (showImport = true)}>
-						<span class="material-symbols" aria-hidden="true">upload_file</span>
-						{m('routesPage.import')}
-					</button>
-					<a href="/routes/new" class="btn btn-primary btn-sm">
-						<span class="material-symbols" aria-hidden="true">add</span>
-						{m('routesPage.newRoute')}
-					</a>
-				</div>
-			</div>
+			<!-- The list's control row is FilterBar (conventions.md § Web lists):
+			     the search, the Starred toggle (a lone chip, so it sits in the
+			     search row as a toggle button rather than on a line of its own),
+			     Import and New route, and a Filters sheet holding surface,
+			     distance and sort. -->
+			<FilterBar
+				idPrefix="routes"
+				search={routeSearch}
+				trailing={routeActions}
+				chips={starredChip}
+				{activeFilters}
+				filters={routeFilters}
+				activeFilterCount={activeCount}
+				bind:filtersOpen
+			/>
 
 			<div class="filter-meta">
 				<span>
-					{routes.length === 1
-						? m('routesPage.routeCountSingular', { shown: filteredRoutes.length, total: routes.length })
-						: m('routesPage.routeCountPlural', { shown: filteredRoutes.length, total: routes.length })}
+					{m('routesPage.routeCount', { shown: filteredRoutes.length, total: routes.length })}
 					{#if filtersActive}<span class="meta-sep"> · </span>{m('routesPage.filtered')}{/if}
 				</span>
 				{#if filtersActive}
@@ -555,48 +549,6 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-
-	/* Heatmap moved to its own /routes/heatmap route in the May
-	 * 2026 layout fix — the `.page-heatmap` modifier + its
-	 * full-bleed flex chain that used to live here are now in
-	 * `/routes/heatmap/+page.svelte` instead. Dead-code removed. */
-
-	.page-header {
-		margin-bottom: var(--space-xl);
-	}
-
-	.tabs {
-		display: flex;
-		gap: 0.5rem;
-		border-bottom: 1px solid var(--color-border);
-		/* Tabs share one underlined baseline, so they scroll rather than
-		   wrap. Second strip on this route — `.surface-tabs` above it got
-		   the same treatment. */
-		max-width: 100%;
-		overflow-x: auto;
-	}
-
-	.tab {
-		flex: 0 0 auto;
-		background: none;
-		border: none;
-		padding: 0.6rem 0.2rem;
-		margin-inline-end: 1rem;
-		font-size: 0.95rem;
-		color: var(--color-text-secondary);
-		border-bottom: 2px solid transparent;
-		cursor: pointer;
-		font-weight: 500;
-	}
-
-	.tab:hover {
-		color: var(--color-text);
-	}
-
-	.tab.active {
-		color: var(--color-primary);
-		border-bottom-color: var(--color-primary);
 	}
 
 	.error-banner {
@@ -707,12 +659,6 @@
 		font-variation-settings: 'FILL' 1;
 	}
 
-	.route-map-placeholder > .material-symbols {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2rem;
-		color: var(--color-text-tertiary);
-	}
-
 	.route-info {
 		padding: var(--space-md) var(--space-lg);
 	}
@@ -749,132 +695,13 @@
 		font-family: 'Material Symbols Outlined';
 	}
 
-	/* Single-rail filter toolbar — mirrors /dashboard's .filter-row.
-	   Search grows to fill, the select group + action group sit on the
-	   right edge of the same row. Flex-wrap means we collapse to two
-	   rails only when the viewport is too narrow to host all three. */
+	/* The loading frame stands in for FilterBar's top row. */
 	.filter-row {
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm) var(--space-md);
 		margin-bottom: var(--space-sm);
 		flex-wrap: wrap;
-	}
-	.search-wrap {
-		position: relative;
-		display: flex;
-		align-items: center;
-		flex: 1 1 18rem;
-		min-width: 12rem;
-	}
-	.search-wrap > .material-symbols:first-child {
-		position: absolute;
-		inset-inline-start: 0.75rem;
-		color: var(--color-text-tertiary);
-		pointer-events: none;
-		font-size: 1.1rem;
-	}
-	.search-input {
-		width: 100%;
-		padding: 0.5rem 2.25rem 0.5rem 2.25rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.9rem;
-	}
-	.search-input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
-	}
-	/* audit/accessibility (May 2026) WCAG 2.4.7 + 2.4.11 — pair the
-	   focus rule above with :focus-visible so keyboard users keep
-	   the outline ring on top of the border-color change. Self-audit
-	   round 6 caught this site: my round-5 bulk script skipped the
-	   whole file because OTHER :focus-visible blocks already existed,
-	   leaving this single selector unpaired. */
-	.search-input:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 2px;
-	}
-	.search-clear {
-		position: absolute;
-		inset-inline-end: 0.5rem;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 1.5rem;
-		height: 1.5rem;
-		padding: 0;
-		background: transparent;
-		border: none;
-		color: var(--color-text-tertiary);
-		cursor: pointer;
-		border-radius: 50%;
-	}
-	.search-clear:hover {
-		background: var(--color-primary-light);
-		color: var(--color-text);
-	}
-	.search-clear .material-symbols {
-		font-size: 1rem;
-	}
-	.select-group {
-		display: inline-flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-	.toolbar-select {
-		padding: 0.4rem calc(var(--space-md) + var(--space-md)) 0.4rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.85rem;
-		cursor: pointer;
-		appearance: none;
-		background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-		background-repeat: no-repeat;
-		background-position: right 0.6rem center;
-		background-size: 0.75rem;
-		transition: border-color var(--transition-fast);
-	}
-	.toolbar-select:hover {
-		border-color: var(--color-primary);
-	}
-	.toolbar-select:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 1px;
-	}
-	.starred-toggle {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		padding: 0.4rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.85rem;
-		font-weight: 500;
-		cursor: pointer;
-	}
-	.starred-toggle:hover {
-		border-color: var(--color-primary);
-	}
-	.starred-toggle .material-symbols {
-		font-size: 1rem;
-		font-variation-settings: 'FILL' 0;
-	}
-	.starred-toggle.active {
-		background: var(--color-primary-light);
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-	}
-	.starred-toggle.active .material-symbols {
-		font-variation-settings: 'FILL' 1;
-		color: var(--color-crown);
 	}
 	.toolbar-actions {
 		display: inline-flex;
@@ -895,7 +722,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-md);
-		margin-bottom: var(--space-lg);
+		margin: var(--space-sm) 0 var(--space-lg);
 		font-size: 0.8rem;
 		color: var(--color-text-secondary);
 	}
@@ -949,35 +776,42 @@
 		border: 0;
 	}
 
-	/* <=50rem (small tablet / large phone). Collapse the right-edge
-	   action group to its own row so the toolbar reads as two clean
-	   rails rather than three crammed ones. */
-	@media (max-width: 50rem) {
+	/* The Filters sheet: each control under its label. */
+	.sheet-field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.sheet-field label {
+		font-weight: 600;
+		font-size: 0.9rem;
+	}
+	.sheet-select {
+		min-height: var(--tap-target-min);
+		padding: 0 0.75rem;
+		border: 1.5px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		color: var(--color-text);
+		font: inherit;
+	}
+	.sheet-select:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.filter-hint {
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+		line-height: 1.45;
+		margin: 0;
+	}
+
+	/* <=30rem (phone): Import and New route share the row under the search,
+	   each taking half. */
+	@media (max-width: 30rem) {
 		.toolbar-actions {
 			margin-inline-start: 0;
 			width: 100%;
-			justify-content: flex-end;
-		}
-		.search-wrap {
-			flex-basis: 100%;
-		}
-	}
-
-	/* <=30rem (phone). Single column for the toolbar — search, then
-	   selects stretched to fill, then actions. */
-	@media (max-width: 30rem) {
-		.select-group {
-			width: 100%;
-		}
-		.select-group .toolbar-select {
-			flex: 1 1 0;
-			min-width: 0;
-		}
-		/* The toggle carries an icon plus a word, so a shared `min-width: 0`
-		   crushed its box to 35px and let 31px of label spill out of the
-		   document. It keeps its content width and wraps instead. */
-		.select-group .starred-toggle {
-			flex: 0 0 auto;
 		}
 		.toolbar-actions .btn {
 			flex: 1 1 0;

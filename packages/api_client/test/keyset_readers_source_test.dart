@@ -96,7 +96,14 @@ void main() {
     final code = src
         .split('\n')
         .where((l) => !l.trimLeft().startsWith('//'))
-        .join('\n');
+        .join('\n')
+        .replaceAll(
+          RegExp(
+            r'_walkFollowPages\(\(after\) => '
+            r'fetchFollow(ers|ing)\(userId, after: after\)\)',
+          ),
+          '',
+        );
     expect(RegExp(r'\.i?like(AllOf|AnyOf)?\(').hasMatch(code), isFalse);
   });
 
@@ -187,6 +194,60 @@ void main() {
       reason: 'the owner filter must be explicit, not left to RLS',
     );
     expect(fn.contains('readChunked('), isTrue);
+  });
+
+  test('the follow graph a picker filters is walked to its end', () {
+    // New message, Send route, the group and share-audience pickers and the
+    // feed's author filter filter the whole follow graph on the client; one
+    // capped page of it hid everyone past the cap (decisions § 2507). Both
+    // directions go through _walkFollowPages over the public page readers,
+    // so there is one paging path and a test fake of the pages fakes the
+    // walk; it follows each page's cursor and lets a failed page throw.
+    final walk = body('Future<List<UserProfileRow>> _walkFollowPages(');
+    expect(walk, isNotEmpty, reason: '_walkFollowPages moved or was renamed');
+    expect(walk.contains('_client'), isFalse,
+        reason: 'the walk reads through the page methods, not the client');
+    expect(walk.contains('.next'), isTrue);
+    expect(walk.contains('throw StateError('), isTrue);
+    final graph = body('fetchFollowGraph(String userId)');
+    expect(graph, isNotEmpty, reason: 'fetchFollowGraph moved or was renamed');
+    expect(
+      graph.contains(
+        '_walkFollowPages((after) => fetchFollowers(userId, after: after))',
+      ),
+      isTrue,
+    );
+    expect(graph.contains('fetchAllFollowing(userId)'), isTrue);
+    expect(
+      body('Future<List<UserProfileRow>> fetchAllFollowing(').contains(
+        '_walkFollowPages((after) => fetchFollowing(userId, after: after))',
+      ),
+      isTrue,
+    );
+    expect(
+      body('Future<List<UserProfileRow>> fetchShareCandidates()')
+          .contains('fetchFollowGraph(userId)'),
+      isTrue,
+      reason: 'the share audience is the whole follow graph',
+    );
+    final code = src
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n')
+        .replaceAll(
+          RegExp(
+            r'_walkFollowPages\(\(after\) => '
+            r'fetchFollow(ers|ing)\(userId, after: after\)\)',
+          ),
+          '',
+        );
+    expect(
+      RegExp(r'(?<!Future<KeysetPage<UserProfileRow>> )fetchFollow(ers|ing)\(')
+          .hasMatch(code),
+      isFalse,
+      reason: 'inside the client the follow graph is read with '
+          'fetchFollowGraph / fetchAllFollowing, never one page',
+    );
   });
 
   test('_followPage filters after the cursor and returns the next one', () {

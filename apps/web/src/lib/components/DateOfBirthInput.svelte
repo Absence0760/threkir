@@ -21,6 +21,7 @@
 		disabled = false,
 		testid = 'date-of-birth',
 		size = 'md',
+		id,
 	}: {
 		/** `YYYY-MM-DD`, or '' for no date. */
 		value?: string;
@@ -30,6 +31,8 @@
 		testid?: string;
 		/** `lg` matches the onboarding wizard's taller fields. */
 		size?: 'md' | 'lg';
+		/** The fieldset's id: where a settings-search result lands. */
+		id?: string;
 	} = $props();
 
 	const uid = $props.id();
@@ -76,7 +79,7 @@
 	);
 </script>
 
-<fieldset class="dob dob-{size}" {disabled} data-testid={testid} aria-describedby={describedBy}>
+<fieldset {id} class="dob dob-{size}" {disabled} data-testid={testid} aria-describedby={describedBy}>
 	<legend class="label-text">{label}</legend>
 	<div class="dob-row">
 		{#each order as part (part)}

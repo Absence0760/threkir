@@ -318,7 +318,8 @@ void main() {
       await tester.tap(action);
       await tester.pump();
 
-      expect(pendingSettingsDestination.value, SettingsDestination.preferences);
+      expect(pendingSettingsDestination.value, SettingsDestination.training);
+      expect(pendingSettingsRow, PreferencesRow.maxHr);
     });
 
     testWidgets('no caveat means no dangling action', (tester) async {

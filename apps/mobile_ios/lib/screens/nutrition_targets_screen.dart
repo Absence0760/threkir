@@ -1,7 +1,15 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, SectionHeader;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        EmptyState,
+        ListCard,
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        SectionHeader,
+        TermValueRow;
 
 import '../adaptive_width.dart';
 import '../auth_error.dart';
@@ -258,8 +266,8 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.nutritionTargetsTitle)),
+    return PushedPage(
+      title: l10n.nutritionTargetsTitle,
       body: contentColumn(
         context,
         _loading
@@ -270,13 +278,17 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
                 hasLeading: false,
               )
             : _loadFailed
-                ? ErrorState(
+                ? AppErrorState(
                     message: l10n.nutritionTargetsLoadError,
                     onRetry: _retry,
                   )
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
+                      PageHeader(
+                        title: l10n.nutritionTargetsTitle,
+                        padding: const EdgeInsets.only(bottom: 8),
+                      ),
                       Text(
                         l10n.nutritionTargetsSubtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -309,14 +321,11 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
     );
   }
 
-  Widget _card({required List<Widget> children}) => Card(
+  Widget _card({required List<Widget> children}) => ListCard(
         margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
         ),
       );
 
@@ -330,27 +339,25 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
     final termStyle = emphasis
         ? theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)
         : theme.textTheme.bodyMedium;
+    // TermValueRow drops the value under the term when both do not fit on
+    // one line (2x text on a narrow phone), rather than pushing it off.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(term, style: termStyle),
-                if (hint != null)
-                  Text(
-                    hint,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant),
-                  ),
-              ],
-            ),
+          TermValueRow(
+            term: term,
+            value: value,
+            termStyle: termStyle,
+            valueStyle: termStyle,
           ),
-          const SizedBox(width: 12),
-          Text(value, style: termStyle),
+          if (hint != null)
+            Text(
+              hint,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
         ],
       ),
     );
@@ -366,17 +373,15 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
     final factor = NumberFormat.decimalPattern(tag).format(_activityFactor);
     return _card(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SectionHeader(label: l10n.nutritionTargetsTotal),
-            ),
-            Text(
-              '${t.calories} kcal',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(color: theme.colorScheme.primary),
-            ),
-          ],
+        // The total is the header's trailing slot, which drops under the
+        // label when the two do not share a line (2x text, 320 dp).
+        SectionHeader(
+          label: l10n.nutritionTargetsTotal,
+          trailing: Text(
+            '${t.calories} kcal',
+            style: theme.textTheme.titleLarge
+                ?.copyWith(color: theme.colorScheme.primary),
+          ),
         ),
         const SizedBox(height: 4),
         _row(theme,

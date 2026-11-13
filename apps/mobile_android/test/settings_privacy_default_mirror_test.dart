@@ -52,7 +52,7 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+        home: SettingsPreferencesScreen(page: PreferencesPage.privacy, preferences: prefs, settingsSync: sync),
       ),
     );
     await tester.pumpAndSettle();

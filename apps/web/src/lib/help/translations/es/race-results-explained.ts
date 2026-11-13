@@ -81,7 +81,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Si tu móvil no detectó una línea, tu resultado es un DNF que no esperabas o competiste con un Apple Watch, puedes volver a cronometrar tu resultado con la carrera que grabaste. Abre la carrera en la web: si pertenece a una competición, muestra **Recalcular el tiempo con mi traza** con tu resultado actual junto al que da tu traza.',
+					text: 'Si tu móvil no detectó una línea, tu resultado es un DNF que no esperabas o competiste con un Apple Watch, puedes volver a cronometrar tu resultado con la actividad que grabaste. Abre la actividad en la web: si pertenece a una carrera, muestra **Recalcular el tiempo con mi traza** con tu resultado actual junto al que da tu traza.',
 				},
 				{
 					type: 'steps',

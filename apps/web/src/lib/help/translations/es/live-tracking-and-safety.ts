@@ -50,7 +50,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'En la web, abre [[route:/settings/safety|Seguridad]] en Configuración; en la app del móvil, abre **Contactos de seguridad** en la pestaña **Tú**.',
+						'En la web, abre [[route:/settings/safety|Seguridad]] en Ajustes; en la app del móvil, abre **Contactos de seguridad** en la pestaña **Tú**.',
 						'Introduce su **Correo del contacto**. También puedes añadir un **Teléfono para SMS (opcional)** en formato internacional, como +447700900123.',
 						'Selecciona **Añadir contacto**. Recibirá un correo en el que se le pide que confirme.',
 						'Su estado muestra **Pendiente: esperando su confirmación** hasta que acepte, y después **Confirmado**. Solo se avisa a los contactos confirmados.',

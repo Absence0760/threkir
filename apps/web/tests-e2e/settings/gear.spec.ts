@@ -278,7 +278,7 @@ test.describe('/settings/gear — CRUD', () => {
 			retiredRow.getByRole('button', { name: 'Restore' })
 		).toBeVisible();
 		await expect(
-			page.getByRole('heading', { name: 'Retired', level: 3 })
+			page.getByRole('heading', { name: 'Retired', level: 2 })
 		).toBeVisible();
 
 		// Restore — row leaves the retired list, comes back into active.
@@ -1006,5 +1006,35 @@ test.describe('/settings/gear — wear status', () => {
 			await admin.from('runs').delete().eq('id', run!.id); // cascades run_gear
 			await admin.from('gear').delete().eq('id', gear!.id);
 		}
+	});
+});
+
+// Issue #1374 FS-4: a failed rotations read rendered "No rotations yet", and
+// runners re-created rotations they already had.
+test.describe('/settings/gear — rotations load failure', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('a failed read shows the error with Retry, not the empty copy', async ({ page }) => {
+		let fail = true;
+		await page.route('**/rest/v1/gear_rotations*', async (route) => {
+			if (route.request().method() !== 'GET' || !fail) {
+				await route.continue();
+				return;
+			}
+			fail = false;
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated gear_rotations failure' })
+			});
+		});
+
+		await page.goto('/settings/gear');
+		const error = page.getByTestId('rotations-load-error');
+		await expect(error).toBeVisible({ timeout: 10_000 });
+		await expect(page.locator('.rotations-empty')).toHaveCount(0);
+
+		await error.getByRole('button', { name: 'Retry' }).click();
+		await expect(error).toHaveCount(0, { timeout: 10_000 });
 	});
 });

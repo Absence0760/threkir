@@ -13,11 +13,13 @@
 	import { messagesInbox } from '#lib/stores/messages_inbox.svelte.ts';
 	import { DM_INBOX_POLL_MS, dmThreadRouteId } from '#lib/social/dm_thread.ts';
 	import { coachInboxPreview, inboxEntries, partitionArchived } from '#lib/social/messages_inbox.ts';
-	import { dmSearchSnippet, normalizeDmSearchQuery } from '#lib/social/dm_search.ts';
+	import { DM_SEARCH_MAX_CHARS, dmSearchSnippet, normalizeDmSearchQuery } from '#lib/social/dm_search.ts';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { searchDms, type DmSearchHit, type GroupInvite } from '#lib/core/data.ts';
 	import { goto } from '$app/navigation';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import GroupCreateDialog from '#lib/components/GroupCreateDialog.svelte';
+	import NewMessageDialog from '#lib/components/NewMessageDialog.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -152,6 +154,7 @@
 	});
 
 	let creatingGroup = $state(false);
+	let composingMessage = $state(false);
 	let inviteBusy = $state<string | null>(null);
 	let declineTarget = $state<GroupInvite | null>(null);
 	let reportInvite = $state<GroupInvite | null>(null);
@@ -245,29 +248,38 @@
 						</button>
 					{:else}
 						<h2>{m('messages.heading')}</h2>
-						{#if messagesInbox.groupsEnabled}
+						<div class="new-actions">
 							<button
 								type="button"
-								class="btn btn-secondary btn-sm new-group"
-								data-testid="inbox-new-group"
-								onclick={() => (creatingGroup = true)}
+								class="btn btn-primary btn-sm new-group"
+								data-testid="inbox-new-message"
+								onclick={() => (composingMessage = true)}
 							>
-								<span class="material-symbols" aria-hidden="true">group_add</span>
-								{m('groups.newGroup')}
+								<span class="material-symbols" aria-hidden="true">edit</span>
+								{m('messages.newMessage')}
 							</button>
-						{/if}
+							{#if messagesInbox.groupsEnabled}
+								<button
+									type="button"
+									class="btn btn-secondary btn-sm new-group"
+									data-testid="inbox-new-group"
+									onclick={() => (creatingGroup = true)}
+								>
+									<span class="material-symbols" aria-hidden="true">group_add</span>
+									{m('groups.newGroup')}
+								</button>
+							{/if}
+						</div>
 					{/if}
 				</header>
 				{#if !showingArchived && !showingRequests}
 					<div class="search">
-						<span class="material-symbols" aria-hidden="true">search</span>
-						<input
-							type="search"
+						<AppSearchField
 							bind:value={searchQuery}
+							label={m('messages.searchLabel')}
 							placeholder={m('messages.searchPlaceholder')}
-							aria-label={m('messages.searchLabel')}
-							maxlength="100"
-							data-testid="inbox-search"
+							maxlength={DM_SEARCH_MAX_CHARS}
+							testid="inbox-search"
 						/>
 						<span class="visually-hidden" aria-live="polite" data-testid="inbox-search-status"
 							>{searchActive && !searching && !searchError && searchHits.length === 0
@@ -517,6 +529,7 @@
 				{@render children()}
 			</section>
 		</div>
+		<NewMessageDialog open={composingMessage} onclose={() => (composingMessage = false)} />
 		{#if messagesInbox.groupsEnabled}
 			<GroupCreateDialog open={creatingGroup} onclose={() => (creatingGroup = false)} />
 		{/if}
@@ -546,29 +559,7 @@
 <style>
 	.search {
 		display: flex;
-		align-items: center;
-		gap: 0.4rem;
 		margin: 0 var(--space-sm) var(--space-sm);
-		padding: 0 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-bg);
-	}
-	.search input {
-		flex: 1 1 auto;
-		min-width: 0;
-		border: 0;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		padding: 0.45rem 0;
-	}
-	.search input:focus-visible {
-		outline: none;
-	}
-	.search:focus-within {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 1px;
 	}
 	.search-results mark {
 		background: color-mix(in srgb, var(--color-primary) 25%, transparent);
@@ -615,6 +606,12 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-sm);
+	}
+	.new-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: var(--space-xs);
 	}
 	.new-group {
 		display: inline-flex;

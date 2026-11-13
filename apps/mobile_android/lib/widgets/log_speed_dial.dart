@@ -139,6 +139,7 @@ class _LogSpeedDialState extends State<_LogSpeedDial>
           child: GestureDetector(
             onTap: () => _close(null),
             child: Semantics(
+              excludeSemantics: true,
               button: true,
               label: MaterialLocalizations.of(context).modalBarrierDismissLabel,
               child: AnimatedBuilder(
@@ -151,6 +152,7 @@ class _LogSpeedDialState extends State<_LogSpeedDial>
           ),
         ),
         // One focus group so a screen reader presents the fan as a single menu.
+        // semantics-children: the menu has no visible title; this names it once
         Semantics(
           container: true,
           explicitChildNodes: true,
@@ -189,6 +191,7 @@ class _LogSpeedDialState extends State<_LogSpeedDial>
       parent: _controller,
       curve: Interval(start, 1, curve: AppMotion.curveOvershoot),
     );
+    // semantics-children: the visible label is excluded below; the InkWell keeps the tap
     final button = Semantics(
       button: true,
       label: label,

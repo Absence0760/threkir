@@ -78,7 +78,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: '**Veranstaltung löschen** ist keine Absage. Es entfernt das Event mit allen Terminen und erstattet niemandem, der bezahlt hat. Lösche keinen bezahlten Kurs, der noch Anmeldungen hat.',
+					text: '**Event löschen** ist keine Absage. Es entfernt das Event mit allen Terminen und erstattet niemandem, der bezahlt hat, sein Geld. Lösche keinen bezahlten Kurs, der noch Anmeldungen hat.',
 				},
 				{
 					type: 'p',

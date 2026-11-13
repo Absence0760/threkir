@@ -1,8 +1,7 @@
 // Debug-build-only tool for the timing-line calibration session (#1304 § 6).
 // Nothing here is reachable in a release build: the Settings entry and the
 // run screen's capture sit behind `kDebugMode`, and this screen and its entry
-// render nothing when [kLineCalibrationAvailable] is false. Its copy is
-// English on purpose: no runner ever sees it.
+// render nothing when [kLineCalibrationAvailable] is false.
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,8 +9,11 @@ import 'package:flutter/services.dart';
 import 'package:core_models/core_models.dart' show parseIsoStrictValue;
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
+import 'package:ui_kit/ui_kit.dart'
+    show AppInsets, AppSpace, FieldColumn, PageHeader, PushedPage;
 
 import '../gate_crossing.dart';
+import '../l10n/gen/app_localizations.dart';
 import '../line_calibration.dart';
 import '../share_sheet.dart' show shareTextFrom;
 import '../typed_decimal.dart' show parseTypedDecimal;
@@ -43,11 +45,12 @@ class LineCalibrationEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!available) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
     return ListTile(
       key: const ValueKey('line-calibration-entry'),
       leading: const Icon(Icons.straighten),
-      title: const Text('Line calibration'),
-      subtitle: const Text('Debug build: timing-line error figures'),
+      title: Text(l10n.lineCalibrationEntryTitle),
+      subtitle: Text(l10n.lineCalibrationEntrySubtitle),
       trailing: const Icon(Icons.chevron_right),
       onTap: onOpen,
     );
@@ -91,7 +94,7 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
   CalibrationPace _pace = CalibrationPace.run;
   CalibrationCarry _carry = CalibrationCarry.hand;
   final List<CalibrationResult> _results = [];
-  String? _problem;
+  _Problem? _problem;
 
   LineCalibrationCapture get _capture =>
       widget.capture ?? LineCalibrationCapture.instance;
@@ -125,7 +128,7 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
     final rtt = clock.rtt;
     setState(() {
       if (offset == null || rtt == null) {
-        _problem = 'Could not reach the server clock; enter the offset by hand.';
+        _problem = _Problem.clockFailed;
       } else {
         _offset.text = '${offset.inMilliseconds}';
         _measuredText = _offset.text;
@@ -160,7 +163,7 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
       });
     } catch (e) {
       debugPrint('LineCalibrationScreen position failed: $e');
-      if (mounted) setState(() => _problem = 'No position fix.');
+      if (mounted) setState(() => _problem = _Problem.noFix);
     }
   }
 
@@ -175,15 +178,15 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
         ? DateTime.now()
         : DateTime.fromMicrosecondsSinceEpoch((first * 1000).round());
     final instants = parseCalibrationInstants(_instants.text, day);
-    String? problem;
+    _Problem? problem;
     if (lat == null || lng == null || bearing == null || half == null) {
-      problem = 'Enter the line: centre, bearing of travel, half-width.';
+      problem = _Problem.lineMissing;
     } else if (offset == null) {
-      problem = 'Measure or enter the clock offset.';
+      problem = _Problem.offsetMissing;
     } else if (instants == null) {
-      problem = 'One instant per line: HH:MM:SS.fff or ISO-8601.';
+      problem = _Problem.instantsInvalid;
     } else if (_capture.fixCount < 2) {
-      problem = 'The capture holds fewer than two fixes.';
+      problem = _Problem.fewFixes;
     }
     if (problem != null) {
       setState(() => _problem = problem);
@@ -192,7 +195,7 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
     final gate =
         Gate(lat: lat!, lng: lng!, bearingDeg: bearing!, halfWidthM: half!);
     if (!gateUsable(gate)) {
-      setState(() => _problem = 'That line is not usable.');
+      setState(() => _problem = _Problem.lineUnusable);
       return;
     }
     final result = analyseCalibration(
@@ -224,150 +227,163 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
   @override
   Widget build(BuildContext context) {
     if (!widget.available) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final capture = _capture;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Line calibration (debug)')),
+    final title = l10n.lineCalibrationTitle;
+    final problem = _problem;
+    return PushedPage(
+      title: title,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppInsets.gutter),
           children: [
-            Text(
-              'Start a capture, record a run on the Run tab through the line, '
-              'then stop the capture here. Video-time each real crossing '
-              'against an NTP-synced clock and enter those instants. The CSV '
-              'holds error figures and counts only.',
-              style: theme.textTheme.bodyMedium,
+            PageHeader(
+              title: title,
+              padding: const EdgeInsets.only(bottom: AppSpace.sm),
             ),
-            const SizedBox(height: 12),
+            Text(l10n.lineCalibrationIntro, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: AppSpace.smPlus),
             Text(
               capture.active
-                  ? 'Capturing: ${capture.fixCount} fixes'
-                  : 'Idle: ${capture.fixCount} fixes held',
+                  ? l10n.lineCalibrationCapturing(capture.fixCount)
+                  : l10n.lineCalibrationIdle(capture.fixCount),
               key: const ValueKey('line-calibration-status'),
               style: theme.textTheme.titleSmall,
             ),
             Wrap(
-              spacing: 8,
+              spacing: AppSpace.sm,
               children: [
                 FilledButton(
                   key: const ValueKey('line-calibration-start'),
                   onPressed: capture.active
                       ? null
                       : () => setState(capture.start),
-                  child: const Text('Start capture'),
+                  child: Text(l10n.lineCalibrationStart),
                 ),
                 OutlinedButton(
                   key: const ValueKey('line-calibration-stop'),
                   onPressed:
                       capture.active ? () => setState(capture.stop) : null,
-                  child: const Text('Stop capture'),
+                  child: Text(l10n.lineCalibrationStop),
                 ),
                 TextButton(
                   onPressed: () => setState(() {}),
-                  child: const Text('Refresh'),
+                  child: Text(l10n.lineCalibrationRefresh),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _field(_lat, 'Line centre latitude')),
-                const SizedBox(width: 8),
-                Expanded(child: _field(_lng, 'Line centre longitude')),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(child: _field(_bearing, 'Bearing of travel, deg')),
-                const SizedBox(width: 8),
-                Expanded(child: _field(_halfWidth, 'Half-width, m')),
-              ],
-            ),
+            const SizedBox(height: AppSpace.smPlus),
+            FieldColumn(children: [
+              _field(_lat, l10n.lineCalibrationLatLabel),
+              _field(_lng, l10n.lineCalibrationLngLabel),
+              _field(_bearing, l10n.lineCalibrationBearingLabel),
+              _field(_halfWidth, l10n.lineCalibrationHalfWidthLabel),
+            ]),
             Wrap(
-              spacing: 8,
+              spacing: AppSpace.sm,
               children: [
                 TextButton(
                   onPressed: _here,
-                  child: const Text('Centre at my position'),
+                  child: Text(l10n.lineCalibrationHere),
                 ),
                 TextButton(
                   key: const ValueKey('line-calibration-measure'),
                   onPressed: _measure,
-                  child: const Text('Measure server clock (10 round trips)'),
+                  child: Text(l10n.lineCalibrationMeasure(kClockSamples)),
                 ),
               ],
             ),
-            _field(_offset, 'Clock offset, ms (server minus device)',
-                key: const ValueKey('line-calibration-offset')),
-            const SizedBox(height: 8),
-            _picker<CalibrationApproach>('Approach', CalibrationApproach.values,
-                _approach, (v) => _approach = v, (v) => v.wire),
-            _picker<CalibrationPace>('Pace', CalibrationPace.values, _pace,
-                (v) => _pace = v, (v) => v.wire),
-            _picker<CalibrationCarry>('Carry', CalibrationCarry.values, _carry,
-                (v) => _carry = v, (v) => v.wire),
-            TextField(
-              key: const ValueKey('line-calibration-instants'),
-              controller: _instants,
-              minLines: 3,
-              maxLines: 12,
-              decoration: const InputDecoration(
-                labelText: 'True crossing instants, one per line',
-                hintText: '07:42:13.480 or 2026-11-10T07:42:13.480+01:00',
-                helperText: 'A time of day is read in this phone\'s zone on the '
-                    'capture day; give an ISO instant with its zone across '
-                    'midnight or when the reference clock shows UTC.',
-                helperMaxLines: 3,
+            const SizedBox(height: AppSpace.sm),
+            FieldColumn(children: [
+              _field(_offset, l10n.lineCalibrationOffsetLabel,
+                  helper: l10n.lineCalibrationOffsetHelper,
+                  key: const ValueKey('line-calibration-offset')),
+              _picker<CalibrationApproach>(
+                  l10n.lineCalibrationApproachLabel,
+                  CalibrationApproach.values,
+                  _approach,
+                  (v) => _approach = v,
+                  (v) => _approachLabel(l10n, v)),
+              _picker<CalibrationPace>(
+                  l10n.lineCalibrationPaceLabel,
+                  CalibrationPace.values,
+                  _pace,
+                  (v) => _pace = v,
+                  (v) => _paceLabel(l10n, v)),
+              _picker<CalibrationCarry>(
+                  l10n.lineCalibrationCarryLabel,
+                  CalibrationCarry.values,
+                  _carry,
+                  (v) => _carry = v,
+                  (v) => _carryLabel(l10n, v)),
+              TextField(
+                key: const ValueKey('line-calibration-instants'),
+                controller: _instants,
+                minLines: 3,
+                maxLines: 12,
+                decoration: InputDecoration(
+                  labelText: l10n.lineCalibrationInstantsLabel,
+                  hintText: l10n.lineCalibrationInstantsHint(
+                      '07:42:13.480', '2026-11-10T07:42:13.480+01:00'),
+                  helperText: l10n.lineCalibrationInstantsHelper,
+                  helperMaxLines: 6,
+                ),
               ),
-            ),
-            if (_problem != null)
+            ]),
+            if (problem != null)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: AppSpace.sm),
                 child: Text(
-                  _problem!,
+                  _problemText(l10n, problem),
                   key: const ValueKey('line-calibration-problem'),
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.error),
                 ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.sm),
             FilledButton(
               key: const ValueKey('line-calibration-score'),
               onPressed: _score,
-              child: const Text('Score this capture'),
+              child: Text(l10n.lineCalibrationScore),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
             for (final r in _results)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(
-                    '${r.cell.approach.wire} / ${r.cell.pace.wire} / ${r.cell.carry.wire}'),
-                subtitle: Text(
-                  '${r.matched} of ${r.trueCount} matched, ${r.missed} missed, '
-                  '${r.falseCrossings} false, ${r.nearMisses} near; '
-                  'median ${r.medianErrorMs ?? '-'} ms, '
-                  '|err| p50 ${r.medianAbsErrorMs ?? '-'} ms, '
-                  'p95 ${r.p95AbsErrorMs ?? '-'} ms; offset '
-                  '±${r.offsetRttMs == null ? '?' : r.offsetRttMs! ~/ 2} ms'
-                  '${r.matched == 0 && r.nearestDiffMs != null ? '. Nothing '
-                      'matched, yet detections sit a median '
-                      '${r.nearestDiffMs} ms from the truths: check the '
-                      'clock, offset and time zone' : ''}',
-                ),
+                title: Text([
+                  _approachLabel(l10n, r.cell.approach),
+                  _paceLabel(l10n, r.cell.pace),
+                  _carryLabel(l10n, r.cell.carry),
+                ].join(' / ')),
+                subtitle: Text([
+                  l10n.lineCalibrationResult(
+                    r.matched,
+                    r.trueCount,
+                    r.missed,
+                    r.falseCrossings,
+                    r.nearMisses,
+                    '${r.medianErrorMs ?? '-'}',
+                    '${r.medianAbsErrorMs ?? '-'}',
+                    '${r.p95AbsErrorMs ?? '-'}',
+                    r.offsetRttMs == null ? '?' : '${r.offsetRttMs! ~/ 2}',
+                  ),
+                  if (r.matched == 0 && r.nearestDiffMs != null)
+                    l10n.lineCalibrationNothingMatched(r.nearestDiffMs!),
+                ].join('\n')),
               ),
             if (_results.isNotEmpty)
               Wrap(
-                spacing: 8,
+                spacing: AppSpace.sm,
                 children: [
                   FilledButton(
                     key: const ValueKey('line-calibration-share'),
                     onPressed: _share,
-                    child: const Text('Share CSV'),
+                    child: Text(l10n.lineCalibrationShare),
                   ),
                   OutlinedButton(
                     onPressed: _copy,
-                    child: const Text('Copy CSV'),
+                    child: Text(l10n.lineCalibrationCopy),
                   ),
                 ],
               ),
@@ -377,13 +393,18 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
     );
   }
 
-  Widget _field(TextEditingController c, String label, {Key? key}) =>
+  Widget _field(TextEditingController c, String label,
+          {Key? key, String? helper}) =>
       TextField(
         key: key,
         controller: c,
         keyboardType: const TextInputType.numberWithOptions(
             signed: true, decimal: true),
-        decoration: InputDecoration(labelText: label),
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: helper,
+          helperMaxLines: 3,
+        ),
       );
 
   Widget _picker<T>(String label, List<T> values, T value,
@@ -401,3 +422,46 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
         },
       );
 }
+
+/// Why the session cannot go on; worded at build time in the reader's
+/// language.
+enum _Problem {
+  clockFailed,
+  noFix,
+  lineMissing,
+  offsetMissing,
+  instantsInvalid,
+  fewFixes,
+  lineUnusable,
+}
+
+String _problemText(AppLocalizations l10n, _Problem p) => switch (p) {
+      _Problem.clockFailed => l10n.lineCalibrationClockFailed,
+      _Problem.noFix => l10n.lineCalibrationNoFix,
+      _Problem.lineMissing => l10n.lineCalibrationLineMissing,
+      _Problem.offsetMissing => l10n.lineCalibrationOffsetMissing,
+      _Problem.instantsInvalid =>
+        l10n.lineCalibrationInstantsInvalid('HH:MM:SS.fff'),
+      _Problem.fewFixes => l10n.lineCalibrationFewFixes,
+      _Problem.lineUnusable => l10n.lineCalibrationLineUnusable,
+    };
+
+String _approachLabel(AppLocalizations l10n, CalibrationApproach a) =>
+    switch (a) {
+      CalibrationApproach.deg90 => l10n.lineCalibrationApproach90,
+      CalibrationApproach.deg30 => l10n.lineCalibrationApproach30,
+      CalibrationApproach.parallel20 => l10n.lineCalibrationApproachParallel20,
+      CalibrationApproach.parallel40 => l10n.lineCalibrationApproachParallel40,
+      CalibrationApproach.standing => l10n.lineCalibrationApproachStanding,
+    };
+
+String _paceLabel(AppLocalizations l10n, CalibrationPace p) => switch (p) {
+      CalibrationPace.walk => l10n.lineCalibrationPaceWalk,
+      CalibrationPace.run => l10n.lineCalibrationPaceRun,
+      CalibrationPace.still => l10n.lineCalibrationPaceStill,
+    };
+
+String _carryLabel(AppLocalizations l10n, CalibrationCarry c) => switch (c) {
+      CalibrationCarry.hand => l10n.lineCalibrationCarryHand,
+      CalibrationCarry.pocket => l10n.lineCalibrationCarryPocket,
+    };

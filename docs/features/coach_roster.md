@@ -115,7 +115,7 @@ byte-for-byte to `apps/mobile_ios` in the same commit.
   existing athlete list (each tile shows name + 7-day load + plan % + a risk chip, tapping pushes
   `coaching_athlete_screen.dart`, the existing drill-in). Use `showTopBanner` for any error, never `ScaffoldMessenger`.
   Follow the `StatefulWidget + setState` + `addListener`/`removeListener` pattern; no new DI.
-- **Nav placement**: none added. Coaching is reached via Settings → Coaching tile (You tab → Settings). The 5-slot
+- **Nav placement**: none added. Coaching is reached from the Coach's peer strip (Coach · Guided runs · Athletes & coaches; it sat on the You tab until issue #1374) and from plan detail. The 5-slot
   bottom-nav ceiling is untouched.
 
 ## TS↔Dart parity helpers

@@ -49,6 +49,7 @@
 		"@types/geojson": "^7946.0.16",
 		"@types/node": "^26.6.6",
 		"esbuild": "0.28.2",
+		"jszip": "^3.10.2",
 		"mdsvex": "^0.12.8",
 		"oauth2-mock-server": "9.3.0",
 		"svelte": "5.57.3",
@@ -69,7 +70,6 @@
 		"fit-file-parser": "^6.2.6",
 		"html-to-image": "^1.11.13",
 		"isomorphic-dompurify": "^4.6.0",
-		"jszip": "^3.10.2",
 		"maplibre-gl": "^6.15.0",
 		"marked": "^18.1.2",
 		"material-symbols": "^0.48.3"

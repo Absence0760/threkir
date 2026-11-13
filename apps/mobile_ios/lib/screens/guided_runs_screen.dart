@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show StatusPill, TextLane;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        DetailHero,
+        DetailPage,
+        HeroCta,
+        SectionHeader,
+        StatusPill,
+        TextLane;
 
 import '../auth_error.dart';
 import '../audio_cues.dart';
@@ -146,36 +153,34 @@ class _GuidedRunDetailScreenState extends State<GuidedRunDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.run.title)),
+    return DetailPage(
+      title: widget.run.title,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(widget.run.subtitle,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              )),
-          const SizedBox(height: 12),
-          Text(widget.run.description,
-              style: theme.textTheme.bodyLarge?.copyWith(height: 1.4)),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: _useThisRun,
-            icon: const Icon(Icons.headset_mic_outlined),
-            label: Text(l10n.guidedRunUseThisRun),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+          DetailHero(
+            title: widget.run.title,
+            padding: EdgeInsets.zero,
+            description: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.run.subtitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    )),
+                const SizedBox(height: 12),
+                Text(widget.run.description,
+                    style: theme.textTheme.bodyLarge?.copyWith(height: 1.4)),
+              ],
+            ),
+            cta: HeroCta(
+              label: l10n.guidedRunUseThisRun,
+              icon: Icons.headset_mic_outlined,
+              onPressed: _useThisRun,
             ),
           ),
           const SizedBox(height: 24),
-          Text(
-            l10n.guidedRunFullScript,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.06,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          SectionHeader(label: l10n.guidedRunFullScript),
           const SizedBox(height: 8),
           for (final cue in widget.run.cues)
             Card(

@@ -1,5 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show AppBarAction, DetailHero, DetailMeta, DetailPage;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../fab_clearance.dart';
@@ -292,21 +294,18 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     final r = widget.store.byId(widget.routineId);
     final title = r?.title.trim();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          title == null || title.isEmpty ? l10n.gymRoutineTitle : title,
-        ),
-        actions: r == null
-            ? null
-            : [
-                IconButton(
-                  tooltip: l10n.gymRoutineDelete,
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _delete(r),
-                ),
-              ],
-      ),
+    return DetailPage(
+      title: title == null || title.isEmpty ? l10n.gymRoutineTitle : title,
+      moreTooltip: l10n.commonMore,
+      actions: [
+        if (r != null)
+          AppBarAction(
+            icon: const Icon(Icons.delete_outline),
+            label: l10n.gymRoutineDelete,
+            destructive: true,
+            onPressed: () => _delete(r),
+          ),
+      ],
       body: Column(
         children: [
           PendingSyncBanner(
@@ -358,15 +357,19 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
       padding: EdgeInsets.fromLTRB(
           16, 16, 16, fabScrollClearance(context)),
       children: [
-        Text(
-          l10n.gymRoutineExerciseCount(r.exerciseCount),
-          style: theme.textTheme.bodyMedium
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        DetailHero(
+          title: r.title.trim().isEmpty ? l10n.gymRoutineTitle : r.title.trim(),
+          padding: EdgeInsets.zero,
+          meta: [
+            DetailMeta(
+              icon: Icons.fitness_center,
+              text: l10n.gymRoutineExerciseCount(r.exerciseCount),
+            ),
+          ],
+          description: notes != null && notes.isNotEmpty
+              ? Text(notes, style: theme.textTheme.bodyMedium)
+              : null,
         ),
-        if (notes != null && notes.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(notes, style: theme.textTheme.bodyMedium),
-        ],
         if (r.clubId != null) ...[
           const SizedBox(height: 12),
           _clubTemplateBadge(theme, l10n),

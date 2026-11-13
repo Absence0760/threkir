@@ -196,8 +196,11 @@ void main() {
     await tester.pumpWidget(_screen(store, id));
     await tester.pump();
 
+    // Delete sits in the overflow, as every destructive toolbar action does.
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
     await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Delete'));
+      await tester.tap(find.text('Delete'));
     });
     await tester.pumpAndSettle();
     expect(find.text('Delete workout?'), findsOneWidget);

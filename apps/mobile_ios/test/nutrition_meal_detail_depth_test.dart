@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -58,7 +59,8 @@ void main() {
       await tester.pumpWidget(_app(f.store, today, 'dinner'));
       await tester.pump();
 
-      expect(find.text('Dinner'), findsOneWidget);
+      expect(find.descendant(of: find.byType(PageHeading), matching: find.text('Dinner')),
+          findsOneWidget);
       // Σ calories = 650, protein = 45g, carbs = 55g, fat = 11g.
       expect(find.text('650'), findsWidgets); // macro card + today's trend bar
       expect(find.text('45g'), findsOneWidget);
@@ -83,7 +85,8 @@ void main() {
       await tester.pumpWidget(_app(f.store, today, 'snack'));
       await tester.pump();
 
-      expect(find.text('Snack'), findsOneWidget);
+      expect(find.descendant(of: find.byType(PageHeading), matching: find.text('Snack')),
+          findsOneWidget);
       expect(find.text('Almonds'), findsOneWidget);
       expect(find.text('170 kcal'), findsOneWidget);
     } finally {

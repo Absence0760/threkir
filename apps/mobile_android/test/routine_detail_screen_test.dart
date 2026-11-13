@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
@@ -183,7 +184,8 @@ void main() {
       await tester.pumpWidget(_app(f.store, f.gym, 'r-1'));
       await tester.pump();
 
-      expect(find.text('Leg day'), findsOneWidget);
+      expect(find.descendant(of: find.byType(PageHeading), matching: find.text('Leg day')),
+          findsOneWidget);
       expect(find.text('Squat'), findsOneWidget);
       // Modality-aware target: reps × weight (single combined cell).
       expect(find.text('5 × 100.0 kg'), findsOneWidget);

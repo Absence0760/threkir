@@ -2,7 +2,17 @@ import 'dart:async';
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, ProgressBar;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        DetailHero,
+        DetailMeta,
+        DetailPage,
+        EmptyState,
+        ListSkeleton,
+        PageHeader,
+        ProgressBar,
+        PushedPage,
+        SectionHeader;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -132,11 +142,12 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final showControls = !_signedOut;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.planLibraryTitle)),
+    return PushedPage(
+      title: l10n.planLibraryTitle,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          PageHeader(title: l10n.planLibraryTitle),
           if (showControls) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -426,20 +437,24 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
     final theme = Theme.of(context);
     final p = widget.entry.plan;
     final author = widget.entry.authorHandle ?? l10n.planLibraryAnonymous;
-    return Scaffold(
-      appBar: AppBar(title: Text(p.name)),
+    return DetailPage(
+      title: p.name,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (widget.entry.isOfficial) ...[
-            const Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: OfficialBadge(size: 16),
-            ),
-            const SizedBox(height: 4),
-          ],
-          Text(l10n.planLibraryByAuthor(author), style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 12),
+          DetailHero(
+            title: p.name,
+            padding: const EdgeInsets.only(bottom: 12),
+            badges: [
+              if (widget.entry.isOfficial) const OfficialBadge(size: 16),
+            ],
+            meta: [
+              DetailMeta(
+                icon: Icons.person_outline,
+                text: l10n.planLibraryByAuthor(author),
+              ),
+            ],
+          ),
           _PlanFacts(plan: p, weeks: _weeks.isEmpty ? null : _weeks.length),
           const SizedBox(height: 24),
           ListTile(
@@ -463,11 +478,7 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
             label: Text(_cloning ? l10n.planLibraryCloning : l10n.planLibraryClone),
           ),
           const SizedBox(height: 24),
-          Semantics(
-            header: true,
-            child: Text(l10n.planLibraryPreviewWeeks,
-                style: theme.textTheme.titleMedium),
-          ),
+          SectionHeader.title(label: l10n.planLibraryPreviewWeeks),
           const SizedBox(height: 8),
           if (_weeksLoading)
             ListSkeleton.section(
@@ -568,9 +579,8 @@ class _PlanLibraryLinkScreenState extends State<PlanLibraryLinkScreen> {
           training: widget.training, entry: entry, shareRef: widget.shareRef);
     }
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.planLibraryTitle)),
-      body: _loading
+    return DetailPage.placeholder(
+      child: _loading
           ? ListSkeleton.section(
               label: l10n.commonLoading,
               rowHeight: 40,

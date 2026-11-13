@@ -250,9 +250,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     if (_loading) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: SectionedDetailSkeleton(
+      return DetailPage.placeholder(
+        child: SectionedDetailSkeleton(
           label: l10n.commonLoading,
           statCells: 3,
           hasAction: true,
@@ -261,9 +260,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       );
     }
     if (_error != null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: AppErrorState(
+      return DetailPage.placeholder(
+        child: AppErrorState(
             message: switch (_error!) {
               _WorkoutLoadError.timeout => l10n.workoutTimeoutError,
               _WorkoutLoadError.offline => l10n.authErrorOffline,
@@ -274,9 +272,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
     final w = _workout;
     if (w == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: EmptyState(
+      return DetailPage.placeholder(
+        child: EmptyState(
           icon: Icons.directions_run,
           title: l10n.workoutNotFound,
         ),
@@ -288,8 +285,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ? null
         : WorkoutStructure.fromJson(w.structure!);
 
-    return Scaffold(
-      appBar: AppBar(),
+    return DetailPage(
+      title: _headingOf(l10n, w, kind),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
         children: [
@@ -341,6 +338,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
+  /// A race's name, else the workout's kind: the page's heading.
+  static String _headingOf(
+          AppLocalizations l10n, PlanWorkoutRow w, WorkoutKind kind) =>
+      kind == WorkoutKind.race && w.raceName != null
+          ? w.raceName!
+          : workoutKindLabel(l10n, kind);
+
   Widget _hero(ThemeData theme, AppLocalizations l10n, PlanWorkoutRow w,
       WorkoutKind kind, WorkoutStructure? structure) {
     final tag = localeToTag(Localizations.localeOf(context));
@@ -387,16 +391,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   fontWeight: FontWeight.w700,
                 )),
             const SizedBox(height: 4),
-            Semantics(
-              header: true,
-              child: Text(
-                  isRace && w.raceName != null
-                      ? w.raceName!
-                      : workoutKindLabel(l10n, kind),
-                  key: const Key('workoutDetailHeading'),
-                  style: theme.textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-            ),
+            PageHeading(_headingOf(l10n, w, kind),
+                key: const Key('workoutDetailHeading'),
+                style: theme.textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             Text(_tagline(l10n, kind, structure),
                 style: theme.textTheme.bodyMedium

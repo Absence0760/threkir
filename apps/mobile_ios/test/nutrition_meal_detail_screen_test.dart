@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,7 +64,8 @@ void main() {
       await tester.pumpWidget(_app(f.store, today, 'breakfast'));
       await tester.pump();
       // Slot title (AppBar) + the two breakfast items, not the lunch one.
-      expect(find.text('Breakfast'), findsOneWidget);
+      expect(find.descendant(of: find.byType(PageHeading), matching: find.text('Breakfast')),
+          findsOneWidget);
       expect(find.text('Oats'), findsOneWidget);
       expect(find.text('Berries'), findsOneWidget);
       expect(find.text('Sandwich'), findsNothing);

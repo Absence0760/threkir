@@ -1127,326 +1127,323 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             Text(raceNote, key: const Key('plan-new-race-note'), style: muted),
             const SizedBox(height: 12),
           ],
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SectionLabel(l10n.planNewStartingPoint),
-                  RadioGroup<_StartingPoint>(
-                    groupValue: _startingPoint,
-                    onChanged: (v) {
-                      if (v != null) setState(() => _setStartingPoint(v));
-                    },
-                    child: Column(
-                      children: [
-                        for (final (sp, title, hint) in [
-                          (
-                            _StartingPoint.newRunner,
-                            l10n.planNewStartingPointNew,
-                            l10n.planNewStartingPointNewHint,
-                          ),
-                          (
-                            _StartingPoint.building,
-                            l10n.planNewStartingPointBuilding,
-                            l10n.planNewStartingPointBuildingHint,
-                          ),
-                          (
-                            _StartingPoint.race,
-                            l10n.planNewStartingPointRace,
-                            l10n.planNewStartingPointRaceHint,
-                          ),
-                        ])
-                          RadioListTile<_StartingPoint>(
-                            key: Key('plan-new-starting-${sp.name}'),
-                            value: sp,
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(title),
-                            subtitle: Text(hint),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _nameCtrl,
-                    textInputAction: TextInputAction.next,
-                    decoration: InputDecoration(
-                      labelText: l10n.planNewNameLabel,
-                      hintText: l10n.planNewNameHint,
-                      helperText: l10n.planNewNameHelp,
-                      helperMaxLines: 3,
-                      errorText: _nameTouched && nameEmpty
-                          ? l10n.planNewNameRequired
-                          : null,
-                    ),
-                    maxLength: columnLength('training_plans.name'),
-                    // Re-evaluate the Create button's enabled state as the
-                    // name is typed.
-                    onChanged: (_) => setState(() => _nameTouched = true),
-                  ),
-                  if (_showGoalRace) ...[
-                    const SizedBox(height: 12),
-                    _SectionLabel(l10n.planNewGoalRace),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        for (final (value, label) in [
-                          for (final g in const [
-                            GoalEvent.distance5k,
-                            GoalEvent.distance10k,
-                            GoalEvent.distanceHalf,
-                            GoalEvent.distanceFull,
-                          ])
-                            (goalEventDbValue(g), goalEventLabel(l10n, g)),
-                          for (final p in kUltraPresets)
-                            (p.id, _kUltraLabels[p.id]!),
-                          (_kUltraOther, l10n.planNewUltraOther),
-                        ])
-                          ChoiceChip(
-                            key: Key('plan-new-goal-$value'),
-                            label: Text(label),
-                            selected:
-                                (_ultraChoice ?? goalEventDbValue(_goal)) ==
-                                value,
-                            onSelected: (_) =>
-                                setState(() => _onGoalChanged(value)),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(l10n.planNewGoalRaceHint, style: muted),
-                  ],
-                  if (_showGoalRace && _ultraChoice != null) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      key: const Key('plan-new-ultra-distance'),
-                      controller: _ultraDistanceCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: l10n.planNewUltraDistance(
-                          UnitFormat.distanceLabel(activeDistanceUnit),
+          ListCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SectionLabel(l10n.planNewStartingPoint),
+                RadioGroup<_StartingPoint>(
+                  groupValue: _startingPoint,
+                  onChanged: (v) {
+                    if (v != null) setState(() => _setStartingPoint(v));
+                  },
+                  child: Column(
+                    children: [
+                      for (final (sp, title, hint) in [
+                        (
+                          _StartingPoint.newRunner,
+                          l10n.planNewStartingPointNew,
+                          l10n.planNewStartingPointNewHint,
                         ),
-                        helperText: l10n.planNewUltraDistanceHint,
-                        helperMaxLines: 4,
-                        errorText: _ultraDistanceInvalid
-                            ? l10n.planNewUltraDistanceTooShort
-                            : null,
-                        errorMaxLines: 3,
-                      ),
-                      onChanged: (s) {
-                        final n = double.tryParse(
-                          s.trim().replaceAll(',', '.'),
-                        );
-                        setState(
-                          () => _ultraDistanceM =
-                              n == null || !n.isFinite || n <= 0
-                              ? null
-                              : n * _metresPerUnit,
-                        );
-                      },
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  InkWell(
-                    key: const Key('plan-new-start-date'),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    onTap: _pickStartDate,
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: l10n.planNewStartDate,
-                        helperText: _beginnerWalkRun
-                            ? l10n.planNewStartDateHintWalkRun
-                            : l10n.planNewStartDateHint,
-                        helperMaxLines: 3,
-                        suffixIcon: const Icon(Icons.calendar_today),
-                      ),
-                      child: Text(formatDateMed(_startDate, tag)),
-                    ),
+                        (
+                          _StartingPoint.building,
+                          l10n.planNewStartingPointBuilding,
+                          l10n.planNewStartingPointBuildingHint,
+                        ),
+                        (
+                          _StartingPoint.race,
+                          l10n.planNewStartingPointRace,
+                          l10n.planNewStartingPointRaceHint,
+                        ),
+                      ])
+                        RadioListTile<_StartingPoint>(
+                          key: Key('plan-new-starting-${sp.name}'),
+                          value: sp,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(title),
+                          subtitle: Text(hint),
+                        ),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _nameCtrl,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: l10n.planNewNameLabel,
+                    hintText: l10n.planNewNameHint,
+                    helperText: l10n.planNewNameHelp,
+                    helperMaxLines: 3,
+                    errorText: _nameTouched && nameEmpty
+                        ? l10n.planNewNameRequired
+                        : null,
+                  ),
+                  maxLength: columnLength('training_plans.name'),
+                  // Re-evaluate the Create button's enabled state as the
+                  // name is typed.
+                  onChanged: (_) => setState(() => _nameTouched = true),
+                ),
+                if (_showGoalRace) ...[
                   const SizedBox(height: 12),
-                  _SectionLabel(l10n.planNewDaysPerWeek),
+                  _SectionLabel(l10n.planNewGoalRace),
                   Wrap(
                     spacing: 8,
                     runSpacing: 4,
                     children: [
-                      for (final n in _dayOptions)
+                      for (final (value, label) in [
+                        for (final g in const [
+                          GoalEvent.distance5k,
+                          GoalEvent.distance10k,
+                          GoalEvent.distanceHalf,
+                          GoalEvent.distanceFull,
+                        ])
+                          (goalEventDbValue(g), goalEventLabel(l10n, g)),
+                        for (final p in kUltraPresets)
+                          (p.id, _kUltraLabels[p.id]!),
+                        (_kUltraOther, l10n.planNewUltraOther),
+                      ])
                         ChoiceChip(
-                          key: Key('plan-new-days-$n'),
-                          label: Text(l10n.planNewDaysOption(n)),
-                          selected: _daysPerWeek == n,
-                          onSelected: (_) => setState(() => _daysPerWeek = n),
+                          key: Key('plan-new-goal-$value'),
+                          label: Text(label),
+                          selected:
+                              (_ultraChoice ?? goalEventDbValue(_goal)) ==
+                              value,
+                          onSelected: (_) =>
+                              setState(() => _onGoalChanged(value)),
                         ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    _beginnerWalkRun
-                        ? l10n.planNewDaysPerWeekWalkRunHint
-                        : l10n.planNewDaysPerWeekHint,
-                    style: muted,
-                  ),
-                  if (_showGoalTime) ...[
-                    const SizedBox(height: 16),
-                    _SectionLabel(l10n.planNewGoalTimeSection),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _numField(
-                            _goalHoursCtrl,
-                            (v) => setState(() => _goalHours = v),
-                            0,
-                            raceGoalMaxHours,
-                            labelText: l10n.planNewHoursLabel,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _numField(
-                            _goalMinutesCtrl,
-                            (v) => setState(() => _goalMinutes = v),
-                            0,
-                            59,
-                            labelText: l10n.planNewMinutesLabel,
-                            key: const Key('planNewGoalMinutes'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _numField(
-                            _goalSecondsCtrl,
-                            (v) => setState(() => _goalSeconds = v),
-                            0,
-                            59,
-                            labelText: l10n.planNewSecondsLabel,
-                            last: true,
-                          ),
-                        ),
-                      ],
+                  Text(l10n.planNewGoalRaceHint, style: muted),
+                ],
+                if (_showGoalRace && _ultraChoice != null) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const Key('plan-new-ultra-distance'),
+                    controller: _ultraDistanceCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
-                    const SizedBox(height: 4),
-                    Text(l10n.planNewGoalTimeHint, style: muted),
-                    if (goalAhead != null) ...[
-                      const SizedBox(height: 8),
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          l10n.planNewGoalAheadOfRecent(
-                            fmtHms(goalAhead.round()),
-                          ),
-                          key: const Key('plan-new-goal-ahead'),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                    decoration: InputDecoration(
+                      labelText: l10n.planNewUltraDistance(
+                        UnitFormat.distanceLabel(activeDistanceUnit),
+                      ),
+                      helperText: l10n.planNewUltraDistanceHint,
+                      helperMaxLines: 4,
+                      errorText: _ultraDistanceInvalid
+                          ? l10n.planNewUltraDistanceTooShort
+                          : null,
+                      errorMaxLines: 3,
+                    ),
+                    onChanged: (s) {
+                      final n = double.tryParse(
+                        s.trim().replaceAll(',', '.'),
+                      );
+                      setState(
+                        () => _ultraDistanceM =
+                            n == null || !n.isFinite || n <= 0
+                            ? null
+                            : n * _metresPerUnit,
+                      );
+                    },
+                  ),
+                ],
+                const SizedBox(height: 16),
+                InkWell(
+                  key: const Key('plan-new-start-date'),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  onTap: _pickStartDate,
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: l10n.planNewStartDate,
+                      helperText: _beginnerWalkRun
+                          ? l10n.planNewStartDateHintWalkRun
+                          : l10n.planNewStartDateHint,
+                      helperMaxLines: 3,
+                      suffixIcon: const Icon(Icons.calendar_today),
+                    ),
+                    child: Text(formatDateMed(_startDate, tag)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SectionLabel(l10n.planNewDaysPerWeek),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final n in _dayOptions)
+                      ChoiceChip(
+                        key: Key('plan-new-days-$n'),
+                        label: Text(l10n.planNewDaysOption(n)),
+                        selected: _daysPerWeek == n,
+                        onSelected: (_) => setState(() => _daysPerWeek = n),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _beginnerWalkRun
+                      ? l10n.planNewDaysPerWeekWalkRunHint
+                      : l10n.planNewDaysPerWeekHint,
+                  style: muted,
+                ),
+                if (_showGoalTime) ...[
+                  const SizedBox(height: 16),
+                  _SectionLabel(l10n.planNewGoalTimeSection),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _numField(
+                          _goalHoursCtrl,
+                          (v) => setState(() => _goalHours = v),
+                          0,
+                          raceGoalMaxHours,
+                          labelText: l10n.planNewHoursLabel,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _numField(
+                          _goalMinutesCtrl,
+                          (v) => setState(() => _goalMinutes = v),
+                          0,
+                          59,
+                          labelText: l10n.planNewMinutesLabel,
+                          key: const Key('planNewGoalMinutes'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _numField(
+                          _goalSecondsCtrl,
+                          (v) => setState(() => _goalSeconds = v),
+                          0,
+                          59,
+                          labelText: l10n.planNewSecondsLabel,
+                          last: true,
                         ),
                       ),
                     ],
-                  ],
-                  if (_startingPoint != _StartingPoint.newRunner) ...[
-                    const SizedBox(height: 12),
-                    CheckboxListTile(
-                      value: _beginnerWalkRun,
-                      onChanged: (v) => setState(() => _setWalkRun(v ?? false)),
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: Text(l10n.planNewBeginnerTitle),
-                      subtitle: Text(l10n.planNewBeginnerSubtitle),
-                    ),
-                  ],
-                  if (!_beginnerWalkRun) ...[
-                    const SizedBox(height: 12),
-                    ..._recoveryBlock(theme, l10n),
-                  ],
-                  // A walk-run plan is duration-based intervals: its paces are
-                  // not anchored on a 5K time, and a runner who has never run
-                  // has no recent 5K to enter.
-                  if (_showRecent5k) ...[
-                    const SizedBox(height: 12),
-                    _SectionLabel(l10n.planNewRecent5kSection),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _numField(
-                            _recent5kMinCtrl,
-                            (v) => setState(() => _recent5kMin = v),
-                            0,
-                            59,
-                            labelText: l10n.planNewMinutesLabel,
-                          ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(l10n.planNewGoalTimeHint, style: muted),
+                  if (goalAhead != null) ...[
+                    const SizedBox(height: 8),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        l10n.planNewGoalAheadOfRecent(
+                          fmtHms(goalAhead.round()),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _numField(
-                            _recent5kSecCtrl,
-                            (v) => setState(() => _recent5kSec = v),
-                            0,
-                            59,
-                            labelText: l10n.planNewSecondsLabel,
-                            last: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    MetricSentence(
-                      metric: Metric.riegel,
-                      sentence: 'plan',
-                      style: muted,
-                    ),
-                    if (widget.initialRecent5kSec != null &&
-                        _recent5kTotal == widget.initialRecent5kSec &&
-                        !_recent5kConfirmed)
-                      Padding(
-                        key: const Key('plan-new-recent5k-suggested'),
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          l10n.planNewRecent5kSuggested,
-                          style: muted,
+                        key: const Key('plan-new-goal-ahead'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    if (_recent5kComplete)
-                      SwitchListTile(
-                        key: const Key('plan-new-recent5k-confirm'),
-                        value: _recent5kConfirmed,
-                        onChanged: (v) =>
-                            setState(() => _recent5kConfirmed = v),
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l10n.planNewRecent5kConfirm),
-                        subtitle: Text(l10n.planNewRecent5kConfirmHint),
-                      ),
-                    if (_recent5kNeedsConfirm)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          l10n.planNewRecent5kWarning,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                  ],
-                  const SizedBox(height: 16),
-                  _numField(
-                    _weekOverrideCtrl,
-                    (v) => setState(() => _weekOverride = v),
-                    4,
-                    24,
-                    labelText: l10n.planNewOverrideLabel(
-                      _beginnerWalkRun
-                          ? walkRunDefaultWeeks()
-                          : defaultPlanWeeks(_goal, _goalDistanceM),
                     ),
-                    helperText: l10n.planNewOverrideHelp,
-                    last: true,
+                  ],
+                ],
+                if (_startingPoint != _StartingPoint.newRunner) ...[
+                  const SizedBox(height: 12),
+                  CheckboxListTile(
+                    value: _beginnerWalkRun,
+                    onChanged: (v) => setState(() => _setWalkRun(v ?? false)),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(l10n.planNewBeginnerTitle),
+                    subtitle: Text(l10n.planNewBeginnerSubtitle),
                   ),
                 ],
-              ),
+                if (!_beginnerWalkRun) ...[
+                  const SizedBox(height: 12),
+                  ..._recoveryBlock(theme, l10n),
+                ],
+                // A walk-run plan is duration-based intervals: its paces are
+                // not anchored on a 5K time, and a runner who has never run
+                // has no recent 5K to enter.
+                if (_showRecent5k) ...[
+                  const SizedBox(height: 12),
+                  _SectionLabel(l10n.planNewRecent5kSection),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _numField(
+                          _recent5kMinCtrl,
+                          (v) => setState(() => _recent5kMin = v),
+                          0,
+                          59,
+                          labelText: l10n.planNewMinutesLabel,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _numField(
+                          _recent5kSecCtrl,
+                          (v) => setState(() => _recent5kSec = v),
+                          0,
+                          59,
+                          labelText: l10n.planNewSecondsLabel,
+                          last: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  MetricSentence(
+                    metric: Metric.riegel,
+                    sentence: 'plan',
+                    style: muted,
+                  ),
+                  if (widget.initialRecent5kSec != null &&
+                      _recent5kTotal == widget.initialRecent5kSec &&
+                      !_recent5kConfirmed)
+                    Padding(
+                      key: const Key('plan-new-recent5k-suggested'),
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        l10n.planNewRecent5kSuggested,
+                        style: muted,
+                      ),
+                    ),
+                  if (_recent5kComplete)
+                    SwitchListTile(
+                      key: const Key('plan-new-recent5k-confirm'),
+                      value: _recent5kConfirmed,
+                      onChanged: (v) =>
+                          setState(() => _recent5kConfirmed = v),
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(l10n.planNewRecent5kConfirm),
+                      subtitle: Text(l10n.planNewRecent5kConfirmHint),
+                    ),
+                  if (_recent5kNeedsConfirm)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        l10n.planNewRecent5kWarning,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 16),
+                _numField(
+                  _weekOverrideCtrl,
+                  (v) => setState(() => _weekOverride = v),
+                  4,
+                  24,
+                  labelText: l10n.planNewOverrideLabel(
+                    _beginnerWalkRun
+                        ? walkRunDefaultWeeks()
+                        : defaultPlanWeeks(_goal, _goalDistanceM),
+                  ),
+                  helperText: l10n.planNewOverrideHelp,
+                  last: true,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -1548,9 +1545,9 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: cs.onSurfaceVariant,
     );
-    return Card(
+    // Flush: the ExpansionTile owns its insets and its header's ripple.
+    return ListCard.flush(
       key: const Key('plan-new-ai-card'),
-      clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         // Open on arrival only when there is something in it already: a
         // description handed in from the Coach. Otherwise the form leads.
@@ -1681,76 +1678,73 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   /// as its main action.
   Widget _readyMadeCard(ThemeData theme, AppLocalizations l10n) {
     final busy = _creatingStarter || _cloning;
-    return Card(
+    return ListCard(
       key: const Key('plan-new-ready-made'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                l10n.planNewReadyMadeTitle,
-                style: theme.textTheme.titleSmall,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              l10n.planNewReadyMadeTitle,
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.planNewReadyMadeBody,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                key: const Key('plan-new-ready-made-open'),
+                onPressed: busy || _checkingOverlap ? null : _openReadyMade,
+                icon: busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(
+                        Icons.library_books_outlined,
+                        size: AppIconSize.standard,
+                      ),
+                label: Text(
+                  _creatingStarter
+                      ? l10n.planNewStarterCreating
+                      : _cloning
+                      ? l10n.planNewTemplateCloning
+                      : l10n.planNewReadyMadeButton,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.planNewReadyMadeBody,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              TextButton.icon(
+                key: const Key('planNewImport'),
+                onPressed: _importPlan,
+                icon: const Icon(
+                  Icons.content_paste,
+                  size: AppIconSize.standard,
+                ),
+                label: Text(l10n.planNewImportButton),
               ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                OutlinedButton.icon(
-                  key: const Key('plan-new-ready-made-open'),
-                  onPressed: busy || _checkingOverlap ? null : _openReadyMade,
-                  icon: busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(
-                          Icons.library_books_outlined,
-                          size: AppIconSize.standard,
-                        ),
-                  label: Text(
-                    _creatingStarter
-                        ? l10n.planNewStarterCreating
-                        : _cloning
-                        ? l10n.planNewTemplateCloning
-                        : l10n.planNewReadyMadeButton,
-                  ),
+              TextButton.icon(
+                key: const Key('planNewSeason'),
+                onPressed: _openSeason,
+                icon: const Icon(
+                  Icons.event_note,
+                  size: AppIconSize.standard,
                 ),
-                TextButton.icon(
-                  key: const Key('planNewImport'),
-                  onPressed: _importPlan,
-                  icon: const Icon(
-                    Icons.content_paste,
-                    size: AppIconSize.standard,
-                  ),
-                  label: Text(l10n.planNewImportButton),
-                ),
-                TextButton.icon(
-                  key: const Key('planNewSeason'),
-                  onPressed: _openSeason,
-                  icon: const Icon(
-                    Icons.event_note,
-                    size: AppIconSize.standard,
-                  ),
-                  label: Text(l10n.seasonPlanTitle),
-                ),
-              ],
-            ),
-          ],
-        ),
+                label: Text(l10n.seasonPlanTitle),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1851,113 +1845,110 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             ),
           )
         : null;
-    return Card(
+    return ListCard(
       key: const Key('plan-new-preview'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.planNewPreviewTitle,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.planNewPreviewTitle,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
-            if (!isWalkRun) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 6,
-                children: [
-                  _pacePill(theme, l10n.planNewPaceEasy, p.paces.easy),
-                  _pacePill(theme, l10n.planNewPaceMarathon, p.paces.marathon),
-                  _pacePill(theme, l10n.planNewPaceTempo, p.paces.tempo),
-                  _pacePill(theme, l10n.planNewPaceInterval, p.paces.interval),
-                  _pacePill(theme, l10n.planNewPaceRep, p.paces.repetition),
-                ],
-              ),
-              if (p.pacesAreFallback) ...[
-                const SizedBox(height: 8),
-                Text(
-                  l10n.planNewPacesFallback,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+          ),
+          if (!isWalkRun) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 6,
+              children: [
+                _pacePill(theme, l10n.planNewPaceEasy, p.paces.easy),
+                _pacePill(theme, l10n.planNewPaceMarathon, p.paces.marathon),
+                _pacePill(theme, l10n.planNewPaceTempo, p.paces.tempo),
+                _pacePill(theme, l10n.planNewPaceInterval, p.paces.interval),
+                _pacePill(theme, l10n.planNewPaceRep, p.paces.repetition),
               ],
-              if (p.vdot != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        metricText(
-                          l10n,
-                          Metric.vdot,
-                          variant: 'daniels',
-                          args: {
-                            'value': formatFixed(p.vdot!, 1, activeLocaleTag),
-                          },
-                        ),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+            ),
+            if (p.pacesAreFallback) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.planNewPacesFallback,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+            if (p.vdot != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      metricText(
+                        l10n,
+                        Metric.vdot,
+                        variant: 'daniels',
+                        args: {
+                          'value': formatFixed(p.vdot!, 1, activeLocaleTag),
+                        },
+                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const MetricInfoButton(metric: Metric.vdot),
-                  ],
+                  ),
+                  const MetricInfoButton(metric: Metric.vdot),
+                ],
+              ),
+            ],
+          ],
+          if (returnMessage != null)
+            _note(
+              theme,
+              key: const Key('plan-new-return-note'),
+              title: l10n.planNewReturnTitle,
+              body: returnMessage,
+              children: [
+                SwitchListTile(
+                  key: const Key('plan-new-ease-back'),
+                  value: _easeBack,
+                  onChanged: (v) => setState(() => _easeBack = v),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.planNewReturnEaseBack),
+                ),
+                OutlinedButton(
+                  onPressed: () => setState(() => _setWalkRun(true)),
+                  child: Text(l10n.planNewReturnWalkRun),
                 ),
               ],
-            ],
-            if (returnMessage != null)
-              _note(
-                theme,
-                key: const Key('plan-new-return-note'),
-                title: l10n.planNewReturnTitle,
-                body: returnMessage,
-                children: [
-                  SwitchListTile(
-                    key: const Key('plan-new-ease-back'),
-                    value: _easeBack,
-                    onChanged: (v) => setState(() => _easeBack = v),
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(l10n.planNewReturnEaseBack),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => setState(() => _setWalkRun(true)),
-                    child: Text(l10n.planNewReturnWalkRun),
-                  ),
-                ],
-              )
-            else if (rampMessage != null)
-              _note(theme, title: l10n.planNewRampLabel, body: rampMessage)
-            else if (thinHistory != null)
-              _note(
-                theme,
-                key: const Key('plan-new-thin-history'),
-                title: l10n.planNewRampLabel,
-                body: thinHistory,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => setState(() => _setWalkRun(true)),
-                    child: Text(l10n.planNewThinHistoryWalkRun),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 12),
-            Semantics(
-              header: true,
-              child: Text(
-                l10n.planNewWeekOutline,
-                style: theme.textTheme.titleSmall,
-              ),
+            )
+          else if (rampMessage != null)
+            _note(theme, title: l10n.planNewRampLabel, body: rampMessage)
+          else if (thinHistory != null)
+            _note(
+              theme,
+              key: const Key('plan-new-thin-history'),
+              title: l10n.planNewRampLabel,
+              body: thinHistory,
+              children: [
+                OutlinedButton(
+                  onPressed: () => setState(() => _setWalkRun(true)),
+                  child: Text(l10n.planNewThinHistoryWalkRun),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            for (final w in p.weeks) _previewWeek(theme, l10n, w),
-          ],
-        ),
+          const SizedBox(height: 12),
+          Semantics(
+            header: true,
+            child: Text(
+              l10n.planNewWeekOutline,
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          const SizedBox(height: 4),
+          for (final w in p.weeks) _previewWeek(theme, l10n, w),
+        ],
       ),
     );
   }

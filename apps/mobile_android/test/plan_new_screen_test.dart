@@ -18,6 +18,7 @@ import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 import 'editor_layout.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(WidgetTester tester) {
   return tester.pumpWidget(
@@ -1753,5 +1754,14 @@ void main() {
       await tester.pump();
       expect(find.byKey(const Key('plan-new-goal-ahead')), findsNothing);
     });
+  });
+
+  // Its starting-point, ready-made and preview cards are ListCards
+  // (issue #1374).
+  worstCaseTestWidgets('New plan', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+        locale: locale, home: PlanNewScreen(training: TrainingService())));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'New plan');
   });
 }

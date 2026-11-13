@@ -634,10 +634,10 @@ class _SessionExecutionBand extends StatelessWidget {
     // size the step, timer, cue and four buttons outgrow a phone.
     return LayoutBuilder(
       builder: (context, viewport) => SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minHeight: (viewport.maxHeight - 48).clamp(0, double.infinity),
+            minHeight: (viewport.maxHeight - 32).clamp(0, double.infinity),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

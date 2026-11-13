@@ -987,6 +987,79 @@ void main() {
     });
   });
 
+  group('draft (issue #1374 NS-8)', () {
+    testWidgets('a typed message survives leaving the thread and coming back',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+      await _type(tester, 'half a reply');
+      await tester.pumpWidget(const SizedBox());
+      await _pumpThread(tester, api);
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const ValueKey('message-composer')))
+              .controller!
+              .text,
+          'half a reply');
+      expect(_sendButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('a draft stays with its own conversation', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+      await _type(tester, 'for Ada only');
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(_app(MessageThreadScreen(
+        api: api,
+        partnerId: 'p-2',
+        partnerName: 'Grace',
+        pollInterval: _quiet,
+      )));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('for Ada only'), findsNothing);
+    });
+
+    testWidgets('sending clears the draft', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+      await _type(tester, 'sent now');
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await pumpUntil(tester, () => api.sent.isNotEmpty, describe: 'the send');
+      await tester.pump();
+      await tester.pumpWidget(const SizedBox());
+      await _pumpThread(tester, api);
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const ValueKey('message-composer')))
+              .controller!
+              .text,
+          isEmpty);
+    });
+
+    testWidgets('a send that fails after leaving puts the text back as the draft',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..sendGate = Completer<DirectMessageRow>();
+      await _pumpThread(tester, api);
+      await _type(tester, 'lost in transit');
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await tester.pump();
+      await tester.pumpWidget(const SizedBox());
+      api.sendGate!.completeError(Exception('offline'));
+      await tester.pump();
+      api.sendGate = null;
+      await _pumpThread(tester, api);
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const ValueKey('message-composer')))
+              .controller!
+              .text,
+          'lost in transit');
+    });
+  });
+
   group('edit', () {
     DirectMessageRow fresh(String id, {String from = _me, String? body}) =>
         DirectMessageRow(

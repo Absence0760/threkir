@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../auth_error.dart';
 import '../coach_share.dart';
 import '../dm_attachment.dart';
+import '../dm_drafts.dart';
 import '../dm_edit.dart';
 import '../dm_image.dart';
 import '../dm_image_encode.dart';
@@ -241,6 +242,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     _archived = widget.initialArchived ?? false;
     _request = widget.initialRequest ?? false;
     WidgetsBinding.instance.addObserver(this);
+    _composer.text = DmDrafts.read(_draftKey);
     _composer.addListener(_onComposerChanged);
     if (widget.api.userId == null) return;
     _load();
@@ -264,7 +266,13 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     if (state == AppLifecycleState.resumed) _refresh();
   }
 
-  void _onComposerChanged() => setState(() {});
+  String get _draftKey => DmDrafts.directKey(
+      widget.api.userId, widget.partnerId ?? widget.deletedPartnerKey!);
+
+  void _onComposerChanged() {
+    DmDrafts.write(_draftKey, _composer.text);
+    setState(() {});
+  }
 
   bool get _appInForeground {
     final s = WidgetsBinding.instance.lifecycleState;
@@ -945,7 +953,12 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       });
     } catch (e) {
       debugPrint('message send failed: ${safeErrorLabel(e)}');
-      if (!mounted) return;
+      if (!mounted) {
+        // Left mid-send: the text goes back to the draft the thread opens
+        // with next time, rather than vanishing with the failure.
+        if (DmDrafts.read(_draftKey).isEmpty) DmDrafts.write(_draftKey, body);
+        return;
+      }
       setState(() => _pending.remove(pending));
       if (_composer.text.isEmpty) {
         _composer.value = TextEditingValue(

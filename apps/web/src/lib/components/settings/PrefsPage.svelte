@@ -157,7 +157,6 @@
 		.form-grid.zones { grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr)); }
 		.form-stack { display: flex; flex-direction: column; gap: var(--space-md); margin-bottom: var(--space-lg); }
 		.field { display: flex; flex-direction: column; }
-		.checkbox-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; }
 		.hint {
 			display: block;
 			font-size: 0.78rem;

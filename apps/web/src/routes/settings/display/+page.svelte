@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ListRow from '#lib/components/ListRow.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
@@ -339,25 +340,21 @@
 				<p class="hint" id="undo-window-hint">{m('prefs.undoWindowHelp')}</p>
 			</div>
 		</div>
-		<label class="checkbox-row">
-			<input type="checkbox" bind:checked={showCalories} onchange={() => prefs.save({ show_calories: showCalories })} />
-			<span>
-				{m('prefs.showCalories')}
-				<span class="hint">{m('prefs.showCaloriesHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={showMascot}
-				data-testid="show-mascot"
-				onchange={() => prefs.save({ show_mascot: showMascot })}
-			/>
-			<span>
-				{m('prefs.showMascot')}
-				<span class="hint">{m('prefs.showMascotHint')}</span>
-			</span>
-		</label>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.showCalories')}
+			subtitle={m('prefs.showCaloriesHint')}
+			bind:checked={showCalories}
+			onchange={() => prefs.save({ show_calories: showCalories })}
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.showMascot')}
+			subtitle={m('prefs.showMascotHint')}
+			bind:checked={showMascot}
+			testid="show-mascot"
+			onchange={() => prefs.save({ show_mascot: showMascot })}
+		/>
 	</section>
 
 	{#if coachOn}
@@ -386,44 +383,34 @@
 
 	<section class="card" id="gym-nutrition">
 		<SectionHeader label={m('prefs.modalitiesHeading')} class="prefs-section-head" />
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				checked={modalityVisible('gym')}
-				onchange={(e) => pickModality('gym', e.currentTarget.checked)}
-			/>
-			<span>
-				{m('prefs.showGym')}
-				<span class="hint">{m('prefs.showGymHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				checked={modalityVisible('nutrition')}
-				onchange={(e) => pickModality('nutrition', e.currentTarget.checked)}
-			/>
-			<span>
-				{m('prefs.showNutrition')}
-				<span class="hint">{m('prefs.showNutritionHint')}</span>
-			</span>
-		</label>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.showGym')}
+			subtitle={m('prefs.showGymHint')}
+			checked={modalityVisible('gym')}
+			onchange={(on) => pickModality('gym', on)}
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.showNutrition')}
+			subtitle={m('prefs.showNutritionHint')}
+			checked={modalityVisible('nutrition')}
+			onchange={(on) => pickModality('nutrition', on)}
+		/>
 	</section>
 
 	<section class="card" id="home-cards">
 		<SectionHeader label={m('prefs.homeCardsHeading')} class="prefs-section-head" />
 		<p class="hint" id="home-cards-hint">{m('prefs.homeCardsHint')}</p>
 		{#each HIDEABLE_DASHBOARD_CARDS as id (id)}
-			<label class="checkbox-row">
-				<input
-					type="checkbox"
-					checked={!hiddenCards.includes(id)}
-					aria-describedby="home-cards-hint"
-					data-testid="home-card-{id}"
-					onchange={(e) => pickHomeCard(id, e.currentTarget.checked)}
-				/>
-				<span>{m(HOME_CARD_LABELS[id])}</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				title={m(HOME_CARD_LABELS[id])}
+				checked={!hiddenCards.includes(id)}
+				describedby="home-cards-hint"
+				testid="home-card-{id}"
+				onchange={(on) => pickHomeCard(id, on)}
+			/>
 		{/each}
 	</section>
 </PrefsPage>

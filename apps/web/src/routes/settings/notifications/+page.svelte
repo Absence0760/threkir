@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ListRow from '#lib/components/ListRow.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -112,191 +113,131 @@
 				<p class="hint" id="push-notifications-hint">{m('prefs.pushNotifHint')}</p>
 			</div>
 		</div>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyDataExportReady}
-				onchange={() => prefs.save({ notify_data_export_ready: notifyDataExportReady ? 'on' : 'off' })}
-				data-testid="notify-data-export-ready"
-			/>
-			<span>
-				{m('prefs.notifyDataExportReady')}
-				<span class="hint">{m('prefs.notifyDataExportReadyHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyMention}
-				onchange={() => prefs.save({ notify_mention: notifyMention ? 'on' : 'off' })}
-				data-testid="notify-mention"
-			/>
-			<span>
-				{m('prefs.notifyMention')}
-				<span class="hint">{m('prefs.notifyMentionHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyReaction}
-				onchange={() => prefs.save({ notify_reaction: notifyReaction ? 'on' : 'off' })}
-				data-testid="notify-reaction"
-			/>
-			<span>
-				{m('prefs.notifyReaction')}
-				<span class="hint">{m('prefs.notifyReactionHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyCommentLike}
-				onchange={() => prefs.save({ notify_comment_like: notifyCommentLike ? 'on' : 'off' })}
-				data-testid="notify-comment-like"
-			/>
-			<span>
-				{m('prefs.notifyCommentLike')}
-				<span class="hint">{m('prefs.notifyCommentLikeHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyFollowRequest}
-				onchange={() => prefs.save({ notify_follow_request: notifyFollowRequest ? 'on' : 'off' })}
-				data-testid="notify-follow-request"
-			/>
-			<span>
-				{m('prefs.notifyFollowRequest')}
-				<span class="hint">{m('prefs.notifyFollowRequestHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyEventRsvp}
-				onchange={() => prefs.save({ notify_event_rsvp: notifyEventRsvp ? 'on' : 'off' })}
-				data-testid="notify-event-rsvp"
-			/>
-			<span>
-				{m('prefs.notifyEventRsvp')}
-				<span class="hint">{m('prefs.notifyEventRsvpHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyClubJoinRequest}
-				onchange={() => prefs.save({ notify_club_join_request: notifyClubJoinRequest ? 'on' : 'off' })}
-				data-testid="notify-club-join-request"
-			/>
-			<span>
-				{m('prefs.notifyClubJoinRequest')}
-				<span class="hint">{m('prefs.notifyClubJoinRequestHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyClubJoinApproved}
-				onchange={() => prefs.save({ notify_club_join_approved: notifyClubJoinApproved ? 'on' : 'off' })}
-				data-testid="notify-club-join-approved"
-			/>
-			<span>
-				{m('prefs.notifyClubJoinApproved')}
-				<span class="hint">{m('prefs.notifyClubJoinApprovedHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyEventUpdated}
-				onchange={() => prefs.save({ notify_event_updated: notifyEventUpdated ? 'on' : 'off' })}
-				data-testid="notify-event-updated"
-			/>
-			<span>
-				{m('prefs.notifyEventUpdated')}
-				<span class="hint">{m('prefs.notifyEventUpdatedHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyCourseAlert}
-				onchange={() => prefs.save({ notify_course_alert: notifyCourseAlert ? 'on' : 'off' })}
-				data-testid="notify-course-alert"
-			/>
-			<span>
-				{m('prefs.notifyCourseAlert')}
-				<span class="hint">{m('prefs.notifyCourseAlertHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyRaceStartingSoon}
-				onchange={() => prefs.save({ notify_race_starting_soon: notifyRaceStartingSoon ? 'on' : 'off' })}
-				data-testid="notify-race-starting-soon"
-			/>
-			<span>
-				{m('prefs.notifyRaceStartingSoon')}
-				<span class="hint">{m('prefs.notifyRaceStartingSoonHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={notifyWorkoutReminder}
-				onchange={() => prefs.save({ notify_workout_reminder: notifyWorkoutReminder ? 'on' : 'off' })}
-				data-testid="notify-workout-reminder"
-			/>
-			<span>
-				{m('prefs.notifyWorkoutReminder')}
-				<span class="hint">{m('prefs.notifyWorkoutReminderHint')}</span>
-			</span>
-		</label>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={emailNewDeviceAlerts}
-				onchange={() => prefs.save({ email_new_device_alerts: emailNewDeviceAlerts ? 'on' : 'off' })}
-				data-testid="email-new-device-alerts"
-			/>
-			<span>
-				{m('prefs.emailNewDeviceAlerts')}
-				<span class="hint">{m('prefs.emailNewDeviceAlertsHint')}</span>
-			</span>
-		</label>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyDataExportReady')}
+			subtitle={m('prefs.notifyDataExportReadyHint')}
+			bind:checked={notifyDataExportReady}
+			onchange={() => prefs.save({ notify_data_export_ready: notifyDataExportReady ? 'on' : 'off' })}
+			testid="notify-data-export-ready"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyMention')}
+			subtitle={m('prefs.notifyMentionHint')}
+			bind:checked={notifyMention}
+			onchange={() => prefs.save({ notify_mention: notifyMention ? 'on' : 'off' })}
+			testid="notify-mention"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyReaction')}
+			subtitle={m('prefs.notifyReactionHint')}
+			bind:checked={notifyReaction}
+			onchange={() => prefs.save({ notify_reaction: notifyReaction ? 'on' : 'off' })}
+			testid="notify-reaction"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyCommentLike')}
+			subtitle={m('prefs.notifyCommentLikeHint')}
+			bind:checked={notifyCommentLike}
+			onchange={() => prefs.save({ notify_comment_like: notifyCommentLike ? 'on' : 'off' })}
+			testid="notify-comment-like"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyFollowRequest')}
+			subtitle={m('prefs.notifyFollowRequestHint')}
+			bind:checked={notifyFollowRequest}
+			onchange={() => prefs.save({ notify_follow_request: notifyFollowRequest ? 'on' : 'off' })}
+			testid="notify-follow-request"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyEventRsvp')}
+			subtitle={m('prefs.notifyEventRsvpHint')}
+			bind:checked={notifyEventRsvp}
+			onchange={() => prefs.save({ notify_event_rsvp: notifyEventRsvp ? 'on' : 'off' })}
+			testid="notify-event-rsvp"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyClubJoinRequest')}
+			subtitle={m('prefs.notifyClubJoinRequestHint')}
+			bind:checked={notifyClubJoinRequest}
+			onchange={() => prefs.save({ notify_club_join_request: notifyClubJoinRequest ? 'on' : 'off' })}
+			testid="notify-club-join-request"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyClubJoinApproved')}
+			subtitle={m('prefs.notifyClubJoinApprovedHint')}
+			bind:checked={notifyClubJoinApproved}
+			onchange={() => prefs.save({ notify_club_join_approved: notifyClubJoinApproved ? 'on' : 'off' })}
+			testid="notify-club-join-approved"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyEventUpdated')}
+			subtitle={m('prefs.notifyEventUpdatedHint')}
+			bind:checked={notifyEventUpdated}
+			onchange={() => prefs.save({ notify_event_updated: notifyEventUpdated ? 'on' : 'off' })}
+			testid="notify-event-updated"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyCourseAlert')}
+			subtitle={m('prefs.notifyCourseAlertHint')}
+			bind:checked={notifyCourseAlert}
+			onchange={() => prefs.save({ notify_course_alert: notifyCourseAlert ? 'on' : 'off' })}
+			testid="notify-course-alert"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyRaceStartingSoon')}
+			subtitle={m('prefs.notifyRaceStartingSoonHint')}
+			bind:checked={notifyRaceStartingSoon}
+			onchange={() => prefs.save({ notify_race_starting_soon: notifyRaceStartingSoon ? 'on' : 'off' })}
+			testid="notify-race-starting-soon"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.notifyWorkoutReminder')}
+			subtitle={m('prefs.notifyWorkoutReminderHint')}
+			bind:checked={notifyWorkoutReminder}
+			onchange={() => prefs.save({ notify_workout_reminder: notifyWorkoutReminder ? 'on' : 'off' })}
+			testid="notify-workout-reminder"
+		/>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.emailNewDeviceAlerts')}
+			subtitle={m('prefs.emailNewDeviceAlertsHint')}
+			bind:checked={emailNewDeviceAlerts}
+			onchange={() => prefs.save({ email_new_device_alerts: emailNewDeviceAlerts ? 'on' : 'off' })}
+			testid="email-new-device-alerts"
+		/>
 	</section>
 
 	<section class="card">
 		<SectionHeader label={m('prefs.optionalEmailsHeading')} class="prefs-section-head" />
 		<div class="form-stack">
-			<label class="checkbox-row">
-				<input
-					type="checkbox"
-					bind:checked={emailWeeklyDigest}
-					onchange={() => setEngagementPref('email_weekly_digest', emailWeeklyDigest)}
-					data-testid="email-weekly-digest"
-				/>
-				<span>
-					{m('prefs.emailWeeklyDigest')}
-					<span class="hint">{m('prefs.emailWeeklyDigestHint')}</span>
-				</span>
-			</label>
-			<label class="checkbox-row">
-				<input
-					type="checkbox"
-					bind:checked={emailLifecycleDrip}
-					onchange={() => setEngagementPref('email_lifecycle_drip', emailLifecycleDrip)}
-					data-testid="email-lifecycle-drip"
-				/>
-				<span>
-					{m('prefs.emailLifecycleDrip')}
-					<span class="hint">{m('prefs.emailLifecycleDripHint')}</span>
-				</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				title={m('prefs.emailWeeklyDigest')}
+				subtitle={m('prefs.emailWeeklyDigestHint')}
+				bind:checked={emailWeeklyDigest}
+				onchange={() => setEngagementPref('email_weekly_digest', emailWeeklyDigest)}
+				testid="email-weekly-digest"
+			/>
+			<ListRow
+				kind="toggle"
+				title={m('prefs.emailLifecycleDrip')}
+				subtitle={m('prefs.emailLifecycleDripHint')}
+				bind:checked={emailLifecycleDrip}
+				onchange={() => setEngagementPref('email_lifecycle_drip', emailLifecycleDrip)}
+				testid="email-lifecycle-drip"
+			/>
 		</div>
 	</section>
 </PrefsPage>

@@ -3,6 +3,7 @@
 	// #1215 Phase 4). Off until the athlete turns it on; turning it off
 	// withdraws at once. The copy names every lane COACH_ASSIST_REGISTRY sends.
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import ListRow from '#lib/components/ListRow.svelte';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { setCoachAiAssistConsent } from '#lib/core/data.ts';
 	import { COACH_ASSIST_CONSENT_VERSION } from '#lib/coach/assist/consent.ts';
@@ -35,17 +36,14 @@
 </script>
 
 <div class="assist-consent" data-testid="coach-assist-consent">
-	<label class="switch-row">
-		<input
-			type="checkbox"
-			role="switch"
-			checked={on}
-			disabled={busy}
-			onchange={() => void toggle()}
-			data-testid="coach-assist-consent-toggle"
-		/>
-		<span>{m('coachAssist.consentToggle', { name: coachName })}</span>
-	</label>
+	<ListRow
+		kind="toggle"
+		title={m('coachAssist.consentToggle', { name: coachName })}
+		checked={on}
+		disabled={busy}
+		onchange={() => void toggle()}
+		testid="coach-assist-consent-toggle"
+	/>
 	<details>
 		<summary>{m('coachAssist.consentWhat')}</summary>
 		<p>
@@ -70,11 +68,6 @@
 		gap: var(--space-xs);
 		font-size: 0.85rem;
 		padding-inline-start: 3rem;
-	}
-	.switch-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-xs);
 	}
 	details p,
 	details ul {

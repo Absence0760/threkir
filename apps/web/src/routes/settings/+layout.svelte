@@ -9,6 +9,7 @@
 	import { searchSettings } from '#lib/settings/settings_search.ts';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
+	import ListRow from '#lib/components/ListRow.svelte';
 
 	type Tab = { href: string; label: string; icon: string };
 	type Section = { label: string; tabs: Tab[] };
@@ -104,10 +105,14 @@
 			<ul class="search-results" data-testid="settings-search-results" aria-label={m('settingsLayout.searchLabel')}>
 				{#each results as hit (hit.href + hit.title)}
 					<li>
-						<a href={hit.href} class="nav-item search-hit" onclick={() => (query = '')} data-testid="settings-search-result">
-							<span class="hit-title">{hit.title}</span>
-							<span class="hit-where">{hit.where}</span>
-						</a>
+						<ListRow
+							kind="nav"
+							title={hit.title}
+							subtitle={hit.where}
+							href={hit.href}
+							onclick={() => (query = '')}
+							testid="settings-search-result"
+						/>
 					</li>
 				{/each}
 			</ul>
@@ -203,16 +208,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
-	}
-	.search-hit {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0;
-	}
-	.hit-where {
-		font-size: 0.78rem;
-		font-weight: 400;
-		color: var(--color-text-secondary);
 	}
 	.search-empty {
 		margin: var(--space-xs) 0.75rem;

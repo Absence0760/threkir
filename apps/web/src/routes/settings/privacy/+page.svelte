@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ListRow from '#lib/components/ListRow.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
@@ -208,54 +209,46 @@
 				</label>
 				<p class="hint" id="default-visibility-hint">{m('prefs.defaultVisibilityHint')}</p>
 			</div>
-			<label class="checkbox-row">
-				<input type="checkbox" bind:checked={stravaAutoShare} onchange={() => prefs.save({ strava_auto_share: stravaAutoShare })} />
-				<span>
-					{m('prefs.autoPushStrava')}
-					<span class="hint">{m('prefs.autoPushStravaHint')}</span>
-				</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				title={m('prefs.autoPushStrava')}
+				subtitle={m('prefs.autoPushStravaHint')}
+				bind:checked={stravaAutoShare}
+				onchange={() => prefs.save({ strava_auto_share: stravaAutoShare })}
+			/>
 		</div>
 	</section>
 
 	<section class="card">
 		<SectionHeader label={m('prefs.beingFoundHeading')} class="prefs-section-head" />
 		<div class="form-stack">
-			<label class="checkbox-row">
-				<input
-					type="checkbox"
-					data-testid="private-profile-toggle"
-					bind:checked={profilePrivate}
-					disabled={profilePrivateSaving}
-					onchange={saveProfilePrivate}
-				/>
-				<span>
-					{m('prefs.privateProfile')}
-					<span class="hint">{m('prefs.privateProfileHint')}</span>
-				</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				title={m('prefs.privateProfile')}
+				subtitle={m('prefs.privateProfileHint')}
+				testid="private-profile-toggle"
+				bind:checked={profilePrivate}
+				disabled={profilePrivateSaving}
+				onchange={saveProfilePrivate}
+			/>
 			{#if profilePrivate}
 				<a class="link-row" href="/follow-requests">{m('prefs.followRequestsLink')}</a>
 			{/if}
-			<label class="checkbox-row">
-				<input type="checkbox" bind:checked={discoverableInSearch} onchange={() => prefs.save({ discoverable_in_search: discoverableInSearch })} />
-				<span>
-					{m('prefs.showInSearch')}
-					<span class="hint">{m('prefs.showInSearchHint')}</span>
-				</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				title={m('prefs.showInSearch')}
+				subtitle={m('prefs.showInSearchHint')}
+				bind:checked={discoverableInSearch}
+				onchange={() => prefs.save({ discoverable_in_search: discoverableInSearch })}
+			/>
 			{#if NEARBY_RUNNERS_ENABLED}
-				<label class="checkbox-row">
-					<input
-						type="checkbox"
-						bind:checked={discoverableNearby}
-						onchange={() => prefs.save({ discoverable_nearby: discoverableNearby })}
-					/>
-					<span>
-						{m('prefs.discoverableNearby')}
-						<span class="hint">{m('prefs.discoverableNearbyHint')}</span>
-					</span>
-				</label>
+				<ListRow
+					kind="toggle"
+					title={m('prefs.discoverableNearby')}
+					subtitle={m('prefs.discoverableNearbyHint')}
+					bind:checked={discoverableNearby}
+					onchange={() => prefs.save({ discoverable_nearby: discoverableNearby })}
+				/>
 				<div class="nearby-area">
 					<span class="label-text">{m('prefs.nearbyAreaLabel')}</span>
 					<p class="hint" id="nearby-area-status" data-testid="nearby-area-status">
@@ -298,32 +291,24 @@
 	<section class="card">
 		<SectionHeader label={m('prefs.messagesHeading')} class="prefs-section-head" />
 		<div class="form-stack">
-			<label class="checkbox-row">
-				<input
-					type="checkbox"
-					data-testid="read-receipts-toggle"
-					bind:checked={readReceipts}
-					disabled={readReceiptsSaving}
-					onchange={saveReadReceipts}
-				/>
-				<span>
-					{m('prefs.readReceipts')}
-					<span class="hint">{m('prefs.readReceiptsHint')}</span>
-				</span>
-			</label>
-			<label class="checkbox-row">
-				<input
-					type="checkbox"
-					data-testid="message-requests-toggle"
-					bind:checked={messageRequests}
-					disabled={messageRequestsSaving}
-					onchange={saveMessageRequests}
-				/>
-				<span>
-					{m('prefs.messageRequests')}
-					<span class="hint">{m('prefs.messageRequestsHint')}</span>
-				</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				title={m('prefs.readReceipts')}
+				subtitle={m('prefs.readReceiptsHint')}
+				testid="read-receipts-toggle"
+				bind:checked={readReceipts}
+				disabled={readReceiptsSaving}
+				onchange={saveReadReceipts}
+			/>
+			<ListRow
+				kind="toggle"
+				title={m('prefs.messageRequests')}
+				subtitle={m('prefs.messageRequestsHint')}
+				testid="message-requests-toggle"
+				bind:checked={messageRequests}
+				disabled={messageRequestsSaving}
+				onchange={saveMessageRequests}
+			/>
 		</div>
 	</section>
 

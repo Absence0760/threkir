@@ -35,6 +35,10 @@ export interface RecapSlideFormat {
 	monthLetter: (month: number) => string;
 	/// Grouped whole number in the reader's locale.
 	count: (n: number) => string;
+	/// The reader's distance unit and number locale, for badge words that name
+	/// a distance ("26.2 mi in one run").
+	unit: 'km' | 'mi';
+	locale?: string;
 	url: string;
 }
 
@@ -115,7 +119,7 @@ export function recapSlides(recap: YearInRunningRecap, f: RecapSlideFormat): Rec
 			kind: 'badges',
 			label: t('recap.trophies'),
 			sub: t('recap.earnedInYear', { n: recap.badges.length, year: recap.year }),
-			items: recap.badges.slice(0, MAX_BADGES).map((b) => recapBadgeText(b, t).label),
+			items: recap.badges.slice(0, MAX_BADGES).map((b) => recapBadgeText(b, t, f.unit, f.locale).label),
 		});
 	}
 	return [

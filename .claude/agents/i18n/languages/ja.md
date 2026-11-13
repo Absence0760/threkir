@@ -87,6 +87,7 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | AI disclosure | **AIに関する説明** | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「AIの説明」, which collides with 「AIによる説明」 (an AI description) |
 | waitlist | **キャンセル待ち** everywhere — status 「キャンセル待ち」, 「満員 · キャンセル待ち{n}人」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 補欠 |
 | safety contact | **緊急連絡先** everywhere, including 「緊急連絡先のみ」 on the live view | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 安全連絡先 |
+| payouts (a host or fundraiser receiving money: the Payouts page and tab, "Set up payouts", the payout account) | **受け取り** — 「受け取り」, 「受け取りを設定」, 「受け取りの設定を完了する」, 「受け取りアカウント」 | settled 2026-11-13 (#1374 round 3.7), web (mobile has no payouts surface); never 支払い for this, which reads as money paid out by the reader. 支払い / お支払い stays for a reader paying (「お支払いで確定します」, 支払い方法) and 決済 for payment processing (「まだ決済が設定されていません」) |
 | form (TSB), fitness and form | **調子** — 「TSB（調子）」「フィットネス、疲労、調子」「体力と調子」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; コンディション stays for route conditions and Readiness, so it is never form |
 | finish | ゴール (finish line), フィニッシュ (roadbook), 完走 (finished a race), 終了 (ended), 完了 (completed) | mixed — inconsistency 3 |
 | DNF | DNF | web `liveEvent.statusDnf` 「途中棄権」 |

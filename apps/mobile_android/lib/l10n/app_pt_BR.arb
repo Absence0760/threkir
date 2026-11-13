@@ -2262,8 +2262,10 @@
   "coachSessionExpired": "Sua sessão expirou. Por favor, entre novamente.",
   "coachDailyLimitError": "Limite diário atingido ({limit} mensagens). Volte amanhã!",
   "coachGenericError": "Erro do Coach ({code})",
+  "coachUnavailable": "O Coach está indisponível no momento. Tente novamente daqui a pouco.",
+  "coachStaleThread": "Esta conversa está desatualizada. Reabra o Coach e tente novamente.",
   "coachTransportError": "Não foi possível alcançar o Coach. Verifique sua conexão e tente novamente.",
-  "coachStreamFailed": "falha no fluxo",
+  "coachStreamFailed": "A resposta do Coach foi interrompida. Envie sua mensagem de novo.",
   "coachNewConversationFailed": "Não foi possível iniciar uma nova conversa.",
   "coachOpenArchiveFailed": "Não foi possível abrir o arquivo.",
   "coachJumpToLatest": "Ir para a última mensagem",
@@ -3462,7 +3464,7 @@
       }
     }
   },
-  "gymRecordsSessions": "{count, plural, one{{count} sessão} other{{count} sessões}}",
+  "gymRecordsSessions": "{count, plural, one{{count} treino} other{{count} treinos}}",
   "@gymRecordsSessions": {
     "description": "Records card: distinct session count for an exercise",
     "placeholders": {
@@ -3473,7 +3475,7 @@
   },
   "gymExerciseBack": "Voltar aos recordes",
   "gymExerciseEmpty": "Ainda não há histórico deste exercício.",
-  "gymSinceFirstUp": "+{delta} desde a primeira sessão",
+  "gymSinceFirstUp": "+{delta} desde o primeiro treino",
   "@gymSinceFirstUp": {
     "description": "Exercise progression: est-1RM gain since first session",
     "placeholders": {
@@ -3482,7 +3484,7 @@
       }
     }
   },
-  "gymSinceFirstDown": "−{delta} desde a primeira sessão",
+  "gymSinceFirstDown": "−{delta} desde o primeiro treino",
   "@gymSinceFirstDown": {
     "description": "Exercise progression: est-1RM loss since first session",
     "placeholders": {
@@ -3491,7 +3493,7 @@
       }
     }
   },
-  "gymSinceFirstFlat": "sem mudança desde a primeira sessão",
+  "gymSinceFirstFlat": "sem mudança desde o primeiro treino",
   "gymDetailLastTime": "Última vez {date}",
   "@gymDetailLastTime": {
     "description": "Workout detail: vs-last-time hint date for an exercise",
@@ -3816,7 +3818,7 @@
   },
   "nutritionGoalLine": "Meta diária",
   "nutritionGoalBreakdown": "Meta {base} + {exercise} kcal queimadas hoje",
-  "dashGymReadinessIncluded": "Suas sessões recentes de musculação entram na sua fadiga.",
+  "dashGymReadinessIncluded": "Seus treinos de academia recentes entram na sua fadiga.",
   "dashGymReadinessExcluded": "A carga da musculação fica de fora da sua prontidão para correr.",
   "prefsExcludeGymFromReadiness": "Excluir a carga da musculação da prontidão para correr",
   "prefsExcludeGymFromReadinessHint": "Por padrão, os treinos de academia aumentam sua fadiga e reduzem sua prontidão, como uma corrida. Ative isto para que seu condicionamento, fadiga e forma se baseiem apenas nas corridas.",
@@ -4464,6 +4466,7 @@
   "badgesEmptyOther": "Ainda não há medalhas públicas.",
   "badgesEarnedOn": "Conquistada em {date}",
   "badgesFeedEarned": "{name} conquistou a medalha {badge}",
+  "feedBadgesLoadFailed": "Não foi possível carregar as últimas medalhas das pessoas que você segue.",
   "badgesARunner": "Um corredor",
   "badgesTierBronze": "Bronze",
   "badgesTierSilver": "Prata",

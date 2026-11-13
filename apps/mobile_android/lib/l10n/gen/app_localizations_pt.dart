@@ -8467,11 +8467,20 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'O Coach está indisponível de momento. Tente novamente daqui a pouco.';
+
+  @override
+  String get coachStaleThread =>
+      'Esta conversa está desatualizada. Volte a abrir o Coach e tente novamente.';
+
+  @override
   String get coachTransportError =>
       'Não foi possível alcançar o Coach. Verifique a sua ligação e tente novamente.';
 
   @override
-  String get coachStreamFailed => 'falha no fluxo';
+  String get coachStreamFailed =>
+      'A resposta do Coach foi interrompida. Volte a enviar a sua mensagem.';
 
   @override
   String get coachNewConversationFailed =>
@@ -16184,6 +16193,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get feedBadgesLoadFailed =>
+      'Não foi possível carregar as últimas medalhas das pessoas que segue.';
+
+  @override
   String get badgesARunner => 'Um corredor';
 
   @override
@@ -16782,7 +16795,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsCueGuidedRunInfo =>
-      'Só fica ativo quando escolhe uma corrida guiada no ecrã de gravação antes de começar. Anuncia cada dica do guião ao chegar à sua marca. Exemplo: “Cinco minutos. Estabilize num ritmo que aguentaria o dia todo.”';
+      'Só fica ativo quando escolhe uma corrida guiada no ecrã de gravação antes de começar. Anuncia cada dica do guião ao chegar à sua marca. Exemplo: “Cinco minutos de corrida. Estabilize num ritmo que aguentaria o dia todo.”';
 
   @override
   String get runGuidedRun => 'Corrida guiada';
@@ -21101,7 +21114,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get streamerOverlayLinkChanged =>
-      'Guardado. A ligação mudou: copie-a de novo para a sua app de streaming.';
+      'Guardado. A ligação mudou: copie-a de novo para a sua app de transmissão.';
 
   @override
   String get streamerOverlaySaveFailed =>
@@ -31536,11 +31549,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String get coachUnavailable =>
+      'O Coach está indisponível no momento. Tente novamente daqui a pouco.';
+
+  @override
+  String get coachStaleThread =>
+      'Esta conversa está desatualizada. Reabra o Coach e tente novamente.';
+
+  @override
   String get coachTransportError =>
       'Não foi possível alcançar o Coach. Verifique sua conexão e tente novamente.';
 
   @override
-  String get coachStreamFailed => 'falha no fluxo';
+  String get coachStreamFailed =>
+      'A resposta do Coach foi interrompida. Envie sua mensagem de novo.';
 
   @override
   String get coachNewConversationFailed =>
@@ -35953,8 +35975,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count sessões',
-      one: '$count sessão',
+      other: '$count treinos',
+      one: '$count treino',
     );
     return '$_temp0';
   }
@@ -35967,16 +35989,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String gymSinceFirstUp(String delta) {
-    return '+$delta desde a primeira sessão';
+    return '+$delta desde o primeiro treino';
   }
 
   @override
   String gymSinceFirstDown(String delta) {
-    return '−$delta desde a primeira sessão';
+    return '−$delta desde o primeiro treino';
   }
 
   @override
-  String get gymSinceFirstFlat => 'sem mudança desde a primeira sessão';
+  String get gymSinceFirstFlat => 'sem mudança desde o primeiro treino';
 
   @override
   String gymDetailLastTime(String date) {
@@ -36885,7 +36907,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashGymReadinessIncluded =>
-      'Suas sessões recentes de musculação entram na sua fadiga.';
+      'Seus treinos de academia recentes entram na sua fadiga.';
 
   @override
   String get dashGymReadinessExcluded =>
@@ -39240,6 +39262,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String badgesFeedEarned(String name, String badge) {
     return '$name conquistou a medalha $badge';
   }
+
+  @override
+  String get feedBadgesLoadFailed =>
+      'Não foi possível carregar as últimas medalhas das pessoas que você segue.';
 
   @override
   String get badgesARunner => 'Um corredor';

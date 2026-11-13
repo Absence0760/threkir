@@ -4492,7 +4492,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailAiAttribution =>
-      'Von KI aus den Streckendaten verfasst';
+      'Von KI aus den Daten dieser Route verfasst';
 
   @override
   String get routeDetailDescribeFailed =>
@@ -8482,11 +8482,20 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'Der Coach ist gerade nicht erreichbar. Versuche es gleich noch einmal.';
+
+  @override
+  String get coachStaleThread =>
+      'Diese Unterhaltung ist nicht mehr aktuell. Öffne den Coach erneut und versuche es noch einmal.';
+
+  @override
   String get coachTransportError =>
       'Coach konnte nicht erreicht werden. Prüfe deine Verbindung und versuche es erneut.';
 
   @override
-  String get coachStreamFailed => 'Stream fehlgeschlagen';
+  String get coachStreamFailed =>
+      'Die Antwort des Coachs wurde abgebrochen. Sende deine Nachricht noch einmal.';
 
   @override
   String get coachNewConversationFailed =>
@@ -11545,7 +11554,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventEditorCategoryHint =>
-      'Wähle die Art des Events – ein Kurs oder Treffen lässt Strecke, Distanz, Tempo und Rennergebnisse weg.';
+      'Wähle die Art des Events – ein Kurs oder Treffen lässt Route, Distanz, Tempo und Rennergebnisse weg.';
 
   @override
   String get eventEditorMembersOnlyToggle => 'Nur für Mitglieder';
@@ -16026,7 +16035,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get integrationsChronotrackConnect =>
-      'Rennergebnisse von ChronoTrack-gemessenen Events importieren.';
+      'Ergebnisse von Rennen mit ChronoTrack-Zeitmessung importieren.';
 
   @override
   String get integrationsChronotrackOpen => 'Rennkalender öffnen';
@@ -16192,6 +16201,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String badgesFeedEarned(String name, String badge) {
     return '$name hat das Abzeichen $badge erhalten';
   }
+
+  @override
+  String get feedBadgesLoadFailed =>
+      'Die neuesten Abzeichen von Leuten, denen du folgst, konnten nicht geladen werden.';
 
   @override
   String get badgesARunner => 'Ein Läufer';
@@ -21324,7 +21337,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailLineLoadFailed =>
-      'Die Streckenlinie konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+      'Die Linie der Route konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get routeDetailLineEmpty =>

@@ -34,7 +34,11 @@ import { stripComments, stripSvelteComments } from '../core/strip_comments';
  *      catalogue key, which `errorCopy` renders; a refusal code is compared
  *      through `refusalCode(e)`;
  *   5. the shapes of 2 and 3 on a reader result's `.error` (`res.error.message`,
- *      `String(res.error)`, `${res.error}`), and `{res.error}` in markup.
+ *      `String(res.error)`, `${res.error}`), and `{res.error}` in markup;
+ *   6. a parsed response or stream event's own `message` (`parsed.message`,
+ *      `body.message`, `json.message`, `payload.message`). The Coach's
+ *      mid-stream `error` event once put the server's text in front of the
+ *      reader that way (§ 2509: the Coach never shows a server body).
  *
  * The data layer gets one check of its own: a reader in `core/data.ts` hands
  * back the failure, never its text. `{ rows, error: string }` put PostgREST's
@@ -84,6 +88,7 @@ const ALLOWED: Record<string, { hits: number; reason: string }> = {
 const CAUGHT = '(?:e|err|error|ex|caught|failure|upErr|uploadErr|saveErr|loadErr)';
 /// A reader result's failure: `res.error`, `planRes?.error`.
 const RESULT_ERROR = '[\\w$]+\\??\\.error';
+const SERVER_BODY = '(?:parsed|payload|body|json|resBody|errBody|errorBody)';
 
 const DATA_LAYER = 'src/lib/core/data.ts';
 
@@ -185,7 +190,10 @@ export function findRawErrorText(src: string): string[] {
 	const stringified = new RegExp(`\\bString\\(\\s*${CAUGHT}\\s*\\)|\\$\\{\\s*${CAUGHT}\\s*\\}`, 'g');
 	for (const m of src.matchAll(stringified)) push(m.index!, m[0]);
 
-	const resultMessage = new RegExp(`(?<![\\w$.])${RESULT_ERROR}\\??\\.message\\b`, 'g');
+	const resultMessage = new RegExp(
+		`(?<![\\w$.])(?:${RESULT_ERROR}|${SERVER_BODY})\\??\\.message\\b`,
+		'g',
+	);
 	for (const m of src.matchAll(resultMessage)) {
 		const before = src.slice(Math.max(0, m.index! - 12), m.index!);
 		const after = src.slice(m.index! + m[0].length, m.index! + m[0].length + 16);
@@ -283,6 +291,8 @@ test('the scanner bites on every raw shape and passes the safe ones', () => {
 		'<span class="error-detail">{res.error}</span>',
 		"error = appErrorMessage(e) ?? m('clubJoin.invalidOrExpired');",
 		"const code = appErrorMessage(e) ?? '';",
+		"error = (parsed.message as string) ?? t('coachChat.errorStreamFailed');",
+		'banner = body?.message;',
 	];
 	for (const src of bites) assert.ok(findRawErrorText(src).length > 0, `must flag: ${src}`);
 	const passes = [
@@ -299,6 +309,7 @@ test('the scanner bites on every raw shape and passes the safe ones', () => {
 		"if (res.error?.message === 'x') return;",
 		"error = errorCopy(e, m, 'clubJoin.invalidOrExpired', 'clubJoin.invalidOrExpired');",
 		"const code = refusalCode(e);",
+		"if (parsed.message === 'cap_reached') capped = true;",
 	];
 	for (const src of passes) assert.deepEqual(findRawErrorText(src), [], `must pass: ${src}`);
 });

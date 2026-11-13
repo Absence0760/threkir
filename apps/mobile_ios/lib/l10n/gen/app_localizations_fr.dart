@@ -841,7 +841,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get readinessReasonOverTapered =>
-      'Trop affûté — le tranchant peut s\'émousser';
+      'Trop affûté — vous risquez de perdre du mordant';
 
   @override
   String get readinessReasonVeryLittleSleep =>
@@ -8483,11 +8483,20 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'Le Coach est indisponible pour le moment. Réessayez dans un instant.';
+
+  @override
+  String get coachStaleThread =>
+      'Cette conversation n\'est plus à jour. Rouvrez le Coach et réessayez.';
+
+  @override
   String get coachTransportError =>
       'Impossible de joindre Coach. Vérifiez votre connexion et réessayez.';
 
   @override
-  String get coachStreamFailed => 'échec du flux';
+  String get coachStreamFailed =>
+      'La réponse du Coach a été interrompue. Renvoyez votre message.';
 
   @override
   String get coachNewConversationFailed =>
@@ -16205,6 +16214,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String badgesFeedEarned(String name, String badge) {
     return '$name a obtenu le badge $badge';
   }
+
+  @override
+  String get feedBadgesLoadFailed =>
+      'Impossible de charger les derniers badges des personnes que vous suivez.';
 
   @override
   String get badgesARunner => 'Un coureur';

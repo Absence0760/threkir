@@ -52,6 +52,16 @@ import 'message_thread_screen.dart';
 import 'plan_new_screen.dart';
 import 'races_screen.dart';
 
+/// The banner for a refused `/api/coach` request other than the daily cap,
+/// always from the catalogue: the response body is English for logs and is
+/// never shown (§ 2509). Twin of the status ladder in web's `CoachChat`.
+String coachHttpErrorCopy(AppLocalizations l10n, int status) {
+  if (status == 401) return l10n.coachSessionExpired;
+  if (status == 409) return l10n.coachStaleThread;
+  if (status >= 500) return l10n.coachUnavailable;
+  return l10n.coachGenericError(status);
+}
+
 /// Truncate a coach message to a sidebar-thread title. Strips repeated
 /// whitespace so multi-line user prompts collapse to a single line, then
 /// caps at 48 chars with an ellipsis. Pure helper — used by the active
@@ -812,17 +822,15 @@ class _CoachScreenState extends State<CoachScreen> {
                 _dailyLimit = (j['limit'] as num).toInt();
               }
             });
-            showTopBanner(
-                context,
-                (j['message'] as String?) ??
-                    l10n.coachDailyLimitError(_dailyLimit));
+            showTopBanner(context, l10n.coachDailyLimitError(_dailyLimit));
           }
         } else {
           if (mounted) {
+            // Every status maps to catalogue copy: the server's `error` /
+            // `message` fields are English and are for logs (§ 2509).
             showTopBanner(
               context,
-              (j['error'] as String?) ??
-                  l10n.coachGenericError(res.statusCode),
+              coachHttpErrorCopy(l10n, res.statusCode),
               duration: const Duration(seconds: 6),
               actionLabel: l10n.errorStateRetry,
               onAction: () => _retryTurn(
@@ -956,10 +964,7 @@ class _CoachScreenState extends State<CoachScreen> {
         setState(() => _messages[assistantIdx].id = id);
       }
     } else if (event == 'error') {
-      showTopBanner(
-          context,
-          (data['message'] as String?) ??
-              AppLocalizations.of(context).coachStreamFailed);
+      showTopBanner(context, AppLocalizations.of(context).coachStreamFailed);
     }
   }
 

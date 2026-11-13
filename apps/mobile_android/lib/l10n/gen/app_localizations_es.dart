@@ -8458,11 +8458,20 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'El Coach no está disponible ahora mismo. Vuelve a intentarlo en un momento.';
+
+  @override
+  String get coachStaleThread =>
+      'Esta conversación está desactualizada. Vuelve a abrir el Entrenador IA e inténtalo de nuevo.';
+
+  @override
   String get coachTransportError =>
       'No se pudo contactar con Coach. Comprueba tu conexión e inténtalo de nuevo.';
 
   @override
-  String get coachStreamFailed => 'error de transmisión';
+  String get coachStreamFailed =>
+      'La respuesta del Coach se cortó. Vuelve a enviar tu mensaje.';
 
   @override
   String get coachNewConversationFailed =>
@@ -16167,6 +16176,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String badgesFeedEarned(String name, String badge) {
     return '$name consiguió la insignia $badge';
   }
+
+  @override
+  String get feedBadgesLoadFailed =>
+      'No se pudieron cargar las últimas insignias de las personas que sigues.';
 
   @override
   String get badgesARunner => 'Un corredor';

@@ -27,7 +27,7 @@ export const translation: GuideTranslation = {
 						'Öffne deinen Club und wähle **Neues Event**.',
 						'Wähle unter **Event-Typ** die Option **Gruppenlauf** (oder **Radfahren**). Kurse und Treffen haben keine Route, keine Distanz, keine Rennsteuerung und keine Ergebnisse.',
 						'Gib dem Event einen **Titel** und ein **Datum**. Lege eine Wiederholung nur fest, wenn das Rennen wirklich regelmäßig stattfindet; jeder Termin wird separat gelaufen.',
-						'Wähle eine **Strecke** und gib die **Distanz** ein. Zusammen bilden sie deine *Hauptstrecke*.',
+						'Wähle eine **Route** und gib die **Distanz** ein. Zusammen bilden sie deine *Hauptstrecke*.',
 						'Gib optional unter **Rennstrecken** im Feld **Name der Hauptstrecke** einen Namen ein (zum Beispiel „Halbmarathon“). Lässt du das Feld leer, wird der Name der Route verwendet.',
 						'Wähle **Event erstellen**.',
 					],

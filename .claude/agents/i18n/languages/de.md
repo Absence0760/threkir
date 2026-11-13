@@ -87,7 +87,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | club (every surface, including plan templates and race claims) | **Club** / Clubs; compounds hyphenated as the catalogue already writes them (Club-Vorlage, Club-Admins) or closed where already closed (Clubmitglieder, Clubkopie, Clubbeitrag) | settled 2026-11-13 (#1374 round 3.5), both surfaces; never Verein — this closes inconsistency 5 |
 | finish | Ziel (finish line); Beendet (status); Beenden (action) | "Ziel" also means *goal* — disambiguate by context |
 | DNF | DNF | kept as-is on both surfaces |
-| route | Route / Routen | dominant; web also "Strecke" (`eventEditor.route`, `routeHeatmap.*`) — inconsistency 4 |
+| route (a saved route: one you build, generate, save, attach to an event, back up or find in route discovery) | **Route** / Routen; compounds Routenpräferenz, Routenseite, Routenliste, Routensuche, Routenansicht; "die Linie der Route" for its line | settled 2026-11-13 (#1374 round 3.7), web and mobile; this closes inconsistency 4. **Strecke** stays for a *course* (English "course": a race, event or park course, Parkstrecke, Rennstrecke, Streckenhinweis, Streckenmarker) and for the path a run or course follows ("entlang der Strecke", "Streckenverlauf", "% der Strecke") |
 | segment | Segment / Segmente | |
 | event (a club event: run, class, social; the entity, its page and its editor) | **das Event** / die Events; genitive *des Events* / *dieses Events* ("Neues Event", "Dieses Event wurde abgesagt", "Ein Event, zu dem du gehst", "nach dem Event", pronoun *es*). Compounds hyphenated as the catalogue already writes them: **Event-Seite**, **Event-Typ**, Event-Foto, Event-Termin, Event-Editor, Club-Event, Kurs-Event; closed only where already closed (Eventorganisator) | settled 2026-11-13 (#1374 round 3.6), web, mobile and help: 61 strings moved off "Veranstaltung" / "Veranstaltungstyp" / "Veranstaltungsseite"; never "Veranstaltung", never "Eventseite". "Veranstalter" (the organiser, "GO durch Veranstalter") is a person and stays |
 | gym | Gym | `nav.gym`, `gymTitle` |
@@ -119,7 +119,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
    New pace strings: "Tempo"; flag any string where both senses meet.
 2. **Sie slips** — resolved 2026-11-13 (see Register).
 3. **elevation gain**: Höhenmeter / Anstieg / Aufstieg / Höhengewinn.
-4. **route**: Route vs Strecke on web.
+4. **route**: Route vs Strecke — resolved 2026-11-13: Route for a saved route, Strecke for a course (see the glossary row).
 5. **club**: Club vs Verein — resolved 2026-11-13: always Club (see the glossary row).
 6. **cool-down**: Auslaufen / Abwärmen / Abkühlen.
 7. **social destination**: Sozial (mobile) vs Community (web).

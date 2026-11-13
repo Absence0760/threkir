@@ -80,12 +80,12 @@ test('single-item details are singular, and streak details quote the real count'
 	const tEn = (key: MessageKey, params?: Record<string, string | number>) => interpolate(en[key], params, 'en');
 	const one = computeRecapBadges({ ...NONE, personalRecordCount: 1, photoCount: 1 });
 	assert.deepEqual(
-		one.map((b) => recapBadgeText(b, tEn).detail),
+		one.map((b) => recapBadgeText(b, tEn, 'km').detail),
 		['1 personal record', '1 run photo'],
 	);
 	const two = computeRecapBadges({ ...NONE, personalRecordCount: 2, photoCount: 2, bestStreakDays: 19 });
 	assert.deepEqual(
-		two.map((b) => recapBadgeText(b, tEn).detail),
+		two.map((b) => recapBadgeText(b, tEn, 'km').detail),
 		['19 days in a row', '2 personal records', '2 run photos'],
 	);
 });

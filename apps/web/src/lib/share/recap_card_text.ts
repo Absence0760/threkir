@@ -8,6 +8,7 @@ import { RECAP_BADGE_IDS, type RecapBadge, type RecapBadgeId, type YearInRunning
 import type { MessageKey } from '../i18n/messages';
 import { DEFAULT_SITE_URL } from '../core/site_url';
 import { formatHoursMinutes } from '../format/time';
+import { formatDecimal, formatInteger } from '../format/number';
 
 export type RecapTranslate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -27,18 +28,24 @@ export interface RecapCardText {
 export const RECAP_SITE = new URL(DEFAULT_SITE_URL).host;
 
 /// A badge's words: its label, and the detail line with the badge's `value`
-/// in it (`n` for a count, `time` for a start time).
-const RECAP_BADGE_TEXT: Record<RecapBadgeId, { label: MessageKey; detail: MessageKey; param?: 'n' | 'time' }> = {
-	'dist-2000': { label: 'recap.badgeLabel_dist2000', detail: 'recap.badgeDetail_dist2000' },
-	'dist-1000': { label: 'recap.badgeLabel_dist1000', detail: 'recap.badgeDetail_dist1000' },
-	'dist-500': { label: 'recap.badgeLabel_dist500', detail: 'recap.badgeDetail_dist500' },
-	'dist-100': { label: 'recap.badgeLabel_dist100', detail: 'recap.badgeDetail_dist100' },
+/// in it (`n` for a count, `time` for a start time). A badge whose words name
+/// its threshold distance carries it as `distanceM`, printed as `{distance}`
+/// in the reader's unit (`digits` is 1 for a race distance such as 42.2, 0 for
+/// a year's total), so a miles reader reads "26.2 mi in one run".
+const RECAP_BADGE_TEXT: Record<
+	RecapBadgeId,
+	{ label: MessageKey; detail: MessageKey; param?: 'n' | 'time'; distanceM?: number; digits?: 0 | 1 }
+> = {
+	'dist-2000': { label: 'recap.badgeLabel_dist2000', detail: 'recap.badgeDetail_dist2000', distanceM: 2_000_000, digits: 0 },
+	'dist-1000': { label: 'recap.badgeLabel_dist1000', detail: 'recap.badgeDetail_dist1000', distanceM: 1_000_000, digits: 0 },
+	'dist-500': { label: 'recap.badgeLabel_dist500', detail: 'recap.badgeDetail_dist500', distanceM: 500_000, digits: 0 },
+	'dist-100': { label: 'recap.badgeLabel_dist100', detail: 'recap.badgeDetail_dist100', distanceM: 100_000, digits: 0 },
 	'runs-200': { label: 'recap.badgeLabel_runs200', detail: 'recap.badgeDetail_runs200' },
 	'runs-100': { label: 'recap.badgeLabel_runs100', detail: 'recap.badgeDetail_runs100' },
 	'runs-50': { label: 'recap.badgeLabel_runs50', detail: 'recap.badgeDetail_runs50' },
-	'long-ultra': { label: 'recap.badgeLabel_longUltra', detail: 'recap.badgeDetail_longUltra' },
-	'long-marathon': { label: 'recap.badgeLabel_longMarathon', detail: 'recap.badgeDetail_longMarathon' },
-	'long-half': { label: 'recap.badgeLabel_longHalf', detail: 'recap.badgeDetail_longHalf' },
+	'long-ultra': { label: 'recap.badgeLabel_longUltra', detail: 'recap.badgeDetail_longUltra', distanceM: 50_000, digits: 1 },
+	'long-marathon': { label: 'recap.badgeLabel_longMarathon', detail: 'recap.badgeDetail_longMarathon', distanceM: 42_195, digits: 1 },
+	'long-half': { label: 'recap.badgeLabel_longHalf', detail: 'recap.badgeDetail_longHalf', distanceM: 21_097.5, digits: 1 },
 	'streak-30': { label: 'recap.badgeLabel_streak30', detail: 'recap.badgeDetail_streak', param: 'n' },
 	'streak-14': { label: 'recap.badgeLabel_streak14', detail: 'recap.badgeDetail_streak', param: 'n' },
 	'streak-7': { label: 'recap.badgeLabel_streak7', detail: 'recap.badgeDetail_streak', param: 'n' },
@@ -55,8 +62,26 @@ const RECAP_BADGE_TEXT: Record<RecapBadgeId, { label: MessageKey; detail: Messag
 	night: { label: 'recap.badgeLabel_night', detail: 'recap.badgeDetail_night', param: 'time' },
 };
 
-export function recapBadgeText(b: RecapBadge, t: RecapTranslate): { label: string; detail: string } {
+/// A badge threshold in the reader's unit: "42.2 km" / "26.2 mi", "50 km" /
+/// "31.1 mi", "2,000 km" / "1,243 mi", grouped and decimal-marked for `locale`.
+export function recapBadgeDistance(meters: number, unit: 'km' | 'mi', digits: 0 | 1, locale?: string): string {
+	const v = unit === 'mi' ? meters / 1609.344 : meters / 1000;
+	const r = digits === 0 ? Math.round(v) : Math.round(v * 10) / 10;
+	const n = Number.isInteger(r) ? formatInteger(r, locale) : formatDecimal(r, 1, locale);
+	return `${n} ${unit}`;
+}
+
+export function recapBadgeText(
+	b: RecapBadge,
+	t: RecapTranslate,
+	unit: 'km' | 'mi',
+	locale?: string,
+): { label: string; detail: string } {
 	const k = RECAP_BADGE_TEXT[b.id];
+	if (k.distanceM != null) {
+		const distance = recapBadgeDistance(k.distanceM, unit, k.digits ?? 0, locale);
+		return { label: t(k.label, { distance }), detail: t(k.detail, { distance }) };
+	}
 	const label = t(k.label);
 	if (!k.param) return { label, detail: t(k.detail) };
 	if (b.value == null) return { label, detail: '' };

@@ -13,7 +13,6 @@ import 'package:flutter_test/flutter_test.dart';
 /// shrink, and a file that is fixed must leave it.
 const _wideAtLargeText = <String>{
   'coach_screen_strip_test.dart',
-  'feed_screen_test.dart',
   'finished_summary_test.dart',
   'grisnir_milestone_test.dart',
   'plan_detail_adherence_test.dart',

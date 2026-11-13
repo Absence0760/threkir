@@ -16203,6 +16203,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get feedBadgesLoadFailed =>
+      'Die neuesten Abzeichen von Leuten, denen du folgst, konnten nicht geladen werden.';
+
+  @override
   String get badgesARunner => 'Ein Läufer';
 
   @override

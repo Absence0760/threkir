@@ -26134,6 +26134,12 @@ abstract class AppLocalizations {
   /// **'{name} earned the {badge} badge'**
   String badgesFeedEarned(String name, String badge);
 
+  /// One-line error in place of the feed's badge strip when the read of recent badges from followed people failed; a Retry button sits beside it
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the latest badges from people you follow.'**
+  String get feedBadgesLoadFailed;
+
   /// Fallback name when a badge awardee has no display name
   ///
   /// In en, this message translates to:

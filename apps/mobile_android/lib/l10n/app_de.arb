@@ -4466,6 +4466,7 @@
   "badgesEmptyOther": "Noch keine öffentlichen Abzeichen.",
   "badgesEarnedOn": "Erhalten {date}",
   "badgesFeedEarned": "{name} hat das Abzeichen {badge} erhalten",
+  "feedBadgesLoadFailed": "Die neuesten Abzeichen von Leuten, denen du folgst, konnten nicht geladen werden.",
   "badgesARunner": "Ein Läufer",
   "badgesTierBronze": "Bronze",
   "badgesTierSilver": "Silber",

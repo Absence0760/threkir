@@ -4466,6 +4466,7 @@
   "badgesEmptyOther": "公開バッジはまだありません。",
   "badgesEarnedOn": "{date}に獲得",
   "badgesFeedEarned": "{name}さんが{badge}バッジを獲得しました",
+  "feedBadgesLoadFailed": "フォロー中の人の最新バッジを読み込めませんでした。",
   "badgesARunner": "ランナー",
   "badgesTierBronze": "ブロンズ",
   "badgesTierSilver": "シルバー",

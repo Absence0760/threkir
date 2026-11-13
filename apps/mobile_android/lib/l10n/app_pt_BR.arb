@@ -4466,6 +4466,7 @@
   "badgesEmptyOther": "Ainda não há medalhas públicas.",
   "badgesEarnedOn": "Conquistada em {date}",
   "badgesFeedEarned": "{name} conquistou a medalha {badge}",
+  "feedBadgesLoadFailed": "Não foi possível carregar as últimas medalhas das pessoas que você segue.",
   "badgesARunner": "Um corredor",
   "badgesTierBronze": "Bronze",
   "badgesTierSilver": "Prata",

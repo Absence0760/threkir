@@ -16193,6 +16193,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get feedBadgesLoadFailed =>
+      'Não foi possível carregar as últimas medalhas das pessoas que segue.';
+
+  @override
   String get badgesARunner => 'Um corredor';
 
   @override
@@ -39258,6 +39262,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String badgesFeedEarned(String name, String badge) {
     return '$name conquistou a medalha $badge';
   }
+
+  @override
+  String get feedBadgesLoadFailed =>
+      'Não foi possível carregar as últimas medalhas das pessoas que você segue.';
 
   @override
   String get badgesARunner => 'Um corredor';

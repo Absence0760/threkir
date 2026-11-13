@@ -15435,6 +15435,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get feedBadgesLoadFailed => 'フォロー中の人の最新バッジを読み込めませんでした。';
+
+  @override
   String get badgesARunner => 'ランナー';
 
   @override

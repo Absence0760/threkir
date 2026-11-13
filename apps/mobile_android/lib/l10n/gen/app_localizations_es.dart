@@ -16178,6 +16178,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get feedBadgesLoadFailed =>
+      'No se pudieron cargar las últimas insignias de las personas que sigues.';
+
+  @override
   String get badgesARunner => 'Un corredor';
 
   @override

@@ -21382,6 +21382,10 @@
       }
     }
   },
+  "feedBadgesLoadFailed": "Couldn't load the latest badges from people you follow.",
+  "@feedBadgesLoadFailed": {
+    "description": "One-line error in place of the feed's badge strip when the read of recent badges from followed people failed; a Retry button sits beside it"
+  },
   "badgesARunner": "A runner",
   "@badgesARunner": {
     "description": "Fallback name when a badge awardee has no display name"

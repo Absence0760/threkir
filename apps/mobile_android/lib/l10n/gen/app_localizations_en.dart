@@ -16020,6 +16020,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get feedBadgesLoadFailed =>
+      'Couldn\'t load the latest badges from people you follow.';
+
+  @override
   String get badgesARunner => 'A runner';
 
   @override

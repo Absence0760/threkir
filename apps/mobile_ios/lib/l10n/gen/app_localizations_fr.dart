@@ -16216,6 +16216,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get feedBadgesLoadFailed =>
+      'Impossible de charger les derniers badges des personnes que vous suivez.';
+
+  @override
   String get badgesARunner => 'Un coureur';
 
   @override

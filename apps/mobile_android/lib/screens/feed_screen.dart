@@ -72,6 +72,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Map<String, EngagementSummary> _engagement = const {};
   List<UserProfileRow> _followees = const [];
   List<BadgeAwardEntry> _badgeAwards = const [];
+  bool _badgeAwardsFailed = false;
 
   String _authorFilter = 'all';
   String _activityFilter = 'all';
@@ -84,15 +85,23 @@ class _FeedScreenState extends State<FeedScreen> {
 
   // Recent badge awards from people you follow — an auxiliary feed adornment
   // (L4). A failure here must never blank the core feed, so it loads on its
-  // own and degrades to no strip.
+  // own; it shows as its own one-line error with a retry, never as "no
+  // badges" (§ 2501).
   Future<void> _loadBadgeAwards() async {
     try {
       final awards = await widget.api.fetchFollowingBadgeAwards(limit: 6);
       if (!mounted) return;
-      setState(() => _badgeAwards = awards);
-    } catch (_) {
+      setState(() {
+        _badgeAwards = awards;
+        _badgeAwardsFailed = false;
+      });
+    } catch (e) {
+      debugPrint('feed_screen: badge awards read failed: $e');
       if (!mounted) return;
-      setState(() => _badgeAwards = const []);
+      setState(() {
+        _badgeAwards = const [];
+        _badgeAwardsFailed = true;
+      });
     }
   }
 
@@ -260,7 +269,18 @@ class _FeedScreenState extends State<FeedScreen> {
     return HubTabBody(
       title: l10n.feedTitle,
       filters: _followees.isEmpty ? null : _filterBar(l10n),
-      banner: _badgeAwards.isEmpty ? null : _buildBadgeStrip(theme),
+      banner: _badgeAwardsFailed
+          ? Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
+              child: AppErrorState.inline(
+                message: l10n.feedBadgesLoadFailed,
+                onRetry: _loadBadgeAwards,
+              ),
+            )
+          : _badgeAwards.isEmpty
+              ? null
+              : _buildBadgeStrip(theme),
       onRefresh: _loadInitial,
       body: contentColumn(
         context,

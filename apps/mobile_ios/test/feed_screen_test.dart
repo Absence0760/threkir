@@ -12,6 +12,7 @@ import '../lib/engagement_cache.dart';
 import '../lib/screens/feed_screen.dart';
 import '../lib/widgets/error_state.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 
@@ -158,6 +159,22 @@ class _ThrowingApi extends _FakeApi {
     int feedWindowDays = 14,
   }) async =>
       throw Exception('feed down');
+}
+
+/// Fake whose badge-awards read fails on the first call and succeeds after,
+/// so the strip's error and its retry are both reachable.
+class _BadgeAwardsFailOnceApi extends _FakeApi {
+  _BadgeAwardsFailOnceApi({super.entries, super.badgeAwards});
+  int badgeCalls = 0;
+  @override
+  Future<List<BadgeAwardEntry>> fetchFollowingBadgeAwards({
+    int limit = 20,
+    ({DateTime earnedAt, String id})? cursor,
+  }) async {
+    badgeCalls++;
+    if (badgeCalls == 1) throw Exception('badges down');
+    return badgeAwards;
+  }
 }
 
 /// Fake whose author-dropdown fetch (fetchAllFollowing) throws — the feed
@@ -490,6 +507,36 @@ void main() {
       );
     });
 
+    testWidgets(
+        'a failed read says so with a retry, never "no badges" (§ 2501)',
+        (tester) async {
+      final api = _BadgeAwardsFailOnceApi(
+        entries: [_runEntry()],
+        badgeAwards: [_badgeAward(authorName: 'Alex Runner')],
+      );
+      await _pump(tester, api);
+      await _settle(tester);
+      expect(
+        find.text("Couldn't load the latest badges from people you follow."),
+        findsOneWidget,
+      );
+      expect(find.byType(ActionChip), findsNothing);
+      // The core feed is untouched by the adornment's failure.
+      expect(find.byType(Card), findsWidgets);
+
+      await tester.tap(find.text('Retry'));
+      await _settle(tester);
+      expect(api.badgeCalls, 2);
+      expect(
+        find.text("Couldn't load the latest badges from people you follow."),
+        findsNothing,
+      );
+      expect(
+        find.textContaining('Alex Runner earned the Century streak badge'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('no strip when there are no badge awards', (tester) async {
       final api = _FakeApi(entries: [_runEntry()], badgeAwards: const []);
       await _pump(tester, api);
@@ -518,6 +565,17 @@ void main() {
       // label was cropped inside the rail.
       expect(tester.getSize(chip).height, greaterThan(small));
     });
+  });
+
+  worstCaseTestWidgets('the feed badge strip failure line', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: FeedScreen(
+        api: _BadgeAwardsFailOnceApi(entries: [_runEntry()]),
+      ),
+    ));
+    await _settle(tester);
+    expect(find.byType(ErrorState), findsOneWidget);
   });
 
   group('FeedScreen — stat row at a narrow width', () {

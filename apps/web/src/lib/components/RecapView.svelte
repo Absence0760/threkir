@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
 	import { RECAP_SITE, recapActiveMonths, recapBadgeText } from '#lib/share/recap_card_text.ts';
@@ -78,6 +78,8 @@
 			monthName: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'long' }),
 			monthLetter: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'narrow' }),
 			count: (n) => n.toLocaleString(locale),
+			unit: getUnit(),
+			locale,
 			url: RECAP_SITE,
 		};
 	}
@@ -319,7 +321,7 @@
 		</header>
 		<div class="badge-grid">
 			{#each recap.badges as b (b.id)}
-				{@const text = recapBadgeText(b, t)}
+				{@const text = recapBadgeText(b, t, getUnit(), activeFormatLocale())}
 				<div class="badge">
 					<span class="badge-icon material-symbols" aria-hidden="true">{b.icon}</span>
 					<span class="badge-label">{text.label}</span>

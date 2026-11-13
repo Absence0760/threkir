@@ -8463,7 +8463,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachStaleThread =>
-      'Esta conversación está desactualizada. Vuelve a abrir el Coach e inténtalo de nuevo.';
+      'Esta conversación está desactualizada. Vuelve a abrir el Entrenador IA e inténtalo de nuevo.';
 
   @override
   String get coachTransportError =>

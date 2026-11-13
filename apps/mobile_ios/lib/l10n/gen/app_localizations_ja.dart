@@ -1511,7 +1511,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSafetyLiveShareStarted =>
-      '安全共有がオンです。緊急連絡先だけが、アラートが送られた後にのみ追跡できます';
+      '緊急連絡先への共有がオンです。追跡できるのは緊急連絡先だけで、それもアラートが送られた後に限られます';
 
   @override
   String get runSafetyNudgeSolo =>
@@ -17485,7 +17485,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventFormChargeHint =>
-      '参加登録時に参加費を受け取ります。お金はクラブではなく自分の受取口座に入金され、対面イベントだけが課金できます。';
+      '参加登録時に参加費を受け取ります。お金はクラブではなく自分の受け取りアカウントに入金され、対面イベントだけが課金できます。';
 
   @override
   String get eventFormChargeNeedsPayout => 'イベントを有料にするには、ウェブで受け取り口座を設定してください。';

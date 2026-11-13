@@ -4417,7 +4417,7 @@
   "integrationsChronotrackInfo": "ChronoTrack misst mit Chips und Matten die Zeiten vieler Straßenläufe. Wenn dein Lauf von ChronoTrack gemessen wurde, such ihn im Rennkalender und gib deine Startnummer ein, um dein offizielles Ergebnis zu holen.",
   "integrationsRunsignupUnavailable": "RunSignUp-Import ist noch nicht verfügbar. Manuelles Einfügen funktioniert weiterhin.",
   "integrationsChronotrack": "ChronoTrack",
-  "integrationsChronotrackConnect": "Rennergebnisse von ChronoTrack-gemessenen Events importieren.",
+  "integrationsChronotrackConnect": "Ergebnisse von Rennen mit ChronoTrack-Zeitmessung importieren.",
   "integrationsChronotrackOpen": "Rennkalender öffnen",
   "integrationsChronotrackUnavailable": "ChronoTrack-Import ist noch nicht verfügbar. Manuelles Einfügen funktioniert weiterhin.",
   "routeConditionsTitle": "Bedingungen",

@@ -202,7 +202,7 @@
   "readinessReasonFormNeutral": "Fraîcheur neutre",
   "readinessReasonFresh": "Frais et bien récupéré",
   "readinessReasonVeryFresh": "Très frais — presque affûté",
-  "readinessReasonOverTapered": "Trop affûté — le tranchant peut s'émousser",
+  "readinessReasonOverTapered": "Trop affûté — vous risquez de perdre du mordant",
   "readinessReasonVeryLittleSleep": "Très peu de sommeil — la récupération en pâtit",
   "readinessReasonShortSleep": "Manque de sommeil",
   "readinessReasonUnderSleep": "Un peu en dessous de votre objectif de sommeil",

@@ -2263,7 +2263,7 @@
   "coachDailyLimitError": "Límite diario alcanzado ({limit} mensajes). ¡Vuelve mañana!",
   "coachGenericError": "Error de Coach ({code})",
   "coachUnavailable": "El Coach no está disponible ahora mismo. Vuelve a intentarlo en un momento.",
-  "coachStaleThread": "Esta conversación está desactualizada. Vuelve a abrir el Coach e inténtalo de nuevo.",
+  "coachStaleThread": "Esta conversación está desactualizada. Vuelve a abrir el Entrenador IA e inténtalo de nuevo.",
   "coachTransportError": "No se pudo contactar con Coach. Comprueba tu conexión e inténtalo de nuevo.",
   "coachStreamFailed": "La respuesta del Coach se cortó. Vuelve a enviar tu mensaje.",
   "coachNewConversationFailed": "No se pudo iniciar una nueva conversación.",

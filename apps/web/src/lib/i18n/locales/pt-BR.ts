@@ -3841,7 +3841,7 @@ export const messages = {
 	"recap.badgeLabel_dist2000": "{distance}",
 	"recap.badgeDetail_dist2000": "Um ano épico a pé",
 	"recap.badgeLabel_dist1000": "Clube dos {distance}",
-	"recap.badgeDetail_dist1000": "Um ano de quatro dígitos",
+	"recap.badgeDetail_dist1000": "Um ano marcante",
 	"recap.badgeLabel_dist500": "{distance}",
 	"recap.badgeDetail_dist500": "Quilometragem de respeito",
 	"recap.badgeLabel_dist100": "Centena",

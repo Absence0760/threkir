@@ -16035,7 +16035,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get integrationsChronotrackConnect =>
-      'Rennergebnisse von ChronoTrack-gemessenen Events importieren.';
+      'Ergebnisse von Rennen mit ChronoTrack-Zeitmessung importieren.';
 
   @override
   String get integrationsChronotrackOpen => 'Rennkalender öffnen';

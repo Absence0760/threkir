@@ -16795,7 +16795,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsCueGuidedRunInfo =>
-      'Só fica ativo quando escolhe uma corrida guiada no ecrã de gravação antes de começar. Anuncia cada dica do guião ao chegar à sua marca. Exemplo: “Cinco minutos. Estabilize num ritmo que aguentaria o dia todo.”';
+      'Só fica ativo quando escolhe uma corrida guiada no ecrã de gravação antes de começar. Anuncia cada dica do guião ao chegar à sua marca. Exemplo: “Cinco minutos de corrida. Estabilize num ritmo que aguentaria o dia todo.”';
 
   @override
   String get runGuidedRun => 'Corrida guiada';
@@ -21114,7 +21114,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get streamerOverlayLinkChanged =>
-      'Guardado. A ligação mudou: copie-a de novo para a sua app de streaming.';
+      'Guardado. A ligação mudou: copie-a de novo para a sua app de transmissão.';
 
   @override
   String get streamerOverlaySaveFailed =>
@@ -31554,7 +31554,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachStaleThread =>
-      'Esta conversa está desatualizada. Abra o Coach de novo e tente novamente.';
+      'Esta conversa está desatualizada. Reabra o Coach e tente novamente.';
 
   @override
   String get coachTransportError =>

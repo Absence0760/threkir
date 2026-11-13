@@ -841,7 +841,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get readinessReasonOverTapered =>
-      'Trop affûté — le tranchant peut s\'émousser';
+      'Trop affûté — vous risquez de perdre du mordant';
 
   @override
   String get readinessReasonVeryLittleSleep =>

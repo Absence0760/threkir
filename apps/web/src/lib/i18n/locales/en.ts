@@ -3855,7 +3855,7 @@ export const en = {
 	"recap.badgeLabel_dist2000": "{distance}",
 	"recap.badgeDetail_dist2000": "An epic year on foot",
 	"recap.badgeLabel_dist1000": "{distance} club",
-	"recap.badgeDetail_dist1000": "A four-figure year",
+	"recap.badgeDetail_dist1000": "A landmark year",
 	"recap.badgeLabel_dist500": "{distance}",
 	"recap.badgeDetail_dist500": "Serious mileage",
 	"recap.badgeLabel_dist100": "Century",

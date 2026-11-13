@@ -19,7 +19,7 @@ import 'package:ui_kit/ui_kit.dart'
         ChartPalette,
         KeepAliveChild,
         StatGrid,
-        StatTile;
+        StatTile, ListCard;
 import 'package:uuid/uuid.dart';
 
 import '../adaptive_width.dart';
@@ -2344,63 +2344,60 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      isBest ? Icons.emoji_events : Icons.timer,
-                      size: 20,
-                      color: isBest
-                          ? AppSemanticColors.ofTheme(theme).crown
-                          : theme.colorScheme.outline,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isBest
-                            ? l10n.runDetailPersonalBest(routeName)
-                            : l10n.runDetailBehindPb(
-                                formatSignedDelta(summary.deltaSeconds)),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: isBest
-                              ? AppSemanticColors.ofTheme(theme).crown
-                              : theme.colorScheme.onSurface,
-                        ),
+        child: ListCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isBest ? Icons.emoji_events : Icons.timer,
+                    size: 20,
+                    color: isBest
+                        ? AppSemanticColors.ofTheme(theme).crown
+                        : theme.colorScheme.outline,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isBest
+                          ? l10n.runDetailPersonalBest(routeName)
+                          : l10n.runDetailBehindPb(
+                              formatSignedDelta(summary.deltaSeconds)),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isBest
+                            ? AppSemanticColors.ofTheme(theme).crown
+                            : theme.colorScheme.onSurface,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.runDetailAttemptOf(summary.rank, summary.total,
-                      _formatDuration(Duration(seconds: summary.pb.durationS))),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (widget.apiClient case final api?) ...[
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    key: const Key('route-head-to-head-open'),
-                    onPressed: () => showHeadToHeadSheet(
-                      context,
-                      api: api,
-                      kind: 'route',
-                      targetId: run.routeId!,
-                      activityType: thisActivity,
-                    ),
-                    icon: const Icon(Icons.people_outline),
-                    label: Text(l10n.headToHeadCompare),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.runDetailAttemptOf(summary.rank, summary.total,
+                    _formatDuration(Duration(seconds: summary.pb.durationS))),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (widget.apiClient case final api?) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  key: const Key('route-head-to-head-open'),
+                  onPressed: () => showHeadToHeadSheet(
+                    context,
+                    api: api,
+                    kind: 'route',
+                    targetId: run.routeId!,
+                    activityType: thisActivity,
+                  ),
+                  icon: const Icon(Icons.people_outline),
+                  label: Text(l10n.headToHeadCompare),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -3836,43 +3833,41 @@ class _SegmentStatsCard extends StatelessWidget {
         _stat(theme, l10n.runDetailSegStatGain,
             '+${UnitFormat.elevation(segment.eleGainMetres, unit)}'),
     ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 8, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.runDetailSegRange(
-                      UnitFormat.distanceValue(
-                          segment.startDistanceMetres, unit),
-                      UnitFormat.distanceValue(segment.endDistanceMetres, unit),
-                      UnitFormat.distanceLabel(unit),
-                    ),
-                    style: theme.textTheme.titleSmall,
+    return ListCard(
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.runDetailSegRange(
+                    UnitFormat.distanceValue(
+                        segment.startDistanceMetres, unit),
+                    UnitFormat.distanceValue(segment.endDistanceMetres, unit),
+                    UnitFormat.distanceLabel(unit),
                   ),
+                  style: theme.textTheme.titleSmall,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  tooltip: l10n.runDetailSegDismiss,
-                  onPressed: onDismiss,
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 4,
-                children: stats,
               ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: l10n.runDetailSegDismiss,
+                onPressed: onDismiss,
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 4,
+              children: stats,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -3992,63 +3987,60 @@ class _BlockedPushCard extends StatelessWidget {
         l10n.runDetailBlockedDurationTooLong(kMaxRunDurationS ~/ 3600),
     };
     final edit = onEdit;
-    return Card(
+    return ListCard(
       color: theme.colorScheme.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.cloud_off,
-                    size: 20, color: theme.colorScheme.onErrorContainer),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    l10n.runDetailBlockedTitle,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onErrorContainer,
-                      fontWeight: FontWeight.w700,
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cloud_off,
+                  size: 20, color: theme.colorScheme.onErrorContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.runDetailBlockedTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (waypoints > 0)
-                  OutlinedButton.icon(
-                    onPressed: busy ? null : () => onExport(),
-                    icon: const Icon(Icons.download_outlined),
-                    label: Text(l10n.runDetailBlockedExport),
-                  ),
-                if (reason == RunPushBlockReason.trackTooLarge)
-                  FilledButton.icon(
-                    onPressed: busy ? null : () => onDropTrack(),
-                    icon: const Icon(Icons.cloud_upload),
-                    label: Text(l10n.runDetailBlockedDropTrack),
-                  ),
-                if (reason == RunPushBlockReason.durationOutOfRange &&
-                    edit != null)
-                  FilledButton.icon(
-                    onPressed: busy ? null : () => edit(),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: Text(l10n.runDetailEditTitle),
-                  ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            body,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onErrorContainer),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (waypoints > 0)
+                OutlinedButton.icon(
+                  onPressed: busy ? null : () => onExport(),
+                  icon: const Icon(Icons.download_outlined),
+                  label: Text(l10n.runDetailBlockedExport),
+                ),
+              if (reason == RunPushBlockReason.trackTooLarge)
+                FilledButton.icon(
+                  onPressed: busy ? null : () => onDropTrack(),
+                  icon: const Icon(Icons.cloud_upload),
+                  label: Text(l10n.runDetailBlockedDropTrack),
+                ),
+              if (reason == RunPushBlockReason.durationOutOfRange &&
+                  edit != null)
+                FilledButton.icon(
+                  onPressed: busy ? null : () => edit(),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(l10n.runDetailEditTitle),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

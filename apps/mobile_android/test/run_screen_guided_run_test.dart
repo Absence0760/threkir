@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show StatusPill;
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
@@ -710,10 +711,7 @@ void main() {
       expect(spoken, ['Starting in 3 seconds. Tap to cancel.']);
       final hint = find.byKey(const Key('runCountdownCancelHint'));
       expect(hint, findsOneWidget);
-      expect(
-        tester.widget<Text>(find.descendant(of: hint, matching: find.byType(Text))).style?.color,
-        Colors.white,
-      );
+      expect(tester.widget<StatusPill>(hint).foreground, Colors.white);
       for (var i = 0; i < 3; i++) {
         await tester.pump(const Duration(seconds: 1));
       }

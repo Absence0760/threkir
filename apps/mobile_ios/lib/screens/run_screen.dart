@@ -19,7 +19,13 @@ import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:run_recorder/run_recorder.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, AppRadius, AppSemanticColors, StatTile, motionDuration;
+    show
+        AppMotion,
+        AppRadius,
+        AppSemanticColors,
+        StatTile,
+        StatusPill,
+        motionDuration;
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -5542,24 +5548,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       // on the tile under the scrim: white at 0.7 over the
                       // scrim over a white basemap was about 2.5:1.
                       child: Center(
-                        child: DecoratedBox(
+                        child: StatusPill(
                           key: const Key('runCountdownCancelHint'),
-                          decoration: BoxDecoration(
-                            color: kCountdownHintBacking,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            child: Text(
-                              l10n.runTapToCancel,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
+                          label: l10n.runTapToCancel,
+                          foreground: Colors.white,
+                          fill: kCountdownHintBacking,
                         ),
                       ),
                     ),

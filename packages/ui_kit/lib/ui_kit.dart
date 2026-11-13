@@ -21,6 +21,7 @@ export 'src/widgets/keep_alive_child.dart';
 export 'src/widgets/list_card.dart';
 export 'src/widgets/list_skeleton.dart';
 export 'src/widgets/map_first_page.dart';
+export 'src/widgets/map_overlay_chip.dart';
 export 'src/widgets/overlay_icon_button.dart';
 export 'src/widgets/progress_bar.dart';
 export 'src/widgets/pushed_page.dart';

@@ -7051,9 +7051,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planLibraryLoadError => 'Couldn’t load the library. Retry.';
 
   @override
-  String get planLibraryRetry => 'Retry';
-
-  @override
   String get planLibraryEmpty => 'No published plans yet.';
 
   @override

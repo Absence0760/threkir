@@ -1931,7 +1931,6 @@
   "planLibrarySubheading": "他のランナーが公開したプラン。アカウントにクローンしてトレーニングを始めましょう。",
   "planLibrarySearchHint": "名前でプランを検索",
   "planLibraryLoadError": "ライブラリを読み込めませんでした。再試行してください。",
-  "planLibraryRetry": "再試行",
   "planLibraryEmpty": "公開されたプランはまだありません。",
   "planLibraryEmptySearch": "「{query}」に一致するプランはありません。",
   "planLibraryByAuthor": "{author} 作成",

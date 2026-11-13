@@ -7123,9 +7123,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível carregar a biblioteca. Tente novamente.';
 
   @override
-  String get planLibraryRetry => 'Tentar novamente';
-
-  @override
   String get planLibraryEmpty => 'Ainda não há planos publicados.';
 
   @override
@@ -29946,9 +29943,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planLibraryLoadError =>
       'Não foi possível carregar a biblioteca. Tente novamente.';
-
-  @override
-  String get planLibraryRetry => 'Tentar novamente';
 
   @override
   String get planLibraryEmpty => 'Ainda não há planos publicados.';

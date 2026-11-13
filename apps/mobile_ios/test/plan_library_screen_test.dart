@@ -343,4 +343,21 @@ void main() {
     await tester.pumpAndSettle();
     await walkScrollable(tester, primaryScrollable(), 'Plan library');
   });
+
+  worstCaseTestWidgets('A library plan preview', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: PlanLibraryPreviewScreen(
+        training: _PreviewTraining(),
+        entry: PublicPlanLibraryEntry(
+          plan: _plan('tmpl-1',
+              'Sub-3 marathon in eighteen weeks, five days a week with two quality sessions'),
+          authorHandle: 'Coach Dana Featherstonehaugh',
+          isOfficial: true,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await walkScrollable(tester, primaryScrollable(), 'Plan library preview');
+  });
 }

@@ -7134,9 +7134,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger la bibliothèque. Réessayer.';
 
   @override
-  String get planLibraryRetry => 'Réessayer';
-
-  @override
   String get planLibraryEmpty => 'Aucun plan publié pour l\'instant.';
 
   @override

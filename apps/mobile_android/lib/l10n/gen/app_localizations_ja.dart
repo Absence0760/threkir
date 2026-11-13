@@ -6742,9 +6742,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planLibraryLoadError => 'ライブラリを読み込めませんでした。再試行してください。';
 
   @override
-  String get planLibraryRetry => '再試行';
-
-  @override
   String get planLibraryEmpty => '公開されたプランはまだありません。';
 
   @override

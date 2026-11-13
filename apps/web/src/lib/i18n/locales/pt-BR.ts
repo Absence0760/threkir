@@ -3987,6 +3987,8 @@ export const messages = {
 	"routeHeatmap.clickKeepThisRoute": "Clique para manter esta rota no mapa",
 	"routeHeatmap.keptOnMap": "Mantida no mapa",
 	"routeHeatmap.emptyState": "Ainda não há rotas aqui. Mova o mapa, reduza o zoom ou mude os filtros.",
+	"routeHeatmap.loadFailed": "Não foi possível carregar as rotas aqui. Verifique sua conexão e tente novamente.",
+	"routeHeatmap.retry": "Tentar novamente",
 	"routeHeatmap.hideRouteList": "Ocultar lista de rotas",
 	"routeHeatmap.showRouteList": "Mostrar lista de rotas",
 	"routeHeatmap.routeDiscovery": "Descobrir rotas",

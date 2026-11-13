@@ -4001,6 +4001,8 @@ export const en = {
 	"routeHeatmap.clickKeepThisRoute": "Click to keep this route on the map",
 	"routeHeatmap.keptOnMap": "Kept on map",
 	"routeHeatmap.emptyState": "No routes here yet. Pan the map, zoom out, or change the filters.",
+	"routeHeatmap.loadFailed": "Couldn’t load routes here. Check your connection and try again.",
+	"routeHeatmap.retry": "Retry",
 	"routeHeatmap.hideRouteList": "Hide route list",
 	"routeHeatmap.showRouteList": "Show route list",
 	"routeHeatmap.routeDiscovery": "Route discovery",

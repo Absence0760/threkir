@@ -1333,6 +1333,7 @@
   "heatmapRoutesStartHere": "{count} itinéraires commencent ici",
   "heatmapRouteCount": "{count, plural, one{{count} itinéraire} other{{count} itinéraires}}",
   "heatmapNoRoutesHere": "Aucun itinéraire ici",
+  "heatmapLoadFailed": "Impossible de charger les itinéraires. Touchez pour réessayer",
   "heatmapNoRoutesHint": "Aucun itinéraire ici. Déplacez la carte ou modifiez les filtres.",
   "heatmapClearKept": "Effacer {count} conservé(s)",
   "heatmapUnpinFromMap": "Retirer de la carte",

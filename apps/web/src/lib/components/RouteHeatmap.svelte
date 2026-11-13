@@ -163,6 +163,9 @@
 	let clubPinsCount = $state(0);
 	let racePinsCount = $state(0);
 	let routePinsCount = $state(0);
+	// The last routes read failed: the list says so with Retry instead of "No
+	// routes here", and pins from an earlier read stay (issue #1374 FS-10).
+	let routesFailed = $state(false);
 
 	// Route-discovery lens. The chip bar swaps which routes the pin
 	// layer fetches (popular / official / featured / friends / hidden gems) so the
@@ -1076,22 +1079,33 @@
 				maxLng: b.getEast(),
 				maxLat: b.getNorth(),
 			};
-			const [clubs, routes, races] = await Promise.all([
+			// Each layer settles on its own, so one failed read neither blanks the
+			// others nor reads as "nothing here".
+			const [clubsRes, routesRes, racesRes] = await Promise.allSettled([
 				fetchClubsInBbox(bbox),
 				fetchDiscoverableRoutesInBbox({ ...bbox, filter: routeFilter, bands: selectedBands }),
 				fetchUpcomingRacesInBbox({ ...bbox, officialOnly: routeFilter === 'official' }),
 			]);
-			clubPinsCount = clubs.length;
-			racePinsCount = races.length;
-			routePinsCount = routes.length;
-			routePins = routes;
-			// If geolocation has already bowed out, frame the view on this
-			// freshly-loaded data (no-op once the view has been framed).
-			fitToRoutePins();
+			routesFailed = routesRes.status === 'rejected';
+			for (const res of [clubsRes, routesRes, racesRes]) {
+				if (res.status === 'rejected') console.warn('heatmap layer refresh failed', res.reason);
+			}
+			if (routesRes.status === 'fulfilled') {
+				routePinsCount = routesRes.value.length;
+				routePins = routesRes.value;
+				// If geolocation has already bowed out, frame the view on this
+				// freshly-loaded data (no-op once the view has been framed).
+				fitToRoutePins();
+			}
+			const clubs = clubsRes.status === 'fulfilled' ? clubsRes.value : null;
+			const races = racesRes.status === 'fulfilled' ? racesRes.value : null;
+			const routes = routesRes.status === 'fulfilled' ? routesRes.value : null;
+			if (clubs) clubPinsCount = clubs.length;
+			if (races) racePinsCount = races.length;
 			const clubSrc = map.getSource(CLUB_PINS_SOURCE) as
 				| maplibregl.GeoJSONSource
 				| undefined;
-			clubSrc?.setData({
+			if (clubs) clubSrc?.setData({
 				type: 'FeatureCollection',
 				features: clubs.map((c) => ({
 					type: 'Feature',
@@ -1112,7 +1126,7 @@
 			const raceSrc = map.getSource(RACE_PINS_SOURCE) as
 				| maplibregl.GeoJSONSource
 				| undefined;
-			raceSrc?.setData({
+			if (races) raceSrc?.setData({
 				type: 'FeatureCollection',
 				features: races.map((r) => ({
 					type: 'Feature',
@@ -1130,7 +1144,7 @@
 			const routeSrc = map.getSource(ROUTE_PINS_SOURCE) as
 				| maplibregl.GeoJSONSource
 				| undefined;
-			routeSrc?.setData({
+			if (routes) routeSrc?.setData({
 				type: 'FeatureCollection',
 				features: routes.map((r) => ({
 					type: 'Feature',
@@ -1148,7 +1162,7 @@
 					geometry: { type: 'Point', coordinates: [r.lng, r.lat] },
 				})),
 			});
-			lastUpdated = new Date();
+			if (!routesFailed) lastUpdated = new Date();
 		} catch (e) {
 			console.warn('heatmap pins refresh failed', e);
 		} finally {
@@ -1720,9 +1734,18 @@
 					</a>
 				</li>
 			{:else}
-				<li class="results-empty">
-					{m('routeHeatmap.emptyState')}
-				</li>
+				{#if routesFailed}
+					<li class="results-empty results-error" role="alert" data-testid="discover-load-error">
+						<span>{m('routeHeatmap.loadFailed')}</span>
+						<button type="button" class="btn btn-secondary btn-sm" onclick={() => void refreshPins()}>
+							{m('routeHeatmap.retry')}
+						</button>
+					</li>
+				{:else}
+					<li class="results-empty">
+						{m('routeHeatmap.emptyState')}
+					</li>
+				{/if}
 			{/each}
 		</ul>
 	</aside>
@@ -2201,6 +2224,13 @@
 		padding: 1.25rem var(--space-md);
 		font-size: 0.82rem;
 		color: var(--color-text-tertiary);
+	}
+	.results-error {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
+		color: var(--color-danger-text);
 	}
 
 	/* Narrow viewports: stack the sidebar above the map as a top sheet. */

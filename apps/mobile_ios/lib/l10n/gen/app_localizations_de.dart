@@ -4886,6 +4886,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get heatmapNoRoutesHere => 'Hier keine Routen';
 
   @override
+  String get heatmapLoadFailed =>
+      'Routen konnten nicht geladen werden. Tippen für neuen Versuch';
+
+  @override
   String get heatmapNoRoutesHint =>
       'Hier keine Routen. Verschiebe die Karte oder ändere die Filter.';
 

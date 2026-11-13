@@ -10234,10 +10234,11 @@ export async function fetchHeatmapPoints(bbox: {
 		p_max_lat: bbox.maxLat,
 		p_max_points: bbox.maxPoints ?? 5000,
 	}, { get: true });
-	if (error || !data) {
+	if (error) {
 		console.warn('fetchHeatmapPoints failed', error);
-		return [];
+		throw dbError(error);
 	}
+	if (!data) return [];
 	return (data as { lng: number; lat: number }[]).map((r) => ({
 		lng: r.lng,
 		lat: r.lat,
@@ -10278,10 +10279,11 @@ export async function fetchClubsInBbox(bbox: {
 		p_max_lat: bbox.maxLat,
 		p_limit: bbox.limit ?? 100,
 	}, { get: true });
-	if (error || !data) {
+	if (error) {
 		console.warn('fetchClubsInBbox failed', error);
-		return [];
+		throw dbError(error);
 	}
+	if (!data) return [];
 	return data as ClubPin[];
 }
 
@@ -10342,10 +10344,11 @@ export async function fetchDiscoverableRoutesInBbox(bbox: {
 		// generated arg type is number[], so cast past the null.
 		p_dist_max: (ranges.max ?? undefined) as number[] | undefined,
 	});
-	if (error || !data) {
+	if (error) {
 		console.warn('fetchDiscoverableRoutesInBbox failed', error);
-		return [];
+		throw dbError(error);
 	}
+	if (!data) return [];
 	return data as DiscoverableRoutePin[];
 }
 
@@ -10383,10 +10386,11 @@ export async function fetchUpcomingRacesInBbox(bbox: {
 		p_limit: bbox.limit ?? 100,
 		p_official_only: bbox.officialOnly ?? false,
 	}, { get: true });
-	if (error || !data) {
+	if (error) {
 		console.warn('fetchUpcomingRacesInBbox failed', error);
-		return [];
+		throw dbError(error);
 	}
+	if (!data) return [];
 	return data as UpcomingRacePin[];
 }
 

@@ -3988,6 +3988,8 @@ export const messages = {
 	"routeHeatmap.clickKeepThisRoute": "Klicken, um diese Strecke auf der Karte zu behalten",
 	"routeHeatmap.keptOnMap": "Auf der Karte behalten",
 	"routeHeatmap.emptyState": "Hier gibt es noch keine Strecken. Verschiebe die Karte, zoome heraus oder ändere die Filter.",
+	"routeHeatmap.loadFailed": "Routen konnten hier nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.",
+	"routeHeatmap.retry": "Erneut versuchen",
 	"routeHeatmap.hideRouteList": "Streckenliste ausblenden",
 	"routeHeatmap.showRouteList": "Streckenliste anzeigen",
 	"routeHeatmap.routeDiscovery": "Streckensuche",

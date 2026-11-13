@@ -4601,6 +4601,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get heatmapNoRoutesHere => 'ここにルートはありません';
 
   @override
+  String get heatmapLoadFailed => 'ルートを読み込めませんでした。タップして再試行';
+
+  @override
   String get heatmapNoRoutesHint => 'ここにルートはありません。地図を移動するかフィルターを変更してください。';
 
   @override

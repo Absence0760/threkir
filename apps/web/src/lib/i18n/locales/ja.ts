@@ -3983,6 +3983,8 @@ export const messages = {
 	"routeHeatmap.clickKeepThisRoute": "クリックでこのルートを地図に表示",
 	"routeHeatmap.keptOnMap": "地図に表示中",
 	"routeHeatmap.emptyState": "ここにはまだルートがありません。地図を動かすか、ズームアウトするか、フィルターを変更してください。",
+	"routeHeatmap.loadFailed": "このエリアのルートを読み込めませんでした。接続を確認して、もう一度お試しください。",
+	"routeHeatmap.retry": "再試行",
 	"routeHeatmap.hideRouteList": "ルート一覧を隠す",
 	"routeHeatmap.showRouteList": "ルート一覧を表示",
 	"routeHeatmap.routeDiscovery": "ルート探索",

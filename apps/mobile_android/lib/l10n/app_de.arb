@@ -1333,6 +1333,7 @@
   "heatmapRoutesStartHere": "{count} Routen beginnen hier",
   "heatmapRouteCount": "{count, plural, one{{count} Route} other{{count} Routen}}",
   "heatmapNoRoutesHere": "Hier keine Routen",
+  "heatmapLoadFailed": "Routen konnten nicht geladen werden. Tippen für neuen Versuch",
   "heatmapNoRoutesHint": "Hier keine Routen. Verschiebe die Karte oder ändere die Filter.",
   "heatmapClearKept": "{count} behaltene löschen",
   "heatmapUnpinFromMap": "Von Karte lösen",

@@ -6426,6 +6426,10 @@
   "@heatmapNoRoutesHere": {
     "description": "Pill text shown when no routes are in view on the heatmap"
   },
+  "heatmapLoadFailed": "Couldn't load routes. Tap to retry",
+  "@heatmapLoadFailed": {
+    "description": "Discovery map results pill (and results list) when the routes read failed; tapping retries. Replaces 'No routes here', which was false"
+  },
   "heatmapNoRoutesHint": "No routes here. Pan the map or change the filters.",
   "@heatmapNoRoutesHint": {
     "description": "Empty-state shown in the heatmap results list"

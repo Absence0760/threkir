@@ -4885,6 +4885,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get heatmapNoRoutesHere => 'Aucun itinéraire ici';
 
   @override
+  String get heatmapLoadFailed =>
+      'Impossible de charger les itinéraires. Touchez pour réessayer';
+
+  @override
   String get heatmapNoRoutesHint =>
       'Aucun itinéraire ici. Déplacez la carte ou modifiez les filtres.';
 

@@ -7864,6 +7864,12 @@ abstract class AppLocalizations {
   /// **'No routes here'**
   String get heatmapNoRoutesHere;
 
+  /// Discovery map results pill (and results list) when the routes read failed; tapping retries. Replaces 'No routes here', which was false
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load routes. Tap to retry'**
+  String get heatmapLoadFailed;
+
   /// Empty-state shown in the heatmap results list
   ///
   /// In en, this message translates to:

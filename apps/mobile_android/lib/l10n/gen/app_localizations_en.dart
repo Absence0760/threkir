@@ -4824,6 +4824,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get heatmapNoRoutesHere => 'No routes here';
 
   @override
+  String get heatmapLoadFailed => 'Couldn\'t load routes. Tap to retry';
+
+  @override
   String get heatmapNoRoutesHint =>
       'No routes here. Pan the map or change the filters.';
 

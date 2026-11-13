@@ -124,6 +124,17 @@ void main() {
       ('fetchClubSessionTemplates', (a) => a.fetchClubSessionTemplates('c')),
       ('fetchClubGymRoutineTemplates',
           (a) => a.fetchClubGymRoutineTemplates('c')),
+      // FS-10: the discovery map read a failed fetch as "No routes here".
+      ('fetchHeatmapPoints',
+          (a) => a.fetchHeatmapPoints(minLng: 0, minLat: 0, maxLng: 1, maxLat: 1)),
+      ('fetchDiscoverableRoutesInBbox',
+          (a) => a.fetchDiscoverableRoutesInBbox(
+              minLng: 0, minLat: 0, maxLng: 1, maxLat: 1)),
+      ('fetchClubsInBbox',
+          (a) => a.fetchClubsInBbox(minLng: 0, minLat: 0, maxLng: 1, maxLat: 1)),
+      ('fetchUpcomingRacesInBbox',
+          (a) => a.fetchUpcomingRacesInBbox(
+              minLng: 0, minLat: 0, maxLng: 1, maxLat: 1)),
     ]) {
       test('$name throws and logs only the error type', () async {
         final api = ApiClient.withClient(fake);

@@ -1333,6 +1333,7 @@
   "heatmapRoutesStartHere": "{count} 件のルートがここから始まります",
   "heatmapRouteCount": "{count} 件のルート",
   "heatmapNoRoutesHere": "ここにルートはありません",
+  "heatmapLoadFailed": "ルートを読み込めませんでした。タップして再試行",
   "heatmapNoRoutesHint": "ここにルートはありません。地図を移動するかフィルターを変更してください。",
   "heatmapClearKept": "保持中の {count} 件をクリア",
   "heatmapUnpinFromMap": "地図から外す",

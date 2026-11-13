@@ -3988,6 +3988,8 @@ export const messages = {
 	"routeHeatmap.clickKeepThisRoute": "Cliquez pour garder cet itinéraire sur la carte",
 	"routeHeatmap.keptOnMap": "Gardé sur la carte",
 	"routeHeatmap.emptyState": "Aucun itinéraire ici pour l'instant. Déplacez la carte, dézoomez ou changez les filtres.",
+	"routeHeatmap.loadFailed": "Impossible de charger les itinéraires ici. Vérifiez votre connexion et réessayez.",
+	"routeHeatmap.retry": "Réessayer",
 	"routeHeatmap.hideRouteList": "Masquer la liste des itinéraires",
 	"routeHeatmap.showRouteList": "Afficher la liste des itinéraires",
 	"routeHeatmap.routeDiscovery": "Découverte d'itinéraires",

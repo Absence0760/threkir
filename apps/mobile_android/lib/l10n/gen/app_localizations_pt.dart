@@ -4872,6 +4872,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get heatmapNoRoutesHere => 'Nenhuma rota aqui';
 
   @override
+  String get heatmapLoadFailed =>
+      'Não foi possível carregar as rotas. Toque para tentar novamente';
+
+  @override
   String get heatmapNoRoutesHint =>
       'Nenhuma rota aqui. Mova o mapa ou altere os filtros.';
 
@@ -27526,6 +27530,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get heatmapNoRoutesHere => 'Nenhuma rota aqui';
+
+  @override
+  String get heatmapLoadFailed =>
+      'Não foi possível carregar as rotas. Toque para tentar novamente';
 
   @override
   String get heatmapNoRoutesHint =>

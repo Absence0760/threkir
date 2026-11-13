@@ -1333,6 +1333,7 @@
   "heatmapRoutesStartHere": "{count} rotas começam aqui",
   "heatmapRouteCount": "{count, plural, one{{count} rota} other{{count} rotas}}",
   "heatmapNoRoutesHere": "Nenhuma rota aqui",
+  "heatmapLoadFailed": "Não foi possível carregar as rotas. Toque para tentar novamente",
   "heatmapNoRoutesHint": "Nenhuma rota aqui. Mova o mapa ou altere os filtros.",
   "heatmapClearKept": "Limpar {count} mantida(s)",
   "heatmapUnpinFromMap": "Desafixar do mapa",

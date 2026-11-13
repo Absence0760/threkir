@@ -7212,6 +7212,7 @@ export const messages = {
 	"badges.toggleError": "Impossible de modifier la visibilité. Réessayez.",
 	"badges.loadFailed": "Impossible de charger les accomplissements.",
 	"badges.feedEarned": "{name} a obtenu le badge {badge}",
+	"badges.feedLoadFailed": "Impossible de charger les derniers badges des personnes que vous suivez.",
 	"badges.aRunner": "Un coureur",
 	"badges.notif": "Vous avez obtenu un nouveau badge : {badge}",
 	"badges.shareTitle": "{badge} — Récompense",

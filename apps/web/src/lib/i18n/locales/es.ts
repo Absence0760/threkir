@@ -7212,6 +7212,7 @@ export const messages = {
 	"badges.toggleError": "No se pudo cambiar la visibilidad. Inténtalo de nuevo.",
 	"badges.loadFailed": "No se pudieron cargar los logros.",
 	"badges.feedEarned": "{name} consiguió la insignia {badge}",
+	"badges.feedLoadFailed": "No se pudieron cargar las últimas insignias de las personas que sigues.",
 	"badges.aRunner": "Un corredor",
 	"badges.notif": "Conseguiste una nueva insignia: {badge}",
 	"badges.shareTitle": "{badge} — Logro",

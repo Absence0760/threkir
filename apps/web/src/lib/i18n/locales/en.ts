@@ -7236,6 +7236,7 @@ export const en = {
 	"badges.toggleError": "Couldn't change visibility. Try again.",
 	"badges.loadFailed": "Couldn't load achievements.",
 	"badges.feedEarned": "{name} earned the {badge} badge",
+	"badges.feedLoadFailed": "Couldn't load the latest badges from people you follow.",
 	"badges.aRunner": "A runner",
 	"badges.notif": "You earned a new badge: {badge}",
 	"badges.shareTitle": "{badge} — Achievement",

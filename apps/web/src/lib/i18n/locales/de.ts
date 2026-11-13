@@ -7212,6 +7212,7 @@ export const messages = {
 	"badges.toggleError": "Sichtbarkeit konnte nicht geändert werden. Versuche es erneut.",
 	"badges.loadFailed": "Erfolge konnten nicht geladen werden.",
 	"badges.feedEarned": "{name} hat das Abzeichen {badge} erhalten",
+	"badges.feedLoadFailed": "Die neuesten Abzeichen von Leuten, denen du folgst, konnten nicht geladen werden.",
 	"badges.aRunner": "Eine läuferin / ein läufer",
 	"badges.notif": "Du hast ein neues Abzeichen erhalten: {badge}",
 	"badges.shareTitle": "{badge} — Erfolg",

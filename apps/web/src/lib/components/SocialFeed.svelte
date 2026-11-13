@@ -53,6 +53,7 @@
 	let followingCount = $state(0);
 	let followsAnyone = $derived(followingCount > 0);
 	let badgeAwards = $state<BadgeAwardFeedEntry[]>([]);
+	let badgeAwardsFailed = $state(false);
 
 	let mounted = false;
 
@@ -64,11 +65,16 @@
 		mounted = true;
 	});
 
+	// A failed read is not "nobody earned a badge" (§ 2501): the strip says so
+	// and offers a retry, and the rest of the feed is unaffected.
 	async function loadBadgeAwards() {
 		try {
 			badgeAwards = await fetchFollowingBadgeAwards({ limit: 6 });
-		} catch {
+			badgeAwardsFailed = false;
+		} catch (e) {
+			console.error('[feed] badge awards read failed', e);
 			badgeAwards = [];
+			badgeAwardsFailed = true;
 		}
 	}
 
@@ -265,7 +271,12 @@
 			/>
 		{/if}
 	{:else}
-		{#if badgeAwards.length > 0}
+		{#if badgeAwardsFailed}
+			<p class="badge-strip-error" role="status" data-testid="feed-badges-error">
+				<span>{m('badges.feedLoadFailed')}</span>
+				<button type="button" class="btn btn-outline btn-sm" onclick={loadBadgeAwards}>{m('runs.retry')}</button>
+			</p>
+		{:else if badgeAwards.length > 0}
 			<section class="badge-strip" aria-label={m('badges.section.title')}>
 				{#each badgeAwards as b (b.badge.id)}
 					<a class="badge-chip tier-{b.badge.tier}" href="/u/{b.authorId}?tab=achievements&badge={b.badge.id}">
@@ -584,6 +595,15 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
+	}
+	.badge-strip-error {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
+		margin: 0 0 var(--space-md);
+		color: var(--color-text-secondary);
+		font-size: 0.875rem;
 	}
 	.badge-strip {
 		display: flex;

@@ -243,7 +243,8 @@ void main() {
 
       await _pump(tester, prefs: prefs, initialShow: RoutesShow.mine);
       await tester.pump();
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+      await tester.tap(find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Explore')));
       await tester.pump();
       expect(find.widgetWithText(OutlinedButton, 'Routes heatmap'),
           findsNothing);
@@ -881,7 +882,7 @@ void main() {
             reason: 'the strip is still named for assistive tech');
       });
 
-      testWidgets('at ${scale}x the view and Explore chips sit on screen',
+      testWidgets('at ${scale}x the view switch and Explore chips sit on screen',
           (tester) async {
         usePhone(tester);
         final prefs = await _makePrefs();
@@ -892,17 +893,17 @@ void main() {
             textScale: scale);
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'no overflow stripe');
-        // The test font draws every glyph a full em wide, about twice
-        // Roboto's average, so at 2x it overstates the chips past the
-        // screen; the line scrolls there, which the chip-line test covers.
-        if (scale < 2) {
-          expectInsideScreen(
-              tester,
-              find.descendant(
-                  of: find.byKey(const ValueKey('routes-view-bar')),
-                  matching: find.byType(ChoiceChip)),
-              'view chip');
-        }
+        // The view switch fills the row, or scrolls with a fade when its
+        // labels cannot fit (the test font is about twice Roboto's width);
+        // either way it starts on screen with a 48 dp target.
+        final views = find.byKey(const Key('view-switch'));
+        expect(views, findsOneWidget);
+        expect(tester.getRect(views).left, greaterThanOrEqualTo(0));
+        expect(
+            tester
+                .getSize(find.byKey(const ValueKey('view-switch-segment-0')))
+                .height,
+            greaterThanOrEqualTo(kMinInteractiveDimension));
         for (final label in ['Routes', 'Segments']) {
           final chip = find.widgetWithText(ChoiceChip, label);
           expect(chip, findsOneWidget);
@@ -910,7 +911,8 @@ void main() {
         }
       });
 
-      testWidgets('at ${scale}x Filters and the Starred chip sit on screen',
+      testWidgets('at ${scale}x Starred and Filters sit in the search row, '
+          'under the view switch',
           (tester) async {
         usePhone(tester);
         final prefs = await _makePrefs();
@@ -920,26 +922,31 @@ void main() {
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'no overflow stripe');
 
-        // Filters beside the search; Starred, Mine's one quick chip, at the
-        // end of the view row rather than alone on a line of its own.
+        // Starred is a filter, so it is a toggle in the search row beside
+        // Filters, never at the end of the view row (the owner's screenshot:
+        // "Starred" pushed to the far right of Mine · Explore).
         final filters = find.descendant(
             of: find.byKey(const ValueKey('routes-filter-bar')),
             matching: find.byKey(const Key('filter-bar-filters')));
         final starred = find.descendant(
-            of: find.byKey(const ValueKey('routes-view-bar')),
-            matching: find.widgetWithText(FilterChip, 'Starred'));
+            of: find.byKey(const ValueKey('routes-filter-bar')),
+            matching: find.byKey(const Key('filter-bar-toggle')));
         expect(starred, findsOneWidget);
+        expect(
+            find.descendant(
+                of: find.byKey(const ValueKey('routes-view-bar')),
+                matching: find.byTooltip('Starred')),
+            findsNothing);
         expect(find.byKey(const Key('filter-bar-chips')), findsNothing,
             reason: 'no chip line is left holding Starred alone');
         expect(tester.getCenter(starred).dy,
-            tester.getCenter(find.widgetWithText(ChoiceChip, 'Mine')).dy,
-            reason: 'Starred shares the view row');
+            closeTo(tester.getCenter(find.byType(TextField)).dy, 1),
+            reason: 'Starred shares the search row');
+        expect(
+            tester.getRect(starred).top,
+            greaterThanOrEqualTo(
+                tester.getRect(find.byKey(const Key('view-switch'))).bottom));
         expectInsideScreen(tester, filters, 'Filters');
-        // The test font draws every glyph a full em wide, so past 1x the view
-        // row overstates its width and scrolls; Starred must still be
-        // reachable on it.
-        await tester.ensureVisible(starred);
-        await tester.pump();
         expectInsideScreen(tester, starred, 'Starred');
         for (final control in [starred, filters]) {
           expect(tester.getSize(control).height,
@@ -1045,7 +1052,8 @@ void main() {
       expect(find.byType(GlobalSegmentsScreen), findsNothing,
           reason: 'Explore is built the first time it is shown');
 
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+      await tester.tap(find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Explore')));
       await tester.pump();
       expect(show.value, RoutesShow.routes);
       expect(find.byType(ExploreRoutesScreen), findsOneWidget);
@@ -1058,14 +1066,16 @@ void main() {
       expect(find.byType(ExploreRoutesScreen), findsNothing,
           reason: 'one Explore view on screen at a time');
 
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Mine'));
+      await tester.tap(find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Mine')));
       // Past the Scaffold's FAB entrance, which draws the old and new FAB.
       await tester.pump(const Duration(seconds: 1));
       expect(show.value, RoutesShow.mine);
       expect(find.widgetWithText(FloatingActionButton, 'Build'),
           findsOneWidget);
 
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+      await tester.tap(find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Explore')));
       await tester.pump();
       expect(show.value, RoutesShow.segments,
           reason: 'Explore reopens on the chip it was left on');
@@ -1097,7 +1107,8 @@ void main() {
       expect(find.byTooltip('Remove filter: A–Z'), findsOneWidget);
       expect(find.text('Riverside Way'), findsNothing);
 
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+      await tester.tap(find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Explore')));
       await tester.pump();
       expect(show.value, RoutesShow.routes);
       await tester.enterText(
@@ -1124,7 +1135,8 @@ void main() {
           'harbour',
           reason: 'Explore\'s search survives a trip to Segments');
 
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Mine'));
+      await tester.tap(find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Mine')));
       await tester.pump(const Duration(seconds: 1));
       expect(show.value, RoutesShow.mine);
       expect(
@@ -1200,7 +1212,7 @@ void main() {
 
   group('RoutesScreen — OS text scaling (issue #666 V12)', () {
     testWidgets(
-        'the filter chip rail takes its height from the chips, not a literal '
+        'the control rail takes its height from its controls, not a literal '
         '40 px lane', (tester) async {
       final prefs = await _makePrefs();
       // The filter header is the first row of the populated list — the
@@ -1210,9 +1222,11 @@ void main() {
 
       await _pump(tester, prefs: prefs, routeStore: store);
       await tester.pump();
-      final chip = find.byType(FilterChip).first;
+      // The view switch's first segment: a text control at the top of the
+      // rail, like the chips that were here.
+      final chip = find.byKey(const ValueKey('view-switch-segment-0'));
       final small = tester.getSize(chip).height;
-      // A Material chip's own tap target is 48; the old 40 px lane squeezed it.
+      // A 48 dp tap target; the old 40 px lane squeezed it.
       expect(small, greaterThanOrEqualTo(48));
 
       await _pump(tester, prefs: prefs, routeStore: store, textScale: 2.0);

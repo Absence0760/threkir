@@ -143,23 +143,114 @@ void main() {
     expect(find.byTooltip('Sort'), findsOneWidget);
   });
 
-  testWidgets('with no search, the actions take the first row and the chips '
-      'the line under it', (tester) async {
+  for (final scale in [1.0, 2.0]) {
+    testWidgets('with no search, the actions stand at the chip line\'s end, '
+        'outside its scroll, at 320 dp and ${scale}x (issue #1374: Plans\' '
+        'Browse library alone on a row)', (tester) async {
+      await _pump(
+        tester,
+        width: 320,
+        textScale: scale,
+        FilterBar(
+          chips: _bands('All', (_) {}),
+          chipsLabel: 'Distance',
+          trailing: [
+            IconButton(
+                icon: const Icon(Icons.public),
+                tooltip: 'Library',
+                onPressed: () {}),
+          ],
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      final library = find.byTooltip('Library');
+      expect(tester.getCenter(library).dy,
+          closeTo(tester.getCenter(find.byType(ChoiceChip).first).dy, 4),
+          reason: 'the action shares the chip line');
+      expect(tester.getRect(library).right, closeTo(320 - AppInsets.gutter, 8));
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('filter-bar-chips')), matching: library),
+          findsNothing,
+          reason: 'it does not scroll away with the chips');
+      expect(
+          tester.getSize(find.widgetWithIcon(IconButton, Icons.public)).height,
+          greaterThanOrEqualTo(kMinInteractiveDimension));
+      expect(find.bySemanticsLabel('Distance'), findsOneWidget);
+    });
+  }
+
+  testWidgets('with neither a search nor a chip line, the actions take a row',
+      (tester) async {
     await _pump(
       tester,
-      FilterBar(
-        chips: _bands('All', (_) {}),
-        chipsLabel: 'Distance',
-        trailing: [
-          IconButton(icon: const Icon(Icons.public), tooltip: 'Library', onPressed: () {}),
-        ],
-      ),
+      FilterBar(trailing: [
+        IconButton(
+            icon: const Icon(Icons.qr_code), tooltip: 'Scan', onPressed: () {}),
+      ]),
     );
-    expect(tester.getRect(find.byTooltip('Library')).bottom,
-        lessThanOrEqualTo(tester.getRect(find.byType(ChoiceChip).first).top));
-    expect(tester.getRect(find.byTooltip('Library')).right,
-        closeTo(360 - 16, 8));
-    expect(find.bySemanticsLabel('Distance'), findsOneWidget);
+    expect(find.byTooltip('Scan'), findsOneWidget);
+    expect(find.byKey(const Key('filter-bar-line-actions')), findsNothing);
+  });
+
+  test('trailingOnLine: only with no search and a line to stand on', () {
+    expect(
+        FilterBar.trailingOnLine(
+            hasSearch: false, hasTrailing: true, hasLine: true),
+        isTrue);
+    expect(
+        FilterBar.trailingOnLine(
+            hasSearch: true, hasTrailing: true, hasLine: true),
+        isFalse);
+    expect(
+        FilterBar.trailingOnLine(
+            hasSearch: false, hasTrailing: true, hasLine: false),
+        isFalse);
+  });
+
+  group('a chip line that overflows fades at the edge with more beyond it',
+      () {
+    test('fadesFor: the start once scrolled, the end while there is more', () {
+      expect(EdgeFadeScrollState.fadesFor(pixels: 0, min: 0, max: 100),
+          (start: false, end: true));
+      expect(EdgeFadeScrollState.fadesFor(pixels: 50, min: 0, max: 100),
+          (start: true, end: true));
+      expect(EdgeFadeScrollState.fadesFor(pixels: 100, min: 0, max: 100),
+          (start: true, end: false));
+      expect(EdgeFadeScrollState.fadesFor(pixels: 0, min: 0, max: 0),
+          (start: false, end: false),
+          reason: 'a line that fits does not fade');
+    });
+
+    EdgeFadeScrollState state(WidgetTester tester) =>
+        tester.state<EdgeFadeScrollState>(find.byType(EdgeFadeScroll));
+
+    testWidgets('at 320 dp the end fades, then the start once scrolled to '
+        'the end', (tester) async {
+      await _pump(tester, width: 320, FilterBar(chips: _bands('All', (_) {})));
+      await tester.pump();
+      expect(state(tester).fadesEnd, isTrue);
+      expect(state(tester).fadesStart, isFalse);
+      await tester.drag(
+          find.byKey(const Key('filter-bar-chips')), const Offset(-2000, 0));
+      await tester.pumpAndSettle();
+      expect(state(tester).fadesEnd, isFalse);
+      expect(state(tester).fadesStart, isTrue);
+    });
+
+    testWidgets('a line that fits does not fade', (tester) async {
+      await _pump(
+        tester,
+        width: 700,
+        FilterBar(chips: [
+          for (final l in ['All', 'Mine'])
+            FilterChip(label: Text(l), onSelected: (_) {}),
+        ]),
+      );
+      await tester.pump();
+      expect(state(tester).fadesEnd, isFalse);
+      expect(state(tester).fadesStart, isFalse);
+    });
   });
 
   testWidgets('the filter sheet\'s Done closes it and Reset resets',
@@ -207,25 +298,26 @@ void main() {
           selected: on,
           onChanged: onChanged,
         );
-    List<Widget> views() => [
-          ChoiceChip(label: const Text('Mine'), selected: true, onSelected: (_) {}),
-          ChoiceChip(label: const Text('Explore'), selected: false, onSelected: (_) {}),
-        ];
+    Widget views() => ViewSwitch<bool>(
+          label: 'Show',
+          options: const [
+            ChoiceChipOption(value: false, label: 'Mine'),
+            ChoiceChipOption(value: true, label: 'Explore'),
+          ],
+          selected: false,
+          onChanged: (_) {},
+        );
 
-    test('placement: the view row, else the search row, else the line', () {
+    test('placement: the search row, else the line, never the views', () {
       LoneChipPlacement at(int n,
-              {bool views = false,
-              bool toggle = true,
+              {bool toggle = true,
               bool top = true,
               bool filtersOnLine = false}) =>
           FilterBar.loneChipPlacement(
               chipCount: n,
-              hasViews: views,
               isToggle: toggle,
               hasTopRow: top,
               filtersOnLine: filtersOnLine);
-      expect(at(1, views: true), LoneChipPlacement.viewRow);
-      expect(at(1, views: true, toggle: false), LoneChipPlacement.viewRow);
       expect(at(1), LoneChipPlacement.searchRow);
       expect(at(1, toggle: false), LoneChipPlacement.line,
           reason: 'only an on/off toggle can become an icon button');
@@ -233,43 +325,30 @@ void main() {
           reason: 'with no other row the chip is the whole bar');
       expect(at(1, filtersOnLine: true), LoneChipPlacement.line,
           reason: 'the Filters button already shares its line');
-      expect(at(2, views: true), LoneChipPlacement.line);
-      expect(at(0, views: true), LoneChipPlacement.line);
+      expect(at(2), LoneChipPlacement.line);
+      expect(at(0), LoneChipPlacement.line);
     });
 
-    for (final scale in [1.0, 2.0]) {
-      testWidgets('with a view row it joins that row at its end, at 320 dp and '
-          '${scale}x', (tester) async {
-        await _pump(
-          tester,
-          FilterBar(views: views(), viewsLabel: 'Show', chips: [starred(false, (_) {})]),
-          width: 320,
-          textScale: scale,
-        );
-        expect(tester.takeException(), isNull);
-        final chip = find.widgetWithText(FilterChip, 'Starred');
-        final mine = find.widgetWithText(ChoiceChip, 'Mine');
-        expect(chip, findsOneWidget);
-        expect(tester.getCenter(chip).dy, tester.getCenter(mine).dy,
-            reason: 'Starred shares the view row\'s line');
-        expect(find.byKey(const Key('filter-bar-chips')), findsNothing,
-            reason: 'no chip line is left to hold it alone');
-        expect(tester.getRect(chip).left, greaterThanOrEqualTo(0));
-      });
-    }
-
-    testWidgets('it stands at the row\'s end while the row fits',
-        (tester) async {
+    testWidgets('with views and a search, Starred is a toggle in the search '
+        'row under the views, never beside them (the owner\'s Routes '
+        'screenshot)', (tester) async {
       await _pump(
         tester,
         FilterBar(
-            padding: EdgeInsets.zero,
             views: views(),
+            search: search(),
             chips: [starred(false, (_) {})]),
-        width: 700,
+        width: 320,
+        textScale: 2,
       );
-      expect(tester.getRect(find.widgetWithText(FilterChip, 'Starred')).right,
-          closeTo(700, 0.5));
+      expect(tester.takeException(), isNull);
+      final toggle = find.byKey(const Key('filter-bar-toggle'));
+      expect(toggle, findsOneWidget);
+      expect(tester.getCenter(toggle).dy,
+          closeTo(tester.getCenter(find.byType(TextField)).dy, 1));
+      expect(tester.getRect(toggle).top,
+          greaterThanOrEqualTo(tester.getRect(find.byKey(const Key('view-switch'))).bottom));
+      expect(find.byKey(const Key('filter-bar-chips')), findsNothing);
     });
 
     testWidgets('with two chips they keep their own scrolling line',
@@ -285,12 +364,12 @@ void main() {
       expect(find.byKey(const Key('filter-bar-chips')), findsOneWidget);
       expect(
           tester.getCenter(find.widgetWithText(FilterChip, 'Starred')).dy,
-          greaterThan(tester.getCenter(find.widgetWithText(ChoiceChip, 'Mine')).dy));
+          greaterThan(tester.getCenter(find.text('Mine')).dy));
     });
 
     for (final scale in [1.0, 2.0]) {
-      testWidgets('with no view row a lone toggle is an icon button in the '
-          'search row, at 320 dp and ${scale}x', (tester) async {
+      testWidgets('a lone toggle is an icon button in the search row, at '
+          '320 dp and ${scale}x', (tester) async {
         var on = false;
         Future<void> pump() => _pump(
               tester,

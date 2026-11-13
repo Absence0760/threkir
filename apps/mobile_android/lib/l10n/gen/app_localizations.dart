@@ -9686,6 +9686,12 @@ abstract class AppLocalizations {
   /// **'My clubs'**
   String get clubsTabMine;
 
+  /// Screen-reader name of the Browse / My clubs view switch at the top of the Clubs tab. Same text as web socialClubs.tablistLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Clubs section'**
+  String get clubsViewGroup;
+
   /// Button to redeem a club invite code
   ///
   /// In en, this message translates to:
@@ -9697,6 +9703,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search by name or location'**
   String get clubsSearchHint;
+
+  /// Hint in the search field on Clubs → My clubs, which filters the clubs the runner belongs to by name. Same text as web socialClubs.mineSearchPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search your clubs'**
+  String get clubsSearchMineHint;
+
+  /// Shown on Clubs → My clubs when the search matches none of the runner's clubs. Same text as web socialClubs.mineNoMatch
+  ///
+  /// In en, this message translates to:
+  /// **'None of your clubs match your search'**
+  String get clubsMineNoMatch;
 
   /// Error shown when loading clubs times out
   ///
@@ -11113,6 +11131,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Filter plans by status'**
   String get plansFilterGroupLabel;
+
+  /// One line at the head of the plans list: how many plans the status filter shows out of all of them. The count lives here, not on the status chips. Same shape as routesCountMeta
+  ///
+  /// In en, this message translates to:
+  /// **'{total, plural, one{{visible} of {total} plan} other{{visible} of {total} plans}}'**
+  String plansCountMeta(int visible, int total);
 
   /// Status filter chip on the plans list: every plan
   ///
@@ -24452,6 +24476,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Challenges'**
   String get challengesTitle;
+
+  /// Hint in the search field at the top of the Challenges tab, which filters both sections by challenge title. Same text as web challenges.searchPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search challenges'**
+  String get challengesSearchHint;
+
+  /// Shown on the Challenges tab when the search matches no challenge in either section
+  ///
+  /// In en, this message translates to:
+  /// **'No challenges match your search'**
+  String get challengesNoMatch;
 
   /// Section heading for challenges the user joined
   ///

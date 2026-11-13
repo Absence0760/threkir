@@ -6008,10 +6008,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubsTabMine => 'My clubs';
 
   @override
+  String get clubsViewGroup => 'Clubs section';
+
+  @override
   String get clubsJoinWithCode => 'Join with invite code';
 
   @override
   String get clubsSearchHint => 'Search by name or location';
+
+  @override
+  String get clubsSearchMineHint => 'Search your clubs';
+
+  @override
+  String get clubsMineNoMatch => 'None of your clubs match your search';
 
   @override
   String get clubsTimeoutError =>
@@ -6876,6 +6885,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get plansFilterGroupLabel => 'Filter plans by status';
+
+  @override
+  String plansCountMeta(int visible, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$visible of $total plans',
+      one: '$visible of $total plan',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get plansFilterAll => 'All';
@@ -15082,6 +15102,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get challengesTitle => 'Challenges';
+
+  @override
+  String get challengesSearchHint => 'Search challenges';
+
+  @override
+  String get challengesNoMatch => 'No challenges match your search';
 
   @override
   String get challengesMyChallenges => 'My challenges';

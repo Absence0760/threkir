@@ -28,7 +28,7 @@
 	import type { Snippet } from 'svelte';
 	import Modal from './Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import { filtersButtonLabel, loneChipInTopRow } from './filter_bar.ts';
+	import { filtersButtonLabel, lineFades, lineMask, loneChipInTopRow, trailingOnLine } from './filter_bar.ts';
 
 	// The control row of a list, the web twin of ui_kit's `FilterBar`
 	// (conventions.md § Web lists — FilterBar and PageHeader): at most one
@@ -73,12 +73,51 @@
 
 	const tid = (part: string) => (idPrefix ? `${idPrefix}-${part}` : undefined);
 	const label = $derived(filtersLabel ?? m('filterBar.filters'));
-	const hasTop = $derived(!!search || !!trailing || !!filters);
 	const toggle = $derived(
-		loneChipInTopRow(chips.length, !!chips[0]?.icon, hasTop) ? chips[0] : undefined,
+		loneChipInTopRow(chips.length, !!chips[0]?.icon, !!search || !!trailing || !!filters)
+			? chips[0]
+			: undefined,
 	);
 	const lineChips = $derived(toggle ? [] : chips);
 	const hasLine = $derived(lineChips.length > 0 || activeFilters.length > 0);
+	// With nothing to share a top row, the actions stand at the line's end
+	// rather than alone on a row above it (issue #1374).
+	const actionsOnLine = $derived(
+		trailingOnLine({
+			hasSearch: !!search,
+			hasFilters: !!filters,
+			hasToggle: !!toggle,
+			hasTrailing: !!trailing,
+			hasLine,
+		}),
+	);
+	const hasTop = $derived(!!search || !!filters || !!toggle || (!!trailing && !actionsOnLine));
+
+	// The line fades at an edge with more beyond it, so a cut chip reads as
+	// "more", never a hard cut (ui_kit's EdgeFadeScroll).
+	let lineEl = $state<HTMLElement | undefined>();
+	let mask = $state('none');
+	$effect(() => {
+		const el = lineEl;
+		void lineChips.length;
+		void activeFilters.length;
+		if (!el) return;
+		const update = () => {
+			mask = lineMask(
+				lineFades(el.scrollLeft, el.clientWidth, el.scrollWidth),
+				getComputedStyle(el).direction === 'rtl',
+			);
+		};
+		update();
+		el.addEventListener('scroll', update, { passive: true });
+		const ro = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(update);
+		ro?.observe(el);
+		for (const child of el.children) ro?.observe(child);
+		return () => {
+			el.removeEventListener('scroll', update);
+			ro?.disconnect();
+		};
+	});
 </script>
 
 {#if hasTop || hasLine}
@@ -120,43 +159,52 @@
 						{/if}
 					</button>
 				{/if}
-				{#if trailing}{@render trailing()}{/if}
+				{#if trailing && !actionsOnLine}{@render trailing()}{/if}
 			</div>
 		{/if}
 		{#if hasLine}
-			<div class="fb-line" data-testid={tid('chip-line')}>
-				{#if lineChips.length > 0}
-					<div class="fb-chips" role="group" aria-label={chipsLabel} data-testid={tid('chips')}>
-						{#each lineChips as chip (chip.key)}
-							<button
-								type="button"
-								class="fb-chip"
-								class:active={chip.pressed}
-								aria-pressed={chip.pressed}
-								onclick={chip.onclick}
-								data-testid={chip.testid}
-							>
-								{chip.label}
-							</button>
-						{/each}
-					</div>
-				{/if}
-				{#if activeFilters.length > 0}
-					<div class="fb-active" data-testid={tid('active-filters')}>
-						{#each activeFilters as f (f.key)}
-							<button
-								type="button"
-								class="fb-chip active removable"
-								onclick={f.onRemove}
-								aria-label={m('filterBar.removeFilter', { filter: f.label })}
-								data-testid={f.testid}
-							>
-								<span>{f.label}</span>
-								<span class="material-symbols" aria-hidden="true">close</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
+			<div class="fb-line-row">
+				<div
+					class="fb-line"
+					bind:this={lineEl}
+					style:mask-image={mask}
+					style:-webkit-mask-image={mask}
+					data-testid={tid('chip-line')}
+				>
+					{#if lineChips.length > 0}
+						<div class="fb-chips" role="group" aria-label={chipsLabel} data-testid={tid('chips')}>
+							{#each lineChips as chip (chip.key)}
+								<button
+									type="button"
+									class="fb-chip"
+									class:active={chip.pressed}
+									aria-pressed={chip.pressed}
+									onclick={chip.onclick}
+									data-testid={chip.testid}
+								>
+									{chip.label}
+								</button>
+							{/each}
+						</div>
+					{/if}
+					{#if activeFilters.length > 0}
+						<div class="fb-active" data-testid={tid('active-filters')}>
+							{#each activeFilters as f (f.key)}
+								<button
+									type="button"
+									class="fb-chip active removable"
+									onclick={f.onRemove}
+									aria-label={m('filterBar.removeFilter', { filter: f.label })}
+									data-testid={f.testid}
+								>
+									<span>{f.label}</span>
+									<span class="material-symbols" aria-hidden="true">close</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+				{#if actionsOnLine && trailing}{@render trailing()}{/if}
 			</div>
 		{/if}
 	</div>
@@ -199,9 +247,17 @@
 		align-items: stretch;
 		gap: var(--space-sm);
 	}
+	.fb-line-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		min-width: 0;
+	}
 	/* One line, never two: extras scroll sideways inside the bar rather than
 	   wrapping or widening the page (WCAG 1.4.10). */
 	.fb-line {
+		flex: 1 1 auto;
+		min-width: 0;
 		display: flex;
 		flex-wrap: nowrap;
 		align-items: center;

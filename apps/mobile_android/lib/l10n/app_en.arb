@@ -8068,6 +8068,10 @@
   "@clubsTabMine": {
     "description": "Clubs segment — the user's own clubs"
   },
+  "clubsViewGroup": "Clubs section",
+  "@clubsViewGroup": {
+    "description": "Screen-reader name of the Browse / My clubs view switch at the top of the Clubs tab. Same text as web socialClubs.tablistLabel"
+  },
   "clubsJoinWithCode": "Join with invite code",
   "@clubsJoinWithCode": {
     "description": "Button to redeem a club invite code"
@@ -8075,6 +8079,14 @@
   "clubsSearchHint": "Search by name or location",
   "@clubsSearchHint": {
     "description": "Placeholder in the club search field"
+  },
+  "clubsSearchMineHint": "Search your clubs",
+  "@clubsSearchMineHint": {
+    "description": "Hint in the search field on Clubs → My clubs, which filters the clubs the runner belongs to by name. Same text as web socialClubs.mineSearchPlaceholder"
+  },
+  "clubsMineNoMatch": "None of your clubs match your search",
+  "@clubsMineNoMatch": {
+    "description": "Shown on Clubs → My clubs when the search matches none of the runner's clubs. Same text as web socialClubs.mineNoMatch"
   },
   "clubsTimeoutError": "Connection timed out. Check your network and try again.",
   "@clubsTimeoutError": {
@@ -9266,6 +9278,18 @@
   "plansFilterGroupLabel": "Filter plans by status",
   "@plansFilterGroupLabel": {
     "description": "Screen-reader label of the status filter chips above the plans list"
+  },
+  "plansCountMeta": "{total, plural, one{{visible} of {total} plan} other{{visible} of {total} plans}}",
+  "@plansCountMeta": {
+    "description": "One line at the head of the plans list: how many plans the status filter shows out of all of them. The count lives here, not on the status chips. Same shape as routesCountMeta",
+    "placeholders": {
+      "visible": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
   },
   "plansFilterAll": "All",
   "@plansFilterAll": {
@@ -19973,6 +19997,14 @@
   "challengesTitle": "Challenges",
   "@challengesTitle": {
     "description": "Challenges feature title / tab label"
+  },
+  "challengesSearchHint": "Search challenges",
+  "@challengesSearchHint": {
+    "description": "Hint in the search field at the top of the Challenges tab, which filters both sections by challenge title. Same text as web challenges.searchPlaceholder"
+  },
+  "challengesNoMatch": "No challenges match your search",
+  "@challengesNoMatch": {
+    "description": "Shown on the Challenges tab when the search matches no challenge in either section"
   },
   "challengesMyChallenges": "My challenges",
   "@challengesMyChallenges": {

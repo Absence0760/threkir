@@ -225,11 +225,22 @@ void main() {
       ('Feed', 'feed-filter-bar'),
       ('Clubs', 'clubs-filter-bar'),
       ('Events', 'events-filter-bar'),
+      ('Challenges', 'challenges-filter-bar'),
       ('People', 'people-filter-bar'),
     ]) {
       await openTab(tester, label);
       expect(find.byKey(ValueKey(key)), findsOneWidget,
           reason: '$label\'s controls are not its FilterBar');
+      // Every list here can grow, so every one but the feed has a search
+      // (issue #1374: Clubs → My clubs had none).
+      if (label != 'Feed') {
+        expect(
+            find.descendant(
+                of: find.byKey(ValueKey(key)),
+                matching: find.byType(AppSearchField)),
+            findsOneWidget,
+            reason: '$label has no search');
+      }
     }
     await openTab(tester, 'Events');
     expect(

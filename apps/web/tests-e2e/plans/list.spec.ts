@@ -130,8 +130,10 @@ test.describe('/plans', () => {
 		page
 	}) => {
 		// Polish round adds a status filter row (All / Active / Completed /
-		// Abandoned) above the plan grid. Each button reflects its bucket
-		// count in a chip; aria-pressed flips with the selection; an
+		// Abandoned) above the plan grid. The buttons carry no count: the
+		// one summary line over the grid says how many plans the filter
+		// shows, as on /routes and mobile (issue #1374); aria-pressed
+		// flips with the selection; an
 		// inner filter-empty state surfaces when the picked bucket has
 		// no plans, with a "Show all plans" link that resets the filter.
 		// Pin those behaviours so a regression in the filter wiring
@@ -148,11 +150,14 @@ test.describe('/plans', () => {
 			filterRow.getByRole('button', { name: /^All\b/ })
 		).toHaveAttribute('aria-pressed', 'true');
 
-		// Seeded Richmond Half plan is active — Active button shows a 1-pill
-		// + clicking it keeps the card visible.
+		await expect(filterRow.locator('.count-pill')).toHaveCount(0);
+
+		// Seeded Richmond Half plan is active — clicking Active keeps the
+		// card visible and the summary line counts the one active plan.
 		const activeBtn = filterRow.getByRole('button', { name: /^Active\b/ });
 		await activeBtn.click();
 		await expect(activeBtn).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('plans-summary')).toHaveText(/^1 of \d+ plans?$/);
 		await expect(
 			page.getByRole('heading', { name: /Richmond Half 2026/ })
 		).toBeVisible();

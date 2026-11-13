@@ -99,7 +99,27 @@ test.describe('/clubs', () => {
 		).toBeVisible({ timeout: 10_000 });
 	});
 
-	test('Create club button is reachable from /clubs', async ({ page }) => {
+	test('My clubs has its own search: it narrows by name, and a miss says so and clears', async ({
+		page
+	}) => {
+		// My clubs had no search, which left Create club alone on the bar's
+		// row (issue #1374). It filters the clubs already loaded by name.
+		await page.goto('/clubs');
+		const friends = page.getByRole('heading', { name: 'Friends of Jared' });
+		await expect(friends).toBeVisible({ timeout: 10_000 });
+		const search = page.getByTestId('clubs-mine-search');
+		await search.fill('friends of');
+		await expect(friends).toBeVisible();
+		await search.fill('zzz-no-such-club');
+		await expect(page.getByTestId('clubs-mine-no-match')).toBeVisible();
+		await page
+			.getByTestId('clubs-mine-no-match')
+			.getByRole('button', { name: /Clear search/i })
+			.click();
+		await expect(friends).toBeVisible();
+	});
+
+		test('Create club button is reachable from /clubs', async ({ page }) => {
 		await page.goto('/clubs');
 		await expect(
 			page.getByRole('link', { name: /Create club/ }).or(

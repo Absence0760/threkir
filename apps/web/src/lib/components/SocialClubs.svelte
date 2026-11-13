@@ -16,6 +16,7 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { clubRoleLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { CREATE_CLUB_GUIDE_ID, clubSetupHref } from '#lib/social/club_setup.ts';
+	import { fold } from '#lib/segments/catalogue_browse.ts';
 	import type { ClubWithMeta } from '#lib/types.ts';
 
 	let subtab = $state<'browse' | 'mine'>('mine');
@@ -28,7 +29,14 @@
 	let browseGen = $state(0);
 	let mineGen = $state(0);
 
-	let visible = $derived(subtab === 'browse' ? browseResults : myClubs);
+	// My clubs' own search: a name filter over the clubs already loaded, so
+	// the tab is never a row holding only Create club (issue #1374).
+	let mineSearch = $state('');
+	let mineShown = $derived.by(() => {
+		const q = fold(mineSearch.trim());
+		return q ? myClubs.filter((c) => fold(c.name).includes(q)) : myClubs;
+	});
+	let visible = $derived(subtab === 'browse' ? browseResults : mineShown);
 	let adminClubs = $derived(
 		myClubs.filter((c) => c.viewer_role === 'owner' || c.viewer_role === 'admin')
 	);
@@ -104,6 +112,16 @@
 		clearLabel={m('socialClubs.clearSearchAriaLabel')}
 		testid="clubs-search"
 		oninput={(v) => (v === '' ? loadBrowse() : onSearchInput())}
+	/>
+{/snippet}
+
+{#snippet mineSearchField()}
+	<AppSearchField
+		bind:value={mineSearch}
+		label={m('socialClubs.mineSearchPlaceholder')}
+		placeholder={m('socialClubs.mineSearchPlaceholder')}
+		clearLabel={m('socialClubs.clearSearchAriaLabel')}
+		testid="clubs-mine-search"
 	/>
 {/snippet}
 
@@ -192,7 +210,7 @@
 		</button>
 	</div>
 
-	<FilterBar idPrefix="clubs" search={subtab === 'browse' ? clubsSearch : undefined} trailing={createClubAction} />
+	<FilterBar idPrefix="clubs" search={subtab === 'browse' ? clubsSearch : mineSearchField} trailing={createClubAction} />
 
 	{#if loading}
 		<div class="grid" aria-hidden="true">
@@ -246,7 +264,15 @@
 			{/snippet}
 		</EmptyState>
 	{:else if visible.length === 0}
-		{#if subtab === 'mine'}
+		{#if subtab === 'mine' && myClubs.length > 0}
+			<EmptyState icon="search_off" title={m('socialClubs.mineNoMatch')} data-testid="clubs-mine-no-match">
+				{#snippet actions()}
+					<button type="button" class="btn btn-secondary" onclick={() => (mineSearch = '')}>
+						{m('socialClubs.clearSearch')}
+					</button>
+				{/snippet}
+			</EmptyState>
+		{:else if subtab === 'mine'}
 			<EmptyState
 				icon="groups"
 				title={m('socialClubs.emptyMineTitle')}

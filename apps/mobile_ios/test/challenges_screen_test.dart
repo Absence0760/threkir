@@ -89,6 +89,42 @@ void main() {
     expect(find.text('Public 50k'), findsOneWidget);
   });
 
+  testWidgets('a search narrows both sections by title, and one that '
+      'matches nothing says so and clears (issue #1374)', (tester) async {
+    final social = _FakeSocial([
+      _ch(id: 'a', title: 'June 100k', joined: true),
+      _ch(id: 'b', title: 'Public 50k'),
+      _ch(id: 'c', title: 'Hill week'),
+    ]);
+    await tester.pumpWidget(_app(social));
+    await tester.pump();
+    final field = find.widgetWithText(TextField, 'Search challenges');
+    expect(field, findsOneWidget);
+    await tester.enterText(field, 'HILL');
+    await tester.pump();
+    expect(find.text('Hill week'), findsOneWidget);
+    expect(find.text('Public 50k'), findsNothing);
+    expect(find.text('June 100k'), findsNothing);
+
+    await tester.enterText(field, 'zzz');
+    await tester.pump();
+    final noMatch = find.byKey(const ValueKey('challenges-no-match'));
+    expect(noMatch, findsOneWidget);
+    expect(find.text('No challenges match your search'), findsOneWidget);
+    await tester.tap(
+        find.descendant(of: noMatch, matching: find.text('Clear search')));
+    await tester.pump();
+    expect(find.text('June 100k'), findsOneWidget);
+    expect(find.text('Public 50k'), findsOneWidget);
+  });
+
+  testWidgets('with no challenges at all there is no search over nothing',
+      (tester) async {
+    await tester.pumpWidget(_app(_FakeSocial(const [])));
+    await tester.pump();
+    expect(find.byType(TextField), findsNothing);
+  });
+
   testWidgets('self-hides into empty copy when the user is in none', (tester) async {
     final social = _FakeSocial([
       _ch(id: 'b', title: 'Public 50k', joined: false, participantCount: 8),

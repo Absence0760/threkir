@@ -6065,10 +6065,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clubsTabMine => 'Mis clubes';
 
   @override
+  String get clubsViewGroup => 'Sección de clubes';
+
+  @override
   String get clubsJoinWithCode => 'Unirse con código de invitación';
 
   @override
   String get clubsSearchHint => 'Buscar por nombre o ubicación';
+
+  @override
+  String get clubsSearchMineHint => 'Buscar en tus clubes';
+
+  @override
+  String get clubsMineNoMatch =>
+      'Ninguno de tus clubes coincide con tu búsqueda';
 
   @override
   String get clubsTimeoutError =>
@@ -6944,6 +6954,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get plansFilterGroupLabel => 'Filtrar planes por estado';
+
+  @override
+  String plansCountMeta(int visible, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$visible de $total planes',
+      one: '$visible de $total plan',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get plansFilterAll => 'Todos';
@@ -15232,6 +15253,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get challengesTitle => 'Desafíos';
+
+  @override
+  String get challengesSearchHint => 'Buscar desafíos';
+
+  @override
+  String get challengesNoMatch => 'Ningún desafío coincide con tu búsqueda';
 
   @override
   String get challengesMyChallenges => 'Mis desafíos';

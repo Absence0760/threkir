@@ -17,6 +17,7 @@
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show TrainingPlanRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +35,12 @@ import '../lib/screens/routine_library_screen.dart';
 import '../lib/screens/settings_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/surface_peer_strip.dart';
+
+/// No plans, so the Plans tab shows its empty state.
+class _NoPlansTraining extends TrainingService {
+  @override
+  Future<List<TrainingPlanRow>> fetchMyPlans() async => const [];
+}
 
 class _SignedInApi extends ApiClient {
   @override
@@ -85,19 +92,26 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('plans names the library beside New plan, not as a glyph',
+  testWidgets('plans names the library where a runner with no plan looks',
       (tester) async {
     await _pump(
       tester,
-      PlansScreen(training: TrainingService(), apiClient: _SignedInApi()),
+      PlansScreen(training: _NoPlansTraining(), apiClient: _SignedInApi()),
     );
-    // A labelled secondary action, as on web — not a peer tab, which
-    // repeated the AppBar title as a selected chip (issue #1186). New plan is
-    // the page's one primary action, its FAB (issue #1374).
-    expect(find.widgetWithText(OutlinedButton, 'Browse library'), findsOneWidget);
+    await tester.pump();
+    // Not a peer tab, which repeated the AppBar title as a selected chip
+    // (issue #1186). With no plans it is labelled, under the starters; over a
+    // list it is an icon with its tooltip at the end of the status chips'
+    // line, the owner's call over a labelled button alone on a row (issue
+    // #1374; plans_screen_test pins that half). New plan is the page's one
+    // primary action, its FAB.
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('plans-empty-browse-library')),
+            matching: find.text('Browse library')),
+        findsOneWidget);
     expect(find.widgetWithText(FloatingActionButton, 'New plan'), findsOneWidget);
     expect(find.byType(SurfacePeerStrip), findsNothing);
-    expect(find.widgetWithIcon(IconButton, Icons.public), findsNothing);
   });
 
   testWidgets('the routine library names the public library',

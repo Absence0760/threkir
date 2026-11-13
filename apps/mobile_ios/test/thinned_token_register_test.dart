@@ -47,9 +47,6 @@ const _register = <String, int>{
   // Two 48x48 icon bubbles on a card (1.306/1.334 and 1.231/1.402). Washes:
   // the glyph inside each is the full-strength token and the row is labelled.
   'lib/screens/import_screen.dart': 2,
-  // ICON, `onSurfaceVariant@0.7` on the page — 3.861/5.899, clears 3:1. The
-  // 48 px empty-state glyph, with its title and body text beside it.
-  'lib/screens/people_screen.dart': 1,
   // The catalogue leaderboard's viewer row — the same `primaryContainer@0.5`
   // fill as `segments_panel`'s, and the same numbers (1.078/1.013) rather than
   // a fresh measurement, because `cardTheme.color` IS `surface` in both themes,

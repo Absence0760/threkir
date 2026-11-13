@@ -758,7 +758,8 @@
 				};
 			}
 		} else if (event === 'error') {
-			error = (parsed.message as string) ?? t('coachChat.errorStreamFailed');
+			// The event's own text is never shown (§ 2509): catalogue copy only.
+			error = t('coachChat.errorStreamFailed');
 			// The server refunds the cap slot (refund_coach_usage_slot) when a
 			// stream fails before any token is produced, but that corrected
 			// count only reaches us on this `error` event — never via `done`.

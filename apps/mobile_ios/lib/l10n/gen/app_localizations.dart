@@ -13455,16 +13455,28 @@ abstract class AppLocalizations {
   /// **'Coach error ({code})'**
   String coachGenericError(int code);
 
+  /// Error when /api/coach answers 5xx before streaming
+  ///
+  /// In en, this message translates to:
+  /// **'Coach is unavailable right now. Try again in a moment.'**
+  String get coachUnavailable;
+
+  /// Error on 409 from /api/coach: a regenerate or edit was refused because the thread on this phone is out of date; reopening the Coach screen reloads it
+  ///
+  /// In en, this message translates to:
+  /// **'This conversation is out of date. Reopen the Coach and try again.'**
+  String get coachStaleThread;
+
   /// Error on transport-layer failure
   ///
   /// In en, this message translates to:
   /// **'Could not reach the Coach. Check your connection and try again.'**
   String get coachTransportError;
 
-  /// Fallback error message from the SSE error event
+  /// Shown when the Coach reply stream fails part-way; the server sends no text of its own
   ///
   /// In en, this message translates to:
-  /// **'stream failed'**
+  /// **'The Coach\'s reply was cut off. Try sending your message again.'**
   String get coachStreamFailed;
 
   /// Error starting a new conversation

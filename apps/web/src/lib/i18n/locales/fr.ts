@@ -200,7 +200,7 @@ export const messages = {
 	"coachChat.errorGeneric": "Erreur du Coach ({status})",
 	"coachChat.errorUnavailable": "Le Coach est indisponible pour le moment. Réessayez dans un instant.",
 	"coachChat.errorTransport": "Impossible de joindre le Coach. Vérifiez votre connexion et réessayez.",
-	"coachChat.errorStreamFailed": "échec du flux",
+	"coachChat.errorStreamFailed": "La réponse du Coach a été interrompue. Renvoyez votre message.",
 	"coachChat.errorLoadArchive": "Impossible d'ouvrir cette conversation enregistrée. Réessayez.",
 	"coachChat.errorLoad": "Impossible de charger votre conversation. Réessayez.",
 	"coachChat.newChat": "Nouveau chat",

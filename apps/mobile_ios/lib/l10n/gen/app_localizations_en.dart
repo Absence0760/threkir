@@ -8374,11 +8374,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'Coach is unavailable right now. Try again in a moment.';
+
+  @override
+  String get coachStaleThread =>
+      'This conversation is out of date. Reopen the Coach and try again.';
+
+  @override
   String get coachTransportError =>
       'Could not reach the Coach. Check your connection and try again.';
 
   @override
-  String get coachStreamFailed => 'stream failed';
+  String get coachStreamFailed =>
+      'The Coach\'s reply was cut off. Try sending your message again.';
 
   @override
   String get coachNewConversationFailed =>

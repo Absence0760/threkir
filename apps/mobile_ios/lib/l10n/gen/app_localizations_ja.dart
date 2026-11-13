@@ -8004,10 +8004,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable => 'コーチは現在利用できません。しばらくしてからもう一度お試しください。';
+
+  @override
+  String get coachStaleThread => 'この会話は最新ではありません。コーチを開き直してからもう一度お試しください。';
+
+  @override
   String get coachTransportError => 'コーチに接続できませんでした。接続を確認して再試行してください。';
 
   @override
-  String get coachStreamFailed => 'ストリームに失敗しました';
+  String get coachStreamFailed => 'コーチの返信が途中で途切れました。もう一度メッセージを送信してください。';
 
   @override
   String get coachNewConversationFailed => '新しい会話を開始できませんでした。';

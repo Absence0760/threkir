@@ -195,7 +195,7 @@ export const messages = {
 	"coachChat.errorGeneric": "Coach エラー（{status}）",
 	"coachChat.errorUnavailable": "コーチは現在利用できません。しばらくしてからもう一度お試しください。",
 	"coachChat.errorTransport": "Coach に接続できませんでした。接続を確認してもう一度お試しください。",
-	"coachChat.errorStreamFailed": "ストリームに失敗しました",
+	"coachChat.errorStreamFailed": "コーチの返信が途中で途切れました。もう一度メッセージを送信してください。",
 	"coachChat.errorLoadArchive": "保存された会話を開けませんでした。もう一度お試しください。",
 	"coachChat.errorLoad": "会話を読み込めませんでした。もう一度お試しください。",
 	"coachChat.newChat": "新しいチャット",

@@ -213,7 +213,7 @@ export const en = {
 	"coachChat.errorGeneric": "Coach error ({status})",
 	"coachChat.errorUnavailable": "Coach is unavailable right now. Try again in a moment.",
 	"coachChat.errorTransport": "Could not reach the Coach. Check your connection and try again.",
-	"coachChat.errorStreamFailed": "stream failed",
+	"coachChat.errorStreamFailed": "The Coach's reply was cut off. Try sending your message again.",
 	"coachChat.errorLoadArchive": "Couldn't open that saved conversation. Try again.",
 	"coachChat.errorLoad": "Couldn't load your conversation. Try again.",
 	"coachChat.newChat": "New chat",

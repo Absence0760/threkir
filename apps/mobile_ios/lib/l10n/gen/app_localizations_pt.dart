@@ -8467,11 +8467,20 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'O Coach está indisponível de momento. Tente novamente daqui a pouco.';
+
+  @override
+  String get coachStaleThread =>
+      'Esta conversa está desatualizada. Volte a abrir o Coach e tente novamente.';
+
+  @override
   String get coachTransportError =>
       'Não foi possível alcançar o Coach. Verifique a sua ligação e tente novamente.';
 
   @override
-  String get coachStreamFailed => 'falha no fluxo';
+  String get coachStreamFailed =>
+      'A resposta do Coach foi interrompida. Volte a enviar a sua mensagem.';
 
   @override
   String get coachNewConversationFailed =>
@@ -31536,11 +31545,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String get coachUnavailable =>
+      'O Coach está indisponível no momento. Tente novamente daqui a pouco.';
+
+  @override
+  String get coachStaleThread =>
+      'Esta conversa está desatualizada. Abra o Coach de novo e tente novamente.';
+
+  @override
   String get coachTransportError =>
       'Não foi possível alcançar o Coach. Verifique sua conexão e tente novamente.';
 
   @override
-  String get coachStreamFailed => 'falha no fluxo';
+  String get coachStreamFailed =>
+      'A resposta do Coach foi interrompida. Envie sua mensagem de novo.';
 
   @override
   String get coachNewConversationFailed =>

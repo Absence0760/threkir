@@ -11342,13 +11342,21 @@
       }
     }
   },
+  "coachUnavailable": "Coach is unavailable right now. Try again in a moment.",
+  "@coachUnavailable": {
+    "description": "Error when /api/coach answers 5xx before streaming"
+  },
+  "coachStaleThread": "This conversation is out of date. Reopen the Coach and try again.",
+  "@coachStaleThread": {
+    "description": "Error on 409 from /api/coach: a regenerate or edit was refused because the thread on this phone is out of date; reopening the Coach screen reloads it"
+  },
   "coachTransportError": "Could not reach the Coach. Check your connection and try again.",
   "@coachTransportError": {
     "description": "Error on transport-layer failure"
   },
-  "coachStreamFailed": "stream failed",
+  "coachStreamFailed": "The Coach's reply was cut off. Try sending your message again.",
   "@coachStreamFailed": {
-    "description": "Fallback error message from the SSE error event"
+    "description": "Shown when the Coach reply stream fails part-way; the server sends no text of its own"
   },
   "coachNewConversationFailed": "Could not start a new conversation.",
   "@coachNewConversationFailed": {

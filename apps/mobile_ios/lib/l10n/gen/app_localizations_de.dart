@@ -8482,11 +8482,20 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get coachUnavailable =>
+      'Der Coach ist gerade nicht erreichbar. Versuche es gleich noch einmal.';
+
+  @override
+  String get coachStaleThread =>
+      'Diese Unterhaltung ist nicht mehr aktuell. Öffne den Coach erneut und versuche es noch einmal.';
+
+  @override
   String get coachTransportError =>
       'Coach konnte nicht erreicht werden. Prüfe deine Verbindung und versuche es erneut.';
 
   @override
-  String get coachStreamFailed => 'Stream fehlgeschlagen';
+  String get coachStreamFailed =>
+      'Die Antwort des Coachs wurde abgebrochen. Sende deine Nachricht noch einmal.';
 
   @override
   String get coachNewConversationFailed =>

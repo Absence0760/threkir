@@ -36907,6 +36907,12 @@ abstract class AppLocalizations {
   /// **'Sort'**
   String get filterBarSort;
 
+  /// Heading of the run-source choices (recorded, watch, Strava, parkrun, Health) in the run list's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get filterBarSource;
+
   /// Placeholder of the Runs tab's search field, which matches the names runners give their runs
   ///
   /// In en, this message translates to:

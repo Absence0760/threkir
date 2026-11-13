@@ -6321,6 +6321,7 @@
   "filterBarSurface": "Superfície",
   "filterBarDistance": "Distância",
   "filterBarSort": "Ordenar",
+  "filterBarSource": "Fonte",
   "runsSearchHint": "Pesquisar corridas pelo nome",
   "filterBarRegion": "Região"
 }

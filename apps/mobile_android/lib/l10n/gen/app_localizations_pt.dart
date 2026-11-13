@@ -23107,6 +23107,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get filterBarSort => 'Ordenar';
 
   @override
+  String get filterBarSource => 'Fonte';
+
+  @override
   String get runsSearchHint => 'Pesquisar corridas pelo nome';
 
   @override
@@ -46190,6 +46193,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get filterBarSort => 'Ordenar';
+
+  @override
+  String get filterBarSource => 'Fonte';
 
   @override
   String get runsSearchHint => 'Buscar corridas pelo nome';

@@ -21976,6 +21976,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get filterBarSort => '並べ替え';
 
   @override
+  String get filterBarSource => 'ソース';
+
+  @override
   String get runsSearchHint => 'ランの名前で検索';
 
   @override

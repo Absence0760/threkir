@@ -23094,6 +23094,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get filterBarSort => 'Ordenar';
 
   @override
+  String get filterBarSource => 'Fuente';
+
+  @override
   String get runsSearchHint => 'Buscar actividades por nombre';
 
   @override

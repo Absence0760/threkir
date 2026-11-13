@@ -119,6 +119,50 @@ int _countChipWraps(String code) {
   return n;
 }
 
+/// Filter controls built outside the FilterBar in a list tab: a dropdown,
+/// or a menu opened from a labelled trigger ("Source: All sources"), outside
+/// a sheet. An icon-only `PopupMenuButton` (`icon:`) is a toolbar action
+/// (date range, sort, overflow) and is not counted.
+int _countFilterDropdowns(String code) {
+  final sheets = [
+    for (final m in _sheet.allMatches(code)) (m.start, _close(code, m.end - 1)),
+  ];
+  bool inSheet(int at) => sheets.any((r) => at > r.$1 && at < r.$2);
+  var n = 0;
+  for (final m in RegExp(
+          r'\b(?:DropdownButtonFormField|DropdownButton|DropdownMenu)\s*(?:<[^(]*>)?\(')
+      .allMatches(code)) {
+    if (!inSheet(m.start)) n++;
+  }
+  for (final m in RegExp(r'\bPopupMenuButton\s*(?:<[^(]*>)?\(').allMatches(code)) {
+    if (inSheet(m.start)) continue;
+    final open = m.end - 1;
+    final args = _topLevel(code.substring(open, _close(code, open) + 1));
+    if (!RegExp(r'\bicon:').hasMatch(args) && RegExp(r'\bchild:').hasMatch(args)) {
+      n++;
+    }
+  }
+  return n;
+}
+
+/// The text of a call's own arguments, without anything nested in them
+/// (an item builder's `child:` is not the button's).
+String _topLevel(String call) {
+  final out = StringBuffer();
+  var depth = 0;
+  for (final c in call.split('')) {
+    if (c == '(' || c == '[' || c == '{') depth++;
+    if (depth == 1) out.write(c);
+    if (c == ')' || c == ']' || c == '}') depth--;
+  }
+  return out.toString();
+}
+
+/// Hand-built filter dropdowns left in a list tab. Empty since the Runs
+/// source menu moved into the Filters sheet; it stays so a new one fails by
+/// name.
+const _unmigratedFilterDropdowns = <String, int>{};
+
 Map<String, int> _drift(Map<String, int> found, Map<String, int> pinned) => {
       for (final path in {...found.keys, ...pinned.keys})
         if ((found[path] ?? 0) != (pinned[path] ?? 0))
@@ -160,6 +204,46 @@ void main() {
           'may wrap. A count that fell: lower _unmigratedChipWraps to match. '
           'Map of path -> count found:',
     );
+  });
+
+  test('a list tab\'s filters are FilterBar chips or its sheet, never a '
+      'dropdown of their own', () {
+    final found = <String, int>{};
+    for (final path in _listTabs) {
+      final n = _countFilterDropdowns(_codeOnly(File(path).readAsStringSync()));
+      if (n > 0) found[path] = n;
+    }
+    expect(
+      _drift(found, _unmigratedFilterDropdowns),
+      isEmpty,
+      reason: 'A filter in a list tab goes in FilterBar.chips (the most-used '
+          'one) or in its Filters sheet, with an active-filter chip while it '
+          'is set; a dropdown or a labelled menu beside the list is a second '
+          'control row (issue #1374: Runs\' "Source: All sources"). A count '
+          'that fell: lower _unmigratedFilterDropdowns. Map of path -> count:',
+    );
+  });
+
+  test('the dropdown scan sees a filter menu and ignores toolbar icons and '
+      'sheets', () {
+    expect(_countFilterDropdowns('DropdownButton<String>(items: i)'), 1);
+    expect(
+        _countFilterDropdowns(
+            'PopupMenuButton<RunSource?>(itemBuilder: b, child: Row())'),
+        1);
+    expect(
+        _countFilterDropdowns(
+            'PopupMenuButton<Sort>(icon: Icon(Icons.sort), itemBuilder: b)'),
+        0);
+    expect(
+        _countFilterDropdowns('PopupMenuButton<void>(itemBuilder: (_) => '
+            '[PopupMenuItem(child: ListTile())])'),
+        0,
+        reason: 'an overflow whose items have a child is not a filter');
+    expect(
+        _countFilterDropdowns(
+            'showFilterSheet(builder: (c, s) => DropdownButton(items: i))'),
+        0);
   });
 
   test('the scan sees a wrapped chip row and ignores one inside a sheet', () {

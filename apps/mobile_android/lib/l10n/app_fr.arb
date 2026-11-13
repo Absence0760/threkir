@@ -6321,6 +6321,7 @@
   "filterBarSurface": "Surface",
   "filterBarDistance": "Distance",
   "filterBarSort": "Trier",
+  "filterBarSource": "Source",
   "runsSearchHint": "Rechercher par nom de course",
   "filterBarRegion": "Région"
 }

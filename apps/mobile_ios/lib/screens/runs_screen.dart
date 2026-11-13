@@ -7,15 +7,20 @@ import 'package:core_models/core_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        ActiveFilter,
         AppSearchField,
         AppSemanticColors,
+        AppSpace,
+        ChoiceChipOption,
         EmptyState,
         FilterBar,
         HubSelection,
         HubTabBody,
         PrimaryAction,
         SelectionHint,
-        SheetScaffold;
+        SheetScaffold,
+        buildChoiceChip,
+        showFilterSheet;
 
 import '../widgets/grisnir_moments.dart';
 import '../adaptive_width.dart';
@@ -1054,19 +1059,110 @@ class _RunsScreenState extends State<RunsScreen>
     );
   }
 
-  /// The run list's search, over the titles of the whole history.
-  FilterBar _searchBar(AppLocalizations l10n) => FilterBar(
-        key: const ValueKey('runs-filter-bar'),
-        search: AppSearchField(
-          controller: _searchCtl,
-          hint: l10n.runsSearchHint,
-          clearTooltip: l10n.commonClearSearch,
-          onChanged: (v) => setState(() {
-            _query = v;
-            _resetPaging();
-            _recompute();
-          }),
+  void _setActivity(ActivityType? v) {
+    setState(() {
+      _activityFilter = v;
+      _resetPaging();
+      _recompute();
+    });
+    _persistFilters();
+  }
+
+  void _setSource(RunSource? v) {
+    setState(() {
+      _sourceFilter = v;
+      _resetPaging();
+      _recompute();
+    });
+    _persistFilters();
+  }
+
+  /// The run list's one control row: the search over the titles of the whole
+  /// history, the activity as the quick chips, and Filters for the source,
+  /// which shows as a removable chip on the line while it is set. The source
+  /// was a hand-built "Source: All sources" menu under the chips, a third row
+  /// of controls in the list (issue #1374).
+  FilterBar _searchBar(AppLocalizations l10n) {
+    final source = _sourceFilter;
+    final active = [
+      if (source != null)
+        ActiveFilter(
+          label: _runSourceLabel(l10n, source),
+          onRemove: () => _setSource(null),
+          removeTooltip:
+              l10n.filterBarRemoveFilter(_runSourceLabel(l10n, source)),
         ),
+    ];
+    return FilterBar(
+      key: const ValueKey('runs-filter-bar'),
+      search: AppSearchField(
+        controller: _searchCtl,
+        hint: l10n.runsSearchHint,
+        clearTooltip: l10n.commonClearSearch,
+        onChanged: (v) => setState(() {
+          _query = v;
+          _resetPaging();
+          _recompute();
+        }),
+      ),
+      chips: [
+        for (final o in <ChoiceChipOption<ActivityType?>>[
+          ChoiceChipOption(value: null, label: l10n.historyFilterAll),
+          for (final type in ActivityType.values)
+            ChoiceChipOption(
+                value: type,
+                label: activityTypeLabel(l10n, type),
+                icon: type.icon),
+        ])
+          buildChoiceChip<ActivityType?>(
+              context, o, _activityFilter, _setActivity),
+      ],
+      activeFilters: active,
+      filtersLabel: l10n.filterBarFilters,
+      filtersSemanticLabel:
+          active.isEmpty ? null : l10n.filterBarFiltersCount(active.length),
+      activeFilterCount: active.length,
+      onOpenFilters: () => _openFilters(l10n),
+    );
+  }
+
+  Future<void> _openFilters(AppLocalizations l10n) => showFilterSheet(
+        context: context,
+        title: l10n.filterBarFilters,
+        doneLabel: l10n.filterBarDone,
+        builder: (sheetContext, setSheet) {
+          final theme = Theme.of(sheetContext);
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(l10n.filterBarSource, style: theme.textTheme.titleSmall),
+              const SizedBox(height: AppSpace.sm),
+              // semantics-children: a group name, read once before the controls inside it
+              Semantics(
+                container: true,
+                label: l10n.filterBarSource,
+                child: Wrap(
+                  spacing: AppSpace.sm,
+                  children: [
+                    for (final src in <RunSource?>[null, ..._runSourceOrder])
+                      ChoiceChip(
+                        key: ValueKey('runs-source-${src?.name ?? 'all'}'),
+                        label: Text(src == null
+                            ? l10n.historySourceAll
+                            : _runSourceLabel(l10n, src)),
+                        selected: _sourceFilter == src,
+                        onSelected: (_) {
+                          _setSource(src);
+                          setSheet(() {});
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       );
 
   /// The add affordance follows the active timeline chip, mirroring web
@@ -1710,27 +1806,8 @@ class _RunsScreenState extends State<RunsScreen>
       l10n: l10n,
       rangeLabel: _activeRangeLabel(l10n),
       visibleCount: _visible.length,
-      showRangeRow: true,
       summary: summariseRuns(_filtered),
       unit: unit,
-      activityFilter: _activityFilter,
-      sourceFilter: _sourceFilter,
-      onActivityChanged: (v) {
-        setState(() {
-          _activityFilter = v;
-          _resetPaging();
-          _recompute();
-        });
-        _persistFilters();
-      },
-      onSourceChanged: (v) {
-        setState(() {
-          _sourceFilter = v;
-          _resetPaging();
-          _recompute();
-        });
-        _persistFilters();
-      },
     );
   }
 
@@ -1903,58 +1980,17 @@ class _KindChipRow extends StatelessWidget {
   }
 }
 
-/// Header row + activity / source filter chips for [RunsScreen]. Pulled
-/// out of the inline ListView builder so each chip tap doesn't re-run
-/// the full builder closure for the header subtree on every setState —
-/// the parent supplies new selections + callbacks, but the widget tree
-/// itself is contained.
-class _RunsFilterHeader extends StatelessWidget {
-  final AppLocalizations l10n;
-  /// Active date-range label + visible-run count. Rendered as the header's
-  /// leading row only when [showRangeRow] is set — on mounts where the AppBar
-  /// title carries them instead (range + count anchor the title by default)
-  /// they stay out of the body so the status isn't shown twice.
-  final String rangeLabel;
-  final int visibleCount;
-  final bool showRangeRow;
-  /// Aggregate over the *full filtered set* (not the paginated slice).
-  /// Drives the small stats chip under the range label so a user can
-  /// see "47 km · 5h" without scrolling — and the chip updates live
-  /// as filter chips toggle.
-  final HistoryFilterSummary summary;
-  /// User's distance-unit preference for formatting the chip.
-  final DistanceUnit unit;
-  final ActivityType? activityFilter;
-  final RunSource? sourceFilter;
-  final ValueChanged<ActivityType?> onActivityChanged;
-  final ValueChanged<RunSource?> onSourceChanged;
+/// The run sources the Filters sheet offers, in display order.
+const _runSourceOrder = <RunSource>[
+  RunSource.app,
+  RunSource.watch,
+  RunSource.strava,
+  RunSource.parkrun,
+  RunSource.healthkit,
+  RunSource.healthconnect,
+];
 
-  const _RunsFilterHeader({
-    required this.l10n,
-    required this.rangeLabel,
-    required this.visibleCount,
-    this.showRangeRow = false,
-    required this.summary,
-    required this.unit,
-    required this.activityFilter,
-    required this.sourceFilter,
-    required this.onActivityChanged,
-    required this.onSourceChanged,
-  });
-
-  /// The selectable run sources in display order. Labels are resolved
-  /// from [AppLocalizations] at build time rather than baked in here.
-  static const _sourceOrder = <RunSource>[
-    RunSource.app,
-    RunSource.watch,
-    RunSource.strava,
-    RunSource.parkrun,
-    RunSource.healthkit,
-    RunSource.healthconnect,
-  ];
-
-  static String _sourceName(RunSource src, AppLocalizations l10n) {
-    return switch (src) {
+String _runSourceLabel(AppLocalizations l10n, RunSource src) => switch (src) {
       RunSource.app => l10n.historySourceRecorded,
       RunSource.watch => l10n.historySourceWatch,
       RunSource.strava => l10n.historySourceStrava,
@@ -1963,130 +1999,57 @@ class _RunsFilterHeader extends StatelessWidget {
       RunSource.healthconnect => l10n.historySourceHealthConnect,
       _ => l10n.historySourceAll,
     };
-  }
 
-  /// Format the summary chip — e.g. "47.0 km · 5h 25m". The run
-  /// count already prints to the right of the range label, so the
-  /// chip skips it and shows volume + time only.
+/// The line at the head of [RunsScreen]'s list: the range, the count and
+/// the totals of what the filters leave.
+class _RunsFilterHeader extends StatelessWidget {
+  final AppLocalizations l10n;
+
+  /// The active date range ("This week").
+  final String rangeLabel;
+  final int visibleCount;
+
+  /// Aggregate over the *full filtered set* (not the paginated slice), so
+  /// the line reads "47 km · 5h" without scrolling and follows the filters.
+  final HistoryFilterSummary summary;
+  final DistanceUnit unit;
+
+  const _RunsFilterHeader({
+    required this.l10n,
+    required this.rangeLabel,
+    required this.visibleCount,
+    required this.summary,
+    required this.unit,
+  });
+
+  /// Volume and time, e.g. "47.0 km · 5h 25m". The run count is already in
+  /// the line, so it is not repeated.
   static String _summaryLine(HistoryFilterSummary s, DistanceUnit unit) {
     final dist = UnitFormat.distance(s.totalDistanceM, unit);
     final h = s.totalDuration.inHours;
     final m = s.totalDuration.inMinutes % 60;
     final time = h > 0 ? '${h}h ${m}m' : '${m}m';
-    return '$dist  ·  $time';
-  }
-
-  static String _sourceLabel(RunSource? src, AppLocalizations l10n) {
-    if (src == null) return l10n.historySourceAll;
-    return _sourceName(src, l10n);
+    return '$dist · $time';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Range label + run count anchor the AppBar title by default (filling
-        // the previously-empty left half of the bar); on static-title mounts
-        // (the hub's Runs sub-tab) they return to this, their pre-polish home.
-        if (showRangeRow)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              '$rangeLabel · ${l10n.historyCount(visibleCount)}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        // Summary line ("47 km · 5h 12m") — the metric that actually
-        // changes as filter chips toggle, so it earns the body slot.
-        if (summary.runCount > 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 0, bottom: 4),
-            child: Text(
-              _summaryLine(summary, unit),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              FilterChip(
-                label: Text(l10n.historyFilterAll),
-                selected: activityFilter == null,
-                onSelected: (_) => onActivityChanged(null),
-              ),
-              const SizedBox(width: 8),
-              for (final type in ActivityType.values) ...[
-                FilterChip(
-                  avatar: Icon(type.icon, size: 18),
-                  label: Text(activityTypeLabel(l10n, type)),
-                  selected: activityFilter == type,
-                  onSelected: (_) => onActivityChanged(type),
-                ),
-                const SizedBox(width: 8),
-              ],
-            ],
-          ),
+    // One line that wraps, as Routes' count row is: the range, the count and
+    // the totals. The controls are all in the FilterBar above the list.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
+      child: Text(
+        [
+          rangeLabel,
+          l10n.historyCount(visibleCount),
+          if (summary.runCount > 0) _summaryLine(summary, unit),
+        ].join(' · '),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
         ),
-        const SizedBox(height: 8),
-        // Source filter collapsed into a popup so the 7-entry list doesn't
-        // need its own scrollable row. Matches the AppBar's existing
-        // PopupMenuButton pattern for date-range and sort.
-        Align(
-          alignment: Alignment.centerLeft,
-          child: PopupMenuButton<RunSource?>(
-              tooltip: l10n.historySourceFilterTooltip,
-              initialValue: sourceFilter,
-              onSelected: onSourceChanged,
-              itemBuilder: (_) => [
-                CheckedPopupMenuItem(
-                  value: null,
-                  checked: sourceFilter == null,
-                  child: Text(l10n.historySourceAll),
-                ),
-                for (final src in _sourceOrder)
-                  CheckedPopupMenuItem(
-                    value: src,
-                    checked: sourceFilter == src,
-                    child: Text(_sourceName(src, l10n)),
-                  ),
-              ],
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.filter_alt_outlined,
-                      size: 16, color: theme.colorScheme.outline),
-                  const SizedBox(width: 6),
-                  // Flexible: at 2x text on a 320 dp phone the label is wider
-                  // than the screen and overflowed by 289 dp.
-                  Flexible(
-                    child: Text(
-                      l10n.historySourceLabel(_sourceLabel(sourceFilter, l10n)),
-                      style: theme.textTheme.bodyMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Icon(Icons.arrow_drop_down,
-                      size: 18, color: theme.colorScheme.outline),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
+      ),
     );
   }
 }

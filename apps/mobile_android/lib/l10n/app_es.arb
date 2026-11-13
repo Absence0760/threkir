@@ -6321,6 +6321,7 @@
   "filterBarSurface": "Superficie",
   "filterBarDistance": "Distancia",
   "filterBarSort": "Ordenar",
+  "filterBarSource": "Fuente",
   "runsSearchHint": "Buscar actividades por nombre",
   "filterBarRegion": "Región"
 }

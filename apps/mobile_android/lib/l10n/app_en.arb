@@ -30442,6 +30442,10 @@
   "@filterBarSort": {
     "description": "Heading of the sort-order choices in a list's filter sheet"
   },
+  "filterBarSource": "Source",
+  "@filterBarSource": {
+    "description": "Heading of the run-source choices (recorded, watch, Strava, parkrun, Health) in the run list's filter sheet"
+  },
   "runsSearchHint": "Search run names",
   "@runsSearchHint": {
     "description": "Placeholder of the Runs tab's search field, which matches the names runners give their runs"

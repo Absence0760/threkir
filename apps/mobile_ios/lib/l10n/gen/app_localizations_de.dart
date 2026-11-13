@@ -23123,6 +23123,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get filterBarSort => 'Sortieren';
 
   @override
+  String get filterBarSource => 'Quelle';
+
+  @override
   String get runsSearchHint => 'Läufe nach Namen suchen';
 
   @override

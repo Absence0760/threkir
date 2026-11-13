@@ -23148,6 +23148,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get filterBarSort => 'Trier';
 
   @override
+  String get filterBarSource => 'Source';
+
+  @override
   String get runsSearchHint => 'Rechercher par nom de course';
 
   @override

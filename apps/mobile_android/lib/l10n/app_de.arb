@@ -6321,6 +6321,7 @@
   "filterBarSurface": "Untergrund",
   "filterBarDistance": "Distanz",
   "filterBarSort": "Sortieren",
+  "filterBarSource": "Quelle",
   "runsSearchHint": "Läufe nach Namen suchen",
   "filterBarRegion": "Region"
 }

@@ -22840,6 +22840,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterBarSort => 'Sort';
 
   @override
+  String get filterBarSource => 'Source';
+
+  @override
   String get runsSearchHint => 'Search run names';
 
   @override

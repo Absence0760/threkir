@@ -217,7 +217,6 @@ class _RunnerMenu extends StatelessWidget {
       body: Semantics(
         container: true,
         explicitChildNodes: true,
-        label: l10n.logMoreTitle,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -1072,6 +1072,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
                   const SizedBox(width: 4),
                 ],
                 Expanded(
+                  // semantics-children: names the composer; its hint is a different line, so nothing reads twice
                   child: Semantics(
                     label: l10n.groupsComposerLabel(_displayTitle(l10n)),
                     child: TextField(

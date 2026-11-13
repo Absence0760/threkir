@@ -144,6 +144,7 @@ class _SheetDiscardGuardState extends State<SheetDiscardGuard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Semantics(
+              excludeSemantics: true,
               key: const ValueKey('form-sheet-handle'),
               label: MaterialLocalizations.of(context).modalBarrierDismissLabel,
               container: true,

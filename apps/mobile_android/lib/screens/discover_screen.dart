@@ -260,16 +260,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     ];
     return FilterBar(
       key: const ValueKey('events-filter-bar'),
-      search: Semantics(
-        textField: true,
-        label: l10n.discoverSearchPlaceholder,
-        child: AppSearchField(
+      search: AppSearchField(
           controller: _searchCtl,
           hint: l10n.discoverSearchPlaceholder,
           clearTooltip: l10n.commonClearSearch,
           onChanged: _onQueryChanged,
         ),
-      ),
       chips: [
         for (final c in const ['', 'run', 'cycle', 'class', 'social'])
           buildChoiceChip<String>(
@@ -310,6 +306,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 children: [
                   Text(heading, style: theme.textTheme.titleSmall),
                   const SizedBox(height: AppSpace.sm),
+                  // semantics-children: a group name, read once before the controls inside it
                   Semantics(
                     container: true,
                     label: heading,

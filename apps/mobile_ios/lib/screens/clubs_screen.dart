@@ -233,10 +233,7 @@ class _ClubsScreenState extends State<ClubsScreen> {
   FilterBar _filterBar(AppLocalizations l10n) => FilterBar(
         key: const ValueKey('clubs-filter-bar'),
         search: _tab == 0
-            ? Semantics(
-                textField: true,
-                label: l10n.clubsSearchHint,
-                child: AppSearchField(
+            ? AppSearchField(
                   controller: _searchCtrl,
                   hint: l10n.clubsSearchHint,
                   clearTooltip: l10n.commonClearSearch,
@@ -247,8 +244,7 @@ class _ClubsScreenState extends State<ClubsScreen> {
                   onChanged: (v) {
                     if (v.isEmpty) _searchBrowse();
                   },
-                ),
-              )
+                )
             : null,
         trailing: [
           IconButton(

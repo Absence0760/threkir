@@ -993,6 +993,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                     point: LatLng(race.lat, race.lng),
                     width: 48,
                     height: 48,
+                    // semantics-children: the child draws no text, and keeps its own tap
                     child: Semantics(
                       button: true,
                       label: race.name,

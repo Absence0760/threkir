@@ -39,6 +39,7 @@ class SurfacePeerStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
       explicitChildNodes: true,

@@ -749,6 +749,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         ),
       );
     }
+    // semantics-children: the preview holds the stats placement control,
+    // which keeps its own node
     return Semantics(
       label: l10n.shareCardPreviewLabel,
       child: ClipRRect(
@@ -1216,6 +1218,7 @@ class _PlacementGesturesState extends State<_PlacementGestures> {
 
   @override
   Widget build(BuildContext context) {
+    // semantics-children: names the gesture surface; the blocks it moves keep their own nodes
     return Semantics(
       container: true,
       label: widget.label,

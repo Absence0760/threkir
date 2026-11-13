@@ -231,10 +231,7 @@ class _NearbyAreaScreenState extends State<NearbyAreaScreen> {
                 ),
               ),
             const SizedBox(height: 24),
-            Semantics(
-              textField: true,
-              label: l10n.nearbyAreaSearchHint,
-              child: TextField(
+            TextField(
                 controller: _searchCtl,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
@@ -246,7 +243,6 @@ class _NearbyAreaScreenState extends State<NearbyAreaScreen> {
                 ),
                 onChanged: _onSearchChanged,
               ),
-            ),
             if (_searching)
               const Padding(
                 padding: EdgeInsets.all(24),

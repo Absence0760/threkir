@@ -364,6 +364,7 @@ class _HeadToHeadPanelState extends State<HeadToHeadPanel> {
         ),
         const SizedBox(height: 12),
         Semantics(
+          excludeSemantics: true,
           label: l10n.headToHeadPreview,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),

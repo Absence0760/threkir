@@ -1264,6 +1264,8 @@ class _EmptyGoalsCta extends StatelessWidget {
     // CTA so a screen-reader user understands what activates.
     return Card(
       child: Semantics(
+        excludeSemantics: true,
+        onTap: onAdd,
         button: true,
         label: l10n.dashboardSetWeeklyGoalA11y,
         child: InkWell(
@@ -1352,6 +1354,8 @@ class _GoalCard extends StatelessWidget {
 
     return Card(
       child: Semantics(
+        excludeSemantics: true,
+        onTap: onTap,
         button: true,
         label: a11yLabel,
         child: InkWell(
@@ -1764,6 +1768,8 @@ class _PeriodStatCard extends StatelessWidget {
       // for the period summary drill-in.
       child: isTappable
           ? Semantics(
+              excludeSemantics: true,
+              onTap: onTap,
               button: true,
               label: l10n.dashboardPeriodSummaryA11y(
                 label,

@@ -585,6 +585,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
                 children: [
                   Text(heading, style: theme.textTheme.titleSmall),
                   const SizedBox(height: AppSpace.sm),
+                  // semantics-children: a group name, read once before the controls inside it
                   Semantics(
                     container: true,
                     label: heading,

@@ -1893,6 +1893,7 @@ class _HomeScreenState extends State<HomeScreen>
         final scheme = Theme.of(fabContext).colorScheme;
         return GestureDetector(
           onLongPress: starting ? null : _onLogLongPress,
+          // semantics-children: the FAB inside draws an icon only; its tap and the long-press menu ride on this node
           child: Semantics(
             button: true,
             enabled: starting ? false : null,

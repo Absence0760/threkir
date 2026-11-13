@@ -501,6 +501,7 @@ class _RunSocialSectionState extends State<RunSocialSection> {
             ],
           ),
           const SizedBox(height: 8),
+          // semantics-children: a group name, read once before the controls inside it
           Semantics(
             container: true,
             label: l10n.runSocialReactionsLabel,
@@ -629,6 +630,9 @@ class _KudosPill extends StatelessWidget {
         ? theme.colorScheme.primary
         : theme.colorScheme.onSurfaceVariant;
     return Semantics(
+      excludeSemantics: true,
+      onTap: disabled ? null : onTap,
+      value: '$count',
       button: true,
       label: viewerHas
           ? AppLocalizations.of(context).kudosRemoveLabel
@@ -738,6 +742,9 @@ class _CommentTile extends StatelessWidget {
                 OverflowBar(
                   children: [
                     Semantics(
+                      excludeSemantics: true,
+                      onTap: canLike ? onLike : null,
+                      value: like.count > 0 ? '${like.count}' : null,
                       button: true,
                       toggled: like.viewerLiked,
                       label: like.viewerLiked
@@ -993,6 +1000,7 @@ class _MentionPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
       label: AppLocalizations.of(context).runSocialMentionSuggestions,

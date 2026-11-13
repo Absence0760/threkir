@@ -1411,6 +1411,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           // notification has no count, so it takes the dot.
           if (unread)
             Semantics(
+              excludeSemantics: true,
               label: AppLocalizations.of(context).profileNotifUnread,
               child: Container(
                 width: 8,

@@ -557,6 +557,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: Text(title),
+          // semantics-children: names a field that shows no label or hint of its own
           content: Semantics(
             label: title,
             child: TextField(
@@ -621,6 +622,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),
+        // semantics-children: names a field that shows no label or hint of its own
         content: Semantics(
           label: title,
           child: TextField(

@@ -500,6 +500,7 @@ class _StarterTile extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
+      // semantics-children: the content below is excluded; the InkWell keeps the tap
       child: Semantics(
         button: true,
         enabled: enabled,

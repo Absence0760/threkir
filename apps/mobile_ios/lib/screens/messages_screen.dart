@@ -787,9 +787,7 @@ class _MessagesScreenState extends State<MessagesScreen>
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          child: Semantics(
-            label: l10n.messagesSearchLabel,
-            child: TextField(
+          child: TextField(
               key: const ValueKey('inbox-search'),
               controller: _search,
               onChanged: _onSearchChanged,
@@ -811,7 +809,6 @@ class _MessagesScreenState extends State<MessagesScreen>
                 isDense: true,
               ),
             ),
-          ),
         ),
         Expanded(
           child: _searchQuery != null ? _searchBody(l10n) : _listBody(l10n),

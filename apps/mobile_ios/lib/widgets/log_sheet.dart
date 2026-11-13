@@ -89,7 +89,6 @@ class _LogSheet extends StatelessWidget {
       body: Semantics(
         container: true,
         explicitChildNodes: true,
-        label: l10n.logSheetTitle,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

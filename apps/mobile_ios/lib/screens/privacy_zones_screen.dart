@@ -407,6 +407,7 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
             // One node named "Radius" whose value is read in metres, not as
             // Slider's default percentage (issue #1374 A11Y-4).
             MergeSemantics(
+              // semantics-children: merged with the slider, which reads its value in metres
               child: Semantics(
                 label: l10n.privacyZonesRadius,
                 child: Slider(
@@ -474,6 +475,7 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
                     point: LatLng(_zones[i].lat, _zones[i].lng),
                     width: 48,
                     height: 48,
+                    // semantics-children: the child draws no text, and keeps its own tap
                     child: Semantics(
                       button: true,
                       label: AppLocalizations.of(

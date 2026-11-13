@@ -160,6 +160,7 @@ class _DmRouteAttachmentState extends State<DmRouteAttachment> {
     return switch (dmAttachmentView(widget.routeId, _resolution)) {
       DmAttachmentText() => const SizedBox.shrink(),
       DmAttachmentLoading() => Semantics(
+          excludeSemantics: true,
           key: const ValueKey('dm-route-attachment-pending'),
           label: l10n.messagesRouteLoading,
           child: Container(

@@ -1681,6 +1681,7 @@ class _TodayGoalsStrip extends StatelessWidget {
                   final percent = (g.progress.overallPercent * 100).round();
                   return MergeSemantics(
                     child: Semantics(
+                      excludeSemantics: true,
                       label: l10n.dashboardGoalA11y(
                         period,
                         g.goal.title ?? l10n.dashboardGoalTapToEdit,
@@ -1829,6 +1830,8 @@ class _CoachEntryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Semantics(
+      excludeSemantics: true,
+      onTap: onTap,
       button: true,
       label: title,
       child: Material(

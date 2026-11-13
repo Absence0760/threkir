@@ -240,6 +240,7 @@ class FilterBar extends StatelessWidget {
     );
     final labelledLine = chipsLabel == null
         ? line
+        // semantics-children: a group name, read once before the controls inside it
         : Semantics(container: true, label: chipsLabel, child: line);
     final rows = <Widget>[
       if (hasTop)

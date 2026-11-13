@@ -409,6 +409,7 @@ class _RacesScreenState extends State<RacesScreen> {
                   const SizedBox(height: 16),
                   Text(l.racesWhenGroup, style: theme.textTheme.titleSmall),
                   const SizedBox(height: 8),
+                  // semantics-children: a group name, read once before the controls inside it
                   Semantics(
                     container: true,
                     label: l.racesWhenGroup,

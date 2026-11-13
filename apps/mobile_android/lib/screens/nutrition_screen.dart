@@ -1115,6 +1115,7 @@ class _NutritionScreenState extends State<NutritionScreen>
   Widget _dayBar(ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     final now = DateTime.now();
+    // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
       label: l10n.nutritionDayNavLabel,
@@ -1512,6 +1513,7 @@ class _NutritionScreenState extends State<NutritionScreen>
     return Row(
       children: [
         Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+        // semantics-children: the coverage sentence qualifies the number beside it; the number still reads
         Semantics(
           label: coverage,
           child: Text(amount.toString(), style: theme.textTheme.bodyMedium),

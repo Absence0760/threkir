@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -33,6 +34,19 @@ Future<Uint8List?> _defaultPicker(ImageSource source) async {
   return f == null ? null : await f.readAsBytes();
 }
 
+/// Reads back a photo the camera took for a process Android killed while the
+/// camera ran (the low-memory hand-off). Null when there is none, and always
+/// null off Android, where the picker returns in-process.
+typedef PlatePhotoLostReader = Future<Uint8List?> Function();
+
+Future<Uint8List?> _defaultLostReader() async {
+  if (defaultTargetPlatform != TargetPlatform.android) return null;
+  final response = await ImagePicker().retrieveLostData();
+  if (response.isEmpty) return null;
+  final file = response.file ?? response.files?.firstOrNull;
+  return file == null ? null : await file.readAsBytes();
+}
+
 /// Open the plate-photo logger. Resolves true when entries were saved.
 Future<bool?> showPlatePhotoScreen({
   required BuildContext context,
@@ -58,6 +72,7 @@ class PlatePhotoForm extends StatefulWidget {
   final String? diaryDate;
   final PlatePhotoPicker? picker;
   final PlatePhotoEstimator? estimator;
+  final PlatePhotoLostReader? lostReader;
 
   const PlatePhotoForm({
     super.key,
@@ -65,6 +80,7 @@ class PlatePhotoForm extends StatefulWidget {
     this.diaryDate,
     this.picker,
     this.estimator,
+    this.lostReader,
   });
 
   @override
@@ -111,6 +127,26 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
   String? _saveError;
 
   bool get isDirty => _bytes != null || (_drafts?.isNotEmpty ?? false);
+
+  @override
+  void initState() {
+    super.initState();
+    _recoverLostPhoto();
+  }
+
+  /// Android can kill the app while the camera runs; the photo survives in
+  /// the picker's cache, so opening the logger again picks up where the
+  /// runner left off instead of asking for the picture a second time (issue
+  /// #1374 NS-14).
+  Future<void> _recoverLostPhoto() async {
+    try {
+      final bytes = await (widget.lostReader ?? _defaultLostReader)();
+      if (bytes == null || !mounted || _bytes != null) return;
+      setState(() => _bytes = bytes);
+    } catch (e) {
+      debugPrint('plate_photo_screen: lost-photo recovery failed: $e');
+    }
+  }
 
   @override
   void dispose() {

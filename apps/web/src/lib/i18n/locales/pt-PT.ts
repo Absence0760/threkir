@@ -7716,7 +7716,7 @@ export const messages = {
 	"deleteAccount.s1WebLink": "as definições da sua conta",
 	"deleteAccount.s1WebMiddle": " e escolha ",
 	"deleteAccount.s1WebAction": "Eliminar conta",
-	"deleteAccount.s1WebSuffix": ". Para confirmar, ser-lhe-á pedido que escreva a palavra {word}. (Se abrir essa ligação sem sessão iniciada, terá primeiro de iniciar sessão e será depois levado de volta às definições da conta.)",
+	"deleteAccount.s1WebSuffix": ". Para confirmar, ser-lhe-á pedido que escreva a palavra {word}. (Se abrir a ligação sem sessão iniciada, terá primeiro de iniciar sessão e será depois levado de volta às definições da conta.)",
 	"deleteAccount.s1MobileLabel": "Na app do telemóvel",
 	"deleteAccount.s1MobileBody": ": abra Conta no separador “Tu” e escolha Eliminar conta. A app pede-lhe que escreva a mesma palavra, no idioma definido na app.",
 	"deleteAccount.s1PermanentPrefix": "A eliminação é ",

@@ -775,8 +775,9 @@ neither, and neither carries a `List-Unsubscribe` header.
   all seven locales. The kind widen is the `NOT VALID` half in
   `20271226011343` and the `VALIDATE` in `20271226021343`. **Off in every
   environment** until `park_course_month_notices` is declared in
-  `apps/backend/ops/prod_config.json`, after the web and mobile bell render
-  the kind (#1343 phase 2).
+  `apps/backend/ops/prod_config.json`; the web bell and inbox and the phone
+  inbox render the kind, and both Notifications pages carry the mute
+  (#1343 phase 2), so the flag is the owner's sign-off step alone.
 - [x] **Race start notices** — `race_starting_soon` and `race_start_moved`
   (issue #1306, `decisions.md § 2400`, migration `20271121002400`, the kind
   widen's `VALIDATE` in `…2401`). Raised for a Scheduled GO race: about 10

@@ -377,117 +377,108 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             child: _metric(theme, l10n.workoutMetricHeartRate, hr),
           ),
     ];
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(formatDateMed(w.scheduledDate, tag),
-                key: const Key('workoutDetailDate'),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                )),
-            const SizedBox(height: 4),
-            PageHeading(_headingOf(l10n, w, kind),
-                key: const Key('workoutDetailHeading'),
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Text(_tagline(l10n, kind, structure),
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            if (walkRun != null) ...[
-              const SizedBox(height: 12),
-              MergeSemantics(
-                key: const Key('workoutDetailSessionFigure'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label(theme, l10n.workoutMetricSession),
-                    Text(
-                        formatWalkRunTotal(
-                            l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
-                        key: const Key('walkRunTotal'),
-                        style: theme.textTheme.headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    Text(
-                        formatWalkRunPattern(
-                            l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
-                        key: const Key('walkRunPattern'),
-                        style: theme.textTheme.bodyMedium),
-                  ],
-                ),
-              ),
-            ] else if (hasPace) ...[
-              const SizedBox(height: 12),
-              MergeSemantics(
-                key: const Key('workoutDetailPaceFigure'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label(theme, l10n.workoutMetricTargetPace),
-                    Text(
-                      w.targetPaceEndSecPerKm != null &&
-                              w.targetPaceEndSecPerKm != w.targetPaceSecPerKm
-                          ? '${fmtPace(w.targetPaceSecPerKm)} → ${fmtPace(w.targetPaceEndSecPerKm)}'
-                          : fmtPace(w.targetPaceSecPerKm),
-                      style: theme.textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
-              if (w.targetPaceToleranceSec != null ||
-                  (w.paceZone != null && w.paceZone!.trim().isNotEmpty))
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (w.targetPaceToleranceSec != null)
-                        Text(fmtPaceTolerance(w.targetPaceToleranceSec!),
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            )),
-                      if (w.paceZone != null && w.paceZone!.trim().isNotEmpty)
-                        _zoneChip(theme, l10n, w.paceZone!),
-                    ],
-                  ),
-                ),
+    return DetailHero(
+      key: const Key('workoutDetailHeading'),
+      title: _headingOf(l10n, w, kind),
+      padding: const EdgeInsets.only(top: 8),
+      meta: [
+        DetailMeta(
+          key: const Key('workoutDetailDate'),
+          icon: Icons.event,
+          text: formatDateMed(w.scheduledDate, tag),
+        ),
+      ],
+      description: Text(_tagline(l10n, kind, structure),
+          style: theme.textTheme.bodyMedium
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+      children: [
+      if (walkRun != null) ...[
+        const SizedBox(height: 12),
+        MergeSemantics(
+          key: const Key('workoutDetailSessionFigure'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label(theme, l10n.workoutMetricSession),
+              Text(
+                  formatWalkRunTotal(
+                      l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
+                  key: const Key('walkRunTotal'),
+                  style: theme.textTheme.headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                  formatWalkRunPattern(
+                      l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
+                  key: const Key('walkRunPattern'),
+                  style: theme.textTheme.bodyMedium),
             ],
-            if (secondary.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(spacing: 24, runSpacing: 10, children: secondary),
+          ),
+        ),
+      ] else if (hasPace) ...[
+        const SizedBox(height: 12),
+        MergeSemantics(
+          key: const Key('workoutDetailPaceFigure'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label(theme, l10n.workoutMetricTargetPace),
+              Text(
+                w.targetPaceEndSecPerKm != null &&
+                        w.targetPaceEndSecPerKm != w.targetPaceSecPerKm
+                    ? '${fmtPace(w.targetPaceSecPerKm)} → ${fmtPace(w.targetPaceEndSecPerKm)}'
+                    : fmtPace(w.targetPaceSecPerKm),
+                style: theme.textTheme.headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
             ],
-            if (_editedByCoach && w.updatedAt != null) ...[
-              const SizedBox(height: 10),
-              Row(
-                key: const Key('workoutDetailCoachEdited'),
-                children: [
-                  Icon(Icons.sports,
-                      size: AppIconSize.inline,
-                      color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      l10n.workoutUpdatedByCoach(
-                          formatDateShort(w.updatedAt!.toLocal(), tag)),
-                      style: theme.textTheme.bodySmall?.copyWith(
+          ),
+        ),
+        if (w.targetPaceToleranceSec != null ||
+            (w.paceZone != null && w.paceZone!.trim().isNotEmpty))
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (w.targetPaceToleranceSec != null)
+                  Text(fmtPaceTolerance(w.targetPaceToleranceSec!),
+                      style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
+                      )),
+                if (w.paceZone != null && w.paceZone!.trim().isNotEmpty)
+                  _zoneChip(theme, l10n, w.paceZone!),
+              ],
+            ),
+          ),
+      ],
+      if (secondary.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        Wrap(spacing: 24, runSpacing: 10, children: secondary),
+      ],
+      if (_editedByCoach && w.updatedAt != null) ...[
+        const SizedBox(height: 10),
+        Row(
+          key: const Key('workoutDetailCoachEdited'),
+          children: [
+            Icon(Icons.sports,
+                size: AppIconSize.inline,
+                color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.workoutUpdatedByCoach(
+                    formatDateShort(w.updatedAt!.toLocal(), tag)),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            ],
+            ),
           ],
         ),
-      ),
+      ],
+      ],
     );
   }
 
@@ -536,15 +527,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             required String label,
             String? semanticsLabel,
             required List<Widget> actions}) =>
-        Container(
+        ListCard(
           key: key,
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
-          decoration: BoxDecoration(
-            color: bg,
-            border: border == null ? null : Border.all(color: border),
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-          ),
+          margin: EdgeInsets.zero,
+          dense: true,
+          color: bg,
+          outline: border,
           child: Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: 8,

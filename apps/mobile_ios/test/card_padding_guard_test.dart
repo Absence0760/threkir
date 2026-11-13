@@ -32,11 +32,6 @@ const _cardsLeft = <String, (int, String)>{
         'map: pills, not cards; a card inset would move the recording '
         'screen, so they wait for an overlay chip',
   ),
-  'lib/screens/workout_detail_screen.dart': (
-    1,
-    'the page hero (date, heading, tagline, metrics), which moves to '
-        'DetailPage',
-  ),
 };
 
 /// Outlined card look-alikes left, and why each is not a `ListCard`.
@@ -75,10 +70,6 @@ const _lookAlikesLeft = <String, (int, String)>{
   'lib/screens/runs_screen.dart': (
     2,
     'the month / year navigation group and the date-range endpoint chips',
-  ),
-  'lib/screens/workout_detail_screen.dart': (
-    1,
-    'the status strip under the hero',
   ),
   'lib/widgets/activity_heatmap.dart': (1, 'a heatmap cell'),
   'lib/widgets/badge_grid.dart': (1, 'a badge tile in a grid, drawn as Ink'),

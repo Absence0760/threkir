@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HEART_RATE_METADATA_KEYS, hasHeartRate, stripHeartRate } from './heart_rate_consent';
+import { HEART_RATE_METADATA_KEYS, hasHeartRate, stripHeartRate, trackBytesWithoutBpm } from './heart_rate_consent';
 
 // Twin of packages/core_models/test/heart_rate_consent_test.dart
 // (decisions § 2513) — same cases, same count.
@@ -43,4 +43,31 @@ test('per-point bpm goes and every other point field stays', () => {
 
 test('a bpm on the track alone counts as heart rate', () => {
 	assert.equal(hasHeartRate({ track: [{ bpm: 99 }] }), true);
+});
+
+async function gz(text: string): Promise<Uint8Array> {
+	const r = new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip')));
+	return new Uint8Array(await r.arrayBuffer());
+}
+async function gunzip(bytes: Uint8Array): Promise<string> {
+	return new Response(new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+}
+
+test('trackBytesWithoutBpm: every bpm goes and every other point field stays', async () => {
+	const out = await trackBytesWithoutBpm(
+		await gz('[{"lat":1,"lng":2,"bpm":150,"ts":"2026-11-01T08:00:00Z"},{"lat":1.1,"lng":2.1}]'),
+	);
+	assert.deepEqual(JSON.parse(await gunzip(out)), [
+		{ lat: 1, lng: 2, ts: '2026-11-01T08:00:00Z' },
+		{ lat: 1.1, lng: 2.1 },
+	]);
+});
+
+test('trackBytesWithoutBpm: a track without bpm is uploaded byte for byte', async () => {
+	const bytes = await gz('[{"lat":1,"lng":2}]');
+	assert.equal(await trackBytesWithoutBpm(bytes), bytes);
+});
+
+test('trackBytesWithoutBpm: bytes that are not a track are refused', async () => {
+	await assert.rejects(trackBytesWithoutBpm(await gz('{"lat":1}')));
 });

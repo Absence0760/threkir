@@ -17,7 +17,7 @@ export const HEART_RATE_METADATA_KEYS = ['avg_bpm', 'max_bpm', 'hr_coverage', 'h
 
 export interface HeartRateBearing {
 	metadata?: Record<string, unknown> | null;
-	track?: ReadonlyArray<{ bpm?: number | null }>;
+	track?: ReadonlyArray<{ bpm?: number | null; [field: string]: unknown }>;
 	hrSeries?: ReadonlyArray<unknown>;
 }
 
@@ -49,4 +49,24 @@ export function stripHeartRate<T extends HeartRateBearing>(input: T): T {
 	}
 	if (input.hrSeries) delete out.hrSeries;
 	return out;
+}
+
+/** A gzipped stored track with every point's `bpm` removed, or `bytes`
+ *  itself when no point carries one. Used where a track is uploaded as
+ *  stored bytes (a backup restore). Throws on bytes that are not a gzipped
+ *  JSON array, so the caller reports the track rather than storing
+ *  something it could not check. */
+export async function trackBytesWithoutBpm(bytes: Uint8Array): Promise<Uint8Array> {
+	const text = await new Response(
+		new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('gzip')),
+	).text();
+	const points: unknown = JSON.parse(text);
+	if (!Array.isArray(points)) throw new Error('track is not a list');
+	const track = points as Array<{ bpm?: number | null; [field: string]: unknown }>;
+	const stripped = stripHeartRate({ track }).track;
+	if (stripped === track) return bytes;
+	const gz = new Response(
+		new Blob([JSON.stringify(stripped)]).stream().pipeThrough(new CompressionStream('gzip')),
+	);
+	return new Uint8Array(await gz.arrayBuffer());
 }

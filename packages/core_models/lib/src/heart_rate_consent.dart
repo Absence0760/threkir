@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:io' show gzip;
+import 'dart:typed_data';
+
 import 'metadata_keys.dart';
 import 'run.dart';
 import 'waypoint.dart';
@@ -69,3 +73,22 @@ Waypoint _withoutBpm(Waypoint w) => Waypoint(
       offTrack: w.offTrack,
       segmentStart: w.segmentStart,
     );
+
+/// A gzipped stored track with every point's `bpm` removed, or [bytes]
+/// itself when no point carries one. Used where a track is uploaded as stored
+/// bytes (a backup restore). Throws on bytes that are not a gzipped JSON
+/// array, so the caller reports the track rather than storing something it
+/// could not check.
+Uint8List trackBytesWithoutBpm(Uint8List bytes) {
+  final points = jsonDecode(utf8.decode(gzip.decode(bytes)));
+  if (points is! List) throw const FormatException('track is not a list');
+  var changed = false;
+  for (final p in points) {
+    if (p is Map && p.containsKey('bpm')) {
+      p.remove('bpm');
+      changed = true;
+    }
+  }
+  if (!changed) return bytes;
+  return Uint8List.fromList(gzip.encode(utf8.encode(jsonEncode(points))));
+}

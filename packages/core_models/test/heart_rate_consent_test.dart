@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:io' show gzip;
+import 'dart:typed_data';
+
 import 'package:core_models/core_models.dart';
 import 'package:test/test.dart';
 
@@ -60,6 +64,30 @@ void main() {
       expect(
           runHasHeartRate(run(track: [Waypoint(lat: 1, lng: 2, bpm: 99)])),
           isTrue);
+    });
+  });
+
+  group('trackBytesWithoutBpm', () {
+    Uint8List gz(String s) => Uint8List.fromList(gzip.encode(utf8.encode(s)));
+    String gunzip(Uint8List b) => utf8.decode(gzip.decode(b));
+
+    test('every bpm goes and every other point field stays', () {
+      final out = trackBytesWithoutBpm(gz(
+          '[{"lat":1,"lng":2,"bpm":150,"ts":"2026-11-01T08:00:00Z"},{"lat":1.1,"lng":2.1}]'));
+      expect(jsonDecode(gunzip(out)), [
+        {'lat': 1, 'lng': 2, 'ts': '2026-11-01T08:00:00Z'},
+        {'lat': 1.1, 'lng': 2.1},
+      ]);
+    });
+
+    test('a track without bpm is uploaded byte for byte', () {
+      final bytes = gz('[{"lat":1,"lng":2}]');
+      expect(identical(trackBytesWithoutBpm(bytes), bytes), isTrue);
+    });
+
+    test('bytes that are not a track are refused', () {
+      expect(() => trackBytesWithoutBpm(gz('{"lat":1}')),
+          throwsA(isA<FormatException>()));
     });
   });
 }

@@ -159,7 +159,7 @@
 	// A failed first read is an error with Retry, never "No rotations yet"; a
 	// failed refresh keeps the rows and says so (issue #1374 FS-4).
 	let rotationsLoaded = $state(false);
-	let rotationsError = $state<Error | null>(null);
+	let rotationsFailed = $state(false);
 	let rotationsRetrying = $state(false);
 	let rotationFilter = $state<string | null>(null);
 	let newRotationName = $state('');
@@ -176,12 +176,13 @@
 		try {
 			rotations = await fetchMyGearRotations();
 			rotationsLoaded = true;
-			rotationsError = null;
+			rotationsFailed = false;
 		} catch (e) {
+			console.error('settings/gear: rotations read failed', e);
 			if (rotationsLoaded) {
 				showToast(t('settingsGear.rotationsStale'), 'error');
 			} else {
-				rotationsError = e instanceof Error ? e : new Error(String(e));
+				rotationsFailed = true;
 			}
 			return;
 		}
@@ -736,7 +737,7 @@
 				</button>
 			</form>
 
-			{#if rotationsError && rotations.length === 0}
+			{#if rotationsFailed && rotations.length === 0}
 				<div class="rotations-error" role="alert" data-testid="rotations-load-error">
 					<p>{t('settingsGear.rotationsLoadFailed')}</p>
 					<button class="btn-secondary btn-sm" type="button" onclick={retryRotations} disabled={rotationsRetrying}>

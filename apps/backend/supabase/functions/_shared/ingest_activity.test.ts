@@ -21,7 +21,7 @@ interface Recorded {
   inserted: Array<Record<string, unknown>>;
 }
 
-function dbStub(insertFails = false): Recorded {
+function dbStub(insertFails = false, consented: boolean | null = null): Recorded {
   const inserted: Array<Record<string, unknown>> = [];
   // deno-lint-ignore no-explicit-any
   const chain = (result: unknown): any => ({
@@ -32,6 +32,12 @@ function dbStub(insertFails = false): Recorded {
     then: (res: any, rej: any) => Promise.resolve(result).then(res, rej),
   });
   const client = {
+    rpc: (name: string) =>
+      Promise.resolve(
+        name === 'health_data_consented'
+          ? { data: consented, error: null }
+          : { data: null, error: null },
+      ),
     from: () => ({
       insert: (row: Record<string, unknown>) => {
         inserted.push(row);
@@ -189,7 +195,7 @@ Deno.test('ingestActivity — the elevation is written to the column AND the met
 });
 
 Deno.test('ingestActivity — the metadata carries only what the payload actually had', async () => {
-  const full = dbStub();
+  const full = dbStub(false, true);
   await ingestActivity(
     full.client,
     'u1',
@@ -345,4 +351,34 @@ Deno.test('ingestActivity — a stream that yields no track logs nothing', async
     globalThis.fetch = original;
     console.error = originalError;
   }
+});
+
+/// Heart rate is kept only with health-data consent (decisions § 2513). The
+/// runs trigger strips it in the database too; the importer asks first so the
+/// per-point bpm never reaches the track blob, which SQL cannot see.
+Deno.test('ingestActivity — without health-data consent the run is kept and its heart rate is not', async () => {
+  await withNoStreams(async () => {
+    const db = dbStub(false, false);
+    await ingestActivity(db.client, 'user_1', 'token', act({ average_heartrate: 151.4 }));
+    assertEquals(db.inserted.length, 1);
+    const meta = db.inserted[0].metadata as Record<string, unknown>;
+    assertEquals(meta.avg_bpm, undefined);
+    assertEquals(meta.strava_id, '12345');
+  });
+});
+
+Deno.test('ingestActivity — with health-data consent the average heart rate is kept', async () => {
+  await withNoStreams(async () => {
+    const db = dbStub(false, true);
+    await ingestActivity(db.client, 'user_1', 'token', act({ average_heartrate: 151.4 }));
+    assertEquals((db.inserted[0].metadata as Record<string, unknown>).avg_bpm, 151);
+  });
+});
+
+Deno.test('ingestActivity — an unanswered consent lookup keeps no heart rate', async () => {
+  await withNoStreams(async () => {
+    const db = dbStub(false, null);
+    await ingestActivity(db.client, 'user_1', 'token', act({ average_heartrate: 151.4 }));
+    assertEquals((db.inserted[0].metadata as Record<string, unknown>).avg_bpm, undefined);
+  });
 });

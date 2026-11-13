@@ -8656,6 +8656,7 @@ export type Database = {
           target_name: string
         }[]
       }
+      health_data_consented: { Args: { p_user_id: string }; Returns: boolean }
       heatmap_points_in_bbox: {
         Args: {
           p_max_lat: number

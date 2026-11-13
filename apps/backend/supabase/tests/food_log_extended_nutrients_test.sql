@@ -17,6 +17,12 @@ values
   ('eeeeeeee-0000-0000-0000-0000000004a1', 'authenticated', 'authenticated',
    'nutrients@food.local', '', now(), now());
 
+-- Food and heart rate are stored only with health-data consent (decisions § 2513).
+insert into user_profiles (id, health_data_consent_at)
+values
+  ('eeeeeeee-0000-0000-0000-0000000004a1', now())
+on conflict (id) do update set health_data_consent_at = excluded.health_data_consent_at;
+
 set local role service_role;
 
 insert into food_log (

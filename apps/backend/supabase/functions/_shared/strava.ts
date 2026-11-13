@@ -239,7 +239,18 @@ export async function ingestActivity(
 		imported_at: new Date().toISOString(),
 		strava_activity_type: act.type,
 	};
-	if (act.average_heartrate) metadata.avg_bpm = Math.round(act.average_heartrate);
+	// Heart rate is special-category data kept only with health-data consent
+	// (decisions § 2513). The runs trigger strips it anyway; asking here also
+	// keeps the per-point bpm out of the track blob, which the database cannot
+	// see. Fail-closed: an unanswered question keeps no heart rate.
+	let keepHeartRate = false;
+	try {
+		const { data: consented } = await supabase.rpc('health_data_consented', { p_user_id: userId });
+		keepHeartRate = consented === true;
+	} catch (e) {
+		console.warn('ingestActivity: consent lookup failed; keeping no heart rate', e instanceof Error ? e.message : e);
+	}
+	if (keepHeartRate && act.average_heartrate) metadata.avg_bpm = Math.round(act.average_heartrate);
 	if (act.name) metadata.title = act.name;
 	if (act.total_elevation_gain != null) metadata.elevation_m = Math.round(act.total_elevation_gain);
 
@@ -289,6 +300,7 @@ export async function ingestActivity(
 			);
 			if (streamResp.ok) {
 				const streams = await streamResp.json();
+				if (!keepHeartRate && streams && typeof streams === 'object') delete streams.heartrate;
 				const { track, distance } = buildTrackAndDistanceFromStreams(streams, act.start_date);
 				if (track.length >= 2) {
 					await uploadTrack(supabase, userId, runId, track);

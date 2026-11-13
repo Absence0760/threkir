@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -572,7 +573,7 @@ void main() {
 
         // Still trapped on the wizard (canPop is false) — but the
         // fail-safe exit is now offered.
-        expect(find.text(l10n.setupPageTitle), findsOneWidget);
+        expect(find.widgetWithText(PageHeading, l10n.setupPageTitle), findsOneWidget);
         expect(find.text(l10n.setupFinishLater), findsOneWidget);
 
         await tester.tap(find.text(l10n.setupFinishLater));
@@ -822,6 +823,8 @@ void main() {
         await walkToTrack(tester, l10n);
         await toggle(tester, l10n.fitnessTabGym);
 
+        await tester.ensureVisible(find.text(l10n.setupSkip));
+        await tester.pump();
         await tester.tap(find.text(l10n.setupSkip));
         await tester.pumpAndSettle();
 

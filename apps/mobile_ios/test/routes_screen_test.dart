@@ -155,8 +155,11 @@ Future<void> _pump(WidgetTester tester,
 
 // The route list's own scroller. The chip lines above it are horizontal
 // scrollers too, so "the first Scrollable" is not the list.
-final _routeList = find.byWidgetPredicate(
-  (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+final _routeList = find.byElementPredicate(
+  (e) =>
+      e.widget is Scrollable &&
+      (e.widget as Scrollable).axisDirection == AxisDirection.down &&
+      !isNestedScrollOuter(e),
 );
 
 void main() {
@@ -172,8 +175,10 @@ void main() {
       home: RoutesScreen(routeStore: store, preferences: prefs),
     ));
     await tester.pump();
-    expect(find.byType(Card), findsWidgets);
+    // At 2x in some locales the page's heading and controls fill the first
+    // screen; the walk scrolls them away and lays the cards out.
     await walkScrollable(tester, _routeList, 'Routes');
+    expect(find.byType(Card), findsWidgets);
   });
 
   group('RoutesScreen — initial render', () {

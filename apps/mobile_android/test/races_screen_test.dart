@@ -777,6 +777,10 @@ void main() {
     expect(tester.getRect(lastCard).bottom, lessThanOrEqualTo(700 - 48),
         reason: 'the last card must end above the 3-button nav bar');
 
+    // Pushed on its own, the controls scroll away with the page's heading.
+    await tester.ensureVisible(
+        find.byKey(const Key('races-overflow'), skipOffstage: false));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('races-overflow')));
     await tester.pumpAndSettle();
     expect(find.text('Add a race'), findsOneWidget);

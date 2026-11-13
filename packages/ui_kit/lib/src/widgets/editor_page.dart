@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/spacing.dart';
+import 'pushed_page.dart';
 
 /// The one primary action an [EditorPage] pins: Save, Create, Add, Join.
 ///
@@ -99,39 +100,53 @@ class EditorPage extends StatelessWidget {
     final hasBar =
         placeholder == null &&
         (save != null || secondary != null || status != null);
-    return Scaffold(
-      appBar: AppBar(
-        leading: (route?.impliesAppBarDismissal ?? false)
-            ? const CloseButton()
-            : null,
-        title: Text(title),
-        actions: actions,
-      ),
-      body: SafeArea(
-        top: false,
-        bottom: !hasBar,
-        child:
-            placeholder ??
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: padding,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: fields,
+    // The title is said in full at the top of the form, where it wraps; the
+    // bar repeats it once that heading has scrolled away (TO-12).
+    return PageTitleScope(
+      child: Scaffold(
+        appBar: AppBar(
+          leading: (route?.impliesAppBarDismissal ?? false)
+              ? const CloseButton()
+              : null,
+          title: PageBarTitle(title),
+          actions: actions,
+        ),
+        body: PageBody(
+          child: SafeArea(
+            top: false,
+            bottom: !hasBar,
+            child:
+                placeholder ??
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: padding,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            PageHeader(
+                              title: title,
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpace.sm,
+                              ),
+                            ),
+                            ...fields,
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    if (hasBar)
+                      EditorActionBar(
+                        save: save,
+                        secondary: secondary,
+                        status: status,
+                      ),
+                  ],
                 ),
-                if (hasBar)
-                  EditorActionBar(
-                    save: save,
-                    secondary: secondary,
-                    status: status,
-                  ),
-              ],
-            ),
+          ),
+        ),
       ),
     );
   }

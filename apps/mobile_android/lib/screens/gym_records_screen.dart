@@ -69,8 +69,8 @@ class _GymRecordsScreenState extends State<GymRecordsScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final records = exerciseRecords(gymSetHistory(widget.store.workouts));
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.gymRecordsTitle)),
+    return PushedPage(
+      title: l10n.gymRecordsTitle,
       body: records.isEmpty
           ? EmptyState(
               icon: Icons.emoji_events,
@@ -84,13 +84,10 @@ class _GymRecordsScreenState extends State<GymRecordsScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, i) {
                 if (i == 0) {
-                  return Padding(
+                  return PageHeader(
+                    title: l10n.gymRecordsTitle,
+                    subtitle: l10n.gymRecordsSubtitle,
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      l10n.gymRecordsSubtitle,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
                   );
                 }
                 return _card(records[i - 1], theme, l10n);

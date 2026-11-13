@@ -126,7 +126,7 @@ class PushedPage extends StatelessWidget {
           floatingActionButton: floatingActionButton,
           floatingActionButtonLocation: floatingActionButtonLocation,
           bottomNavigationBar: bottomBar,
-          body: _PageBody(
+          body: PageBody(
             child: SafeArea(
               top: false,
               bottom: placeholder != null || (safeBottom && bottomBar == null),
@@ -435,9 +435,10 @@ class _PageTitleInherited extends InheritedWidget {
   bool updateShouldNotify(_PageTitleInherited old) => old.state != state;
 }
 
-/// Marks where the body starts, the edge a heading scrolls under.
-class _PageBody extends StatelessWidget {
-  const _PageBody({required this.child});
+/// Marks where the body starts, the edge a heading scrolls under. A page
+/// that wraps its own `Scaffold` in a [PageTitleScope] puts its body in one.
+class PageBody extends StatelessWidget {
+  const PageBody({super.key, required this.child});
 
   final Widget child;
 

@@ -5,6 +5,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show ExerciseRow, GymWorkoutRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
@@ -520,7 +521,7 @@ void main() {
         await tester.tap(add);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
-        expect(find.text(l10n.gymEditorNewTitle), findsOneWidget);
+        expect(find.widgetWithText(PageHeading, l10n.gymEditorNewTitle), findsOneWidget);
         // And the read is bounded: its client timeout expires instead of
         // leaving the screen waiting on a request that never answers.
         await tester.pump(kBackendLoadTimeout + const Duration(seconds: 1));
@@ -629,7 +630,9 @@ void main() {
       ));
       await tester.pump();
       await tester.pump();
-      expect(find.text('Push day'), findsOneWidget);
+      // Built, if below the fold under the page's heading at 2x; the walk
+      // lays it out on screen.
+      expect(find.text('Push day', skipOffstage: false), findsOneWidget);
       await walkScrollable(tester, primaryScrollable(), 'Gym');
     });
 

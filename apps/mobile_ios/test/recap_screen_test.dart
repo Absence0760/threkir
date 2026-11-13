@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -114,7 +115,7 @@ void main() {
     await _pump(tester,
         runStore: runStore, prefs: prefs, year: pastYear, month: 3);
 
-    expect(find.text('Month in running'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Month in running'), findsOneWidget);
     expect(find.text('March $pastYear'), findsOneWidget);
     // Only the March run counts — the July one belongs to another month.
     expect(find.text('across 1 run'), findsOneWidget);
@@ -140,7 +141,7 @@ void main() {
     await tester.tap(find.text('Year'));
     await tester.pump();
 
-    expect(find.text('Year in running'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Year in running'), findsOneWidget);
     expect(find.text('$pastYear'), findsOneWidget);
     expect(find.text('across 2 runs'), findsOneWidget);
   });

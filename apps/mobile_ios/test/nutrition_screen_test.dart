@@ -92,7 +92,8 @@ Future<void> _closeUndoWindow(WidgetTester tester) =>
 /// decisions § 695, which pushes a single-entry day's delete affordance just
 /// past the bottom of the 800x600 test viewport.
 Future<void> _tapDelete(WidgetTester tester) async {
-  await tester.scrollUntilVisible(find.byTooltip('Delete'), 200);
+  await tester.scrollUntilVisible(find.byTooltip('Delete'), 200,
+      scrollable: primaryScrollable());
   await tester.pump();
   await tester.tap(find.byTooltip('Delete'));
 }
@@ -111,6 +112,17 @@ Widget _app(LocalFoodStore store, {double textScale = 1.0, Locale? locale}) =>
     );
 
 void main() {
+  // Pushed on its own, the tab says its title above its controls, which takes
+  // the default 800 x 600 surface's last rows below the fold. These tests read
+  // the diary's rows, so they lay it out on a taller phone; the worst-case runs
+  // below set their own size.
+  setUp(() {
+    final view = TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
+    view.physicalSize = const Size(800, 1000) * view.devicePixelRatio;
+  });
+  tearDown(() => TestWidgetsFlutterBinding.instance.platformDispatcher
+      .implicitView!
+      .resetPhysicalSize());
   group('macro ring rendering', _ringRenderingTests);
   group('diary day navigation', _diaryDayTests);
   group('a keep-alive tab that tracks reality', _livenessTests);

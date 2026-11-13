@@ -71,12 +71,33 @@ Future<void> _open(
 Finder get _save => find.widgetWithText(FilledButton, 'Save');
 
 void main() {
-  testWidgets('the app bar carries a close button and the title, not a Save', (
-    tester,
-  ) async {
+  testWidgets('the app bar carries a close button, the title is said in the '
+      'body, and there is no Save in the bar', (tester) async {
     await _open(tester);
     expect(find.byType(CloseButton), findsOneWidget);
-    expect(find.text('New gear'), findsOneWidget);
+    // The heading at the top of the form says the title in full; the bar's
+    // copy stays hidden until that heading scrolls away.
+    expect(
+      find.descendant(
+        of: find.byType(PageHeader),
+        matching: find.text('New gear'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<AnimatedOpacity>(
+            find.ancestor(
+              of: find.descendant(
+                of: find.byType(AppBar),
+                matching: find.text('New gear'),
+              ),
+              matching: find.byType(AnimatedOpacity),
+            ),
+          )
+          .opacity,
+      0,
+    );
     expect(
       find.descendant(of: find.byType(AppBar), matching: find.text('Save')),
       findsNothing,

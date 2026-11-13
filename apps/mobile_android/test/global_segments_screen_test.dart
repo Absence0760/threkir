@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState;
+import 'package:ui_kit/ui_kit.dart' show EmptyState, PageHeading;
 
 import '../lib/fitness_surface_requests.dart';
 import '../lib/screens/global_segments_screen.dart';
@@ -500,7 +500,7 @@ void main() {
         _host(GlobalSegmentDetailScreen(api: api, segmentId: 'a')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Harlem Hill'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Harlem Hill'), findsOneWidget);
       expect(find.text('The classic north-end climb.'), findsOneWidget);
       expect(find.byKey(const Key('help-how-this-works')), findsOneWidget);
       expect(find.text('Distance'), findsOneWidget);

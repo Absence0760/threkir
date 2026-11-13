@@ -8,7 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSearchField;
+import 'package:ui_kit/ui_kit.dart' show AppSearchField, PageHeading;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
@@ -155,7 +155,7 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, prefs: s.prefs, routeStore: s.routeStore);
       await tester.pump();
-      expect(find.text('Explore Routes'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Explore Routes'), findsOneWidget);
     });
 
     testWidgets('Featured is in the Filters sheet and shows as a removable '

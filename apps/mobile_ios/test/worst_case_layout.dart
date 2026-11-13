@@ -208,23 +208,63 @@ Future<void> walkScrollable(
   Finder scrollable,
   String where,
 ) async {
+  final element = scrollable.evaluate().single;
   final position = tester.state<ScrollableState>(scrollable).position;
   position.jumpTo(position.minScrollExtent);
   await tester.pump();
   expectNoOverflow(tester, '$where at the top');
   for (var step = 1; step <= 60; step++) {
-    if (position.pixels >= position.maxScrollExtent) return;
+    if (position.pixels >= position.maxScrollExtent) break;
     position.jumpTo((position.pixels + position.viewportDimension * 0.8)
         .clamp(position.minScrollExtent, position.maxScrollExtent));
     await tester.pump();
     expectNoOverflow(tester, '$where, scroll step $step');
   }
+  // A heading and controls taller than the screen leave a nested list
+  // unbuilt until they have scrolled away; walk that list too.
+  if (isNestedScrollOuter(element)) {
+    final inner = find.byElementPredicate(_isInnerDownScrollable);
+    if (inner.evaluate().isNotEmpty) {
+      await walkScrollable(tester, inner.first, '$where, the list');
+    }
+  }
+}
+
+bool _isInnerDownScrollable(Element e) {
+  final w = e.widget;
+  return w is Scrollable &&
+      w.axisDirection == AxisDirection.down &&
+      !isNestedScrollOuter(e);
 }
 
 /// The screen's main vertical scroll view: the first downward [Scrollable]
 /// in the tree, so a horizontal strip or a text field's own scrollable
-/// above it is never picked.
+/// above it is never picked. A [NestedScrollView]'s outer scrollable (a
+/// pushed hub tab's, whose heading scrolls away above the list) is skipped
+/// for the list inside it, which drives both.
+///
+/// When the heading and controls fill the screen the list inside is not
+/// built yet, so the outer scrollable is the one to walk.
 Finder primaryScrollable() => find
-    .byWidgetPredicate(
-        (w) => w is Scrollable && w.axisDirection == AxisDirection.down)
+    .byElementPredicate((e) {
+      if (_isInnerDownScrollable(e)) return true;
+      final w = e.widget;
+      return w is Scrollable &&
+          w.axisDirection == AxisDirection.down &&
+          find.byElementPredicate(_isInnerDownScrollable).evaluate().isEmpty;
+    })
     .first;
+
+/// Whether [scrollable] is the outer scrollable a [NestedScrollView] builds
+/// around its header and body, rather than a list of the page's own.
+bool isNestedScrollOuter(Element scrollable) {
+  var outer = false;
+  scrollable.visitAncestorElements((a) {
+    if (a.widget is ScrollView) {
+      outer = a.widget.runtimeType.toString().startsWith('_NestedScrollView');
+      return false;
+    }
+    return true;
+  });
+  return outer;
+}

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
 import '../lib/screens/import_screen.dart';
@@ -57,7 +58,7 @@ void main() {
     testWidgets('renders Import runs app-bar title', (tester) async {
       final store = await _makeStore();
       await _pump(tester, store);
-      expect(find.text('Import runs'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Import runs'), findsOneWidget);
     });
 
     testWidgets('shows Strava import card with heading and description',

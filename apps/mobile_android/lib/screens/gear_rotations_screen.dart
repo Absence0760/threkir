@@ -6,9 +6,12 @@ import 'package:ui_kit/ui_kit.dart'
         AppSemanticColors,
         AsyncView,
         EmptyState,
+        AppBarAction,
+        ListCard,
         LoadingState,
-        SheetScaffold,
-        ListCard;
+        PageHeader,
+        PushedPage,
+        SheetScaffold;
 
 import '../auth_error.dart';
 import '../gear_rotation_pick.dart';
@@ -273,17 +276,15 @@ class _GearRotationsScreenState extends State<GearRotationsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.gearRotationsTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.gearRotationNew,
-            icon: const Icon(Icons.add),
-            onPressed: _busy ? null : _create,
-          ),
-        ],
-      ),
+    return PushedPage(
+      title: l10n.gearRotationsTitle,
+      actions: [
+        AppBarAction(
+          icon: const Icon(Icons.add),
+          label: l10n.gearRotationNew,
+          onPressed: _busy ? null : _create,
+        ),
+      ],
       body: AsyncView<List<GearRotationWithMembers>>(
         loading: _loading,
         error: _loadError,
@@ -306,12 +307,11 @@ class _GearRotationsScreenState extends State<GearRotationsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
-            Text(
-              l10n.gearRotationsHint,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            PageHeader(
+              title: l10n.gearRotationsTitle,
+              subtitle: l10n.gearRotationsHint,
+              padding: const EdgeInsets.only(bottom: 16),
             ),
-            const SizedBox(height: 16),
             for (final r in rotations) _rotationTile(r, theme, l10n),
           ],
         ),

@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -86,7 +87,7 @@ void main() {
     testWidgets('renders the Join club title + invite-code field',
         (tester) async {
       await _pump(tester);
-      expect(find.text('Join club'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Join club'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Invite code'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Join'), findsOneWidget);
     });

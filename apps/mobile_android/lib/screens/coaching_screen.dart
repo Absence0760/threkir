@@ -2,7 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSpace, IdentityAvatar, ListCard, LoadingState;
+    show AppSpace, IdentityAvatar, ListCard, LoadingState, PageHeader, PushedPage;
 import 'package:flutter/services.dart';
 
 import '../auth_error.dart';
@@ -262,8 +262,8 @@ class _CoachingScreenState extends State<CoachingScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.coachingTitle)),
+    return PushedPage(
+      title: l10n.coachingTitle,
       body: _loading
           ? LoadingState.list(label: l10n.commonLoading, hasLeading: false)
           : _loadError != null
@@ -276,11 +276,11 @@ class _CoachingScreenState extends State<CoachingScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text(l10n.coachingLede,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          )),
-                  const SizedBox(height: 20),
+                  PageHeader(
+                    title: l10n.coachingTitle,
+                    subtitle: l10n.coachingLede,
+                    padding: const EdgeInsets.only(bottom: 20),
+                  ),
                   if (_roster.isNotEmpty || _rosterFailed) ...[
                     _rosterCard(l10n),
                     const SizedBox(height: 16),

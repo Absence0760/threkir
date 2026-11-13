@@ -9,6 +9,9 @@ import 'package:ui_kit/ui_kit.dart'
         AppSemanticColors,
         AppSpace,
         AsyncView,
+        DetailHero,
+        DetailMeta,
+        DetailPage,
         EmptyState,
         ListCard,
         FilterBar,
@@ -554,11 +557,9 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final segment = _segment;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(segment?.name ?? l10n.segmentCatalogueTitle),
-        actions: const [HelpButton(routes: ['/segments/[id]'])],
-      ),
+    return DetailPage(
+      title: segment?.name ?? l10n.segmentCatalogueTitle,
+      pinned: const [HelpButton(routes: ['/segments/[id]'])],
       body: _loading
           ? ListView(
               physics: const NeverScrollableScrollPhysics(),
@@ -604,24 +605,14 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        if (segment.region != null && segment.region!.trim().isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Icon(Icons.place,
-                    size: 16, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    segment.region!,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        DetailHero(
+          title: segment.name,
+          meta: [
+            if (segment.region != null && segment.region!.trim().isNotEmpty)
+              DetailMeta(icon: Icons.place, text: segment.region!),
+          ],
+          padding: const EdgeInsets.only(bottom: 12),
+        ),
         StatGrid(
           cells: [
             StatTile.medium(

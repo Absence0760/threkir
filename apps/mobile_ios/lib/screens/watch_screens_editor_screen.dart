@@ -16,7 +16,17 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, EmptyState, ListSkeleton, ListCard, AppSpace;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppBarAction,
+        AppSpace,
+        ChoiceChipOption,
+        ChoiceChipRow,
+        EmptyState,
+        ListCard,
+        ListSkeleton,
+        PageHeader,
+        PushedPage;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -392,23 +402,21 @@ class _WatchScreensEditorScreenState extends State<WatchScreensEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.watchScreensTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.watchScreensPushAction,
-            icon: _pushing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.upload),
-            onPressed: _pushing || _phase != _Phase.ready ? null : _push,
-          ),
-        ],
-      ),
+    return PushedPage(
+      title: l10n.watchScreensTitle,
+      actions: [
+        AppBarAction(
+          label: l10n.watchScreensPushAction,
+          icon: _pushing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.upload),
+          onPressed: _pushing || _phase != _Phase.ready ? null : _push,
+        ),
+      ],
       body: switch (_phase) {
         _Phase.loading => ListSkeleton(
             label: l10n.commonLoading,
@@ -428,6 +436,10 @@ class _WatchScreensEditorScreenState extends State<WatchScreensEditorScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        PageHeader(
+          title: l10n.watchScreensTitle,
+          padding: const EdgeInsets.only(bottom: 12),
+        ),
         if (_message != null) ...[
           Text(_message!, style: theme.textTheme.bodySmall),
           const SizedBox(height: 12),

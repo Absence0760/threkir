@@ -652,6 +652,8 @@ void main() {
         (tester) async {
       final training = _FakeTraining([])..createGate = Completer<void>();
       await _pumpSignedIn(tester, training);
+      await tester.ensureVisible(find.byKey(const Key('planStarter-half_12wk')));
+      await tester.pump();
       await tester.tap(find.byKey(const Key('planStarter-half_12wk')));
       await tester.pump();
       await tester.pump();
@@ -695,6 +697,8 @@ void main() {
         (tester) async {
       final training = _FakeTraining([]);
       await _pumpSignedIn(tester, training);
+      await tester.ensureVisible(find.byKey(const Key('planStarter-half_12wk')));
+      await tester.pump();
       await tester.tap(find.byKey(const Key('planStarter-half_12wk')));
       await tester.pump();
       await tester.pump();

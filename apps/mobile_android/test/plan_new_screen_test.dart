@@ -334,7 +334,7 @@ void main() {
     testWidgets('renders the New plan app-bar title', (tester) async {
       await _pump(tester);
       await tester.pump();
-      expect(find.text('New plan'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New plan'), findsOneWidget);
     });
 
     testWidgets('renders the Start date list tile', (tester) async {

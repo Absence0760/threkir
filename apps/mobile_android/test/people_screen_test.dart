@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, LoadingState;
+import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, LoadingState, PageHeading;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/nearby_flag.dart';
@@ -436,14 +436,14 @@ void main() {
     });
 
     testWidgets(
-        'signed out (standalone) shows a plain titled AppBar over the '
-        'sign-in state', (tester) async {
+        'signed out (standalone) shows its title over the sign-in state',
+        (tester) async {
       final api = _FakeApi(signedIn: false);
       await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
       expect(find.byType(SignInRequiredState), findsOneWidget);
-      expect(find.text('People'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'People'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
     });
 
@@ -552,9 +552,9 @@ void main() {
       expect(find.text('Nearby Nia'), findsOneWidget);
       // Bucket UPPER BOUNDS, formatted in the reader's unit — never the exact
       // distance, which the RPC deliberately never sends.
-      expect(find.text('Within 2.00 km'), findsOneWidget);
-      expect(find.text('Within 10.00 km'), findsOneWidget);
-      expect(find.text('Beyond 25.00 km'), findsOneWidget);
+      expect(find.text('Within 2.00 km', skipOffstage: false), findsOneWidget);
+      expect(find.text('Within 10.00 km', skipOffstage: false), findsOneWidget);
+      expect(find.text('Beyond 25.00 km', skipOffstage: false), findsOneWidget);
     });
 
     testWidgets('an empty nearby list shows its own empty state',

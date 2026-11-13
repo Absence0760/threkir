@@ -4,7 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show AppInsets, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show AppInsets, ListSkeleton, PageHeading;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/adaptive_width.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -223,7 +223,7 @@ void main() {
     testWidgets('renders the Feed app-bar title', (tester) async {
       await _pump(tester, _FakeApi());
       await _settle(tester);
-      expect(find.text('Feed'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Feed'), findsOneWidget);
     });
 
     testWidgets('first frame shows the list skeleton', (tester) async {

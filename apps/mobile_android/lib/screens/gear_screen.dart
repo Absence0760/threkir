@@ -10,7 +10,7 @@ import 'package:ui_kit/ui_kit.dart' show
         ProgressBar,
         StatusPill,
         StatusPillSize,
-        ListCard, AppSpace;
+        ListCard, AppSpace, AppBarAction, PageHeader, PushedPage;
 
 import '../gear_backfill.dart';
 import '../gear_wear.dart';
@@ -283,19 +283,18 @@ class _GearScreenState extends State<GearScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.gearTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.gearAddGear,
-            icon: const Icon(Icons.add),
-            onPressed: _refreshing ? null : _create,
-          ),
-        ],
-      ),
+    return PushedPage(
+      title: l10n.gearTitle,
+      actions: [
+        AppBarAction(
+          icon: const Icon(Icons.add),
+          label: l10n.gearAddGear,
+          onPressed: _refreshing ? null : _create,
+        ),
+      ],
       body: Column(
         children: [
+          PageHeader(title: l10n.gearTitle),
           // Rotations hung off an `Icons.sync_alt` AppBar glyph whose name
           // existed only as a tooltip — undiscoverable on a touch device, and
           // the glyph read as "sync" besides (#666 I8 + I15). Web renders it

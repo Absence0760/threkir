@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import 'package:intl/date_symbol_data_local.dart';
 
 import '../lib/exercise_records.dart';
@@ -103,7 +104,7 @@ void main() {
         home: GymRecordsScreen(api: _OfflineFakeApi(), store: store),
       ));
       await tester.pump();
-      expect(find.text('Personal records'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Personal records'), findsOneWidget);
       expect(find.text('Bench'), findsOneWidget);
       // Two distinct sessions logged.
       expect(find.text('2 sessions'), findsOneWidget);

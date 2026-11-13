@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'filter_bar.dart';
+import 'pushed_page.dart';
 
 /// A page's one primary action, as a value its page template places: the
 /// hub's extended FAB on a hub tab, the extended FAB on a pushed page. A
@@ -386,28 +387,44 @@ class _HubTabBodyState extends State<HubTabBody> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) widget.selection?.onClose?.call();
       },
-      child: Scaffold(
-        appBar: selection != null
-            ? AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: selection.closeTooltip,
-                  onPressed: selection.onClose,
+      // Pushed, the page says its title above its controls, where it wraps
+      // (TO-12). The heading, the controls and the banner scroll away with
+      // the list, so at large text they never leave it without room (or run
+      // past the bottom of a small phone); the bar repeats the title once the
+      // heading has gone.
+      child: PageTitleScope(
+        child: Scaffold(
+          appBar: selection != null
+              ? AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: selection.closeTooltip,
+                    onPressed: selection.onClose,
+                  ),
+                  title: Text(selection.title),
+                  actions: selection.actions,
+                )
+              : AppBar(title: PageBarTitle(widget.title)),
+          body: PageBody(
+            child: NestedScrollView(
+              headerSliverBuilder: (context, _) => [
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      PageHeader(title: widget.title),
+                      if (selection == null) ?_controls(),
+                      ?widget.banner,
+                    ],
+                  ),
                 ),
-                title: Text(selection.title),
-                actions: selection.actions,
-              )
-            : AppBar(title: Text(widget.title)),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (selection == null) ?_controls(),
-            ?widget.banner,
-            Expanded(child: _content()),
-          ],
+              ],
+              body: _content(),
+            ),
+          ),
+          floatingActionButton:
+              selection == null ? widget.primary?.toFab() : null,
         ),
-        floatingActionButton:
-            selection == null ? widget.primary?.toFab() : null,
       ),
     );
   }

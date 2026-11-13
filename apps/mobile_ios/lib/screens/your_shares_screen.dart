@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSpace, EmptyState, ListCard, ListSkeleton, StatGrid, StatTile, kStatLargeCellMinWidth;
+    show
+        AppSpace,
+        EmptyState,
+        ListCard,
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        StatGrid,
+        StatTile,
+        kStatLargeCellMinWidth;
 
 import '../backend_timeout.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -59,8 +68,8 @@ class _YourSharesScreenState extends State<YourSharesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final rows = _rows ?? const <ShareStat>[];
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.sharesTitle)),
+    return PushedPage(
+      title: l10n.sharesTitle,
       body: _loading
           ? ListSkeleton.section(label: l10n.commonLoading, rowHeight: 72)
           : _error
@@ -76,9 +85,11 @@ class _YourSharesScreenState extends State<YourSharesScreen> {
                       child: ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
-                          Text(l10n.sharesTagline,
-                              style: Theme.of(context).textTheme.bodyMedium),
-                          const SizedBox(height: 12),
+                          PageHeader(
+                            title: l10n.sharesTitle,
+                            subtitle: l10n.sharesTagline,
+                            padding: const EdgeInsets.only(bottom: 12),
+                          ),
                           for (final r in rows) _ShareCard(stat: r),
                           const SizedBox(height: 8),
                           Text(l10n.sharesFootnote,

@@ -118,7 +118,7 @@ void main() {
     testWidgets('renders the Clubs app-bar title', (tester) async {
       await _pump(tester, _FakeSocial());
       await tester.pump();
-      expect(find.text('Clubs'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Clubs'), findsOneWidget);
     });
 
     testWidgets('Browse / My clubs are the quick chips of one FilterBar',

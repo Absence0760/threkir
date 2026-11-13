@@ -5,6 +5,8 @@ import 'package:ui_kit/ui_kit.dart'
         DetailHero,
         DetailPage,
         HeroCta,
+        PageHeader,
+        PushedPage,
         ListCard,
         SectionHeader,
         StatusPill,
@@ -35,14 +37,15 @@ class GuidedRunsScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final library = guidedRunLibrary(l10n);
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.guidedRunsTitle)),
+    return PushedPage(
+      title: l10n.guidedRunsTitle,
+      safeBottom: false,
       body: ListView.builder(
-        padding: EdgeInsets.fromLTRB(0, 8, 0, 8 + bottomInset),
-        itemCount: library.length,
-        itemBuilder: (context, i) {
-          return _GuidedRunCard(run: library[i]);
-        },
+        padding: EdgeInsets.fromLTRB(0, 0, 0, 8 + bottomInset),
+        itemCount: library.length + 1,
+        itemBuilder: (context, i) => i == 0
+            ? PageHeader(title: l10n.guidedRunsTitle)
+            : _GuidedRunCard(run: library[i - 1]),
       ),
     );
   }

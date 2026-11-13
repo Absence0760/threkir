@@ -3,7 +3,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSpace, IdentityAvatar, ListCard, ListSkeleton, ProgressBar, StatusPill, StatusPillSize, TextLane;
+    show AppSpace, IdentityAvatar, ListCard, ListSkeleton, PageHeader, ProgressBar, PushedPage, StatusPill, StatusPillSize, TextLane;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -239,10 +239,8 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.displayName ?? l10n.coachingAthleteAthleteFallback),
-      ),
+    return PushedPage(
+      title: widget.displayName ?? l10n.coachingAthleteAthleteFallback,
       body: _loading
           ? ListSkeleton(
               label: l10n.commonLoading,
@@ -267,34 +265,18 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
   }
 
   Widget _header(AppLocalizations l10n) {
-    final theme = Theme.of(context);
     final since = widget.acceptedAt != null
         ? formatDateMed(widget.acceptedAt!, activeLocaleTag)
         : '—';
-    return Row(
-      children: [
-        IdentityAvatar(
-            seed: widget.athleteId,
-            name: widget.displayName,
-            imageUrl: widget.avatarUrl,
-            size: 48),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.displayName ?? l10n.coachingAthleteRunnerFallback,
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 2),
-              Text(l10n.coachingAthleteCoachingSince(since),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )),
-            ],
-          ),
-        ),
-      ],
+    return PageHeader(
+      leading: IdentityAvatar(
+          seed: widget.athleteId,
+          name: widget.displayName,
+          imageUrl: widget.avatarUrl,
+          size: 48),
+      title: widget.displayName ?? l10n.coachingAthleteRunnerFallback,
+      subtitle: l10n.coachingAthleteCoachingSince(since),
+      padding: EdgeInsets.zero,
     );
   }
 

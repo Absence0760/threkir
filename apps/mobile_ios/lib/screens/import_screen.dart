@@ -4,7 +4,8 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ProgressBar, ListCard;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, ListCard, PageHeader, ProgressBar, PushedPage;
 
 import '../auth_error.dart';
 import '../backup.dart';
@@ -611,13 +612,15 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.importTitle)),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-        padding: const EdgeInsets.all(16),
+    return PushedPage(
+      title: l10n.importTitle,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
+          PageHeader(
+            title: l10n.importTitle,
+            padding: const EdgeInsets.only(top: 16, bottom: 12),
+          ),
           ListCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -947,7 +950,6 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
           ],
         ],
-        ),
       ),
     );
   }

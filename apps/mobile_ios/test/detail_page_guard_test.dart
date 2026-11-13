@@ -31,10 +31,6 @@ const _hosts = <String>{
 };
 
 const _handBuilt = <String, ({int count, String why})>{
-  'lib/screens/guided_runs_screen.dart': (
-    count: 1,
-    why: 'GuidedRunsScreen is the list the detail page opens from',
-  ),
   'lib/screens/park_courses_screen.dart': (
     count: 1,
     why: 'ParksScreen is the parks list, beside the park and course pages',
@@ -46,16 +42,29 @@ const _handBuilt = <String, ({int count, String why})>{
   ),
 };
 
-/// Pushed pages whose app-bar titles were cut in fr/de (TO-12), and the root
-/// pages, each of which says its title in the body.
+/// Pushed pages whose app-bar titles were cut in fr/de (TO-12, and the pages
+/// the list-card worst-case runs found cut), each of which says its title in
+/// the body.
 const _titledInBody = <String>{
   'lib/screens/checkpoint_checkin_screen.dart',
+  'lib/screens/coaching_athlete_screen.dart',
+  'lib/screens/coaching_screen.dart',
   'lib/screens/course_drive_screen.dart',
+  'lib/screens/devices_screen.dart',
+  'lib/screens/gear_screen.dart',
+  'lib/screens/gear_rotations_screen.dart',
+  'lib/screens/guided_runs_screen.dart',
+  'lib/screens/gym_records_screen.dart',
+  'lib/screens/import_screen.dart',
+  'lib/screens/nearby_area_screen.dart',
   'lib/screens/nutrition_targets_screen.dart',
   'lib/screens/period_summary_screen.dart',
   'lib/screens/plan_calendar_feed_screen.dart',
   'lib/screens/progress_screen.dart',
+  'lib/screens/recap_screen.dart',
   'lib/screens/watch_live_screen.dart',
+  'lib/screens/watch_screens_editor_screen.dart',
+  'lib/screens/your_shares_screen.dart',
 };
 
 String _code(String s) => s

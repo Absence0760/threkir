@@ -128,6 +128,10 @@ void main() {
     await tester.pump();
     expect(store.saved, isEmpty);
 
+    // The page's heading sits above the form, so the last row starts below
+    // the fold.
+    await tester.ensureVisible(find.byTooltip('Remove Napkin'));
+    await tester.pump();
     await tester.tap(find.byTooltip('Remove Napkin'));
     await tester.pump();
     await tester.enterText(find.widgetWithText(TextField, '205'), '250');

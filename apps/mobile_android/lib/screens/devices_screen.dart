@@ -3,8 +3,14 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show ListSkeleton, SheetScaffold, StatusPill, StatusPillSize,
-    ListCard;
+    show
+        ListCard,
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        SheetScaffold,
+        StatusPill,
+        StatusPillSize;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -209,8 +215,8 @@ class _DevicesScreenState extends State<DevicesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.devicesTitle)),
+    return PushedPage(
+      title: l10n.devicesTitle,
       body: _loading
           ? ListSkeleton(label: l10n.commonLoading)
           : _loadError != null
@@ -229,10 +235,16 @@ class _DevicesScreenState extends State<DevicesScreen> {
                       onRefresh: _load,
                       child: ListView.separated(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _devices.length,
+                        itemCount: _devices.length + 1,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) {
-                          final d = _devices[i];
+                        itemBuilder: (_, index) {
+                          if (index == 0) {
+                            return PageHeader(
+                              title: l10n.devicesTitle,
+                              padding: EdgeInsets.zero,
+                            );
+                          }
+                          final d = _devices[index - 1];
                           final isCurrent =
                               d.deviceId == widget.currentDeviceId;
                           final overrideCount =

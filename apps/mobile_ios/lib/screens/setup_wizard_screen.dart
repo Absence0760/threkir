@@ -3,7 +3,8 @@ import 'dart:io' show Platform;
 import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListCard;
+import 'package:ui_kit/ui_kit.dart'
+    show ListCard, PageBarTitle, PageBody, PageHeader, PageTitleScope;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -379,45 +380,56 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       // on the first step it offers the same exit the header does.
       canPop: false,
       onPopInvokedWithResult: _onPopInvoked,
-      child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: Text(l10n.setupPageTitle),
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              _ProgressDots(step: _stepIndex.value, total: _steps.length),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 8,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // At the top of the step rather than an app-bar
-                      // action: "Einrichtung überspringen" at 2x text is
-                      // wider than a 320 dp app bar, and an action cannot
-                      // wrap. In the scroll, so it never costs the step's
-                      // fixed chrome a line.
-                      Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: TextButton(
-                          onPressed: _saving ? null : _skip,
-                          child:
-                              Text(l10n.setupSkip, textAlign: TextAlign.end),
-                        ),
+      // Not a PushedPage: the wizard has no Back. It says its title in the
+      // step's scroll all the same, and the bar repeats it once that heading
+      // has scrolled away.
+      child: PageTitleScope(
+        child: Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: PageBarTitle(l10n.setupPageTitle),
+          ),
+          body: PageBody(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _ProgressDots(step: _stepIndex.value, total: _steps.length),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
                       ),
-                      _buildStep(theme, l10n),
-                    ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // At the top of the step rather than an app-bar
+                          // action: "Einrichtung überspringen" at 2x text is
+                          // wider than a 320 dp app bar, and an action cannot
+                          // wrap. In the scroll, so it never costs the step's
+                          // fixed chrome a line.
+                          Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: TextButton(
+                              onPressed: _saving ? null : _skip,
+                              child:
+                                  Text(l10n.setupSkip, textAlign: TextAlign.end),
+                            ),
+                          ),
+                          PageHeader(
+                            title: l10n.setupPageTitle,
+                            padding: const EdgeInsets.only(bottom: 8),
+                          ),
+                          _buildStep(theme, l10n),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  if (_saveFailed) _buildOfflineExit(theme, l10n),
+                  _buildNav(l10n),
+                ],
               ),
-              if (_saveFailed) _buildOfflineExit(theme, l10n),
-              _buildNav(l10n),
-            ],
+            ),
           ),
         ),
       ),

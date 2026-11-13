@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/full_screen_form.dart';
-import 'package:ui_kit/ui_kit.dart' show EditorPage;
+import 'package:ui_kit/ui_kit.dart' show EditorPage, PageHeading;
 
 import 'three_button_nav_bar.dart';
 
@@ -50,7 +50,7 @@ void main() {
       await _open(tester,
           title: 'Add gear', body: const Text('body-marker'));
       expect(find.byType(AppBar), findsOneWidget);
-      expect(find.text('Add gear'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Add gear'), findsOneWidget);
       expect(find.text('body-marker'), findsOneWidget);
       // fullscreenDialog injects a Close affordance, not a Back arrow.
       expect(find.byTooltip('Close'), findsOneWidget);

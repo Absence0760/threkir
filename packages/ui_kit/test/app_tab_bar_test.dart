@@ -96,6 +96,33 @@ void main() {
       expect(_bar(tester).isScrollable, isTrue);
     });
 
+    testWidgets(
+        'labels that fit only at their own widths still span the strip',
+        (tester) async {
+      const labels = ['A', 'B', 'C', 'Achievements'];
+      double w(String l) {
+        final p = TextPainter(
+          text: TextSpan(text: l, style: ThemeData().textTheme.titleSmall),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final width = p.width + kTabLabelPadding.horizontal;
+        p.dispose();
+        return width;
+      }
+
+      final sum = labels.map(w).reduce((a, b) => a + b);
+      final share = w('Achievements') * labels.length;
+      final width = (sum + share) / 2;
+      await _pump(tester, labels, width: width);
+      final first = tester.getRect(find.byType(Tab).first);
+      final last = tester.getRect(find.byType(Tab).last);
+      // Each tab sits inside its padding, so an evenly spread strip leaves
+      // the same space before the first tab as after the last.
+      expect(width - last.right, closeTo(first.left, 1.0),
+          reason: 'the spare width is shared out, not left after the last tab');
+      expect(first.left, greaterThan(kTabLabelPadding.horizontal / 2));
+    });
+
     testWidgets('the same labels flip with the width they are given',
         (tester) async {
       const labels = ['Feed', 'People', 'Clubs', 'Discover', 'Challenges'];

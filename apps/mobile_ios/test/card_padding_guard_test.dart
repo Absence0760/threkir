@@ -83,7 +83,6 @@ const _lookAlikesLeft = <String, (int, String)>{
   ),
   'lib/widgets/activity_heatmap.dart': (1, 'a heatmap cell'),
   'lib/widgets/badge_grid.dart': (1, 'a badge tile in a grid, drawn as Ink'),
-  'lib/widgets/club_photos.dart': (1, 'the photo upload composer'),
   'lib/widgets/coach_share_card.dart': (
     1,
     'a shared plan inside a message bubble',
@@ -119,9 +118,6 @@ const _lookAlikesLeft = <String, (int, String)>{
     'a tinted panel holding the plan\'s races as rows',
   ),
   'lib/widgets/race_banner.dart': (1, 'the race banner on the recorder'),
-  'lib/widgets/route_conditions.dart': (1, 'the conditions report composer'),
-  'lib/widgets/route_photos.dart': (1, 'the photo upload composer'),
-  'lib/widgets/run_photos.dart': (1, 'the photo upload composer'),
   'lib/widgets/segments_panel.dart': (
     1,
     'the crown banner over the leaderboard',

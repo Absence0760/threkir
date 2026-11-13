@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show OverlayIconButton, SectionHeader;
+import 'package:ui_kit/ui_kit.dart' show ListCard, OverlayIconButton, SectionHeader;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth_error.dart';
@@ -313,15 +313,10 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
           ),
         ),
         if (_pending != null && _canManage)
-          Container(
+          ListCard(
             margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(
-                  color: cs.outlineVariant, style: BorderStyle.solid),
-              borderRadius: BorderRadius.circular(12),
-              color: cs.surfaceContainerHighest,
-            ),
+            dense: true,
+            color: cs.surfaceContainerHighest,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

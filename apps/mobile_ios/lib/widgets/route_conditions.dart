@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SectionHeader, StatusPill;
+import 'package:ui_kit/ui_kit.dart' show ListCard, SectionHeader, StatusPill;
 
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -257,14 +257,10 @@ class _RouteConditionsState extends State<RouteConditions> {
   }
 
   Widget _buildComposer(ThemeData theme, ColorScheme cs, AppLocalizations l10n) {
-    return Container(
+    return ListCard(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: cs.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-        color: cs.surfaceContainerHighest,
-      ),
+      dense: true,
+      color: cs.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

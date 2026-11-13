@@ -100,6 +100,7 @@ insert into anon_callable (fn, why) values
   ('live_overlay_enabled',            'the streamer overlay, an OBS browser source with no session, asks whether the gate is open'),
   ('live_overlay_feed',               'the streamer overlay reads its delayed pings with no session; the token argument is the capability'),
   ('nearby_routes',                   'logged-out route discovery'),
+  ('park_month',                      'computed field on parks beside park_season; the course page reads the current month with the season'),
   ('park_season',                     'computed field on parks; the logged-out park and course pages read the current season'),
   ('popular_route_tags',              'logged-out route discovery'),
   ('public_plan_share',               '/share/plan; null while the public_plan_share gate is closed'),

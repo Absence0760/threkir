@@ -3732,7 +3732,6 @@ export type Database = {
           created_at: string
           id: number
           note: string | null
-          park_course_id: string | null
           reports_resolved: number
           status_before: string
         }
@@ -3743,7 +3742,6 @@ export type Database = {
           created_at?: string
           id?: never
           note?: string | null
-          park_course_id?: string | null
           reports_resolved?: number
           status_before: string
         }
@@ -3754,7 +3752,6 @@ export type Database = {
           created_at?: string
           id?: never
           note?: string | null
-          park_course_id?: string | null
           reports_resolved?: number
           status_before?: string
         }
@@ -8464,7 +8461,12 @@ export type Database = {
         }
       }
       global_segment_completions: {
-        Args: { p_limit?: number; p_season?: number; p_segment_id: string }
+        Args: {
+          p_limit?: number
+          p_month?: number
+          p_season?: number
+          p_segment_id: string
+        }
         Returns: {
           avatar_url: string
           completions: number
@@ -8486,6 +8488,7 @@ export type Database = {
           p_club_id?: string
           p_gender?: string
           p_limit?: number
+          p_month?: number
           p_season?: number
           p_segment_id: string
         }
@@ -9015,6 +9018,10 @@ export type Database = {
           status_before: string
         }[]
       }
+      park_month: {
+        Args: { p: Database["public"]["Tables"]["parks"]["Row"] }
+        Returns: number
+      }
       park_nps_sweep_targets: {
         Args: never
         Returns: {
@@ -9512,6 +9519,8 @@ export type Database = {
           course_slug: string
           effort_id: string
           global_segment_id: string
+          month: number
+          month_rank: number
           park_name: string
           park_slug: string
           region_code: string

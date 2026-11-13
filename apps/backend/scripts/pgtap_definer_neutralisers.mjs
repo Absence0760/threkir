@@ -516,11 +516,11 @@ $neutralised$;`,
   [
     'global_segment_leaderboard',
     {
-      why: "the catalogue twin of `segment_leaderboard_tiered`: drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check, the club-membership gate, the shadow-hidden name masking and the `health_data_consent_at` requirement on the age band; keeps the segment id, the gender filter, the age arithmetic itself and the park-timezone season (decisions § 2383), which are the query the caller asked for",
+      why: "the catalogue twin of `segment_leaderboard_tiered`: drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check, the club-membership gate, the shadow-hidden name masking and the `health_data_consent_at` requirement on the age band; keeps the segment id, the gender filter, the age arithmetic itself and the park-timezone season and month (decisions § 2383, § 2426), which are the query the caller asked for",
       sql: `create or replace function public.global_segment_leaderboard(
    p_segment_id uuid, p_gender text default null::text, p_age_band text default null::text,
    p_limit integer default 50, p_club_id uuid default null::uuid,
-   p_season integer default null::integer)
+   p_season integer default null::integer, p_month integer default null::integer)
  returns table(effort_id uuid, user_id uuid, run_id uuid, time_seconds integer,
                started_at timestamptz, display_name text, avatar_url text,
                gender text, age integer)
@@ -554,6 +554,12 @@ as $neutralised$
            (select p.timezone from public.park_courses pc join public.parks p on p.id = pc.park_id
              where pc.global_segment_id = p_segment_id), 'UTC')))::integer = p_season
     )
+    and (
+      p_month is null
+      or extract(month from (se.started_at at time zone coalesce(
+           (select p.timezone from public.park_courses pc join public.parks p on p.id = pc.park_id
+             where pc.global_segment_id = p_segment_id), 'UTC')))::integer = p_month
+    )
     and ${mine('se')}
   order by se.user_id, se.time_seconds asc, se.started_at asc;
 $neutralised$;`,
@@ -578,9 +584,10 @@ $neutralised$;`,
   [
     'global_segment_completions',
     {
-      why: 'the most-completions board beside `global_segment_leaderboard` (decisions § 2383): drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check and the shadow-hidden name masking; keeps the segment id, the park-timezone season and the distinct-local-day count, which are the query the caller asked for',
+      why: 'the most-completions board beside `global_segment_leaderboard` (decisions § 2383): drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check and the shadow-hidden name masking; keeps the segment id, the park-timezone season and month (decisions § 2426) and the distinct-local-day count, which are the query the caller asked for',
       sql: `create or replace function public.global_segment_completions(
-   p_segment_id uuid, p_season integer default null::integer, p_limit integer default 50)
+   p_segment_id uuid, p_season integer default null::integer, p_limit integer default 50,
+   p_month integer default null::integer)
  returns table(user_id uuid, completions integer, last_completed_at timestamptz,
                display_name text, avatar_url text)
  language sql stable security definer set search_path to 'public', 'private'
@@ -599,6 +606,8 @@ as $neutralised$
   where se.global_segment_id = p_segment_id
     and (p_season is null
          or extract(year from (se.started_at at time zone tz.v))::integer = p_season)
+    and (p_month is null
+         or extract(month from (se.started_at at time zone tz.v))::integer = p_month)
     and ${mine('se')}
   group by se.user_id;
 $neutralised$;`,

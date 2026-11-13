@@ -283,8 +283,7 @@ class _MapFirstPageState extends State<MapFirstPage> {
                             vertical: AppSpace.smPlus),
                         decoration: BoxDecoration(
                           color: sheetTheme.dragHandleColor ??
-                              theme.colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.4),
+                              theme.colorScheme.outline,
                           borderRadius:
                               BorderRadius.circular(AppRadius.pill),
                         ),

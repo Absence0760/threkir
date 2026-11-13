@@ -172,17 +172,22 @@ test.describe('/routes — heatmap', () => {
 		expect(res.status).toBeLessThan(500);
 	});
 
-	test('My routes ↔ Explore tabs are mutually exclusive', async ({ page }) => {
-		// Tab state machine: My routes / Explore (Heatmap moved to
-		// its own route in the May 2026 layout fix). The .active CSS
-		// class drives the underline + colour. A regression in setTab
-		// that left two active simultaneously would visually confuse
-		// the page but not error — pin the count.
+	test('Mine ↔ Explore marks exactly one view as current', async ({ page }) => {
+		// The views are links (issue #1374) marked with aria-current: Mine
+		// with "page", Explore with "true" (its own Routes · Segments row
+		// carries "page"). A regression that marked both current would
+		// visually confuse the page but not error — pin the count both ways.
 		await page.goto('/routes');
-		await page.getByRole('tab', { name: 'Explore', exact: true }).click();
-		await expect(page.locator('button.tab.active')).toHaveCount(1);
-		await page.getByRole('tab', { name: 'My routes', exact: true }).click();
-		await expect(page.locator('button.tab.active')).toHaveCount(1);
+		const nav = page.getByTestId('routes-view-nav');
+		const current = nav.locator('[aria-current]');
+		await nav.getByRole('link', { name: 'Explore', exact: true }).click();
+		await expect(page).toHaveURL(/\/routes\?tab=explore$/);
+		await expect(current).toHaveCount(1);
+		await expect(current).toHaveText('Explore');
+		await nav.getByRole('link', { name: 'Mine', exact: true }).click();
+		await expect(page).toHaveURL(/\/routes$/);
+		await expect(current).toHaveCount(1);
+		await expect(current).toHaveText('Mine');
 	});
 });
 

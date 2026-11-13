@@ -966,7 +966,6 @@ class _HomeScreenState extends State<HomeScreen>
           heartRate: widget.heartRate,
           treadmill: widget.treadmill,
           settingsSync: widget.settingsSync,
-          training: widget.training,
         ),
       ),
     ];

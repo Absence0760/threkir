@@ -1775,6 +1775,12 @@ abstract class AppLocalizations {
   /// **'View profile'**
   String get youViewProfile;
 
+  /// Button on the You tab identity card that opens the name and photo editor
+  ///
+  /// In en, this message translates to:
+  /// **'Edit profile'**
+  String get youEditProfile;
+
   /// Title of the Log capture bottom sheet
   ///
   /// In en, this message translates to:
@@ -2411,23 +2417,29 @@ abstract class AppLocalizations {
   /// **'Today\'s lift'**
   String get homeTodaysLift;
 
-  /// Section header on the You tab above coaching and guided runs
-  ///
-  /// In en, this message translates to:
-  /// **'Training'**
-  String get settingsSectionTraining;
-
-  /// Section header on the You tab above Account, Preferences and Safety contacts
-  ///
-  /// In en, this message translates to:
-  /// **'Settings'**
-  String get settingsSectionSettings;
-
   /// Settings landing section header grouping Integrations + Devices + Gear
   ///
   /// In en, this message translates to:
   /// **'Apps & data'**
   String get settingsSectionAppsData;
+
+  /// You tab group: Account, Body metrics, Safety contacts, Follow requests (web Settings → Profile)
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get settingsSectionProfile;
+
+  /// Hint of the search field at the top of the You tab, which finds a row on You or on any Preferences page
+  ///
+  /// In en, this message translates to:
+  /// **'Search settings'**
+  String get settingsSearchHint;
+
+  /// Shown under the You tab settings search when nothing matches
+  ///
+  /// In en, this message translates to:
+  /// **'No settings match “{query}”.'**
+  String settingsSearchNoResults(String query);
 
   /// Settings landing section header grouping Pro & support + Licenses
   ///
@@ -13653,12 +13665,6 @@ abstract class AppLocalizations {
   /// **'Guided runs'**
   String get guidedRunsTitle;
 
-  /// Subtitle of the Guided runs tile
-  ///
-  /// In en, this message translates to:
-  /// **'Coach-voice scripted workouts with TTS cues'**
-  String get guidedRunsSubtitle;
-
   /// AppBar title for the Settings > Privacy zones screen, and the title of the Settings tile that opens it
   ///
   /// In en, this message translates to:
@@ -19976,12 +19982,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Track shoes + bikes and per-item mileage'**
   String get settingsTabGearSubtitle;
-
-  /// Settings landing: Coaching tile subtitle
-  ///
-  /// In en, this message translates to:
-  /// **'Coach athletes or follow your own coach'**
-  String get settingsTabCoachingSubtitle;
 
   /// Settings landing: Pro & support tile subtitle
   ///
@@ -30289,6 +30289,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Follow requests'**
   String get followRequestsTitle;
+
+  /// Subtitle of the Follow requests row in the You tab Profile group
+  ///
+  /// In en, this message translates to:
+  /// **'People asking to follow your private profile'**
+  String get youFollowRequestsSubtitle;
 
   /// Empty state title on the follow requests screen
   ///

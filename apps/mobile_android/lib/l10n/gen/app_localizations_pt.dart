@@ -1082,6 +1082,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get youViewProfile => 'Ver perfil';
 
   @override
+  String get youEditProfile => 'Editar perfil';
+
+  @override
   String get logSheetTitle => 'Registar';
 
   @override
@@ -1456,13 +1459,18 @@ class AppLocalizationsPt extends AppLocalizations {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionTraining => 'Treino';
-
-  @override
-  String get settingsSectionSettings => 'Definições';
-
-  @override
   String get settingsSectionAppsData => 'Apps e dados';
+
+  @override
+  String get settingsSectionProfile => 'Perfil';
+
+  @override
+  String get settingsSearchHint => 'Pesquisar definições';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Nenhuma definição corresponde a «$query».';
+  }
 
   @override
   String get settingsSectionAccountLegal => 'Conta e jurídico';
@@ -8594,10 +8602,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get guidedRunsTitle => 'Corridas guiadas';
 
   @override
-  String get guidedRunsSubtitle =>
-      'Treinos roteirizados com voz de treinador e avisos por TTS';
-
-  @override
   String get privacyZonesTitle => 'Zonas de privacidade';
 
   @override
@@ -12398,10 +12402,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get settingsTabGearSubtitle =>
       'Acompanhe ténis + bikes e a quilometragem por item';
-
-  @override
-  String get settingsTabCoachingSubtitle =>
-      'Treine atletas ou siga o seu próprio treinador';
 
   @override
   String get settingsTabProSubtitle =>
@@ -18586,6 +18586,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get followRequestsTitle => 'Pedidos para seguir';
 
   @override
+  String get youFollowRequestsSubtitle =>
+      'Pessoas que pedem para seguir o seu perfil privado';
+
+  @override
   String get followRequestsEmptyTitle => 'Nenhum pedido pendente';
 
   @override
@@ -23692,6 +23696,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get youViewProfile => 'Ver perfil';
 
   @override
+  String get youEditProfile => 'Editar perfil';
+
+  @override
   String get logSheetTitle => 'Registrar';
 
   @override
@@ -24066,13 +24073,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionTraining => 'Treino';
-
-  @override
-  String get settingsSectionSettings => 'Configurações';
-
-  @override
   String get settingsSectionAppsData => 'Apps e dados';
+
+  @override
+  String get settingsSectionProfile => 'Perfil';
+
+  @override
+  String get settingsSearchHint => 'Buscar nas configurações';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Nenhuma configuração corresponde a “$query”.';
+  }
 
   @override
   String get settingsSectionAccountLegal => 'Conta e jurídico';
@@ -31198,10 +31210,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get guidedRunsTitle => 'Corridas guiadas';
 
   @override
-  String get guidedRunsSubtitle =>
-      'Treinos roteirizados com voz de treinador e avisos por TTS';
-
-  @override
   String get privacyZonesTitle => 'Zonas de privacidade';
 
   @override
@@ -34999,10 +35007,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get settingsTabGearSubtitle =>
       'Acompanhe tênis + bikes e a quilometragem por item';
-
-  @override
-  String get settingsTabCoachingSubtitle =>
-      'Treine atletas ou siga o seu próprio treinador';
 
   @override
   String get settingsTabProSubtitle =>
@@ -41179,6 +41183,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get followRequestsTitle => 'Solicitações para seguir';
+
+  @override
+  String get youFollowRequestsSubtitle =>
+      'Pessoas pedindo para seguir seu perfil privado';
 
   @override
   String get followRequestsEmptyTitle => 'Nenhuma solicitação pendente';

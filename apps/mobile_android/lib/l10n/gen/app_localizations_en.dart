@@ -1069,6 +1069,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youViewProfile => 'View profile';
 
   @override
+  String get youEditProfile => 'Edit profile';
+
+  @override
   String get logSheetTitle => 'Log';
 
   @override
@@ -1437,13 +1440,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTodaysLift => 'Today\'s lift';
 
   @override
-  String get settingsSectionTraining => 'Training';
-
-  @override
-  String get settingsSectionSettings => 'Settings';
-
-  @override
   String get settingsSectionAppsData => 'Apps & data';
+
+  @override
+  String get settingsSectionProfile => 'Profile';
+
+  @override
+  String get settingsSearchHint => 'Search settings';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'No settings match “$query”.';
+  }
 
   @override
   String get settingsSectionAccountLegal => 'Account & legal';
@@ -8503,10 +8511,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get guidedRunsTitle => 'Guided runs';
 
   @override
-  String get guidedRunsSubtitle =>
-      'Coach-voice scripted workouts with TTS cues';
-
-  @override
   String get privacyZonesTitle => 'Privacy zones';
 
   @override
@@ -12269,10 +12273,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsTabGearSubtitle =>
       'Track shoes + bikes and per-item mileage';
-
-  @override
-  String get settingsTabCoachingSubtitle =>
-      'Coach athletes or follow your own coach';
 
   @override
   String get settingsTabProSubtitle =>
@@ -18388,6 +18388,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get followRequestsTitle => 'Follow requests';
+
+  @override
+  String get youFollowRequestsSubtitle =>
+      'People asking to follow your private profile';
 
   @override
   String get followRequestsEmptyTitle => 'No pending requests';

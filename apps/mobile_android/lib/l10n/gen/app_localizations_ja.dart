@@ -1037,6 +1037,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get youViewProfile => 'プロフィールを見る';
 
   @override
+  String get youEditProfile => 'プロフィールを編集';
+
+  @override
   String get logSheetTitle => '記録';
 
   @override
@@ -1391,13 +1394,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get homeTodaysLift => '今日の筋トレ';
 
   @override
-  String get settingsSectionTraining => 'トレーニング';
-
-  @override
-  String get settingsSectionSettings => '設定';
-
-  @override
   String get settingsSectionAppsData => 'アプリとデータ';
+
+  @override
+  String get settingsSectionProfile => 'プロフィール';
+
+  @override
+  String get settingsSearchHint => '設定を検索';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return '「$query」に一致する設定はありません。';
+  }
 
   @override
   String get settingsSectionAccountLegal => 'アカウントと法的情報';
@@ -8109,9 +8117,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get guidedRunsTitle => 'ガイド付きラン';
 
   @override
-  String get guidedRunsSubtitle => 'コーチの音声とTTSキューによるスクリプト式ワークアウト';
-
-  @override
   String get privacyZonesTitle => 'プライバシーゾーン';
 
   @override
@@ -11767,9 +11772,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsTabGearSubtitle => 'シューズ・バイクとアイテムごとの走行距離を記録';
-
-  @override
-  String get settingsTabCoachingSubtitle => 'アスリートを指導したり、自分のコーチをフォロー';
 
   @override
   String get settingsTabProSubtitle => '登録、購入の復元、請求の管理';
@@ -17695,6 +17697,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get followRequestsTitle => 'フォローリクエスト';
+
+  @override
+  String get youFollowRequestsSubtitle => '非公開プロフィールへのフォローリクエスト';
 
   @override
   String get followRequestsEmptyTitle => '保留中のリクエストはありません';

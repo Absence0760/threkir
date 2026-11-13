@@ -1442,6 +1442,10 @@
   "@youViewProfile": {
     "description": "Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile"
   },
+  "youEditProfile": "Edit profile",
+  "@youEditProfile": {
+    "description": "Button on the You tab identity card that opens the name and photo editor"
+  },
   "logSheetTitle": "Log",
   "@logSheetTitle": {
     "description": "Title of the Log capture bottom sheet"
@@ -1907,17 +1911,27 @@
   "@homeTodaysLift": {
     "description": "Home card header above today's logged gym workout"
   },
-  "settingsSectionTraining": "Training",
-  "@settingsSectionTraining": {
-    "description": "Section header on the You tab above coaching and guided runs"
-  },
-  "settingsSectionSettings": "Settings",
-  "@settingsSectionSettings": {
-    "description": "Section header on the You tab above Account, Preferences and Safety contacts"
-  },
   "settingsSectionAppsData": "Apps & data",
   "@settingsSectionAppsData": {
     "description": "Settings landing section header grouping Integrations + Devices + Gear"
+  },
+  "settingsSectionProfile": "Profile",
+  "@settingsSectionProfile": {
+    "description": "You tab group: Account, Body metrics, Safety contacts, Follow requests (web Settings → Profile)"
+  },
+  "settingsSearchHint": "Search settings",
+  "@settingsSearchHint": {
+    "description": "Hint of the search field at the top of the You tab, which finds a row on You or on any Preferences page"
+  },
+  "settingsSearchNoResults": "No settings match “{query}”.",
+  "@settingsSearchNoResults": {
+    "description": "Shown under the You tab settings search when nothing matches",
+    "placeholders": {
+      "query": {
+        "type": "String",
+        "example": "zones"
+      }
+    }
   },
   "settingsSectionAccountLegal": "Account & legal",
   "@settingsSectionAccountLegal": {
@@ -11538,10 +11552,6 @@
   "@guidedRunsTitle": {
     "description": "Tile title for guided runs"
   },
-  "guidedRunsSubtitle": "Coach-voice scripted workouts with TTS cues",
-  "@guidedRunsSubtitle": {
-    "description": "Subtitle of the Guided runs tile"
-  },
   "privacyZonesTitle": "Privacy zones",
   "@privacyZonesTitle": {
     "description": "AppBar title for the Settings > Privacy zones screen, and the title of the Settings tile that opens it"
@@ -16731,10 +16741,6 @@
   "settingsTabGearSubtitle": "Track shoes + bikes and per-item mileage",
   "@settingsTabGearSubtitle": {
     "description": "Settings landing: Gear tile subtitle"
-  },
-  "settingsTabCoachingSubtitle": "Coach athletes or follow your own coach",
-  "@settingsTabCoachingSubtitle": {
-    "description": "Settings landing: Coaching tile subtitle"
   },
   "settingsTabProSubtitle": "Subscribe, restore purchases, manage billing",
   "@settingsTabProSubtitle": {
@@ -24292,6 +24298,10 @@
   "followRequestsTitle": "Follow requests",
   "@followRequestsTitle": {
     "description": "Title of the screen listing requests to follow the user's private profile"
+  },
+  "youFollowRequestsSubtitle": "People asking to follow your private profile",
+  "@youFollowRequestsSubtitle": {
+    "description": "Subtitle of the Follow requests row in the You tab Profile group"
   },
   "followRequestsEmptyTitle": "No pending requests",
   "@followRequestsEmptyTitle": {

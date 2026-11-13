@@ -228,6 +228,10 @@ is not stored. Run detail reads it back on web (`/runs/[id]`) and on the phone
 - `<run-id>.json` — one per completed run
 - `in_progress.json` — at most one, rewritten every 10 seconds during a recording
 
+### Heart rate and health-data consent
+
+Heart rate is kept only with health-data consent ([decisions § 2513](../architecture/decisions.md)). The screen reads consent when the run begins (`_loadHealthConsent`, through `healthDataConsented` in `health_consent_gate.dart`) so the finish never waits on the network. Live heart rate is an L4 effect and is untouched: it shows on screen with or without consent. At Stop, a run whose consent is known to be absent is stored without heart rate (`runWithoutHeartRate`, `core_models`), before the local save, and `FinishedSummary` shows `HeartRateNotKeptNote` with a button to the consent screen (Body metrics). Consent that could not be read (offline at the start) keeps heart rate on the device; the upload chokepoint (`ApiClient.saveRun` / `saveRunsBatch`) strips it, and the database strips the row's keys whatever a client sends. The in-progress file still carries heart rate while recording, for crash recovery; a recovered run uploads through the same chokepoint.
+
 ### Incremental save (`_saveInProgress` in `run_screen.dart`)
 
 Every 10 seconds while the screen state is `recording`, the app serialises the current `Run` state into `in_progress.json`:

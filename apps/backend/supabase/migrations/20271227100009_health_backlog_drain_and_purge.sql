@@ -144,7 +144,7 @@ grant execute on function private.purge_health_backlog(integer) to service_role;
 
 select cron.schedule(
   'purge-health-backlog',
-  '53 3 * * *',  -- 03:53 UTC daily, off the other 03:xx retention minutes.
+  '31 4 * * *',  -- 04:31 UTC daily, a minute no other retention job uses.
   $$select private.purge_health_backlog(200)$$
 );
 
@@ -152,4 +152,4 @@ comment on function private.purge_health_backlog(integer) is
   'Erases the pre-gate heart rate and food of runners who still have no '
   'health-data consent (decisions § 2513). Does nothing unless the '
   'health_backlog_purge feature flag is on (counsel sign-off, § 2430). '
-  'Scheduled by pg_cron entry `purge-health-backlog` (03:53 UTC daily).';
+  'Scheduled by pg_cron entry `purge-health-backlog` (04:31 UTC daily).';

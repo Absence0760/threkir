@@ -24,6 +24,10 @@ A reference for every external data source the app connects to, how each integra
 
 ---
 
+## Heart rate from an import needs health-data consent
+
+Every import path keeps an activity's heart rate only when the runner has health-data consent ([decisions § 2513](../architecture/decisions.md)). The `runs_health_hr_gate` trigger strips the heart-rate keys from any row written without it, the service-role importers included. What the database cannot see is stripped before it is stored: the Strava webhook and import Edge Function and the Go `strava_event` handler drop the heart-rate stream (they ask `public.health_data_consented`), web `saveRun` strips per-point bpm and the fix-less series, and the mobile import screen strips the runs before the local save. Web's Strava and Garmin imports and the mobile import screen say how many activities came in without heart rate and link to the consent screen; the rest of each activity is imported. Garmin's HR zone seeding into settings is unchanged.
+
 ## Which integrations a deployment offers
 
 Every integration surface renders through one gate, so a deployment offers only what it can actually honour. The rules are the `integration_visibility` parity pair (`apps/web/src/lib/integrations/integration_visibility.ts` ↔ `apps/mobile_android/lib/integration_visibility.dart`); the catalogue that feeds them is web's `integrations/availability.ts` and mobile's `_connectSpecs` + `raceImportProviders`. Rationale in [decisions.md § 1621](../architecture/decisions.md).

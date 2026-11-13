@@ -5146,16 +5146,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                         spacing: 8,
                         children: ActivityType.values.map((t) {
                           final selected = t == _activityType;
+                          // The icon is the chip's avatar, so the chip lays
+                          // the label out in the width it has; an icon and
+                          // label in a Row as the label overflowed the chip
+                          // by 27 dp at 2x on 320 dp (#1374 TO-6).
                           return ChoiceChip(
                             showCheckmark: false,
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(t.icon, size: 16),
-                                const SizedBox(width: 4),
-                                Text(activityTypeLabel(_l10n, t)),
-                              ],
-                            ),
+                            avatar: Icon(t.icon, size: 16),
+                            label: Text(activityTypeLabel(_l10n, t)),
                             selected: selected,
                             onSelected: (_) {
                               if (_state != _ScreenState.idle) return;

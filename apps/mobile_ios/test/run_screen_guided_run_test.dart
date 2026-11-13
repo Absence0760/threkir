@@ -29,6 +29,7 @@ import '../lib/watch_settings.dart';
 import 'pump_until.dart';
 import 'pre_run_dialogs.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// Drives the REAL RunScreen through the REAL guided-run affordance and the
 /// REAL recorder tick — not a replica of the screen's wiring beside it
@@ -268,6 +269,7 @@ void main() {
     bool throwOnCue = false,
     String backendUrl = _prodBackend,
     Future<void> Function(Preferences prefs)? configure,
+    Locale? locale,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
@@ -281,25 +283,28 @@ void main() {
     final cues = _SpyAudioCues(throwOnCue: throwOnCue);
     final watch = _FakeSettingsTransport();
 
+    final screen = RunScreen(
+      apiClient: null,
+      runStore: runStore,
+      routeStore: LocalRouteStore(),
+      preferences: prefs,
+      audioCues: cues,
+      social: social,
+      raceController: RaceController(social),
+      training: TrainingService(),
+      heartRate: BleHeartRate(),
+      treadmill: BleTreadmill(),
+      devBackendUrl: backendUrl,
+      watchTransportFactory: () => watch,
+    );
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: RunScreen(
-          apiClient: null,
-          runStore: runStore,
-          routeStore: LocalRouteStore(),
-          preferences: prefs,
-          audioCues: cues,
-          social: social,
-          raceController: RaceController(social),
-          training: TrainingService(),
-          heartRate: BleHeartRate(),
-          treadmill: BleTreadmill(),
-          devBackendUrl: backendUrl,
-          watchTransportFactory: () => watch,
-        ),
-      ),
+      locale != null
+          ? worstCaseApp(locale: locale, home: screen)
+          : MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: screen,
+            ),
     );
     await tester.pump();
     return (cues: cues, prefs: prefs, runStore: runStore, watch: watch);
@@ -315,7 +320,7 @@ void main() {
 
   /// START → countdown → recording, then [ticks] further recorder snapshots.
   Future<void> startRecording(WidgetTester tester, {int ticks = 4}) async {
-    await tester.tap(find.text('START'));
+    await tester.tap(find.byKey(const ValueKey('run-idle-start')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     for (var i = 0; i < 3; i++) {
@@ -676,6 +681,19 @@ void main() {
       // between the two.
       expect(block.contains('nowSec > _guidedCueSec'), isTrue);
       expect(block.contains('_guidedCueSec = nowSec;'), isTrue);
+    });
+  });
+
+  // Issue #1374 TO-6: the recorder's live page at the worst case in every
+  // locale, recording with a fix. The map's tile fetches fail without a
+  // network here, so only a layout overflow fails the run.
+  group('RunScreen — the live page at the worst case', () {
+    worstCaseTestWidgets('The recorder live page', layoutOnly: true,
+        (tester, locale) async {
+      await pumpRunScreen(tester, locale: locale);
+      expectNoLayoutOverflow(tester, 'idle');
+      await startRecording(tester);
+      expectNoLayoutOverflow(tester, 'recording');
     });
   });
 

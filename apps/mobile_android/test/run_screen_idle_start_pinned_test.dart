@@ -22,6 +22,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 // The idle Start used to end the scroll, below every auxiliary card, and the
 // stack outgrew a phone, so Start sat under the bottom bar until the runner
@@ -140,7 +141,8 @@ Future<RunScreen> _screen(WidgetTester tester) async {
 
 /// The phone shell's geometry: a bottom bar sized like the real one for the
 /// text scale, and a centre FAB docked on its top edge.
-Widget _shell(Widget page, double textScale) => MaterialApp(
+Widget _shell(Widget page, double textScale, {Locale? locale}) => MaterialApp(
+  locale: locale,
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   builder: (context, child) => MediaQuery(
@@ -179,9 +181,10 @@ void _useSurface(WidgetTester tester, Size logical) {
   addTearDown(tester.view.reset);
 }
 
-Future<void> _pumpIdle(WidgetTester tester, double textScale) async {
+Future<void> _pumpIdle(WidgetTester tester, double textScale,
+    {Locale? locale}) async {
   final screen = await _screen(tester);
-  await tester.pumpWidget(_shell(screen, textScale));
+  await tester.pumpWidget(_shell(screen, textScale, locale: locale));
   await pumpUntil(
     tester,
     () => find.text('Richmond Marathon block').evaluate().isNotEmpty,
@@ -224,6 +227,15 @@ void main() {
 
   tearDown(() {
     if (_runsDir.existsSync()) _runsDir.deleteSync(recursive: true);
+  });
+
+  // Issue #1374 TO-6: the recorder's idle page at the worst case in every
+  // locale, its card stack walked behind the pinned Start.
+  worstCaseTestWidgets('The recorder idle page', (tester, locale) async {
+    await _pumpIdle(tester, kWorstCaseTextScale, locale: locale);
+    expectNoOverflow(tester, 'idle page');
+    await walkScrollable(tester, primaryScrollable(), 'idle page');
+    _expectStartClear(tester, kWorstCasePhone);
   });
 
   for (final textScale in const [1.0, 1.3, 2.0]) {

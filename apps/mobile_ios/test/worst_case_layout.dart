@@ -40,12 +40,12 @@ void useWorstCasePhone(WidgetTester tester) {
   // that overflowed; `takeException` alone returns only the message.
   final previous = FlutterError.onError;
   FlutterError.onError = (details) {
-    _lastReport = details.toString();
+    _reports.add(details.toString());
     previous?.call(details);
   };
   addTearDown(() {
     FlutterError.onError = previous;
-    _lastReport = null;
+    _reports.clear();
   });
   tester.view.physicalSize = kWorstCasePhone;
   tester.view.devicePixelRatio = 1;
@@ -80,11 +80,25 @@ Widget worstCaseApp({
 /// reported as one.
 void expectNoOverflow(WidgetTester tester, String where) {
   final e = tester.takeException();
+  final reports = List.of(_reports);
+  _reports.clear();
   expect(e, isNull,
-      reason: '$where overflowed or threw: ${_lastReport ?? e}');
+      reason: '$where overflowed or threw: '
+          '${reports.isEmpty ? e : reports.join('\n')}');
 }
 
-String? _lastReport;
+/// As [expectNoOverflow], but for a surface whose test environment raises
+/// errors that are not layout (a map's tile fetches, which have no network
+/// here): those are drained, and only a layout overflow fails.
+void expectNoLayoutOverflow(WidgetTester tester, String where) {
+  tester.takeException();
+  final overflows = _reports.where((r) => r.contains('overflowed')).toList();
+  _reports.clear();
+  expect(overflows, isEmpty,
+      reason: '$where overflowed: ${overflows.join('\n')}');
+}
+
+final List<String> _reports = [];
 
 /// One test per shipped locale at the worst case. [body] pumps the screen
 /// (through [worstCaseApp]) and may walk it; any overflow left at the end
@@ -94,6 +108,7 @@ void worstCaseTestWidgets(
   Future<void> Function(WidgetTester tester, Locale locale) body, {
   List<Locale>? locales,
   bool skip = false,
+  bool layoutOnly = false,
 }) {
   for (final locale in locales ?? kWorstCaseLocales) {
     testWidgets(
@@ -102,7 +117,10 @@ void worstCaseTestWidgets(
       (tester) async {
         useWorstCasePhone(tester);
         await body(tester, locale);
-        expectNoOverflow(tester, '$description [${locale.toLanguageTag()}]');
+        final where = '$description [${locale.toLanguageTag()}]';
+        layoutOnly
+            ? expectNoLayoutOverflow(tester, where)
+            : expectNoOverflow(tester, where);
       },
       skip: skip,
     );

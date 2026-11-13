@@ -8,6 +8,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/exercise_catalogue_picker.dart';
 import '../lib/widgets/top_banner.dart' show kTopBannerMaxDuration;
 import '../lib/widgets/gym_compose_sheet.dart' show GymCatalogueEntry;
+import 'worst_case_layout.dart';
 
 /// The behavioural pin the picker shipped without.
 ///
@@ -524,5 +525,21 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(picked()?.id, 'e3');
+  });
+
+  worstCaseTestWidgets('the catalogue', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ExerciseCataloguePickerScreen(
+        catalogue: [
+          ..._catalogue,
+          _entry('e4', 'Single-arm dumbbell row with a pause at the top',
+              'back'),
+        ],
+        api: null,
+      ),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Exercise catalogue');
   });
 }

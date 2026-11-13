@@ -387,6 +387,7 @@ class _ChallengeFormState extends State<_ChallengeForm> {
         ],
         const SizedBox(height: 12),
         DropdownButtonFormField<String?>(
+          isExpanded: true,
           initialValue: _activityType,
           decoration:
               InputDecoration(labelText: l10n.challengesActivityTypeLabel),
@@ -406,6 +407,7 @@ class _ChallengeFormState extends State<_ChallengeForm> {
         if (_scope != 'club_vs_club' && _adminClubs.isNotEmpty) ...[
           const SizedBox(height: 12),
           DropdownButtonFormField<String?>(
+            isExpanded: true,
             initialValue: _clubId,
             decoration: InputDecoration(labelText: l10n.challengesClubLabel),
             items: [

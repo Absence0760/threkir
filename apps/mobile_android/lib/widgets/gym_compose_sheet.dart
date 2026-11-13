@@ -825,6 +825,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
                     Padding(
                       padding: const EdgeInsets.only(left: 44, bottom: 6),
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         key: Key('gym-set-type-$i-$si'),
                         initialValue: ex.sets[si].setType,
                         isDense: true,

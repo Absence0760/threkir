@@ -175,6 +175,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
       ),
       children: [
           DropdownButtonFormField<WorkoutKind>(
+            isExpanded: true,
             initialValue: _kind,
             decoration: InputDecoration(labelText: l10n.workoutEditKindLabel),
             items: [
@@ -364,6 +365,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
               InputDecoration(labelText: l10n.workoutEditRaceNameLabel),
         ),
         DropdownButtonFormField<String?>(
+          isExpanded: true,
           key: const Key('workoutEditRacePriority'),
           initialValue: _racePriority,
           decoration:

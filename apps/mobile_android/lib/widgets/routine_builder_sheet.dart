@@ -472,6 +472,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: ex.modality,
                 isDense: true,
                 decoration: InputDecoration(
@@ -521,74 +522,90 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
 
   Widget _setRow(_EditExercise ex, _EditSet s, int si, bool isRep,
       ThemeData theme, AppLocalizations l10n) {
+    // Type, the targets, rest, RPE and remove need about 440 dp side by
+    // side; on a phone rest and RPE take a second line so the targets keep
+    // a usable width and nothing runs off the edge (issue #1374 TO-7).
+    final targets = <Widget>[
+      SizedBox(
+        width: 96,
+        child: DropdownButtonFormField<String>(
+          initialValue: s.setType,
+          isDense: true,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          ),
+          items: [
+            for (final t in _setTypes)
+              DropdownMenuItem(
+                value: t,
+                child: Text(_setTypeLabel(t, l10n),
+                    overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: (v) => setState(() => s.setType = v ?? s.setType),
+        ),
+      ),
+      const SizedBox(width: 6),
+      if (isRep) ...[
+        Expanded(
+          child: _numField(s.reps, l10n.gymRoutineTargetReps, false),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: _numField(s.repsMax, l10n.gymRoutineTargetRepsMax, false),
+        ),
+      ] else if (ex.modality == 'time')
+        Expanded(
+          child: _numField(s.duration, l10n.gymRoutineTargetDuration, false),
+        )
+      else
+        Expanded(
+          child: _numField(s.distance, l10n.gymRoutineTargetDistance, true),
+        ),
+      if (ex.modality == 'weight_reps') ...[
+        const SizedBox(width: 4),
+        Expanded(
+          child: _numField(
+              s.weight, WeightFormat.label(activeWeightUnit), true),
+        ),
+      ],
+    ];
+    final extras = <Widget>[
+      const SizedBox(width: 4),
+      SizedBox(
+        width: 60,
+        child: _numField(s.rest, l10n.gymRoutineRestLabel, false),
+      ),
+      const SizedBox(width: 4),
+      SizedBox(
+        width: 56,
+        child: _numField(s.rpe, metricText(l10n, Metric.rpe), true),
+      ),
+    ];
+    final remove = IconButton(
+      tooltip: l10n.gymEditorRemoveSet,
+      icon: const Icon(Icons.close, size: 18),
+      color: theme.colorScheme.outline,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      onPressed: () => _removeSet(ex, si),
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 96,
-            child: DropdownButtonFormField<String>(
-              initialValue: s.setType,
-              isDense: true,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              ),
-              items: [
-                for (final t in _setTypes)
-                  DropdownMenuItem(
-                    value: t,
-                    child: Text(_setTypeLabel(t, l10n),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-              ],
-              onChanged: (v) => setState(() => s.setType = v ?? s.setType),
-            ),
-          ),
-          const SizedBox(width: 6),
-          if (isRep) ...[
-            Expanded(
-              child: _numField(s.reps, l10n.gymRoutineTargetReps, false),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: _numField(s.repsMax, l10n.gymRoutineTargetRepsMax, false),
-            ),
-          ] else if (ex.modality == 'time')
-            Expanded(
-              child: _numField(s.duration, l10n.gymRoutineTargetDuration, false),
-            )
-          else
-            Expanded(
-              child: _numField(s.distance, l10n.gymRoutineTargetDistance, true),
-            ),
-          if (ex.modality == 'weight_reps') ...[
-            const SizedBox(width: 4),
-            Expanded(
-              child: _numField(
-                  s.weight, WeightFormat.label(activeWeightUnit), true),
-            ),
-          ],
-          const SizedBox(width: 4),
-          SizedBox(
-            width: 60,
-            child: _numField(s.rest, l10n.gymRoutineRestLabel, false),
-          ),
-          const SizedBox(width: 4),
-          SizedBox(
-            width: 56,
-            child: _numField(s.rpe, metricText(l10n, Metric.rpe), true),
-          ),
-          IconButton(
-            tooltip: l10n.gymEditorRemoveSet,
-            icon: const Icon(Icons.close, size: 18),
-            color: theme.colorScheme.outline,
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            onPressed: () => _removeSet(ex, si),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 440) {
+            return Row(children: [...targets, ...extras, remove]);
+          }
+          return Column(
+            children: [
+              Row(children: [...targets, remove]),
+              const SizedBox(height: 4),
+              Row(children: [...extras.skip(1)]),
+            ],
+          );
+        },
       ),
     );
   }
@@ -601,6 +618,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: scheme,
           isDense: true,
           decoration: InputDecoration(

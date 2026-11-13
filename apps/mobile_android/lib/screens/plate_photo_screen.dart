@@ -317,6 +317,7 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
           Text(l10n.platePhotoReviewHint, style: theme.textTheme.bodySmall),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _mealSlot,
             decoration: InputDecoration(labelText: l10n.platePhotoMealSlot),
             items: [

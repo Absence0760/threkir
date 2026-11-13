@@ -426,6 +426,7 @@ class _GearFormSheetState extends State<_GearFormSheet> {
                 maxLines: 2,
               ),
               DropdownButtonFormField<String?>(
+                isExpanded: true,
                 initialValue: _wearArea,
                 decoration:
                     InputDecoration(labelText: l10n.gearWearLogArea),

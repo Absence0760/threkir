@@ -355,6 +355,7 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
           : null,
       children: [
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: _mealSlot,
           decoration: InputDecoration(labelText: l10n.nutritionMealSlot),
           items: [

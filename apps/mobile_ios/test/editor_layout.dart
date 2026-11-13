@@ -16,14 +16,18 @@ const kSmallPhoneKeyboard = 260.0;
 /// keyboard and then with the keyboard up, and fails unless [save] is on
 /// screen, whole, tappable and clear of the bar or the keyboard both times.
 ///
-/// [page] is built fresh for each pump inside a MaterialApp; [settle] pumps
-/// whatever loading the page does after it mounts.
+/// [page] is built fresh for each pump inside a MaterialApp; a sheet that
+/// only opens through its `show…` function passes [open] instead, which runs
+/// from a button on a host page. [settle] pumps whatever loading the page
+/// does after it mounts.
 Future<void> expectEditorSaveReachable(
   WidgetTester tester, {
-  required Widget Function() page,
+  Widget Function()? page,
+  Future<void> Function(BuildContext context)? open,
   required Finder save,
   Future<void> Function()? settle,
 }) async {
+  assert((page == null) != (open == null), 'pass page or open');
   for (final keyboard in [0.0, kSmallPhoneKeyboard]) {
     tester.view.physicalSize = kSmallPhone;
     tester.view.devicePixelRatio = 1;
@@ -44,9 +48,22 @@ Future<void> expectEditorSaveReachable(
         maxScaleFactor: 2,
         child: child!,
       ),
-      home: page(),
+      home: page?.call() ??
+          Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => open!(context),
+                child: const Text('open editor'),
+              ),
+            ),
+          ),
     ));
     await tester.pump();
+    if (open != null) {
+      await tester.tap(find.text('open editor'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
     if (settle != null) await settle();
     final floor = kSmallPhone.height -
         (keyboard > 0 ? keyboard : kThreeButtonNavBar);

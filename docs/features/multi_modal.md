@@ -375,7 +375,7 @@ becomes an **action button**, not a tab.
 > **Web keeps the single `/dashboard`** (no web change in this round); the
 > blocks below describe web, and mobile's Progress page. Tests:
 > `test/today_progress_layout_test.dart` (320 dp, 2x, 3-button bar),
-> `test/dashboard_*_test.dart`.
+> `test/today_*_test.dart`, `test/progress_*_test.dart`, `test/dashboard_layout_test.dart`.
 
 > **Status (web — shipped):** `/dashboard` renders a Today's-lift
 > card (when a session was logged today), a Recent-lifts trend card, a
@@ -1262,7 +1262,7 @@ wizard asks "What do you want to track?" before its last step, on both
 platforms: Running is shown as always on, Gym and Nutrition start off, and
 only a touched step writes an explicit choice. A skipped step leaves the
 data-presence default in force. The same answer gates the Home lift/meal
-cards and decides the Log button's one-tap run start. Web honours the same
+cards and decides whether the centre button opens the recorder as the primary action (decisions § 2495: only the recorder's Start starts the run). Web honours the same
 two keys through the same resolution (`modalityShown` in
 `apps/web/src/lib/settings/modality_visibility.ts`): the Gym and Nutrition
 sidebar items, the History Log menu's Log workout / Log food, and the
@@ -1395,7 +1395,7 @@ tier where mobile leads). Byte-identical iOS twin per [decisions.md § 39](../ar
 | Body metrics | `body_metrics` table (migration `20261216_001`) + Settings height/weight entry (**mobile shipped (G5)** — `settings_body_metrics_screen.dart`, Art 9 consent-gated height/weight + activity/goal; api_client `grantHealthDataConsent`/`withdrawHealthDataConsent`/`setMyHeightCm`/`recordBodyWeightKg`/`clearBodyWeightHistory`) |
 | Lift load | `training_load.ts` / `.dart` gain `liftStress` + `source`-tagged daily contributions (**shipped** — `computeLiftStress` + `aggregateDailyLiftStress` + the `lifts` arg to `computeTrainingLoadSeries`). **Consumers wired on both platforms**: web `web/src/lib/gym/lift_load.ts` and mobile `mobile_android/lib/lift_load.dart` (`liftsFromSetHistory`, pure + tested parity pair) feed each dashboard's load curve; `TrainingLoadChart` (web + mobile) shows the "gym sessions included" hint when `liftStress > 0` |
 | Cross-modality | `coach/context.ts` (**web shipped** — bounded `recent_lifts` + 7-day `nutrition_7d` summary, pure `summarizeRecentLifts`/`summarizeNutrition` + tests); web Home gym cards (`/dashboard`); web History timeline (`/history` + `fetchActivities`). **Mobile Home card composition shipped (G5)** — `today_screen.dart` + `widgets/gym_summary_card.dart` + `widgets/nutrition_rings_card.dart` + the recent-lifts trend card (`widgets/recent_lifts_card.dart`); the **unified mobile History timeline is now shipped** (`runs_screen.dart` + `widgets/activity_timeline_list.dart`, assembled from the LOCAL stores via `lib/local_activities.dart` — offline-first, all modalities, not `fetchActivities`) |
-| Runner protection | One-tap run start **derived from data presence** — on until a lift or a meal is logged (`runIsPrimaryLogAction` in `preferences.dart`, decisions § 1644); `Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch remain as the explicit override. Long-press opens the fan, except that it is the tap when only one action is offered and returns to the recorder mid-run. The centre button wears the run state it is in (Start run / Recording) — see § Bottom nav |
+| Runner protection | The centre button opens the recorder as its primary action, **derived from data presence** — on until a lift or a meal is logged (`runIsPrimaryLogAction` in `preferences.dart`, decisions § 1644); `Preferences.keepRunPrimary` + the `settings_preferences_screen.dart` switch remain as the explicit override. Long-press opens the fan, except that it is the tap when only one action is offered and returns to the recorder mid-run. The centre button wears the run state it is in (Start run / Recording) — see § Bottom nav |
 | Local stores | `local_gym_store.dart`, `local_food_store.dart` (shipped — mirror `LocalGearStore`, §73 / §122; gym stores sets inline). **Now wired into nav/Home (G5):** the gym/nutrition screens + the dashboard hydrate + drain them; still outside the global `main.dart`/`sync_service` sweep |
 | Data access | `packages/api_client` typed gym + food + `fetchLatestBodyWeightKg` + the unified-timeline `fetchActivities` (→ `activities` view) + `fetchRunById` (timeline run-row open) methods (shipped); web gym queries in `core/data.ts` (**shipped** — `fetchGymWorkouts` / `fetchGymWorkoutWithSets` / `fetchGymSetHistory` / `createGymWorkout` / `updateGymWorkout` / `deleteGymWorkout`); **web food + body-metrics queries shipped** (`fetchFoodLog` / `createFoodEntry` / `updateFoodEntry` / `deleteFoodEntry` / `fetchLatestWeightKg` / `recordWeightKg` / `clearWeightHistory`) |
 

@@ -86,7 +86,13 @@ no tests, builds or generators — you read and grep only.
    Compare entries across batches too (translators ran in parallel; drift
    between batches is likely). Two keys rendered on one tab bar or nav
    with the same word, or two destination names differing only by a
-   suffix, is an error.
+   suffix, is an error. One concept takes one term per locale (decisions
+   § 2497; the settled terms are in the locale guide).
+   - **Plural `one` branch:** in a locale whose CLDR `one` also covers 0
+     (fr, pt-PT, pt-BR), a `one{…}` branch that writes a literal 1, or omits
+     the count where the number matters, is an error (§ 2497).
+   - **Settings paths:** a string that recites a path ("Settings →
+     Account") is an error on mobile; the action opens the page (§ 2496).
 8. **Language quality.** The guide's spelling authority and grammar notes;
    idiomatic, not a calque; gender/number agreement around placeholders
    (`{dist}` already arrives with a possessive in some templates — see the

@@ -1165,6 +1165,12 @@ Two habits these three carry, both general:
 - **Derive the numbers.** The bar is 6 tall because Material's own fill lane is 4 and a hairline costs 1 each side; the pill's glyph is the label size plus two; the chip row's spacing is one value. A derived number survives a type-scale change and a picked one does not.
 - **Prove the fix on the painted tree.** All three suites read the *rendered* decoration, size or colour back off the widget rather than re-stating the token, and each was proved to fail by perturbing the source — the progress bar's fill-vs-track assertion still passed with the old invisible track, which is exactly why both of its axes are asserted separately.
 
+## User-facing text: no settings paths, one term per concept, honest plurals
+
+- **Never recite a settings path** ("Settings → Account", "You › Settings"). Say what is wrong and carry an action that opens the page (`openSettings(SettingsDestination.x)` on mobile, a link on web); a help guide names the page rather than a path. Paths drift every time settings are reorganised, and a dead path strands the reader. `apps/mobile_android/test/settings_path_guard_test.dart` fails an English ARB string that recites one; its exemptions (another app's or the OS's settings, the store's subscriptions) can only shrink (decisions § 2496).
+- **One term per concept per locale.** The settled terms live in each locale's guide under `.claude/agents/i18n/languages/`; the `i18n-checker` agent checks against them (decisions § 2497).
+- **A `one` plural branch uses the count.** In fr, pt-PT and pt-BR the `one` category also covers 0, so a literal 1 in a `one{…}` branch is wrong for those counts. `l10n_parity_test.dart` and `messages_parity.test.ts` fail it, deriving the affected locales from each platform's plural rules (decisions § 2497).
+
 ## Mobile hub tabs and list controls — `HubTabBody`, `FilterBar`, `AsyncView`, `AppSpace`
 
 The page structure is owned by ui_kit components, so a screen supplies content and callbacks, not layout (issue #1374).

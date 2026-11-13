@@ -25,6 +25,7 @@ export 'src/widgets/map_overlay_chip.dart';
 export 'src/widgets/overlay_icon_button.dart';
 export 'src/widgets/progress_bar.dart';
 export 'src/widgets/pushed_page.dart';
+export 'src/widgets/root_page.dart';
 export 'src/widgets/term_value_row.dart';
 export 'src/widgets/text_lane.dart';
 export 'src/widgets/section_header.dart';

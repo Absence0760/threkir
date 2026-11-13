@@ -18,6 +18,7 @@ import '../metrics.dart';
 import '../next_target_hints.dart';
 import '../preferences.dart';
 import '../progression_prefill.dart';
+import '../widgets/next_target_chip.dart';
 import '../widgets/gym_compose_sheet.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/routine_builder_sheet.dart';
@@ -684,53 +685,13 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     );
   }
 
-  // Neutral / positive treatment — never the red/amber adherence colours.
-  Widget _nextChip(NextTargetHint h, ThemeData theme, AppLocalizations l10n) {
-    final delta = _hintDelta(h, l10n);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            h.reason == ProgressionReason.deload
-                ? Icons.trending_down
-                : Icons.trending_up,
-            size: 14,
-            color: theme.colorScheme.onPrimaryContainer,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            h.exerciseName,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (delta != null) ...[
-            const SizedBox(width: 6),
-            Text(
-              delta,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-          const SizedBox(width: 6),
-          Text(
-            _hintReason(h.reason, l10n),
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _nextChip(NextTargetHint h, ThemeData theme, AppLocalizations l10n) =>
+      NextTargetChip(
+        exercise: h.exerciseName,
+        delta: _hintDelta(h, l10n),
+        reason: _hintReason(h.reason, l10n),
+        deload: h.reason == ProgressionReason.deload,
+      );
 
   String _hintReason(ProgressionReason r, AppLocalizations l10n) {
     switch (r) {

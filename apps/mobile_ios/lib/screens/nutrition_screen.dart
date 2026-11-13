@@ -1598,21 +1598,36 @@ class _NutritionScreenState extends State<NutritionScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            // The label, then the amount and the remaining pill at the end of
+            // the line while they fit; at large text they drop under the
+            // label instead of squeezing it to a letter per line and running
+            // off the card (#1374 TO-10).
+            Wrap(
+              key: const Key('nutritionWaterHeader'),
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
               children: [
-                Expanded(
-                  child: Text(l10n.nutritionWater,
-                      style: theme.textTheme.titleSmall),
+                Text(l10n.nutritionWater, style: theme.textTheme.titleSmall),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      l10n.nutritionWaterAmount(
+                        _litres(_waterMl, tag),
+                        _litres(targetMl, tag),
+                      ),
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    _waterChip(theme, l10n, budget, tag),
+                    // Here rather than between the pips and +, where at 2x
+                    // it left the pips no room beside two 48 dp buttons.
+                    Text('$units × 250 ml', style: theme.textTheme.bodySmall),
+                  ],
                 ),
-                Text(
-                  l10n.nutritionWaterAmount(
-                    _litres(_waterMl, tag),
-                    _litres(targetMl, tag),
-                  ),
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(width: 8),
-                _waterChip(theme, l10n, budget, tag),
               ],
             ),
             const SizedBox(height: 8),
@@ -1646,8 +1661,6 @@ class _NutritionScreenState extends State<NutritionScreen>
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text('$units × 250 ml', style: theme.textTheme.bodySmall),
                 IconButton(
                   icon: const Icon(Icons.add),
                   tooltip: l10n.nutritionWaterAdd,
@@ -1655,6 +1668,7 @@ class _NutritionScreenState extends State<NutritionScreen>
                 ),
               ],
             ),
+
           ],
         ),
       ),

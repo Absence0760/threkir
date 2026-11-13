@@ -75,28 +75,35 @@ class DetailMeta extends StatelessWidget {
 }
 
 /// The link from a detail page up to what it belongs to: an event's club, a
-/// course's park.
+/// course's park. A link to a screen reader, announced as [semanticsLabel]
+/// when the chip's short [label] needs saying where it goes.
 class DetailParentChip extends StatelessWidget {
   const DetailParentChip({
     super.key,
     required this.label,
     required this.icon,
     required this.onPressed,
-    this.tooltip,
+    this.semanticsLabel,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
-  final String? tooltip;
+  final String? semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 18),
-      label: Text(label),
-      tooltip: tooltip,
-      onPressed: onPressed,
+    return Semantics(
+      container: true,
+      link: true,
+      label: semanticsLabel ?? label,
+      onTap: onPressed,
+      excludeSemantics: true,
+      child: ActionChip(
+        avatar: Icon(icon, size: 18),
+        label: Text(label),
+        onPressed: onPressed,
+      ),
     );
   }
 }
@@ -113,6 +120,7 @@ class DetailHero extends StatelessWidget {
   const DetailHero({
     super.key,
     required this.title,
+    this.titleMaxLines,
     this.leading,
     this.badges = const [],
     this.parent,
@@ -130,6 +138,10 @@ class DetailHero extends StatelessWidget {
   });
 
   final String title;
+
+  /// See [PageHeading.maxLines]: for an unbounded name a person typed.
+  final int? titleMaxLines;
+
   final Widget? leading;
 
   /// Small markers about the entity (DNF, Official, Private), wrapped under
@@ -158,7 +170,7 @@ class DetailHero extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        PageHeading(title),
+        PageHeading(title, maxLines: titleMaxLines),
         if (badges.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
           Wrap(

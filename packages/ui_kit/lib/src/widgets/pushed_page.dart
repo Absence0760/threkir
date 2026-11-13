@@ -32,6 +32,7 @@ class PushedPage extends StatelessWidget {
     this.actions = const [],
     this.pinned = const [],
     this.moreTooltip,
+    this.moreKey,
     this.busyLabel,
     this.floatingActionButton,
     this.floatingActionButtonLocation,
@@ -51,6 +52,7 @@ class PushedPage extends StatelessWidget {
     this.pinned = const [],
     this.moreTooltip,
   })  : placeholder = child,
+        moreKey = null,
         body = null,
         busyLabel = null,
         floatingActionButton = null,
@@ -80,6 +82,9 @@ class PushedPage extends StatelessWidget {
   final List<Widget> pinned;
 
   final String? moreTooltip;
+
+  /// The overflow button's key, for a test to open the menu by.
+  final Key? moreKey;
 
   /// While set, the overflow button is a spinner announced with this label.
   final String? busyLabel;
@@ -112,6 +117,7 @@ class PushedPage extends StatelessWidget {
                       actions: actions,
                       pinned: pinned,
                       moreTooltip: moreTooltip,
+                      moreKey: moreKey,
                       busyLabel: busyLabel,
                     ),
                   ]
@@ -153,6 +159,7 @@ class DetailPage extends PushedPage {
     super.actions,
     super.pinned,
     super.moreTooltip,
+    super.moreKey,
     super.busyLabel,
     super.floatingActionButton,
     super.floatingActionButtonLocation,
@@ -241,12 +248,17 @@ class PageHeader extends StatelessWidget {
 /// away brings the bar title in. [PageHeader] and [DetailHero] use it; a
 /// page with a header of its own shape (a map's caption) can too.
 class PageHeading extends StatefulWidget {
-  const PageHeading(this.text, {super.key, this.style});
+  const PageHeading(this.text, {super.key, this.style, this.maxLines});
 
   final String text;
 
   /// Defaults to `headlineSmall`.
   final TextStyle? style;
+
+  /// Only for a name a person typed with no length limit (a display name),
+  /// whose whole text a screen reader still gets. A localized title never
+  /// sets it: those wrap in full.
+  final int? maxLines;
 
   @override
   State<PageHeading> createState() => _PageHeadingState();
@@ -280,6 +292,8 @@ class _PageHeadingState extends State<PageHeading> {
       child: Text(
         key: _key,
         widget.text,
+        maxLines: widget.maxLines,
+        overflow: widget.maxLines == null ? null : TextOverflow.ellipsis,
         style: widget.style ?? Theme.of(context).textTheme.headlineSmall,
       ),
     );

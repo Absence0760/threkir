@@ -118,6 +118,28 @@ void main() {
     expect(reported, isTrue);
   });
 
+  testWidgets('a menu-only action stays in the overflow with a slot free',
+      (tester) async {
+    await tester.pumpWidget(_app(
+      DetailPage(
+        title: 'Plan',
+        moreKey: const ValueKey('more'),
+        actions: [
+          AppBarAction(
+              icon: const Icon(Icons.tune),
+              label: 'Adjust',
+              menuOnly: true,
+              onPressed: () {}),
+        ],
+        body: const SizedBox(),
+      ),
+    ));
+    expect(find.byTooltip('Adjust'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('more')));
+    await tester.pumpAndSettle();
+    expect(find.text('Adjust'), findsOneWidget);
+  });
+
   testWidgets('a busy overflow is a labelled spinner', (tester) async {
     await tester.pumpWidget(_app(
       DetailPage(

@@ -14,6 +14,7 @@ class AppBarAction {
     required this.onPressed,
     this.iconColor,
     this.destructive = false,
+    this.menuOnly = false,
     this.key,
   });
 
@@ -36,6 +37,11 @@ class AppBarAction {
   /// colour, and is never promoted into a visible slot, where a mis-tap has
   /// no confirmation step before the dialog.
   final bool destructive;
+
+  /// Rare enough to stay in the overflow even when a toolbar slot is free
+  /// (a plan's Shift dates, Export). Like a destructive action, it is never
+  /// promoted.
+  final bool menuOnly;
 
   /// Put on the visible button or on the menu row, whichever renders, so a
   /// test finds the action in either place.
@@ -65,6 +71,7 @@ class ToolbarActions extends StatelessWidget {
     this.pinned = const [],
     this.maxVisible = 3,
     this.moreTooltip,
+    this.moreKey,
     this.busyLabel,
   });
 
@@ -78,6 +85,9 @@ class ToolbarActions extends StatelessWidget {
   /// The overflow button's tooltip. Defaults to Material's localized "More".
   final String? moreTooltip;
 
+  /// The overflow button's key.
+  final Key? moreKey;
+
   final String? busyLabel;
 
   @override
@@ -87,12 +97,15 @@ class ToolbarActions extends StatelessWidget {
     // The overflow button costs a slot of its own, unless every action fits
     // without one.
     final free = maxVisible - pinned.length;
-    final slots =
-        actions.length <= free ? actions.length : math.max(0, free - 1);
+    final promotable =
+        actions.where((a) => !a.destructive && !a.menuOnly).length;
+    final slots = actions.length <= free && promotable == actions.length
+        ? actions.length
+        : math.max(0, free - 1);
     final visible = <AppBarAction>[];
     final overflow = <AppBarAction>[];
     for (final action in actions) {
-      if (!action.destructive && visible.length < slots) {
+      if (!action.destructive && !action.menuOnly && visible.length < slots) {
         visible.add(action);
       } else {
         overflow.add(action);
@@ -129,12 +142,16 @@ class ToolbarActions extends StatelessWidget {
           )
         else if (overflow.isNotEmpty)
           PopupMenuButton<int>(
+            key: moreKey,
             tooltip: moreTooltip ??
                 MaterialLocalizations.of(context).moreButtonTooltip,
             onSelected: (i) => overflow[i].onPressed?.call(),
             itemBuilder: (_) => [
               for (var i = 0; i < overflow.length; i++) ...[
-                if (overflow[i].destructive && i > 0) const PopupMenuDivider(),
+                if (overflow[i].destructive &&
+                    i > 0 &&
+                    !overflow[i - 1].destructive)
+                  const PopupMenuDivider(),
                 PopupMenuItem<int>(
                   key: overflow[i].key,
                   value: i,

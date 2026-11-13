@@ -96,7 +96,7 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | log (verb) | Registrar | `navLog` |
 | streak | Racha | |
 | goal | Objetivo / Objetivos | |
-| coach | Entrenador; AI Coach = **Entrenador IA** | web `coachChat.coach` "Coach" |
+| coach | A person who coaches = **entrenador** ("tu entrenador", "Mis entrenadores"). The AI coach = **Entrenador IA**, capitalised, everywhere it is meant, including where English shortens it to "Coach" ("Error del Entrenador IA", "pide de nuevo al Entrenador IA", the Pro tier lines, the email) | settled 2026-11-13 (#1374 round 3.8): never « Coach », « Coach IA », « Coach con IA », « entrenador con IA » or « entrenador de IA » for the AI coach. The guided runs' scripted voice is not the AI: « con voz de entrenador » |
 | AI disclosure | **el aviso de IA** ("necesita el aviso de IA actualizado") | settled 2026-11-13; never "la información actualizada sobre IA". Consent wording: CISO/counsel review |
 | readiness | **Preparación** ("tu preparación real", `dash.readinessLabel`, `readinessCardHeader`) | settled 2026-11-13 (#1374 round 3.6), both surfaces; never "disposición" |
 | auto-pause | — | no catalogue string yet; build from "pausa" ("Carrera en pausa", "Pausar") → "Pausa automática", and flag it as a new term |

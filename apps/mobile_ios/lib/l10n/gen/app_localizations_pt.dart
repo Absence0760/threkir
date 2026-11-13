@@ -364,7 +364,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importCsvCardDescription =>
-      'Cada linha do CSV vira uma corrida manual (data, distância, duração, fonte). O trajeto no mapa não está no CSV, então as corridas importadas não terão linha de rota.';
+      'Cada linha do CSV passa a ser uma corrida manual (data, distância, duração, fonte). O trajeto no mapa não está no CSV, por isso as corridas importadas não terão linha de rota.';
 
   @override
   String get importCsvButton => 'Importar CSV';
@@ -683,7 +683,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Ative «Mostrar-me a corredores por perto» e defina a sua área. Só os corredores que fizeram o mesmo o podem encontrar.';
+      'Ative «Mostrar-me em Corredores por perto» e defina a sua área. Só os corredores que fizeram o mesmo o podem encontrar.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir definições de privacidade';
@@ -703,7 +703,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Mostrar-me a corredores por perto';
+  String get prefsDiscoverableNearby => 'Mostrar-me em Corredores por perto';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -20134,7 +20134,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailCycleAdjustConfirmPregnancy =>
-      'Os próximos treinos serão ajustados à gravidez: sessões duras e provas viram corridas leves e o volume diminui por trimestre. Isto não é aconselhamento médico — siga o seu profissional de saúde. Treinos passados não mudam.';
+      'Os próximos treinos serão ajustados à gravidez: sessões duras e provas passam a ser corridas leves e o volume diminui por trimestre. Isto não é aconselhamento médico — siga o seu profissional de saúde. Treinos passados não mudam.';
 
   @override
   String get planDetailCycleAdjustDone => 'Próximas semanas ajustadas.';
@@ -23791,7 +23791,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Ative “Mostrar meu perfil a corredores por perto” e defina sua área. Só os corredores que fizeram o mesmo podem te encontrar.';
+      'Ative “Mostrar-me em Corredores por perto” e defina sua área. Só os corredores que fizeram o mesmo podem te encontrar.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir configurações de privacidade';
@@ -23811,8 +23811,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get prefsDiscoverableNearby =>
-      'Mostrar meu perfil a corredores por perto';
+  String get prefsDiscoverableNearby => 'Mostrar-me em Corredores por perto';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>

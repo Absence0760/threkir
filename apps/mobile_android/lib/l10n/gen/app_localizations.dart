@@ -1046,7 +1046,7 @@ abstract class AppLocalizations {
   /// Empty-state body for the runners-nearby list, pointing at the opt-in and area setter
   ///
   /// In en, this message translates to:
-  /// **'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.'**
+  /// **'Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.'**
   String get peopleNearbyEmptyBody;
 
   /// Button on the runners-nearby empty state that opens the Privacy & sharing preferences page
@@ -1076,7 +1076,7 @@ abstract class AppLocalizations {
   /// Toggle title for opting in to coarse-location runners-nearby discovery
   ///
   /// In en, this message translates to:
-  /// **'Show me to runners nearby'**
+  /// **'Show me in Runners nearby'**
   String get prefsDiscoverableNearby;
 
   /// Subtitle for the runners-nearby opt-in toggle

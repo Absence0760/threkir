@@ -679,7 +679,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Activez « Me montrer aux coureurs à proximité » et définissez votre zone. Seuls les coureurs ayant fait de même peuvent vous trouver.';
+      'Activez « M\'afficher dans Coureurs à proximité » et définissez votre zone. Seuls les coureurs ayant fait de même peuvent vous trouver.';
 
   @override
   String get peopleNearbyEmptyAction =>
@@ -700,7 +700,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Me montrer aux coureurs à proximité';
+  String get prefsDiscoverableNearby => 'M\'afficher dans Coureurs à proximité';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>

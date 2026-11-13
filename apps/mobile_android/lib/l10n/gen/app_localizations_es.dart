@@ -680,7 +680,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Activa «Mostrarme a corredores cercanos» y fija tu zona. Solo pueden encontrarte los corredores que hayan hecho lo mismo.';
+      'Activa «Mostrarme en Corredores cerca» y fija tu zona. Solo pueden encontrarte los corredores que hayan hecho lo mismo.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir ajustes de privacidad';
@@ -700,7 +700,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Mostrarme a corredores cercanos';
+  String get prefsDiscoverableNearby => 'Mostrarme en Corredores cerca';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -1162,7 +1162,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymPeerSessions => 'Planes de sesión';
 
   @override
-  String get homeAskCoach => 'Pregunta a tu entrenador';
+  String get homeAskCoach => 'Pregunta al Entrenador IA';
 
   @override
   String get homeAskCoachSubtitle =>
@@ -5701,7 +5701,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planChangeWithdrawConfirmMessage =>
-      'Ya no se pedirá a tu entrenador que lo apruebe. Para volver a sugerirlo, pide de nuevo al Coach que ajuste tu plan.';
+      'Ya no se pedirá a tu entrenador que lo apruebe. Para volver a sugerirlo, pide de nuevo al Entrenador IA que ajuste tu plan.';
 
   @override
   String get planChangeKeep => 'Mantenerlo';
@@ -8425,7 +8425,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coachComposerHintLimit => 'Límite diario alcanzado';
 
   @override
-  String get coachComposerHint => 'Pregunta a Coach…';
+  String get coachComposerHint => 'Pregunta al Entrenador IA…';
 
   @override
   String get coachArchiveTitle => '¿Iniciar una nueva conversación?';
@@ -8454,12 +8454,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String coachGenericError(int code) {
-    return 'Error de Coach ($code)';
+    return 'Error del Entrenador IA ($code)';
   }
 
   @override
   String get coachUnavailable =>
-      'El Coach no está disponible ahora mismo. Vuelve a intentarlo en un momento.';
+      'El Entrenador IA no está disponible ahora mismo. Vuelve a intentarlo en un momento.';
 
   @override
   String get coachStaleThread =>
@@ -8467,11 +8467,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachTransportError =>
-      'No se pudo contactar con Coach. Comprueba tu conexión e inténtalo de nuevo.';
+      'No se pudo contactar con el Entrenador IA. Comprueba tu conexión e inténtalo de nuevo.';
 
   @override
   String get coachStreamFailed =>
-      'La respuesta del Coach se cortó. Vuelve a enviar tu mensaje.';
+      'La respuesta del Entrenador IA se cortó. Vuelve a enviar tu mensaje.';
 
   @override
   String get coachNewConversationFailed =>
@@ -9338,7 +9338,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      '10 mensajes al entrenador de IA al día + procesamiento prioritario. Se renueva automáticamente cada mes hasta que se cancele en Ajustes → Suscripciones.';
+      '10 mensajes al Entrenador IA al día + procesamiento prioritario. Se renueva automáticamente cada mes hasta que se cancele en Ajustes → Suscripciones.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -9366,14 +9366,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      '10 mensajes al entrenador de IA al día + procesamiento prioritario. Se factura una vez al año. Se renueva automáticamente cada año hasta que se cancele en Ajustes → Suscripciones.';
+      '10 mensajes al Entrenador IA al día + procesamiento prioritario. Se factura una vez al año. Se renueva automáticamente cada año hasta que se cancele en Ajustes → Suscripciones.';
 
   @override
   String get proComingSoonTitle => 'Pro: próximamente';
 
   @override
   String get proComingSoon =>
-      'Pro desbloquea el entrenador con IA: próximamente. Aún puedes apoyar la app más abajo.';
+      'Pro desbloquea el Entrenador IA: próximamente. Aún puedes apoyar la app más abajo.';
 
   @override
   String get proRegionalNote =>
@@ -10143,7 +10143,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Visibilidad predeterminada de las carreras';
 
   @override
-  String get prefsCoachPersonality => 'Personalidad del entrenador';
+  String get prefsCoachPersonality => 'Personalidad del Entrenador IA';
 
   @override
   String get prefsCoachSupportive => 'Comprensivo';
@@ -10273,7 +10273,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prefsSectionActivityRecording => 'Actividad y grabación';
 
   @override
-  String get prefsSectionAiCoach => 'Entrenador de IA';
+  String get prefsSectionAiCoach => 'Entrenador IA';
 
   @override
   String get prefsGroupLanguageTheme => 'Idioma y tema';

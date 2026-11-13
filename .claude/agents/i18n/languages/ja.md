@@ -46,7 +46,7 @@ names stay in Latin script.
   `routePickerEmptyNoMatch` 「「{query}」に一致するルートはありません」; 『』 only
   inside 「」. A straight `"` in a message fails CI (`messages_parity.test.ts` on web, `architecture_guards_test.dart` on mobile — ARBs and the `gen/` getters); the last 2 mobile straight-quoted strings
   (`addRunPickerNoMatch`, `runDetailRouteSaved`) moved to 「…」 2026-10-14.
-- Parentheses full-width **（…）** (92 / 167).
+- Parentheses full-width **（…）** after Japanese text, everywhere: catalogues, ARB and help guides ("受取額（純額）", "理由（任意）"). Only a statute citation keeps ASCII paragraph marks ("GDPR 第9条(2)(a)"). `ja_fullwidth_parens.test.ts` fails a half-width one; settled 2026-11-13 (#1374 round 3.8).
 - Ellipsis **…**.
 - Colon: the catalogues mostly use ASCII `: ` after kana/kanji (136 / 176)
   with full-width 「：」 in 60 / 32 — inconsistent; follow the neighbouring

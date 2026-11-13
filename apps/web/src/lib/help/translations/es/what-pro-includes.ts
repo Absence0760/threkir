@@ -20,7 +20,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Coach IA — 10/día**: diez mensajes al día al Entrenador IA en lugar de dos. El recuento se reinicia a medianoche UTC.',
+						'**Entrenador IA — 10/día**: diez mensajes al día al Entrenador IA en lugar de dos. El recuento se reinicia a medianoche UTC.',
 						'Respuestas del Entrenador IA más largas y completas, que pueden tener en cuenta más de tus carreras.',
 						'**Map-matching prioritario**: tus trazas GPS se ajustan a las calles antes que las de las cuentas gratuitas, así que están listas antes.',
 						'**Exportaciones a la nube prioritarias**: hasta 8 exportaciones de paquetes GPX por hora en lugar de 2.',
@@ -32,7 +32,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Algunas de estas funciones dependen de servicios que puede que aún no estén activados. La tarjeta Pro de [[route:/settings/upgrade|Pro y apoyo]] solo muestra lo que funciona hoy; si dice **Pro desbloquea el entrenador con IA: próximamente.**, todavía no se puede comprar Pro.',
+					text: 'Algunas de estas funciones dependen de servicios que puede que aún no estén activados. La tarjeta Pro de [[route:/settings/upgrade|Pro y apoyo]] solo muestra lo que funciona hoy; si dice **Pro desbloquea el Entrenador IA: próximamente.**, todavía no se puede comprar Pro.',
 				},
 			],
 		},

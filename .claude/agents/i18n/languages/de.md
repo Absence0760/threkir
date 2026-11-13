@@ -95,7 +95,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | log (verb) | Erfassen | `navLog` |
 | streak | Serie | "Beste Serie" |
 | goal | Ziel / Ziele | |
-| coach | Coach; AI Coach = **KI-Coach** | `nav.coach` |
+| coach | Coach; AI Coach = **KI-Coach**. Inflected per Duden: genitive **des Coachs** ("die Antwort des Coachs", "Antwort des KI-Coachs"), plural **die Coachs** ("Meine Coachs") | `nav.coach`; settled 2026-11-13 (#1374 round 3.8), never "des Coaches" / "Coaches" |
 | AI disclosure | **KI-Hinweise** (plural: "die aktualisierten KI-Hinweise", "KI-Hinweise ansehen", "akzeptiere sie") | settled 2026-11-13; never the singular "KI-Hinweis" or "KI-Information" (the plan assistant's consent error moved off it in round 3.6). Consent wording: CISO/counsel review |
 | auto-pause | — | no catalogue string yet; build from "Pause" / "pausieren" ("Lauf pausiert") → "Auto-Pause", and flag it as a new term |
 | kudos | Kudos ("Kudos geben", "Kudos zurücknehmen") | |

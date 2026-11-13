@@ -675,7 +675,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.';
+      'Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.';
 
   @override
   String get peopleNearbyEmptyAction => 'Open privacy settings';
@@ -694,7 +694,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Show me to runners nearby';
+  String get prefsDiscoverableNearby => 'Show me in Runners nearby';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>

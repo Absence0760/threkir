@@ -682,7 +682,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Aktiviere „Mich Läufern in der Nähe zeigen“ und setze dein Gebiet. Nur Läufer, die dasselbe getan haben, können dich finden.';
+      'Aktiviere „Mich unter ‚Läufer in der Nähe‘ anzeigen“ und setze dein Gebiet. Nur Läufer, die dasselbe getan haben, können dich finden.';
 
   @override
   String get peopleNearbyEmptyAction => 'Datenschutzeinstellungen öffnen';
@@ -702,7 +702,8 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Mich Läufern in der Nähe zeigen';
+  String get prefsDiscoverableNearby =>
+      'Mich unter „Läufer in der Nähe“ anzeigen';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -1180,7 +1181,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homeCoachTitle => 'Coach';
 
   @override
-  String get homeCoachSubtitleTools => 'Geführte Läufe, Athleten und Coaches';
+  String get homeCoachSubtitleTools => 'Geführte Läufe, Athleten und Coachs';
 
   @override
   String get youProfileTitle => 'Dein Profil';
@@ -8180,7 +8181,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Die KI-Funktionen von Threkir leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA, damit er die Antworten des Coaches und die Vorschläge der anderen KI-Funktionen für dich verfassen kann. Je nach genutzter Funktion umfasst dieser Teil:';
+      'Die KI-Funktionen von Threkir leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA, damit er die Antworten des Coachs und die Vorschläge der anderen KI-Funktionen für dich verfassen kann. Je nach genutzter Funktion umfasst dieser Teil:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -10002,7 +10003,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsPageTrainingSummary =>
-      'Dein wöchentliches Distanzziel, Herzfrequenz und Herzfrequenzzonen, Verpflegung im Wettkampf und der Ton des Coaches.';
+      'Dein wöchentliches Distanzziel, Herzfrequenz und Herzfrequenzzonen, Verpflegung im Wettkampf und der Ton des Coachs.';
 
   @override
   String get prefsPagePrivacy => 'Datenschutz & Teilen';
@@ -14503,10 +14504,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachingRemove => 'Entfernen';
 
   @override
-  String get coachingMyCoaches => 'Meine Coaches';
+  String get coachingMyCoaches => 'Meine Coachs';
 
   @override
-  String get coachingMyCoachesSub => 'Coaches, die dein Training sehen können';
+  String get coachingMyCoachesSub => 'Coachs, die dein Training sehen können';
 
   @override
   String get coachingNoCoaches =>
@@ -20838,7 +20839,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get messagesCoachPlacementFailed =>
-      'Die Position des KI-Coaches konnte nicht gespeichert werden. Versuche es erneut.';
+      'Die Position des KI-Coachs konnte nicht gespeichert werden. Versuche es erneut.';
 
   @override
   String get prefsSectionMessages => 'Nachrichten';
@@ -22259,7 +22260,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachShareIntro =>
-      'Wähle die Abschnitte dieser Antwort aus, die du senden möchtest. Dein Coach sieht sie als Zitat deines KI-Coaches, nicht als deine eigenen Worte.';
+      'Wähle die Abschnitte dieser Antwort aus, die du senden möchtest. Dein Coach sieht sie als Zitat deines KI-Coachs, nicht als deine eigenen Worte.';
 
   @override
   String get coachShareCoachLegend => 'Senden an';
@@ -22299,7 +22300,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachShareDone => 'Fertig';
 
   @override
-  String get coachShareCardLabel => 'Antwort des KI-Coaches';
+  String get coachShareCardLabel => 'Antwort des KI-Coachs';
 
   @override
   String get coachShareCardFromMe => 'Du hast dies aus deinem KI-Coach geteilt';
@@ -22318,7 +22319,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachAssist =>
-      'Für Coaches, die den Coach-Assistenten nutzen: was du ihn fragst und, nur bei Athleten, die es für deine Coaching-Verknüpfung erlaubt haben, deren letzte Nachrichten mit dir, deren Plan und anstehende Einheiten sowie deren letzte Läufe, nur verwendet, um eine Nachricht zu entwerfen, die nur du siehst. Du bearbeitest und sendest sie selbst, und sie wird als KI-gestützt gekennzeichnet.';
+      'Für Coachs, die den Coach-Assistenten nutzen: was du ihn fragst und, nur bei Athleten, die es für deine Coaching-Verknüpfung erlaubt haben, deren letzte Nachrichten mit dir, deren Plan und anstehende Einheiten sowie deren letzte Läufe, nur verwendet, um eine Nachricht zu entwerfen, die nur du siehst. Du bearbeitest und sendest sie selbst, und sie wird als KI-gestützt gekennzeichnet.';
 
   @override
   String get coachAssistMarker => 'KI-gestützt';

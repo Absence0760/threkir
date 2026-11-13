@@ -905,7 +905,7 @@
   "@peopleNearbyEmptyTitle": {
     "description": "Empty-state title when the runners-nearby list comes back with no one"
   },
-  "peopleNearbyEmptyBody": "Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.",
+  "peopleNearbyEmptyBody": "Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.",
   "@peopleNearbyEmptyBody": {
     "description": "Empty-state body for the runners-nearby list, pointing at the opt-in and area setter"
   },
@@ -935,7 +935,7 @@
       }
     }
   },
-  "prefsDiscoverableNearby": "Show me to runners nearby",
+  "prefsDiscoverableNearby": "Show me in Runners nearby",
   "@prefsDiscoverableNearby": {
     "description": "Toggle title for opting in to coarse-location runners-nearby discovery"
   },

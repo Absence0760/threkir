@@ -652,7 +652,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      '「近くのランナーに自分を表示」をオンにし、エリアを設定してください。同じ設定をしたランナーだけがあなたを見つけられます。';
+      '「『近くのランナー』に表示する」をオンにし、エリアを設定してください。同じ設定をしたランナーだけがあなたを見つけられます。';
 
   @override
   String get peopleNearbyEmptyAction => 'プライバシー設定を開く';
@@ -671,7 +671,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => '近くのランナーに自分を表示';
+  String get prefsDiscoverableNearby => '「近くのランナー」に表示する';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -15039,7 +15039,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get raceCourseSuggestNoRoutes => '公開ルートがまだありません。ルートを公開すると提案できます。';
 
   @override
-  String get raceCourseSuggestNote => 'メモ(任意)';
+  String get raceCourseSuggestNote => 'メモ（任意）';
 
   @override
   String get raceCourseSuggestConfirm => '提案を送信';
@@ -17399,7 +17399,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventCancelPaidNote => '支払った人には、返金ポリシーにかかわらず全額が返金されます。';
 
   @override
-  String get eventCancelReasonLabel => '理由(任意)';
+  String get eventCancelReasonLabel => '理由（任意）';
 
   @override
   String get eventCancelKeep => 'そのままにする';

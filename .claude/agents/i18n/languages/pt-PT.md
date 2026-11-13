@@ -60,6 +60,18 @@ in `apps/mobile_android/test/architecture_guards_test.dart`:
   "… vai confirmar que …" (2026-11-13). Give the clause a subject or a
   future.
 
+- **Brazilian colloquial verbs the guard cannot ban.** *Become* is
+  **passar a ser** / **tornar-se**, never `virar` ("cada uma passa a ser uma
+  rota própria", "provas passam a ser corridas leves"); `virar` stays only
+  for *turn* ("Vire à esquerda"), which is why it is not on the banned list.
+  A consequence is **por isso**, not `então` ("…não está no CSV, por isso as
+  corridas importadas…"). Settled 2026-11-13 (#1374 round 3.8).
+- **Runners nearby.** The section is **Corredores por perto** and its
+  switch **Mostrar-me em Corredores por perto** on both surfaces (mobile
+  `prefsDiscoverableNearby`, web `prefs.discoverableNearby`, and every
+  string that quotes it); `cross_platform_terms.test.ts` fails a drift.
+  Settled 2026-11-13.
+
 ## Spelling and style authority
 
 **Acordo Ortográfico de 1990 as applied in Portugal** (Vocabulário

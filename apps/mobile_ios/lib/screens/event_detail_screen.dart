@@ -1317,14 +1317,31 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         await widget.social
             .rsvpEvent(e.row.id, status, inst, courseId: courseId);
       }
-      await _load();
     } catch (err) {
-      // RSVP is the primary action — surface a failure (network / RLS /
-      // event-full race) instead of letting it vanish as an uncaught
-      // async error with the chip just silently reverting.
+      // RSVP is the primary action, so its failure says why (offline, signed
+      // out, refused) and offers Retry only where a retry can succeed — not a
+      // blanket "Please try again" (issue #1374 FS-9).
+      debugPrint('EventDetail._rsvp failed: $err');
       if (mounted) {
-        showTopBanner(context, AppLocalizations.of(context).eventRsvpFailed);
+        setState(() => _busy = false);
+        final l10n = AppLocalizations.of(context);
+        final retryable = switch (classifyAuthError(err)) {
+          AuthErrorKind.offline || AuthErrorKind.generic => true,
+          _ => false,
+        };
+        showTopBanner(
+          context,
+          l10n.eventRsvpFailed(friendlyError(l10n, err)),
+          duration: const Duration(seconds: 6),
+          actionLabel: retryable ? l10n.errorStateRetry : null,
+          onAction: retryable ? () => _rsvp(status) : null,
+        );
       }
+      return;
+    }
+    // The RSVP landed; a failed reload after it is not a failed RSVP.
+    try {
+      await _load();
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +24,20 @@ class _FakeApiClient extends ApiClient {
   @override
   Future<List<Map<String, dynamic>>> fetchMyGearWithDistance() async =>
       const [];
+}
+
+/// The picker's gear read waits on [gate], counting reads.
+class _GatedGearApi extends _FakeApiClient {
+  _GatedGearApi() : super(viewerId: 'owner-1');
+  final gate = Completer<void>();
+  int reads = 0;
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchMyGearWithDistance() async {
+    reads++;
+    await gate.future;
+    return const [];
+  }
 }
 
 /// The assigned-gear read fails until [failures] is exhausted. Before the
@@ -173,6 +189,21 @@ void main() {
       expect(find.byKey(const Key('runGearChipsAddGear')), findsNothing,
           reason: 'the sheet closes so Back from Gear lands on the run');
     });
+  });
+
+  // Issue #1374 NS-11: a double tap during the gear read opened two pickers.
+  testWidgets('a second tap while the picker loads opens nothing more',
+      (tester) async {
+    final api = _GatedGearApi();
+    await _pump(tester, api);
+    await tester.tap(find.text('+ Tag gear'));
+    await tester.pump();
+    await tester.tap(find.text('+ Tag gear'));
+    await tester.pump();
+    expect(api.reads, 1);
+    api.gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.text("You haven't registered any gear yet."), findsOneWidget);
   });
 
   group('RunGearChips — failed read', () {

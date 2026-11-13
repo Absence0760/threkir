@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
 import '../auth_error.dart';
+import '../engagement_cache.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../mentions.dart';
@@ -46,6 +47,9 @@ class _RunSocialSectionState extends State<RunSocialSection> {
   );
   List<RunCommentWithAuthor> _comments = const [];
 
+  /// [_eng] holds the server's answer, not the zero it starts at.
+  bool _engLoaded = false;
+
   // Cached viewer profile so optimistic comment append can render with
   // the right display name + avatar instead of a synthesized fallback.
   PublicProfile? _viewerProfile;
@@ -69,6 +73,17 @@ class _RunSocialSectionState extends State<RunSocialSection> {
   final _replyCtrl = TextEditingController();
 
   String? get _viewerId => widget.api.userId;
+
+  /// Every change to this run's engagement (the load, a kudos, a comment
+  /// posted, deleted or restored) goes to the app-wide cache, so the feed
+  /// card for the run shows it on return (issue #1374 NS-9).
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    if (_engLoaded) {
+      EngagementCache.instance.put(_viewerId, widget.runId, _eng);
+    }
+  }
 
   @override
   void initState() {
@@ -117,6 +132,7 @@ class _RunSocialSectionState extends State<RunSocialSection> {
                 viewerHasKudos: entry.viewerHasKudos,
                 commentCount: entry.commentCount,
               );
+        _engLoaded = true;
         _comments = cs;
         _viewerProfile = viewer;
         _loading = false;

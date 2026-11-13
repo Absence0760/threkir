@@ -32,14 +32,14 @@
 		fetchClubPosts,
 		fetchPostReplies,
 		fetchPendingRequests,
-		fetchClubRoutes,
+		fetchClubRoutesWithError,
 		fetchRoutes,
 		setRouteClubId,
-		fetchClubTemplates,
+		fetchClubTemplatesWithError,
 		setPlanIsTemplate,
-		fetchClubSessionTemplates,
+		fetchClubSessionTemplatesWithError,
 		cloneSessionTemplate,
-		fetchClubGymRoutineTemplates,
+		fetchClubGymRoutineTemplatesWithError,
 		cloneGymRoutineTemplate,
 		approveMember,
 		bulkApproveMembers,
@@ -131,6 +131,9 @@
 		}
 	}
 	let clubRoutes = $state<Route[]>([]);
+	let routesError = $state<Error | null>(null);
+	let templatesError = $state<Error | null>(null);
+	let sectionRetrying = $state(false);
 	let transferableRoutes = $state<RouteListItem[]>([]);
 	let showTransferModal = $state(false);
 	let showEditModal = $state(false);
@@ -238,7 +241,7 @@
 			loading = false;
 			return;
 		}
-		const [up, pa, po, me, pe, rt, tp, st, gr] = await Promise.all([
+		const [up, pa, po, me, pe, rt, templates] = await Promise.all([
 			fetchUpcomingEvents(club.id),
 			fetchPastEvents(club.id, 6),
 			fetchClubPosts(club.id, 20),
@@ -246,10 +249,8 @@
 			club.viewer_role === 'owner' || club.viewer_role === 'admin'
 				? loadPending(club.id)
 				: Promise.resolve([]),
-			fetchClubRoutes(club.id),
-			fetchClubTemplates(club.id),
-			fetchClubSessionTemplates(club.id),
-			fetchClubGymRoutineTemplates(club.id)
+			fetchClubRoutesWithError(club.id),
+			loadTemplates(club.id)
 		]);
 		upcoming = up;
 		past = pa;
@@ -258,11 +259,52 @@
 		membersNext = me.next;
 		membersHasMore = me.next !== null;
 		pending = pe;
-		clubRoutes = rt;
-		clubTemplates = tp;
-		sessionTemplates = st;
-		gymRoutineTemplates = gr;
+		clubRoutes = rt.routes;
+		routesError = rt.error;
+		applyTemplates(templates);
 		loading = false;
+	}
+
+	// A failed Routes or Templates read is an error with Retry, never the
+	// "no routes yet" empty state (issue #1374 FS-3). Each tab fails alone.
+	async function loadTemplates(clubId: string) {
+		const [tp, st, gr] = await Promise.all([
+			fetchClubTemplatesWithError(clubId),
+			fetchClubSessionTemplatesWithError(clubId),
+			fetchClubGymRoutineTemplatesWithError(clubId)
+		]);
+		return { tp, st, gr };
+	}
+
+	function applyTemplates({ tp, st, gr }: Awaited<ReturnType<typeof loadTemplates>>) {
+		const error = tp.error ?? st.error ?? gr.error;
+		templatesError = error;
+		if (error) return;
+		clubTemplates = tp.plans;
+		sessionTemplates = st.plans;
+		gymRoutineTemplates = gr.routines;
+	}
+
+	async function retryRoutes() {
+		if (!club || sectionRetrying) return;
+		sectionRetrying = true;
+		try {
+			const rt = await fetchClubRoutesWithError(club.id);
+			routesError = rt.error;
+			if (!rt.error) clubRoutes = rt.routes;
+		} finally {
+			sectionRetrying = false;
+		}
+	}
+
+	async function retryTemplates() {
+		if (!club || sectionRetrying) return;
+		sectionRetrying = true;
+		try {
+			applyTemplates(await loadTemplates(club.id));
+		} finally {
+			sectionRetrying = false;
+		}
 	}
 
 	// The join queue is one admin card, so its failure is shown on that card
@@ -1540,7 +1582,24 @@
 					</button>
 				</div>
 			{/if}
-			{#if clubRoutes.length === 0}
+			{#if routesError && clubRoutes.length === 0}
+				<EmptyState
+					icon="cloud_off"
+					tone="danger"
+					headingLevel={3}
+					title={tr('clubHome.routesLoadFailed')}
+					text={errorCopy(routesError, tr, 'clubs/[slug]: routesError')}
+					role="alert"
+					data-testid="club-routes-error"
+				>
+					{#snippet actions()}
+						<button class="btn btn-primary" type="button" onclick={retryRoutes} disabled={sectionRetrying}>
+							<span class="material-symbols" aria-hidden="true">refresh</span>
+							{tr('clubHome.retry')}
+						</button>
+					{/snippet}
+				</EmptyState>
+			{:else if clubRoutes.length === 0}
 				{@const clubId = club.id}
 				<EmptyState
 					icon="route"
@@ -1626,7 +1685,24 @@
 				</div>
 			{/if}
 
-			{#if clubTemplates.length === 0 && sessionTemplates.length === 0 && gymRoutineTemplates.length === 0}
+			{#if templatesError && clubTemplates.length === 0 && sessionTemplates.length === 0 && gymRoutineTemplates.length === 0}
+				<EmptyState
+					icon="cloud_off"
+					tone="danger"
+					headingLevel={3}
+					title={tr('clubHome.templatesLoadFailed')}
+					text={errorCopy(templatesError, tr, 'clubs/[slug]: templatesError')}
+					role="alert"
+					data-testid="club-templates-error"
+				>
+					{#snippet actions()}
+						<button class="btn btn-primary" type="button" onclick={retryTemplates} disabled={sectionRetrying}>
+							<span class="material-symbols" aria-hidden="true">refresh</span>
+							{tr('clubHome.retry')}
+						</button>
+					{/snippet}
+				</EmptyState>
+			{:else if clubTemplates.length === 0 && sessionTemplates.length === 0 && gymRoutineTemplates.length === 0}
 				<EmptyState
 					icon="list_alt"
 					headingLevel={3}

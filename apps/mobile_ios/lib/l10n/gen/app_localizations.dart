@@ -5897,6 +5897,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t delete from the cloud; the run is kept for now — will retry when back online.'**
   String get runDetailDeleteQueued;
 
+  /// Screen-reader label of the spinner that replaces the run's overflow menu while a delete is in flight
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting run…'**
+  String get runDetailDeleting;
+
   /// Confirm action on the auto-link route-suggestion banner
   ///
   /// In en, this message translates to:
@@ -7858,6 +7864,12 @@ abstract class AppLocalizations {
   /// **'No routes here'**
   String get heatmapNoRoutesHere;
 
+  /// Discovery map results pill (and results list) when the routes read failed; tapping retries. Replaces 'No routes here', which was false
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load routes. Tap to retry'**
+  String get heatmapLoadFailed;
+
   /// Empty-state shown in the heatmap results list
   ///
   /// In en, this message translates to:
@@ -9796,6 +9808,12 @@ abstract class AppLocalizations {
   /// **'No routes shared with this club yet.'**
   String get clubDetailRoutesEmpty;
 
+  /// Routes tab of a club when the read failed; shown with a Retry button instead of the empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this club\'s routes. Check your connection and try again.'**
+  String get clubDetailRoutesLoadFailed;
+
   /// Banner shown after adopting a plan template
   ///
   /// In en, this message translates to:
@@ -9819,6 +9837,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No plan templates yet for this club.'**
   String get clubDetailNoTemplates;
+
+  /// Templates tab of a club when the read failed; shown with a Retry button instead of the empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this club\'s templates. Check your connection and try again.'**
+  String get clubDetailTemplatesLoadFailed;
 
   /// Button to adopt a plan template
   ///
@@ -10132,11 +10156,11 @@ abstract class AppLocalizations {
   /// **'Could not update attendance. Please try again.'**
   String get eventAttendanceFailed;
 
-  /// Error banner when an RSVP write fails
+  /// Error banner when an RSVP write fails; {error} is the classified reason (offline, signed out, generic)
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t update your RSVP. Please try again.'**
-  String get eventRsvpFailed;
+  /// **'Couldn\'t update your RSVP: {error}'**
+  String eventRsvpFailed(String error);
 
   /// RSVP chip — going
   ///
@@ -15226,6 +15250,12 @@ abstract class AppLocalizations {
   /// **'No rotations yet. Create one to group a set of shoes or bikes.'**
   String get gearRotationsEmpty;
 
+  /// Rotations screen when the read failed; shown with Retry instead of the empty list
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your rotations. Nothing has been removed. Check your connection and try again.'**
+  String get gearRotationsLoadFailed;
+
   /// Label/hint for the rotation-name field
   ///
   /// In en, this message translates to:
@@ -15291,6 +15321,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t save rotation: {error}'**
   String gearRotationSaveFailed(Object error);
+
+  /// Banner when deleting a rotation fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete rotation: {error}'**
+  String gearRotationDeleteFailed(String error);
 
   /// Save/confirm button in the rotation member-edit sheet
   ///
@@ -20847,11 +20883,23 @@ abstract class AppLocalizations {
   /// **'Adopting…'**
   String get gymLibraryAdopting;
 
+  /// Adopt button label once the routine has been copied, so a second tap cannot make another copy
+  ///
+  /// In en, this message translates to:
+  /// **'Added to my routines'**
+  String get gymLibraryAdopted;
+
   /// Error after a failed public-routine adopt
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t adopt the routine.'**
   String get gymLibraryAdoptFailed;
+
+  /// Banner when the routine was copied on the server but this phone could not fetch the copy yet; the adopt itself succeeded
+  ///
+  /// In en, this message translates to:
+  /// **'Added to your routines. It will show there once this phone syncs.'**
+  String get gymLibraryAdoptedNotSynced;
 
   /// No description provided for @gymRoutineDelete.
   ///
@@ -22808,6 +22856,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Every athlete at a glance — load, plan compliance, and injury risk.'**
   String get coachingRosterSubtitle;
+
+  /// Inline error on the coaching roster card when its read failed, beside a Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your athlete roster.'**
+  String get coachingRosterLoadFailed;
 
   /// Roster cell when athlete has no runs
   ///
@@ -28376,6 +28430,12 @@ abstract class AppLocalizations {
   /// **'Continue'**
   String get confirmAgeContinue;
 
+  /// Top banner (with a Sign out action) when Back is pressed on the age and terms gate, which cannot be dismissed
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm both to continue, or sign out to leave.'**
+  String get confirmAgeBackHint;
+
   /// Consent gate: error shown when recording the confirmations fails
   ///
   /// In en, this message translates to:
@@ -31746,6 +31806,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t refresh. Showing what was last loaded.'**
   String get commonStaleRefreshFailed;
+
+  /// Confirmation after a save that landed on the phone but has not reached the server yet; the sync carries on in the background
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this phone. It will sync when you\'re back online.'**
+  String get commonSavedOnPhone;
+
+  /// Confirmation after a delete that landed on the phone but has not reached the server yet
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted on this phone. It will sync when you\'re back online.'**
+  String get commonDeletedOnPhone;
+
+  /// Top banner while a tapped notification is looked up before its screen opens (a club or event read on a slow connection)
+  ///
+  /// In en, this message translates to:
+  /// **'Opening…'**
+  String get pushTargetOpening;
+
+  /// Top banner, with Retry, when a tapped notification could not be opened; {error} is the classified reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open that notification: {error}'**
+  String pushTargetOpenFailed(String error);
 
   /// Tooltip on the plan detail app-bar overflow menu
   ///

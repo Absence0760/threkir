@@ -34,6 +34,7 @@ import '../widgets/live_run_map.dart'
         mapPinnedLine,
         solidMapLine;
 import '../last_map_view.dart';
+import '../widgets/error_state.dart';
 import '../widgets/map_attribution.dart';
 import '../park_course_routes.dart';
 import '../widgets/top_banner.dart';
@@ -145,6 +146,10 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   final Set<String> _pinnedIds = <String>{};
 
   bool _loading = false;
+  /// The last routes read failed. The pill and the results list say so with
+  /// Retry instead of "No routes here" (issue #1374 FS-10); pins from an
+  /// earlier read stay on the map.
+  bool _routesFailed = false;
   Timer? _debounce;
   Timer? _searchDebounce;
   bool _mapReady = false;
@@ -256,18 +261,34 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     if (!_mapReady) return;
     final bounds = _mapController.camera.visibleBounds;
     setState(() => _loading = true);
-    try {
-      final ranges = bandsToRanges(_bands.toList());
-      // Only pay for heat points when the layer is on (off by default).
-      final heat = _showHeat
-          ? await widget.api.fetchHeatmapPoints(
+    final ranges = bandsToRanges(_bands.toList());
+    // Each layer reads on its own. The routes are what this screen is for, so
+    // their failure is shown; an overlay that fails keeps its last points
+    // rather than blanking (L4 — discovery overlays are not load-bearing).
+    Future<T?> layer<T>(String name, Future<T> Function() read) async {
+      try {
+        return await read();
+      } catch (e) {
+        debugPrint('heatmap $name refresh failed: $e');
+        return null;
+      }
+    }
+
+    // Only pay for heat points when the layer is on (off by default).
+    final heat = _showHeat
+        ? await layer(
+            'heat',
+            () => widget.api.fetchHeatmapPoints(
               minLng: bounds.west,
               minLat: bounds.south,
               maxLng: bounds.east,
               maxLat: bounds.north,
-            )
-          : const <cm.HeatmapPoint>[];
-      final pins = await widget.api.fetchDiscoverableRoutesInBbox(
+            ),
+          )
+        : const <cm.HeatmapPoint>[];
+    final pins = await layer(
+      'routes',
+      () => widget.api.fetchDiscoverableRoutesInBbox(
         minLng: bounds.west,
         minLat: bounds.south,
         maxLng: bounds.east,
@@ -275,42 +296,45 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
         filter: _filter,
         distMin: ranges.min,
         distMax: ranges.max,
-      );
-      final clubs = await widget.api.fetchClubsInBbox(
+      ),
+    );
+    final clubs = await layer(
+      'clubs',
+      () => widget.api.fetchClubsInBbox(
         minLng: bounds.west,
         minLat: bounds.south,
         maxLng: bounds.east,
         maxLat: bounds.north,
-      );
-      final races = _showRaces
-          ? await widget.api.fetchUpcomingRacesInBbox(
+      ),
+    );
+    final races = _showRaces
+        ? await layer(
+            'races',
+            () => widget.api.fetchUpcomingRacesInBbox(
               minLng: bounds.west,
               minLat: bounds.south,
               maxLng: bounds.east,
               maxLat: bounds.north,
               officialOnly: _filter == 'official',
-            )
-          : const <cm.UpcomingRacePin>[];
-      if (!mounted) return;
-      setState(() {
-        _points = heat;
-        _pins = pins;
-        _clubs = clubs;
-        _races = races;
-      });
-      unawaited(
-        _parkCourses.check(pins.where((p) => p.official).map((p) => p.id)),
-      );
-      // If geolocation has already bowed out, frame the view on this
-      // freshly-loaded data (no-op once the view has been framed).
-      _fitToPins();
-    } catch (e) {
-      // L4 — discovery is not load-bearing. The real ApiClient already
-      // swallows + returns empty; belt-and-braces here for tests.
-      debugPrint('heatmap refresh failed: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+            ),
+          )
+        : const <cm.UpcomingRacePin>[];
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (heat != null) _points = heat;
+      if (pins != null) _pins = pins;
+      _routesFailed = pins == null;
+      if (clubs != null) _clubs = clubs;
+      if (races != null) _races = races;
+    });
+    if (pins == null) return;
+    unawaited(
+      _parkCourses.check(pins.where((p) => p.official).map((p) => p.id)),
+    );
+    // If geolocation has already bowed out, frame the view on this
+    // freshly-loaded data (no-op once the view has been framed).
+    _fitToPins();
   }
 
   List<PinCluster<cm.DiscoverableRoutePin>> _buildClusters(MapCamera camera) {
@@ -1055,22 +1079,27 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final count = _pins.length;
-    final label =
-        count == 0 ? l10n.heatmapNoRoutesHere : l10n.heatmapRouteCount(count);
+    final failed = _routesFailed && count == 0;
+    final label = failed
+        ? l10n.heatmapLoadFailed
+        : count == 0
+            ? l10n.heatmapNoRoutesHere
+            : l10n.heatmapRouteCount(count);
     return Material(
       elevation: 6,
       borderRadius: BorderRadius.circular(999),
       color: theme.colorScheme.surface,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: _openResultsSheet,
+        key: const Key('heatmap-results-pill'),
+        onTap: failed ? _refresh : _openResultsSheet,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.format_list_bulleted,
+                failed ? Icons.refresh : Icons.format_list_bulleted,
                 size: 18,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1159,7 +1188,18 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
           ),
         ),
         const Divider(height: 1),
-        if (_pins.isEmpty)
+        if (_pins.isEmpty && _routesFailed)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: AppErrorState.inline(
+              message: l10n.heatmapLoadFailed,
+              onRetry: () {
+                Navigator.of(sheetCtx).pop();
+                _refresh();
+              },
+            ),
+          )
+        else if (_pins.isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
             child: Text(l10n.heatmapNoRoutesHint),

@@ -3498,6 +3498,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t delete from the cloud; the run is kept for now — will retry when back online.';
 
   @override
+  String get runDetailDeleting => 'Deleting run…';
+
+  @override
   String get runDetailSuggestLink => 'Link';
 
   @override
@@ -4821,6 +4824,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get heatmapNoRoutesHere => 'No routes here';
 
   @override
+  String get heatmapLoadFailed => 'Couldn\'t load routes. Tap to retry';
+
+  @override
   String get heatmapNoRoutesHint =>
       'No routes here. Pan the map or change the filters.';
 
@@ -6024,6 +6030,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubDetailRoutesEmpty => 'No routes shared with this club yet.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Couldn\'t load this club\'s routes. Check your connection and try again.';
+
+  @override
   String get clubDetailTemplateAdded => 'Template added to your plans.';
 
   @override
@@ -6037,6 +6047,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clubDetailNoTemplates => 'No plan templates yet for this club.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Couldn\'t load this club\'s templates. Check your connection and try again.';
 
   @override
   String get clubDetailAdopt => 'Adopt';
@@ -6226,7 +6240,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not update attendance. Please try again.';
 
   @override
-  String get eventRsvpFailed => 'Couldn\'t update your RSVP. Please try again.';
+  String eventRsvpFailed(String error) {
+    return 'Couldn\'t update your RSVP: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'I\'m in';
@@ -9471,6 +9487,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No rotations yet. Create one to group a set of shoes or bikes.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Couldn\'t load your rotations. Nothing has been removed. Check your connection and try again.';
+
+  @override
   String get gearRotationName => 'Rotation name';
 
   @override
@@ -9516,6 +9536,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Couldn\'t save rotation: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Couldn\'t delete rotation: $error';
   }
 
   @override
@@ -12784,7 +12809,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gymLibraryAdopting => 'Adopting…';
 
   @override
+  String get gymLibraryAdopted => 'Added to my routines';
+
+  @override
   String get gymLibraryAdoptFailed => 'Couldn\'t adopt the routine.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Added to your routines. It will show there once this phone syncs.';
 
   @override
   String get gymRoutineDelete => 'Delete';
@@ -13925,6 +13957,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get coachingRosterSubtitle =>
       'Every athlete at a glance — load, plan compliance, and injury risk.';
+
+  @override
+  String get coachingRosterLoadFailed => 'Couldn\'t load your athlete roster.';
 
   @override
   String get coachingRosterNeverRun => 'No runs yet';
@@ -17206,6 +17241,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get confirmAgeContinue => 'Continue';
 
   @override
+  String get confirmAgeBackHint =>
+      'Confirm both to continue, or sign out to leave.';
+
+  @override
   String get confirmAgeRecordError => 'Could not record consent.';
 
   @override
@@ -19318,6 +19357,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Couldn\'t refresh. Showing what was last loaded.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Saved on this phone. It will sync when you\'re back online.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Deleted on this phone. It will sync when you\'re back online.';
+
+  @override
+  String get pushTargetOpening => 'Opening…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Couldn\'t open that notification: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'More plan actions';

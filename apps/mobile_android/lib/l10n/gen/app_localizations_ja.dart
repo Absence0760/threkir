@@ -3385,6 +3385,9 @@ class AppLocalizationsJa extends AppLocalizations {
       'クラウドから削除できませんでした。ランは一時的に保持され、オンライン復帰時に再試行します。';
 
   @override
+  String get runDetailDeleting => 'ランを削除中…';
+
+  @override
   String get runDetailSuggestLink => 'リンク';
 
   @override
@@ -4598,6 +4601,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get heatmapNoRoutesHere => 'ここにルートはありません';
 
   @override
+  String get heatmapLoadFailed => 'ルートを読み込めませんでした。タップして再試行';
+
+  @override
   String get heatmapNoRoutesHint => 'ここにルートはありません。地図を移動するかフィルターを変更してください。';
 
   @override
@@ -5746,6 +5752,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubDetailRoutesEmpty => 'このクラブと共有されたルートはまだありません。';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'このクラブのルートを読み込めませんでした。接続を確認して、もう一度お試しください。';
+
+  @override
   String get clubDetailTemplateAdded => 'テンプレートをプランに追加しました。';
 
   @override
@@ -5758,6 +5768,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get clubDetailNoTemplates => 'このクラブのプランテンプレートはまだありません。';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'このクラブのテンプレートを読み込めませんでした。接続を確認して、もう一度お試しください。';
 
   @override
   String get clubDetailAdopt => '採用';
@@ -5942,7 +5956,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventAttendanceFailed => '出席を更新できませんでした。もう一度お試しください。';
 
   @override
-  String get eventRsvpFailed => '参加可否を更新できませんでした。もう一度お試しください。';
+  String eventRsvpFailed(String error) {
+    return '参加可否を更新できませんでした: $error';
+  }
 
   @override
   String get eventRsvpGoing => '参加する';
@@ -9070,6 +9086,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'ローテーションはまだありません。シューズやバイクのセットをまとめるには作成してください。';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'ローテーションを読み込めませんでした。削除されたものはありません。接続を確認して、もう一度お試しください。';
+
+  @override
   String get gearRotationName => 'ローテーション名';
 
   @override
@@ -9113,6 +9133,11 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'ローテーションを保存できませんでした: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'ローテーションを削除できませんでした: $error';
   }
 
   @override
@@ -12289,7 +12314,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gymLibraryAdopting => '取り込み中…';
 
   @override
+  String get gymLibraryAdopted => '自分のルーティンに追加済み';
+
+  @override
   String get gymLibraryAdoptFailed => 'ルーティンを取り込めませんでした。';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'ルーティンに追加しました。このスマートフォンが同期すると表示されます。';
 
   @override
   String get gymRoutineDelete => '削除';
@@ -13400,6 +13432,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachingRosterSubtitle => '負荷・プラン達成率・けがリスクをひと目で確認できます。';
+
+  @override
+  String get coachingRosterLoadFailed => 'アスリート一覧を読み込めませんでした。';
 
   @override
   String get coachingRosterNeverRun => 'ランの記録なし';
@@ -16588,6 +16623,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get confirmAgeContinue => '続ける';
 
   @override
+  String get confirmAgeBackHint => '続けるには両方を確認してください。離れる場合はサインアウトしてください。';
+
+  @override
   String get confirmAgeRecordError => '同意を記録できませんでした。';
 
   @override
@@ -18618,6 +18656,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get commonStaleRefreshFailed => '更新できませんでした。最後に読み込んだ内容を表示しています。';
+
+  @override
+  String get commonSavedOnPhone => 'このスマートフォンに保存しました。オンラインに戻ると同期されます。';
+
+  @override
+  String get commonDeletedOnPhone => 'このスマートフォンで削除しました。オンラインに戻ると同期されます。';
+
+  @override
+  String get pushTargetOpening => '開いています…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'その通知を開けませんでした: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'その他のプラン操作';

@@ -114,11 +114,20 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     }
   }
 
-  Future<void> _maybeSync() async {
+  /// Pushes the local change and answers whether row [id] reached the
+  /// server, waiting only briefly (issue #1374 FS-15).
+  Future<bool> _maybeSync([String? id]) async {
     final api = widget.api;
-    if (api == null || !_isOnline) return;
-    await widget.store.syncWithServer(api);
+    if (api == null) return true;
+    if (!_isOnline) return false;
+    var synced = true;
+    if (id == null) {
+      await widget.store.syncWithServer(api);
+    } else {
+      synced = await widget.store.syncRowBriefly(api, id);
+    }
     if (mounted && widget.store.hasPending) setState(() {});
+    return synced;
   }
 
   static ProgressionScheme _schemeFromString(String s) {
@@ -398,8 +407,10 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     if (!ok) return;
     try {
       await widget.store.deleteLocal(w.id);
-      await _maybeSync();
-      if (mounted) Navigator.pop(context);
+      final synced = await _maybeSync(w.id);
+      if (!mounted) return;
+      if (!synced) showTopBanner(context, l10n.commonDeletedOnPhone);
+      Navigator.pop(context);
     } catch (e) {
       debugPrint('gym delete failed: $e');
       if (mounted) {

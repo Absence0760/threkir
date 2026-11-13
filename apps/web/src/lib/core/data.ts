@@ -2410,6 +2410,15 @@ function asRoute(row: Database['public']['Tables']['routes']['Row']): Route {
 /// RLS to club members; admin-write-gated for transfers/edits. Used by
 /// the club home Routes tab and by EventEditor's route picker.
 export async function fetchClubRoutes(clubId: string): Promise<Route[]> {
+	return (await fetchClubRoutesWithError(clubId)).routes;
+}
+
+/// `fetchClubRoutes` with the failure alongside the rows, for the club page's
+/// Routes tab, which showed a failed read as "No routes shared with this club
+/// yet" (issue #1374 FS-3).
+export async function fetchClubRoutesWithError(
+	clubId: string,
+): Promise<{ routes: Route[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from('routes')
 		.select('*')
@@ -2417,9 +2426,9 @@ export async function fetchClubRoutes(clubId: string): Promise<Route[]> {
 		.order('created_at', { ascending: false });
 	if (error) {
 		console.error('fetchClubRoutes failed', error);
-		return [];
+		return { routes: [], error: dbError(error) };
 	}
-	return (data ?? []).map(asRoute);
+	return { routes: (data ?? []).map(asRoute), error: null };
 }
 
 /// Bookmark a public route. Inserts a `saved_routes` reference rather
@@ -6523,6 +6532,15 @@ export async function fetchMyPlans(limit = 100): Promise<TrainingPlan[]> {
 /// Plan templates owned by `clubId`. Visible to club members; admins
 /// can write. See decisions §35.
 export async function fetchClubTemplates(clubId: string, limit = 100): Promise<TrainingPlan[]> {
+	return (await fetchClubTemplatesWithError(clubId, limit)).plans;
+}
+
+/// `fetchClubTemplates` with the failure alongside the rows, for the club
+/// page's Templates tab (issue #1374 FS-3).
+export async function fetchClubTemplatesWithError(
+	clubId: string,
+	limit = 100,
+): Promise<{ plans: TrainingPlan[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from('training_plans')
 		.select('*')
@@ -6532,9 +6550,9 @@ export async function fetchClubTemplates(clubId: string, limit = 100): Promise<T
 		.limit(limit);
 	if (error) {
 		console.error('fetchClubTemplates failed', error);
-		return [];
+		return { plans: [], error: dbError(error) };
 	}
-	return (data ?? []) as TrainingPlan[];
+	return { plans: (data ?? []) as TrainingPlan[], error: null };
 }
 
 /// Plan templates for many clubs in one query, grouped by club id — the
@@ -10216,10 +10234,11 @@ export async function fetchHeatmapPoints(bbox: {
 		p_max_lat: bbox.maxLat,
 		p_max_points: bbox.maxPoints ?? 5000,
 	}, { get: true });
-	if (error || !data) {
+	if (error) {
 		console.warn('fetchHeatmapPoints failed', error);
-		return [];
+		throw dbError(error);
 	}
+	if (!data) return [];
 	return (data as { lng: number; lat: number }[]).map((r) => ({
 		lng: r.lng,
 		lat: r.lat,
@@ -10260,10 +10279,11 @@ export async function fetchClubsInBbox(bbox: {
 		p_max_lat: bbox.maxLat,
 		p_limit: bbox.limit ?? 100,
 	}, { get: true });
-	if (error || !data) {
+	if (error) {
 		console.warn('fetchClubsInBbox failed', error);
-		return [];
+		throw dbError(error);
 	}
+	if (!data) return [];
 	return data as ClubPin[];
 }
 
@@ -10324,10 +10344,11 @@ export async function fetchDiscoverableRoutesInBbox(bbox: {
 		// generated arg type is number[], so cast past the null.
 		p_dist_max: (ranges.max ?? undefined) as number[] | undefined,
 	});
-	if (error || !data) {
+	if (error) {
 		console.warn('fetchDiscoverableRoutesInBbox failed', error);
-		return [];
+		throw dbError(error);
 	}
+	if (!data) return [];
 	return data as DiscoverableRoutePin[];
 }
 
@@ -10365,10 +10386,11 @@ export async function fetchUpcomingRacesInBbox(bbox: {
 		p_limit: bbox.limit ?? 100,
 		p_official_only: bbox.officialOnly ?? false,
 	}, { get: true });
-	if (error || !data) {
+	if (error) {
 		console.warn('fetchUpcomingRacesInBbox failed', error);
-		return [];
+		throw dbError(error);
 	}
+	if (!data) return [];
 	return data as UpcomingRacePin[];
 }
 
@@ -10655,7 +10677,9 @@ export interface GearRotationWithMembers extends GearRotation {
 /// Fetch every rotation the signed-in user owns, each with its member
 /// gear ids. Two owner-scoped reads (rotations + the membership join)
 /// stitched client-side — both are tiny (a runner has a handful of
-/// rotations), and RLS scopes each to the owner.
+/// rotations), and RLS scopes each to the owner. Throws on a failed read, so
+/// the gear page shows an error rather than "No rotations yet" (issue #1374
+/// FS-4).
 export async function fetchMyGearRotations(): Promise<GearRotationWithMembers[]> {
 	const { data: rotations, error: rotErr } = await supabase
 		.from(TABLES.gear_rotations)
@@ -10663,14 +10687,14 @@ export async function fetchMyGearRotations(): Promise<GearRotationWithMembers[]>
 		.order('name', { ascending: true });
 	if (rotErr) {
 		console.error('fetchMyGearRotations failed', rotErr);
-		return [];
+		throw dbError(rotErr);
 	}
 	const { data: members, error: memErr } = await supabase
 		.from(TABLES.gear_rotation_members)
 		.select('rotation_id, gear_id');
 	if (memErr) {
 		console.error('fetchMyGearRotations members failed', memErr);
-		return [];
+		throw dbError(memErr);
 	}
 	const byRotation = new Map<string, string[]>();
 	for (const m of (members ?? []) as { rotation_id: string; gear_id: string }[]) {
@@ -16517,6 +16541,14 @@ export async function fetchPlanCompletionWeeks(): Promise<PlanCompletionWeek[]> 
  *  members + writable by admins via RLS — mirrors fetchClubTemplates for
  *  training plans. */
 export async function fetchClubSessionTemplates(clubId: string): Promise<SessionPlan[]> {
+	return (await fetchClubSessionTemplatesWithError(clubId)).plans;
+}
+
+/// `fetchClubSessionTemplates` with the failure alongside the rows (issue
+/// #1374 FS-3).
+export async function fetchClubSessionTemplatesWithError(
+	clubId: string,
+): Promise<{ plans: SessionPlan[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from('session_plans')
 		.select('*')
@@ -16524,9 +16556,9 @@ export async function fetchClubSessionTemplates(clubId: string): Promise<Session
 		.order('updated_at', { ascending: false });
 	if (error) {
 		console.error('fetchClubSessionTemplates failed', error);
-		return [];
+		return { plans: [], error: dbError(error) };
 	}
-	return (data ?? []) as SessionPlan[];
+	return { plans: (data ?? []) as SessionPlan[], error: null };
 }
 
 /** Publish a personal session plan into a club-owned copy (the original is left
@@ -16594,6 +16626,14 @@ export async function cloneSessionTemplate(templateId: string): Promise<string> 
 export async function fetchClubGymRoutineTemplates(
 	clubId: string,
 ): Promise<(GymRoutineSummary & OfficialFlag)[]> {
+	return (await fetchClubGymRoutineTemplatesWithError(clubId)).routines;
+}
+
+/// `fetchClubGymRoutineTemplates` with the failure alongside the rows (issue
+/// #1374 FS-3).
+export async function fetchClubGymRoutineTemplatesWithError(
+	clubId: string,
+): Promise<{ routines: (GymRoutineSummary & OfficialFlag)[]; error: Error | null }> {
 	const { data, error } = await supabase
 		.from(TABLES.gym_routines)
 		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at, is_official')
@@ -16601,9 +16641,9 @@ export async function fetchClubGymRoutineTemplates(
 		.order('last_modified_at', { ascending: false });
 	if (error) {
 		console.error('fetchClubGymRoutineTemplates failed', error);
-		return [];
+		return { routines: [], error: dbError(error) };
 	}
-	return data ?? [];
+	return { routines: data ?? [], error: null };
 }
 
 /** Publish a personal gym routine into a club-owned template. The

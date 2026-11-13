@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../auth_error.dart';
+import '../follow_state.dart';
 import '../entity_link.dart';
 import '../help_destination.dart';
 import '../help_guides.dart' show HelpDestination;
@@ -464,6 +465,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       final l10n = AppLocalizations.of(context);
       if (wasFollowing) {
         await widget.api.unfollowUser(widget.userId);
+        FollowState.instance
+            .put(widget.api.userId, widget.userId, following: false);
         if (summary.profilePrivate && mounted) {
           setState(() {
             _runs = const [];
@@ -479,6 +482,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         showTopBanner(context, l10n.profileRequestWithdrawn);
       } else {
         final outcome = await widget.api.followUser(widget.userId);
+        if (outcome != FollowOutcome.requested) {
+          FollowState.instance
+              .put(widget.api.userId, widget.userId, following: true);
+        }
         if (!mounted) return;
         if (outcome == FollowOutcome.requested) {
           setState(() => _summary = summary.copyWith(viewerRequested: true));
@@ -621,12 +628,27 @@ class _ProfileScreenState extends State<ProfileScreen>
     });
     try {
       await widget.api.markNotificationRead(item.row.id);
-    } catch (_) {
-      /* best-effort */
+    } catch (e) {
+      // Optimistic, so a refused write puts the row back the way it was
+      // rather than showing it read until the next load brings it back
+      // unread (issue #1374 FS-14).
+      debugPrint('profile mark read failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _notifications = [
+          for (final n in _notifications)
+            n.row.id == item.row.id ? item : n,
+        ];
+      });
     }
   }
 
+  /// A mark-all write is in flight; the button is off until it settles.
+  bool _markingAllRead = false;
+
   Future<void> _markAllNotifsRead() async {
+    if (_markingAllRead) return;
+    setState(() => _markingAllRead = true);
     try {
       await widget.api.markAllNotificationsRead();
       if (!mounted) return;
@@ -643,6 +665,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           friendlyError(AppLocalizations.of(context), e),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _markingAllRead = false);
     }
   }
 
@@ -1248,7 +1272,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               if (hasUnread)
                 TextButton(
-                  onPressed: _markAllNotifsRead,
+                  onPressed: _markingAllRead ? null : _markAllNotifsRead,
                   child: Text(l10n.profileMarkAllRead),
                 ),
             ],

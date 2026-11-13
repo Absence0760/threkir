@@ -3534,6 +3534,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível eliminar da nuvem; a corrida foi mantida por enquanto — será tentado novamente quando estiver online.';
 
   @override
+  String get runDetailDeleting => 'A eliminar a corrida…';
+
+  @override
   String get runDetailSuggestLink => 'Vincular';
 
   @override
@@ -4869,6 +4872,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get heatmapNoRoutesHere => 'Nenhuma rota aqui';
 
   @override
+  String get heatmapLoadFailed =>
+      'Não foi possível carregar as rotas. Toque para tentar novamente';
+
+  @override
   String get heatmapNoRoutesHint =>
       'Nenhuma rota aqui. Mova o mapa ou altere os filtros.';
 
@@ -6084,6 +6091,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nenhuma rota partilhada com este clube ainda.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Não foi possível carregar as rotas deste clube. Verifique a sua ligação e tente novamente.';
+
+  @override
   String get clubDetailTemplateAdded => 'Modelo adicionado aos seus planos.';
 
   @override
@@ -6098,6 +6109,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Nenhum modelo de plano para este clube ainda.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Não foi possível carregar os modelos deste clube. Verifique a sua ligação e tente novamente.';
 
   @override
   String get clubDetailAdopt => 'Adotar';
@@ -6289,8 +6304,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível atualizar a presença. Tente novamente.';
 
   @override
-  String get eventRsvpFailed =>
-      'Não foi possível atualizar a sua confirmação. Tente novamente.';
+  String eventRsvpFailed(String error) {
+    return 'Não foi possível atualizar a sua confirmação: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Eu vou';
@@ -9574,6 +9590,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nenhum rodízio ainda. Crie um para agrupar um conjunto de ténis ou bicicletas.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Não foi possível carregar os seus rodízios. Nada foi removido. Verifique a sua ligação e tente novamente.';
+
+  @override
   String get gearRotationName => 'Nome do rodízio';
 
   @override
@@ -9619,6 +9639,11 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Não foi possível guardar o rodízio: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Não foi possível eliminar o rodízio: $error';
   }
 
   @override
@@ -12917,7 +12942,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get gymLibraryAdopting => 'A adotar…';
 
   @override
+  String get gymLibraryAdopted => 'Adicionada às minhas rotinas';
+
+  @override
   String get gymLibraryAdoptFailed => 'Não foi possível adotar a rotina.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Adicionada às suas rotinas. Aparecerá lá quando este telemóvel sincronizar.';
 
   @override
   String get gymRoutineDelete => 'Eliminar';
@@ -14067,6 +14099,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get coachingRosterSubtitle =>
       'Todos os seus atletas num relance — carga, adesão ao plano e risco de lesão.';
+
+  @override
+  String get coachingRosterLoadFailed =>
+      'Não foi possível carregar a sua lista de atletas.';
 
   @override
   String get coachingRosterNeverRun => 'Nenhuma corrida ainda';
@@ -17389,6 +17425,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get confirmAgeContinue => 'Continuar';
 
   @override
+  String get confirmAgeBackHint =>
+      'Confirme ambos para continuar ou toque em Sair para sair da conta.';
+
+  @override
   String get confirmAgeRecordError =>
       'Não foi possível registar o consentimento.';
 
@@ -19528,6 +19568,22 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Não foi possível atualizar. A mostrar o que foi carregado por último.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Guardado neste telemóvel. Será sincronizado quando voltar a estar online.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Eliminado neste telemóvel. Será sincronizado quando voltar a estar online.';
+
+  @override
+  String get pushTargetOpening => 'A abrir…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Não foi possível abrir essa notificação: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'Mais ações do plano';
@@ -26153,6 +26209,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Não foi possível excluir da nuvem; a corrida foi mantida por enquanto — será tentado novamente quando você estiver online.';
 
   @override
+  String get runDetailDeleting => 'Excluindo a corrida…';
+
+  @override
   String get runDetailSuggestLink => 'Vincular';
 
   @override
@@ -27488,6 +27547,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get heatmapNoRoutesHere => 'Nenhuma rota aqui';
 
   @override
+  String get heatmapLoadFailed =>
+      'Não foi possível carregar as rotas. Toque para tentar novamente';
+
+  @override
   String get heatmapNoRoutesHint =>
       'Nenhuma rota aqui. Mova o mapa ou altere os filtros.';
 
@@ -28703,6 +28766,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Nenhuma rota compartilhada com este clube ainda.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Não foi possível carregar as rotas deste clube. Verifique sua conexão e tente novamente.';
+
+  @override
   String get clubDetailTemplateAdded => 'Modelo adicionado aos seus planos.';
 
   @override
@@ -28717,6 +28784,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get clubDetailNoTemplates =>
       'Nenhum modelo de plano para este clube ainda.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Não foi possível carregar os modelos deste clube. Verifique sua conexão e tente novamente.';
 
   @override
   String get clubDetailAdopt => 'Adotar';
@@ -28907,8 +28978,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Não foi possível atualizar a presença. Tente novamente.';
 
   @override
-  String get eventRsvpFailed =>
-      'Não foi possível atualizar sua confirmação. Tente novamente.';
+  String eventRsvpFailed(String error) {
+    return 'Não foi possível atualizar sua confirmação: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Eu vou';
@@ -32185,6 +32257,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Nenhum rodízio ainda. Crie um para agrupar um conjunto de tênis ou bicicletas.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Não foi possível carregar seus rodízios. Nada foi removido. Verifique sua conexão e tente novamente.';
+
+  @override
   String get gearRotationName => 'Nome do rodízio';
 
   @override
@@ -32230,6 +32306,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Não foi possível salvar o rodízio: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Não foi possível excluir o rodízio: $error';
   }
 
   @override
@@ -35529,7 +35610,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get gymLibraryAdopting => 'Adotando…';
 
   @override
+  String get gymLibraryAdopted => 'Adicionada às minhas rotinas';
+
+  @override
   String get gymLibraryAdoptFailed => 'Não foi possível adotar a rotina.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Adicionada às suas rotinas. Ela aparecerá lá quando este celular sincronizar.';
 
   @override
   String get gymRoutineDelete => 'Excluir';
@@ -36678,6 +36766,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachingRosterSubtitle =>
       'Todos os seus atletas num relance — carga, adesão ao plano e risco de lesão.';
+
+  @override
+  String get coachingRosterLoadFailed =>
+      'Não foi possível carregar sua lista de atletas.';
 
   @override
   String get coachingRosterNeverRun => 'Nenhuma corrida ainda';
@@ -39996,6 +40088,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get confirmAgeContinue => 'Continuar';
 
   @override
+  String get confirmAgeBackHint =>
+      'Confirme ambos para continuar ou toque em Sair para sair da conta.';
+
+  @override
   String get confirmAgeRecordError =>
       'Não foi possível registrar o consentimento.';
 
@@ -42131,6 +42227,22 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get commonStaleRefreshFailed =>
       'Não foi possível atualizar. Mostrando o que foi carregado por último.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Salvo neste celular. Será sincronizado quando você voltar a ficar online.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Excluído neste celular. Será sincronizado quando você voltar a ficar online.';
+
+  @override
+  String get pushTargetOpening => 'Abrindo…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Não foi possível abrir essa notificação: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'Mais ações do plano';

@@ -85,9 +85,17 @@ class _RotApi extends ApiClient {
   @override
   String? get userId => 'viewer-1';
 
+  /// Reads fail while this is set, standing in for a dead connection.
+  bool failReads = false;
+
+  /// Deletes fail while this is set.
+  bool failDelete = false;
+
   @override
-  Future<List<GearRotationWithMembers>> fetchMyGearRotations() async =>
-      List.of(_rows);
+  Future<List<GearRotationWithMembers>> fetchMyGearRotations() async {
+    if (failReads) throw const SocketException('offline');
+    return List.of(_rows);
+  }
 
   @override
   Future<GearRotationRow> createGearRotation(String name) async {
@@ -102,6 +110,7 @@ class _RotApi extends ApiClient {
   @override
   Future<void> deleteGearRotation(String id) async {
     deleteCalls++;
+    if (failDelete) throw Exception('refused');
   }
 
   @override
@@ -119,6 +128,8 @@ Future<({LocalGearStore store, Directory dir})> _setup(String tag) async {
   await store.init(overrideDirectory: dir);
   return (store: store, dir: dir);
 }
+
+final _l10n = lookupAppLocalizations(const Locale('en'));
 
 Widget _app(ApiClient api, LocalGearStore store) => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -145,6 +156,46 @@ void main() {
             'No rotations yet. Create one to group a set of shoes or bikes.'),
         findsOneWidget,
       );
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  // Issue #1374 FS-4: a failed read said "Couldn't save rotation" (on a read)
+  // and then "No rotations yet", and runners re-created what they had.
+  testWidgets('a failed load is an error with Retry, never the empty list',
+      (tester) async {
+    final f = await _setup('loadfail');
+    final api = _RotApi(seed: [_rot(name: 'Race day')])..failReads = true;
+    try {
+      await _pump(tester, _app(api, f.store));
+      expect(find.text(_l10n.gearRotationsLoadFailed), findsOneWidget);
+      expect(find.text(_l10n.gearRotationsEmpty), findsNothing);
+      expect(find.textContaining("Couldn't save rotation"), findsNothing);
+
+      api.failReads = false;
+      await tester.tap(find.text(_l10n.errorStateRetry));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Race day'), findsOneWidget);
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('a failed refresh keeps the rows and says so', (tester) async {
+    final f = await _setup('stale');
+    final api = _RotApi(seed: [_rot(name: 'Race day')]);
+    try {
+      await _pump(tester, _app(api, f.store));
+      api.failReads = true;
+      await tester.fling(find.text('Race day'), const Offset(0, 400), 1000);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Race day'), findsOneWidget);
+      expect(find.text(_l10n.commonStaleOffline), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
     } finally {
       f.dir.deleteSync(recursive: true);
     }
@@ -229,6 +280,29 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump();
       expect(api.deleteCalls, 1);
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('a failed delete says delete, not save', (tester) async {
+    final f = await _setup('deletefail');
+    final api = _RotApi(seed: [_rot(name: 'Trail')])..failDelete = true;
+    try {
+      await _pump(tester, _app(api, f.store));
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('Delete').last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.textContaining("Couldn't delete rotation"), findsOneWidget);
+      expect(find.textContaining("Couldn't save rotation"), findsNothing);
+      expect(find.text('Trail'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
     } finally {
       f.dir.deleteSync(recursive: true);
     }

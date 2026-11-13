@@ -187,8 +187,32 @@ void main() {
     expect(pendingSettingsDestination.value, SettingsDestination.account);
   });
 
+  // Issue #1374 NS-14: Android killing the app while the camera ran lost
+  // the photo; the picker keeps it, and the logger takes it back on open.
+  testWidgets('a photo the camera kept across a kill is picked back up',
+      (tester) async {
+    await _pump(
+      tester,
+      PlatePhotoForm(
+        store: _FakeStore(),
+        picker: (_) async => null,
+        lostReader: () async => Uint8List.fromList([9, 9, 9]),
+      ),
+    );
+    await tester.pump();
+    final button = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('plate-photo-estimate')));
+    expect(button.onPressed, isNotNull,
+        reason: 'the recovered photo is ready to estimate');
+  });
+
   testWidgets('estimate stays disabled until a picture is chosen', (tester) async {
-    await _pump(tester, PlatePhotoForm(store: _FakeStore(), picker: (_) async => null));
+    await _pump(
+        tester,
+        PlatePhotoForm(
+            store: _FakeStore(),
+            picker: (_) async => null,
+            lostReader: () async => null));
     final button = tester.widget<FilledButton>(find.byKey(const ValueKey('plate-photo-estimate')));
     expect(button.onPressed, isNull);
   });

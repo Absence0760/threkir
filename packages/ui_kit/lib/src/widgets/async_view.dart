@@ -54,6 +54,13 @@ class LoadingState extends StatelessWidget {
 ///
 /// Before the first read starts ([data] null, not loading, no error) it shows
 /// [loading], since a read is about to begin.
+///
+/// With [onRefresh], every settled state can be pulled to refresh: the empty
+/// and error states as well as the rows, so a list that came back empty or
+/// failed is never a dead end (issue #1374 FS-3). [builder] must then return
+/// something scrollable. The `RefreshIndicator` is always in the tree and only
+/// switched off while loading, because adding and removing it would remount
+/// the body. Leave it null inside `HubTabBody`, which owns the tab's pull.
 class AsyncView<T> extends StatelessWidget {
   const AsyncView({
     super.key,
@@ -65,6 +72,7 @@ class AsyncView<T> extends StatelessWidget {
     required this.errorBuilder,
     required this.loadingState,
     this.error,
+    this.onRefresh,
   });
 
   final bool loading;
@@ -78,13 +86,26 @@ class AsyncView<T> extends StatelessWidget {
   /// Usually a [LoadingState].
   final Widget loadingState;
 
+  final RefreshCallback? onRefresh;
+
   @override
   Widget build(BuildContext context) {
+    final onRefresh = this.onRefresh;
+    final (child, settled) = _state(context);
+    if (onRefresh == null) return child;
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      notificationPredicate: settled ? defaultScrollNotificationPredicate : (_) => false,
+      child: child,
+    );
+  }
+
+  (Widget, bool) _state(BuildContext context) {
     final data = this.data;
-    if (data != null && !isEmpty(data)) return builder(context, data);
-    if (loading) return loadingState;
-    if (error case final error?) return errorBuilder(context, error);
-    if (data == null) return loadingState;
-    return empty;
+    if (data != null && !isEmpty(data)) return (builder(context, data), true);
+    if (loading) return (loadingState, false);
+    if (error case final error?) return (errorBuilder(context, error), true);
+    if (data == null) return (loadingState, false);
+    return (empty, true);
   }
 }

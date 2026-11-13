@@ -3535,6 +3535,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo eliminar de la nube; la carrera se conserva por ahora — se reintentará al volver a estar en línea.';
 
   @override
+  String get runDetailDeleting => 'Eliminando la carrera…';
+
+  @override
   String get runDetailSuggestLink => 'Vincular';
 
   @override
@@ -4866,6 +4869,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get heatmapNoRoutesHere => 'No hay rutas aquí';
 
   @override
+  String get heatmapLoadFailed =>
+      'No se pudieron cargar las rutas. Toca para reintentar';
+
+  @override
   String get heatmapNoRoutesHint =>
       'No hay rutas aquí. Mueve el mapa o cambia los filtros.';
 
@@ -6078,6 +6085,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Aún no se han compartido rutas con este club.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'No se pudieron cargar las rutas de este club. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
   String get clubDetailTemplateAdded => 'Plantilla añadida a tus planes.';
 
   @override
@@ -6092,6 +6103,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Aún no hay plantillas de plan para este club.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'No se pudieron cargar las plantillas de este club. Comprueba tu conexión e inténtalo de nuevo.';
 
   @override
   String get clubDetailAdopt => 'Adoptar';
@@ -6282,8 +6297,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo actualizar la asistencia. Inténtalo de nuevo.';
 
   @override
-  String get eventRsvpFailed =>
-      'No se pudo actualizar tu confirmación. Inténtalo de nuevo.';
+  String eventRsvpFailed(String error) {
+    return 'No se pudo actualizar tu confirmación: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Me apunto';
@@ -9567,6 +9583,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Aún no hay rotaciones. Crea una para agrupar un conjunto de zapatillas o bicicletas.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'No se pudieron cargar tus rotaciones. No se ha eliminado nada. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
   String get gearRotationName => 'Nombre de la rotación';
 
   @override
@@ -9612,6 +9632,11 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'No se pudo guardar la rotación: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'No se pudo eliminar la rotación: $error';
   }
 
   @override
@@ -12909,7 +12934,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymLibraryAdopting => 'Adoptando…';
 
   @override
+  String get gymLibraryAdopted => 'Añadida a mis rutinas';
+
+  @override
   String get gymLibraryAdoptFailed => 'No se pudo adoptar la rutina.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Añadida a tus rutinas. Aparecerá allí cuando este teléfono se sincronice.';
 
   @override
   String get gymRoutineDelete => 'Eliminar';
@@ -14060,6 +14092,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get coachingRosterSubtitle =>
       'Todos tus atletas de un vistazo: carga, cumplimiento del plan y riesgo de lesión.';
+
+  @override
+  String get coachingRosterLoadFailed =>
+      'No se pudo cargar tu lista de atletas.';
 
   @override
   String get coachingRosterNeverRun => 'Sin carreras todavía';
@@ -17381,6 +17417,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get confirmAgeContinue => 'Continuar';
 
   @override
+  String get confirmAgeBackHint =>
+      'Confirma ambas cosas para continuar o cierra sesión para salir.';
+
+  @override
   String get confirmAgeRecordError => 'No se pudo registrar el consentimiento.';
 
   @override
@@ -19518,6 +19558,22 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'No se pudo actualizar. Se muestra lo último que se cargó.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Guardado en este teléfono. Se sincronizará cuando vuelvas a tener conexión.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Eliminado en este teléfono. Se sincronizará cuando vuelvas a tener conexión.';
+
+  @override
+  String get pushTargetOpening => 'Abriendo…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'No se pudo abrir esa notificación: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'Más acciones del plan';

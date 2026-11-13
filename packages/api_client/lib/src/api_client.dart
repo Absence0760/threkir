@@ -344,8 +344,9 @@ class ApiClient {
   /// `heatmap_points_in_bbox` PostGIS RPC (migration 20260828_001),
   /// capped at [maxPoints] (default 5000) regardless of bbox size —
   /// a continent-wide pan returns the same point count as a city
-  /// pan, just spread thinner. Returns an empty list on RPC error
-  /// so the caller's map layer renders blank rather than throwing.
+  /// pan, just spread thinner. Throws on a failed read, so the map can say
+  /// the layer failed rather than drawing it as "no activity here" (issue
+  /// #1374 FS-10).
   ///
   /// Mirrors `apps/web/src/lib/core/data.ts:fetchHeatmapPoints`.
   Future<List<HeatmapPoint>> fetchHeatmapPoints({
@@ -376,9 +377,8 @@ class ApiClient {
         );
       }).toList();
     } catch (e) {
-      // Caller's map layer stays blank on RPC failure.
       debugPrint('fetchHeatmapPoints failed: ${safeErrorLabel(e)}');
-      return const [];
+      rethrow;
     }
   }
 
@@ -2720,8 +2720,9 @@ class ApiClient {
   /// 'official' lens at most a quarter of [limit] rank ahead of community
   /// routes and the rest backfill after them. [distMin]/[distMax] are the
   /// parallel race-distance band bounds (a null [distMax] element =
-  /// open-ended ultra); omit them for no distance filter. Fails soft to an
-  /// empty list.
+  /// open-ended ultra); omit them for no distance filter. Throws on a failed
+  /// read: the discovery map read `[]` as "No routes here" (issue #1374
+  /// FS-10).
   Future<List<DiscoverableRoutePin>> fetchDiscoverableRoutesInBbox({
     required double minLng,
     required double minLat,
@@ -2766,12 +2767,12 @@ class ApiClient {
       }).toList();
     } catch (e) {
       debugPrint('fetchDiscoverableRoutesInBbox failed: ${safeErrorLabel(e)}');
-      return const [];
+      rethrow;
     }
   }
 
   /// Public clubs inside the viewport bbox for the discovery map's club
-  /// layer. Mirror of the web `fetchClubsInBbox`. Fails soft.
+  /// layer. Mirror of the web `fetchClubsInBbox`. Throws on a failed read.
   Future<List<ClubPin>> fetchClubsInBbox({
     required double minLng,
     required double minLat,
@@ -2804,14 +2805,14 @@ class ApiClient {
       }).toList();
     } catch (e) {
       debugPrint('fetchClubsInBbox failed: ${safeErrorLabel(e)}');
-      return const [];
+      rethrow;
     }
   }
 
   /// Upcoming verified races inside the viewport bbox, for the discovery
   /// map's race pins. Mirror of the web `fetchUpcomingRacesInBbox`;
   /// [officialOnly] narrows to official organisers' races for the Official
-  /// lens. Fails soft.
+  /// lens. Throws on a failed read.
   Future<List<UpcomingRacePin>> fetchUpcomingRacesInBbox({
     required double minLng,
     required double minLat,
@@ -2846,7 +2847,7 @@ class ApiClient {
       }).toList();
     } catch (e) {
       debugPrint('fetchUpcomingRacesInBbox failed: ${safeErrorLabel(e)}');
-      return const [];
+      rethrow;
     }
   }
 
@@ -6744,7 +6745,9 @@ class ApiClient {
 
   /// Club-owned session plans (the club's "session templates"). Visible to
   /// members + writable by admins via RLS. Mirrors [fetchClubTemplates] +
-  /// web `fetchClubSessionTemplates` (session_planner.md P3).
+  /// web `fetchClubSessionTemplates` (session_planner.md P3). Throws on a
+  /// failed read, so the club's Templates tab shows an error rather than "no
+  /// templates" (issue #1374 FS-3).
   Future<List<SessionPlanRow>> fetchClubSessionTemplates(String clubId) async {
     try {
       final data = await _client
@@ -6757,8 +6760,8 @@ class ApiClient {
               (r) => SessionPlanRow.fromJson(r as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      debugPrint('fetchClubSessionTemplates failed: $e');
-      return const [];
+      debugPrint('fetchClubSessionTemplates failed: ${safeErrorLabel(e)}');
+      rethrow;
     }
   }
 
@@ -8579,8 +8582,8 @@ class ApiClient {
 
   /// Club-owned gym routines published as templates (`gym_routines.club_id`
   /// set). RLS exposes these to club members. Mirrors web
-  /// `fetchClubGymRoutineTemplates` + the session-template fetch's fail-soft
-  /// shape (gym_routine_club_templates, migration 20270109_001).
+  /// `fetchClubGymRoutineTemplates` (gym_routine_club_templates, migration
+  /// 20270109_001). Throws on a failed read, like the session-template fetch.
   Future<List<GymRoutineRow>> fetchClubGymRoutineTemplates(String clubId) async {
     try {
       final data = await _client
@@ -8592,8 +8595,8 @@ class ApiClient {
           .map((r) => GymRoutineRow.fromJson(r as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      debugPrint('fetchClubGymRoutineTemplates failed: $e');
-      return const [];
+      debugPrint('fetchClubGymRoutineTemplates failed: ${safeErrorLabel(e)}');
+      rethrow;
     }
   }
 

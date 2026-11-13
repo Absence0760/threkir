@@ -3539,6 +3539,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Löschen in der Cloud fehlgeschlagen; der Lauf bleibt vorerst erhalten – wird erneut versucht, sobald du wieder online bist.';
 
   @override
+  String get runDetailDeleting => 'Lauf wird gelöscht…';
+
+  @override
   String get runDetailSuggestLink => 'Verknüpfen';
 
   @override
@@ -4883,6 +4886,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get heatmapNoRoutesHere => 'Hier keine Routen';
 
   @override
+  String get heatmapLoadFailed =>
+      'Routen konnten nicht geladen werden. Tippen für neuen Versuch';
+
+  @override
   String get heatmapNoRoutesHint =>
       'Hier keine Routen. Verschiebe die Karte oder ändere die Filter.';
 
@@ -6101,6 +6108,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Mit diesem Club wurden noch keine Routen geteilt.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Die Routen dieses Clubs konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get clubDetailTemplateAdded => 'Vorlage zu deinen Plänen hinzugefügt.';
 
   @override
@@ -6115,6 +6126,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Noch keine Planvorlagen für diesen Club.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Die Vorlagen dieses Clubs konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get clubDetailAdopt => 'Übernehmen';
@@ -6305,8 +6320,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Teilnahme konnte nicht aktualisiert werden. Bitte erneut versuchen.';
 
   @override
-  String get eventRsvpFailed =>
-      'Deine Zusage konnte nicht aktualisiert werden. Bitte erneut versuchen.';
+  String eventRsvpFailed(String error) {
+    return 'Deine Zusage konnte nicht aktualisiert werden: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Bin dabei';
@@ -9587,6 +9603,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Noch keine Rotationen. Erstelle eine, um eine Gruppe von Schuhen oder Rädern zusammenzufassen.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Deine Rotationen konnten nicht geladen werden. Es wurde nichts entfernt. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get gearRotationName => 'Name der Rotation';
 
   @override
@@ -9632,6 +9652,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Rotation konnte nicht gespeichert werden: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Rotation konnte nicht gelöscht werden: $error';
   }
 
   @override
@@ -12931,7 +12956,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get gymLibraryAdopting => 'Wird übernommen…';
 
   @override
+  String get gymLibraryAdopted => 'Zu meinen Routinen hinzugefügt';
+
+  @override
   String get gymLibraryAdoptFailed => 'Routine konnte nicht übernommen werden.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Zu deinen Routinen hinzugefügt. Sie erscheint dort, sobald dieses Smartphone synchronisiert.';
 
   @override
   String get gymRoutineDelete => 'Löschen';
@@ -14081,6 +14113,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachingRosterSubtitle =>
       'Alle Athleten auf einen Blick – Belastung, Plantreue und Verletzungsrisiko.';
+
+  @override
+  String get coachingRosterLoadFailed =>
+      'Deine Athletenübersicht konnte nicht geladen werden.';
 
   @override
   String get coachingRosterNeverRun => 'Noch keine Läufe';
@@ -17402,6 +17438,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get confirmAgeContinue => 'Weiter';
 
   @override
+  String get confirmAgeBackHint =>
+      'Bestätige beides, um fortzufahren, oder melde dich ab, um zu gehen.';
+
+  @override
   String get confirmAgeRecordError =>
       'Einwilligung konnte nicht gespeichert werden.';
 
@@ -19545,6 +19585,22 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt geladene Stand.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Auf diesem Smartphone gespeichert. Wird synchronisiert, sobald du wieder online bist.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Auf diesem Smartphone gelöscht. Wird synchronisiert, sobald du wieder online bist.';
+
+  @override
+  String get pushTargetOpening => 'Wird geöffnet…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Diese Benachrichtigung konnte nicht geöffnet werden: $error';
+  }
 
   @override
   String get planDetailMoreActions => 'Weitere Planaktionen';

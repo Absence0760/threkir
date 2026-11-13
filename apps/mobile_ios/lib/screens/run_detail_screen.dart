@@ -1223,6 +1223,21 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               tooltip: l10n.runDetailSharePr,
               onPressed: _sharing ? null : _sharePrCard,
             ),
+          if (_deleting)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Center(
+                child: SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(
+                    key: const Key('run-detail-deleting'),
+                    strokeWidth: 2,
+                    semanticsLabel: l10n.runDetailDeleting,
+                  ),
+                ),
+              ),
+            )
+          else
           PopupMenuButton<String>(
             tooltip: l10n.runDetailMoreTooltip,
             onSelected: (action) {
@@ -1260,6 +1275,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               if (widget.apiClient?.userId != null && _isPublic == true)
                 PopupMenuItem(
                   value: 'make_private',
+                  enabled: !_visibilityBusy,
                   child: ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.lock_outline),
@@ -3149,6 +3165,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// link, the visibility chip or the overflow menu.
   bool _visibilityBusy = false;
 
+  /// A delete is in flight: the overflow menu becomes a spinner, so a second
+  /// confirm cannot fire while the first is still waiting on the network
+  /// (issue #1374 FS-13).
+  bool _deleting = false;
+
   /// The visibility chip under the title. It is the control for who can see
   /// the run, not a label: the owner could not find how to make a run public
   /// when the only path was the Share sheet's link action.
@@ -3390,6 +3411,19 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   Future<void> _makePrivate() async {
     final api = widget.apiClient;
     if (api == null || api.userId == null || _visibilityBusy) return;
+    // Busy from the confirm until the write settles, so a second tap on the
+    // chip or the menu cannot open a second confirm (issue #1374 FS-13).
+    _visibilityBusy = true;
+    setState(() {});
+    try {
+      await _makePrivateConfirmed(api);
+    } finally {
+      _visibilityBusy = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _makePrivateConfirmed(ApiClient api) async {
     final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
@@ -3520,31 +3554,43 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         ],
       ),
     );
-    if (ok == true) {
-      final api = widget.apiClient;
-      if (api != null && api.userId != null) {
-        try {
-          await api.deleteRun(run);
-        } catch (e) {
-          debugPrint('run_detail: remote delete failed, queued for retry: $e');
-          // Keep the local copy — deleting it while the cloud row survives
-          // makes the run resurrect on the next resync (and keeps a shared
-          // public link alive). Queue the delete for SyncService to retry;
-          // on success the retry also removes the local copy. Mirrors the
-          // runs_screen bulk-delete path (data-sync audit P0-1).
-          await widget.runStore.markPendingRemoteDelete(
-            run.id,
-            ownerUserId: api.userId,
-          );
-          if (context.mounted) {
-            showTopBanner(context, l10n.runDetailDeleteQueued);
-          }
-          return;
-        }
-      }
-      await widget.runStore.delete(run.id);
-      if (context.mounted) Navigator.pop(context);
+    if (ok != true || _deleting || !mounted) return;
+    setState(() => _deleting = true);
+    try {
+      await _deleteConfirmed(context, l10n);
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
+  }
+
+  Future<void> _deleteConfirmed(
+      BuildContext context, AppLocalizations l10n) async {
+    final api = widget.apiClient;
+    if (api != null && api.userId != null) {
+      try {
+        // A delete is idempotent, so it may carry the load timeout: a
+        // network that never answers falls into the queued-retry path
+        // below rather than holding the screen for minutes.
+        await api.deleteRun(run).timeout(kBackendLoadTimeout);
+      } catch (e) {
+        debugPrint('run_detail: remote delete failed, queued for retry: $e');
+        // Keep the local copy — deleting it while the cloud row survives
+        // makes the run resurrect on the next resync (and keeps a shared
+        // public link alive). Queue the delete for SyncService to retry;
+        // on success the retry also removes the local copy. Mirrors the
+        // runs_screen bulk-delete path (data-sync audit P0-1).
+        await widget.runStore.markPendingRemoteDelete(
+          run.id,
+          ownerUserId: api.userId,
+        );
+        if (context.mounted) {
+          showTopBanner(context, l10n.runDetailDeleteQueued);
+        }
+        return;
+      }
+    }
+    await widget.runStore.delete(run.id);
+    if (context.mounted) Navigator.pop(context);
   }
 
 

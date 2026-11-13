@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, LoadingState;
 import 'package:flutter/services.dart';
 
 import '../auth_error.dart';
@@ -18,6 +18,8 @@ import '../web_base_url.dart';
 import '../widgets/coach_assist_consent_switch.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/metric_label.dart';
+import '../widgets/error_state.dart';
+import '../widgets/stale_refresh_banner.dart';
 import '../widgets/top_banner.dart';
 import 'coaching_athlete_screen.dart';
 
@@ -90,6 +92,12 @@ class _CoachingScreenState extends State<CoachingScreen> {
   List<PendingCoachInvite> _pending = const [];
   List<CoachAthleteLink> _coaches = const [];
   List<CoachRosterRow> _roster = const [];
+  // A failed read is shown, never drawn as "No athletes yet" (issue #1374
+  // FS-7): the page-level reads fail as a whole-page error until something has
+  // loaded, and the roster, which can fail on its own, says so on its card.
+  bool _loaded = false;
+  Object? _loadError;
+  bool _rosterFailed = false;
   bool _coachAssist = false;
 
   @override
@@ -110,16 +118,26 @@ class _CoachingScreenState extends State<CoachingScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    if (!_loaded) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
+    // The roster fails on its own: its card shows the failure with Retry while
+    // the rest of the page still loads (mirrors web's rosterError).
+    var rosterFailed = false;
+    final roster = widget.api.fetchCoachRosterSummary().catchError((Object e) {
+      debugPrint('coaching roster load error: $e');
+      rosterFailed = true;
+      return _roster;
+    });
     try {
       final results = await Future.wait([
         widget.api.fetchMyAthletes(),
         widget.api.fetchPendingCoachInvites(),
         widget.api.fetchMyCoaches(),
-        // Roster failure is non-fatal — the rest of the screen still loads, the
-        // roster card just stays hidden (mirrors the web fail-soft section).
-        widget.api.fetchCoachRosterSummary().catchError(
-            (_) => const <CoachRosterRow>[]),
+        roster,
       ]);
       if (!mounted) return;
       setState(() {
@@ -127,14 +145,19 @@ class _CoachingScreenState extends State<CoachingScreen> {
         _pending = results[1] as List<PendingCoachInvite>;
         _coaches = results[2] as List<CoachAthleteLink>;
         _roster = results[3] as List<CoachRosterRow>;
+        _rosterFailed = rosterFailed;
+        _loaded = true;
+        _loadError = null;
         _loading = false;
       });
     } catch (e) {
       debugPrint('coaching load error: $e');
       if (!mounted) return;
-      setState(() => _loading = false);
-      showTopBanner(
-          context, AppLocalizations.of(context).coachingLoadError(friendlyError(AppLocalizations.of(context), e)));
+      setState(() {
+        _loading = false;
+        if (!_loaded) _loadError = e;
+      });
+      if (_loaded) showStaleRefreshBanner(context, e);
     }
   }
 
@@ -241,7 +264,12 @@ class _CoachingScreenState extends State<CoachingScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.coachingTitle)),
       body: _loading
-          ? ListSkeleton(label: l10n.commonLoading, hasLeading: false)
+          ? LoadingState.list(label: l10n.commonLoading, hasLeading: false)
+          : _loadError != null
+          ? AppErrorState(
+              message: l10n.coachingLoadError(friendlyError(l10n, _loadError!)),
+              onRetry: _load,
+            )
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -252,7 +280,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           )),
                   const SizedBox(height: 20),
-                  if (_roster.isNotEmpty) ...[
+                  if (_roster.isNotEmpty || _rosterFailed) ...[
                     _rosterCard(l10n),
                     const SizedBox(height: 16),
                   ],
@@ -284,6 +312,9 @@ class _CoachingScreenState extends State<CoachingScreen> {
                   color: theme.colorScheme.onSurfaceVariant,
                 )),
             const SizedBox(height: 8),
+            if (_rosterFailed)
+              AppErrorState.inline(
+                  message: l10n.coachingRosterLoadFailed, onRetry: _load),
             for (final r in rows) _rosterRow(r, unit, l10n),
           ],
         ),

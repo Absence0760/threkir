@@ -1,5 +1,6 @@
 import '../widgets/grisnir_moments.dart';
 import '../activity_type_labels.dart';
+import '../engagement_cache.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -153,6 +154,7 @@ class _FeedScreenState extends State<FeedScreen> {
     final followees = await _loadFollowees();
     final engagement = await _loadEngagement(_runIds(entries));
     if (!mounted) return;
+    _share(engagement);
     setState(() {
       _entries = entries;
       _followees = followees;
@@ -179,6 +181,15 @@ class _FeedScreenState extends State<FeedScreen> {
   // Per-run kudos / comment counts. Runs only (lift cards carry no
   // engagement footer). A failure degrades to no counts, never blanks
   // the feed.
+  /// The server's counts as of this load, shared app-wide so a card built
+  /// later reads the newest of this and any change made elsewhere since.
+  void _share(Map<String, EngagementSummary> engagement) {
+    final viewer = widget.api.userId;
+    for (final MapEntry(key: runId, value: eng) in engagement.entries) {
+      EngagementCache.instance.put(viewer, runId, eng);
+    }
+  }
+
   Future<Map<String, EngagementSummary>> _loadEngagement(
       List<String> runIds) async {
     if (runIds.isEmpty) return const {};
@@ -211,6 +222,7 @@ class _FeedScreenState extends State<FeedScreen> {
       );
       final moreEng = await _loadEngagement(_runIds(more));
       if (!mounted) return;
+      _share(moreEng);
       setState(() {
         _entries = [..._entries, ...more];
         _engagement = {..._engagement, ...moreEng};
@@ -712,10 +724,35 @@ class _EngagementFooterState extends State<_EngagementFooter> {
   late EngagementSummary _eng;
   bool _busy = false;
 
+  final _cache = EngagementCache.instance;
+
+  /// Sets [_eng] and shares it, so the run's own page and this card agree.
+  set _engagement(EngagementSummary eng) {
+    _eng = eng;
+    _cache.put(widget.api.userId, widget.runId, eng);
+  }
+
   @override
   void initState() {
     super.initState();
-    _eng = widget.initialEngagement ?? _empty;
+    // A change made on the run's own page since the feed loaded is newer
+    // than the feed's copy (issue #1374 NS-9).
+    _eng = _cache.of(widget.api.userId, widget.runId) ??
+        widget.initialEngagement ??
+        _empty;
+    _cache.addListener(_onCache);
+  }
+
+  @override
+  void dispose() {
+    _cache.removeListener(_onCache);
+    super.dispose();
+  }
+
+  void _onCache() {
+    if (_busy || !mounted) return;
+    final eng = _cache.of(widget.api.userId, widget.runId);
+    if (eng != null && !identical(eng, _eng)) setState(() => _eng = eng);
   }
 
   @override
@@ -726,7 +763,7 @@ class _EngagementFooterState extends State<_EngagementFooter> {
     // since, in which case our optimistic state is the truth.
     final fresh = widget.initialEngagement;
     if (!_busy && fresh != null && fresh != old.initialEngagement) {
-      _eng = fresh;
+      _engagement = fresh;
     }
   }
 
@@ -735,7 +772,7 @@ class _EngagementFooterState extends State<_EngagementFooter> {
     final prev = _eng;
     setState(() {
       _busy = true;
-      _eng = EngagementSummary(
+      _engagement = EngagementSummary(
         kudosCount: prev.viewerHasKudos
             ? (prev.kudosCount - 1).clamp(0, 1 << 30)
             : prev.kudosCount + 1,
@@ -752,7 +789,7 @@ class _EngagementFooterState extends State<_EngagementFooter> {
       // optimistic +/-1 was wrong: the flag is right but the count drifted.
       // Undo the count delta while keeping the corrected flag.
       if (!changed && mounted) {
-        setState(() => _eng = EngagementSummary(
+        setState(() => _engagement = EngagementSummary(
               kudosCount: prev.kudosCount,
               viewerHasKudos: !prev.viewerHasKudos,
               commentCount: prev.commentCount,
@@ -761,7 +798,7 @@ class _EngagementFooterState extends State<_EngagementFooter> {
     } catch (e) {
       debugPrint('feed kudos update failed: $e');
       if (!mounted) return;
-      setState(() => _eng = prev);
+      setState(() => _engagement = prev);
       showTopBanner(
           context, AppLocalizations.of(context).feedKudosUpdateFailed(friendlyError(AppLocalizations.of(context), e)));
     } finally {

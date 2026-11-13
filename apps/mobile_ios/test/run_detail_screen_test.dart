@@ -348,6 +348,35 @@ class _DeleteFailApi extends ApiClient {
   }
 }
 
+/// Signed-in fake whose `deleteRun` waits on [gate].
+class _DeleteGatedApi extends ApiClient {
+  final gate = Completer<void>();
+  int calls = 0;
+
+  @override
+  String? get userId => 'user-1';
+
+  @override
+  Future<RunMatchInfo?> fetchRunMatchedTrack(String runId) async => null;
+
+  @override
+  Future<void> deleteRun(Run run) async {
+    calls += 1;
+    await gate.future;
+  }
+}
+
+/// Make-private whose write waits on [gate].
+class _MakePrivateGatedApi extends _MakePrivateApi {
+  final gate = Completer<void>();
+
+  @override
+  Future<void> makeRunPrivate(String runId) async {
+    calls += 1;
+    await gate.future;
+  }
+}
+
 /// Signed-in fake whose `deleteRun` succeeds.
 class _DeleteOkApi extends ApiClient {
   int calls = 0;
@@ -846,6 +875,43 @@ void main() {
       expect(api.calls, 1);
       expect(find.text('Run is now private'), findsOneWidget);
 
+    });
+
+    // Issue #1374 FS-13: Make private checked its busy flag but never set it,
+    // so a second tap during the write opened a second confirm.
+    testWidgets('make-private holds its control while the write is in flight',
+        (tester) async {
+      final run = _run(title: 'Morning Tempo');
+      final api = _MakePrivateGatedApi();
+      await _pump(tester, run, apiClient: api);
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Make private'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Make private'),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(api.calls, 1);
+
+      // The write is still pending: the menu's Make private is disabled.
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Make private'), warnIfMissed: false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Make this run private?'), findsNothing);
+
+      api.gate.complete();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(api.calls, 1);
     });
 
     testWidgets('make-private cancel leaves the run untouched',
@@ -1972,6 +2038,51 @@ void main() {
       expect(runStore.pendingRemoteDeleteIds, isEmpty);
       expect(find.byType(RunDetailScreen), findsNothing);
       expect(find.text('open detail'), findsOneWidget);
+    });
+
+    // Issue #1374 FS-13: the confirm closed and nothing showed the delete was
+    // running, so people confirmed it again.
+    testWidgets('an in-flight delete replaces the menu with a spinner',
+        (tester) async {
+      final run = _run(title: 'Morning Tempo');
+      final api = _DeleteGatedApi();
+      final runStore = await pumpForDelete(tester, run, apiClient: api);
+
+      // Inside runAsync so the delete's store I/O runs in the real zone, as
+      // deleteViaMenu does.
+      await tester.runAsync(() async {
+        await tester.tap(find.byTooltip('More'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.text('Delete run'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+        await tester.pump();
+        await pumpEventQueue();
+      });
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(api.calls, 1);
+      expect(find.byKey(const Key('run-detail-deleting')), findsOneWidget);
+      expect(find.byTooltip('More'), findsNothing);
+
+      await tester.runAsync(() async {
+        api.gate.complete();
+        await pumpEventQueue();
+      });
+      // The pop follows the store's file write, then animates.
+      await pumpUntil(
+        tester,
+        () => runStore.runs.isEmpty,
+        describe: 'the delete to reach the store',
+      );
+      await tester.runAsync(runStore.debugWritesSettled);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(RunDetailScreen), findsNothing);
     });
 
     testWidgets('signed-out delete stays local-only and pops',

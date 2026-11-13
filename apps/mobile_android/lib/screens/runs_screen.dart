@@ -44,6 +44,7 @@ import '../widgets/gym_compose_sheet.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/nutrition_log_sheet.dart';
 import '../widgets/run_list_tile.dart';
+import '../widgets/single_flight.dart';
 import 'add_run_screen.dart';
 import 'gym_detail_screen.dart';
 import 'gym_screen.dart';
@@ -246,6 +247,10 @@ class _RunsScreenState extends State<RunsScreen>
   final _searchCtl = TextEditingController();
 
   bool _selecting = false;
+
+  /// Opening a run reads it first, so a second tap in that read would open a
+  /// second detail over the first (issue #1374 NS-11).
+  final _open = SingleFlight();
   // Guards the bulk delete. Without it the trash action stayed live through
   // the whole per-run loop with `_selected` still populated, so a second tap
   // re-opened the confirm on the SAME set and a second confirm launched a
@@ -1037,19 +1042,15 @@ class _RunsScreenState extends State<RunsScreen>
     final unit = widget.preferences.unit;
     final totalCount = widget.runStore.summaries.length;
 
-    return PopScope(
-      canPop: !_selecting,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _selecting) _clearSelection();
-      },
-      child: HubTabBody(
-        title: _timelineMode ? l10n.navHistory : l10n.fitnessTabRuns,
-        filters: _timelineMode || totalCount == 0 ? null : _searchBar(l10n),
-        actions: _runActions(l10n),
-        primary: widget.showAddFab ? _addAction(l10n) : null,
-        selection: _selecting ? _selection(l10n) : null,
-        body: _buildBody(theme, l10n, unit, totalCount),
-      ),
+    // Back while selecting closes the selection through HubTabBody, which
+    // the hub asks only while this tab is showing (issue #1374 NS-2).
+    return HubTabBody(
+      title: _timelineMode ? l10n.navHistory : l10n.fitnessTabRuns,
+      filters: _timelineMode || totalCount == 0 ? null : _searchBar(l10n),
+      actions: _runActions(l10n),
+      primary: widget.showAddFab ? _addAction(l10n) : null,
+      selection: _selecting ? _selection(l10n) : null,
+      body: _buildBody(theme, l10n, unit, totalCount),
     );
   }
 
@@ -1527,26 +1528,27 @@ class _RunsScreenState extends State<RunsScreen>
 
   /// Open a run row from the timeline. The run is usually in the local store
   /// (same data backs both); for one beyond the cached page, fetch it by id.
-  Future<void> _openActivityRun(ActivityRow row) async {
-    // Local-first: a resident run or one hydrated from disk; only fall back to
-    // the cloud when the run isn't on the device at all.
-    var run = await widget.runStore.runById(row.id);
-    run ??= await widget.apiClient?.fetchRunById(row.id);
-    if (run == null || !mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RunDetailScreen(
-          run: run!,
-          runStore: widget.runStore,
-          routeStore: widget.routeStore,
-          preferences: widget.preferences,
-          apiClient: widget.apiClient,
-          settingsSync: widget.settingsSync,
-        ),
-      ),
-    );
-  }
+  Future<void> _openActivityRun(ActivityRow row) =>
+      _open.openOnce(() async {
+        // Local-first: a resident run or one hydrated from disk; only fall back to
+        // the cloud when the run isn't on the device at all.
+        var run = await widget.runStore.runById(row.id);
+        run ??= await widget.apiClient?.fetchRunById(row.id);
+        if (run == null || !mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RunDetailScreen(
+              run: run!,
+              runStore: widget.runStore,
+              routeStore: widget.routeStore,
+              preferences: widget.preferences,
+              apiClient: widget.apiClient,
+              settingsSync: widget.settingsSync,
+            ),
+          ),
+        );
+      });
 
   void _openActivityLift(ActivityRow row) {
     final store = widget.gymStore;
@@ -1801,23 +1803,25 @@ class _RunsScreenState extends State<RunsScreen>
           _toggleSelection(run.id);
           return;
         }
-        // `run` may be a track-less summary (a row outside the resident
-        // window) — hydrate the full run before opening detail.
-        final full = await widget.runStore.runById(run.id) ?? run;
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RunDetailScreen(
-              run: full,
-              runStore: widget.runStore,
-              routeStore: widget.routeStore,
-              preferences: widget.preferences,
-              apiClient: widget.apiClient,
-              settingsSync: widget.settingsSync,
+        await _open.openOnce(() async {
+          // `run` may be a track-less summary (a row outside the resident
+          // window) — hydrate the full run before opening detail.
+          final full = await widget.runStore.runById(run.id) ?? run;
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RunDetailScreen(
+                run: full,
+                runStore: widget.runStore,
+                routeStore: widget.routeStore,
+                preferences: widget.preferences,
+                apiClient: widget.apiClient,
+                settingsSync: widget.settingsSync,
+              ),
             ),
-          ),
-        );
+          );
+        });
       },
       onLongPress: () {
         if (_selecting) return;

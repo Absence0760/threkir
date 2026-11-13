@@ -38,6 +38,8 @@ class _FakeApiClient extends ApiClient {
 
   // Discovery support.
   int discoverCalls = 0;
+  /// The routes read fails while set.
+  bool failRoutes = false;
   String? lastFilter;
   List<double>? lastDistMin;
   List<cm.DiscoverableRoutePin> nextPins = const [];
@@ -84,6 +86,7 @@ class _FakeApiClient extends ApiClient {
     List<double?>? distMax,
   }) async {
     discoverCalls++;
+    if (failRoutes) throw Exception('offline');
     lastFilter = filter;
     lastDistMin = distMin;
     lastMinLng = minLng;
@@ -597,6 +600,28 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Wash Park 5K Loop'), findsOneWidget);
+    });
+
+    // Issue #1374 FS-10: a failed fetch read as "No routes here", so the
+    // runner panned and changed filters over a map that never loaded.
+    testWidgets('a failed routes read says so on the pill, and a tap retries',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..failRoutes = true
+        ..nextPins = [_pin()];
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text(l10n.heatmapLoadFailed), findsOneWidget);
+      expect(find.text(l10n.heatmapNoRoutesHere), findsNothing);
+
+      api.failRoutes = false;
+      final calls = api.discoverCalls;
+      await tester.tap(find.byKey(const Key('heatmap-results-pill')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.discoverCalls, calls + 1);
+      expect(find.text('1 route'), findsOneWidget);
     });
 
     testWidgets('a result row names the surface in the reader\'s language, '

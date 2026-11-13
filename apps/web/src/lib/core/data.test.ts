@@ -2052,7 +2052,7 @@ test('every routes read hands back a normalised row, never the raw one', () => {
 	);
 
 	// The two reads that used to skip it.
-	for (const fn of ['fetchClubRoutes', 'saveRoute']) {
+	for (const fn of ['fetchClubRoutesWithError', 'saveRoute']) {
 		const at = source.indexOf(`export async function ${fn}(`);
 		assert.ok(at >= 0, `${fn} moved — re-anchor this guard`);
 		const fnBody = source.slice(at, source.indexOf('\nexport ', at + 1));
@@ -2374,7 +2374,7 @@ test('every gym / meal-template / recipe read and the row type it is read as nam
 		},
 		{ fn: 'createGymRoutine', type: 'GymRoutineSummary', table: 'gym_routines' },
 		{
-			fn: 'fetchClubGymRoutineTemplates',
+			fn: 'fetchClubGymRoutineTemplatesWithError',
 			type: 'GymRoutineSummary',
 			table: 'gym_routines',
 			extra: {

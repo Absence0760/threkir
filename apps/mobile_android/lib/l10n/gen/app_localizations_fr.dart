@@ -3541,6 +3541,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Échec de la suppression dans le cloud ; la course est conservée pour l\'instant — nouvelle tentative une fois en ligne.';
 
   @override
+  String get runDetailDeleting => 'Suppression de la course…';
+
+  @override
   String get runDetailSuggestLink => 'Associer';
 
   @override
@@ -4882,6 +4885,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get heatmapNoRoutesHere => 'Aucun itinéraire ici';
 
   @override
+  String get heatmapLoadFailed =>
+      'Impossible de charger les itinéraires. Touchez pour réessayer';
+
+  @override
   String get heatmapNoRoutesHint =>
       'Aucun itinéraire ici. Déplacez la carte ou modifiez les filtres.';
 
@@ -6097,6 +6104,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucun itinéraire partagé avec ce club pour le moment.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Impossible de charger les itinéraires de ce club. Vérifiez votre connexion et réessayez.';
+
+  @override
   String get clubDetailTemplateAdded => 'Modèle ajouté à vos plans.';
 
   @override
@@ -6111,6 +6122,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Aucun modèle de plan pour ce club pour le moment.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Impossible de charger les modèles de ce club. Vérifiez votre connexion et réessayez.';
 
   @override
   String get clubDetailAdopt => 'Adopter';
@@ -6301,8 +6316,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de mettre à jour la présence. Veuillez réessayer.';
 
   @override
-  String get eventRsvpFailed =>
-      'Impossible de mettre à jour votre réponse. Veuillez réessayer.';
+  String eventRsvpFailed(String error) {
+    return 'Impossible de mettre à jour votre réponse : $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Je viens';
@@ -9594,6 +9610,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucune rotation pour l\'instant. Créez-en une pour regrouper un ensemble de chaussures ou de vélos.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Impossible de charger vos rotations. Rien n\'a été supprimé. Vérifiez votre connexion et réessayez.';
+
+  @override
   String get gearRotationName => 'Nom de la rotation';
 
   @override
@@ -9639,6 +9659,11 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Impossible d\'enregistrer la rotation : $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Impossible de supprimer la rotation : $error';
   }
 
   @override
@@ -12943,7 +12968,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get gymLibraryAdopting => 'Adoption…';
 
   @override
+  String get gymLibraryAdopted => 'Ajoutée à mes routines';
+
+  @override
   String get gymLibraryAdoptFailed => 'Impossible d’adopter la routine.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Ajoutée à vos routines. Elle y apparaîtra dès que ce téléphone sera synchronisé.';
 
   @override
   String get gymRoutineDelete => 'Supprimer';
@@ -14095,6 +14127,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get coachingRosterSubtitle =>
       'Tous vos athlètes en un coup d\'œil — charge, suivi du plan et risque de blessure.';
+
+  @override
+  String get coachingRosterLoadFailed =>
+      'Impossible de charger la liste de vos athlètes.';
 
   @override
   String get coachingRosterNeverRun => 'Aucune course';
@@ -17420,6 +17456,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get confirmAgeContinue => 'Continuer';
 
   @override
+  String get confirmAgeBackHint =>
+      'Confirmez les deux pour continuer, ou déconnectez-vous pour quitter.';
+
+  @override
   String get confirmAgeRecordError =>
       'Impossible d\'enregistrer le consentement.';
 
@@ -19564,6 +19604,22 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Actualisation impossible. Affichage des dernières données chargées.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Enregistré sur ce téléphone. La synchronisation se fera dès que vous serez de nouveau en ligne.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Supprimé sur ce téléphone. La synchronisation se fera dès que vous serez de nouveau en ligne.';
+
+  @override
+  String get pushTargetOpening => 'Ouverture…';
+
+  @override
+  String pushTargetOpenFailed(String error) {
+    return 'Impossible d\'ouvrir cette notification : $error';
+  }
 
   @override
   String get planDetailMoreActions => 'Autres actions du plan';

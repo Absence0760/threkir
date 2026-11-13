@@ -74,6 +74,7 @@ import 'import_screen.dart';
 import 'nutrition_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plan_new_screen.dart';
+import '../widgets/single_flight.dart';
 import 'progress_screen.dart';
 import 'run_detail_screen.dart';
 
@@ -171,6 +172,10 @@ class _HomeBreak {
 
 class _TodayScreenState extends State<TodayScreen>
     with AuthChangeAware<TodayScreen>, WidgetsBindingObserver {
+  /// Opening the last run reads it first; a second tap in that read would
+  /// open a second detail (issue #1374 NS-11).
+  final _open = SingleFlight();
+
   _AccountHistory _history = _AccountHistory.unknown;
 
   /// This build's break state (`_homeBreak`), read by every plan card.
@@ -522,24 +527,25 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
-  Future<void> _openRun(Run run) async {
-    // The dashboard reads track-less summaries; detail needs the full run.
-    final full = await widget.runStore.runById(run.id) ?? run;
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => RunDetailScreen(
-          run: full,
-          runStore: widget.runStore,
-          routeStore: widget.routeStore,
-          preferences: widget.preferences,
-          apiClient: widget.apiClient,
-          settingsSync: widget.settingsSync,
-        ),
-      ),
-    );
-  }
+  Future<void> _openRun(Run run) =>
+      _open.openOnce(() async {
+        // The dashboard reads track-less summaries; detail needs the full run.
+        final full = await widget.runStore.runById(run.id) ?? run;
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => RunDetailScreen(
+              run: full,
+              runStore: widget.runStore,
+              routeStore: widget.routeStore,
+              preferences: widget.preferences,
+              apiClient: widget.apiClient,
+              settingsSync: widget.settingsSync,
+            ),
+          ),
+        );
+      });
 
   /// The hub's Nutrition tab, for the same reason as [_openGym].
   Future<void> _openNutrition() => openFitnessSurface(

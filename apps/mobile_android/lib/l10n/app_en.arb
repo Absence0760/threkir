@@ -4676,6 +4676,10 @@
   "@runDetailDeleteQueued": {
     "description": "Banner shown when the cloud-side delete of a run fails: the run stays on the device and the delete is queued for the sync retry"
   },
+  "runDetailDeleting": "Deleting run…",
+  "@runDetailDeleting": {
+    "description": "Screen-reader label of the spinner that replaces the run's overflow menu while a delete is in flight"
+  },
   "runDetailSuggestLink": "Link",
   "@runDetailSuggestLink": {
     "description": "Confirm action on the auto-link route-suggestion banner"
@@ -6422,6 +6426,10 @@
   "@heatmapNoRoutesHere": {
     "description": "Pill text shown when no routes are in view on the heatmap"
   },
+  "heatmapLoadFailed": "Couldn't load routes. Tap to retry",
+  "@heatmapLoadFailed": {
+    "description": "Discovery map results pill (and results list) when the routes read failed; tapping retries. Replaces 'No routes here', which was false"
+  },
   "heatmapNoRoutesHint": "No routes here. Pan the map or change the filters.",
   "@heatmapNoRoutesHint": {
     "description": "Empty-state shown in the heatmap results list"
@@ -8132,6 +8140,10 @@
   "@clubDetailRoutesEmpty": {
     "description": "Empty routes tab for members"
   },
+  "clubDetailRoutesLoadFailed": "Couldn't load this club's routes. Check your connection and try again.",
+  "@clubDetailRoutesLoadFailed": {
+    "description": "Routes tab of a club when the read failed; shown with a Retry button instead of the empty state"
+  },
   "clubDetailTemplateAdded": "Template added to your plans.",
   "@clubDetailTemplateAdded": {
     "description": "Banner shown after adopting a plan template"
@@ -8152,6 +8164,10 @@
   "clubDetailNoTemplates": "No plan templates yet for this club.",
   "@clubDetailNoTemplates": {
     "description": "Empty templates tab for members"
+  },
+  "clubDetailTemplatesLoadFailed": "Couldn't load this club's templates. Check your connection and try again.",
+  "@clubDetailTemplatesLoadFailed": {
+    "description": "Templates tab of a club when the read failed; shown with a Retry button instead of the empty state"
   },
   "clubDetailAdopt": "Adopt",
   "@clubDetailAdopt": {
@@ -8421,9 +8437,14 @@
   "@eventAttendanceFailed": {
     "description": "Error banner when marking attendance fails"
   },
-  "eventRsvpFailed": "Couldn't update your RSVP. Please try again.",
+  "eventRsvpFailed": "Couldn't update your RSVP: {error}",
   "@eventRsvpFailed": {
-    "description": "Error banner when an RSVP write fails"
+    "description": "Error banner when an RSVP write fails; {error} is the classified reason (offline, signed out, generic)",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "eventRsvpGoing": "I'm in",
   "@eventRsvpGoing": {
@@ -12858,6 +12879,10 @@
   "@gearRotationsEmpty": {
     "description": "Empty-state copy on the rotations screen"
   },
+  "gearRotationsLoadFailed": "Couldn't load your rotations. Nothing has been removed. Check your connection and try again.",
+  "@gearRotationsLoadFailed": {
+    "description": "Rotations screen when the read failed; shown with Retry instead of the empty list"
+  },
   "gearRotationName": "Rotation name",
   "@gearRotationName": {
     "description": "Label/hint for the rotation-name field"
@@ -12919,6 +12944,15 @@
     "placeholders": {
       "error": {
         "type": "Object"
+      }
+    }
+  },
+  "gearRotationDeleteFailed": "Couldn't delete rotation: {error}",
+  "@gearRotationDeleteFailed": {
+    "description": "Banner when deleting a rotation fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
       }
     }
   },
@@ -17231,9 +17265,17 @@
   "@gymLibraryAdopting": {
     "description": "Busy label while adopting a public routine"
   },
+  "gymLibraryAdopted": "Added to my routines",
+  "@gymLibraryAdopted": {
+    "description": "Adopt button label once the routine has been copied, so a second tap cannot make another copy"
+  },
   "gymLibraryAdoptFailed": "Couldn't adopt the routine.",
   "@gymLibraryAdoptFailed": {
     "description": "Error after a failed public-routine adopt"
+  },
+  "gymLibraryAdoptedNotSynced": "Added to your routines. It will show there once this phone syncs.",
+  "@gymLibraryAdoptedNotSynced": {
+    "description": "Banner when the routine was copied on the server but this phone could not fetch the copy yet; the adopt itself succeeded"
   },
   "gymRoutineDelete": "Delete",
   "gymRoutineDeleteConfirmTitle": "Delete routine?",
@@ -18491,6 +18533,10 @@
   "coachingRosterSubtitle": "Every athlete at a glance — load, plan compliance, and injury risk.",
   "@coachingRosterSubtitle": {
     "description": "Athlete roster card subtitle"
+  },
+  "coachingRosterLoadFailed": "Couldn't load your athlete roster.",
+  "@coachingRosterLoadFailed": {
+    "description": "Inline error on the coaching roster card when its read failed, beside a Retry button"
   },
   "coachingRosterNeverRun": "No runs yet",
   "@coachingRosterNeverRun": {
@@ -22790,6 +22836,10 @@
   "@confirmAgeContinue": {
     "description": "Consent gate: button that records both confirmations"
   },
+  "confirmAgeBackHint": "Confirm both to continue, or sign out to leave.",
+  "@confirmAgeBackHint": {
+    "description": "Top banner (with a Sign out action) when Back is pressed on the age and terms gate, which cannot be dismissed"
+  },
   "confirmAgeRecordError": "Could not record consent.",
   "@confirmAgeRecordError": {
     "description": "Consent gate: error shown when recording the confirmations fails"
@@ -25675,6 +25725,27 @@
   "commonStaleRefreshFailed": "Couldn't refresh. Showing what was last loaded.",
   "@commonStaleRefreshFailed": {
     "description": "Top banner when a screen already showing data fails to refresh for a reason other than being offline; the old data stays on screen"
+  },
+  "commonSavedOnPhone": "Saved on this phone. It will sync when you're back online.",
+  "@commonSavedOnPhone": {
+    "description": "Confirmation after a save that landed on the phone but has not reached the server yet; the sync carries on in the background"
+  },
+  "commonDeletedOnPhone": "Deleted on this phone. It will sync when you're back online.",
+  "@commonDeletedOnPhone": {
+    "description": "Confirmation after a delete that landed on the phone but has not reached the server yet"
+  },
+  "pushTargetOpening": "Opening…",
+  "@pushTargetOpening": {
+    "description": "Top banner while a tapped notification is looked up before its screen opens (a club or event read on a slow connection)"
+  },
+  "pushTargetOpenFailed": "Couldn't open that notification: {error}",
+  "@pushTargetOpenFailed": {
+    "description": "Top banner, with Retry, when a tapped notification could not be opened; {error} is the classified reason",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "planDetailMoreActions": "More plan actions",
   "@planDetailMoreActions": {

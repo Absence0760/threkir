@@ -16,6 +16,7 @@ import 'package:ui_kit/ui_kit.dart'
         SectionHeader;
 
 import '../auth_error.dart';
+import '../follow_state.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../nearby.dart';
 import '../nearby_flag.dart';
@@ -69,9 +70,36 @@ class _PeopleScreenState extends State<PeopleScreen> {
 
   final Set<String> _rowBusy = <String>{};
 
+  /// Follows changed elsewhere (a profile opened from this list) update the
+  /// rows here, so a row never offers the opposite of what is true (issue
+  /// #1374 NS-10).
+  final _follows = FollowState.instance;
+
+  void _onFollows() {
+    if (!mounted) return;
+    final viewer = widget.api.userId;
+    final changed = <String, bool>{
+      for (final p in [..._results, ..._suggestions])
+        if (_follows.of(viewer, p.id) case final f?
+            when f != p.viewerFollows && !_rowBusy.contains(p.id))
+          p.id: f,
+      for (final p in _nearby)
+        if (_follows.of(viewer, p.id) case final f?
+            when f != p.viewerFollows && !_rowBusy.contains(p.id))
+          p.id: f,
+    };
+    if (changed.isEmpty) return;
+    setState(() {
+      for (final MapEntry(key: id, value: f) in changed.entries) {
+        _flipFollow(id, f);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _follows.addListener(_onFollows);
     if (widget.api.userId != null) {
       _loadSuggestions();
       if (_nearbyGate) _loadNearby();
@@ -80,6 +108,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
 
   @override
   void dispose() {
+    _follows.removeListener(_onFollows);
     _debounce?.cancel();
     _searchCtl.dispose();
     super.dispose();
@@ -209,12 +238,15 @@ class _PeopleScreenState extends State<PeopleScreen> {
     try {
       if (wasFollowing) {
         await widget.api.unfollowUser(id);
+        _follows.put(widget.api.userId, id, following: false);
       } else if (await widget.api.followUser(id) == FollowOutcome.requested) {
         // A private profile: a request went out, nothing is followed yet.
         if (!mounted) return;
         setState(() => _flipFollow(id, false));
         showTopBanner(
             context, AppLocalizations.of(context).profileRequestSent);
+      } else {
+        _follows.put(widget.api.userId, id, following: true);
       }
     } catch (e) {
       debugPrint('[PeopleScreen] follow failed: $e');

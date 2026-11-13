@@ -36,6 +36,7 @@ import '../backend_timeout.dart';
 import '../fab_clearance.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
+import '../widgets/stale_refresh_banner.dart';
 import '../widgets/next_race_card.dart';
 import '../widgets/plan_meta_item.dart';
 import '../widgets/plan_overlap_dialog.dart';
@@ -152,14 +153,7 @@ class _PlansScreenState extends State<PlansScreen> {
       if (!mounted) return;
       if (refreshing) {
         setState(() => _loading = false);
-        final l10n = AppLocalizations.of(context);
-        showTopBanner(
-          context,
-          e is TimeoutException ||
-                  classifyAuthError(e) == AuthErrorKind.offline
-              ? l10n.commonStaleOffline
-              : l10n.commonStaleRefreshFailed,
-        );
+        showStaleRefreshBanner(context, e);
         return;
       }
       setState(() {

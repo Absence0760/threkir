@@ -690,3 +690,34 @@ test.describe('Heatmap keep-on-map / pin (web)', () => {
 		await expect(page.getByTestId('clear-pins')).toHaveCount(0);
 	});
 });
+
+// Issue #1374 FS-10: a failed routes read showed "No routes here yet", so the
+// runner panned and changed filters over a map that never loaded.
+test.describe('Heatmap results sidebar — a failed routes read', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('says the read failed with Retry, not that there are no routes', async ({ page }) => {
+		let fail = true;
+		await page.route('**/rest/v1/rpc/discoverable_routes_in_bbox*', async (route) => {
+			if (!fail) {
+				await route.continue();
+				return;
+			}
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated discovery failure' })
+			});
+		});
+
+		await page.goto('/routes/heatmap');
+		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
+		const error = page.getByTestId('discover-load-error');
+		await expect(error).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('discover-list').locator('.results-empty:not(.results-error)')).toHaveCount(0);
+
+		fail = false;
+		await error.getByRole('button', { name: 'Retry' }).click();
+		await expect(error).toHaveCount(0, { timeout: 10_000 });
+	});
+});

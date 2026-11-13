@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:api_client/api_client.dart' show ApiClient;
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +47,11 @@ ClubView _club(String? viewerRole) => ClubView(
 /// Renders one upcoming athletic event (so the RSVP row shows) and throws
 /// on the RSVP write to drive the swallowed-failure banner.
 class _RsvpFailSocial extends SocialService {
+  _RsvpFailSocial([this.failure]);
   int rsvpCalls = 0;
+
+  /// What the RSVP write throws; a generic failure by default.
+  final Object? failure;
 
   /// The screen gates on the viewer id, so a fake must declare who is
   /// looking rather than falling through to a real Supabase read.
@@ -98,7 +103,7 @@ class _RsvpFailSocial extends SocialService {
     String? courseId,
   }) async {
     rsvpCalls++;
-    throw Exception('network down');
+    throw failure ?? Exception('network down');
   }
 
   @override
@@ -712,9 +717,55 @@ void main() {
           find.textContaining("Couldn't update your RSVP"),
           findsOneWidget,
         );
-        await tester.pump(const Duration(seconds: 4)); // drain banner timer
+        await tester.pump(const Duration(seconds: 7)); // drain banner timer
       },
     );
+
+    // Issue #1374 FS-9: every failure read "Please try again", including the
+    // ones a retry can never fix.
+    Future<void> rsvp(WidgetTester tester, _RsvpFailSocial social) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: EventDetailScreen(
+            social: social,
+            clubSlug: 'club-1',
+            eventId: 'e1',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.widgetWithText(OutlinedButton, "I'm in"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    realtimeWidgetTest('offline names the cause and Retry writes again',
+        (tester) async {
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      final social = _RsvpFailSocial(const SocketException('offline'));
+      await rsvp(tester, social);
+      expect(find.text(l10n.eventRsvpFailed(l10n.authErrorOffline)),
+          findsOneWidget);
+      await tester.tap(find.text(l10n.errorStateRetry));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(social.rsvpCalls, 2);
+      await tester.pump(const Duration(seconds: 7));
+    });
+
+    realtimeWidgetTest('signed out names the cause and offers no Retry',
+        (tester) async {
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      final social = _RsvpFailSocial(Exception('Not authenticated'));
+      await rsvp(tester, social);
+      expect(find.text(l10n.eventRsvpFailed(l10n.authErrorNotSignedIn)),
+          findsOneWidget);
+      expect(find.text(l10n.errorStateRetry), findsNothing);
+      await tester.pump(const Duration(seconds: 7));
+    });
   });
 
   group('EventDisciplineLabel — slice E class display', () {

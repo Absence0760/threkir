@@ -55,6 +55,11 @@ abstract final class AppInsets {
   /// `list_separator_guard_test` already pins.
   static const double itemGap = AppSpace.sm;
 
+  /// Between two form fields, stacked. An outlined field's floating label
+  /// sits on its top border, half of it above the field, so fields that
+  /// touch draw each label over the field above. `FieldColumn` places it.
+  static const double fieldGap = AppSpace.md;
+
   /// A card's inner padding.
   static const EdgeInsets card = EdgeInsets.all(AppSpace.md);
 

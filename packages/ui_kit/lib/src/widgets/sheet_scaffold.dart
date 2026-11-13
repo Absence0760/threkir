@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../motion.dart';
 import '../theme/corner_radii.dart';
 
 /// The bottom inset a sheet or a form body has to clear: the soft keyboard
@@ -200,10 +201,15 @@ class _ExpandingSheetState extends State<_ExpandingSheet> {
 
   void _expand() {
     if (!_sheet.isAttached || _sheet.size >= 1) return;
+    // animateTo refuses a zero duration, so reduce-motion jumps instead.
+    if (reduceMotion(context)) {
+      _sheet.jumpTo(1);
+      return;
+    }
     _sheet.animateTo(
       1,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
+      duration: AppMotion.brief,
+      curve: AppMotion.curveEmphasised,
     );
   }
 

@@ -1,7 +1,12 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppInsets, AppSpace, IdentityAvatar, ListRow;
+    show
+        AppInsets,
+        AppSpace,
+        IdentityAvatar,
+        ListRow,
+        PageHeader;
 
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
@@ -146,20 +151,8 @@ class _YouScreenState extends State<YouScreen>
     if (mounted) setState(() {});
   }
 
-  Widget _title(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppInsets.gutter, AppSpace.md, AppInsets.gutter, AppSpace.sm),
-      child: Semantics(
-        header: true,
-        child: Text(
-          AppLocalizations.of(context).navYou,
-          style: theme.textTheme.headlineSmall,
-        ),
-      ),
-    );
-  }
+  Widget _title(BuildContext context) =>
+      PageHeader(title: AppLocalizations.of(context).navYou);
 
   Widget _identityCard(BuildContext context, ApiClient api, String viewerId) {
     final l10n = AppLocalizations.of(context);

@@ -1,7 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ChoiceChipOption,
+        ChoiceChipRow,
+        PageHeader,
+        PushedPage;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../audio_cues.dart';
@@ -294,15 +299,26 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l.courseDriveTitle)),
-      body: _loading
-          ? SectionedDetailSkeleton(label: l.courseDriveTitle, hasAction: true)
-          : _loadFailed
-          ? AppErrorState(message: l.courseDriveLoadFailed, onRetry: _load)
-          : _run == _DriveRun.running
-          ? _driving(context, l)
-          : _handOff(context, l),
+    return PushedPage(
+      title: l.courseDriveTitle,
+      // Above every state, so the bar never carries the title cut (TO-12).
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PageHeader(title: l.courseDriveTitle),
+          Expanded(
+            child: _loading
+                ? SectionedDetailSkeleton(
+                    label: l.courseDriveTitle, hasAction: true)
+                : _loadFailed
+                ? AppErrorState(
+                    message: l.courseDriveLoadFailed, onRetry: _load)
+                : _run == _DriveRun.running
+                ? _driving(context, l)
+                : _handOff(context, l),
+          ),
+        ],
+      ),
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_calendar_feed_screen.dart';
+import 'worst_case_layout.dart';
 
 final _token = '${'b' * 32}${'0123456789abcdef' * 4}';
 
@@ -49,6 +50,22 @@ Future<void> _pump(WidgetTester tester, _FakeFeed feed) async {
 }
 
 void main() {
+  worstCaseTestWidgets('The plan calendar feed', (tester, locale) async {
+    final feed = _FakeFeed();
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: PlanCalendarFeedScreen(
+        loadStatus: feed.load,
+        rotate: feed.rotate,
+        revoke: feed.revoke,
+        supabaseUrl: 'https://abc.supabase.co',
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Plan calendar feed');
+  });
+
   testWidgets('with no feed, creating one shows the link once with a subscribe action',
       (tester) async {
     final feed = _FakeFeed();

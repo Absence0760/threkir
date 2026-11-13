@@ -9,6 +9,7 @@ import '../plan_parse_message.dart';
 import '../plan_serialize.dart';
 import '../training.dart';
 import '../training_service.dart';
+import 'form_sheet.dart';
 import 'plan_overlap_dialog.dart';
 
 /// Opens the plan import sheet: paste a plan table (web's export, or a
@@ -18,10 +19,8 @@ import 'plan_overlap_dialog.dart';
 Future<String?> showPlanImportSheet(
   BuildContext context,
   TrainingService training,
-) => showModalBottomSheet<String>(
-  context: context,
-  isScrollControlled: true,
-  useSafeArea: true,
+) => showFormSheet<String>(
+  context,
   builder: (_) => PlanImportSheet(training: training),
 );
 
@@ -124,7 +123,12 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _textCtl.text.trim().isNotEmpty,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final parsed = _parsed;

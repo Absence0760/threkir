@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 import '../share_sheet.dart';
@@ -98,37 +99,35 @@ class ClubInviteButton extends StatelessWidget {
         isScrollControlled: true,
         useSafeArea: true,
         showDragHandle: true,
-        builder: (sheetContext) => SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ClubInviteCard(
-                  social: social,
-                  club: club,
-                  webBaseOverride: webBaseOverride,
-                ),
-                if (canShareClub(club))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Builder(
-                      builder: (buttonContext) => OutlinedButton.icon(
-                        key: const ValueKey('club-share-page'),
-                        icon: const Icon(Icons.share_outlined),
-                        label: Text(l10n.clubShareClub),
-                        onPressed: () => _shareOrCopy(
-                          buttonContext,
-                          webPageUrl(clubSharePath(club.row.slug),
-                              override: webBaseOverride),
-                          l10n.clubShareLinkCopied,
-                        ),
+        builder: (sheetContext) => SheetScaffold(
+          padding: const EdgeInsets.only(bottom: 16),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClubInviteCard(
+                social: social,
+                club: club,
+                webBaseOverride: webBaseOverride,
+              ),
+              if (canShareClub(club))
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Builder(
+                    builder: (buttonContext) => OutlinedButton.icon(
+                      key: const ValueKey('club-share-page'),
+                      icon: const Icon(Icons.share_outlined),
+                      label: Text(l10n.clubShareClub),
+                      onPressed: () => _shareOrCopy(
+                        buttonContext,
+                        webPageUrl(clubSharePath(club.row.slug),
+                            override: webBaseOverride),
+                        l10n.clubShareLinkCopied,
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),

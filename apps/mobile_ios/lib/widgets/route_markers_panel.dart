@@ -12,6 +12,7 @@ import '../route_markers.dart';
 import '../route_snap.dart';
 import '../typed_decimal.dart';
 import '../undo_queue.dart';
+import 'form_sheet.dart';
 import 'live_run_map.dart';
 import 'top_banner.dart';
 import 'undo_bar.dart';
@@ -215,10 +216,8 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
     double? lat,
     double? lng,
   }) async {
-    final result = await showModalBottomSheet<_MarkerDraft>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    final result = await showFormSheet<_MarkerDraft>(
+      context,
       builder: (ctx) => _MarkerEditorSheet(
         existing: existing,
         lat: lat,
@@ -809,6 +808,8 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
   // two alternatives from disagreeing.
   bool _cutoffElapsed = false;
   bool _targetClock = false;
+  late final FieldSnapshot _start;
+  late final String _startKind;
 
   /// The distance-along-route input needs a line with real geometry.
   bool get _canPlaceByDistance => widget.routeLine.length >= 2;
@@ -853,6 +854,16 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
     // mirror of the current position, so an edit that only touches lat/lng
     // isn't silently overridden by a pre-filled distance on save.
     _distanceAlong = TextEditingController();
+    _start = FieldSnapshot([
+      _label,
+      _note,
+      _cutoff,
+      _target,
+      _lat,
+      _lng,
+      _distanceAlong,
+    ]);
+    _startKind = _kind;
   }
 
   @override
@@ -999,7 +1010,12 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _start.changed || _kind != _startKind,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final spec = kindSpec(_kind);
     return SheetScaffold(
@@ -1010,7 +1026,7 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
         spacing: 8,
         children: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).maybePop(),
             child: Text(l10n.routeMarkerCancel),
           ),
           FilledButton(

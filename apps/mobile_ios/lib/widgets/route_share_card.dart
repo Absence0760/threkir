@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 import '../map_tile_readiness.dart';
@@ -114,58 +115,46 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + mq.viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.shareCardRouteTitle, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AspectRatio(
-                  aspectRatio: 9 / 16,
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: RouteShareCard(
-                      route: widget.route,
-                      preferences: widget.preferences,
-                      tileReadiness: _tiles,
-                    ),
-                  ),
+    return SheetScaffold.floating(
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.shareCardRouteTitle, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 9 / 16,
+              child: RepaintBoundary(
+                key: _cardKey,
+                child: RouteShareCard(
+                  route: widget.route,
+                  preferences: widget.preferences,
+                  tileReadiness: _tiles,
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _capturing ? null : _shareImage,
-                  icon: _capturing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.share_outlined),
-                  label: Text(_capturing
-                      ? l10n.shareCardRouteCapturing
-                      : l10n.shareCardRouteShareImage),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _capturing ? null : _shareImage,
+              icon: _capturing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.share_outlined),
+              label: Text(_capturing
+                  ? l10n.shareCardRouteCapturing
+                  : l10n.shareCardRouteShareImage),
+            ),
+          ),
+        ],
       ),
     );
   }

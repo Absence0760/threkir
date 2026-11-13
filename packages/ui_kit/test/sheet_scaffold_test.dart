@@ -77,4 +77,46 @@ void main() {
         const EdgeInsets.only(bottom: 300)));
     expect(inset, 300);
   });
+
+  testWidgets('a floating share sheet keeps its card clear of the nav bar',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewPadding = const FakeViewPadding(bottom: _bar);
+    tester.view.padding = const FakeViewPadding(bottom: _bar);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.light,
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              useSafeArea: true,
+              backgroundColor: Colors.transparent,
+              showDragHandle: false,
+              builder: (_) => SheetScaffold.floating(
+                key: const Key('card'),
+                title: const Text('Share'),
+                body: const SizedBox(height: 200),
+                actions:
+                    FilledButton(onPressed: () {}, child: const Text('Go')),
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    final card = find.descendant(
+        of: find.byKey(const Key('card')), matching: find.byType(Container));
+    final rect = tester.getRect(card.first);
+    expect(rect.left, 16);
+    expect(rect.bottom, lessThanOrEqualTo(740 - _bar - 16));
+    final go = tester.getRect(find.widgetWithText(FilledButton, 'Go'));
+    expect(go.bottom, lessThanOrEqualTo(rect.bottom - 16));
+  });
 }

@@ -4,6 +4,7 @@ import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../finisher_certificate.dart';
 import '../l10n/date_format.dart';
@@ -108,64 +109,52 @@ class _CertificateSheetState extends State<_CertificateSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + mq.viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.clubEventDownloadCertificate,
-                  style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: AspectRatio(
-                  aspectRatio: 1400 / 990,
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: FinisherCertificateCard(
-                      eventTitle: widget.eventTitle,
-                      finisherName: widget.finisherName,
-                      durationS: widget.durationS,
-                      distanceM: widget.distanceM,
-                      rank: widget.rank,
-                      date: widget.date,
-                      clubName: widget.clubName,
-                    ),
-                  ),
+    return SheetScaffold.floating(
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.clubEventDownloadCertificate,
+              style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 1400 / 990,
+              child: RepaintBoundary(
+                key: _cardKey,
+                child: FinisherCertificateCard(
+                  eventTitle: widget.eventTitle,
+                  finisherName: widget.finisherName,
+                  durationS: widget.durationS,
+                  distanceM: widget.distanceM,
+                  rank: widget.rank,
+                  date: widget.date,
+                  clubName: widget.clubName,
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _capturing ? null : _shareImage,
-                  icon: _capturing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.ios_share),
-                  label: Text(l10n.clubEventCertificateShare),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _capturing ? null : _shareImage,
+              icon: _capturing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.ios_share),
+              label: Text(l10n.clubEventCertificateShare),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -201,8 +190,24 @@ class FinisherCertificateCard extends StatelessWidget {
   static const Color _muted = Color(0xFF6B7280);
   static const Color _ground = Color(0xFFFFFDF7);
 
+  /// The canvas the certificate is laid out on, at web's 1400:990. It is a
+  /// picture of a certificate, shared as a PNG, so it is drawn at this size
+  /// with the system font size left out and scaled to the space it is given:
+  /// at a large font size its fixed-size type overflowed the preview by
+  /// some 1500 px (issue #1374).
+  static const Size canvas = Size(700, 495);
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => FittedBox(
+        child: SizedBox.fromSize(
+          size: canvas,
+          child: MediaQuery.withNoTextScaling(
+            child: Builder(builder: _canvas),
+          ),
+        ),
+      );
+
+  Widget _canvas(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final useMiles = activeDistanceUnit == DistanceUnit.mi;
     final stats = <String>[

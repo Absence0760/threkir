@@ -11,7 +11,8 @@ import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart' show ImagePicker, ImageSource;
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show ChoiceChipOption, ChoiceChipRow, SheetScaffold;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'live_run_map.dart'
@@ -959,207 +960,195 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final previewHeight = (mq.size.height * 0.42).clamp(220.0, 440.0);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + mq.viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.all(16),
-          // Scrolls rather than overflowing on a short phone or at a large
-          // text scale: the preview and the look controls outgrow 640 dp.
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  l10n.shareCardRunTitle,
+    return SheetScaffold.floating(
+      scrollBody: false,
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.shareCardRunTitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            ChoiceChipRow<RunShareStyle>(
+              alignment: WrapAlignment.center,
+              options: [
+                ChoiceChipOption(
+                  value: RunShareStyle.card,
+                  label: l10n.shareCardStyleCard,
+                  icon: Icons.map_outlined,
+                ),
+                ChoiceChipOption(
+                  value: RunShareStyle.photo,
+                  label: l10n.shareCardStylePhoto,
+                  icon: Icons.photo_outlined,
+                ),
+                ChoiceChipOption(
+                  value: RunShareStyle.sticker,
+                  label: l10n.shareCardStyleSticker,
+                  icon: Icons.auto_awesome_motion_outlined,
+                ),
+                if (_canOfferVideo)
+                  ChoiceChipOption(
+                    value: RunShareStyle.video,
+                    label: l10n.shareCardStyleVideo,
+                    icon: Icons.movie_outlined,
+                  ),
+                if (widget.headToHeadLoad != null)
+                  ChoiceChipOption(
+                    value: RunShareStyle.versus,
+                    label: l10n.headToHeadStyleVersus,
+                    icon: Icons.people_outline,
+                  ),
+                if (widget.records.isNotEmpty)
+                  ChoiceChipOption(
+                    value: RunShareStyle.pr,
+                    label: l10n.shareCardStylePr,
+                    icon: Icons.military_tech,
+                  ),
+              ],
+              selected: _style,
+              onChanged: _busy ? null : _selectStyle,
+            ),
+            const SizedBox(height: 12),
+            if (_style == RunShareStyle.video)
+              _videoPanel(l10n, theme, previewHeight)
+            else if (_style == RunShareStyle.versus)
+              HeadToHeadPanel(
+                load: widget.headToHeadLoad!,
+                fileName: 'threkir-run-${widget.run.id}-versus',
+                saveImage: widget.saveImage,
+              )
+            else
+              _preview(l10n, theme, previewHeight),
+            if (_style == RunShareStyle.photo && _photo != null) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  l10n.shareCardPlacementHint,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                ChoiceChipRow<RunShareStyle>(
-                  alignment: WrapAlignment.center,
-                  options: [
-                    ChoiceChipOption(
-                      value: RunShareStyle.card,
-                      label: l10n.shareCardStyleCard,
-                      icon: Icons.map_outlined,
-                    ),
-                    ChoiceChipOption(
-                      value: RunShareStyle.photo,
-                      label: l10n.shareCardStylePhoto,
-                      icon: Icons.photo_outlined,
-                    ),
-                    ChoiceChipOption(
-                      value: RunShareStyle.sticker,
-                      label: l10n.shareCardStyleSticker,
-                      icon: Icons.auto_awesome_motion_outlined,
-                    ),
-                    if (_canOfferVideo)
-                      ChoiceChipOption(
-                        value: RunShareStyle.video,
-                        label: l10n.shareCardStyleVideo,
-                        icon: Icons.movie_outlined,
-                      ),
-                    if (widget.headToHeadLoad != null)
-                      ChoiceChipOption(
-                        value: RunShareStyle.versus,
-                        label: l10n.headToHeadStyleVersus,
-                        icon: Icons.people_outline,
-                      ),
-                    if (widget.records.isNotEmpty)
-                      ChoiceChipOption(
-                        value: RunShareStyle.pr,
-                        label: l10n.shareCardStylePr,
-                        icon: Icons.military_tech,
-                      ),
-                  ],
-                  selected: _style,
-                  onChanged: _busy ? null : _selectStyle,
-                ),
-                const SizedBox(height: 12),
-                if (_style == RunShareStyle.video)
-                  _videoPanel(l10n, theme, previewHeight)
-                else if (_style == RunShareStyle.versus)
-                  HeadToHeadPanel(
-                    load: widget.headToHeadLoad!,
-                    fileName: 'threkir-run-${widget.run.id}-versus',
-                    saveImage: widget.saveImage,
-                  )
-                else
-                  _preview(l10n, theme, previewHeight),
-                if (_style == RunShareStyle.photo && _photo != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      l10n.shareCardPlacementHint,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    children: [
-                      TextButton.icon(
-                        onPressed: _busy || _picking ? null : _pickPhoto,
-                        icon: const Icon(Icons.swap_horiz),
-                        label: Text(l10n.shareCardChangePhoto),
-                      ),
-                      TextButton.icon(
-                        key: const ValueKey('share-placement-reset'),
-                        onPressed: _busy ||
-                                _look.placement == SharePlacement.initial
-                            ? null
-                            : _resetPlacement,
-                        icon: const Icon(Icons.restart_alt),
-                        label: Text(l10n.shareCardPlacementReset),
-                      ),
-                    ],
+                ),
+              ),
+              Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  TextButton.icon(
+                    onPressed: _busy || _picking ? null : _pickPhoto,
+                    icon: const Icon(Icons.swap_horiz),
+                    label: Text(l10n.shareCardChangePhoto),
+                  ),
+                  TextButton.icon(
+                    key: const ValueKey('share-placement-reset'),
+                    onPressed: _busy ||
+                            _look.placement == SharePlacement.initial
+                        ? null
+                        : _resetPlacement,
+                    icon: const Icon(Icons.restart_alt),
+                    label: Text(l10n.shareCardPlacementReset),
                   ),
                 ],
-                if (_style == RunShareStyle.sticker ||
-                    _style == RunShareStyle.pr)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      _style == RunShareStyle.pr
-                          ? l10n.shareCardPrHint
-                          : l10n.shareCardStickerHint,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+              ),
+            ],
+            if (_style == RunShareStyle.sticker ||
+                _style == RunShareStyle.pr)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _style == RunShareStyle.pr
+                      ? l10n.shareCardPrHint
+                      : l10n.shareCardStickerHint,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                if (_style != RunShareStyle.card &&
-                    _style != RunShareStyle.video &&
-                    _style != RunShareStyle.versus)
-                  ..._lookControls(l10n, theme),
-                if (_style != RunShareStyle.video &&
-                    _style != RunShareStyle.versus)
-                  // A Row, not a SwitchListTile: the sheet's tinted
-                  // container would hide a ListTile's ink.
-                  MergeSemantics(
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(l10n.shareCardMark)),
-                        Switch(
-                          key: const ValueKey('share-mark'),
-                          value: _look.mark,
-                          onChanged: _busy
-                              ? null
-                              : (v) => _setLook(_look.copyWith(mark: v)),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                if (_style == RunShareStyle.video)
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _openVideoExport,
-                    icon: const Icon(Icons.open_in_new),
-                    label: Text(l10n.shareCardVideoOpen),
-                  )
-                else if (_style != RunShareStyle.versus) ...[
-                  // Stacked full width: the save label is the one the iOS photo
-                  // permission prompt names, and in French or Portuguese it
-                  // does not fit half a row.
-                  FilledButton.icon(
-                    onPressed: _canExportImage ? _shareImage : null,
-                    icon: _busy
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.ios_share),
-                    label: Text(l10n.shareCardImage),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _canExportImage ? _saveImage : null,
-                    icon: const Icon(Icons.download_outlined),
-                    label: Text(l10n.shareCardSave),
-                  ),
-                ],
-                Wrap(
-                  alignment: WrapAlignment.center,
+                ),
+              ),
+            if (_style != RunShareStyle.card &&
+                _style != RunShareStyle.video &&
+                _style != RunShareStyle.versus)
+              ..._lookControls(l10n, theme),
+            if (_style != RunShareStyle.video &&
+                _style != RunShareStyle.versus)
+              // A Row, not a SwitchListTile: the sheet's tinted
+              // container would hide a ListTile's ink.
+              MergeSemantics(
+                child: Row(
                   children: [
-                    if (widget.onShareLink != null)
-                      TextButton.icon(
-                        key: const ValueKey('share-run-link'),
-                        onPressed: _busy ? null : widget.onShareLink,
-                        icon: const Icon(Icons.link),
-                        label: Text(l10n.shareCardShareLink),
-                      ),
-                    PopupMenuButton<String>(
-                      onSelected: _busy ? null : _shareFile,
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'gpx', child: Text('GPX')),
-                        PopupMenuItem(value: 'tcx', child: Text('TCX')),
-                        PopupMenuItem(value: 'fit', child: Text('FIT')),
-                      ],
-                      child: TextButton.icon(
-                        onPressed: _busy ? null : () {},
-                        icon: const Icon(Icons.route),
-                        label: Text(l10n.shareCardExport),
-                      ),
+                    Expanded(child: Text(l10n.shareCardMark)),
+                    Switch(
+                      key: const ValueKey('share-mark'),
+                      value: _look.mark,
+                      onChanged: _busy
+                          ? null
+                          : (v) => _setLook(_look.copyWith(mark: v)),
                     ),
                   ],
+                ),
+              ),
+            const SizedBox(height: 16),
+            if (_style == RunShareStyle.video)
+              FilledButton.icon(
+                onPressed: _busy ? null : _openVideoExport,
+                icon: const Icon(Icons.open_in_new),
+                label: Text(l10n.shareCardVideoOpen),
+              )
+            else if (_style != RunShareStyle.versus) ...[
+              // Stacked full width: the save label is the one the iOS photo
+              // permission prompt names, and in French or Portuguese it
+              // does not fit half a row.
+              FilledButton.icon(
+                onPressed: _canExportImage ? _shareImage : null,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.ios_share),
+                label: Text(l10n.shareCardImage),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _canExportImage ? _saveImage : null,
+                icon: const Icon(Icons.download_outlined),
+                label: Text(l10n.shareCardSave),
+              ),
+            ],
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                if (widget.onShareLink != null)
+                  TextButton.icon(
+                    key: const ValueKey('share-run-link'),
+                    onPressed: _busy ? null : widget.onShareLink,
+                    icon: const Icon(Icons.link),
+                    label: Text(l10n.shareCardShareLink),
+                  ),
+                PopupMenuButton<String>(
+                  onSelected: _busy ? null : _shareFile,
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'gpx', child: Text('GPX')),
+                    PopupMenuItem(value: 'tcx', child: Text('TCX')),
+                    PopupMenuItem(value: 'fit', child: Text('FIT')),
+                  ],
+                  child: TextButton.icon(
+                    onPressed: _busy ? null : () {},
+                    icon: const Icon(Icons.route),
+                    label: Text(l10n.shareCardExport),
+                  ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

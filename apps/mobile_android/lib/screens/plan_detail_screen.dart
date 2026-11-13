@@ -3697,56 +3697,47 @@ class PublishClubPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.planDetailPublishPickerTitle,
-                style: theme.textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              l10n.planDetailPublishPickerBody,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      title: Text(l10n.planDetailPublishPickerTitle),
+      scrollBody: false,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.planDetailPublishPickerBody, style: muted),
+          const SizedBox(height: 12),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: clubs.length,
+              itemBuilder: (_, i) {
+                final c = clubs[i];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.group),
+                  title: Text(c.row.name),
+                  subtitle: Text(
+                    '${c.row.locationLabel ?? c.row.slug} · '
+                    '${l10n.planDetailPublishPickerMembers(c.memberCount)}',
+                    style: muted,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.pop(context, c.row.id),
+                );
+              },
             ),
-            const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 360),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: clubs.length,
-                itemBuilder: (_, i) {
-                  final c = clubs[i];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.group),
-                    title: Text(c.row.name),
-                    subtitle: Text(
-                      '${c.row.locationLabel ?? c.row.slug} · '
-                      '${l10n.planDetailPublishPickerMembers(c.memberCount)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.pop(context, c.row.id),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.planDetailPublishCancel),
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+      actions: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.planDetailPublishCancel),
         ),
       ),
     );

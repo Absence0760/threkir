@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SheetScaffold;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
@@ -238,15 +239,7 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
     final List<Widget> body;
     if (_loading) {
       body = [
-        Semantics(
-          label: l10n.commonLoading,
-          child: const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ),
-          ),
-        ),
+        ListSkeleton.section(label: l10n.commonLoading, rows: 3),
       ];
     } else if (_loadFailed) {
       body = [
@@ -339,41 +332,38 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
       ];
     }
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-            20, 4, 20, 16 + MediaQuery.viewInsetsOf(context).bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                l10n.streamerOverlayTitle,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              l10n.streamerOverlayTitle,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 4),
-            Text(l10n.streamerOverlayIntro, style: muted),
+          ),
+          const SizedBox(height: 4),
+          Text(l10n.streamerOverlayIntro, style: muted),
+          const SizedBox(height: 12),
+          ...body,
+          if (_notice != null) ...[
             const SizedBox(height: 12),
-            ...body,
-            if (_notice != null) ...[
-              const SizedBox(height: 12),
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  _notice!,
-                  key: const ValueKey('streamer-overlay-notice'),
-                  style: TextStyle(
-                    color: _noticeIsError ? theme.colorScheme.error : null,
-                  ),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _notice!,
+                key: const ValueKey('streamer-overlay-notice'),
+                style: TextStyle(
+                  color: _noticeIsError ? theme.colorScheme.error : null,
                 ),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

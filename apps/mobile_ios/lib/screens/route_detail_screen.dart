@@ -11,6 +11,7 @@ import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
         KeepAliveChild,
+        SheetScaffold,
         StatGrid,
         StatTile,
         StatusPill,
@@ -2797,96 +2798,74 @@ class RouteTransferClubPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              currentClubId == null
-                  ? l10n.routeDetailTransferDialogTitle
-                  : l10n.routeDetailManageClubTitle,
-              style: theme.textTheme.titleLarge,
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      title: Text(
+        currentClubId == null
+            ? l10n.routeDetailTransferDialogTitle
+            : l10n.routeDetailManageClubTitle,
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            currentClubId == null
+                ? l10n.routeDetailTransferDialogBody
+                : l10n.routeDetailManageClubBody,
+            style: muted,
+          ),
+          const SizedBox(height: 12),
+          if (currentClubId != null)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.person),
+              title: Text(l10n.routeDetailDetachToPersonal),
+              subtitle: Text(l10n.routeDetailDetachSubtitle, style: muted),
+              onTap: () =>
+                  Navigator.pop(context, const TransferRouteResult.detach()),
             ),
-            const SizedBox(height: 4),
-            Text(
-              currentClubId == null
-                  ? l10n.routeDetailTransferDialogBody
-                  : l10n.routeDetailManageClubBody,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+          if (clubs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                l10n.routeDetailNoAdminClubs,
+                style: theme.textTheme.bodyMedium,
               ),
-            ),
-            const SizedBox(height: 12),
-            if (currentClubId != null)
+            )
+          else
+            for (final c in clubs)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.person),
-                title: Text(l10n.routeDetailDetachToPersonal),
+                leading: const Icon(Icons.group),
+                title: Text(c.row.name),
                 subtitle: Text(
-                  l10n.routeDetailDetachSubtitle,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  c.row.id == currentClubId
+                      ? l10n.routeDetailCurrentClub
+                      : l10n.routeDetailClubMemberCount(
+                          c.row.locationLabel ?? c.row.slug, c.memberCount),
+                  style: muted,
                 ),
-                onTap: () =>
-                    Navigator.pop(context, const TransferRouteResult.detach()),
-              ),
-            if (clubs.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  l10n.routeDetailNoAdminClubs,
-                  style: theme.textTheme.bodyMedium,
-                ),
-              )
-            else
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 320),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: clubs.length,
-                  itemBuilder: (_, i) {
-                    final c = clubs[i];
-                    final isCurrent = c.row.id == currentClubId;
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.group),
-                      title: Text(c.row.name),
-                      subtitle: Text(
-                        isCurrent
-                            ? l10n.routeDetailCurrentClub
-                            : l10n.routeDetailClubMemberCount(
-                                c.row.locationLabel ?? c.row.slug,
-                                c.memberCount),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                trailing: c.row.id == currentClubId
+                    ? const Icon(Icons.check, size: 18)
+                    : const Icon(Icons.chevron_right),
+                onTap: c.row.id == currentClubId
+                    ? null
+                    : () => Navigator.pop(
+                          context,
+                          TransferRouteResult.transfer(c.row.id),
                         ),
-                      ),
-                      trailing: isCurrent
-                          ? const Icon(Icons.check, size: 18)
-                          : const Icon(Icons.chevron_right),
-                      onTap: isCurrent
-                          ? null
-                          : () => Navigator.pop(
-                              context,
-                              TransferRouteResult.transfer(c.row.id),
-                            ),
-                    );
-                  },
-                ),
               ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.routeDetailCancel),
-              ),
-            ),
-          ],
+        ],
+      ),
+      actions: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.routeDetailCancel),
         ),
       ),
     );

@@ -19,7 +19,13 @@ import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:run_recorder/run_recorder.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, AppRadius, AppSemanticColors, StatTile, motionDuration;
+    show
+        AppMotion,
+        AppRadius,
+        AppSemanticColors,
+        SheetScaffold,
+        StatTile,
+        motionDuration;
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -84,6 +90,7 @@ import '../watch_settings.dart';
 import '../web_base_url.dart';
 import '../widgets/finish_plan_card.dart';
 import '../widgets/idle_setup_chip.dart';
+import '../widgets/race_strategy_sheet.dart';
 import '../widgets/cutoff_card.dart';
 import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
@@ -4687,15 +4694,16 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final chosen = await showModalBottomSheet<String>(
       context: context,
       useSafeArea: true,
-      builder: (ctx) => SafeArea(
-        child: ListView(
+      builder: (ctx) => SheetScaffold(
+        padding: EdgeInsets.zero,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(l10n.runGuidedRun),
+        ),
+        scrollBody: false,
+        body: ListView(
           shrinkWrap: true,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(l10n.runGuidedRun,
-                  style: Theme.of(ctx).textTheme.titleMedium),
-            ),
             RadioListTile<String>(
               value: '',
               groupValue: _guidedRun?.id ?? '',
@@ -4764,89 +4772,16 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final distPrefill = resolved == null
         ? ''
         : (resolved / (isMi ? 1609.344 : 1000)).toStringAsFixed(2);
-    final distCtrl = TextEditingController(text: distPrefill);
-    final goalCtrl = TextEditingController(text: _strategyGoalText);
-    var preset = _strategyPreset;
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(l10n.runRaceStrategy,
-                      style: Theme.of(ctx).textTheme.titleMedium),
-                  RadioListTile<RacePhasePreset?>(
-                    value: null,
-                    groupValue: preset,
-                    title: Text(l10n.runStrategyNone),
-                    onChanged: (v) => setSheet(() => preset = v),
-                  ),
-                  RadioListTile<RacePhasePreset?>(
-                    value: RacePhasePreset.tenTenTen,
-                    groupValue: preset,
-                    title: Text(l10n.runStrategyTenTenTen),
-                    subtitle: Text(l10n.runStrategyTenTenTenHint),
-                    onChanged: (v) => setSheet(() => preset = v),
-                  ),
-                  RadioListTile<RacePhasePreset?>(
-                    value: RacePhasePreset.negativeSplit,
-                    groupValue: preset,
-                    title: Text(l10n.runStrategyNegativeSplit),
-                    subtitle: Text(l10n.runStrategyNegativeSplitHint),
-                    onChanged: (v) => setSheet(() => preset = v),
-                  ),
-                  RadioListTile<RacePhasePreset?>(
-                    value: RacePhasePreset.even,
-                    groupValue: preset,
-                    title: Text(l10n.runStrategyEven),
-                    subtitle: Text(l10n.runStrategyEvenHint),
-                    onChanged: (v) => setSheet(() => preset = v),
-                  ),
-                  if (preset != null) ...[
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: distCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
-                      decoration: InputDecoration(
-                        labelText: l10n.runStrategyDistance,
-                        suffixText: isMi ? 'mi' : 'km',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: goalCtrl,
-                      keyboardType: TextInputType.datetime,
-                      decoration: InputDecoration(
-                        labelText: l10n.runStrategyGoalTime,
-                        hintText: 'hh:mm:ss',
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child:
-                        Text(MaterialLocalizations.of(ctx).okButtonLabel),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+    final result = await showRaceStrategySheet(
+      context,
+      preset: _strategyPreset,
+      distance: distPrefill,
+      goal: _strategyGoalText,
+      miles: isMi,
     );
-    if (result == true && mounted) {
-      final distVal = parseTypedDecimal(distCtrl.text);
+    if (result != null && mounted) {
+      final preset = result.preset;
+      final distVal = parseTypedDecimal(result.distance);
       final manualM = distVal != null && distVal > 0
           ? distVal * (isMi ? 1609.344 : 1000.0)
           : null;
@@ -4857,8 +4792,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         // setting the strategy would build phases from the old route's
         // length.
         _strategyDistanceM =
-            distCtrl.text.trim() == distPrefill ? null : manualM;
-        _strategyGoalText = goalCtrl.text.trim();
+            result.distance.trim() == distPrefill ? null : manualM;
+        _strategyGoalText = result.goal.trim();
       });
       if (preset != null && _resolvedStrategyDistanceM == null) {
         _showTopBanner(l10n.runStrategyNeedsDistance);
@@ -4868,8 +4803,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         _showTopBanner(l10n.runStrategyInvalidGoal);
       }
     }
-    distCtrl.dispose();
-    goalCtrl.dispose();
   }
 
   /// Load a planned workout into the current run-screen state — builds

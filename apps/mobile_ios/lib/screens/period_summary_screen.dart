@@ -5,7 +5,8 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, StatGrid, StatTile;
+import 'package:ui_kit/ui_kit.dart'
+    show EmptyState, SheetScaffold, StatGrid, StatTile;
 
 import '../goals.dart';
 import '../l10n/date_format.dart';
@@ -683,69 +684,57 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final mq = MediaQuery.of(context);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + mq.viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.periodShareSummary, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AspectRatio(
-                  aspectRatio: 4 / 3,
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: _PeriodShareCard(
-                      periodTitle: widget.periodTitle,
-                      periodLabel: widget.periodLabel,
-                      stats: widget.stats,
-                      unit: widget.unit,
-                    ),
-                  ),
+    return SheetScaffold.floating(
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.periodShareSummary, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: RepaintBoundary(
+                key: _cardKey,
+                child: _PeriodShareCard(
+                  periodTitle: widget.periodTitle,
+                  periodLabel: widget.periodLabel,
+                  stats: widget.stats,
+                  unit: widget.unit,
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _capturing ? null : _shareText,
-                      icon: const Icon(Icons.text_snippet_outlined),
-                      label: Text(l10n.periodShareText),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _capturing ? null : _shareImage,
-                      icon: _capturing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.image_outlined),
-                      label: Text(l10n.periodShareImage),
-                    ),
-                  ),
-                ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _capturing ? null : _shareText,
+                  icon: const Icon(Icons.text_snippet_outlined),
+                  label: Text(l10n.periodShareText),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _capturing ? null : _shareImage,
+                  icon: _capturing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.image_outlined),
+                  label: Text(l10n.periodShareImage),
+                ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

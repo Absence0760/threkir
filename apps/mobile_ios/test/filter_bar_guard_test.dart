@@ -25,11 +25,8 @@ const _unmigratedSearch = <String, int>{
   'lib/screens/route_picker_screen.dart': 1,
   'lib/screens/routes_heatmap_screen.dart': 1,
   'lib/screens/routine_public_library_screen.dart': 1,
-  'lib/widgets/audience_sheet.dart': 1,
   'lib/widgets/exercise_catalogue_picker.dart': 1,
-  'lib/widgets/group_people_picker.dart': 1,
   'lib/widgets/nutrition_log_sheet.dart': 1,
-  'lib/widgets/send_route_sheet.dart': 1,
 };
 
 /// The hub tab bodies whose toolbar is a list's control row. Chips in a card

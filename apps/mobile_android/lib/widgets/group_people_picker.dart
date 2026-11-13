@@ -2,7 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show UserProfileRow;
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
+import 'package:ui_kit/ui_kit.dart' show AppSearchField, IdentityAvatar;
 
 import '../dm_recipients.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -154,16 +154,12 @@ class _GroupPeoplePickerState extends State<GroupPeoplePicker> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        TextField(
+        AppSearchField(
           key: const ValueKey('group-people-search'),
           controller: _query,
+          hint: l10n.groupsPeopleSearch,
+          clearTooltip: l10n.commonClearSearch,
           onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(
-            hintText: l10n.groupsPeopleSearch,
-            prefixIcon: const Icon(Icons.search),
-            border: const OutlineInputBorder(),
-            isDense: true,
-          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),

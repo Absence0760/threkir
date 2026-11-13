@@ -30,6 +30,7 @@ import '../widgets/dm_photo.dart';
 import '../widgets/dm_reaction_chips.dart';
 import '../widgets/error_state.dart';
 import '../widgets/group_members_sheet.dart';
+import '../widgets/message_actions_sheet.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/top_banner.dart';
 import 'message_thread_screen.dart' show kMessageThreadPollInterval;
@@ -638,50 +639,15 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   }
 
   Future<void> _showOptions(DirectMessageRow m) async {
-    final l10n = AppLocalizations.of(context);
     final mine = m.senderId == widget.api.userId;
     final editable =
         _active && canEditDm(m, widget.api.userId, DateTime.now());
     final canReact = _canReact(m);
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      useSafeArea: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (canReact)
-              ListTile(
-                key: const ValueKey('message-action-react'),
-                leading: const Icon(Icons.add_reaction_outlined),
-                title: Text(l10n.messagesReact),
-                onTap: () => Navigator.pop(ctx, 'react'),
-              ),
-            if (editable)
-              ListTile(
-                key: const ValueKey('message-action-edit'),
-                leading: const Icon(Icons.edit_outlined),
-                title: Text(l10n.messagesEdit),
-                onTap: () => Navigator.pop(ctx, 'edit'),
-              ),
-            if (mine)
-              ListTile(
-                key: const ValueKey('message-action-unsend'),
-                leading: Icon(Icons.undo,
-                    color: AppSemanticColors.of(ctx).danger),
-                title: Text(l10n.messagesUnsend),
-                onTap: () => Navigator.pop(ctx, 'unsend'),
-              )
-            else
-              ListTile(
-                key: const ValueKey('message-action-report'),
-                leading: const Icon(Icons.flag_outlined),
-                title: Text(l10n.messagesReport),
-                onTap: () => Navigator.pop(ctx, 'report'),
-              ),
-          ],
-        ),
-      ),
+    final action = await showMessageActionsSheet(
+      context,
+      mine: mine,
+      editable: editable,
+      canReact: canReact,
     );
     if (!mounted || action == null) return;
     switch (action) {

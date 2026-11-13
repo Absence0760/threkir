@@ -3468,12 +3468,23 @@ class _SubmitTimeSheetState extends State<_SubmitTimeSheet> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = false; });
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
     try {
       final runs = await widget.social.fetchRecentRuns(limit: 20);
-      if (mounted) setState(() { _runs = runs; _loading = false; });
+      if (mounted)
+        setState(() {
+          _runs = runs;
+          _loading = false;
+        });
     } catch (_) {
-      if (mounted) setState(() { _loading = false; _error = true; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = true;
+        });
     }
   }
 
@@ -3481,123 +3492,104 @@ class _SubmitTimeSheetState extends State<_SubmitTimeSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.eventSubmitTimeTitle, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(
-              l10n.eventSubmitTimeSubtitle,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (_loading)
-              const Center(child: Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              ))
-            else if (_error)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.eventSubmitRunsLoadError,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton.icon(
-                      onPressed: _load,
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: Text(l10n.errorStateRetry),
-                    ),
-                  ],
-                ),
-              )
-            else if (_runs.isEmpty)
-              Text(
-                l10n.eventNoRecentRuns,
-                style: theme.textTheme.bodySmall,
-              )
-            else
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 340),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: _runs.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final r = _runs[i];
-                    return ListTile(
-                      dense: true,
-                      title: Text(
-                        '${_dateLabel(r.startedAt, localeToTag(Localizations.localeOf(context)))} · ${formatDistanceForPref(r.distanceM)}',
-                      ),
-                      subtitle: Text(
-                        '${_ResultRow._formatDuration(r.durationS)} · ${r.activityType}',
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                      onTap: () => Navigator.of(context).pop(
-                        _SubmitResultChoice(
-                          runId: r.id,
-                          durationS: r.durationS,
-                          distanceM: r.distanceM,
-                          finisherStatus: 'finished',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            const SizedBox(height: 8),
-            Row(
+    return SheetScaffold(
+      title: Text(l10n.eventSubmitTimeTitle),
+      actions: Row(
+        children: [
+          Expanded(
+            child: Wrap(
+              spacing: 4,
               children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 4,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(
-                          const _SubmitResultChoice(
-                            runId: null,
-                            durationS: 0,
-                            distanceM: 0,
-                            finisherStatus: 'dnf',
-                          ),
-                        ),
-                        child: Text(l10n.eventRecordDnf),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(
-                          const _SubmitResultChoice(
-                            runId: null,
-                            durationS: 0,
-                            distanceM: 0,
-                            finisherStatus: 'dns',
-                          ),
-                        ),
-                        child: Text(l10n.eventRecordDns),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.eventSubmitCancel),
+                  onPressed: () => Navigator.of(context).pop(
+                    const _SubmitResultChoice(
+                      runId: null,
+                      durationS: 0,
+                      distanceM: 0,
+                      finisherStatus: 'dnf',
+                    ),
+                  ),
+                  child: Text(l10n.eventRecordDnf),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(
+                    const _SubmitResultChoice(
+                      runId: null,
+                      durationS: 0,
+                      distanceM: 0,
+                      finisherStatus: 'dns',
+                    ),
+                  ),
+                  child: Text(l10n.eventRecordDns),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.eventSubmitCancel),
+          ),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.eventSubmitTimeSubtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_loading)
+            ListSkeleton.section(label: l10n.commonLoading, rows: 3)
+          else if (_error)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.eventSubmitRunsLoadError,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: Text(l10n.errorStateRetry),
+                  ),
+                ],
+              ),
+            )
+          else if (_runs.isEmpty)
+            Text(l10n.eventNoRecentRuns, style: theme.textTheme.bodySmall)
+          else
+            for (final (i, r) in _runs.indexed) ...[
+              if (i > 0) const Divider(height: 1),
+              ListTile(
+                dense: true,
+                title: Text(
+                  '${_dateLabel(r.startedAt, localeToTag(Localizations.localeOf(context)))} · ${formatDistanceForPref(r.distanceM)}',
+                ),
+                subtitle: Text(
+                  '${_ResultRow._formatDuration(r.durationS)} · ${r.activityType}',
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                onTap: () => Navigator.of(context).pop(
+                  _SubmitResultChoice(
+                    runId: r.id,
+                    durationS: r.durationS,
+                    distanceM: r.distanceM,
+                    finisherStatus: 'finished',
+                  ),
+                ),
+              ),
+            ],
+        ],
       ),
     );
   }
@@ -3632,56 +3624,45 @@ class _GymRoutineAttachSheetState extends State<_GymRoutineAttachSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.clubEventGymRoutineAttach,
-                style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            GymRoutinePicker(
-              fieldKey: const Key('class-routine-picker'),
-              value: _choice,
-              routines: widget.routines,
-              onChanged: (v) => setState(() => _choice = v),
-            ),
-            if (widget.hasSessionPlan && _choice != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                l10n.clubEventGymRoutineReplacesPlan,
-                key: const Key('class-routine-replaces-plan'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+    return SheetScaffold(
+      title: Text(l10n.clubEventGymRoutineAttach),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            key: const Key('class-routine-save'),
+            onPressed: () => Navigator.of(context).pop((id: _choice)),
+            child: Text(l10n.clubEventGymRoutineSave),
+          ),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GymRoutinePicker(
+            fieldKey: const Key('class-routine-picker'),
+            value: _choice,
+            routines: widget.routines,
+            onChanged: (v) => setState(() => _choice = v),
+          ),
+          if (widget.hasSessionPlan && _choice != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.clubEventGymRoutineReplacesPlan,
+              key: const Key('class-routine-replaces-plan'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.commonCancel),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  key: const Key('class-routine-save'),
-                  onPressed: () =>
-                      Navigator.of(context).pop((id: _choice)),
-                  child: Text(l10n.clubEventGymRoutineSave),
-                ),
-              ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -3706,62 +3687,53 @@ class _SessionPlanAttachSheet extends StatefulWidget {
 }
 
 class _SessionPlanAttachSheetState extends State<_SessionPlanAttachSheet> {
-  late String? _choice =
-      widget.plans.any((p) => p.id == widget.initial) ? widget.initial : null;
+  late String? _choice = widget.plans.any((p) => p.id == widget.initial)
+      ? widget.initial
+      : null;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.clubEventSessionPlanAttach,
-                style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            SessionPlanPicker(
-              fieldKey: const Key('session-sequence-picker'),
-              value: _choice,
-              plans: widget.plans,
-              onChanged: (v) => setState(() => _choice = v),
-            ),
-            if (widget.hasGymRoutine && _choice != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                l10n.clubEventSessionPlanReplacesRoutine,
-                key: const Key('session-sequence-replaces-routine'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+    return SheetScaffold(
+      title: Text(l10n.clubEventSessionPlanAttach),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            key: const Key('session-sequence-save'),
+            onPressed: () => Navigator.of(context).pop((id: _choice)),
+            child: Text(l10n.clubEventSessionPlanSave),
+          ),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SessionPlanPicker(
+            fieldKey: const Key('session-sequence-picker'),
+            value: _choice,
+            plans: widget.plans,
+            onChanged: (v) => setState(() => _choice = v),
+          ),
+          if (widget.hasGymRoutine && _choice != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.clubEventSessionPlanReplacesRoutine,
+              key: const Key('session-sequence-replaces-routine'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.commonCancel),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  key: const Key('session-sequence-save'),
-                  onPressed: () => Navigator.of(context).pop((id: _choice)),
-                  child: Text(l10n.clubEventSessionPlanSave),
-                ),
-              ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }

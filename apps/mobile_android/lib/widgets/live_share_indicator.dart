@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
+import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 
@@ -93,8 +93,9 @@ Future<LiveShareAction?> showLiveShareSheet(
     context: context,
     builder: (ctx) {
       final theme = Theme.of(ctx);
-      return SafeArea(
-        child: Column(
+      return SheetScaffold(
+        padding: EdgeInsets.zero,
+        body: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(

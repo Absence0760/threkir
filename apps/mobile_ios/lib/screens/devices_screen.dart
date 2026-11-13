@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show ListSkeleton, SheetScaffold, StatusPill, StatusPillSize;
@@ -11,6 +12,7 @@ import '../l10n/locale_support.dart';
 import '../typed_decimal.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
+import '../widgets/form_sheet.dart';
 import '../widgets/top_banner.dart';
 
 /// Resolve an l10n key IDENTIFIER carried by an [OverrideKeySpec] to its
@@ -175,10 +177,8 @@ class _DevicesScreenState extends State<DevicesScreen> {
   Future<void> _editOverrides(UserDeviceSettingRow d) async {
     final prefs = Map<String, dynamic>.from(
         (d.prefs as Map?) ?? const <String, dynamic>{});
-    final next = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    final next = await showFormSheet<Map<String, dynamic>>(
+      context,
       builder: (_) => _OverridesSheet(initial: prefs),
     );
     if (next == null) return;
@@ -445,10 +445,8 @@ class _OverridesSheetState extends State<_OverridesSheet> {
       showTopBanner(context, AppLocalizations.of(context).devicesEveryKeySet);
       return;
     }
-    final entry = await showModalBottomSheet<MapEntry<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    final entry = await showFormSheet<MapEntry<String, dynamic>>(
+      context,
       builder: (_) => _AddOverrideSheet(eligible: eligible),
     );
     if (entry == null) return;
@@ -457,19 +455,25 @@ class _OverridesSheetState extends State<_OverridesSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => !mapEquals(_current, widget.initial),
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return SheetScaffold(
       padding: const EdgeInsets.all(20),
-      actions: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
         children: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.maybePop(context),
             child: Text(l10n.devicesCancel),
           ),
-          const SizedBox(width: 8),
           FilledButton(
             onPressed: () => Navigator.pop(context, _current),
             child: Text(l10n.devicesSave),
@@ -582,14 +586,21 @@ class _AddOverrideSheetState extends State<_AddOverrideSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _numCtrl.text.trim().isNotEmpty,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final spec = _picked;
     return SheetScaffold(
       padding: const EdgeInsets.all(20),
-      actions: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
         children: [
           TextButton(
             onPressed: () {
@@ -602,13 +613,12 @@ class _AddOverrideSheetState extends State<_AddOverrideSheet> {
                   _numError = null;
                 });
               } else {
-                Navigator.pop(context);
+                Navigator.maybePop(context);
               }
             },
             child: Text(spec == null ? l10n.devicesCancel : l10n.devicesBack),
           ),
           if (spec != null) ...[
-            const SizedBox(width: 8),
             FilledButton(
               onPressed: _commit,
               child: Text(l10n.devicesAdd),

@@ -1253,8 +1253,9 @@ void main() {
   });
 
   test(
-      '_openEditor opens the marker sheet with useSafeArea so its Save button '
-      'clears the system nav bar', () {
+      '_openEditor opens the marker sheet through showFormSheet, which keeps '
+      'it under the status bar, gives it the keyboard room and guards its '
+      'fields', () {
     final source =
         File('lib/widgets/route_markers_panel.dart').readAsStringSync();
     final start = source.indexOf('Future<void> _openEditor(');
@@ -1264,13 +1265,9 @@ void main() {
     final end = source.indexOf('if (result == null) return;', start);
     expect(end, greaterThan(start));
     final openEditor = source.substring(start, end);
-    expect(openEditor.contains('showModalBottomSheet<_MarkerDraft>'), isTrue);
-    // Without useSafeArea the scroll-controlled sheet extends under the
-    // Samsung system nav bar and the Save button is occluded, so the tap
-    // misses and "Save does nothing". isScrollControlled must stay for the
-    // keyboard room.
-    expect(openEditor.contains('useSafeArea: true'), isTrue,
-        reason: 'the marker-editor bottom sheet must pass useSafeArea: true');
-    expect(openEditor.contains('isScrollControlled: true'), isTrue);
+    // showFormSheet opens scroll-controlled with useSafeArea (pinned in
+    // form_sheet_test.dart); without them the sheet ran under the Samsung
+    // nav bar and Save did nothing.
+    expect(openEditor.contains('showFormSheet<_MarkerDraft>'), isTrue);
   });
 }

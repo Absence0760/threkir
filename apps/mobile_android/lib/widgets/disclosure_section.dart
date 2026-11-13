@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 /// A named section whose body the reader can collapse. Controlled: the host
 /// owns [open] so it can persist the choice (see `disclosure_state.dart`).
@@ -40,8 +41,9 @@ class DisclosureSection extends StatelessWidget {
     final picked = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: ListTile(
+      builder: (sheet) => SheetScaffold(
+        padding: EdgeInsets.zero,
+        body: ListTile(
           key: const Key('disclosureSectionHide'),
           leading: const Icon(Icons.visibility_off),
           title: Text(hideLabel ?? ''),

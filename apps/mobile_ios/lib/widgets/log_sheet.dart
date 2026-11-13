@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 
@@ -81,11 +82,11 @@ class _LogSheet extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final actions = orderedLogActions(recent, hidden: hidden);
-    return SafeArea(
-      top: false,
+    return SheetScaffold(
+      padding: EdgeInsets.zero,
       // A single focus group so a screen reader presents the four capture
       // options as one cohesive menu (multi_modal.md § Accessibility).
-      child: Semantics(
+      body: Semantics(
         container: true,
         explicitChildNodes: true,
         label: l10n.logSheetTitle,

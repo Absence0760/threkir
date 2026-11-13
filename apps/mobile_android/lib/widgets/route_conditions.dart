@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show StatusPill;
+import 'package:ui_kit/ui_kit.dart' show SectionHeader, StatusPill;
 
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -218,24 +218,16 @@ class _RouteConditionsState extends State<RouteConditions> {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 8),
-          child: Row(
-            children: [
-              Icon(Icons.report_outlined,
-                  size: 18, color: cs.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(l10n.routeConditionsTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium),
-              ),
-              if (_showComposer && !_composerOpen)
-                TextButton.icon(
-                  onPressed: () => setState(() => _composerOpen = true),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.routeConditionsReport),
-                ),
-            ],
+          child: SectionHeader.title(
+            icon: Icons.report_outlined,
+            label: l10n.routeConditionsTitle,
+            trailing: _showComposer && !_composerOpen
+                ? TextButton.icon(
+                    onPressed: () => setState(() => _composerOpen = true),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(l10n.routeConditionsReport),
+                  )
+                : null,
           ),
         ),
         if (_composerOpen) _buildComposer(theme, cs, l10n),

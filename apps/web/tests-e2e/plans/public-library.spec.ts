@@ -240,14 +240,14 @@ test.describe('Public plan library — publish → browse → clone', () => {
 	// The page's mount reads the viewer's clubs after the plan has drawn; it
 	// used to set the library state from the plan row it loaded once that read
 	// came back, so a publish clicked in between was put back to "Publish".
-	test('a publish made while the page is still loading stays published', async ({ browser }) => {
+	test('a publish made while the page is still loading stays published', async ({ browser, mockRoute }) => {
 		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
 		await acceptCookieConsent(ctx, planSectionsOpen(USER_A.id));
 		const page = await ctx.newPage();
 		let release!: () => void;
 		const released = new Promise<void>((r) => (release = r));
 		let held = false;
-		await page.route('**/rest/v1/club_members*', async (route) => {
+		await mockRoute(page, '**/rest/v1/club_members*', async (route) => {
 			if (held) return route.fallback();
 			held = true;
 			await released;

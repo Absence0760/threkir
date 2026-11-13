@@ -25,9 +25,14 @@ const COMPONENTS = new Set([
 ]);
 const SKIP_DIRS = new Set(['node_modules', '.svelte-kit', 'build', 'dist']);
 
-type Kind = 'search' | 'page-header' | 'h1';
+type Kind = 'search' | 'page-header' | 'h1' | 'toolbar';
 
 const ALLOW: { file: string; kind: Kind; why: string }[] = [
+	{
+		file: 'routes/runs/+page.svelte',
+		kind: 'toolbar',
+		why: 'the source, date-range and sort dropdowns still sit on the run list toolbar beside the activity and view groups; they move into its FilterBar sheet with the toolbar',
+	},
 	{
 		file: 'lib/components/help/HelpSearchForm.svelte',
 		kind: 'search',
@@ -177,6 +182,37 @@ function rawH1s(source: string): number {
 	return n;
 }
 
+// A filter dropdown on a list page's bar: a `<select>` whose static class list
+// carries `toolbar-select`, the class every hand-built list toolbar gave it.
+// A list's filters live in FilterBar's sheet (the /routes toolbar had three of
+// these and a Starred button beside its own search box, issue #1374).
+function toolbarSelects(source: string): number {
+	let n = 0;
+	const visit = (node: unknown): void => {
+		if (Array.isArray(node)) return node.forEach(visit);
+		if (!node || typeof node !== 'object') return;
+		const el = node as { type?: string; name?: string; attributes?: { type?: string; name?: string; value?: unknown }[] };
+		if (el.type === 'RegularElement' && el.name === 'select') {
+			const cls = (el.attributes ?? []).find((a) => a.type === 'Attribute' && a.name === 'class');
+			const parts = cls ? (Array.isArray(cls.value) ? cls.value : [cls.value]) : [];
+			const text = parts
+				.map((p) => (p && typeof p === 'object' && 'data' in p ? String((p as { data: unknown }).data) : ''))
+				.join('');
+			if (text.split(/\s+/).includes('toolbar-select')) n++;
+		}
+		for (const [key, value] of Object.entries(node)) if (key !== 'metadata') visit(value);
+	};
+	visit(parse(source, { modern: true }).fragment);
+	return n;
+}
+
+test('the toolbar matcher flags a bar dropdown and spares a sheet field', () => {
+	assert.equal(toolbarSelects('<select class="toolbar-select"><option>a</option></select>'), 1);
+	assert.equal(toolbarSelects('<select bind:value={v} class="x toolbar-select"></select>'), 1);
+	assert.equal(toolbarSelects('<select class="sheet-select"></select>'), 0);
+	assert.equal(toolbarSelects('<!-- <select class="toolbar-select"></select> --><p>x</p>'), 0);
+});
+
 // The `.page-header` class opening a style rule.
 const RULE = /\.page-header(?![\w-])[^{};]*\{/;
 // The class in markup: a static class attribute, a class directive, or a
@@ -260,6 +296,7 @@ for (const path of walk(SRC)) {
 	if (searchInputs(source) > 0) offenders.add(`${rel}|search`);
 	if (pageHeaderHits(source)) offenders.add(`${rel}|page-header`);
 	if (/^routes\/(.+\/)?\+page\.svelte$/.test(rel) && rawH1s(source) > 0) offenders.add(`${rel}|h1`);
+	if (/^routes\/(.+\/)?\+page\.svelte$/.test(rel) && toolbarSelects(source) > 0) offenders.add(`${rel}|toolbar`);
 }
 
 test('the components exist', () => {
@@ -272,6 +309,7 @@ test('no file builds its own search input, page-header block or route h1', () =>
 		const [file, kind] = o.split('|');
 		if (kind === 'search') return `  src/${file}: an <input type="search">; render AppSearchField (inside FilterBar for a list)`;
 		if (kind === 'h1') return `  src/${file}: a hand-built <h1> title block; render PageHeader`;
+		if (kind === 'toolbar') return `  src/${file}: a filter dropdown on the list's bar; put it in FilterBar's filters sheet`;
 		return `  src/${file}: a .page-header class; render PageHeader`;
 	});
 	assert.deepEqual(failures, [], 'conventions.md § Web lists — FilterBar, AppSearchField and PageHeader:\n' + failures.join('\n'));

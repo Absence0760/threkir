@@ -1472,8 +1472,6 @@ export const messages = {
 	"routesPage.sortShortest": "Plus courts",
 	"routesPage.sortMostRun": "Les plus courus",
 	"routesPage.sortAz": "A–Z",
-	"routesPage.showAll": "Afficher tous les itinéraires",
-	"routesPage.showStarredOnly": "Afficher uniquement les itinéraires en favori",
 	"routesPage.starredSyncTitle": "Les itinéraires en favori se synchronisent avec votre montre associée",
 	"routesPage.starred": "Favoris",
 	"routesPage.import": "Importer",

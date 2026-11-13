@@ -1472,8 +1472,6 @@ export const messages = {
 	"routesPage.sortShortest": "Más cortas",
 	"routesPage.sortMostRun": "Más recorridas",
 	"routesPage.sortAz": "A–Z",
-	"routesPage.showAll": "Mostrar todas las rutas",
-	"routesPage.showStarredOnly": "Mostrar solo rutas con estrella",
 	"routesPage.starredSyncTitle": "Las rutas con estrella se sincronizan con tu reloj vinculado",
 	"routesPage.starred": "Con estrella",
 	"routesPage.import": "Importar",

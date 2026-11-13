@@ -233,7 +233,7 @@ test.describe('/routes/[id]', () => {
 		// /routes hydrates its filter buttons on mount — wait before
 		// clicking so the handler is attached.
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: /Show starred routes only/ }).click();
+		await page.getByTestId('routes-starred').click();
 		await expect(
 			page.locator(`.route-card[href$="${RUNNER_PUBLIC_ROUTE_ID}"]`)
 		).toBeVisible({ timeout: 10_000 });

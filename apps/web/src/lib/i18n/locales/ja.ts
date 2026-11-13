@@ -1467,8 +1467,6 @@ export const messages = {
 	"routesPage.sortShortest": "短い順",
 	"routesPage.sortMostRun": "走行回数順",
 	"routesPage.sortAz": "A–Z",
-	"routesPage.showAll": "すべてのルートを表示",
-	"routesPage.showStarredOnly": "スター付きルートのみ表示",
 	"routesPage.starredSyncTitle": "スター付きルートはペアリングしたウォッチに同期されます",
 	"routesPage.starred": "スター付き",
 	"routesPage.import": "インポート",

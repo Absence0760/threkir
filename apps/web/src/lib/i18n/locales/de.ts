@@ -1472,8 +1472,6 @@ export const messages = {
 	"routesPage.sortShortest": "Kürzeste",
 	"routesPage.sortMostRun": "Am häufigsten gelaufen",
 	"routesPage.sortAz": "A–Z",
-	"routesPage.showAll": "Alle Routen anzeigen",
-	"routesPage.showStarredOnly": "Nur markierte Routen anzeigen",
 	"routesPage.starredSyncTitle": "Markierte Routen werden mit deiner gekoppelten Uhr synchronisiert",
 	"routesPage.starred": "Markiert",
 	"routesPage.import": "Importieren",

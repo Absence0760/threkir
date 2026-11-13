@@ -1485,8 +1485,6 @@ export const en = {
 	"routesPage.sortShortest": "Shortest",
 	"routesPage.sortMostRun": "Most-run",
 	"routesPage.sortAz": "A–Z",
-	"routesPage.showAll": "Show all routes",
-	"routesPage.showStarredOnly": "Show starred routes only",
 	"routesPage.starredSyncTitle": "Starred routes sync to your paired watch",
 	"routesPage.starred": "Starred",
 	"routesPage.import": "Import",

@@ -61,7 +61,7 @@ test.describe('/routes', () => {
 		// Surface is a per-route enum (road / trail / mixed). The
 		// seed has multiple surfaces; selecting "road" should
 		// collapse to the road-surface subset. Hidden behind a
-		// `<select aria-label="Surface">`.
+		// the Filters sheet.
 		await page.goto('/routes');
 		await expect(page.locator('.route-card').first()).toBeVisible({
 			timeout: 10_000
@@ -69,13 +69,17 @@ test.describe('/routes', () => {
 		const allCount = await page.locator('.route-card').count();
 		expect(allCount).toBeGreaterThan(2);
 
-		await page.getByLabel('Surface', { exact: true }).selectOption('road');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-surface').selectOption('road');
+		await page.getByTestId('routes-filters-done').click();
 		await expect
 			.poll(() => page.locator('.route-card').count(), { timeout: 5_000 })
 			.toBeLessThan(allCount);
 
 		// Restore.
-		await page.getByLabel('Surface', { exact: true }).selectOption('any');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-surface').selectOption('any');
+		await page.getByTestId('routes-filters-done').click();
 		await expect(page.locator('.route-card')).toHaveCount(allCount);
 	});
 
@@ -89,14 +93,18 @@ test.describe('/routes', () => {
 		});
 		const allCount = await page.locator('.route-card').count();
 
-		await page.getByLabel('Distance').selectOption('5to10');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-distance').selectOption('5to10');
+		await page.getByTestId('routes-filters-done').click();
 		// Should narrow.
 		await expect
 			.poll(() => page.locator('.route-card').count(), { timeout: 5_000 })
 			.toBeLessThan(allCount);
 
 		// Restore.
-		await page.getByLabel('Distance').selectOption('any');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-distance').selectOption('any');
+		await page.getByTestId('routes-filters-done').click();
 	});
 
 	test('Sort by Longest puts the longest route first', async ({ page }) => {
@@ -109,7 +117,9 @@ test.describe('/routes', () => {
 			timeout: 10_000
 		});
 
-		await page.getByLabel('Sort').selectOption('longest');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-sort').selectOption('longest');
+		await page.getByTestId('routes-filters-done').click();
 		// Distance text inside .route-card includes a "X.X km" /
 		// "X.X mi" string. Read all of them; the first should be the
 		// max numerically.
@@ -126,7 +136,9 @@ test.describe('/routes', () => {
 		expect(distances[0]).toBe(Math.max(...distances));
 
 		// Restore.
-		await page.getByLabel('Sort').selectOption('newest');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-sort').selectOption('newest');
+		await page.getByTestId('routes-filters-done').click();
 	});
 
 	test('search box narrows the My-routes list to a name match', async ({
@@ -220,7 +232,7 @@ test.describe('/routes', () => {
 		// the seed — simpler than coercing surface+distance to a void
 		// combo and survives seed evolution.
 		await page
-			.getByRole('textbox', { name: /Search routes/ })
+			.getByRole('searchbox', { name: /Search routes/ })
 			.fill('zzzz_no_match_zzzz');
 
 		// Empty state is a card (icon + heading + explainer + CTA), not

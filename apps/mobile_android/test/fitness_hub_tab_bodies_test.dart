@@ -11,7 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSearchField, FilterBar;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSearchField, FilterBar, PageBarTitle;
 
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
@@ -157,6 +158,39 @@ void main() {
 
   // The same walk in every shipped locale (issue #1374 TO-6), tab by
   // position so no label is spelled in English.
+  // Owner finding 11: the hub's large title collapses into its slim bar as a
+  // tab scrolls, the strip pinned under it; every tab is walked collapsed
+  // too, and the hub's actions stay in reach.
+  Future<void> collapse(WidgetTester tester) async {
+    await tester.dragFrom(
+        tester.getCenter(find.byType(TabBarView)), const Offset(0, -300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    final fade = tester.widget<AnimatedOpacity>(find.descendant(
+        of: find.byType(PageBarTitle), matching: find.byType(AnimatedOpacity)));
+    expect(fade.opacity, 1, reason: 'collapsed, the bar says the hub name');
+    expect(tester.getRect(find.byType(TabBar)).top,
+        moreOrLessEquals(tester.getRect(find.byType(AppBar)).bottom),
+        reason: 'the strip pins under the bar');
+  }
+
+  worstCaseTestWidgets('every Fitness tab with the title collapsed',
+      (tester, locale) async {
+    await pumpHub(tester, locale: locale);
+    await collapse(tester);
+    final tabs =
+        find.descendant(of: find.byType(TabBar), matching: find.byType(Tab));
+    for (var i = 0; i < tabs.evaluate().length; i++) {
+      final tab = tabs.at(i);
+      await tester.ensureVisible(tab);
+      await tester.tap(tab);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expectNoOverflow(tester, 'Fitness tab $i collapsed');
+    }
+  });
+
   worstCaseTestWidgets('every Fitness tab', (tester, locale) async {
     await pumpHub(tester, locale: locale);
     final tabs = find.descendant(of: find.byType(TabBar), matching: find.byType(Tab));

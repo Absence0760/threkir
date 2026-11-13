@@ -9,7 +9,7 @@ import 'package:core_models/core_models.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show SectionHeader;
+import 'package:ui_kit/ui_kit.dart' show PageHeader, SectionHeader;
 
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
@@ -199,7 +199,8 @@ void main() {
     testWidgets('is titled You, then the identity card, then the search',
         (tester) async {
       await pump(tester, size: const Size(400, 3000));
-      final title = find.text(en.navYou);
+      final title = find.descendant(
+          of: find.byType(PageHeader), matching: find.text(en.navYou));
       final card = find.byKey(const ValueKey('you-identity-card'));
       final field = find.byKey(const ValueKey('settings-search'));
       expect(title, findsOneWidget);

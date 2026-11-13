@@ -34,6 +34,10 @@ const _hosts = <String>[
 /// indirection cannot become an escape hatch.
 const _stripHost = 'lib/widgets/collapsing_tab_host.dart';
 
+/// The bottom-nav hubs (Fitness, Social) are ui_kit `RootPage.tabbed`s, which
+/// build the strip under the hub's large title.
+const _rootPage = '../../packages/ui_kit/lib/src/widgets/root_page.dart';
+
 /// A `TabBar(` construction. `TabBarView(` and `TabBarTheme(` must not match.
 final _tabBar = RegExp(r'\bTabBar\(');
 
@@ -58,10 +62,15 @@ void main() {
     expect(File(_stripHost).readAsStringSync(), contains('AppTabBar('),
         reason: '$_stripHost stopped building the shared strip, so the screens '
             'that delegate to it have no strip at all');
+    expect(File(_rootPage).readAsStringSync(), contains('AppTabBar('),
+        reason: '$_rootPage stopped building the shared strip, so the hubs '
+            'that delegate to it have no strip at all');
     for (final path in _hosts) {
       final src = File(path).readAsStringSync();
       expect(
-        src.contains('AppTabBar(') || src.contains('CollapsingTabHost('),
+        src.contains('AppTabBar(') ||
+            src.contains('CollapsingTabHost(') ||
+            src.contains('RootPage.tabbed('),
         isTrue,
         reason: '$path builds its own tab strip',
       );

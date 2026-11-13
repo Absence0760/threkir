@@ -51,15 +51,6 @@
 			fullText: 'MIT License. Copyright (c) Anthropic, PBC. See upstream repository for the full text.',
 		},
 		{
-			name: 'JSZip',
-			license: 'MIT (elected)',
-			url: 'https://github.com/Stuk/jszip',
-			fullText:
-				'JSZip is dual-licensed under the MIT license or GPL-3.0-or-later; this project elects and ' +
-				'uses it under the MIT option. MIT License. Copyright (c) Stuart Knightley, David Duponchel, ' +
-				'Franz Buchinger, Antonio Villar Cloquell. See upstream repository for the full text of both licenses.',
-		},
-		{
 			name: 'DOMPurify',
 			license: 'Apache-2.0 (elected)',
 			url: 'https://github.com/cure53/DOMPurify',

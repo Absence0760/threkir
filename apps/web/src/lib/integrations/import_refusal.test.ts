@@ -41,7 +41,7 @@ const FILE_LEVEL_REGION: Record<string, [string, string]> = {
 	'strava-zip.ts': ['export async function importStravaZip(', 'const dataRows = rows.slice(1)'],
 	'garmin-zip.ts': [
 		'export async function importGarminBundle(',
-		'const zip = await JSZip.loadAsync(file)',
+		'const zip = await openZip(file)',
 	],
 };
 

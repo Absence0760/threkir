@@ -12,7 +12,7 @@
 /// the csv `Activity ID` column) and skips any ID already present on
 /// the user's `source = 'strava'` runs.
 
-import JSZip from 'jszip';
+import { openZip, type ZipArchive } from '../core/zip_archive';
 import { parseRouteFile, type ImportedRoute } from './import';
 import { parseFitBuffer, computeEmbeddedBests } from './garmin-fit';
 import { saveRun, addRunPhoto } from '../core/data';
@@ -87,13 +87,12 @@ export async function importStravaZip(
 		});
 	}
 
-	const zip = await JSZip.loadAsync(file);
-	const csvFile = zip.file('activities.csv');
-	if (!csvFile) {
+	const zip = await openZip(file);
+	const csvText = await zip.text('activities.csv');
+	if (csvText === null) {
 		throw new ImportRefusedError('strava_zip_not_an_export');
 	}
 
-	const csvText = await csvFile.async('text');
 	const rows = parseCsv(csvText);
 	if (rows.length === 0) {
 		throw new ImportRefusedError('strava_zip_no_rows');
@@ -182,7 +181,7 @@ export async function importStravaZip(
 }
 
 async function importOne(
-	zip: JSZip,
+	zip: ZipArchive,
 	row: string[],
 	idx: HeaderIndex,
 	stravaId: string,
@@ -219,9 +218,9 @@ async function importOne(
 	// in a format neither parser reads — the caller's per-row catch turns
 	// that into an `ImportFailureReport` entry instead of a summary-only
 	// run that reads as complete.
-	const member = resolveStravaTrackMember(filename, (name) => zip.file(name) != null);
+	const member = resolveStravaTrackMember(filename, (name) => zip.has(name));
 	if (member.kind === 'member') {
-		let blob = await zip.file(filename)!.async('blob');
+		let blob = (await zip.blob(filename))!;
 		let innerName = filename.split('/').pop()!;
 		let canParse = true;
 		if (member.gzipped) {
@@ -299,13 +298,12 @@ async function importOne(
 		const paths = allPaths.slice(0, 10);
 		droppedPhotos = allPaths.length - paths.length;
 		for (const p of paths) {
-			const entry = zip.file(p);
-			if (!entry) continue;
+			if (!zip.has(p)) continue;
 			const ext = (p.split('.').pop() ?? '').toLowerCase();
 			const type = STRAVA_PHOTO_MIME[ext];
 			if (!type) continue;
 			try {
-				const blob = await entry.async('blob');
+				const blob = (await zip.blob(p))!;
 				const photo = new File([blob], p.split('/').pop() ?? `photo.${ext}`, { type });
 				await addRunPhoto({ run_id: runId, file: photo });
 			} catch (_) {

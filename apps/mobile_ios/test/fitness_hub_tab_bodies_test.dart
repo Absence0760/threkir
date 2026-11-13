@@ -22,6 +22,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/fitness_hub_screen.dart';
 import '../lib/training_service.dart';
 import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
+import 'worst_case_layout.dart';
 
 const _phone = Size(320, 640);
 
@@ -42,7 +43,7 @@ void main() {
     return d;
   }
 
-  Future<void> pumpHub(WidgetTester tester) async {
+  Future<void> pumpHub(WidgetTester tester, {Locale? locale}) async {
     tester.view.physicalSize = _phone;
     tester.view.devicePixelRatio = 1;
     tester.view.viewPadding = const FakeViewPadding(bottom: kThreeButtonNavBar);
@@ -70,14 +71,8 @@ void main() {
             metadata: const {MetadataKeys.title: 'Richmond Half'},
           ),
         ]));
-    await tester.pumpWidget(MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context)
-            .copyWith(textScaler: const TextScaler.linear(2.0)),
-        child: child!,
-      ),
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale ?? const Locale('en'),
       home: FitnessHubScreen(
         apiClient: null,
         runStore: runStore,
@@ -158,6 +153,24 @@ void main() {
       } else {
         expect(fab, findsNothing, reason: '$label has no primary action');
       }
+    }
+  });
+
+  // The same walk in every shipped locale (issue #1374 TO-6), tab by
+  // position so no label is spelled in English.
+  worstCaseTestWidgets('every Fitness tab', (tester, locale) async {
+    await pumpHub(tester, locale: locale);
+    final tabs = find.descendant(of: find.byType(TabBar), matching: find.byType(Tab));
+    final count = tabs.evaluate().length;
+    expect(count, greaterThanOrEqualTo(7));
+    for (var i = 0; i < count; i++) {
+      final tab = tabs.at(i);
+      await tester.ensureVisible(tab);
+      await tester.tap(tab);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expectNoOverflow(tester, 'Fitness tab $i');
     }
   });
 

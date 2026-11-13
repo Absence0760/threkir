@@ -17,7 +17,7 @@ import '../preferences.dart';
 import '../settings_sync.dart';
 import 'parkrun_barcode_screen.dart';
 import 'profile_screen.dart';
-import 'settings_account_screen.dart';
+import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
 import 'sign_in_screen.dart';
 
@@ -212,20 +212,14 @@ class _YouScreenState extends State<YouScreen>
               ),
             ),
           ),
-          // The name and avatar are edited on Account, where they are the
-          // first two rows; this is the one tap from your own face to them.
+          // The photo, name and username are edited on their own page, one tap
+          // from your own face.
           Padding(
             padding: const EdgeInsets.fromLTRB(
                 AppInsets.gutter, 0, AppInsets.gutter, AppSpace.smPlus),
             child: OutlinedButton.icon(
               key: const ValueKey('you-edit-profile'),
-              onPressed: () => _push(SettingsAccountScreen(
-                apiClient: api,
-                preferences: widget.preferences,
-                settingsSync: widget.settingsSync,
-                runStore: widget.runStore,
-                routeStore: widget.routeStore,
-              )),
+              onPressed: () => _push(EditProfileScreen(apiClient: api)),
               icon: const Icon(Icons.edit_outlined),
               label: Text(l10n.youEditProfile),
             ),

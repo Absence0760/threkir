@@ -1133,6 +1133,34 @@ class AppLocalizationsPt extends AppLocalizations {
   String get youEditProfile => 'Editar perfil';
 
   @override
+  String get editProfileSubtitle => 'Foto, nome e nome de utilizador';
+
+  @override
+  String get editProfileUsername => 'Nome de utilizador';
+
+  @override
+  String get editProfileUsernameHelp =>
+      'O seu @nome de utilizador público — 3 a 30 letras minúsculas, números ou sublinhados. Outros podem encontrar o seu perfil por ele.';
+
+  @override
+  String get editProfileUsernameTaken =>
+      'Esse nome de utilizador já está em uso.';
+
+  @override
+  String get editProfileUsernameInvalid =>
+      'Utilize de 3 a 30 letras minúsculas, números ou sublinhados.';
+
+  @override
+  String get editProfileSaving => 'A guardar…';
+
+  @override
+  String get editProfileSaved => 'Perfil guardado';
+
+  @override
+  String get editProfileSaveFailed =>
+      'Não foi possível guardar o seu perfil. Tente novamente.';
+
+  @override
   String get logSheetTitle => 'Registar';
 
   @override
@@ -23926,6 +23954,33 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get youEditProfile => 'Editar perfil';
+
+  @override
+  String get editProfileSubtitle => 'Foto, nome e nome de usuário';
+
+  @override
+  String get editProfileUsername => 'Nome de usuário';
+
+  @override
+  String get editProfileUsernameHelp =>
+      'Seu @nome de usuário público — 3 a 30 letras minúsculas, números ou sublinhados. Outros podem te encontrar por ele.';
+
+  @override
+  String get editProfileUsernameTaken => 'Esse nome de usuário já está em uso.';
+
+  @override
+  String get editProfileUsernameInvalid =>
+      'Use de 3 a 30 letras minúsculas, números ou sublinhados.';
+
+  @override
+  String get editProfileSaving => 'Salvando…';
+
+  @override
+  String get editProfileSaved => 'Perfil salvo';
+
+  @override
+  String get editProfileSaveFailed =>
+      'Não foi possível salvar seu perfil. Tente de novo.';
 
   @override
   String get logSheetTitle => 'Registrar';

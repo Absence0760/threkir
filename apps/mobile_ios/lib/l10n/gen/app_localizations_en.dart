@@ -1119,6 +1119,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youEditProfile => 'Edit profile';
 
   @override
+  String get editProfileSubtitle => 'Photo, name and username';
+
+  @override
+  String get editProfileUsername => 'Username';
+
+  @override
+  String get editProfileUsernameHelp =>
+      'Your public @username — 3–30 lowercase letters, numbers, or underscores. Others can find you by it.';
+
+  @override
+  String get editProfileUsernameTaken => 'That username is already taken.';
+
+  @override
+  String get editProfileUsernameInvalid =>
+      'Use 3–30 lowercase letters, numbers, or underscores.';
+
+  @override
+  String get editProfileSaving => 'Saving…';
+
+  @override
+  String get editProfileSaved => 'Profile saved';
+
+  @override
+  String get editProfileSaveFailed =>
+      'Couldn\'t save your profile. Please try again.';
+
+  @override
   String get logSheetTitle => 'Log';
 
   @override

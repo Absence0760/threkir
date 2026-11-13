@@ -37,6 +37,7 @@ import 'follow_requests_screen.dart';
 import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
 import 'messages_screen.dart';
+import 'edit_profile_screen.dart';
 import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
 import 'race_detail_screen.dart';
@@ -713,6 +714,14 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  Future<void> _editProfile() async {
+    // The photo saves on pick, before any Save, so re-read on every return.
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => EditProfileScreen(apiClient: widget.api)),
+    );
+    if (mounted) await _loadSummary();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -723,6 +732,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       appBar: AppBar(
         title: Text(_summary?.displayName ?? l10n.profileTitle),
         actions: [
+          // Your own profile edits from where you see it (issue #1374).
+          if (_isSelf)
+            IconButton(
+              key: const ValueKey('profile-edit'),
+              tooltip: l10n.youEditProfile,
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: _editProfile,
+            ),
           // Report and Block are rare and one is destructive, so they share
           // an overflow menu rather than sitting as two bare icons beside the
           // title (web keeps them as header buttons; there is room there).

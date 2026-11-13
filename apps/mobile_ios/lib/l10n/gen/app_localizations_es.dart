@@ -1131,6 +1131,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get youEditProfile => 'Editar perfil';
 
   @override
+  String get editProfileSubtitle => 'Foto, nombre y nombre de usuario';
+
+  @override
+  String get editProfileUsername => 'Nombre de usuario';
+
+  @override
+  String get editProfileUsernameHelp =>
+      'Tu @nombre de usuario público: 3 a 30 letras minúsculas, números o guiones bajos. Otros pueden encontrarte con él.';
+
+  @override
+  String get editProfileUsernameTaken =>
+      'Ese nombre de usuario ya está en uso.';
+
+  @override
+  String get editProfileUsernameInvalid =>
+      'Usa de 3 a 30 letras minúsculas, números o guiones bajos.';
+
+  @override
+  String get editProfileSaving => 'Guardando…';
+
+  @override
+  String get editProfileSaved => 'Perfil guardado';
+
+  @override
+  String get editProfileSaveFailed =>
+      'No se pudo guardar tu perfil. Inténtalo de nuevo.';
+
+  @override
   String get logSheetTitle => 'Registrar';
 
   @override

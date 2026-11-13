@@ -1087,6 +1087,31 @@ class AppLocalizationsJa extends AppLocalizations {
   String get youEditProfile => 'プロフィールを編集';
 
   @override
+  String get editProfileSubtitle => '写真、名前、ユーザー名';
+
+  @override
+  String get editProfileUsername => 'ユーザー名';
+
+  @override
+  String get editProfileUsernameHelp =>
+      '公開される @ユーザー名 — 半角英小文字・数字・アンダースコアで3〜30文字。他の人がこれで検索できます。';
+
+  @override
+  String get editProfileUsernameTaken => 'そのユーザー名は既に使われています。';
+
+  @override
+  String get editProfileUsernameInvalid => '半角英小文字・数字・アンダースコアで3〜30文字を使用してください。';
+
+  @override
+  String get editProfileSaving => '保存中…';
+
+  @override
+  String get editProfileSaved => 'プロフィールを保存しました';
+
+  @override
+  String get editProfileSaveFailed => 'プロフィールを保存できませんでした。もう一度お試しください。';
+
+  @override
   String get logSheetTitle => '記録';
 
   @override

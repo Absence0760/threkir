@@ -1871,6 +1871,54 @@ abstract class AppLocalizations {
   /// **'Edit profile'**
   String get youEditProfile;
 
+  /// Account row subtitle: what the Edit profile page edits
+  ///
+  /// In en, this message translates to:
+  /// **'Photo, name and username'**
+  String get editProfileSubtitle;
+
+  /// Edit profile: label of the public @username field (web settingsAccount.handleLabel)
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get editProfileUsername;
+
+  /// Edit profile: help under the username field
+  ///
+  /// In en, this message translates to:
+  /// **'Your public @username — 3–30 lowercase letters, numbers, or underscores. Others can find you by it.'**
+  String get editProfileUsernameHelp;
+
+  /// Edit profile: the username belongs to someone else
+  ///
+  /// In en, this message translates to:
+  /// **'That username is already taken.'**
+  String get editProfileUsernameTaken;
+
+  /// Edit profile: the username breaks the 3-30 [a-z0-9_] rule
+  ///
+  /// In en, this message translates to:
+  /// **'Use 3–30 lowercase letters, numbers, or underscores.'**
+  String get editProfileUsernameInvalid;
+
+  /// Edit profile: the Save button while saving
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get editProfileSaving;
+
+  /// Banner after Edit profile saves
+  ///
+  /// In en, this message translates to:
+  /// **'Profile saved'**
+  String get editProfileSaved;
+
+  /// Banner when Edit profile's save fails for a reason other than the username
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your profile. Please try again.'**
+  String get editProfileSaveFailed;
+
   /// Title of the Log capture bottom sheet
   ///
   /// In en, this message translates to:

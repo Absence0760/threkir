@@ -1512,6 +1512,38 @@
   "@youEditProfile": {
     "description": "Button on the You tab identity card that opens the name and photo editor"
   },
+  "editProfileSubtitle": "Photo, name and username",
+  "@editProfileSubtitle": {
+    "description": "Account row subtitle: what the Edit profile page edits"
+  },
+  "editProfileUsername": "Username",
+  "@editProfileUsername": {
+    "description": "Edit profile: label of the public @username field (web settingsAccount.handleLabel)"
+  },
+  "editProfileUsernameHelp": "Your public @username — 3–30 lowercase letters, numbers, or underscores. Others can find you by it.",
+  "@editProfileUsernameHelp": {
+    "description": "Edit profile: help under the username field"
+  },
+  "editProfileUsernameTaken": "That username is already taken.",
+  "@editProfileUsernameTaken": {
+    "description": "Edit profile: the username belongs to someone else"
+  },
+  "editProfileUsernameInvalid": "Use 3–30 lowercase letters, numbers, or underscores.",
+  "@editProfileUsernameInvalid": {
+    "description": "Edit profile: the username breaks the 3-30 [a-z0-9_] rule"
+  },
+  "editProfileSaving": "Saving…",
+  "@editProfileSaving": {
+    "description": "Edit profile: the Save button while saving"
+  },
+  "editProfileSaved": "Profile saved",
+  "@editProfileSaved": {
+    "description": "Banner after Edit profile saves"
+  },
+  "editProfileSaveFailed": "Couldn't save your profile. Please try again.",
+  "@editProfileSaveFailed": {
+    "description": "Banner when Edit profile's save fails for a reason other than the username"
+  },
   "logSheetTitle": "Log",
   "@logSheetTitle": {
     "description": "Title of the Log capture bottom sheet"

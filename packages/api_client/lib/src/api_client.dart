@@ -4010,6 +4010,17 @@ class ApiClient {
     return rows.isEmpty ? null : rows.first as Map<String, dynamic>;
   }
 
+  /// Claims, changes or (blank) clears the caller's public @handle through
+  /// `set_my_handle`, the only write path for the column (migration
+  /// 20270424000002). Returns the stored, lowercased handle, or null when
+  /// cleared. A refusal is a `PostgrestException` whose message is
+  /// `handle_invalid` or `handle_taken`.
+  Future<String?> setMyHandle(String handle) async {
+    final res =
+        await _client.rpc('set_my_handle', params: {'p_handle': handle});
+    return res is String ? res : null;
+  }
+
   /// Set (or clear, when blank) the signed-in user's display name on
   /// `user_profiles`. Mirrors web `/settings/account`'s display-name save —
   /// the only other writer is the one-shot setup wizard, so without this a

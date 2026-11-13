@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
 import 'package:file_picker/file_picker.dart';
@@ -9,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, IdentityAvatar;
+import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
 
 import '../ai_disclosure.dart';
 import '../ai_disclosure_memo.dart';
@@ -17,7 +16,6 @@ import '../auth_change_aware.dart';
 import '../auth_error.dart';
 import '../auth_validation.dart';
 import '../backup.dart';
-import '../exif_strip.dart';
 import '../backup_server_client.dart';
 import '../export_job.dart';
 import '../import_refusal.dart';
@@ -26,21 +24,17 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../password_change.dart';
 import '../preferences.dart';
-import '../text_limits.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
 import '../sign_out.dart';
 import '../web_base_url.dart';
 import '../widgets/ai_disclosure_notice.dart';
-import '../widgets/confirm_destructive.dart';
 import '../widgets/password_field.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
-import 'avatar_crop_screen.dart';
+import 'edit_profile_screen.dart';
 import 'import_screen.dart';
 import 'sign_in_screen.dart';
-
-enum _ProfileLoad { loading, ready, failed }
 
 class SettingsAccountScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -54,9 +48,6 @@ class SettingsAccountScreen extends StatefulWidget {
   /// enqueue → poll → resume path can be driven without sockets.
   final BackupServerClient? exportClient;
 
-  /// Replaces the gallery picker so a widget test can drive pick -> crop ->
-  /// upload without the image_picker platform channel.
-  final Future<XFile?> Function()? pickAvatarOverride;
 
   const SettingsAccountScreen({
     super.key,
@@ -66,7 +57,6 @@ class SettingsAccountScreen extends StatefulWidget {
     this.runStore,
     this.routeStore,
     this.exportClient,
-    this.pickAvatarOverride,
   });
 
   @override
@@ -126,21 +116,6 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
   /// and the banner have gone.
   bool _lastBackupWasOnDevice = false;
 
-  String? _avatarUrl;
-  bool _avatarBusy = false;
-  final ImagePicker _avatarPicker = ImagePicker();
-
-  String? _displayName;
-  bool _displayNameBusy = false;
-
-  // The photo and display-name controls edit values read on mount, so they
-  // stay closed until that read lands: the name editor is seeded from
-  // [_displayName], and one opened over a pending or failed read saves a
-  // blank over the stored name. The generation drops a read that an auth
-  // change or a retry has superseded.
-  _ProfileLoad _profileLoad = _ProfileLoad.loading;
-  int _profileLoadGeneration = 0;
-
   // Change-email flow: GoTrue's secure email change confirms from BOTH
   // the old and the new address, so the account email doesn't flip until
   // both links are followed. We surface a persistent "confirmation
@@ -154,7 +129,6 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     super.initState();
     widget.preferences.addListener(_onChange);
     _loadAiDisclosure();
-    unawaited(_loadProfile());
     unawaited(_resumeExportJob());
   }
 
@@ -182,9 +156,6 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     _exportPollTimer = null;
     setState(() {
       _disclosure = const AiDisclosureRecord();
-      _avatarUrl = null;
-      _displayName = null;
-      _profileLoad = _ProfileLoad.loading;
       _exportJob = null;
       _exportShortfall = null;
       _exportStatusUnreadable = false;
@@ -192,7 +163,6 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       _lastBackupWasOnDevice = false;
     });
     _loadAiDisclosure();
-    unawaited(_loadProfile());
     unawaited(_resumeExportJob());
   }
 
@@ -437,191 +407,6 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       // the safe way round — a runner can always re-accept, and the RPC is
       // monotone so doing so cannot walk a wider acceptance back.
       debugPrint('settings account: AI disclosure lookup failed: $e');
-    }
-  }
-
-  Future<void> _loadProfile() async {
-    final generation = ++_profileLoadGeneration;
-    final api = widget.apiClient;
-    if (api == null || api.userId == null) return;
-    try {
-      final profile = await api.fetchMyProfile();
-      if (!mounted || generation != _profileLoadGeneration) return;
-      setState(() {
-        _avatarUrl = profile?.avatarUrl;
-        _displayName = profile?.displayName;
-        _profileLoad = _ProfileLoad.ready;
-      });
-    } catch (e) {
-      debugPrint('settings account: profile load failed: $e');
-      if (!mounted || generation != _profileLoadGeneration) return;
-      setState(() => _profileLoad = _ProfileLoad.failed);
-    }
-  }
-
-  Future<void> _retryProfileLoad() async {
-    setState(() => _profileLoad = _ProfileLoad.loading);
-    await _loadProfile();
-  }
-
-  Future<void> _editDisplayName() async {
-    final api = widget.apiClient;
-    final l10n = AppLocalizations.of(context);
-    if (api == null || api.userId == null) {
-      showTopBanner(context, l10n.settingsAccountSignInToSync);
-      return;
-    }
-    if (_profileLoad != _ProfileLoad.ready) return;
-    final ctl = TextEditingController(text: _displayName ?? '');
-    final saved = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.settingsAccountDisplayName),
-        content: TextField(
-          controller: ctl,
-          autofocus: true,
-          maxLength: kDisplayNameMaxLength,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(
-            labelText: l10n.settingsAccountDisplayName,
-            helperText: l10n.settingsAccountDisplayNameHint,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.settingsAccountCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctl.text),
-            child: Text(l10n.settingsAccountSave),
-          ),
-        ],
-      ),
-    );
-    if (saved == null || !mounted) return;
-    final trimmed = saved.trim();
-    setState(() => _displayNameBusy = true);
-    try {
-      await api.updateDisplayName(trimmed);
-      if (!mounted) return;
-      setState(() => _displayName = trimmed.isEmpty ? null : trimmed);
-      showTopBanner(context, l10n.settingsAccountDisplayNameUpdated);
-    } catch (e) {
-      if (!mounted) return;
-      showTopBanner(context, l10n.settingsAccountDisplayNameUpdateFailed);
-    } finally {
-      if (mounted) setState(() => _displayNameBusy = false);
-    }
-  }
-
-  Future<void> _pickAvatar() async {
-    final api = widget.apiClient;
-    final l10n = AppLocalizations.of(context);
-    if (api == null || api.userId == null) {
-      showTopBanner(context, l10n.settingsAccountSignInToSync);
-      return;
-    }
-    if (_profileLoad != _ProfileLoad.ready) return;
-    XFile? f;
-    try {
-      f =
-          await (widget.pickAvatarOverride ??
-              () => _avatarPicker.pickImage(
-                source: ImageSource.gallery,
-                imageQuality: 90,
-                maxWidth: 1024,
-                maxHeight: 1024,
-              ))();
-    } catch (e) {
-      debugPrint('settings account avatar failed: $e');
-      if (!mounted) return;
-      showTopBanner(
-        context,
-        l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)),
-      );
-      return;
-    }
-    if (f == null) return;
-    final Uint8List picked;
-    try {
-      picked = Uint8List.fromList(await f.readAsBytes());
-    } catch (e) {
-      debugPrint('settings account avatar read failed: $e');
-      if (!mounted) return;
-      showTopBanner(
-        context,
-        l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)),
-      );
-      return;
-    }
-    // The format comes from the bytes, not the picked filename: a HEIC named
-    // `.jpg` is refused here rather than handed to a decoder that can't read it.
-    if (detectImageMime(picked) == null) {
-      if (!mounted) return;
-      showTopBanner(context, l10n.settingsAccountAvatarUnsupported);
-      return;
-    }
-    if (!mounted) return;
-    final cropped = await showAvatarCropScreen(context, picked);
-    if (cropped == null || !mounted) return;
-    setState(() => _avatarBusy = true);
-    try {
-      // The crop step re-encodes from decoded pixels, so no EXIF survives it;
-      // the strip stays because the avatars bucket is public with no
-      // server-side strip worker, and this is the last rail before it.
-      final clean = stripImageExif(cropped, 'image/jpeg');
-      final url = await api.uploadAvatar(
-        bytes: clean,
-        contentType: 'image/jpeg',
-      );
-      if (!mounted) return;
-      setState(() {
-        _avatarUrl = url;
-        _avatarBusy = false;
-      });
-      showTopBanner(context, l10n.settingsAccountAvatarSaved);
-    } catch (e) {
-      debugPrint('settings account avatar failed: $e');
-      if (!mounted) return;
-      setState(() => _avatarBusy = false);
-      showTopBanner(
-        context,
-        l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)),
-      );
-    }
-  }
-
-  Future<void> _removeAvatar() async {
-    final api = widget.apiClient;
-    final l10n = AppLocalizations.of(context);
-    if (api == null || _profileLoad != _ProfileLoad.ready) return;
-    final ok = await confirmDestructive(
-      context,
-      title: l10n.settingsAccountAvatarRemoveTitle,
-      body: l10n.settingsAccountAvatarRemoveConfirm,
-      confirmLabel: l10n.settingsAccountAvatarRemove,
-      cancelLabel: l10n.settingsAccountCancel,
-    );
-    if (!ok) return;
-    if (!mounted) return;
-    setState(() => _avatarBusy = true);
-    try {
-      await api.removeAvatar();
-      if (!mounted) return;
-      setState(() {
-        _avatarUrl = null;
-        _avatarBusy = false;
-      });
-      showTopBanner(context, l10n.settingsAccountAvatarRemoved);
-    } catch (e) {
-      debugPrint('settings account avatar failed: $e');
-      if (!mounted) return;
-      setState(() => _avatarBusy = false);
-      showTopBanner(
-        context,
-        l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)),
-      );
     }
   }
 
@@ -1438,65 +1223,19 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                       child: Text(l10n.settingsAccountSignIn),
                     ),
             ),
-            if (signedIn && _profileLoad == _ProfileLoad.failed)
+            if (signedIn)
               ListTile(
-                key: const ValueKey('account-profile-load-error'),
-                leading: Icon(
-                  Icons.error_outline,
-                  color: theme.colorScheme.error,
-                ),
-                title: Text(l10n.settingsAccountProfileLoadFailed),
-                trailing: TextButton(
-                  onPressed: _retryProfileLoad,
-                  child: Text(l10n.errorStateRetry),
-                ),
-              ),
-            if (signedIn && _profileLoad != _ProfileLoad.failed)
-              ListTile(
-                enabled: _profileLoad == _ProfileLoad.ready,
-                leading: IdentityAvatar(
-                  seed: widget.apiClient?.userId ?? email,
-                  name: email,
-                  size: 40,
-                  imageUrl: _avatarUrl,
-                ),
-                title: Text(l10n.settingsAccountAvatar),
-                subtitle: Text(l10n.settingsAccountAvatarHint),
-                trailing: _avatarBusy || _profileLoad == _ProfileLoad.loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                    ? IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        tooltip: l10n.settingsAccountAvatarRemove,
-                        onPressed: _removeAvatar,
-                      )
-                    : const Icon(Icons.photo_camera),
-                onTap: _avatarBusy ? null : _pickAvatar,
-              ),
-            if (signedIn && _profileLoad != _ProfileLoad.failed)
-              ListTile(
-                enabled: _profileLoad == _ProfileLoad.ready,
+                key: const ValueKey('account-edit-profile'),
                 leading: const Icon(Icons.badge_outlined),
-                title: Text(l10n.settingsAccountDisplayName),
-                subtitle: Text(
-                  _profileLoad == _ProfileLoad.loading
-                      ? l10n.commonLoading
-                      : (_displayName != null && _displayName!.isNotEmpty)
-                      ? _displayName!
-                      : l10n.settingsAccountDisplayNameUnset,
+                title: Text(l10n.youEditProfile),
+                subtitle: Text(l10n.editProfileSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        EditProfileScreen(apiClient: widget.apiClient!),
+                  ),
                 ),
-                trailing: _displayNameBusy
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.edit_outlined),
-                onTap: _displayNameBusy ? null : _editDisplayName,
               ),
             if (signedIn && !_aiConsentCurrent)
               ListTile(

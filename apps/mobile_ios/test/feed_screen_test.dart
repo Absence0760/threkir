@@ -567,6 +567,78 @@ void main() {
     });
   });
 
+  // Issue #1374 owner finding 6: the feed's cards and the badge strip looked
+  // to run past the right edge in a device screenshot. Every card sits inside
+  // the 16 dp gutter on both sides, and the strip runs edge to edge with the
+  // gutter as its own padding at both ends, so the last chip scrolls clear of
+  // the edge rather than being clipped 16 dp short of it.
+  final feedWithBadges = _FakeApi(
+    entries: [
+      _runEntry(),
+      _runEntry(id: 'run-2', authorId: 'u-2', authorName: 'Morgan Lee'),
+      _runEntry(id: 'run-3', distanceM: 386243, durationS: 376331),
+    ],
+    followees: [_profileRow('u-1', 'Alex Runner')],
+    badgeAwards: [
+      _badgeAward(badgeKey: 'park_courses', tier: 'bronze'),
+      _badgeAward(authorId: 'u-2', authorName: 'Morgan Lee'),
+      _badgeAward(authorId: 'u-3', authorName: 'Alexandra Longname-Runner'),
+    ],
+  );
+
+  void expectInsideGutter(WidgetTester tester, double width, String where) {
+    final cards = find.byType(Card);
+    expect(cards, findsWidgets);
+    for (final card in cards.evaluate()) {
+      final rect = tester.getRect(find.byWidget(card.widget));
+      expect(rect.left, greaterThanOrEqualTo(AppInsets.gutter - 0.01),
+          reason: '$where: a card starts at ${rect.left}');
+      expect(rect.right, lessThanOrEqualTo(width - AppInsets.gutter + 0.01),
+          reason: '$where: a card ends at ${rect.right} of $width');
+    }
+  }
+
+  testWidgets('at 411 dp every card and the badge strip keep the gutter',
+      (tester) async {
+    tester.view.physicalSize = const Size(411, 891);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await _pump(tester, feedWithBadges);
+    await _settle(tester);
+    expect(tester.takeException(), isNull);
+    expectInsideGutter(tester, 411, '411 dp');
+
+    final strip = find.byKey(const ValueKey('feed-badge-strip'));
+    final lane = tester.getRect(strip);
+    expect(lane.left, 0, reason: 'the strip scrolls to the screen edge');
+    expect(lane.right, 411);
+    final chips = find.descendant(of: strip, matching: find.byType(ActionChip));
+    expect(chips, findsNWidgets(3));
+    expect(tester.getRect(chips.first).left, AppInsets.gutter,
+        reason: 'at rest the first chip starts on the gutter');
+
+    final position = tester.state<ScrollableState>(
+        find.descendant(of: strip, matching: find.byType(Scrollable))).position;
+    expect(position.maxScrollExtent, greaterThan(0));
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pump();
+    expect(tester.getRect(chips.last).right, 411 - AppInsets.gutter,
+        reason: 'scrolled to the end, the last chip stops on the gutter');
+  });
+
+  worstCaseTestWidgets('the feed with cards and a badge strip',
+      (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: FeedScreen(api: feedWithBadges),
+    ));
+    await _settle(tester);
+    expectNoOverflow(tester, 'feed');
+    expectInsideGutter(tester, kWorstCasePhone.width, 'feed [$locale]');
+    final strip = find.byKey(const ValueKey('feed-badge-strip'));
+    expect(tester.getRect(strip).right, kWorstCasePhone.width);
+  });
+
   worstCaseTestWidgets('the feed badge strip failure line', (tester, locale) async {
     await tester.pumpWidget(worstCaseApp(
       locale: locale,

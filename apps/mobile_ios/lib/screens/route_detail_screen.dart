@@ -737,24 +737,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (_publicBusy) return;
     final newValue = !_isPublic;
     final r = widget.route;
-    cm.Route buildRoute(bool isPublic) => cm.Route(
-          id: r.id,
-          userId: r.userId,
-          name: r.name,
-          waypoints: r.waypoints,
-          distanceMetres: r.distanceMetres,
-          officialDistanceMetres: r.officialDistanceMetres,
-          elevationGainMetres: r.elevationGainMetres,
-          isPublic: isPublic,
-          createdAt: r.createdAt,
-          surface: r.surface,
-          tags: _tags,
-          featured: r.featured,
-          official: r.official,
-          runCount: r.runCount,
-          isStarred: _isStarred,
-          description: r.description,
-        );
+    cm.Route buildRoute(bool isPublic) =>
+        r.copyWith(isPublic: isPublic, tags: _tags, isStarred: _isStarred);
     // Same offline-tolerant pattern as `_toggleStar`: write the
     // local store first so the toggle is durable across the
     // signed-out / network-down / cloud-not-ready paths. Pre-fix,
@@ -875,24 +859,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (_starBusy) return;
     final newValue = !_isStarred;
     final r = widget.route;
-    cm.Route buildRoute(bool starred) => cm.Route(
-          id: r.id,
-          userId: r.userId,
-          name: r.name,
-          waypoints: r.waypoints,
-          distanceMetres: r.distanceMetres,
-          officialDistanceMetres: r.officialDistanceMetres,
-          elevationGainMetres: r.elevationGainMetres,
-          isPublic: _isPublic,
-          createdAt: r.createdAt,
-          surface: r.surface,
-          tags: _tags,
-          featured: r.featured,
-          official: r.official,
-          runCount: r.runCount,
-          isStarred: starred,
-          description: r.description,
-        );
+    cm.Route buildRoute(bool starred) =>
+        r.copyWith(isPublic: _isPublic, tags: _tags, isStarred: starred);
     setState(() {
       _starBusy = true;
       _isStarred = newValue;
@@ -2088,24 +2056,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // Use displayWaypoints (clipped for non-owners) so a non-owner
     // sharing a public route can't leak the unclipped polyline via
     // the GPX/KML exporter.
-    final route = cm.Route(
-      id: widget.route.id,
-      userId: widget.route.userId,
-      name: widget.route.name,
-      waypoints: _displayWaypoints,
-      distanceMetres: widget.route.distanceMetres,
-      officialDistanceMetres: widget.route.officialDistanceMetres,
-      elevationGainMetres: widget.route.elevationGainMetres,
-      isPublic: widget.route.isPublic,
-      createdAt: widget.route.createdAt,
-      surface: widget.route.surface,
-      tags: widget.route.tags,
-      featured: widget.route.featured,
-      official: widget.route.official,
-      runCount: widget.route.runCount,
-      isStarred: widget.route.isStarred,
-      description: widget.route.description,
-    );
+    final route = widget.route.copyWith(waypoints: _displayWaypoints);
     if (format == 'image') {
       await showRouteShareSheet(
         context,

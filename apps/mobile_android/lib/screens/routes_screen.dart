@@ -674,31 +674,9 @@ class RoutesScreenState extends State<RoutesScreen> {
 
   Future<void> _toggleStar(cm.Route route) async {
     final next = !route.isStarred;
-    // BUG FIX: previous version omitted `clubId` and `description`
-    // from the constructor, so toggling a star on a route that was
-    // transferred to a club / had a description set silently wiped
-    // both. User reported "starring a route doesn't work anymore"
-    // — same incident, two visible symptoms (star fails to persist
-    // visually if the wiped fields trigger an unrelated rebuild,
-    // OR the description vanishes after a star tap).
-    final updated = cm.Route(
-      id: route.id,
-      userId: route.userId,
-      name: route.name,
-      waypoints: route.waypoints,
-      distanceMetres: route.distanceMetres,
-      officialDistanceMetres: route.officialDistanceMetres,
-      elevationGainMetres: route.elevationGainMetres,
-      isPublic: route.isPublic,
-      createdAt: route.createdAt,
-      surface: route.surface,
-      tags: route.tags,
-      featured: route.featured,
-      runCount: route.runCount,
-      isStarred: next,
-      clubId: route.clubId,
-      description: route.description,
-    );
+    // copyWith keeps every field; a hand-built copy here once dropped
+    // `clubId` and `description`, and then `official` (issue #1374 FS-12).
+    final updated = route.copyWith(isStarred: next);
     // Offline-tolerant flow (mirrors `_togglePublic` on the route
     // detail screen): write the local store first so the toggle is
     // durable across signed-out / network-down paths. SyncService

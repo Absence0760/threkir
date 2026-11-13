@@ -79,6 +79,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | easy run | Locker | `workoutKind.easy` |
 | elevation gain | Höhenmeter | `routeDetail.statElevationGain`, `runStatElevation`; mobile also "Anstieg", web `dash.elevationGain` "Höhengewinn" — inconsistency 3 |
 | heart rate / HR | Herzfrequenz / HF | `HF` only in tight stat labels |
+| average HR (stat label) | **Ø HF** (`runDetailStatAvgHr`, `runDetail.avgHr`, the share card `shareCardStatHeartRate` / `runShare.statHeartRate`) | settled 2026-11-13; never "Ø Puls" |
 | heart rate zone | Herzfrequenzzone(n) | |
 | max HR / resting HR | **Maximalpuls** / **Ruhepuls** in every string — field labels ("Maximalpuls (bpm)"), buttons ("Maximalpuls festlegen"), prose and errors ("Gib einen Maximalpuls zwischen …"); coordinated "Ruhe- und Maximalpuls". Both masculine (*einen gemessenen Maximalpuls*, *trag ihn ein*) | settled 2026-11-12; never "maximale Herzfrequenz" / "Max. HF" / "Max. Puls" / "Ruheherzfrequenz" / "Ruhe-HF". *Herzfrequenz* stays for heart rate in general |
 | cadence (steps/min) | Schrittfrequenz | `runStatCadence`. "Rhythmus" in `discover.cadenceLabel` means *recurrence* — a different sense |

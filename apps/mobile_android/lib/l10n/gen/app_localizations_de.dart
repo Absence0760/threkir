@@ -11782,7 +11782,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareCardStatClimb => 'Anstieg';
 
   @override
-  String get shareCardStatHeartRate => 'Ø Puls';
+  String get shareCardStatHeartRate => 'Ø HF';
 
   @override
   String get shareCardSave => 'In Fotos sichern';

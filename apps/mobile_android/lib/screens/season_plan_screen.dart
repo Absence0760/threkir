@@ -2,7 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show EditorPage, EditorSave, ListCard;
+    show EditorPage, EditorSave, FieldColumn, ListCard;
 
 import '../auth_error.dart';
 import '../backend_timeout.dart';
@@ -770,45 +770,46 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
             ),
             onTap: () => _pickDate(row),
           ),
-          TextField(
-            key: Key('season-distance-$i'),
-            controller: row.distance,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
+          FieldColumn(children: [
+            TextField(
+              key: Key('season-distance-$i'),
+              controller: row.distance,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: l10n.seasonPlanRaceDistance(unit),
+              ),
+              onChanged: (_) => _changed(),
             ),
-            decoration: InputDecoration(
-              labelText: l10n.seasonPlanRaceDistance(unit),
+            DropdownButtonFormField<SeasonRacePriority>(
+              key: Key('season-priority-$i-${row.priority.name}'),
+              initialValue: row.priority,
+              decoration: InputDecoration(
+                labelText: l10n.seasonPlanRacePriority,
+              ),
+              items: [
+                for (final p in SeasonRacePriority.values)
+                  DropdownMenuItem(
+                    value: p,
+                    child: Text(_priorityLabel(l10n, p)),
+                  ),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => row.priority = v);
+              },
             ),
-            onChanged: (_) => _changed(),
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<SeasonRacePriority>(
-            key: Key('season-priority-$i-${row.priority.name}'),
-            initialValue: row.priority,
-            decoration: InputDecoration(
-              labelText: l10n.seasonPlanRacePriority,
+            TextField(
+              key: Key('season-goal-$i'),
+              controller: row.goal,
+              keyboardType: TextInputType.datetime,
+              decoration: InputDecoration(
+                labelText: l10n.seasonPlanRaceGoal,
+                helperText: l10n.seasonPlanRaceGoalHint,
+              ),
+              onChanged: (_) => _changed(),
             ),
-            items: [
-              for (final p in SeasonRacePriority.values)
-                DropdownMenuItem(
-                  value: p,
-                  child: Text(_priorityLabel(l10n, p)),
-                ),
-            ],
-            onChanged: (v) {
-              if (v != null) setState(() => row.priority = v);
-            },
-          ),
-          TextField(
-            key: Key('season-goal-$i'),
-            controller: row.goal,
-            keyboardType: TextInputType.datetime,
-            decoration: InputDecoration(
-              labelText: l10n.seasonPlanRaceGoal,
-              helperText: l10n.seasonPlanRaceGoalHint,
-            ),
-            onChanged: (_) => _changed(),
-          ),
+          ]),
         ],
       ),
     );

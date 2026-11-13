@@ -1,6 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
+import 'package:ui_kit/ui_kit.dart' show FieldColumn, SheetScaffold;
 import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
 import '../l10n/gen/app_localizations.dart';
@@ -217,41 +217,42 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
               contentPadding: EdgeInsets.zero,
             ),
           const SizedBox(height: 12),
-          TextField(
-            key: const Key('park-course-report-notes'),
-            controller: _notesCtl,
-            maxLines: 4,
-            maxLength: kCourseReportNotesMax,
-            enabled: !_busy,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              labelText: l10n.parkCourseReportNotesLabel,
-              hintText: l10n.parkCourseReportNotesHint,
+          FieldColumn(children: [
+            TextField(
+              key: const Key('park-course-report-notes'),
+              controller: _notesCtl,
+              maxLines: 4,
+              maxLength: kCourseReportNotesMax,
+              enabled: !_busy,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: l10n.parkCourseReportNotesLabel,
+                hintText: l10n.parkCourseReportNotesHint,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            key: const Key('park-course-report-email'),
-            controller: _emailCtl,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            maxLength: kCourseReportEmailMax,
-            enabled: !_busy,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              labelText: _emailRequired
-                  ? l10n.parkCourseReportEmailLabelRequired
-                  : l10n.parkCourseReportEmailLabel,
-              helperText: !_emailShapeOk
-                  ? null
-                  : _emailRequired
-                      ? l10n.parkCourseReportEmailHintRequired
-                      : l10n.parkCourseReportEmailHint,
-              helperMaxLines: 3,
-              errorText:
-                  _emailShapeOk ? null : l10n.parkCourseReportErrorEmail,
+            TextField(
+              key: const Key('park-course-report-email'),
+              controller: _emailCtl,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              maxLength: kCourseReportEmailMax,
+              enabled: !_busy,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: _emailRequired
+                    ? l10n.parkCourseReportEmailLabelRequired
+                    : l10n.parkCourseReportEmailLabel,
+                helperText: !_emailShapeOk
+                    ? null
+                    : _emailRequired
+                        ? l10n.parkCourseReportEmailHintRequired
+                        : l10n.parkCourseReportEmailHint,
+                helperMaxLines: 3,
+                errorText:
+                    _emailShapeOk ? null : l10n.parkCourseReportErrorEmail,
+              ),
             ),
-          ),
+          ]),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(

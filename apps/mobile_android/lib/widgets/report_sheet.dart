@@ -1,6 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
+import 'package:ui_kit/ui_kit.dart' show FieldColumn, SheetScaffold;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth_error.dart';
@@ -287,41 +287,42 @@ class _ReportSheetState extends State<_ReportSheet> {
               dense: true,
               contentPadding: EdgeInsets.zero,
             ),
-            if (_reason == kOrganiserDisputeReason)
-              if (_disputeClubs.length > 1)
-                DropdownButtonFormField<String>(
-                  key: const Key('report-organiser-club'),
-                  initialValue: _disputeClubId,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.reportOrganiserDisputeClubLabel,
-                  ),
-                  items: [
-                    for (final c in _disputeClubs)
-                      DropdownMenuItem(value: c.id, child: Text(c.name)),
-                  ],
-                  onChanged: _busy
-                      ? null
-                      : (v) => setState(() => _disputeClubId = v),
-                )
-              else
-                Text(
-                  l10n.reportOrganiserDisputeFor(_disputeClubs.first.name),
-                  style: theme.textTheme.bodySmall,
-                ),
+            if (_reason == kOrganiserDisputeReason && _disputeClubs.length == 1)
+              Text(
+                l10n.reportOrganiserDisputeFor(_disputeClubs.first.name),
+                style: theme.textTheme.bodySmall,
+              ),
           ],
           const SizedBox(height: 12),
-          TextField(
-            controller: _notesCtl,
-            maxLines: 3,
-            maxLength: _reason == kOrganiserDisputeReason
-                ? kOrganiserDisputeNotesMax
-                : null,
-            enabled: !_busy,
-            decoration: InputDecoration(
-              labelText: l10n.reportNotesLabel,
+          FieldColumn(children: [
+            if (_reason == kOrganiserDisputeReason && _disputeClubs.length > 1)
+              DropdownButtonFormField<String>(
+                key: const Key('report-organiser-club'),
+                initialValue: _disputeClubId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.reportOrganiserDisputeClubLabel,
+                ),
+                items: [
+                  for (final c in _disputeClubs)
+                    DropdownMenuItem(value: c.id, child: Text(c.name)),
+                ],
+                onChanged: _busy
+                    ? null
+                    : (v) => setState(() => _disputeClubId = v),
+              ),
+            TextField(
+              controller: _notesCtl,
+              maxLines: 3,
+              maxLength: _reason == kOrganiserDisputeReason
+                  ? kOrganiserDisputeNotesMax
+                  : null,
+              enabled: !_busy,
+              decoration: InputDecoration(
+                labelText: l10n.reportNotesLabel,
+              ),
             ),
-          ),
+          ]),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: TextStyle(color: theme.colorScheme.error)),

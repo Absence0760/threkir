@@ -58,7 +58,6 @@ const _notYetLocalised = <String, int>{
   'lib/nutrition_targets.dart': 1,
   'lib/plan_serialize.dart': 7,
   'lib/quiet_location.dart': 2,
-  'lib/screens/line_calibration_screen.dart': 16,
   'lib/screens/route_builder_screen.dart': 2,
   'lib/social_service.dart': 1,
   'lib/strava_importer.dart': 3,

@@ -16470,6 +16470,190 @@ class AppLocalizationsDe extends AppLocalizations {
       'Riegel-Äquivalenz aus deinem besten aktuellen Lauf, aktualitätsgewichtet. Näher liegende Distanzen sind verlässlicher.';
 
   @override
+  String get lineCalibrationEntryTitle => 'Linienkalibrierung';
+
+  @override
+  String get lineCalibrationEntrySubtitle =>
+      'Debug-Build: Fehlerwerte der Zeitmesslinie';
+
+  @override
+  String get lineCalibrationTitle => 'Linienkalibrierung (Debug)';
+
+  @override
+  String get lineCalibrationIntro =>
+      'Starte eine Aufzeichnung, nimm auf dem Tab „Lauf“ einen Lauf über die Linie auf und beende die Aufzeichnung dann hier. Miss jede echte Überquerung per Video gegen eine NTP-synchronisierte Uhr und gib diese Zeitpunkte ein. Die CSV enthält nur Fehlerwerte und Anzahlen.';
+
+  @override
+  String lineCalibrationCapturing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Aufzeichnung läuft: $count Positionen',
+      one: 'Aufzeichnung läuft: $count Position',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String lineCalibrationIdle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Angehalten: $count Positionen gespeichert',
+      one: 'Angehalten: $count Position gespeichert',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationStart => 'Aufzeichnung starten';
+
+  @override
+  String get lineCalibrationStop => 'Aufzeichnung beenden';
+
+  @override
+  String get lineCalibrationRefresh => 'Aktualisieren';
+
+  @override
+  String get lineCalibrationLatLabel => 'Breitengrad der Linienmitte';
+
+  @override
+  String get lineCalibrationLngLabel => 'Längengrad der Linienmitte';
+
+  @override
+  String get lineCalibrationBearingLabel => 'Laufrichtung (Grad)';
+
+  @override
+  String get lineCalibrationHalfWidthLabel => 'Halbe Breite (m)';
+
+  @override
+  String get lineCalibrationHere => 'Mitte auf meine Position setzen';
+
+  @override
+  String lineCalibrationMeasure(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Serveruhr messen ($count Abfragen)',
+      one: 'Serveruhr messen ($count Abfrage)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationOffsetLabel => 'Uhrenabweichung (ms)';
+
+  @override
+  String get lineCalibrationOffsetHelper => 'Server minus Gerät';
+
+  @override
+  String get lineCalibrationApproachLabel => 'Annäherung';
+
+  @override
+  String get lineCalibrationApproach90 => 'Im 90°-Winkel zur Linie';
+
+  @override
+  String get lineCalibrationApproach30 => 'Im 30°-Winkel zur Linie';
+
+  @override
+  String get lineCalibrationApproachParallel20 => 'Parallel, 20 m entfernt';
+
+  @override
+  String get lineCalibrationApproachParallel40 => 'Parallel, 40 m entfernt';
+
+  @override
+  String get lineCalibrationApproachStanding => 'Auf der Linie stehend';
+
+  @override
+  String get lineCalibrationPaceLabel => 'Tempo';
+
+  @override
+  String get lineCalibrationPaceWalk => 'Gehen';
+
+  @override
+  String get lineCalibrationPaceRun => 'Laufen';
+
+  @override
+  String get lineCalibrationPaceStill => 'Stillstehen';
+
+  @override
+  String get lineCalibrationCarryLabel => 'Tragweise';
+
+  @override
+  String get lineCalibrationCarryHand => 'Telefon in der Hand';
+
+  @override
+  String get lineCalibrationCarryPocket => 'Telefon in der Tasche';
+
+  @override
+  String get lineCalibrationInstantsLabel => 'Echte Überquerungszeitpunkte';
+
+  @override
+  String lineCalibrationInstantsHint(String time, String instant) {
+    return '$time oder $instant';
+  }
+
+  @override
+  String get lineCalibrationInstantsHelper =>
+      'Einer pro Zeile. Eine Uhrzeit gilt in der Zeitzone dieses Telefons am Tag der Aufzeichnung; gib über Mitternacht oder wenn die Referenzuhr UTC zeigt einen ISO-Zeitpunkt mit Zeitzone an.';
+
+  @override
+  String get lineCalibrationClockFailed =>
+      'Die Serveruhr ist nicht erreichbar; gib die Abweichung von Hand ein.';
+
+  @override
+  String get lineCalibrationNoFix => 'Keine Positionsbestimmung.';
+
+  @override
+  String get lineCalibrationLineMissing =>
+      'Gib die Linie ein: Mitte, Laufrichtung, halbe Breite.';
+
+  @override
+  String get lineCalibrationOffsetMissing =>
+      'Miss die Uhrenabweichung oder gib sie ein.';
+
+  @override
+  String lineCalibrationInstantsInvalid(String time) {
+    return 'Ein Zeitpunkt pro Zeile: $time oder ISO-8601.';
+  }
+
+  @override
+  String get lineCalibrationFewFixes =>
+      'Die Aufzeichnung enthält weniger als zwei Positionen.';
+
+  @override
+  String get lineCalibrationLineUnusable => 'Diese Linie ist nicht verwendbar.';
+
+  @override
+  String get lineCalibrationScore => 'Diese Aufzeichnung auswerten';
+
+  @override
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  ) {
+    return '$matched von $total erkannt, $missed verpasst, $falseCount falsch, $near knapp; Median $median ms, |Fehler| p50 $p50 ms, p95 $p95 ms; Abweichung ±$offset ms';
+  }
+
+  @override
+  String lineCalibrationNothingMatched(int ms) {
+    return 'Nichts erkannt, doch die Erkennungen liegen im Median $ms ms von den echten Zeitpunkten entfernt: Prüfe die Uhr, die Abweichung und die Zeitzone.';
+  }
+
+  @override
+  String get lineCalibrationShare => 'CSV teilen';
+
+  @override
+  String get lineCalibrationCopy => 'CSV kopieren';
+
+  @override
   String get settingsSectionDeveloper => 'Entwickler';
 
   @override

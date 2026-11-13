@@ -14,6 +14,7 @@ export 'src/widgets/async_view.dart';
 export 'src/widgets/editor_page.dart';
 export 'src/widgets/empty_state.dart';
 export 'src/widgets/error_state.dart';
+export 'src/widgets/field_column.dart';
 export 'src/widgets/filter_bar.dart';
 export 'src/widgets/hub_tab_body.dart';
 export 'src/widgets/identity_avatar.dart';

@@ -3,7 +3,8 @@ import 'package:core_models/core_models.dart'
     show ClubRow, StravaClubLinkError, StravaClubLinkFailure;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show ChoiceChipOption, ChoiceChipRow, FieldColumn;
 
 import '../auth_error.dart';
 import '../club_slug.dart';
@@ -313,44 +314,40 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
                 ),
                 const SizedBox(height: 8),
               ],
-              TextField(
-                controller: _name,
-                autofocus: true,
-                maxLength: kClubNameMaxLength,
-                decoration: InputDecoration(
-                  labelText: l10n.clubFormNameLabel,
-                  errorText: _nameError,
+              FieldColumn(children: [
+                TextField(
+                  controller: _name,
+                  autofocus: true,
+                  maxLength: kClubNameMaxLength,
+                  decoration: InputDecoration(
+                    labelText: l10n.clubFormNameLabel,
+                    errorText: _nameError,
+                  ),
+                  onChanged: (_) {
+                    if (_nameError != null) setState(() => _nameError = null);
+                  },
                 ),
-                onChanged: (_) {
-                  if (_nameError != null) setState(() => _nameError = null);
-                },
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _description,
-                maxLines: 3,
-                maxLength: kClubDescriptionMaxLength,
-                decoration: InputDecoration(
-                  labelText: l10n.clubFormDescriptionLabel,
+                TextField(
+                  controller: _description,
+                  maxLines: 3,
+                  maxLength: kClubDescriptionMaxLength,
+                  decoration: InputDecoration(
+                    labelText: l10n.clubFormDescriptionLabel,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _location,
-                maxLength: kClubLocationLabelMaxLength,
-                decoration: InputDecoration(
-                  labelText: l10n.clubFormLocationLabel,
-                  hintText: l10n.clubFormLocationHint,
+                TextField(
+                  controller: _location,
+                  maxLength: kClubLocationLabelMaxLength,
+                  decoration: InputDecoration(
+                    labelText: l10n.clubFormLocationLabel,
+                    hintText: l10n.clubFormLocationHint,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              _LinkField(controller: _website, label: l10n.clubEditorWebsite, hint: 'https://example.com'),
-              const SizedBox(height: 8),
-              _LinkField(controller: _instagram, label: l10n.clubEditorInstagram, hint: 'https://instagram.com/yourclub'),
-              const SizedBox(height: 8),
-              _LinkField(controller: _strava, label: l10n.clubEditorStrava, hint: 'https://strava.com/clubs/yourclub'),
-              const SizedBox(height: 8),
-              _LinkField(controller: _facebook, label: l10n.clubEditorFacebook, hint: 'https://facebook.com/yourclub'),
+                _LinkField(controller: _website, label: l10n.clubEditorWebsite, hint: 'https://example.com'),
+                _LinkField(controller: _instagram, label: l10n.clubEditorInstagram, hint: 'https://instagram.com/yourclub'),
+                _LinkField(controller: _strava, label: l10n.clubEditorStrava, hint: 'https://strava.com/clubs/yourclub'),
+                _LinkField(controller: _facebook, label: l10n.clubEditorFacebook, hint: 'https://facebook.com/yourclub'),
+              ]),
               const SizedBox(height: 12),
               ChoiceChipRow<bool>(
                 options: [

@@ -5,7 +5,7 @@ import 'package:core_models/core_models.dart' show dedupeShadowedExercises;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSpace, ListCard, SectionHeader, TextLane;
+    show AppSpace, FieldColumn, ListCard, SectionHeader, TextLane;
 
 import '../gym_compose_draft.dart';
 import '../gym_prs.dart';
@@ -787,11 +787,10 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
             for (var si = 0; si < ex.sets.length; si++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: FieldColumn(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(left: 44, bottom: 6),
+                      padding: const EdgeInsets.only(left: 44),
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
                         key: Key('gym-set-type-$i-$si'),

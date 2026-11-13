@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard;
 
 import '../fab_clearance.dart';
 import '../gym_prs.dart';
@@ -388,11 +389,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     );
   }
 
-  Widget _historyErrorCard(ThemeData theme, AppLocalizations l10n) => Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Column(
+  Widget _historyErrorCard(ThemeData theme, AppLocalizations l10n) => ListCard(
+        margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+        dense: true,
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.gymRoutineHistoryLoadError,
@@ -407,18 +407,16 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               ),
             ],
           ),
-        ),
       );
 
   Widget _historyCard(
       RoutineHistory h, ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     final lastDone = l10n.gymRoutineHistoryLastDone(h.daysSinceLast ?? 0);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -482,7 +480,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               ),
           ],
         ),
-      ),
     );
   }
 
@@ -629,11 +626,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
 
   Widget _exerciseCard(
       StoredRoutineExercise ex, ThemeData theme, AppLocalizations l10n) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Wrap(
@@ -716,7 +712,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               ),
           ],
         ),
-      ),
     );
   }
 

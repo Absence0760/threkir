@@ -671,11 +671,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Widget _card(ThemeData theme, String title, Widget child) {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: Card(
+      child: ListCard(
         margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(title,
@@ -685,7 +683,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               child,
             ],
           ),
-        ),
       ),
     );
   }

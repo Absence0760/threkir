@@ -176,35 +176,23 @@ class _RoutinePublicLibraryScreenState
                                 final e = _routines[i];
                                 final author =
                                     e.authorHandle ?? l10n.gymLibraryAnonymous;
-                                return Card(
+                                return ListCard.row(
                                   margin: EdgeInsets.zero,
-                                  child: ListTile(
-                                    onTap: () => _open(e),
-                                    title: Text(e.routine.title,
-                                        style: theme.textTheme.titleMedium),
-                                    subtitle: Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          if (e.isOfficial)
-                                            const OfficialBadge(),
-                                          Text(l10n.gymLibraryByAuthor(author)),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            l10n.gymRoutineExerciseCount(
-                                                e.routine.exerciseCount),
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                              color: theme
-                                                  .colorScheme.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                  dense: true,
+                                  onTap: () => _open(e),
+                                  chevron: true,
+                                  title: e.routine.title,
+                                  badge: e.isOfficial
+                                      ? const OfficialBadge()
+                                      : null,
+                                  subtitle: l10n.gymLibraryByAuthor(author),
+                                  meta: Text(
+                                    l10n.gymRoutineExerciseCount(
+                                        e.routine.exerciseCount),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color:
+                                          theme.colorScheme.onSurfaceVariant,
                                     ),
-                                    trailing: const Icon(Icons.chevron_right),
                                   ),
                                 );
                               },
@@ -448,11 +436,10 @@ class _RoutinePublicPreviewScreenState
                 ],
                 const SizedBox(height: 16),
                 for (final ex in _exercises)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      child: Column(
+                  ListCard(
+                    margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+                    dense: true,
+                    child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -472,7 +459,6 @@ class _RoutinePublicPreviewScreenState
                             ),
                         ],
                       ),
-                    ),
                   ),
               ],
             ),

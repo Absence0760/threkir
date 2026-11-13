@@ -21,6 +21,7 @@ import '../lib/widgets/pending_sync_banner.dart';
 import '../lib/widgets/surface_peer_strip.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 /// No-op so a resumed session screen's `WakelockPlus.enable()` / `.disable()`
 /// don't hit the real pigeon channel (which throws under flutter_test).
@@ -616,6 +617,22 @@ void main() {
       return (store: store, routines: routines, dir: dir);
     }
 
+    worstCaseTestWidgets('the workout cards', (tester, locale) async {
+      final s = await seed(tester, withRecord: true);
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: GymScreen(
+          api: _OfflineFakeApi(),
+          store: s.store,
+          routineStore: s.routines,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Push day'), findsOneWidget);
+      await walkScrollable(tester, primaryScrollable(), 'Gym');
+    });
+
     testWidgets('names Log + Gym routines; Records only once a record exists',
         (tester) async {
       final s = await seed(tester);
@@ -879,8 +896,13 @@ void main() {
 
       await tester.tap(find.text('Finish'));
       // The save banner is the last thing _finishAndSave does, so waiting for
-      // it proves the store write it awaited first has landed.
-      await _pumpUntil(tester, () => tester.any(find.text('Workout saved')),
+      // it proves the store write it awaited first has landed. The api here
+      // is offline, so since #1374 FS-15 the banner says the workout is saved
+      // on the phone rather than claiming a sync that did not happen.
+      await _pumpUntil(
+          tester,
+          () => tester.any(find.text(
+              "Saved on this phone. It will sync when you're back online.")),
           describe: 'the saved banner _finishAndSave shows after its write');
 
       final w = s.store.workouts.single;

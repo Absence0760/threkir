@@ -2,11 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_routine_store.dart';
 import '../lib/screens/routine_library_screen.dart';
+import 'worst_case_layout.dart';
 
 Future<({LocalRoutineStore store, LocalGymStore gym, Directory dir})> _fixture(
     String tag) async {
@@ -25,6 +27,31 @@ Widget _app(LocalRoutineStore store, LocalGymStore gym) => MaterialApp(
     );
 
 void main() {
+  setUpAll(() => initializeDateFormatting());
+
+  worstCaseTestWidgets('the routine cards', (tester, locale) async {
+    final f = await _fixture('wc');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    await tester.runAsync(() => f.store.replaceFromServer([
+          (
+            routine: <String, dynamic>{
+              'id': 'r-1',
+              'title': 'Upper body push with a long accessory finisher',
+              'exercise_count': 12,
+              'last_modified_at': DateTime.utc(2026, 5, 1).toIso8601String(),
+              'created_at': DateTime.utc(2026, 5, 1).toIso8601String(),
+            },
+            exercises: const [],
+          ),
+        ]));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoutineLibraryScreen(api: null, store: f.store, gymStore: f.gym),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Routines');
+  });
+
   testWidgets('empty library renders the self-hiding onboarding state',
       (tester) async {
     final f = await _fixture('empty');

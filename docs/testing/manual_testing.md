@@ -31,6 +31,7 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 - [Paywall and RevenueCat](#paywall-and-revenuecat)
 - [Backup, restore, account deletion, GDPR export](#backup-restore-account-deletion-gdpr-export)
 - [Navigation, lists and Today (#1374)](#navigation-lists-and-today-1374)
+- [Failed reads, failed writes and Back (#1374 round 2)](#failed-reads-failed-writes-and-back-1374-round-2)
 - [Tablet / expanded-width layouts (mobile)](#tablet--expanded-width-layouts-mobile)
 - [Cross-platform fixture contract](#cross-platform-fixture-contract)
 
@@ -586,6 +587,31 @@ Round 1 of issue #1374 ([decisions § 2490-2494](../architecture/decisions.md)).
 | Planned workout Start starts the run (mobile, #1374) | With an active plan and an open workout today: tap Start on Today's workout; cancel the countdown; then open the plan, tap the workout, tap Start workout; then open a route and tap Start run | Each Start lands on the Run page with the workout (or route) loaded and the 3-2-1 already counting; a tap on the centre button during it cancels and leaves the workout loaded. Offline, the workout still loads and the countdown follows within 15 s. A guided run's "Use this run" only arms the script. |
 
 ---
+
+## Failed reads, failed writes and Back (#1374 round 2)
+
+Round 2 of issue #1374, findings FS and NS. "Offline" means airplane mode after the app has loaded once. Conventions: [§ A write that failed keeps what the person typed](../architecture/conventions.md), [§ Mobile openers that read first](../architecture/conventions.md), [§ Mobile shell Back](../architecture/conventions.md).
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| Club Routes / Templates fail (both) | Offline, open a club → Routes, then Templates | Each tab says it couldn't load, with Retry; never "No routes shared…" / "No templates". Back online, Retry loads it. On mobile the empty state can be pulled to refresh. |
+| Gear rotations fail (both) | Offline, open Gear → Rotations; online, delete a rotation with the network cut mid-delete | Load: "Couldn't load your rotations" with Retry, no "Couldn't save rotation", no empty list. Delete: "Couldn't delete rotation", the row stays. |
+| Coaching fails (mobile) | Offline, open Coach → Athletes & coaches | A whole-page error with Retry, not "No athletes yet". With only the roster failing, its card says so with Retry while athletes and coaches show. |
+| Adopt a public routine on a weak signal (mobile) | Gym → Routines → Library → a routine → Adopt, with the network dropping after the tap | Never "Couldn't adopt" once the copy is made; the button reads "Added to my routines" and cannot be tapped again; if the copy hasn't reached the phone yet the banner says it will show once synced. My routines holds one copy. |
+| RSVP failure names its cause (mobile) | Offline, tap I'm in on an event; then sign out and try again | Offline: the banner says you're offline, with Retry. Signed out: it says to sign in, with no Retry. |
+| Discovery map fails (both) | Offline, open Routes → Explore's map (web: `/routes/heatmap`) | The pill (mobile) / list (web) says routes couldn't load, with Retry — not "No routes here". Tapping it reloads. |
+| Caption edit fails (both) | On your own run, route or club photo, edit the caption, go offline, Save | The editor stays open with your text and Save becomes available again; the old caption is not shown in its place. |
+| Star a club route (mobile) | Open a club-owned route you own → star it → back to Routes | The route keeps its club and its Official badge. |
+| Delete a run on a dead network (mobile) | Run detail → ⋮ → Delete run → Delete, with the network hanging | The ⋮ becomes a spinner at once; within 15 s the run is kept and queued ("will retry when back online"). Make private cannot open a second confirm while its write runs. |
+| Mark read fails (mobile) | You → Notifications, go offline, tap an unread notification, Back | The row is unread again. Mark all read cannot fire twice. |
+| Local save on a weak signal (mobile) | Finish a guided gym session; delete a routine, a workout and a pair of gear, each with no signal | Each confirms within about 5 s; with no sync it says "Saved on this phone…" / "Deleted on this phone…" rather than "Saved". |
+| Back in select mode (mobile) | Fitness → Runs → long-press a run → Back; again on Routes (Mine); then select a run, tap Home in the nav bar, press Back | Back closes the selection and stays on the tab; a second Back goes Home. With a selection left on Runs, Back on Home leaves the app. |
+| Feed shows engagement from the run page (mobile) | Feed → open a friend's run → kudos and comment → Back | The card shows the new kudos and comment count; its heart is filled. |
+| People follow state (mobile) | Social → People → open a profile → Follow → Back | The row reads Following. |
+| Double tap opens once (mobile) | On a slow network, double-tap a run in History, and Add gear on a run | One run detail; one gear picker. |
+| Notification tap that can't resolve (mobile, device) | With a weak signal, tap a club or event push | "Opening…" shows if the lookup takes a moment; if it fails, "Couldn't open that notification" with Retry. A club that is gone lands on Clubs. |
+| Age gate Back (mobile) | Sign in to an account with no consent stamp; press Back on the gate | A banner says to confirm both or sign out, with a Sign out action. |
+| Plate photo across a kill (Android device) | Enable "Don't keep activities"; Nutrition → plate photo → camera → take a photo; reopen the plate logger | The photo is already there, ready to estimate. |
 
 ## Tablet / expanded-width layouts (mobile)
 

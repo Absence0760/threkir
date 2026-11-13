@@ -12,13 +12,14 @@
 --   notifications.park_course_month    the month, as the local 1st (a date),
 --       which is the `?period=YYYY-MM` the notice deep-links to.
 --   notifications.park_course_time_s   the runner's best time on the course
---       that month, in whole seconds. No rank: a rank depends on who is
+--       that month, in whole seconds, CHECKed positive. No rank: a rank depends on who is
 --       looking, and the job has no caller (decisions § 2426).
 -- All three are null on every other row.
 --
 -- notifications_kind_check is the full list from 20271217000001 plus
 -- 'park_course_month_closed'. Locks: notifications is a high-volume table
--- (docs/backend/migration_locks.md), so the widened CHECK and the FK are added
+-- (docs/backend/migration_locks.md), so the widened CHECK, the time's CHECK and
+-- the FK are added
 -- NOT VALID (brief ACCESS EXCLUSIVE, no scan) and validated in
 -- 20271226021343; the ADD COLUMNs have no default, so they are catalogue-only.
 -- The FK's covering index is built alone in 20271226031343.
@@ -54,6 +55,11 @@ alter table notifications
 alter table notifications add column park_course_id uuid;
 alter table notifications add column park_course_month date;
 alter table notifications add column park_course_time_s integer;
+
+alter table notifications
+  add constraint notifications_park_course_time_s_check
+  check (park_course_time_s is null or park_course_time_s > 0)
+  not valid;
 
 alter table notifications
   add constraint notifications_park_course_id_fkey

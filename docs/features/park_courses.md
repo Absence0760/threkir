@@ -216,7 +216,7 @@ month is a filter on the same boards, not a stored period and not an entry.
   place, plus the year place when it is in the top 10, `pickShareCourse`)
   read it in phase 2.
 - **Month-close notice.** `park_course_month_closed`, raised by the hourly
-  `enqueue_park_course_month_notices()` (at :17) in the first three local days
+  `enqueue_park_course_month_notices()` (at :29) in the first three local days
   of the month where the park is, for the month that just closed: one notice
   per runner and course, with the course, the month (`notifications.park_course_month`,
   the local 1st) and the runner's best time (`park_course_time_s`), never a

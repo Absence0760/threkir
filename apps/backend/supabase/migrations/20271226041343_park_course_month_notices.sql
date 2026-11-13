@@ -7,7 +7,7 @@
 -- on who is looking, and this job has no caller). The notice deep-links to
 -- the course's board for that month (`?period=YYYY-MM`).
 --
--- Who, per tick (hourly at :17):
+-- Who, per tick (hourly at :29):
 --   * a course of an ACTIVE park whose catalogue segment is active (the board
 --     a closed course keeps is still a board, so a closed course is included);
 --   * during the first three local days of the month where the park is, for
@@ -153,10 +153,10 @@ $$;
 revoke execute on function public.enqueue_park_course_month_notices(timestamptz) from public, anon, authenticated;
 grant execute on function public.enqueue_park_course_month_notices(timestamptz) to service_role;
 
--- Hourly at :17, off the minutes the other hourly jobs use. cron.schedule is
+-- Hourly at :29, a minute no other hourly job uses. cron.schedule is
 -- idempotent on name.
 select cron.schedule(
   'enqueue-park-course-month-notices',
-  '17 * * * *',
+  '29 * * * *',
   $$select public.enqueue_park_course_month_notices()$$
 );

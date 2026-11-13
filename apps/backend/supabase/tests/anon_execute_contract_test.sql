@@ -181,6 +181,7 @@ insert into server_only (fn, keeps_service_role) values
   ('enqueue_event_reminders', true),
   ('enqueue_export_blob_reap', true),
   ('enqueue_lifecycle_drip', true),
+  ('enqueue_park_course_month_notices', true),
   ('enqueue_route_photo_orphan_sweep', true),
   ('enqueue_safety_overdue_emails', false),
   ('enqueue_weekly_digests', true),

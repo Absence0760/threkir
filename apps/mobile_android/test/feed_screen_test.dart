@@ -31,6 +31,7 @@ RunFeedEntry _runEntry({
   int durationS = 1500,
   String authorId = 'u-1',
   String? authorName = 'Alex Runner',
+  String? trackUrl,
 }) =>
     RunFeedEntry(
       run: RunRow(safetyAudience: false, 
@@ -44,6 +45,7 @@ RunFeedEntry _runEntry({
         isDnf: false,
         followersOnly: false,
         isPublic: true,
+        trackUrl: trackUrl,
       ),
       author: _author(id: authorId, name: authorName),
     );
@@ -245,6 +247,27 @@ void main() {
       expect(find.text('Alex Runner'), findsWidgets);
       // 5 km distance stat in the default (km) unit.
       expect(find.textContaining('5.00'), findsOneWidget);
+    });
+
+    // #1374 A11Y-12: the track thumbnail was a second, unnamed button that
+    // opens the same run as the stats row under it.
+    testWidgets('the track thumbnail is not a second unnamed button', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        _FakeApi(
+          entries: [_runEntry(trackUrl: 'u-1/run-1.json.gz')],
+          followees: [_profileRow('u-1', 'Alex Runner')],
+        ),
+      );
+      await _settle(tester);
+      final thumb = find.byKey(const Key('feedCardTrackThumb'));
+      expect(thumb, findsOneWidget);
+      expect(find.descendant(of: thumb, matching: find.byType(InkWell)), findsOneWidget,
+          reason: 'the thumbnail still opens the run by touch');
+      expect(tester.widget<ExcludeSemantics>(thumb).excluding, isTrue);
+      tester.takeException();
+      handle.dispose();
     });
 
     testWidgets('the kudos count from the engagement map renders',

@@ -1011,17 +1011,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return [
       const SizedBox(height: 10),
       if (mapUrl != null)
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: () => _navigateToMeetPoint(mp.lat, mp.lng, label),
-            child: Image.network(
-              mapUrl,
-              height: 160,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              // L4: a tile-fetch failure must not break the card.
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        // The map is a second, unnamed way to the Directions button below
+        // it: a tap for the eye, hidden from a screen reader so the reading
+        // order reaches the named button rather than a bare "button" first
+        // (#1374 A11Y-12).
+        ExcludeSemantics(
+          key: const Key('eventMeetPointMap'),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: () => _navigateToMeetPoint(mp.lat, mp.lng, label),
+              child: Image.network(
+                mapUrl,
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                // L4: a tile-fetch failure must not break the card.
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
             ),
           ),
         ),

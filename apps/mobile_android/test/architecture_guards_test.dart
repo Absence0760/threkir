@@ -5740,7 +5740,7 @@ void main() {
       // leave the race unarmed. Nothing is discarded either way.
       'widgets/race_preflight_dialog.dart::blocked': 1,
       // Asks for health-data consent before the first food is logged
-      // (decisions § 2514). Cancel logs nothing; "Give consent" only opens
+      // (decisions § 2514). Cancel logs nothing; "Review consent" only opens
       // the consent screen. Nothing is discarded either way.
       'health_consent_gate.dart::l10n.healthConsentFoodTitle': 1,
     };

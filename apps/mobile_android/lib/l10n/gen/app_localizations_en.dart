@@ -1295,7 +1295,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Height, weight, the heart rate recorded with your activities and your food log are special-category health data, kept only while this is on. Turn it off and save to erase them.';
+      'Threkir stores your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and uses them and your date of birth as health data (GDPR Art 9(2)(a)) to personalise your training and nutrition targets and to place you in gender and age-band segment leaderboards, only while this is on. Turn it off and save to withdraw consent and erase them; your date of birth stays as your age record.';
 
   @override
   String get bodyMetricsHeight => 'Height';
@@ -1339,7 +1339,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'This permanently erases your saved height, gender, weight history, any cycle or pregnancy details, the heart rate stored with your activities and your food log, and your date of birth is no longer used to personalise your training. Your activities themselves are kept. This can\'t be undone.';
+      'This permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log. Your activities themselves are kept, and your date of birth stays as your age record but is no longer used as health data. This can\'t be undone.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Withdraw & erase';
@@ -1352,7 +1352,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.';
 
   @override
-  String get healthConsentGiveAction => 'Give consent';
+  String get healthConsentGiveAction => 'Review consent';
 
   @override
   String get bodyMetricsSaved => 'Saved';
@@ -2028,7 +2028,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'I consent to Threkir using my gender and date of birth to personalise pace, heart-rate and calorie estimates (special-category health data, GDPR Art 9).';
+      'I consent to Threkir storing my gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with my activities, the heart-rate targets in my plans, my heart-rate medication setting and my food log, and using them and my date of birth as health data (GDPR Art 9(2)(a)) to personalise my training and nutrition targets and to place me in gender and age-band segment leaderboards. I can withdraw this consent at any time.';
 
   @override
   String get setupPrivacyTitle => 'Who sees your runs?';
@@ -13551,7 +13551,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionNoTargets =>
-      'Add your height, weight, age and sex to see calorie + macro targets.';
+      'Add your height, weight, age and gender to see calorie + macro targets.';
 
   @override
   String get nutritionAddBodyMetrics => 'Add body metrics';
@@ -13615,7 +13615,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Height, weight, date of birth and sex are health data, so they\'re edited behind their consent gate.';
+      'Height, weight, date of birth and gender are health data, so they\'re edited behind their consent gate.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Edit body metrics';
@@ -13628,7 +13628,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionTargetsEmptyBody =>
-      'Add your height, weight, date of birth and sex and your calorie + macro targets appear here.';
+      'Add your height, weight, date of birth and gender and your calorie + macro targets appear here.';
 
   @override
   String get nutritionTargetsAge => 'Age';

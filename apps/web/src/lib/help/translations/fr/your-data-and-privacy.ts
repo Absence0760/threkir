@@ -31,7 +31,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l\'app mobile, il s\'agit de **Confidentialité par défaut des courses** sous **Confidentialité et partage** dans l\'onglet **Vous**.',
-						'Pour modifier une seule course plus tard, ouvrez-la et appuyez sur **Privé** ou **Public** sous son titre. Avant qu\'une course devienne publique, l\'app vous demande confirmation et vous montre ce que vos zones de confidentialité masqueront.',
+						'Pour modifier une seule course plus tard, ouvrez-la et touchez **Privé** ou **Public** sous son titre. Avant qu\'une course devienne publique, l\'app vous demande confirmation et vous montre ce que vos zones de confidentialité masqueront.',
 					],
 				},
 				{

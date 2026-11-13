@@ -45,7 +45,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Si votre course passe plusieurs fois sur le segment, votre passage le plus rapide compte.',
 						'Un échauffement qui repasse par la ligne de départ n\'allonge pas votre temps : le chrono part de votre dernier franchissement de la ligne de départ avant la fin.',
-						'Sur une boucle, chaque tour complet est chronométré et ton tour le plus rapide compte. Quand le départ et la fin sont la même ligne, le franchissement qui termine un tour lance aussi le suivant.',
+						'Sur une boucle, chaque tour complet est chronométré et votre tour le plus rapide compte. Quand le départ et la fin sont la même ligne, le franchissement qui termine un tour lance aussi le suivant.',
 					],
 				},
 			],

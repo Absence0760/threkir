@@ -22,7 +22,7 @@ import 'pushed_page.dart';
 ///
 /// [RootPage.new] is a root whose body is one scroll view of its own (Today,
 /// You): the body opens with the [PageHeader] itself, under this bar.
-class RootPage extends StatelessWidget {
+class RootPage extends StatefulWidget {
   const RootPage({
     super.key,
     required this.title,
@@ -30,9 +30,9 @@ class RootPage extends StatelessWidget {
     this.actions = const [],
     this.floatingActionButton,
     this.floatingActionButtonLocation,
-  })  : controller = null,
-        labels = const [],
-        children = const [];
+  }) : controller = null,
+       labels = const [],
+       children = const [];
 
   const RootPage.tabbed({
     super.key,
@@ -66,8 +66,21 @@ class RootPage extends StatelessWidget {
   final FloatingActionButtonLocation? floatingActionButtonLocation;
 
   @override
+  State<RootPage> createState() => _RootPageState();
+}
+
+class _RootPageState extends State<RootPage> {
+  /// The tab strip, which is where a hub's pinned header ends.
+  final _strip = GlobalKey();
+
+  @override
   Widget build(BuildContext context) {
-    final controller = this.controller;
+    final controller = widget.controller;
+    final title = widget.title;
+    final actions = widget.actions;
+    final body = widget.body;
+    final labels = widget.labels;
+    final children = widget.children;
     return PageTitleScope(
       child: Builder(
         builder: (context) => Scaffold(
@@ -75,34 +88,45 @@ class RootPage extends StatelessWidget {
             title: PageBarTitle(title),
             actions: actions.isEmpty ? null : actions,
           ),
-          floatingActionButton: floatingActionButton,
-          floatingActionButtonLocation: floatingActionButtonLocation,
+          floatingActionButton: widget.floatingActionButton,
+          floatingActionButtonLocation: widget.floatingActionButtonLocation,
           body: PageBody(
             child: controller == null
                 ? body!
-                : NestedScrollView(
-                    headerSliverBuilder: (context, _) => [
-                      SliverToBoxAdapter(child: PageHeader(title: title)),
-                    ],
-                    body: Column(
-                      children: [
-                        AppTabBar(controller: controller, labels: labels),
-                        Expanded(
-                          // The key keeps the strip's page apart from the
-                          // header's scroll offset in PageStorage: with no
-                          // key between them the two share an identifier,
-                          // and the pager restored the header's 0.0 as its
-                          // page, opening on the first tab whatever the
-                          // controller said.
-                          child: KeyedSubtree(
-                            key: const PageStorageKey<String>('root-page-tabs'),
-                            child: TabBarView(
+                : PinnedHeaderScope(
+                    headerKey: _strip,
+                    child: NestedScrollView(
+                      headerSliverBuilder: (context, _) => [
+                        SliverToBoxAdapter(child: PageHeader(title: title)),
+                      ],
+                      body: Column(
+                        children: [
+                          KeyedSubtree(
+                            key: _strip,
+                            child: AppTabBar(
                               controller: controller,
-                              children: children,
+                              labels: labels,
                             ),
                           ),
-                        ),
-                      ],
+                          Expanded(
+                            // The key keeps the strip's page apart from the
+                            // header's scroll offset in PageStorage: with no
+                            // key between them the two share an identifier,
+                            // and the pager restored the header's 0.0 as its
+                            // page, opening on the first tab whatever the
+                            // controller said.
+                            child: KeyedSubtree(
+                              key: const PageStorageKey<String>(
+                                'root-page-tabs',
+                              ),
+                              child: TabBarView(
+                                controller: controller,
+                                children: children,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
           ),
@@ -110,4 +134,32 @@ class RootPage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Where a page's pinned header ends, for an overlay that must not cover it.
+///
+/// A hub's tab strip sits under the large title and then pins under the app
+/// bar, so it is not part of the app bar an overlay measures. A top banner
+/// placed under the bar alone covered the strip at 2x text (issue #1374).
+/// [RootPage.tabbed] puts the strip under this scope; the app's top banner
+/// reads [headerKeyOf] from the calling context and starts below the strip
+/// wherever it is when the banner is shown.
+class PinnedHeaderScope extends InheritedWidget {
+  const PinnedHeaderScope({
+    super.key,
+    required this.headerKey,
+    required super.child,
+  });
+
+  /// The widget whose bottom edge is the bottom of the pinned header.
+  final GlobalKey headerKey;
+
+  /// The pinned header's key for [context], or null on a page without one.
+  /// Reads without depending: a banner measures once, when it is shown.
+  static GlobalKey? headerKeyOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<PinnedHeaderScope>()?.headerKey;
+
+  @override
+  bool updateShouldNotify(PinnedHeaderScope oldWidget) =>
+      headerKey != oldWidget.headerKey;
 }

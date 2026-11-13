@@ -280,6 +280,7 @@ class _LibraryCard extends StatelessWidget {
     final p = entry.plan;
     final author = entry.authorHandle ?? l10n.planLibraryAnonymous;
     return ListCard.row(
+      margin: EdgeInsets.zero,
       onTap: onTap,
       title: p.name,
       chevron: true,

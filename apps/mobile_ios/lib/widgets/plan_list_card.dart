@@ -32,6 +32,10 @@ class PlanListCard extends StatelessWidget {
   /// Some card's action is being written, so this one waits.
   final bool actionsLocked;
 
+  /// Defaults to the theme's card margin; a list that spaces its cards with
+  /// a separator passes zero.
+  final EdgeInsetsGeometry? margin;
+
   const PlanListCard({
     super.key,
     required this.plan,
@@ -41,6 +45,7 @@ class PlanListCard extends StatelessWidget {
     this.onDelete,
     this.actionBusy = false,
     this.actionsLocked = false,
+    this.margin,
   }) : assert(
          (onAbandon == null) != (onDelete == null),
          'a plan card carries exactly one action',
@@ -174,6 +179,7 @@ class PlanListCard extends StatelessWidget {
     );
 
     return ListCard(
+      margin: margin,
       dense: true,
       onTap: onTap,
       semanticLabel: label,

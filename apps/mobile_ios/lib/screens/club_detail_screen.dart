@@ -1709,6 +1709,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
           final i = index - (canBuild ? 1 : 0);
           final r = routes[i];
           return ListCard.row(
+                   margin: EdgeInsets.zero,
                    dense: true,
                    leadingWidth: 72,
                    leading: r.waypoints.length >= 2

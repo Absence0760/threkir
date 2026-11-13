@@ -250,6 +250,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
                           final overrideCount =
                               ((d.prefs as Map?) ?? const {}).length;
                           return ListCard.row(
+                            margin: EdgeInsets.zero,
                             leading: Icon(
                               _iconFor(d.platform),
                               color: theme.colorScheme.primary,

@@ -395,6 +395,7 @@ class _PlansScreenState extends State<PlansScreen> {
         final p = shown[i];
         final abandonable = p.status == 'active' || p.status == 'paused';
         return PlanListCard(
+          margin: EdgeInsets.zero,
           plan: p,
           now: DateTime.now(),
           onTap: () => _openPlan(p.id),

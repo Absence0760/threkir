@@ -680,7 +680,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Activa «Mostrarme a corredores cercanos» y fija tu zona. Solo pueden encontrarte los corredores que hayan hecho lo mismo.';
+      'Activa «Mostrarme en Corredores cerca» y fija tu zona. Solo pueden encontrarte los corredores que hayan hecho lo mismo.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir ajustes de privacidad';
@@ -700,7 +700,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Mostrarme a corredores cercanos';
+  String get prefsDiscoverableNearby => 'Mostrarme en Corredores cerca';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -1162,7 +1162,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymPeerSessions => 'Planes de sesión';
 
   @override
-  String get homeAskCoach => 'Pregunta a tu entrenador';
+  String get homeAskCoach => 'Pregunta al Entrenador IA';
 
   @override
   String get homeAskCoachSubtitle =>
@@ -5701,7 +5701,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planChangeWithdrawConfirmMessage =>
-      'Ya no se pedirá a tu entrenador que lo apruebe. Para volver a sugerirlo, pide de nuevo al Coach que ajuste tu plan.';
+      'Ya no se pedirá a tu entrenador que lo apruebe. Para volver a sugerirlo, pide de nuevo al Entrenador IA que ajuste tu plan.';
 
   @override
   String get planChangeKeep => 'Mantenerlo';
@@ -8187,7 +8187,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Tus unidades de distancia, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del entrenador que has elegido.';
+      'Tus unidades de distancia, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del Entrenador IA que has elegido.';
 
   @override
   String get coachConsentBulletLifts =>
@@ -8425,7 +8425,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coachComposerHintLimit => 'Límite diario alcanzado';
 
   @override
-  String get coachComposerHint => 'Pregunta a Coach…';
+  String get coachComposerHint => 'Pregunta al Entrenador IA…';
 
   @override
   String get coachArchiveTitle => '¿Iniciar una nueva conversación?';
@@ -8454,12 +8454,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String coachGenericError(int code) {
-    return 'Error de Coach ($code)';
+    return 'Error del Entrenador IA ($code)';
   }
 
   @override
   String get coachUnavailable =>
-      'El Coach no está disponible ahora mismo. Vuelve a intentarlo en un momento.';
+      'El Entrenador IA no está disponible ahora mismo. Vuelve a intentarlo en un momento.';
 
   @override
   String get coachStaleThread =>
@@ -8467,11 +8467,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachTransportError =>
-      'No se pudo contactar con Coach. Comprueba tu conexión e inténtalo de nuevo.';
+      'No se pudo contactar con el Entrenador IA. Comprueba tu conexión e inténtalo de nuevo.';
 
   @override
   String get coachStreamFailed =>
-      'La respuesta del Coach se cortó. Vuelve a enviar tu mensaje.';
+      'La respuesta del Entrenador IA se cortó. Vuelve a enviar tu mensaje.';
 
   @override
   String get coachNewConversationFailed =>
@@ -9338,7 +9338,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfigured =>
-      '10 mensajes al entrenador de IA al día + procesamiento prioritario. Se renueva automáticamente cada mes hasta que se cancele en Ajustes → Suscripciones.';
+      '10 mensajes al Entrenador IA al día + procesamiento prioritario. Se renueva automáticamente cada mes hasta que se cancele en Ajustes → Suscripciones.';
 
   @override
   String get proSubscribeSubtitleWeb =>
@@ -9366,14 +9366,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get proSubscribeSubtitleConfiguredAnnual =>
-      '10 mensajes al entrenador de IA al día + procesamiento prioritario. Se factura una vez al año. Se renueva automáticamente cada año hasta que se cancele en Ajustes → Suscripciones.';
+      '10 mensajes al Entrenador IA al día + procesamiento prioritario. Se factura una vez al año. Se renueva automáticamente cada año hasta que se cancele en Ajustes → Suscripciones.';
 
   @override
   String get proComingSoonTitle => 'Pro: próximamente';
 
   @override
   String get proComingSoon =>
-      'Pro desbloquea el entrenador con IA: próximamente. Aún puedes apoyar la app más abajo.';
+      'Pro desbloquea el Entrenador IA: próximamente. Aún puedes apoyar la app más abajo.';
 
   @override
   String get proRegionalNote =>
@@ -9983,7 +9983,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsPageTrainingSummary =>
-      'Tu objetivo de distancia semanal, la frecuencia cardíaca y sus zonas, el avituallamiento en carrera y el tono del entrenador.';
+      'Tu objetivo de distancia semanal, la frecuencia cardíaca y sus zonas, el avituallamiento en carrera y el tono del Entrenador IA.';
 
   @override
   String get prefsPagePrivacy => 'Privacidad y uso compartido';
@@ -10143,7 +10143,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Visibilidad predeterminada de las carreras';
 
   @override
-  String get prefsCoachPersonality => 'Personalidad del entrenador';
+  String get prefsCoachPersonality => 'Personalidad del Entrenador IA';
 
   @override
   String get prefsCoachSupportive => 'Comprensivo';
@@ -10273,7 +10273,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prefsSectionActivityRecording => 'Actividad y grabación';
 
   @override
-  String get prefsSectionAiCoach => 'Entrenador de IA';
+  String get prefsSectionAiCoach => 'Entrenador IA';
 
   @override
   String get prefsGroupLanguageTheme => 'Idioma y tema';
@@ -10396,7 +10396,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Si está desactivado, tu cuenta no aparecerá cuando otros corredores busquen por nombre visible. Tus carreras públicas y tu perfil siguen siendo accesibles para cualquiera que tenga la URL.';
 
   @override
-  String get dashboardCoachTooltip => 'Entrenador';
+  String get dashboardCoachTooltip => 'Entrenador IA';
 
   @override
   String get dashboardRecapTooltip => 'Año en carrera';
@@ -16200,52 +16200,73 @@ class AppLocalizationsEs extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => 'Primeros 5 km';
 
   @override
-  String get badgesDistanceSingle5kDesc => 'Corriste 5 km en una sola carrera';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return 'Corriste $distance en una sola carrera';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'Media maratón';
 
   @override
-  String get badgesDistanceSingleHalfDesc =>
-      'Corriste 21,1 km en una sola carrera';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return 'Corriste $distance en una sola carrera';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'Maratón';
 
   @override
-  String get badgesDistanceSingleMarathonDesc =>
-      'Corriste 42,2 km en una sola carrera';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return 'Corriste $distance en una sola carrera';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'Ultra';
 
   @override
-  String get badgesDistanceSingleUltraDesc =>
-      'Corriste 50 km o más en una sola carrera';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return 'Corriste $distance o más en una sola carrera';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => 'Club de los 100 km';
+  String badgesDistanceLifetime100Label(String distance) {
+    return 'Club $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '100 km registrados en total';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return 'Registraste $distance en total';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500 km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '500 km registrados en total';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return 'Registraste $distance en total';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => 'Club de los 1000 km';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return 'Club $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '1000 km registrados en total';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return 'Registraste $distance en total';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5000 km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '5000 km registrados en total';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return 'Registraste $distance en total';
+  }
 
   @override
   String get badgesStreak7Label => 'Racha semanal';

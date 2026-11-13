@@ -37,6 +37,8 @@ names the reader on its own — `navYou` "Tu", web `clubEvent.youTag`
 "(tu)", `messages.youPrefix` "Tu: " (§ 760; the register guard does not
 list bare `tu` for this reason). Don't extend it to running prose.
 
+- **A string around `{distance}` agrees with both units.** *quilómetros* is masculine and *milhas* feminine, so nothing agrees with the distance: "Registou {distance} no total", "Clube {distance}", never "{distance} registados" / "Clube dos {distance}". Settled 2026-11-13 (#1374 round 3.8).
+
 ## The guards that enforce this (a pt-PT string that breaks them fails the PR)
 
 `apps/web/src/lib/i18n/locale_reach.test.ts` and the "locale reach" group
@@ -59,6 +61,18 @@ in `apps/mobile_android/test/architecture_guards_test.dart`:
   imperative too: "Antes de definir os ritmos, confirma que …" became
   "… vai confirmar que …" (2026-11-13). Give the clause a subject or a
   future.
+
+- **Brazilian colloquial verbs the guard cannot ban.** *Become* is
+  **passar a ser** / **tornar-se**, never `virar` ("cada uma passa a ser uma
+  rota própria", "provas passam a ser corridas leves"); `virar` stays only
+  for *turn* ("Vire à esquerda"), which is why it is not on the banned list.
+  A consequence is **por isso**, not `então` ("…não está no CSV, por isso as
+  corridas importadas…"). Settled 2026-11-13 (#1374 round 3.8).
+- **Runners nearby.** The section is **Corredores por perto** and its
+  switch **Mostrar-me em Corredores por perto** on both surfaces (mobile
+  `prefsDiscoverableNearby`, web `prefs.discoverableNearby`, and every
+  string that quotes it); `cross_platform_terms.test.ts` fails a drift.
+  Settled 2026-11-13.
 
 ## Spelling and style authority
 

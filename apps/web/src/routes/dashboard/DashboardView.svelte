@@ -2746,7 +2746,6 @@
 		justify-content: space-between;
 		gap: var(--space-md);
 	}
-	.section-head h2 { margin: 0; }
 	.section-desc {
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);

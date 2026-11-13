@@ -604,12 +604,6 @@
 		font-variation-settings: 'FILL' 1;
 	}
 
-	.route-map-placeholder > .material-symbols {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2rem;
-		color: var(--color-text-tertiary);
-	}
-
 	.route-info {
 		padding: var(--space-md) var(--space-lg);
 	}

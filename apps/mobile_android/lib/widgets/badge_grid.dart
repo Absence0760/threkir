@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../badges.dart';
+import '../preferences.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -81,41 +82,43 @@ IconData badgeIconData(String name) {
 
 /// Resolve a catalogue label/desc ARB key to its localized string. The keys
 /// are the camelCase ids carried by [BadgeTier.labelKey] / [BadgeTier.descKey]
-/// — gen-l10n exposes getters, not a map, so the resolution is a switch.
-String badgeText(AppLocalizations l10n, String key) {
+/// — gen-l10n exposes getters, not a map, so the resolution is a switch. A
+/// distance family's words take [distance], its threshold already in the
+/// reader's unit; the other keys ignore it. Callers go through [badgeWords].
+String badgeText(AppLocalizations l10n, String key, String distance) {
   switch (key) {
     case 'badgesDistanceSingle5kLabel':
       return l10n.badgesDistanceSingle5kLabel;
     case 'badgesDistanceSingle5kDesc':
-      return l10n.badgesDistanceSingle5kDesc;
+      return l10n.badgesDistanceSingle5kDesc(distance);
     case 'badgesDistanceSingleHalfLabel':
       return l10n.badgesDistanceSingleHalfLabel;
     case 'badgesDistanceSingleHalfDesc':
-      return l10n.badgesDistanceSingleHalfDesc;
+      return l10n.badgesDistanceSingleHalfDesc(distance);
     case 'badgesDistanceSingleMarathonLabel':
       return l10n.badgesDistanceSingleMarathonLabel;
     case 'badgesDistanceSingleMarathonDesc':
-      return l10n.badgesDistanceSingleMarathonDesc;
+      return l10n.badgesDistanceSingleMarathonDesc(distance);
     case 'badgesDistanceSingleUltraLabel':
       return l10n.badgesDistanceSingleUltraLabel;
     case 'badgesDistanceSingleUltraDesc':
-      return l10n.badgesDistanceSingleUltraDesc;
+      return l10n.badgesDistanceSingleUltraDesc(distance);
     case 'badgesDistanceLifetime100Label':
-      return l10n.badgesDistanceLifetime100Label;
+      return l10n.badgesDistanceLifetime100Label(distance);
     case 'badgesDistanceLifetime100Desc':
-      return l10n.badgesDistanceLifetime100Desc;
+      return l10n.badgesDistanceLifetime100Desc(distance);
     case 'badgesDistanceLifetime500Label':
-      return l10n.badgesDistanceLifetime500Label;
+      return l10n.badgesDistanceLifetime500Label(distance);
     case 'badgesDistanceLifetime500Desc':
-      return l10n.badgesDistanceLifetime500Desc;
+      return l10n.badgesDistanceLifetime500Desc(distance);
     case 'badgesDistanceLifetime1000Label':
-      return l10n.badgesDistanceLifetime1000Label;
+      return l10n.badgesDistanceLifetime1000Label(distance);
     case 'badgesDistanceLifetime1000Desc':
-      return l10n.badgesDistanceLifetime1000Desc;
+      return l10n.badgesDistanceLifetime1000Desc(distance);
     case 'badgesDistanceLifetime5000Label':
-      return l10n.badgesDistanceLifetime5000Label;
+      return l10n.badgesDistanceLifetime5000Label(distance);
     case 'badgesDistanceLifetime5000Desc':
-      return l10n.badgesDistanceLifetime5000Desc;
+      return l10n.badgesDistanceLifetime5000Desc(distance);
     case 'badgesStreak7Label':
       return l10n.badgesStreak7Label;
     case 'badgesStreak7Desc':
@@ -201,12 +204,43 @@ String badgeText(AppLocalizations l10n, String key) {
   }
 }
 
-/// Localized label for a stored award (its catalogue label, else the raw
-/// badge_key). Shared by the feed badge strip.
-String badgeLabelFor(AppLocalizations l10n, String badgeKey, String tier) {
-  final t = tierFor(badgeKey, tier);
-  return t != null ? badgeText(l10n, t.labelKey) : badgeKey;
+/// An award's label and description in the reader's words and unit, or null
+/// for a badge or tier this build does not know. A distance family's words
+/// name its threshold, so a miles reader reads "Ran 26.2 mi in a single run".
+/// [unit] and [localeTag] default to the active preference and locale. Twin
+/// of web's `badgeWords` in apps/web/src/lib/social/badges.ts.
+({String label, String desc, String icon})? badgeWords(
+  AppLocalizations l10n,
+  String badgeKey,
+  String tier, {
+  DistanceUnit? unit,
+  String? localeTag,
+}) {
+  for (final b in kBadgeCatalogue) {
+    if (b.id != badgeKey) continue;
+    for (final t in b.tiers) {
+      if (t.tier != tier) continue;
+      final digits = b.distanceDigits;
+      final distance = digits == null
+          ? ''
+          : UnitFormat.thresholdDistance(
+              t.threshold, unit ?? activeDistanceUnit, digits, localeTag);
+      return (
+        label: badgeText(l10n, t.labelKey, distance),
+        desc: badgeText(l10n, t.descKey, distance),
+        icon: t.icon,
+      );
+    }
+    return null;
+  }
+  return null;
 }
+
+/// Localized label for a stored award (its catalogue label, else the raw
+/// badge_key). Shared by the feed badge strip and the run share card.
+String badgeLabelFor(AppLocalizations l10n, String badgeKey, String tier,
+        {DistanceUnit? unit}) =>
+    badgeWords(l10n, badgeKey, tier, unit: unit)?.label ?? badgeKey;
 
 /// A tier-coloured grid of earned badges. Mirrors the web `BadgeGrid.svelte`:
 /// the owner sees their private badges flagged, and tapping one of their own
@@ -263,12 +297,10 @@ class _BadgeTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final tierColor = badgeTierColor(badge.tier);
-    final tier = tierFor(badge.badgeKey, badge.tier);
-    final label = tier != null
-        ? badgeText(l10n, tier.labelKey)
-        : badge.badgeKey;
-    final desc = tier != null ? badgeText(l10n, tier.descKey) : null;
-    final icon = badgeIconData(tier?.icon ?? 'military_tech');
+    final words = badgeWords(l10n, badge.badgeKey, badge.tier);
+    final label = words?.label ?? badge.badgeKey;
+    final desc = words?.desc;
+    final icon = badgeIconData(words?.icon ?? 'military_tech');
     final earned = formatDateMed(badge.earnedAt, activeLocaleTag);
     return Opacity(
       opacity: badge.isPublic ? 1 : 0.72,

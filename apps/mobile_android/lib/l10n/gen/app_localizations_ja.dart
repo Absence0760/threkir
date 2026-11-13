@@ -652,7 +652,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      '「近くのランナーに自分を表示」をオンにし、エリアを設定してください。同じ設定をしたランナーだけがあなたを見つけられます。';
+      '「『近くのランナー』に表示する」をオンにし、エリアを設定してください。同じ設定をしたランナーだけがあなたを見つけられます。';
 
   @override
   String get peopleNearbyEmptyAction => 'プライバシー設定を開く';
@@ -671,7 +671,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => '近くのランナーに自分を表示';
+  String get prefsDiscoverableNearby => '「近くのランナー」に表示する';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -15041,7 +15041,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get raceCourseSuggestNoRoutes => '公開ルートがまだありません。ルートを公開すると提案できます。';
 
   @override
-  String get raceCourseSuggestNote => 'メモ(任意)';
+  String get raceCourseSuggestNote => 'メモ（任意）';
 
   @override
   String get raceCourseSuggestConfirm => '提案を送信';
@@ -15458,49 +15458,73 @@ class AppLocalizationsJa extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => '初めての5K';
 
   @override
-  String get badgesDistanceSingle5kDesc => '1回のランで5km走破';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'ハーフマラソン';
 
   @override
-  String get badgesDistanceSingleHalfDesc => '1回のランで21.1km走破';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'マラソン';
 
   @override
-  String get badgesDistanceSingleMarathonDesc => '1回のランで42.2km走破';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'ウルトラ';
 
   @override
-  String get badgesDistanceSingleUltraDesc => '1回のランで50km以上走破';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return '1回のランで$distance以上走破';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => '100kmクラブ';
+  String badgesDistanceLifetime100Label(String distance) {
+    return '$distanceクラブ';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '通算100kmを記録';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '通算500kmを記録';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => '1,000kmクラブ';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return '$distanceクラブ';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '通算1,000kmを記録';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5,000km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '通算5,000kmを記録';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
   String get badgesStreak7Label => '週間連続';
@@ -17377,7 +17401,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventCancelPaidNote => '支払った人には、返金ポリシーにかかわらず全額が返金されます。';
 
   @override
-  String get eventCancelReasonLabel => '理由(任意)';
+  String get eventCancelReasonLabel => '理由（任意）';
 
   @override
   String get eventCancelKeep => 'そのままにする';

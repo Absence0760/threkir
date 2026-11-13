@@ -143,7 +143,7 @@ void main() {
       final api = _FakeApi(label: 'Richmond, VA');
       await _pumpPrefs(tester, await _prefs(), api: api);
 
-      expect(find.text('Show me to runners nearby'), findsNothing);
+      expect(find.text('Show me in Runners nearby'), findsNothing);
       expect(find.text('Your area'), findsNothing);
       // The label read is itself a person-location read; it must not happen.
       expect(api.readCalls, 0);
@@ -158,7 +158,7 @@ void main() {
       final api = _FakeApi(label: 'Richmond, VA');
       await _pumpPrefs(tester, await _prefs(), api: api);
 
-      expect(find.text('Show me to runners nearby'), findsOneWidget);
+      expect(find.text('Show me in Runners nearby'), findsOneWidget);
       expect(find.text('Your area'), findsOneWidget);
       expect(find.text('Current area: Richmond, VA'), findsOneWidget);
       expect(api.readCalls, 1);
@@ -171,7 +171,7 @@ void main() {
 
       // The definer RPCs are unreachable without a client, so the row that
       // exists only to call them must not be offered.
-      expect(find.text('Show me to runners nearby'), findsOneWidget);
+      expect(find.text('Show me in Runners nearby'), findsOneWidget);
       expect(find.text('Your area'), findsNothing);
     });
   });

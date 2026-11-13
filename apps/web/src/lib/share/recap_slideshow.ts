@@ -7,6 +7,7 @@
 
 import type { YearInRunningRecap } from '../runs/recap';
 import { VIDEO_FPS } from '../video/frame_clock';
+import { formatElevationIn } from '../format/elevation';
 import { recapActiveMonths, recapBadgeText, type RecapTranslate } from './recap_card_text';
 
 export interface RecapMonthBar {
@@ -35,8 +36,8 @@ export interface RecapSlideFormat {
 	monthLetter: (month: number) => string;
 	/// Grouped whole number in the reader's locale.
 	count: (n: number) => string;
-	/// The reader's distance unit and number locale, for badge words that name
-	/// a distance ("26.2 mi in one run").
+	/// The reader's distance unit and number locale, for the climb and for
+	/// badge words that name a distance ("26.2 mi in one run").
 	unit: 'km' | 'mi';
 	locale?: string;
 	url: string;
@@ -102,7 +103,7 @@ export function recapSlides(recap: YearInRunningRecap, f: RecapSlideFormat): Rec
 		middle.push({
 			kind: 'stat',
 			label: t('recap.cardClimbed'),
-			value: `${f.count(Math.round(recap.totalElevationM))} m`,
+			value: formatElevationIn(recap.totalElevationM, f.unit, f.locale),
 			sub: null,
 		});
 	}

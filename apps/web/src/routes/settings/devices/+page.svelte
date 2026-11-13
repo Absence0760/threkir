@@ -629,7 +629,6 @@
 
 <style>
 	.page { padding: var(--page-padding-y) var(--page-padding-x); max-width: 64rem; }
-	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); }
 
 	.skeleton-stack { display: flex; flex-direction: column; gap: 0.5rem; }
 	.skel-row {
@@ -662,11 +661,6 @@
 		align-items: center;
 		gap: 0.5rem;
 		overflow: hidden;
-	}
-	.device-name strong {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 	.device-label-input {
 		font: inherit;
@@ -744,7 +738,6 @@
 		border-radius: var(--radius-sm);
 	}
 	.remove-btn:hover { color: var(--color-danger-text); background: var(--color-danger-light); }
-	.muted { color: var(--color-text-tertiary); }
 	.material-symbols { font-family: 'Material Symbols Outlined', system-ui; font-weight: normal; display: inline-block; line-height: 1; }
 
 	.override-link {

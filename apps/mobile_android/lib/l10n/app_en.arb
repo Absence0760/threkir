@@ -905,7 +905,7 @@
   "@peopleNearbyEmptyTitle": {
     "description": "Empty-state title when the runners-nearby list comes back with no one"
   },
-  "peopleNearbyEmptyBody": "Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.",
+  "peopleNearbyEmptyBody": "Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.",
   "@peopleNearbyEmptyBody": {
     "description": "Empty-state body for the runners-nearby list, pointing at the opt-in and area setter"
   },
@@ -935,7 +935,7 @@
       }
     }
   },
-  "prefsDiscoverableNearby": "Show me to runners nearby",
+  "prefsDiscoverableNearby": "Show me in Runners nearby",
   "@prefsDiscoverableNearby": {
     "description": "Toggle title for opting in to coarse-location runners-nearby discovery"
   },
@@ -21410,65 +21410,125 @@
   "@badgesDistanceSingle5kLabel": {
     "description": "Badge label"
   },
-  "badgesDistanceSingle5kDesc": "Ran 5 km in a single run",
+  "badgesDistanceSingle5kDesc": "Ran {distance} in a single run",
   "@badgesDistanceSingle5kDesc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "badgesDistanceSingleHalfLabel": "Half marathon",
   "@badgesDistanceSingleHalfLabel": {
     "description": "Badge label"
   },
-  "badgesDistanceSingleHalfDesc": "Ran 21.1 km in a single run",
+  "badgesDistanceSingleHalfDesc": "Ran {distance} in a single run",
   "@badgesDistanceSingleHalfDesc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "badgesDistanceSingleMarathonLabel": "Marathon",
   "@badgesDistanceSingleMarathonLabel": {
     "description": "Badge label"
   },
-  "badgesDistanceSingleMarathonDesc": "Ran 42.2 km in a single run",
+  "badgesDistanceSingleMarathonDesc": "Ran {distance} in a single run",
   "@badgesDistanceSingleMarathonDesc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "badgesDistanceSingleUltraLabel": "Ultra",
   "@badgesDistanceSingleUltraLabel": {
     "description": "Badge label"
   },
-  "badgesDistanceSingleUltraDesc": "Ran 50 km or more in a single run",
+  "badgesDistanceSingleUltraDesc": "Ran {distance} or more in a single run",
   "@badgesDistanceSingleUltraDesc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime100Label": "100 km club",
+  "badgesDistanceLifetime100Label": "{distance} club",
   "@badgesDistanceLifetime100Label": {
-    "description": "Badge label"
+    "description": "Badge label; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime100Desc": "100 km logged all-time",
+  "badgesDistanceLifetime100Desc": "{distance} logged all-time",
   "@badgesDistanceLifetime100Desc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime500Label": "500 km",
+  "badgesDistanceLifetime500Label": "{distance}",
   "@badgesDistanceLifetime500Label": {
-    "description": "Badge label"
+    "description": "Badge label; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime500Desc": "500 km logged all-time",
+  "badgesDistanceLifetime500Desc": "{distance} logged all-time",
   "@badgesDistanceLifetime500Desc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime1000Label": "1,000 km club",
+  "badgesDistanceLifetime1000Label": "{distance} club",
   "@badgesDistanceLifetime1000Label": {
-    "description": "Badge label"
+    "description": "Badge label; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime1000Desc": "1,000 km logged all-time",
+  "badgesDistanceLifetime1000Desc": "{distance} logged all-time",
   "@badgesDistanceLifetime1000Desc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime5000Label": "5,000 km",
+  "badgesDistanceLifetime5000Label": "{distance}",
   "@badgesDistanceLifetime5000Label": {
-    "description": "Badge label"
+    "description": "Badge label; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
-  "badgesDistanceLifetime5000Desc": "5,000 km logged all-time",
+  "badgesDistanceLifetime5000Desc": "{distance} logged all-time",
   "@badgesDistanceLifetime5000Desc": {
-    "description": "Badge description"
+    "description": "Badge description; {distance} is the threshold in the reader's unit (\"5 km\" / \"3.1 mi\")",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "badgesStreak7Label": "Week streak",
   "@badgesStreak7Label": {

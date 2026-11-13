@@ -48,12 +48,18 @@ class Badge {
   final String id;
   final String sourceKind;
 
+  /// A distance family's words carry its threshold as `{distance}`, printed
+  /// in the reader's unit to this many decimals: 1 for a race distance
+  /// (42.2), 0 for a lifetime total. Null for every other family.
+  final int? distanceDigits;
+
   /// Ordered low to high; [evaluateBadges] returns the highest tier met.
   final List<BadgeTier> tiers;
 
   const Badge({
     required this.id,
     required this.sourceKind,
+    this.distanceDigits,
     required this.tiers,
   });
 }
@@ -130,6 +136,7 @@ const List<Badge> kBadgeCatalogue = [
   Badge(
     id: 'distance_single',
     sourceKind: 'distance',
+    distanceDigits: 1,
     tiers: [
       BadgeTier(tier: 'bronze', threshold: 5000, icon: 'directions_run', labelKey: 'badgesDistanceSingle5kLabel', descKey: 'badgesDistanceSingle5kDesc'),
       BadgeTier(tier: 'silver', threshold: 21097, icon: 'military_tech', labelKey: 'badgesDistanceSingleHalfLabel', descKey: 'badgesDistanceSingleHalfDesc'),
@@ -140,6 +147,7 @@ const List<Badge> kBadgeCatalogue = [
   Badge(
     id: 'distance_lifetime',
     sourceKind: 'distance',
+    distanceDigits: 0,
     tiers: [
       BadgeTier(tier: 'bronze', threshold: 100000, icon: 'route', labelKey: 'badgesDistanceLifetime100Label', descKey: 'badgesDistanceLifetime100Desc'),
       BadgeTier(tier: 'silver', threshold: 500000, icon: 'route', labelKey: 'badgesDistanceLifetime500Label', descKey: 'badgesDistanceLifetime500Desc'),

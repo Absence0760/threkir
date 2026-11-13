@@ -2,9 +2,9 @@
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, formatDistance, formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
-	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
+	import { FASTEST_PACE_MIN_M, type YearInRunningRecap } from '#lib/runs/recap.ts';
 	import { RECAP_SITE, recapActiveMonths, recapBadgeText } from '#lib/share/recap_card_text.ts';
 	import { formatHoursMinutes } from '#lib/format/time.ts';
 	import type { RecapSlideFormat } from '#lib/share/recap_slideshow.ts';
@@ -163,7 +163,7 @@
 		<span class="hero-meta-divider" aria-hidden="true"></span>
 		<span class="hero-meta-item">
 			<span class="material-symbols">terrain</span>
-			{t('recap.climbed', { meters: Math.round(recap.totalElevationM).toLocaleString() })}
+			{t('recap.climbed', { elevation: formatElevation(recap.totalElevationM) })}
 		</span>
 		{#if recap.month == null}
 			<span class="hero-meta-divider" aria-hidden="true"></span>
@@ -248,7 +248,7 @@
 	<div class="card">
 		<span class="card-label">{t('recap.fastestPace')}</span>
 		<span class="card-value">{fmtPace(recap.fastestPaceSecPerKm)}</span>
-		<span class="card-sub">{t('recap.fastestPaceSub')}</span>
+		<span class="card-sub">{t('recap.fastestPaceSub', { distance: formatDistance(FASTEST_PACE_MIN_M) })}</span>
 	</div>
 	<div class="card">
 		<span class="card-label">{t('recap.bestStreak')}</span>

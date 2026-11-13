@@ -227,7 +227,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importStatusNoGpsNote(Object base, Object label) {
-    return '$base. $label não tem dados de rota, então essas corridas não têm mapa.';
+    return '$base. $label não tem dados de rota, por isso essas corridas não têm mapa.';
   }
 
   @override
@@ -364,7 +364,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importCsvCardDescription =>
-      'Cada linha do CSV vira uma corrida manual (data, distância, duração, fonte). O trajeto no mapa não está no CSV, então as corridas importadas não terão linha de rota.';
+      'Cada linha do CSV passa a ser uma corrida manual (data, distância, duração, fonte). O trajeto no mapa não está no CSV, por isso as corridas importadas não terão linha de rota.';
 
   @override
   String get importCsvButton => 'Importar CSV';
@@ -683,7 +683,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Ative «Mostrar-me a corredores por perto» e defina a sua área. Só os corredores que fizeram o mesmo o podem encontrar.';
+      'Ative “Mostrar-me em Corredores por perto” e defina a sua área. Só os corredores que fizeram o mesmo o podem encontrar.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir definições de privacidade';
@@ -703,7 +703,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Mostrar-me a corredores por perto';
+  String get prefsDiscoverableNearby => 'Mostrar-me em Corredores por perto';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -3627,11 +3627,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailMakePublicBodyZone =>
-      'Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Esta corrida começa ou termina dentro de uma das suas zonas de privacidade, então quem visualizar verá um trajeto recortado com os trechos dentro da zona ocultos.';
+      'Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Esta corrida começa ou termina dentro de uma das suas zonas de privacidade, por isso quem a vir verá um trajeto recortado, com os trechos dentro da zona ocultos.';
 
   @override
   String get runDetailMakePublicBodyHasZones =>
-      'Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Nenhuma das suas zonas de privacidade cruza este trajeto, então o trajeto completo ficará visível.';
+      'Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Nenhuma das suas zonas de privacidade cruza este trajeto, por isso o trajeto completo ficará visível.';
 
   @override
   String get runDetailMakePublicBodyNoZones =>
@@ -7714,7 +7714,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveFitnessHeld =>
-      'Pausado — está a acumular fadiga agora, então aumentar o volume não é recomendado.';
+      'Pausado — está a acumular fadiga agora, por isso não é recomendado aumentar o volume.';
 
   @override
   String get planDetailAdaptiveReasonUnder =>
@@ -9939,7 +9939,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get privacyZonesRemoveBody =>
-      'Esta zona oculta os seus trajetos por perto nos partilhas públicos. Removê-la reexpõe esta área.';
+      'Esta zona oculta os seus trajetos por perto nas partilhas públicas. Removê-la reexpõe esta área.';
 
   @override
   String get privacyZonesRemoveSemantics => 'Remover zona de privacidade';
@@ -16215,52 +16215,73 @@ class AppLocalizationsPt extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => 'Primeiros 5 km';
 
   @override
-  String get badgesDistanceSingle5kDesc => 'Correu 5 km numa única corrida';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return 'Correu $distance numa única corrida';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'Meia maratona';
 
   @override
-  String get badgesDistanceSingleHalfDesc =>
-      'Correu 21,1 km numa única corrida';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return 'Correu $distance numa única corrida';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'Maratona';
 
   @override
-  String get badgesDistanceSingleMarathonDesc =>
-      'Correu 42,2 km numa única corrida';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return 'Correu $distance numa única corrida';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'Ultra';
 
   @override
-  String get badgesDistanceSingleUltraDesc =>
-      'Correu 50 km ou mais numa única corrida';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return 'Correu $distance ou mais numa única corrida';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => 'Clube dos 100 km';
+  String badgesDistanceLifetime100Label(String distance) {
+    return 'Clube $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '100 km registados no total';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return 'Registou $distance no total';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500 km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '500 km registados no total';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return 'Registou $distance no total';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => 'Clube dos 1.000 km';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return 'Clube $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '1.000 km registados no total';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return 'Registou $distance no total';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5.000 km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '5.000 km registados no total';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return 'Registou $distance no total';
+  }
 
   @override
   String get badgesStreak7Label => 'Sequência semanal';
@@ -17375,7 +17396,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get comebackMeaningSteep =>
-      'Esta semana já passa da metade do que corria antes da pausa. O seu corpo perdeu a base que tornava aquelas semanas rotineiras, então uma semana mais curta agora custa muito menos do que uma recaída depois.';
+      'Esta semana já passa de metade do que corria antes da pausa. O seu corpo perdeu a base que tornava aquelas semanas rotineiras, por isso uma semana mais curta agora custa muito menos do que uma recaída depois.';
 
   @override
   String get comebackThisWeekLabel => 'Últimos 7 dias';
@@ -20113,7 +20134,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailCycleAdjustConfirmPregnancy =>
-      'Os próximos treinos serão ajustados à gravidez: sessões duras e provas viram corridas leves e o volume diminui por trimestre. Isto não é aconselhamento médico — siga o seu profissional de saúde. Treinos passados não mudam.';
+      'Os próximos treinos serão ajustados à gravidez: sessões duras e provas passam a ser corridas leves e o volume diminui por trimestre. Isto não é aconselhamento médico — siga as orientações do seu profissional de saúde. Treinos passados não mudam.';
 
   @override
   String get planDetailCycleAdjustDone => 'Próximas semanas ajustadas.';
@@ -23770,7 +23791,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Ative “Mostrar meu perfil a corredores por perto” e defina sua área. Só os corredores que fizeram o mesmo podem te encontrar.';
+      'Ative “Mostrar-me em Corredores por perto” e defina sua área. Só os corredores que fizeram o mesmo podem encontrar você.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir configurações de privacidade';
@@ -23790,8 +23811,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get prefsDiscoverableNearby =>
-      'Mostrar meu perfil a corredores por perto';
+  String get prefsDiscoverableNearby => 'Mostrar-me em Corredores por perto';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -39286,52 +39306,73 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get badgesDistanceSingle5kLabel => 'Primeiros 5 km';
 
   @override
-  String get badgesDistanceSingle5kDesc => 'Correu 5 km em uma única corrida';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return 'Correu $distance em uma única corrida';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'Meia maratona';
 
   @override
-  String get badgesDistanceSingleHalfDesc =>
-      'Correu 21,1 km em uma única corrida';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return 'Correu $distance em uma única corrida';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'Maratona';
 
   @override
-  String get badgesDistanceSingleMarathonDesc =>
-      'Correu 42,2 km em uma única corrida';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return 'Correu $distance em uma única corrida';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'Ultra';
 
   @override
-  String get badgesDistanceSingleUltraDesc =>
-      'Correu 50 km ou mais em uma única corrida';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return 'Correu $distance ou mais em uma única corrida';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => 'Clube dos 100 km';
+  String badgesDistanceLifetime100Label(String distance) {
+    return 'Clube $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '100 km registrados no total';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return 'Total registrado: $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500 km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '500 km registrados no total';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return 'Total registrado: $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => 'Clube dos 1.000 km';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return 'Clube $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '1.000 km registrados no total';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return 'Total registrado: $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5.000 km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '5.000 km registrados no total';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return 'Total registrado: $distance';
+  }
 
   @override
   String get badgesStreak7Label => 'Sequência semanal';

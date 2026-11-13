@@ -146,7 +146,10 @@ void main() {
   worstCaseTestWidgets('Plan detail', (tester, locale) async {
     await _pump(tester, locale: locale);
     final list = primaryScrollable();
-    for (var i = 0; i < 8; i++) {
+    // Open every section: each pass either opens one or scrolls on, so the
+    // bound counts scroll steps too and must outlast the page at 2x text,
+    // where a taller week strip adds steps. The loop ends at the bottom.
+    for (var i = 0; i < 40; i++) {
       final shut = find.byIcon(Icons.expand_more);
       if (shut.evaluate().isEmpty) {
         final position = tester.state<ScrollableState>(list).position;

@@ -792,11 +792,6 @@
 		align-items: flex-start;
 	}
 	.runsignup-body h2 { margin: 0; }
-	.runsignup-unavailable {
-		color: var(--color-text-tertiary);
-		font-size: 0.85rem;
-		margin: 0;
-	}
 
 	.integration-info {
 		flex: 1;

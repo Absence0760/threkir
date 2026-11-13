@@ -2,7 +2,6 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppIconSize, SheetScaffold;
 
-import '../badges.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../share_sheet.dart';
 import '../web_base_url.dart';
@@ -106,11 +105,9 @@ class _BadgeShareSheetState extends State<_BadgeShareSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final tier = tierFor(_badge.badgeKey, _badge.tier);
-    final label = tier != null
-        ? badgeText(l10n, tier.labelKey)
-        : _badge.badgeKey;
-    final desc = tier != null ? badgeText(l10n, tier.descKey) : null;
+    final words = badgeWords(l10n, _badge.badgeKey, _badge.tier);
+    final label = words?.label ?? _badge.badgeKey;
+    final desc = words?.desc;
     final color = badgeTierColor(_badge.tier);
     return SheetScaffold(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -119,7 +116,7 @@ class _BadgeShareSheetState extends State<_BadgeShareSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Icon(
-            badgeIconData(tier?.icon ?? 'military_tech'),
+            badgeIconData(words?.icon ?? 'military_tech'),
             size: AppIconSize.illustration,
             color: color,
           ),

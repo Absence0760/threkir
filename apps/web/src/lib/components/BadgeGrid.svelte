@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import { formatDate } from '#lib/format/time.ts';
-	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import { activeFormatLocale, formatDate } from '#lib/format/time.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { badgeWords, type AchievementTier } from '#lib/social/badges.ts';
 	import type { Achievement } from '#lib/types.ts';
 
 	interface Props {
@@ -29,7 +30,7 @@
 	};
 
 	function resolved(b: Achievement) {
-		return tierFor(b.badge_key, b.tier as AchievementTier);
+		return badgeWords(b.badge_key, b.tier as AchievementTier, m, getUnit(), activeFormatLocale());
 	}
 </script>
 
@@ -48,9 +49,9 @@
 				data-testid={b.id === focusId ? 'badge-focused' : undefined}
 			>
 				<span class="badge-icon material-symbols" aria-hidden="true">{r?.icon ?? 'military_tech'}</span>
-				<span class="badge-label">{r ? m(r.labelKey) : b.badge_key}</span>
+				<span class="badge-label">{r ? r.label : b.badge_key}</span>
 				{#if r}
-					<span class="badge-desc">{m(r.descKey)}</span>
+					<span class="badge-desc">{r.desc}</span>
 				{/if}
 				<span class="badge-tier">{TIER_LABEL[b.tier as AchievementTier]?.() ?? b.tier}</span>
 				<span class="badge-date">{m('badges.earnedOn', { date: formatDate(b.earned_at) })}</span>

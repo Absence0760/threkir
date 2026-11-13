@@ -1640,20 +1640,12 @@
 		.detail-header :global(h1) {
 			font-size: 1.35rem;
 		}
-		.route-meta {
-			gap: var(--space-xs) var(--space-sm);
-			font-size: 0.85rem;
-		}
 	}
 	@container stats (max-width: 380px) {
 		/* Very narrow: stack title + star, wrap meta items each on
 		 * their own line for readability, tighten section padding. */
 		.detail-header :global(.title-row) {
 			flex-wrap: wrap;
-		}
-		.route-meta {
-			gap: 0.3rem;
-			font-size: 0.8rem;
 		}
 		.detail-header :global(h1) {
 			font-size: 1.2rem;
@@ -1786,22 +1778,6 @@
 		margin: var(--space-xs) 0 0;
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
-	}
-
-	.route-meta {
-		display: flex;
-		align-items: center;
-		gap: var(--space-xs);
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-	}
-
-	.meta-sep {
-		color: var(--color-text-tertiary);
-	}
-
-	.surface-tag {
-		text-transform: capitalize;
 	}
 
 	.route-description {
@@ -2072,15 +2048,6 @@
 		font-family: 'Material Symbols Outlined';
 	}
 
-	.featured-pill {
-		background: var(--color-primary);
-		color: white;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		padding: 0.15rem 0.5rem;
-		border-radius: 9999px;
-		letter-spacing: 0.04em;
-	}
 	.tags-row {
 		display: flex;
 		flex-wrap: wrap;

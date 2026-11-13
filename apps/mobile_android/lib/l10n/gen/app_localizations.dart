@@ -1046,7 +1046,7 @@ abstract class AppLocalizations {
   /// Empty-state body for the runners-nearby list, pointing at the opt-in and area setter
   ///
   /// In en, this message translates to:
-  /// **'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.'**
+  /// **'Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.'**
   String get peopleNearbyEmptyBody;
 
   /// Button on the runners-nearby empty state that opens the Privacy & sharing preferences page
@@ -1076,7 +1076,7 @@ abstract class AppLocalizations {
   /// Toggle title for opting in to coarse-location runners-nearby discovery
   ///
   /// In en, this message translates to:
-  /// **'Show me to runners nearby'**
+  /// **'Show me in Runners nearby'**
   String get prefsDiscoverableNearby;
 
   /// Subtitle for the runners-nearby opt-in toggle
@@ -26176,11 +26176,11 @@ abstract class AppLocalizations {
   /// **'First 5K'**
   String get badgesDistanceSingle5kLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 5 km in a single run'**
-  String get badgesDistanceSingle5kDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingle5kDesc(String distance);
 
   /// Badge label
   ///
@@ -26188,11 +26188,11 @@ abstract class AppLocalizations {
   /// **'Half marathon'**
   String get badgesDistanceSingleHalfLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 21.1 km in a single run'**
-  String get badgesDistanceSingleHalfDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingleHalfDesc(String distance);
 
   /// Badge label
   ///
@@ -26200,11 +26200,11 @@ abstract class AppLocalizations {
   /// **'Marathon'**
   String get badgesDistanceSingleMarathonLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 42.2 km in a single run'**
-  String get badgesDistanceSingleMarathonDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingleMarathonDesc(String distance);
 
   /// Badge label
   ///
@@ -26212,59 +26212,59 @@ abstract class AppLocalizations {
   /// **'Ultra'**
   String get badgesDistanceSingleUltraLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 50 km or more in a single run'**
-  String get badgesDistanceSingleUltraDesc;
+  /// **'Ran {distance} or more in a single run'**
+  String badgesDistanceSingleUltraDesc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'100 km club'**
-  String get badgesDistanceLifetime100Label;
+  /// **'{distance} club'**
+  String badgesDistanceLifetime100Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'100 km logged all-time'**
-  String get badgesDistanceLifetime100Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime100Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'500 km'**
-  String get badgesDistanceLifetime500Label;
+  /// **'{distance}'**
+  String badgesDistanceLifetime500Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'500 km logged all-time'**
-  String get badgesDistanceLifetime500Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime500Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'1,000 km club'**
-  String get badgesDistanceLifetime1000Label;
+  /// **'{distance} club'**
+  String badgesDistanceLifetime1000Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'1,000 km logged all-time'**
-  String get badgesDistanceLifetime1000Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime1000Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'5,000 km'**
-  String get badgesDistanceLifetime5000Label;
+  /// **'{distance}'**
+  String badgesDistanceLifetime5000Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'5,000 km logged all-time'**
-  String get badgesDistanceLifetime5000Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime5000Desc(String distance);
 
   /// Badge label
   ///

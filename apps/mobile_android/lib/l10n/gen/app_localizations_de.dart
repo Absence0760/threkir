@@ -675,14 +675,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get peopleNearbySubtitle =>
-      'Läufer, die sich in der Nähe des von dir gesetzten Gebiets angemeldet haben. Nur ungefähre Entfernung — niemals ein Live-Standort.';
+      'Läufer in der Nähe der von dir festgelegten Gegend, die sich für die Entdeckung entschieden haben. Nur ungefähre Entfernung — niemals ein Live-Standort.';
 
   @override
   String get peopleNearbyEmptyTitle => 'Noch niemand in der Nähe';
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Aktiviere „Mich Läufern in der Nähe zeigen“ und setze dein Gebiet. Nur Läufer, die dasselbe getan haben, können dich finden.';
+      'Aktiviere „Mich unter ‚Läufer in der Nähe‘ anzeigen“ und lege deine Gegend fest. Nur Läufer, die dasselbe getan haben, können dich finden.';
 
   @override
   String get peopleNearbyEmptyAction => 'Datenschutzeinstellungen öffnen';
@@ -702,25 +702,26 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Mich Läufern in der Nähe zeigen';
+  String get prefsDiscoverableNearby =>
+      'Mich unter „Läufer in der Nähe“ anzeigen';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
-      'Standardmäßig aus. Wenn aktiviert, sehen andere Läufer, die sich ebenfalls angemeldet haben, dass du ungefähr in der Nähe bist — eine ungefähre Entfernung zu dem von dir gesetzten Gebiet, niemals dein Standort.';
+      'Standardmäßig aus. Wenn aktiviert, sehen andere teilnehmende Läufer, dass du ungefähr in der Nähe bist — eine ungefähre Entfernung zu der von dir festgelegten Gegend, niemals dein Standort.';
 
   @override
-  String get nearbyAreaTitle => 'Dein Gebiet';
+  String get nearbyAreaTitle => 'Deine Gegend';
 
   @override
   String get nearbyAreaExplainer =>
       'Wähle die Stadt oder das Viertel, in dem du läufst. Es wird auf etwa einen Kilometer gerundet gespeichert und ist niemals dein Live-Standort. Andere Läufer sehen nur eine ungefähre Entfernung, niemals das Gebiet selbst.';
 
   @override
-  String get nearbyAreaNone => 'Kein Gebiet gesetzt';
+  String get nearbyAreaNone => 'Keine Gegend festgelegt';
 
   @override
   String nearbyAreaCurrent(String label) {
-    return 'Aktuelles Gebiet: $label';
+    return 'Aktuelle Gegend: $label';
   }
 
   @override
@@ -734,31 +735,32 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nearbyAreaNoResults => 'Keine Orte für diese Suche gefunden.';
 
   @override
-  String get nearbyAreaSaved => 'Gebiet gespeichert';
+  String get nearbyAreaSaved => 'Gegend gespeichert';
 
   @override
   String get nearbyAreaSaveFailed =>
-      'Dein Gebiet konnte nicht gespeichert werden.';
+      'Deine Gegend konnte nicht gespeichert werden.';
 
   @override
-  String get nearbyAreaLoadFailed => 'Dein Gebiet konnte nicht geladen werden.';
+  String get nearbyAreaLoadFailed =>
+      'Deine Gegend konnte nicht geladen werden.';
 
   @override
-  String get nearbyAreaForget => 'Mein Gebiet vergessen';
+  String get nearbyAreaForget => 'Meine Gegend vergessen';
 
   @override
-  String get nearbyAreaForgetConfirmTitle => 'Dein Gebiet vergessen?';
+  String get nearbyAreaForgetConfirmTitle => 'Deine Gegend vergessen?';
 
   @override
   String get nearbyAreaForgetConfirmBody =>
-      'Du erscheinst Läufern in der Nähe nicht mehr, bis du wieder ein Gebiet setzt.';
+      'Du erscheinst Läufern in der Nähe nicht mehr, bis du wieder eine Gegend festlegst.';
 
   @override
-  String get nearbyAreaForgotten => 'Gebiet vergessen';
+  String get nearbyAreaForgotten => 'Gegend vergessen';
 
   @override
   String get nearbyAreaForgetFailed =>
-      'Dein Gebiet konnte nicht vergessen werden.';
+      'Deine Gegend konnte nicht vergessen werden.';
 
   @override
   String get peopleFallbackDisplayName => 'Läufer';
@@ -1180,7 +1182,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homeCoachTitle => 'Coach';
 
   @override
-  String get homeCoachSubtitleTools => 'Geführte Läufe, Athleten und Coaches';
+  String get homeCoachSubtitleTools => 'Geführte Läufe, Athleten und Coachs';
 
   @override
   String get youProfileTitle => 'Dein Profil';
@@ -8180,7 +8182,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Die KI-Funktionen von Threkir leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA, damit er die Antworten des Coaches und die Vorschläge der anderen KI-Funktionen für dich verfassen kann. Je nach genutzter Funktion umfasst dieser Teil:';
+      'Die KI-Funktionen von Threkir leiten einen Teil deiner Daten an Anthropic weiter, unseren KI-Modellanbieter in den USA, damit er die Antworten des Coachs und die Vorschläge der anderen KI-Funktionen für dich verfassen kann. Je nach genutzter Funktion umfasst dieser Teil:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -10002,7 +10004,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsPageTrainingSummary =>
-      'Dein wöchentliches Distanzziel, Herzfrequenz und Herzfrequenzzonen, Verpflegung im Wettkampf und der Ton des Coaches.';
+      'Dein wöchentliches Distanzziel, Herzfrequenz und Herzfrequenzzonen, Wettkampfverpflegung und der Ton des Coachs.';
 
   @override
   String get prefsPagePrivacy => 'Datenschutz & Teilen';
@@ -14503,10 +14505,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachingRemove => 'Entfernen';
 
   @override
-  String get coachingMyCoaches => 'Meine Coaches';
+  String get coachingMyCoaches => 'Meine Coachs';
 
   @override
-  String get coachingMyCoachesSub => 'Coaches, die dein Training sehen können';
+  String get coachingMyCoachesSub => 'Coachs, die dein Training sehen können';
 
   @override
   String get coachingNoCoaches =>
@@ -16225,51 +16227,73 @@ class AppLocalizationsDe extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => 'Erste 5 km';
 
   @override
-  String get badgesDistanceSingle5kDesc => '5 km in einem Lauf gelaufen';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return '$distance in einem Lauf gelaufen';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'Halbmarathon';
 
   @override
-  String get badgesDistanceSingleHalfDesc => '21,1 km in einem Lauf gelaufen';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return '$distance in einem Lauf gelaufen';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'Marathon';
 
   @override
-  String get badgesDistanceSingleMarathonDesc =>
-      '42,2 km in einem Lauf gelaufen';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return '$distance in einem Lauf gelaufen';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'Ultra';
 
   @override
-  String get badgesDistanceSingleUltraDesc =>
-      '50 km oder mehr in einem Lauf gelaufen';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return '$distance oder mehr in einem Lauf gelaufen';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => '100-km-Club';
+  String badgesDistanceLifetime100Label(String distance) {
+    return 'Club der $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => 'Insgesamt 100 km gelaufen';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return '$distance insgesamt erfasst';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500 km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => 'Insgesamt 500 km gelaufen';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return '$distance insgesamt erfasst';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => '1.000-km-Club';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return 'Club der $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => 'Insgesamt 1.000 km gelaufen';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return '$distance insgesamt erfasst';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5.000 km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => 'Insgesamt 5.000 km gelaufen';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return '$distance insgesamt erfasst';
+  }
 
   @override
   String get badgesStreak7Label => 'Wochenserie';
@@ -20816,7 +20840,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get messagesCoachPlacementFailed =>
-      'Die Position des KI-Coaches konnte nicht gespeichert werden. Versuche es erneut.';
+      'Die Position des KI-Coachs konnte nicht gespeichert werden. Versuche es erneut.';
 
   @override
   String get prefsSectionMessages => 'Nachrichten';
@@ -22237,7 +22261,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachShareIntro =>
-      'Wähle die Abschnitte dieser Antwort aus, die du senden möchtest. Dein Coach sieht sie als Zitat deines KI-Coaches, nicht als deine eigenen Worte.';
+      'Wähle die Abschnitte dieser Antwort aus, die du senden möchtest. Dein Coach sieht sie als Zitat deines KI-Coachs, nicht als deine eigenen Worte.';
 
   @override
   String get coachShareCoachLegend => 'Senden an';
@@ -22277,7 +22301,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachShareDone => 'Fertig';
 
   @override
-  String get coachShareCardLabel => 'Antwort des KI-Coaches';
+  String get coachShareCardLabel => 'Antwort des KI-Coachs';
 
   @override
   String get coachShareCardFromMe => 'Du hast dies aus deinem KI-Coach geteilt';
@@ -22296,7 +22320,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachAssist =>
-      'Für Coaches, die den Coach-Assistenten nutzen: was du ihn fragst und, nur bei Athleten, die es für deine Coaching-Verknüpfung erlaubt haben, deren letzte Nachrichten mit dir, deren Plan und anstehende Einheiten sowie deren letzte Läufe, nur verwendet, um eine Nachricht zu entwerfen, die nur du siehst. Du bearbeitest und sendest sie selbst, und sie wird als KI-gestützt gekennzeichnet.';
+      'Für Coachs, die den Coach-Assistenten nutzen: was du ihn fragst und, nur bei Athleten, die es für deine Coaching-Verknüpfung erlaubt haben, deren letzte Nachrichten mit dir, deren Plan und anstehende Einheiten sowie deren letzte Läufe, nur verwendet, um eine Nachricht zu entwerfen, die nur du siehst. Du bearbeitest und sendest sie selbst, und sie wird als KI-gestützt gekennzeichnet.';
 
   @override
   String get coachAssistMarker => 'KI-gestützt';

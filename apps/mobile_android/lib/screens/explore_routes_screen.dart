@@ -16,6 +16,7 @@ import 'package:ui_kit/ui_kit.dart'
         EmptyState,
         FilterBar,
         HubTabBody,
+        ListCard,
         MapFirstPage,
         MapFirstSheet,
         StatusPill,
@@ -783,130 +784,102 @@ class _RouteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+    return ListCard.row(
+      dense: true,
+      onTap: onTap,
+      leadingWidth: 80,
+      leading: SizedBox(
+        height: 48,
+        // Explore is community-public routes — every row is by a non-owner.
+        // RouteTrackPreview's owner branch short-circuits to raw waypoints
+        // in the rare case of viewing your own published route.
+        child: route.waypoints.length >= 2
+            ? RouteTrackPreview(
+                routeId: route.id,
+                waypoints: route.waypoints,
+                ownerUserId: route.userId,
+                api: ApiClient(),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _surfaceIcon(route.surface),
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+      ),
+      title: route.name,
+      badge: route.official || route.featured
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (route.official)
+                  OfficialRouteBadge(routeId: route.id, lookup: parkCourses),
+                if (route.featured)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 6),
+                    child: Icon(
+                      Icons.star,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+              ],
+            )
+          : null,
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
             children: [
-              SizedBox(
-                width: 80,
-                height: 48,
-                // Explore is community-public routes — every row is by
-                // a non-owner. RouteTrackPreview's owner branch
-                // short-circuits to raw waypoints if the rare case of
-                // viewing your own published route arises.
-                child: route.waypoints.length >= 2
-                    ? RouteTrackPreview(
-                        routeId: route.id,
-                        waypoints: route.waypoints,
-                        ownerUserId: route.userId,
-                        api: ApiClient(),
-                      )
-                    : Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          _surfaceIcon(route.surface),
-                          color: theme.colorScheme.secondary,
-                        ),
-                      ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            route.name,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (route.official)
-                          OfficialRouteBadge(
-                            routeId: route.id,
-                            lookup: parkCourses,
-                          ),
-                        if (route.featured)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: Icon(
-                              Icons.star,
-                              size: 16,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      children: [
-                        _tag(
-                            Icons.straighten,
-                            UnitFormat.distance(
-                                routeDisplayDistanceM(route.distanceMetres,
-                                    route.officialDistanceMetres),
-                                unit)),
-                        if (route.elevationGainMetres > 0)
-                          _tag(Icons.trending_up,
-                              UnitFormat.elevation(
-                                  route.elevationGainMetres, unit)),
-                        if (route.surface != null)
-                          _tag(_surfaceIcon(route.surface),
-                              routeSurfaceLabel(l10n, route.surface!)),
-                        if (route.runCount > 0)
-                          _tag(Icons.directions_run, '${route.runCount}'),
-                      ],
-                    ),
-                    if (route.tags.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: [
-                          for (final t in route.tags.take(4))
-                            StatusPill(
-                              label: t,
-                              foreground: theme.colorScheme.onSurfaceVariant,
-                              fill:
-                                  theme.colorScheme.surfaceContainerHighest,
-                              size: StatusPillSize.compact,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  saved ? Icons.bookmark : Icons.bookmark_border,
-                  color: saved
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outline,
-                ),
-                tooltip: saved
-                    ? l10n.exploreRoutesRemoveFromLibrary
-                    : l10n.exploreRoutesSaveToLibrary,
-                onPressed: onToggleBookmark,
-              ),
+              _tag(
+                  Icons.straighten,
+                  UnitFormat.distance(
+                      routeDisplayDistanceM(
+                          route.distanceMetres, route.officialDistanceMetres),
+                      unit)),
+              if (route.elevationGainMetres > 0)
+                _tag(Icons.trending_up,
+                    UnitFormat.elevation(route.elevationGainMetres, unit)),
+              if (route.surface != null)
+                _tag(_surfaceIcon(route.surface),
+                    routeSurfaceLabel(l10n, route.surface!)),
+              if (route.runCount > 0)
+                _tag(Icons.directions_run, '${route.runCount}'),
             ],
           ),
+          if (route.tags.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final t in route.tags.take(4))
+                  StatusPill(
+                    label: t,
+                    foreground: theme.colorScheme.onSurfaceVariant,
+                    fill: theme.colorScheme.surfaceContainerHighest,
+                    size: StatusPillSize.compact,
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+      trailing: IconButton(
+        icon: Icon(
+          saved ? Icons.bookmark : Icons.bookmark_border,
+          color: saved ? theme.colorScheme.primary : theme.colorScheme.outline,
         ),
+        tooltip: saved
+            ? l10n.exploreRoutesRemoveFromLibrary
+            : l10n.exploreRoutesSaveToLibrary,
+        onPressed: onToggleBookmark,
       ),
     );
   }

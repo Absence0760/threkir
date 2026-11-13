@@ -14,6 +14,7 @@ import '../lib/screens/park_courses_screen.dart';
 import '../lib/screens/races_screen.dart';
 import '../lib/routes_views.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 GlobalSegmentRow _segment({
   required String id,
@@ -264,6 +265,31 @@ void main() {
   setUpAll(_ensureEnvironment);
 
   group('GlobalSegmentsScreen — browse', () {
+    worstCaseTestWidgets('the segment cards', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: GlobalSegmentsScreen(api: _CatalogueApi(_catalogue)),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await walkScrollable(tester, primaryScrollable(), 'Segments');
+    });
+
+    worstCaseTestWidgets('the park course link', (tester, locale) async {
+      final api = _CatalogueApi(
+        [_segment(id: 'a', name: 'Beaver Lake Trail')],
+        parkCourse: true,
+      );
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: GlobalSegmentDetailScreen(api: api, segmentId: 'a'),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await walkScrollable(tester, primaryScrollable(), 'Segment detail');
+    });
+
     testWidgets('renders one card per catalogue segment with its region',
         (tester) async {
       await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _CatalogueApi(_catalogue))));

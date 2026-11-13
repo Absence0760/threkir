@@ -16,12 +16,14 @@ import 'package:ui_kit/ui_kit.dart'
         FilterBar,
         HubSelection,
         HubTabBody,
+        ListCard,
         PrimaryAction,
         SelectionHint,
         buildChoiceChip,
         showFilterSheet;
 
 import '../widgets/grisnir_moments.dart';
+import '../widgets/run_list_tile.dart' show kRunTileLeadingWidth;
 import '../auth_error.dart';
 import '../catalogue_browse.dart' show compareFoldedNames, fold;
 import '../l10n/gen/app_localizations.dart';
@@ -78,6 +80,9 @@ bool shouldShowRoutesLoadMore({
   if (visibleCount < totalCount) return true;
   return remoteHasMore && apiSignedIn;
 }
+
+/// The leading slot of a route row with no thumbnail to show.
+const double kRouteAvatarLeadingWidth = 56;
 
 /// The Routes tab: `Mine · Explore` (issue #1374, owner decision 1).
 ///
@@ -940,32 +945,21 @@ class RoutesScreenState extends State<RoutesScreen> {
                 final isOfflinePinned =
                     widget.routeStore.isOfflinePinned(route.id);
                 final isSelected = _selected.contains(route.id);
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  color: isSelected
-                      ? theme.colorScheme.primaryContainer
+                return ListCard.row(
+                  selecting: _selecting && isOwned,
+                  selected: isSelected,
+                  onLongPress: isOwned && !_selecting
+                      ? () => _enterSelection(route.id)
                       : null,
-                  child: ListTile(
-                    onLongPress: isOwned && !_selecting
-                        ? () => _enterSelection(route.id)
-                        : null,
-                    // No contentPadding override — use ListTile's
-                    // default so the row height matches the History
-                    // tab's run-card exactly. Pre-fix, the routes
-                    // card was visibly taller than the runs card
-                    // because of (a) custom padding, (b) a two-row
-                    // subtitle Column with badge chips below. Both
-                    // are gone; the badges that matter move into
-                    // trailing icons (cloud-upload + bookmark) or
-                    // a tiny title-prefix glyph (public globe).
-                    leading: route.waypoints.length >= 2 && widget.apiClient != null
+                  // A track thumbnail takes the run row's leading width, so
+                  // the two lists line up; the avatar fallback keeps the
+                  // narrower slot, which a long name needs at 1.3x.
+                  leadingWidth: route.waypoints.length >= 2 &&
+                          widget.apiClient != null
+                      ? kRunTileLeadingWidth
+                      : kRouteAvatarLeadingWidth,
+                  leading: route.waypoints.length >= 2 && widget.apiClient != null
                         ? SizedBox(
-                            // Match the History tab's run-row leading
-                            // (`runs_screen.dart:_kLeadingWidth = 72`,
-                            // height: 40). Pinned in source so both
-                            // list pages feel like a single design
-                            // system.
-                            width: 72,
                             height: 40,
                             // Bookmarked rows are owned by other users — must
                             // route through clip_route_for_viewer for non-owner
@@ -980,7 +974,6 @@ class RoutesScreenState extends State<RoutesScreen> {
                             ),
                           )
                         : SizedBox(
-                            width: 56,
                             height: 40,
                             child: CircleAvatar(
                               backgroundColor:
@@ -991,35 +984,20 @@ class RoutesScreenState extends State<RoutesScreen> {
                               ),
                             ),
                           ),
-                    // Title row mirrors runs' `Row(activity icon +
-                    // distance)` shape — a small glyph + the name,
-                    // single line. Public routes get a globe glyph
-                    // so the visibility state stays visible without
-                    // adding a second subtitle row.
-                    title: Row(
-                      children: [
-                        if (route.isPublic) ...[
-                          Icon(
-                            Icons.public,
-                            size: 16,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        Flexible(
-                          child: Text(
-                            route.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Same shape as runs' `$date  •  $dur`. Distance +
-                    // elevation is the route equivalent; each figure stays
-                    // glued to its unit when a raised text scale wraps it.
-                    subtitle: Text(routeStatsLine(route, unit)),
-                    trailing: Row(
+                  title: route.name,
+                  // Public routes carry a globe beside the name, so the
+                  // visibility stays visible without a second subtitle row.
+                  badge: route.isPublic
+                      ? Icon(
+                          Icons.public,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        )
+                      : null,
+                  // Distance and elevation, each figure glued to its unit
+                  // when a raised text scale wraps it.
+                  subtitle: routeStatsLine(route, unit),
+                  trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Bookmark glyph for routes the viewer
@@ -1079,7 +1057,7 @@ class RoutesScreenState extends State<RoutesScreen> {
                           ),
                       ],
                     ),
-                    onTap: () async {
+                  onTap: () async {
                       if (_selecting) {
                         if (!isOwned) return;
                         _toggleSelection(route.id);
@@ -1101,7 +1079,6 @@ class RoutesScreenState extends State<RoutesScreen> {
                       // detail screen flow back into the list.
                       _fetchBookmarks();
                     },
-                  ),
                 );
               },
             );

@@ -10,7 +10,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
+        AppSpace,
         KeepAliveChild,
+        ListCard,
         SheetScaffold,
         StatGrid,
         StatTile,
@@ -1583,12 +1585,11 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   ),
                 )
               else
-                ..._reviews.map((review) => Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                ..._reviews.map((review) => ListCard(
+                      // The page's 24 dp content inset, as the rows above.
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: AppSpace.xs),
+                      dense: true,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1604,15 +1605,21 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                                       color: AppSemanticColors.of(context).crown,
                                     ),
                                   ),
-                                  const Spacer(),
-                                  if (review.createdAt != null)
-                                    Text(
-                                      formatDateShort(review.createdAt!,
-                                          localeToTag(Localizations.localeOf(context))),
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
+                                  // Expanded, not a Spacer: at 320 dp and 2x
+                                  // the date beside five stars and the flag
+                                  // button has to wrap rather than overflow.
+                                  Expanded(
+                                    child: review.createdAt == null
+                                        ? const SizedBox.shrink()
+                                        : Text(
+                                            formatDateShort(review.createdAt!,
+                                                localeToTag(Localizations.localeOf(context))),
+                                            textAlign: TextAlign.end,
+                                            style: theme.textTheme.bodySmall?.copyWith(
+                                              color: theme.colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                  ),
                                   if (widget.apiClient?.userId != null)
                                     if (widget.apiClient!.userId != review.userId)
                                       IconButton(
@@ -1653,8 +1660,6 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                               ],
                             ],
                           ),
-                        ),
-                      ),
                     )),
 
               if (widget.apiClient != null) ...[

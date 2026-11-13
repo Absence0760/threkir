@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, AppTheme, StatusPill;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, AppSpace, AppTheme, ListCard, StatusPill;
 
 import '../fitness_surface_requests.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -193,42 +194,18 @@ class _EffortRow extends StatelessWidget {
     final theme = Theme.of(context);
     final length = entry.segment.lengthM ??
         (entry.segment.endDistanceM - entry.segment.startDistanceM);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.segment.name,
-                    style: theme.textTheme.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _fmtKm(length),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _RankPill(rank: entry.rank),
-            const SizedBox(width: 12),
-            Text(
-              formatEffortTime(entry.effort.timeSeconds),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
+    return ListCard.row(
+      margin: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+      dense: true,
+      title: entry.segment.name,
+      titleMaxLines: 1,
+      badge: _RankPill(rank: entry.rank),
+      subtitle: _fmtKm(length),
+      trailing: Text(
+        formatEffortTime(entry.effort.timeSeconds),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
     );
@@ -250,51 +227,23 @@ class _CatalogueEffortRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final region = entry.segment.region;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.segment.name,
-                      style: theme.textTheme.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        formatDistanceForPref(entry.segment.distanceM),
-                        if (region != null && region.trim().isNotEmpty) region,
-                      ].join(' · '),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              _RankPill(rank: entry.rank),
-              const SizedBox(width: 12),
-              Text(
-                formatEffortTime(entry.effort.timeSeconds),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
-          ),
+    return ListCard.row(
+      margin: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+      dense: true,
+      onTap: onTap,
+      title: entry.segment.name,
+      titleMaxLines: 1,
+      badge: _RankPill(rank: entry.rank),
+      subtitle: [
+        formatDistanceForPref(entry.segment.distanceM),
+        if (region != null && region.trim().isNotEmpty) region,
+      ].join(' · '),
+      subtitleMaxLines: 1,
+      trailing: Text(
+        formatEffortTime(entry.effort.timeSeconds),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
     );

@@ -17,6 +17,7 @@ import '../lib/training.dart' show toIsoDate;
 import '../lib/widgets/run_any_time_section.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// Races & courses (issue #1352): the race calendar and the park courses
 /// that can be run any day, as two sections that load and fail on their own.
@@ -206,6 +207,26 @@ void main() {
         () => find.text('Far Loop').evaluate().isNotEmpty,
         describe: 'the park courses to list',
       );
+
+  worstCaseTestWidgets('the race and course cards', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RacesScreen(
+        service: _Races(results: [_race('r1', 'Richmond 10K')]),
+        api: _ParksApi(),
+      ),
+    ));
+    // Far Loop is below a 320 x 640 viewport, so wait for the race instead;
+    // the walk builds the course cards as it scrolls past them.
+    await pumpUntil(
+      tester,
+      () => find.text('Richmond 10K').evaluate().isNotEmpty,
+      describe: 'the race to list',
+    );
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Races & courses');
+    expect(find.text('Far Loop'), findsOneWidget);
+  });
 
   testWidgets('shows Upcoming races and Run any time, each with its content',
       (tester) async {

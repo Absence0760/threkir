@@ -11,6 +11,7 @@ import '../lib/screens/explore_routes_screen.dart';
 import '../lib/screens/global_segments_screen.dart';
 import '../lib/screens/routes_screen.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 /// Signed-out fake — non-null so the api-gated discovery maps render, null
 /// userId so no fetch paths fire. The Explore views' reads answer empty.
@@ -159,6 +160,22 @@ final _routeList = find.byWidgetPredicate(
 );
 
 void main() {
+  worstCaseTestWidgets('the route cards', (tester, locale) async {
+    final prefs = await _makePrefs();
+    // ignore: invalid_use_of_visible_for_testing_member
+    final store = LocalRouteStore()
+      // ignore: invalid_use_of_visible_for_testing_member
+      ..debugSeed(_namedRoutes(
+          ['Pocahontas State Park long loop with the lake', 'River 5k']));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoutesScreen(routeStore: store, preferences: prefs),
+    ));
+    await tester.pump();
+    expect(find.byType(Card), findsWidgets);
+    await walkScrollable(tester, _routeList, 'Routes');
+  });
+
   group('RoutesScreen — initial render', () {
     testWidgets('AppBar carries the "Routes" title', (tester) async {
       // Routes is a pushed full-screen destination (Fitness → Runs →

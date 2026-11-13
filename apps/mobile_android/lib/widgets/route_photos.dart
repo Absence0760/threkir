@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show OverlayIconButton;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth_error.dart';
@@ -503,19 +504,20 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
           ],
         ),
         if (_canManage && !editing)
+          // The 48 dp boxes inset each disc 6 dp, so the row sits at the
+          // corner and the discs keep the old 4 dp-ish margin.
           Positioned(
-            top: 4,
-            right: 4,
+            top: 0,
+            right: 0,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _circleBtn(
+                OverlayIconButton(
                   icon: Icons.edit_outlined,
                   tooltip: l10n.routePhotosEditCaption,
                   onPressed: () => _startEdit(p),
                 ),
-                const SizedBox(width: 4),
-                _circleBtn(
+                OverlayIconButton(
                   icon: Icons.delete_outline,
                   tooltip: l10n.routePhotosDeleteTooltip,
                   onPressed: () => _deletePhoto(p),
@@ -527,28 +529,6 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
     );
   }
 
-  Widget _circleBtn({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.black54,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: SizedBox(
-            width: 30,
-            height: 30,
-            child: Icon(icon, size: 16, color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 

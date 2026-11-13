@@ -84,6 +84,12 @@ String _argSpan(String source, int open) {
 int _lineOf(String source, int index) =>
     '\n'.allMatches(source.substring(0, index)).length + 1;
 
+List<File> _uiKitDartFiles() => Directory('../../packages/ui_kit/lib')
+    .listSync(recursive: true)
+    .whereType<File>()
+    .where((f) => f.path.endsWith('.dart'))
+    .toList();
+
 List<File> _libDartFiles() => Directory('lib')
     .listSync(recursive: true)
     .whereType<File>()
@@ -202,6 +208,44 @@ void main() {
           reason: 'A SizedBox smaller than 48dp caps the IconButton inside '
               'it below the tap-target floor (issue #664). Size the box '
               '>=48 or drop the wrapper. Offenders: $offenders');
+    });
+  });
+
+  group('lib/-wide: hand-built icon buttons', () {
+    // #1374 A11Y-6. The photo tiles drew their edit / delete / race-gallery
+    // buttons as Material(CircleBorder) > InkWell > SizedBox(30) > Icon: a
+    // 30 dp target, 4 dp from its neighbour, which the IconButton-only
+    // checks above never saw. A tap surface whose child is a sub-48 box
+    // around a bare Icon is an icon button by another name; use IconButton,
+    // or ui_kit's OverlayIconButton over a photo or a map.
+    test('no InkWell / InkResponse / GestureDetector wraps a sub-48dp box around an Icon', () {
+      final offenders = <String>[];
+      final dim = RegExp(r'\b(?:width|height|dimension):\s*(\d+(?:\.\d+)?)');
+      for (final f in [..._libDartFiles(), ..._uiKitDartFiles()]) {
+        final src = f.readAsStringSync();
+        for (final m in RegExp(r'\b(?:InkWell|InkResponse|GestureDetector)\(').allMatches(src)) {
+          final span = _argSpan(src, m.end - 1);
+          final child = RegExp(r'\bchild:\s*(?:const\s+)?SizedBox(?:\.square)?\(').firstMatch(span);
+          if (child == null) continue;
+          final box = _argSpan(span, child.end - 1);
+          final childAt = box.indexOf('child:');
+          if (childAt < 0) continue;
+          final own = box.substring(0, childAt);
+          final inner = box.substring(childAt + 'child:'.length).trimLeft();
+          if (!RegExp(r'^(?:const\s+)?Icon\(').hasMatch(inner)) continue;
+          for (final d in dim.allMatches(own)) {
+            final v = double.tryParse(d.group(1)!);
+            if (v != null && v < 48) {
+              offenders.add('${f.path}:${_lineOf(src, m.start)} (${d.group(0)})');
+              break;
+            }
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'a tap surface around a sub-48dp box holding an Icon is an icon '
+              'button under the 48dp floor. Use IconButton or OverlayIconButton. '
+              'Offenders:\n${offenders.join('\n')}');
     });
   });
 }

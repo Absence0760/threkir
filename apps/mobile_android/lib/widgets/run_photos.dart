@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show OverlayIconButton;
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -584,23 +585,21 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
           ],
         ),
         if (_canManage && !editing)
+          // The 48 dp boxes inset each disc 6 dp, so the row sits at the
+          // corner and the discs keep the old 4 dp-ish margin.
           Positioned(
-            top: 4,
-            right: 4,
+            top: 0,
+            right: 0,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _circleBtn(
+                OverlayIconButton(
                   icon: Icons.edit_outlined,
                   tooltip: l10n.runPhotosEditCaption,
                   onPressed: () => _startEdit(p),
                 ),
-                if (_hasRaceLink) ...[
-                  const SizedBox(width: 4),
-                  _raceToggle(p, l10n),
-                ],
-                const SizedBox(width: 4),
-                _circleBtn(
+                if (_hasRaceLink) _raceToggle(p, l10n),
+                OverlayIconButton(
                   icon: Icons.delete_outline,
                   tooltip: l10n.runPhotosDeleteTooltip,
                   onPressed: () => _deletePhoto(p),
@@ -625,40 +624,15 @@ class _RunPhotosState extends State<RunPhotos> with WidgetsBindingObserver {
     return Semantics(
       toggled: shared,
       enabled: enabled,
-      child: _circleBtn(
+      child: OverlayIconButton(
         icon: shared ? Icons.emoji_events : Icons.emoji_events_outlined,
         tooltip: tooltip,
         onPressed: enabled ? () => _toggleRaceGallery(p) : null,
-        color: shared ? Theme.of(context).colorScheme.primary : null,
+        selected: shared,
       ),
     );
   }
 
-  Widget _circleBtn({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback? onPressed,
-    Color? color,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: color ?? Colors.black54,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: SizedBox(
-            width: 30,
-            height: 30,
-            child: Icon(icon,
-                size: 16,
-                color: onPressed == null ? Colors.white54 : Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 

@@ -69,27 +69,3 @@ class FullScreenFormBody extends StatelessWidget {
     );
   }
 }
-
-/// Uppercase muted section label used between field groups on the
-/// full-screen forms (goal targets, gym title, …).
-class FormSectionLabel extends StatelessWidget {
-  const FormSectionLabel(this.text, {super.key});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          letterSpacing: 1.1,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}

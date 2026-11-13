@@ -8,6 +8,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/preferences_page.dart';
 import '../lib/settings_destination.dart';
 
 void main() {
@@ -15,8 +16,21 @@ void main() {
   tearDown(() => pendingSettingsDestination.value = null);
 
   test('openSettings parks the destination for the shell to drain', () {
-    openSettings(SettingsDestination.preferences);
-    expect(pendingSettingsDestination.value, SettingsDestination.preferences);
+    openSettings(SettingsDestination.privacy);
+    expect(pendingSettingsDestination.value, SettingsDestination.privacy);
+  });
+
+  test('each Preferences page is its own destination, in page order', () {
+    // Preferences is five pages (issue #1374), so a link names the one whose
+    // setting it is about rather than a single long page.
+    expect(
+      [
+        for (final d in SettingsDestination.values)
+          if (d.preferencesPage case final page?) page,
+      ],
+      PreferencesPage.values,
+    );
+    expect(SettingsDestination.account.preferencesPage, isNull);
   });
 
   test('nothing is parked until a surface asks', () {
@@ -39,17 +53,17 @@ void main() {
     pendingSettingsDestination.addListener(listener);
     addTearDown(() => pendingSettingsDestination.removeListener(listener));
 
-    openSettings(SettingsDestination.preferences);
+    openSettings(SettingsDestination.privacy);
     // The host clears the slot as it navigates — which is precisely what lets
     // a second identical request notify, since a ValueNotifier is silent on an
     // unchanged value.
     pendingSettingsDestination.value = null;
-    openSettings(SettingsDestination.preferences);
+    openSettings(SettingsDestination.privacy);
 
     expect(seen, [
-      SettingsDestination.preferences,
+      SettingsDestination.privacy,
       null,
-      SettingsDestination.preferences,
+      SettingsDestination.privacy,
     ]);
   });
 

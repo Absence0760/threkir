@@ -1,35 +1,39 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
+import 'package:ui_kit/ui_kit.dart'
+    show AppInsets, AppSpace, IdentityAvatar, ListRow;
 
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
-import '../dm_pending_hides.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gear_store.dart';
 import '../local_food_store.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
-import '../messages_inbox.dart' show unreadDmBadgeCount;
-import '../monotonic_clock.dart';
 import '../parkrun_barcode_cache.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
-import '../training_service.dart';
-import 'messages_screen.dart';
 import 'parkrun_barcode_screen.dart';
 import 'profile_screen.dart';
+import 'settings_account_screen.dart';
 import 'settings_screen.dart';
+import 'sign_in_screen.dart';
 
-/// The You tab — profile + the existing Settings surface, hosted under one
-/// bottom-nav destination. An identity header (the runner's name and avatar,
-/// opening their own profile, with the inbox as an icon beside it) scrolls
-/// with the [SettingsScreen] body below it; folding Settings in here is what
-/// frees its old standalone bottom-nav slot. The email is deliberately not on
-/// the header: it is the Account screen's subject, and showing it here as
-/// well put the same address on two adjacent rows.
+/// The You tab: a page title, the runner's identity card, then the settings
+/// list ([SettingsScreen]) with its search and web's groups.
+///
+/// The owner settled what You is (issue #1374): an account hub, not a
+/// settings list with a profile link stuck to its top. The card opens the
+/// runner's own profile and offers Edit profile, so tapping your own face
+/// lets you change it. Messages moved to Social, and Athletes & coaches and
+/// Guided runs to the Coach, so nothing here is a feature dressed as a
+/// setting. Signed out, the card is a sign-in prompt rather than nothing.
+///
+/// The email is deliberately not on the card: it is the Account screen's
+/// subject, and showing it here as well put the same address on two adjacent
+/// rows.
 class YouScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final Preferences preferences;
@@ -41,9 +45,6 @@ class YouScreen extends StatefulWidget {
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
   final SettingsSyncService? settingsSync;
-
-  /// What the inbox's AI Coach row opens the Coach with.
-  final TrainingService? training;
 
   const YouScreen({
     super.key,
@@ -57,7 +58,6 @@ class YouScreen extends StatefulWidget {
     this.foodStore,
     this.gearStore,
     this.settingsSync,
-    this.training,
   });
 
   @override
@@ -75,50 +75,21 @@ class _YouScreenState extends State<YouScreen>
   String? _barcodeNumber;
 
   /// The signed-in runner's display name and avatar, null until read (or
-  /// when the read failed — the header then falls back to "Your profile").
+  /// when the read failed — the card then falls back to "Your profile").
   String? _displayName;
   String? _avatarUrl;
-
-  int _unreadDms = 0;
-
-  /// The last badge read, kept so a conversation deleted in a thread drops
-  /// out of the count at once rather than on the next read.
-  List<
-      ({
-        String conversationId,
-        int unread,
-        bool muted,
-        bool archived,
-        bool request
-      })> _dmStates = const [];
-
-  /// When the read [_dmStates] came from started, which decides the deleted
-  /// conversations it still counts ([DmPendingHides.hides]).
-  Duration? _dmStatesReadAt;
-  final DmHideReader _hideReader = DmPendingHides.instance.reader();
-  int _seenHideOutcomes = DmPendingHides.instance.outcomes;
-
-  /// Bumped by every badge read. Reads overlap — a poll or a sub-screen
-  /// return can still be in flight when a committed delete asks for another —
-  /// and only the newest may answer, which is what lets a landed delete's
-  /// marker go once that read is held.
-  int _unreadGen = 0;
 
   @override
   void initState() {
     super.initState();
     ParkrunBarcodeCache.changes.addListener(_refreshBarcode);
-    DmPendingHides.instance.addListener(_onPendingHidesChanged);
     _refreshBarcode();
     _refreshIdentity();
-    _refreshUnread();
   }
 
   @override
   void dispose() {
     ParkrunBarcodeCache.changes.removeListener(_refreshBarcode);
-    DmPendingHides.instance.removeListener(_onPendingHidesChanged);
-    _hideReader.close();
     super.dispose();
   }
 
@@ -137,70 +108,16 @@ class _YouScreenState extends State<YouScreen>
     try {
       final profile = await api.fetchMyProfile();
       // A sign-out or account switch mid-read must not paint the previous
-      // runner's name on the next one's header.
+      // runner's name on the next one's card.
       if (!mounted || api.userId != asked) return;
       setState(() {
         _displayName = profile?.displayName?.trim();
         _avatarUrl = profile?.avatarUrl;
       });
     } catch (e) {
-      // L4 — the header degrades to "Your profile" and the generated avatar.
+      // L4 — the card degrades to "Your profile" and the generated avatar.
       debugPrint('YouScreen profile read failed: ${safeErrorLabel(e)}');
     }
-  }
-
-  Future<void> _refreshUnread() async {
-    final api = widget.apiClient;
-    final asked = api?.userId;
-    final gen = ++_unreadGen;
-    if (api == null || asked == null) return;
-    final startedAt = monotonicNow();
-    try {
-      final states = await api.fetchDmBadgeStates();
-      if (!mounted || gen != _unreadGen || api.userId != asked) return;
-      setState(() {
-        _dmStates = states;
-        _dmStatesReadAt = startedAt;
-        _hideReader.applied(startedAt);
-        _unreadDms = _countUnread();
-      });
-    } catch (e) {
-      // L4 — a failed count leaves the badge dark; the inbox still opens.
-      debugPrint('YouScreen unread-DM read failed: ${safeErrorLabel(e)}');
-    }
-  }
-
-  int _countUnread() {
-    final hides = DmPendingHides.instance;
-    final readAt = _dmStatesReadAt;
-    return unreadDmBadgeCount([
-      for (final s in _dmStates)
-        if (readAt == null || !hides.hides(s.conversationId, readAt))
-          (
-            unread: s.unread,
-            muted: s.muted,
-            archived: s.archived,
-            request: s.request,
-          ),
-    ]);
-  }
-
-  /// A pending delete is applied to the count already held, and a landed one
-  /// stays out of it until a read started after it is held; Undo or the
-  /// commit is answered by a fresh read, the server being the one that knows
-  /// what happened.
-  void _onPendingHidesChanged() {
-    if (!mounted) return;
-    setState(() => _unreadDms = _countUnread());
-    final outcomes = DmPendingHides.instance.outcomes;
-    if (outcomes == _seenHideOutcomes) return;
-    _seenHideOutcomes = outcomes;
-    _refreshUnread();
-  }
-
-  void _refreshAfterSubScreen() {
-    _refreshIdentity();
-    _refreshUnread();
   }
 
   @override
@@ -208,14 +125,9 @@ class _YouScreenState extends State<YouScreen>
     setState(() {
       _displayName = null;
       _avatarUrl = null;
-      _unreadDms = 0;
-      _dmStates = const [];
-      _dmStatesReadAt = null;
     });
-    _hideReader.reset();
     _refreshBarcode();
     _refreshIdentity();
-    _refreshUnread();
   }
 
   Future<void> _push(Widget screen) async {
@@ -223,83 +135,129 @@ class _YouScreenState extends State<YouScreen>
       context,
       MaterialPageRoute<void>(builder: (_) => screen),
     );
-    if (mounted) _refreshAfterSubScreen();
+    if (mounted) _refreshIdentity();
   }
 
-  Widget _identityHeader(BuildContext context, ApiClient api, String viewerId) {
+  Future<void> _signIn(ApiClient api) async {
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => SignInScreen(apiClient: api)),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Widget _title(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppInsets.gutter, AppSpace.md, AppInsets.gutter, AppSpace.sm),
+      child: Semantics(
+        header: true,
+        child: Text(
+          AppLocalizations.of(context).navYou,
+          style: theme.textTheme.headlineSmall,
+        ),
+      ),
+    );
+  }
+
+  Widget _identityCard(BuildContext context, ApiClient api, String viewerId) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final name = _displayName;
     final hasName = name != null && name.isNotEmpty;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
-      child: Row(
+    return Card(
+      key: const ValueKey('you-identity-card'),
+      margin: const EdgeInsets.symmetric(horizontal: AppInsets.gutter),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: InkWell(
-              key: const ValueKey('you-profile-header'),
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => _push(ProfileScreen(api: api, userId: viewerId)),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  children: [
-                    IdentityAvatar(
-                      seed: viewerId,
-                      name: hasName ? name : api.userEmail,
-                      imageUrl: _avatarUrl,
-                      size: 56,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            hasName ? name : l10n.youProfileTitle,
-                            style: theme.textTheme.titleLarge,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+          InkWell(
+            key: const ValueKey('you-profile-header'),
+            onTap: () => _push(ProfileScreen(api: api, userId: viewerId)),
+            child: Padding(
+              padding: AppInsets.card,
+              child: Row(
+                children: [
+                  IdentityAvatar(
+                    seed: viewerId,
+                    name: hasName ? name : api.userEmail,
+                    imageUrl: _avatarUrl,
+                    size: 56,
+                  ),
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          hasName ? name : l10n.youProfileTitle,
+                          style: theme.textTheme.titleLarge,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: AppSpace.xxs),
+                        Text(
+                          l10n.youViewProfile,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.primary,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            l10n.youViewProfile,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
               ),
             ),
           ),
-          // Merged so the count is announced on the button itself, not as
-          // a separate node after it.
-          MergeSemantics(
-            child: Semantics(
-              value: _unreadDms > 0
-                  ? l10n.messagesUnreadCount(_unreadDms)
-                  : null,
-              child: IconButton(
-                key: const ValueKey('you-messages'),
-                tooltip: l10n.messagesTitle,
-                onPressed: () => _push(
-                  MessagesScreen(api: api, training: widget.training),
-                ),
-                icon: ExcludeSemantics(
-                  child: Badge.count(
-                    count: _unreadDms,
-                    isLabelVisible: _unreadDms > 0,
-                    child: const Icon(Icons.chat_bubble_outline),
-                  ),
-                ),
-              ),
+          // The name and avatar are edited on Account, where they are the
+          // first two rows; this is the one tap from your own face to them.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppInsets.gutter, 0, AppInsets.gutter, AppSpace.smPlus),
+            child: OutlinedButton.icon(
+              key: const ValueKey('you-edit-profile'),
+              onPressed: () => _push(SettingsAccountScreen(
+                apiClient: api,
+                preferences: widget.preferences,
+                settingsSync: widget.settingsSync,
+                runStore: widget.runStore,
+                routeStore: widget.routeStore,
+              )),
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(l10n.youEditProfile),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Signed out the identity card has no one to show; say what signing in
+  /// gives and offer it, rather than leave the top of the page empty with
+  /// sign-in hidden inside Account.
+  Widget _signInCard(BuildContext context, ApiClient api) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Card(
+      key: const ValueKey('you-sign-in-card'),
+      margin: const EdgeInsets.symmetric(horizontal: AppInsets.gutter),
+      child: Padding(
+        padding: AppInsets.card,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.settingsAccountSignInToSync,
+                style: theme.textTheme.bodyLarge),
+            const SizedBox(height: AppSpace.smPlus),
+            FilledButton(
+              onPressed: () => _signIn(api),
+              child: Text(l10n.settingsAccountSignIn),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -309,7 +267,6 @@ class _YouScreenState extends State<YouScreen>
     final l10n = AppLocalizations.of(context);
     final api = widget.apiClient;
     final viewerId = api?.userId;
-    final signedIn = api != null && viewerId != null;
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -324,17 +281,22 @@ class _YouScreenState extends State<YouScreen>
           heartRate: widget.heartRate,
           treadmill: widget.treadmill,
           settingsSync: widget.settingsSync,
-          onSubScreenClosed: _refreshAfterSubScreen,
+          onSubScreenClosed: _refreshIdentity,
           header: [
-            if (signedIn) _identityHeader(context, api, viewerId),
-            if (signedIn && _barcodeNumber != null)
-              ListTile(
+            _title(context),
+            if (api != null && viewerId != null)
+              _identityCard(context, api, viewerId)
+            else if (api != null)
+              _signInCard(context, api),
+          ],
+          profileRows: [
+            if (viewerId != null && _barcodeNumber != null)
+              ListRow.nav(
                 key: const ValueKey('you-parkrun-barcode'),
-                leading: const Icon(Icons.badge_outlined),
-                title: Text(l10n.parkrunBarcodeTitle),
-                subtitle: Text(_barcodeNumber!),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _push(ParkrunBarcodeScreen(api: api)),
+                icon: Icons.badge_outlined,
+                title: l10n.parkrunBarcodeTitle,
+                subtitle: _barcodeNumber,
+                onTap: () => _push(ParkrunBarcodeScreen(api: api!)),
               ),
           ],
         ),

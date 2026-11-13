@@ -2171,7 +2171,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           const Key('plan-new-dob-hint'),
           l10n.planNewDobHintAbsent,
           l10n.planNewDobHintAbsentAction,
-          SettingsDestination.preferences,
+          SettingsDestination.training,
         )
       else if (_viewerDobState == HealthUseDobState.consentWithheld)
         hint(

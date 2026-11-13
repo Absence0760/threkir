@@ -1946,24 +1946,31 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('a parked preferences intent opens SettingsPreferencesScreen',
+    testWidgets('a parked Preferences page intent opens that page',
         (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
       expect(find.byType(SettingsPreferencesScreen), findsNothing);
 
-      openSettings(SettingsDestination.preferences);
+      openSettings(SettingsDestination.privacy);
       await openAndSettle(tester);
 
       expect(find.byType(SettingsPreferencesScreen), findsOneWidget,
           reason: 'the People tab holds neither a Preferences nor a '
               'SettingsSyncService — naming the destination has to be enough');
+      expect(
+        tester
+            .widget<SettingsPreferencesScreen>(
+                find.byType(SettingsPreferencesScreen))
+            .page,
+        PreferencesPage.privacy,
+      );
     });
 
     testWidgets('the shell clears the slot as it navigates', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      openSettings(SettingsDestination.preferences);
+      openSettings(SettingsDestination.privacy);
       await openAndSettle(tester);
 
       expect(pendingSettingsDestination.value, isNull,
@@ -1994,21 +2001,25 @@ void main() {
       // Same contract pendingPushTarget carries: a cold start drains on the
       // first frame, so an intent set before any Navigator existed is not lost.
       final s = await _makeStores();
-      openSettings(SettingsDestination.preferences);
+      openSettings(SettingsDestination.privacy);
       await _pump(tester, s);
       await openAndSettle(tester);
 
       expect(find.byType(SettingsPreferencesScreen), findsOneWidget);
     });
 
-    // Only `preferences` and `about` were ever driven end to end, so five of
-    // the seven arms of `_settingsDestinationScreen` were unexercised — a
+    // Only `preferences` and `about` were ever driven end to end, so the other
+    // arms of `_settingsDestinationScreen` were unexercised — a
     // switch wired to the wrong screen, or a new destination added with no
     // arm at all, would have shipped. The loop is over the enum rather than
     // over a hand-written list, so a destination added without a case here
     // fails at compile time in the map below and at run time in the switch.
     const expectedScreen = <SettingsDestination, Type>{
-      SettingsDestination.preferences: SettingsPreferencesScreen,
+      SettingsDestination.display: SettingsPreferencesScreen,
+      SettingsDestination.recording: SettingsPreferencesScreen,
+      SettingsDestination.training: SettingsPreferencesScreen,
+      SettingsDestination.privacy: SettingsPreferencesScreen,
+      SettingsDestination.notifications: SettingsPreferencesScreen,
       SettingsDestination.account: SettingsAccountScreen,
       SettingsDestination.safety: SettingsSafetyScreen,
       SettingsDestination.integrations: SettingsIntegrationsScreen,
@@ -2037,6 +2048,16 @@ void main() {
         expect(find.byType(entry.value), findsOneWidget,
             reason: 'the caller holds none of the dependencies '
                 '${entry.value} takes — naming it has to be enough');
+        // A Preferences page arm must build its own page, not a neighbour.
+        if (entry.key.preferencesPage case final page?) {
+          expect(
+            tester
+                .widget<SettingsPreferencesScreen>(
+                    find.byType(SettingsPreferencesScreen))
+                .page,
+            page,
+          );
+        }
         // No other settings screen came up: a switch arm returning its
         // neighbour would otherwise read as a pass on both.
         for (final other in expectedScreen.values.toSet()) {

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
 import '../l10n/gen/app_localizations.dart';
 import '../legal_links.dart';
@@ -127,14 +128,7 @@ class _SettingsAboutScreenState extends State<SettingsAboutScreen> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-              child: Text(
-                l10n.aboutLegalSection.toUpperCase(),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  letterSpacing: 0.8,
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+              child: SectionHeader(label: l10n.aboutLegalSection),
             ),
             // Same four documents web links from its settings nav footer.
             // Signed-in users had no route to any of them on mobile — the

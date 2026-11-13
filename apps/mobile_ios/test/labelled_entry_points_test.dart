@@ -127,10 +127,12 @@ void main() {
       final prefs = await _prefs();
       await _pump(
         tester,
-        SettingsScreen(
-          preferences: prefs,
-          heartRate: BleHeartRate(),
-          treadmill: BleTreadmill(),
+        Scaffold(
+          body: SettingsScreen(
+            preferences: prefs,
+            heartRate: BleHeartRate(),
+            treadmill: BleTreadmill(),
+          ),
         ),
       );
       await tester.scrollUntilVisible(find.text('Gear'), 200,
@@ -149,11 +151,13 @@ void main() {
       final prefs = await _prefs();
       await _pump(
         tester,
-        SettingsScreen(
-          preferences: prefs,
-          heartRate: BleHeartRate(),
-          treadmill: BleTreadmill(),
-          gearStore: LocalGearStore(),
+        Scaffold(
+          body: SettingsScreen(
+            preferences: prefs,
+            heartRate: BleHeartRate(),
+            treadmill: BleTreadmill(),
+            gearStore: LocalGearStore(),
+          ),
         ),
       );
       await tester.scrollUntilVisible(find.text('Gear'), 200,

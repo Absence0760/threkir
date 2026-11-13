@@ -1082,6 +1082,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get youViewProfile => 'Ver perfil';
 
   @override
+  String get youEditProfile => 'Editar perfil';
+
+  @override
   String get logSheetTitle => 'Registar';
 
   @override
@@ -1456,19 +1459,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionTraining => 'Treino';
-
-  @override
-  String get settingsSectionSettings => 'Definições';
-
-  @override
   String get settingsSectionAppsData => 'Apps e dados';
 
   @override
-  String get settingsSectionAccountLegal => 'Conta e jurídico';
+  String get settingsSectionProfile => 'Perfil';
 
   @override
-  String get prefsSectionUnitsDisplay => 'Unidades e exibição';
+  String get settingsSearchHint => 'Pesquisar definições';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Nenhuma definição corresponde a «$query».';
+  }
+
+  @override
+  String get settingsSectionAccountLegal => 'Conta e jurídico';
 
   @override
   String get authEmailLabel => 'E-mail';
@@ -4328,7 +4333,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'Descrições com IA são um recurso Pro. Faça upgrade para aprimorar.';
+      'As descrições com IA são uma funcionalidade Pro.';
 
   @override
   String get routeDetailDescShapeLoop => 'em circuito';
@@ -8147,7 +8152,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachLimitReachedFree =>
-      'Limite diário atingido. O Pro tem um teto maior — atualize nas Definições.';
+      'Limite diário atingido. O Pro tem um teto maior.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -8604,10 +8609,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guidedRunsTitle => 'Corridas guiadas';
-
-  @override
-  String get guidedRunsSubtitle =>
-      'Treinos roteirizados com voz de treinador e avisos por TTS';
 
   @override
   String get privacyZonesTitle => 'Zonas de privacidade';
@@ -9115,6 +9116,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro e apoio';
+
+  @override
+  String get proUpsellAction => 'Ver o Pro';
 
   @override
   String proCouldNotOpen(Object error) {
@@ -9750,6 +9754,41 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prefsTitle => 'Preferências';
 
   @override
+  String get prefsPageDisplay => 'Unidades e exibição';
+
+  @override
+  String get prefsPageDisplaySummary =>
+      'Idioma, tema, unidades de distância e peso, formato de ritmo, mapas e o tempo para desfazer.';
+
+  @override
+  String get prefsPageRecording => 'Registo e voz';
+
+  @override
+  String get prefsPageRecordingSummary =>
+      'A atividade com que um novo registo começa e o que o telemóvel ou o relógio diz em voz alta durante a corrida.';
+
+  @override
+  String get prefsPageTraining => 'Treino';
+
+  @override
+  String get prefsPageTrainingSummary =>
+      'A sua meta de distância semanal, frequência cardíaca e zonas, abastecimento em prova e o tom do Coach.';
+
+  @override
+  String get prefsPagePrivacy => 'Privacidade e partilha';
+
+  @override
+  String get prefsPagePrivacySummary =>
+      'Quem vê as suas corridas, se outros corredores o podem encontrar, zonas de privacidade e relatórios de erros.';
+
+  @override
+  String get prefsPageNotifications => 'Notificações';
+
+  @override
+  String get prefsPageNotificationsSummary =>
+      'Que e-mails e alertas push recebe e os e-mails opcionais que pode subscrever.';
+
+  @override
   String get prefsOfflineNotice =>
       'Offline — as alterações ficam neste dispositivo e serão sincronizadas quando reconectar.';
 
@@ -9905,9 +9944,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prefsCoachAnalytical => 'Analítico';
 
   @override
-  String get prefsSectionNotifications => 'Notificações';
-
-  @override
   String get prefsEmailNotifications => 'Notificações por e-mail';
 
   @override
@@ -10026,13 +10062,43 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prefsSectionActivityRecording => 'Atividade e gravação';
 
   @override
-  String get prefsSectionTrainingDemographics => 'Treino e dados demográficos';
-
-  @override
-  String get prefsSectionPrivacySharing => 'Privacidade e partilha';
-
-  @override
   String get prefsSectionAiCoach => 'Coach de IA';
+
+  @override
+  String get prefsGroupLanguageTheme => 'Idioma e tema';
+
+  @override
+  String get prefsGroupUnits => 'Unidades';
+
+  @override
+  String get prefsGroupMapsPages => 'Mapas e páginas';
+
+  @override
+  String get prefsGroupVoiceFeedback => 'Avisos por voz';
+
+  @override
+  String get prefsGroupWeeklyGoal => 'Meta semanal';
+
+  @override
+  String get prefsGroupHeartRate => 'Zonas de frequência cardíaca';
+
+  @override
+  String get prefsGroupPlans => 'Planos de treino';
+
+  @override
+  String get prefsGroupYourRuns => 'As suas corridas';
+
+  @override
+  String get prefsGroupBeingFound => 'Ser encontrado';
+
+  @override
+  String get prefsGroupTelemetry => 'Privacidade e telemetria';
+
+  @override
+  String get prefsGroupEmailPush => 'E-mail e push';
+
+  @override
+  String get prefsGroupOptionalEmails => 'E-mails opcionais';
 
   @override
   String get prefsSignInToEdit =>
@@ -12335,10 +12401,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'Sessão, perfil, importação e backup, eliminar conta';
 
   @override
-  String get settingsTabPreferencesSubtitle =>
-      'Unidades, tema, gravação, treino, privacidade';
-
-  @override
   String get settingsTabIntegrationsSubtitle =>
       'Strava, calendário de provas, cinta cardíaca, passadeira, relógio';
 
@@ -12349,10 +12411,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get settingsTabGearSubtitle =>
       'Acompanhe ténis + bikes e a quilometragem por item';
-
-  @override
-  String get settingsTabCoachingSubtitle =>
-      'Treine atletas ou siga o seu próprio treinador';
 
   @override
   String get settingsTabProSubtitle =>
@@ -18548,6 +18606,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get followRequestsTitle => 'Pedidos para seguir';
 
   @override
+  String get youFollowRequestsSubtitle =>
+      'Pessoas que pedem para seguir o seu perfil privado';
+
+  @override
   String get followRequestsEmptyTitle => 'Nenhum pedido pendente';
 
   @override
@@ -23654,6 +23716,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get youViewProfile => 'Ver perfil';
 
   @override
+  String get youEditProfile => 'Editar perfil';
+
+  @override
   String get logSheetTitle => 'Registrar';
 
   @override
@@ -24028,19 +24093,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get homeTodaysLift => 'Treino de hoje';
 
   @override
-  String get settingsSectionTraining => 'Treino';
-
-  @override
-  String get settingsSectionSettings => 'Configurações';
-
-  @override
   String get settingsSectionAppsData => 'Apps e dados';
 
   @override
-  String get settingsSectionAccountLegal => 'Conta e jurídico';
+  String get settingsSectionProfile => 'Perfil';
 
   @override
-  String get prefsSectionUnitsDisplay => 'Unidades e exibição';
+  String get settingsSearchHint => 'Buscar nas configurações';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Nenhuma configuração corresponde a “$query”.';
+  }
+
+  @override
+  String get settingsSectionAccountLegal => 'Conta e jurídico';
 
   @override
   String get authEmailLabel => 'E-mail';
@@ -26899,7 +26966,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'Descrições com IA são um recurso Pro. Faça upgrade para aprimorar.';
+      'Descrições com IA são um recurso Pro.';
 
   @override
   String get routeDetailDescShapeLoop => 'em circuito';
@@ -30716,7 +30783,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachLimitReachedFree =>
-      'Limite diário atingido. O Pro tem um teto maior — atualize nas Configurações.';
+      'Limite diário atingido. O Pro tem um teto maior.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -31170,10 +31237,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get guidedRunsTitle => 'Corridas guiadas';
-
-  @override
-  String get guidedRunsSubtitle =>
-      'Treinos roteirizados com voz de treinador e avisos por TTS';
 
   @override
   String get privacyZonesTitle => 'Zonas de privacidade';
@@ -31678,6 +31741,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proTitle => 'Pro e apoio';
+
+  @override
+  String get proUpsellAction => 'Ver o Pro';
 
   @override
   String proCouldNotOpen(Object error) {
@@ -32313,6 +32379,41 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get prefsTitle => 'Preferências';
 
   @override
+  String get prefsPageDisplay => 'Unidades e exibição';
+
+  @override
+  String get prefsPageDisplaySummary =>
+      'Idioma, tema, unidades de distância e peso, formato de ritmo, mapas e o tempo para desfazer.';
+
+  @override
+  String get prefsPageRecording => 'Registro e voz';
+
+  @override
+  String get prefsPageRecordingSummary =>
+      'A atividade com que um novo registro começa e o que o celular ou o relógio fala em voz alta durante a corrida.';
+
+  @override
+  String get prefsPageTraining => 'Treino';
+
+  @override
+  String get prefsPageTrainingSummary =>
+      'Sua meta de distância semanal, frequência cardíaca e zonas, abastecimento na prova e o tom do Coach.';
+
+  @override
+  String get prefsPagePrivacy => 'Privacidade e compartilhamento';
+
+  @override
+  String get prefsPagePrivacySummary =>
+      'Quem vê suas corridas, se outros corredores podem encontrar você, zonas de privacidade e relatórios de erro.';
+
+  @override
+  String get prefsPageNotifications => 'Notificações';
+
+  @override
+  String get prefsPageNotificationsSummary =>
+      'Quais e-mails e alertas push você recebe e os e-mails opcionais que pode assinar.';
+
+  @override
   String get prefsOfflineNotice =>
       'Offline — as alterações ficam neste dispositivo e serão sincronizadas quando você reconectar.';
 
@@ -32467,9 +32568,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get prefsCoachAnalytical => 'Analítico';
 
   @override
-  String get prefsSectionNotifications => 'Notificações';
-
-  @override
   String get prefsEmailNotifications => 'Notificações por e-mail';
 
   @override
@@ -32588,13 +32686,43 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get prefsSectionActivityRecording => 'Atividade e gravação';
 
   @override
-  String get prefsSectionTrainingDemographics => 'Treino e dados demográficos';
-
-  @override
-  String get prefsSectionPrivacySharing => 'Privacidade e compartilhamento';
-
-  @override
   String get prefsSectionAiCoach => 'Coach de IA';
+
+  @override
+  String get prefsGroupLanguageTheme => 'Idioma e tema';
+
+  @override
+  String get prefsGroupUnits => 'Unidades';
+
+  @override
+  String get prefsGroupMapsPages => 'Mapas e páginas';
+
+  @override
+  String get prefsGroupVoiceFeedback => 'Avisos por voz';
+
+  @override
+  String get prefsGroupWeeklyGoal => 'Meta semanal';
+
+  @override
+  String get prefsGroupHeartRate => 'Zonas de frequência cardíaca';
+
+  @override
+  String get prefsGroupPlans => 'Planos de treino';
+
+  @override
+  String get prefsGroupYourRuns => 'Suas corridas';
+
+  @override
+  String get prefsGroupBeingFound => 'Ser encontrado';
+
+  @override
+  String get prefsGroupTelemetry => 'Privacidade e telemetria';
+
+  @override
+  String get prefsGroupEmailPush => 'E-mail e push';
+
+  @override
+  String get prefsGroupOptionalEmails => 'E-mails opcionais';
 
   @override
   String get prefsSignInToEdit =>
@@ -34898,10 +35026,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Login, perfil, importação e backup, excluir conta';
 
   @override
-  String get settingsTabPreferencesSubtitle =>
-      'Unidades, tema, gravação, treino, privacidade';
-
-  @override
   String get settingsTabIntegrationsSubtitle =>
       'Strava, calendário de corridas, cinta cardíaca, esteira, relógio';
 
@@ -34912,10 +35036,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get settingsTabGearSubtitle =>
       'Acompanhe tênis + bikes e a quilometragem por item';
-
-  @override
-  String get settingsTabCoachingSubtitle =>
-      'Treine atletas ou siga o seu próprio treinador';
 
   @override
   String get settingsTabProSubtitle =>
@@ -41103,6 +41223,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get followRequestsTitle => 'Solicitações para seguir';
+
+  @override
+  String get youFollowRequestsSubtitle =>
+      'Pessoas pedindo para seguir seu perfil privado';
 
   @override
   String get followRequestsEmptyTitle => 'Nenhuma solicitação pendente';

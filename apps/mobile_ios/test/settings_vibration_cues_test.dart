@@ -25,7 +25,7 @@ Future<Preferences> _pump(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: null),
+      home: SettingsPreferencesScreen(page: PreferencesPage.recording, preferences: prefs, settingsSync: null),
     ),
   );
   await tester.pumpAndSettle();

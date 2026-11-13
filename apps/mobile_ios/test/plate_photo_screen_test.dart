@@ -157,6 +157,7 @@ void main() {
     await tester.pump();
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.platePhotoErrorPro), findsOneWidget);
+    expect(find.text(l10n.proUpsellAction), findsOneWidget);
     expect(store.saved, isEmpty);
   });
 

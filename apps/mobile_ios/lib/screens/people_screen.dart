@@ -431,10 +431,10 @@ class _PeopleScreenState extends State<PeopleScreen> {
                 // Preferences screen, which needs a Preferences and a
                 // SettingsSyncService this tab was never handed. Name the
                 // destination and let the shell open it (decisions § 710) —
-                // web's empty card links to /settings/preferences here.
+                // web's empty card links to the privacy page here.
                 ctaLabel: l10n.peopleNearbyEmptyAction,
                 ctaIcon: Icons.settings,
-                onCta: () => openSettings(SettingsDestination.preferences),
+                onCta: () => openSettings(SettingsDestination.privacy),
               ))
             else
               SliverList.separated(

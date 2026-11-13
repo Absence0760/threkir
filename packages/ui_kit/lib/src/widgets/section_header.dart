@@ -8,13 +8,16 @@ import 'package:flutter/material.dart';
 /// `colorScheme.outline` for the same reason [ChartCardHeader] gives — at
 /// 11 sp, `outline`'s 4.058:1 on the light card is under WCAG 1.4.3's 4.5:1.
 ///
-/// Distinct from [ChartCardHeader], which titles a data-visualisation card and
-/// carries a right-aligned note slot, and from a *section title* — the
-/// `titleMedium` heading of a block within a scrolling body — which is a
-/// heading rather than an eyebrow and keeps its own type.
+/// [SectionHeader.title] is the other form a section heading takes: the
+/// `titleMedium` heading of a block within a scrolling body (a card's title,
+/// a detail page's section), not uppercased and announced as a heading. Both
+/// forms live here so no screen hand-builds either one.
 ///
-/// Padding is the caller's: a list group's inset belongs to the list, and the
-/// two existing callers place it differently above the first row.
+/// Distinct from [ChartCardHeader], which titles a data-visualisation card and
+/// carries a right-aligned note slot.
+///
+/// Padding is the caller's: a list group's inset belongs to the list
+/// ([SettingsList] owns it for every settings page).
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -22,7 +25,17 @@ class SectionHeader extends StatelessWidget {
     this.icon,
     this.iconColor,
     this.trailing,
-  });
+  }) : _title = false;
+
+  const SectionHeader.title({
+    super.key,
+    required this.label,
+    this.icon,
+    this.iconColor,
+    this.trailing,
+  }) : _title = true;
+
+  final bool _title;
 
   final String label;
 
@@ -40,21 +53,30 @@ class SectionHeader extends StatelessWidget {
       children: [
         if (icon != null) ...[
           Icon(icon,
-              size: 16,
+              size: _title ? 20 : 16,
               color: iconColor ?? theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
         ],
         Expanded(
-          child: Text(
-            label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.8,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          child: _title
+              ? Semantics(
+                  header: true,
+                  child: Text(
+                    label,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                )
+              : Text(
+                  label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
         ),
         if (trailing != null) trailing!,
       ],

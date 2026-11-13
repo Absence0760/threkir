@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SectionHeader;
 
 import '../auth_error.dart';
 import '../e164.dart';
@@ -590,10 +590,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                 const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                  child: Text(
-                    l10n.safetyOverdueTitle,
-                    style: theme.textTheme.titleMedium,
-                  ),
+                  child: SectionHeader.title(label: l10n.safetyOverdueTitle),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -649,10 +646,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                   const Divider(height: 1),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                    child: Text(
-                      l10n.safetyIncomingTitle,
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    child: SectionHeader.title(label: l10n.safetyIncomingTitle),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -666,10 +660,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                   const Divider(height: 1),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                    child: Text(
-                      l10n.safetyIncomingTitle,
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    child: SectionHeader.title(label: l10n.safetyIncomingTitle),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -732,10 +723,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                   const Divider(height: 1),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                    child: Text(
-                      l10n.safetyContactOfTitle,
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    child: SectionHeader.title(label: l10n.safetyContactOfTitle),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -749,10 +737,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                   const Divider(height: 1),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                    child: Text(
-                      l10n.safetyContactOfTitle,
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    child: SectionHeader.title(label: l10n.safetyContactOfTitle),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

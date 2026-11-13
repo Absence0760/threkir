@@ -1069,6 +1069,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youViewProfile => 'View profile';
 
   @override
+  String get youEditProfile => 'Edit profile';
+
+  @override
   String get logSheetTitle => 'Log';
 
   @override
@@ -1437,19 +1440,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTodaysLift => 'Today\'s lift';
 
   @override
-  String get settingsSectionTraining => 'Training';
-
-  @override
-  String get settingsSectionSettings => 'Settings';
-
-  @override
   String get settingsSectionAppsData => 'Apps & data';
 
   @override
-  String get settingsSectionAccountLegal => 'Account & legal';
+  String get settingsSectionProfile => 'Profile';
 
   @override
-  String get prefsSectionUnitsDisplay => 'Units & display';
+  String get settingsSearchHint => 'Search settings';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'No settings match “$query”.';
+  }
+
+  @override
+  String get settingsSectionAccountLegal => 'Account & legal';
 
   @override
   String get authEmailLabel => 'Email';
@@ -4285,7 +4290,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'AI descriptions are a Pro feature. Upgrade to enhance.';
+      'AI descriptions are a Pro feature.';
 
   @override
   String get routeDetailDescShapeLoop => 'loop';
@@ -8065,7 +8070,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachLimitReachedFree =>
-      'Daily limit reached. Pro gets a higher cap — upgrade in Settings.';
+      'Daily limit reached. Pro gets a higher cap.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -8513,10 +8518,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guidedRunsTitle => 'Guided runs';
-
-  @override
-  String get guidedRunsSubtitle =>
-      'Coach-voice scripted workouts with TTS cues';
 
   @override
   String get privacyZonesTitle => 'Privacy zones';
@@ -9019,6 +9020,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro & support';
+
+  @override
+  String get proUpsellAction => 'See Pro';
 
   @override
   String proCouldNotOpen(Object error) {
@@ -9646,6 +9650,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsTitle => 'Preferences';
 
   @override
+  String get prefsPageDisplay => 'Units & display';
+
+  @override
+  String get prefsPageDisplaySummary =>
+      'Language, theme, distance and weight units, pace format, maps and the undo timer.';
+
+  @override
+  String get prefsPageRecording => 'Recording & voice';
+
+  @override
+  String get prefsPageRecordingSummary =>
+      'The activity a new recording starts as, and what your phone or watch says out loud while you run.';
+
+  @override
+  String get prefsPageTraining => 'Training';
+
+  @override
+  String get prefsPageTrainingSummary =>
+      'Your weekly distance goal, heart rate and heart rate zones, race fuelling and the coach\'s tone.';
+
+  @override
+  String get prefsPagePrivacy => 'Privacy & sharing';
+
+  @override
+  String get prefsPagePrivacySummary =>
+      'Who sees your runs, whether other runners can find you, privacy zones and error reports.';
+
+  @override
+  String get prefsPageNotifications => 'Notifications';
+
+  @override
+  String get prefsPageNotificationsSummary =>
+      'Which emails and push alerts you get, and the optional emails you can sign up for.';
+
+  @override
   String get prefsOfflineNotice =>
       'Offline — edits stay on this device and sync when you reconnect.';
 
@@ -9800,9 +9839,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsCoachAnalytical => 'Analytical';
 
   @override
-  String get prefsSectionNotifications => 'Notifications';
-
-  @override
   String get prefsEmailNotifications => 'Email notifications';
 
   @override
@@ -9919,13 +9955,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsSectionActivityRecording => 'Activity & recording';
 
   @override
-  String get prefsSectionTrainingDemographics => 'Training & demographics';
-
-  @override
-  String get prefsSectionPrivacySharing => 'Privacy & sharing';
-
-  @override
   String get prefsSectionAiCoach => 'AI coach';
+
+  @override
+  String get prefsGroupLanguageTheme => 'Language & theme';
+
+  @override
+  String get prefsGroupUnits => 'Units';
+
+  @override
+  String get prefsGroupMapsPages => 'Maps & pages';
+
+  @override
+  String get prefsGroupVoiceFeedback => 'Voice feedback';
+
+  @override
+  String get prefsGroupWeeklyGoal => 'Weekly goal';
+
+  @override
+  String get prefsGroupHeartRate => 'Heart rate zones';
+
+  @override
+  String get prefsGroupPlans => 'Training plans';
+
+  @override
+  String get prefsGroupYourRuns => 'Your runs';
+
+  @override
+  String get prefsGroupBeingFound => 'Being found';
+
+  @override
+  String get prefsGroupTelemetry => 'Privacy & telemetry';
+
+  @override
+  String get prefsGroupEmailPush => 'Email and push';
+
+  @override
+  String get prefsGroupOptionalEmails => 'Optional emails';
 
   @override
   String get prefsSignInToEdit =>
@@ -12206,10 +12272,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sign-in, profile, import and backup, delete account';
 
   @override
-  String get settingsTabPreferencesSubtitle =>
-      'Units, theme, recording, training, privacy';
-
-  @override
   String get settingsTabIntegrationsSubtitle =>
       'Strava, race calendar, heart-rate strap, treadmill, watch';
 
@@ -12220,10 +12282,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsTabGearSubtitle =>
       'Track shoes + bikes and per-item mileage';
-
-  @override
-  String get settingsTabCoachingSubtitle =>
-      'Coach athletes or follow your own coach';
 
   @override
   String get settingsTabProSubtitle =>
@@ -18350,6 +18408,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get followRequestsTitle => 'Follow requests';
+
+  @override
+  String get youFollowRequestsSubtitle =>
+      'People asking to follow your private profile';
 
   @override
   String get followRequestsEmptyTitle => 'No pending requests';

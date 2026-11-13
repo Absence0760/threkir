@@ -58,7 +58,7 @@ Future<_Sync> _open(WidgetTester tester, Map<String, dynamic> bag) async {
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+    home: SettingsPreferencesScreen(page: PreferencesPage.display, preferences: prefs, settingsSync: sync),
   ));
   await tester.pumpAndSettle();
   final tile = find.byKey(_tileKey);

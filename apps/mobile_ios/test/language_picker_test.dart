@@ -24,6 +24,7 @@ Future<void> _pump(WidgetTester tester, Preferences prefs) {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SettingsPreferencesScreen(
+        page: PreferencesPage.display,
         preferences: prefs,
         settingsSync: null,
       ),

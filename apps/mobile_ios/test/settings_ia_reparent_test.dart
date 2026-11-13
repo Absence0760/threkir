@@ -3,8 +3,9 @@
 //
 //   - Guided runs is coach-driven training content. Web reaches it from a
 //     rail on `/coach`; mobile now carries a labelled Coach peer.
-//   - Privacy zones is a sharing preference. Web puts the picker in
-//     `/settings/preferences`; mobile now matches.
+//   - Privacy zones is a sharing preference. Web puts the picker on
+//     `/settings/privacy`; mobile's Privacy & sharing page now matches
+//     (issue #1374 split Preferences into web's five pages).
 //   - "View profile" was the third differently-named link to the viewer's own
 //     ProfileScreen ("Your profile" on the You tile directly above the
 //     Settings body, "My profile" on the dashboard toolbar). The duplicate is
@@ -55,6 +56,7 @@ Future<void> _pumpPreferences(WidgetTester tester, Preferences prefs) async {
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: SettingsPreferencesScreen(
+      page: PreferencesPage.privacy,
       preferences: prefs,
       settingsSync: _FakeSettingsSync(prefs),
     ),
@@ -84,19 +86,19 @@ Future<void> _scrollTo(WidgetTester tester, Finder target) {
 }
 
 void main() {
-  group('privacy zones moved to Preferences (#666 I11)', () {
-    testWidgets('the Preferences privacy section offers it and it opens',
+  group('privacy zones live on the Privacy & sharing page (#666 I11)', () {
+    testWidgets('the Privacy & sharing page offers it and it opens',
         (tester) async {
       final prefs = await _prefs();
       await _pumpPreferences(tester, prefs);
 
-      // Assert the population: the privacy section itself is on screen, so a
-      // pass cannot come from an empty list that scrolled past nothing.
-      await _scrollTo(tester, find.text('PRIVACY & SHARING'));
-      expect(find.text('PRIVACY & SHARING'), findsOneWidget);
+      // Assert the population: the page itself is up, so a pass cannot come
+      // from an empty list that scrolled past nothing.
+      expect(find.text('Privacy & sharing'), findsOneWidget);
 
-      await _scrollTo(tester, find.text('Privacy zones'));
-      await tester.tap(find.text('Privacy zones'));
+      final row = find.byKey(const ValueKey('prefs-privacy-zones'));
+      await _scrollTo(tester, row);
+      await tester.tap(row);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(PrivacyZonesScreen), findsOneWidget);
@@ -113,6 +115,8 @@ void main() {
       expect(find.text('Delete account'), findsOneWidget);
       expect(find.text('Privacy zones'), findsNothing);
       expect(find.text('Guided runs'), findsNothing);
+      // The error-reports switch moved to Privacy & sharing with web's page.
+      expect(find.text('Send error reports'), findsNothing);
       expect(find.text('View profile'), findsNothing);
     });
   });

@@ -969,7 +969,7 @@ Every `*_cents` column holds a Stripe amount in the currency's **minor** unit, a
 
 ## Mobile create/edit-entity forms — `showFullScreenForm`
 
-On the Flutter apps, every "add / edit X" form presents as a full-screen dialog built through `showFullScreenForm<T>(context, title:, builder:)` in `lib/widgets/full_screen_form.dart` (see [decisions.md § 129](decisions.md)). It pushes a `MaterialPageRoute(fullscreenDialog: true)` wrapping the body in `Scaffold` + `AppBar(title)` + `SafeArea`; lay the body out with `FullScreenFormBody(children: [...])` and label field groups with `FormSectionLabel`.
+On the Flutter apps, every "add / edit X" form presents as a full-screen dialog built through `showFullScreenForm<T>(context, title:, builder:)` in `lib/widgets/full_screen_form.dart` (see [decisions.md § 129](decisions.md)). It pushes a `MaterialPageRoute(fullscreenDialog: true)` wrapping the body in `Scaffold` + `AppBar(title)` + `SafeArea`; lay the body out with `FullScreenFormBody(children: [...])` and label field groups with ui_kit `SectionHeader` (the duplicate `FormSectionLabel` eyebrow was removed, issue #1374).
 
 **Don't hand-roll a `showModalBottomSheet` or a bare back-arrow page for a create/edit form.** The bottom-sheet shape fought the soft keyboard and dropped its action buttons under the gesture nav bar; the mixed presentations made the same action look different per entry point. Put the heading in the AppBar (not inline in the body). A genuinely complex screen with its own `Scaffold` / `Form` / nested navigation (e.g. `AddRunScreen`) may keep its `Scaffold` but should still be pushed with `fullscreenDialog: true` for the same slide-up + close presentation.
 
@@ -1176,6 +1176,20 @@ The page structure is owned by ui_kit components, so a screen supplies content a
 - **Spacing in new and migrated code comes from `AppSpace` / `AppInsets`**, whose names are web's `--space-*` rungs (`AppSpace.md` = `--space-md` = 16) plus the mobile-only `smPlus` (12).
 - **Every migrated tab is tested at the worst case**: 320 dp, 2x text and the 3-button nav bar (`test/three_button_nav_bar.dart`), with the hub's FAB above the bar (`fitness_hub_tab_bodies_test.dart`, `social_hub_tab_bodies_test.dart`).
 - **A tab with views switches them with chips, not a second strip.** Routes is `Mine · Explore`, and Explore carries `Routes · Segments` (issue #1374, owner decision 1). The view row is a `FilterBar` of chips over the view's own `FilterBar`; the Explore chips lead that view's chip line. Each view is its own `HubTabBody` under an `IndexedStack`, built the first time it is shown and kept after, and only the view with a create verb publishes a primary action. The view is a value (`RoutesShow`, like `RacesShow`) the shell can set through `FitnessHubViews`, so a link to the segment catalogue selects Routes on Explore → Segments rather than pushing a copy. A nested `TabBar` is not the answer: `tab_strip_guard_test.dart` keeps every strip on `AppTabBar`, and a second strip under the hub's is what decisions § 2437 removed. `hub_tab_body_guard_test.dart` checks the views a body mounts (`_tabViews`) as tab bodies too.
+
+## Mobile settings pages — `SettingsList`, `ListRow`, `SectionHeader`
+
+The You tab and every settings page are owned by ui_kit components, so a page declares rows and groups and the components own the anatomy (issue #1374).
+
+- **A settings page is a `SettingsList` of `SettingsSection`s.** The list owns the group inset (gutter beside, the section gap above) and pins each group's `SectionHeader` eyebrow over that group's rows only. A section whose rows are all absent is dropped, eyebrow and all. The page puts it under a small app bar; You puts it under its own title and identity card.
+- **A row is a `ListRow`**: `.nav` opens another page (leading icon, one-line description, chevron, or open-in-new when `external`), `.value` opens a picker (the current value is the subtitle, an optional `hint` line under it), `.toggle` is a switch that applies at once. A disabled nav or value row says why in its subtitle (#666 I16). The "(i)" button goes in the row's `info` slot. A row whose state comes from the server keeps `AsyncSwitchTile` (`lib/widgets`), which never claims a value it has not read.
+- **A group label is `SectionHeader`; a section heading is `SectionHeader.title`** (the `titleMedium` form, announced as a heading). There is no second eyebrow widget: `FormSectionLabel` was removed.
+- **Preferences is web's five pages** (`PreferencesPage`, in `preferences_ia.ts`'s order), each one subject, each listed on You. A link into one names the page (`SettingsDestination.training`, `.privacy`, …), never a single "Preferences". A page holds one subject and stays short; a new row goes on the page of its subject and into `preferencesRowTitles`, which You's settings search reads (`preferences_search_index_test.dart` fails when the two disagree).
+- `settings_layout_guard_test.dart` fails a hand-built eyebrow (an uppercased `labelSmall`), a hand-built section title (`titleMedium` / `titleSmall`) or a hand-built `ListTile` / `SwitchListTile` in You or a settings page, against per-file counts of what is left that may only shrink.
+
+## Mobile upsells — `ProUpsellLink`, never "upgrade in Settings"
+
+Every upsell on the Flutter apps draws `ProUpsellLink` (`lib/widgets/pro_upsell_link.dart`): the reason Pro would help, then a "See Pro" link that opens the Pro screen through the shell's settings seam (`openSettings(SettingsDestination.pro)`, below). The string gives the reason only; the link is the directions. The prompts it replaced (the Coach's daily cap, AI route descriptions) said "upgrade in Settings" and stopped there (issue #1374 finding 11). `upsell_link_guard_test.dart` fails an English string that sends the reader to Settings to upgrade, and any string outside the Pro screen's own `pro*` keys that names Pro unless it is a registered upsell (whose readers build a `ProUpsellLink`) or exempt with a reason.
 
 ## Mobile tap targets — no `VisualDensity.compact` on IconButtons
 
@@ -1458,7 +1472,7 @@ setting. The list is the optimistic surface; a server-sourced aggregate is not.
 
 **A timed undo is an accessibility surface.** WCAG 2.2.1 requires the limit be
 turnable-off, adjustable, or extendable; the `undo_window_s` preference
-(`/settings/display` on web, Settings → Preferences on mobile, registered in
+(`/settings/display` on web, You → Units & display on mobile, registered in
 [settings.md](../backend/settings.md)) carries a `0` = *no time limit* choice, and
 hover/focus (web) or backgrounding (mobile) pauses a running window. Keep the
 countdown out of the announced region — a ticking number re-announces on every

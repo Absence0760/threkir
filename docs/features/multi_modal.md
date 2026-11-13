@@ -501,7 +501,7 @@ user logs**, not a fixed grid. The ordering algorithm:
 > [decisions § 2386](../architecture/decisions.md)):** each trend group can
 > be taken off Home — web's group headings carry a Hide button, mobile's
 > answer a long-press (and a screen-reader action) — and comes back from web
-> `/settings/display` → Home or mobile Settings → Preferences → Home cards.
+> `/settings/display` → Home or mobile You → Units & display → Home cards.
 > The list is the universal `dashboard_hidden_cards` key
 > ([settings.md](../backend/settings.md)), universal where the folds are per
 > device. Drag-to-reorder is deferred. `test/settings_preferences_home_cards_test.dart`.
@@ -928,7 +928,7 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
   view.
 - **Targets** default from a Mifflin-St Jeor BMR × activity-level
   heuristic (`nutrition_targets.ts` / `.dart`, pure + tested, TS↔Dart
-  parity pair), overridable in Settings → Preferences. BMR needs body
+  parity pair), overridable in You → Body metrics. BMR needs body
   metrics — see **Body metrics & sensitive data** below.
 - **Water tracker** is a separate, tap-to-increment row of 250 ml units —
   deliberately the lowest-friction thing on the screen.
@@ -1053,7 +1053,7 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
   lift-load spec below. A `training_load` parity-pair change. *(Shipped +
   wired into web `/dashboard`.)* The web Fitness card now **discloses** this:
   a transparent note when recent lifts are in the fatigue, and an
-  `exclude_gym_from_readiness` pref (Settings → Preferences) that drops lifts
+  `exclude_gym_from_readiness` pref (You → Training) that drops lifts
   from the readiness/recovery curve for a pure run-only signal — display-side
   only, the run-only curve stays recoverable (decisions §134). *(Shipped on web
   and mobile — the toggle lives in `settings_preferences_screen.dart` and

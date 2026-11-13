@@ -394,7 +394,7 @@ class _SettingsAnchorState extends State<SettingsAnchor>
         if (mounted) fade.value = 0;
       });
     } else {
-      fade.animateBack(0, curve: Curves.easeIn);
+      fade.animateBack(0, curve: AppMotion.curveStandard);
     }
   }
 

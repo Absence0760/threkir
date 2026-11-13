@@ -2085,6 +2085,92 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'public_food_log',
+    {
+      why: "drops the owner's health-data consent term (decisions § 2514) and the private-profile clause (an approved follower or the owner); keeps `is_public = true`, which says the assertion is about a SHARED meal",
+      sql: `create or replace view public.public_food_log as
+ select f.id, f.user_id, f.started_at, f.item_name, f.meal_slot, f.calories,
+        f.protein_g, f.carbs_g, f.fat_g, f.is_public, f.created_at
+   from food_log f
+  where f.is_public = true and ${mine('f')};`,
+      subject: 'food_log f',
+      witness: {
+        // A shared meal whose owner has no consent on record. The consent is
+        // cleared first (its AFTER trigger erases what is already logged),
+        // then the meal is filed past the write gate, as a pre-gate row was.
+        setup: `update user_profiles set health_data_consent_at = null
+                 where id = (select id from user_profiles order by id limit 1);
+ alter table food_log disable trigger food_log_health_gate;
+ insert into food_log (id, user_id, item_name, is_public)
+   values ('00000000-0000-0000-0000-00000000c0f1',
+           (select id from user_profiles order by id limit 1), 'guard witness', true);
+ alter table food_log enable trigger food_log_health_gate;`,
+        probe: `select count(*) from public_food_log
+                 where id = '00000000-0000-0000-0000-00000000c0f1';`,
+      },
+    },
+  ],
+  [
+    'park_course_month_runners',
+    {
+      why: "drops `private.is_run_visible_to(se.run_id, caller)` and the block graph; keeps the signed-in check, the park's `is_active`, the active segment and the park-local month, which say WHICH efforts the count is about",
+      sql: `create or replace function public.park_course_month_runners(p_park_id uuid)
+ returns table(course_id uuid, runners integer)
+ language plpgsql stable security definer set search_path = public, private
+as $neutralised$
+declare
+  caller uuid := auth.uid();
+  v_tz text;
+  v_month_start timestamp;
+begin
+  if caller is null then
+    raise exception 'park_course_month_runners requires an authenticated caller'
+      using errcode = '42501';
+  end if;
+  select p.timezone into v_tz from public.parks p
+   where p.id = p_park_id and p.is_active;
+  if v_tz is null then
+    return;
+  end if;
+  v_month_start := date_trunc('month', now() at time zone v_tz);
+  return query
+  select pc.id, count(distinct se.user_id)::integer
+  from public.park_courses pc
+  join public.global_segments gs on gs.id = pc.global_segment_id and gs.is_active
+  join public.global_segment_efforts se on se.global_segment_id = pc.global_segment_id
+  where pc.park_id = p_park_id
+    and se.started_at >= (v_month_start at time zone v_tz)
+    and se.started_at < ((v_month_start + interval '1 month') at time zone v_tz)
+    and ${mine('se')}
+  group by pc.id;
+end;
+$neutralised$;`,
+      subject: 'global_segment_efforts se — the efforts counted; the dropped predicate guards the RUN behind each',
+      witness: {
+        // Another runner's private run on a course of a park filed here,
+        // read by a signed-in caller who may not see it.
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+   values ('00000000-0000-0000-0000-00000000c0e1', 'Guard Witness Loop',
+           '[{"lat":37.0,"lng":-77.0},{"lat":37.004,"lng":-77.0}]', 450, true);
+ insert into parks (id, slug, name, agency, region_code, country_code, timezone, is_active)
+   values ('00000000-0000-0000-0000-00000000c0a1', 'guard-witness-park', 'Guard Witness Park',
+           'state', 'US-VA', 'US', 'UTC', true);
+ insert into park_courses (id, park_id, global_segment_id, slug, course_shape, geometry_source)
+   values ('00000000-0000-0000-0000-00000000c0c1', '00000000-0000-0000-0000-00000000c0a1',
+           '00000000-0000-0000-0000-00000000c0e1', 'guard-witness-loop', 'loop', 'osm');
+ insert into runs (id, user_id, started_at, duration_s, distance_m, source, metadata, is_public)
+   values ('00000000-0000-0000-0000-00000000c0b1', (select id from auth.users order by id limit 1),
+           now(), 1200, 5000, 'app', '{"activity_type":"run"}', false);
+ insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at)
+   values ('00000000-0000-0000-0000-00000000c0e1', '00000000-0000-0000-0000-00000000c0b1',
+           (select id from auth.users order by id limit 1), 300, now());
+ select set_config('request.jwt.claims',
+   json_build_object('sub', (select id from auth.users order by id offset 1 limit 1))::text, true);`,
+        probe: `select count(*) from park_course_month_runners('00000000-0000-0000-0000-00000000c0a1');`,
+      },
+    },
+  ],
 ]);
 
 // Definer relations a zero-or-empty assertion reads and that deliberately have

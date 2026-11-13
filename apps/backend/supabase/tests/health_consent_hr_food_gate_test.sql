@@ -10,7 +10,7 @@
 
 begin;
 
-select plan(48);
+select plan(51);
 
 select set_config('storage.allow_delete_query', 'true', true);
 
@@ -311,6 +311,11 @@ set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000b7ac3",
 select lives_ok($$ select withdraw_health_data_consent() $$, 'W withdraws');
 reset role;
 select is(
+  (select health_data_consent_at from user_profiles where id = '00000000-0000-0000-0000-0000000b7ac3'),
+  null,
+  'W''s withdrawal clears the consent stamp'
+);
+select is(
   (select metadata from runs where id = '00000000-0000-0000-0000-0000000b7ad7'),
   '{"title": "W"}'::jsonb,
   'withdrawal erases the heart rate on the runner''s runs and keeps the runs'
@@ -331,20 +336,32 @@ select is(
   'withdrawal queues exactly one Storage clean-up job'
 );
 
--- A runner who never consented: withdrawal deletes the hidden backlog.
+-- N, who has consented since, withdraws: a heart rate held for one of their
+-- runs and their stored meal are erased.
 insert into private.withheld_run_hr (run_id, user_id, hr)
 values ('00000000-0000-0000-0000-0000000b7ad5', '00000000-0000-0000-0000-0000000b7ac2', '{"avg_bpm": 1}')
 on conflict do nothing;
+select is(
+  (select count(*)::int from private.withheld_run_hr where user_id = '00000000-0000-0000-0000-0000000b7ac2')
+  + (select count(*)::int from food_log where user_id = '00000000-0000-0000-0000-0000000b7ac2'),
+  2,
+  'before N withdraws, a held heart rate and a meal are stored'
+);
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000b7ac2","role":"authenticated"}';
 select lives_ok($$ select withdraw_health_data_consent() $$, 'N withdraws');
 select lives_ok($$ select withdraw_health_data_consent() $$, 'N withdraws again, with nothing left');
 reset role;
 select is(
+  (select health_data_consent_at from user_profiles where id = '00000000-0000-0000-0000-0000000b7ac2'),
+  null,
+  'N''s consent stamp is cleared and stays cleared'
+);
+select is(
   (select count(*)::int from private.withheld_run_hr where user_id = '00000000-0000-0000-0000-0000000b7ac2')
   + (select count(*)::int from food_log where user_id = '00000000-0000-0000-0000-0000000b7ac2'),
   0,
-  'withdrawing without consent on record deletes the hidden heart rate and food'
+  'withdrawing deletes the held heart rate and the stored meal'
 );
 
 -- A direct null of the stamp (allowed as a withdrawal) erases too.
@@ -378,7 +395,7 @@ select is(
   (select count(*)::int from private.withheld_run_hr where user_id = '00000000-0000-0000-0000-0000000b7ac4')
   + (select count(*)::int from food_log where user_id = '00000000-0000-0000-0000-0000000b7ac4'),
   0,
-  'the purge erases the held heart rate and hidden food of runners without consent'
+  'the purge erases the held heart rate and the stored food of runners without consent'
 );
 
 select * from finish();

@@ -15,6 +15,7 @@ import '../training.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
+import '../widgets/stale_refresh_banner.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/plan_meta_item.dart';
 import '../widgets/plan_overlap_dialog.dart';
@@ -102,13 +103,7 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
       // a banner over them rather than an error page that drops them.
       if (_loaded) {
         setState(() => _loading = false);
-        final l10n = AppLocalizations.of(context);
-        showTopBanner(
-          context,
-          e is TimeoutException || classifyAuthError(e) == AuthErrorKind.offline
-              ? l10n.commonStaleOffline
-              : l10n.commonStaleRefreshFailed,
-        );
+        showStaleRefreshBanner(context, e);
         return;
       }
       setState(() {

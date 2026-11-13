@@ -1746,7 +1746,7 @@
   },
   "bodyMetricsConsentRequired": "Turn on health-data storage to save height and weight.",
   "bodyMetricsWithdrawTitle": "Withdraw health-data consent?",
-  "bodyMetricsWithdrawBody": "This permanently erases your saved height and your entire weight history. This can't be undone.",
+  "bodyMetricsWithdrawBody": "This permanently erases your saved height, gender, weight history and any cycle or pregnancy details, and your date of birth is no longer used to personalise your training. This can't be undone.",
   "bodyMetricsWithdrawConfirm": "Withdraw & erase",
   "@bodyMetricsConsentRequired": {
     "description": "Error shown when saving body data without consent"

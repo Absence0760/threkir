@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-11-12';
+	const lastUpdated = '2026-11-13';
 </script>
 
 <svelte:head>
@@ -422,13 +422,15 @@
 	<h2>8. Your rights</h2>
 	<p>Under the GDPR / UK GDPR / CCPA / LGPD you have the right to:</p>
 	<ul>
-		<li><strong>Access</strong> your personal data (Art 15) — use Data Export on the Account page (Settings → Account on the web, Account in the app's You tab).</li>
+		<li><strong>Access</strong> your personal data (Art 15) — ask for a full account archive: <strong>Download full account archive</strong> under Data Export on the Account page on the web (Settings → Account), or <strong>Account export</strong> on the Account page in the app's You tab. We build it on our servers from everything on your account, health data included, and keep it for you to download for 7 days.</li>
 		<li><strong>Rectify</strong> inaccurate data (Art 16) — edit your profile on the Account page (Settings → Account on the web, Account in the app's You tab).</li>
 		<li><strong>Erase</strong> your data (Art 17) — use Settings → Account → Delete account on the web, or Account → Delete account in the app's You tab. Deletion cascades through our database, drains your uploaded files from storage, and disconnects or deletes linked third-party resources (for example Strava authorisation and any connected Stripe account). Step-by-step instructions, including what to do if you can no longer sign in, are on the <a href="/delete-account">Delete your account</a> page.</li>
 		<li><strong>Restrict</strong> or <strong>object to</strong> processing (Arts 18 + 21) — email <a href="mailto:privacy@threkir.com">privacy@threkir.com</a>. There is no self-service toggle yet; we action these manually and confirm within one month.</li>
-		<li><strong>Portability</strong> (Art 20) — use Data Export on the Account page (Settings → Account on the web, Account in the app's You tab); the bundle is machine-readable JSON plus GPX.</li>
-		<li><strong>Withdraw consent</strong> at any time without affecting the lawfulness of prior processing. AI Coach consent and health-data consent are each withdrawable self-service: AI Coach consent on the Account page (Settings → Account on the web, Account in the app's You tab), and health-data consent under Settings → Account on the web, or with the Store health data switch under Body metrics in the app's You tab; withdrawing blocks the corresponding processing immediately.</li>
-		<li><strong>Object to direct marketing</strong> at any time (Art 21(2)) — every marketing email carries an unsubscribe link, and the email preference is under Settings → Notifications on the web, or Notifications in Preferences on the app's You tab. Transactional mail (receipts, security notices) is not marketing.</li>
+		<li><strong>Portability</strong> (Art 20) — the same full account archive is a zip of machine-readable JSON files, one for each kind of data, with each activity's GPS track and heart-rate series as compressed JSON and your run photos as image files. On the web, <strong>Cloud export (GPX zip)</strong> under Data Export also gives you one GPX file per activity, for importing into other apps. The other export and backup buttons give narrower copies (runs only, or what is on your device).</li>
+		<li><strong>Withdraw consent</strong> at any time without affecting the lawfulness of prior processing. Both consents are withdrawable self-service.
+			<strong>AI features</strong>: <strong>Withdraw consent</strong> on the Account page (Settings → Account on the web, Account in the app's You tab); the AI Coach and the other AI features stop at once and stay off until you consent again.
+			<strong>Health data</strong>: clear the health-data consent and save. On the web, untick the consent box under Settings → Body metrics (or the health-data box on the Account page) and press Save. In the app, open Body metrics under Profile in the You tab, turn off the switch at the top of the screen (in English it reads "Store health data"; it is the switch that says height and weight are health data), and tap Save. Every path then asks you to confirm, because withdrawing permanently erases your stored height, gender, weight history and any cycle or pregnancy details, removes heart-rate targets from your own training plans, and stops us using your date of birth for training and health calculations. Your date of birth itself stays on your account as an age record, because it also keeps under-18 members out of people search. Giving consent again later does not bring the erased data back.</li>
+		<li><strong>Object to direct marketing</strong> at any time (Art 21(2)). Our marketing emails are the weekly digest and the tips and encouragement emails. Both are off unless you turn them on, each email carries a one-click unsubscribe link, and you can turn either off under Optional emails on the Notifications page (Settings → Notifications on the web, Notifications in Preferences on the app's You tab). Transactional mail (receipts, security notices) is not marketing.</li>
 		<li><strong>Lodge a complaint</strong> with your local supervisory authority. UK residents may contact the <a href="https://ico.org.uk/" target="_blank" rel="noopener noreferrer">ICO</a>; EU residents the DPA of their member state; Brazilian residents the ANPD; Canadian residents the OPC (Quebec: the CAI); Australian residents the OAIC.</li>
 	</ul>
 	<p>

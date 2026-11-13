@@ -1328,7 +1328,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'This permanently erases your saved height and your entire weight history. This can\'t be undone.';
+      'This permanently erases your saved height, gender, weight history and any cycle or pregnancy details, and your date of birth is no longer used to personalise your training. This can\'t be undone.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Withdraw & erase';

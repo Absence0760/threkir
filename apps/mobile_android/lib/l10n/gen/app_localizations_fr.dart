@@ -1348,7 +1348,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Cela efface définitivement votre taille enregistrée et tout votre historique de poids. C\'est irréversible.';
+      'Cela efface définitivement votre taille enregistrée, votre genre, tout votre historique de poids et toute information sur le cycle ou la grossesse, et votre date de naissance n\'est plus utilisée pour personnaliser votre entraînement. C\'est irréversible.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirer et effacer';

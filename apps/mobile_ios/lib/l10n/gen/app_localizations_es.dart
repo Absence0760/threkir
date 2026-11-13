@@ -1346,7 +1346,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Esto borra permanentemente tu altura guardada y todo tu historial de peso. No se puede deshacer.';
+      'Esto borra permanentemente tu altura guardada, tu género, todo tu historial de peso y cualquier dato de ciclo o embarazo, y tu fecha de nacimiento deja de usarse para personalizar tu entrenamiento. No se puede deshacer.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar y borrar';
@@ -18966,7 +18966,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Sigue a $name para ver sus carreras y a quién sigue. Cada solicitud se aprueba una a una.';
+    return 'Sigue a $name para ver sus carreras y a quién sigue. Esa persona aprueba cada solicitud.';
   }
 
   @override

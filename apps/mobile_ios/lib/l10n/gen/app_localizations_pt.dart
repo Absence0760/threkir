@@ -1351,7 +1351,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isto apaga permanentemente a sua altura guardada e todo o seu histórico de peso. Não pode ser desfeito.';
+      'Isto apaga permanentemente a sua altura guardada, o seu género, todo o seu histórico de peso e quaisquer dados de ciclo ou gravidez, e a sua data de nascimento deixa de ser usada para personalizar o seu treino. Não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
@@ -13581,7 +13581,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registo por fotografia do prato precisa do aviso de IA atualizado.';
+      'O registo por fotografia do prato precisa que aceite o aviso de IA atualizado.';
 
   @override
   String get platePhotoErrorPro =>
@@ -18985,7 +18985,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada pedido é aprovado.';
+    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada pedido tem de ser aprovado por essa pessoa.';
   }
 
   @override
@@ -24437,7 +24437,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isso apaga permanentemente sua altura salva e todo o seu histórico de peso. Não pode ser desfeito.';
+      'Isso apaga permanentemente sua altura salva, seu gênero, todo o seu histórico de peso e quaisquer dados de ciclo ou gravidez, e sua data de nascimento deixa de ser usada para personalizar seu treino. Não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
@@ -42053,7 +42053,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada solicitação é aprovada.';
+    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada solicitação precisa ser aprovada por essa pessoa.';
   }
 
   @override

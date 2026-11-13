@@ -1349,7 +1349,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Dadurch werden deine gespeicherte Größe und dein gesamter Gewichtsverlauf dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.';
+      'Dadurch werden deine gespeicherte Größe, dein Geschlecht, dein gesamter Gewichtsverlauf und alle Angaben zu Zyklus oder Schwangerschaft dauerhaft gelöscht, und dein Geburtsdatum wird nicht mehr zur Anpassung deines Trainings verwendet. Das kann nicht rückgängig gemacht werden.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Widerrufen & löschen';
@@ -18996,7 +18996,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Folge $name, um die Läufe zu sehen und wem diese Person folgt. Jede Anfrage wird einzeln bestätigt.';
+    return 'Folge $name, um die Läufe zu sehen und wem diese Person folgt. Diese Person bestätigt jede Anfrage einzeln.';
   }
 
   @override

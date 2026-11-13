@@ -121,25 +121,49 @@ test.describe('Legal pages', () => {
 	test('each consent and data right names where it lives on the web and in the app', async ({
 		page
 	}) => {
-		// The app has no Settings screen since #1374 (decisions § 2494): AI
-		// Coach consent is on the Account page, but health-data consent is
-		// the Store health data switch under Body metrics, so one "Settings →
-		// Account" pointed app users to the wrong place for an Art 7(3)
-		// withdrawal.
+		// The app has no Settings screen since #1374 (decisions § 2494), and the
+		// legal pages are English while the app is not, so a control is named by
+		// its screen and its place on it, with its English label in brackets.
+		// The #1373 consent-wording review (M1-M5) found the export, withdrawal
+		// and marketing sentences each naming a control the product did not have
+		// or describing one that did something else.
 		await page.goto('/privacy');
 		const privacy = (await page.locator('.legal-page').innerText()).replace(/\s+/g, ' ');
 		expect(privacy).toContain(
-			"AI Coach consent on the Account page (Settings → Account on the web, Account in the app's You tab)"
+			"Withdraw consent on the Account page (Settings → Account on the web, Account in the app's You tab)"
+		);
+		// M1 / M5: health-data withdrawal is a toggle, a Save and a confirm, and
+		// it erases rather than merely stopping collection.
+		expect(privacy).toContain(
+			'open Body metrics under Profile in the You tab, turn off the switch at the top of the screen (in English it reads "Store health data"'
 		);
 		expect(privacy).toContain(
-			"health-data consent under Settings → Account on the web, or with the Store health data switch under Body metrics in the app's You tab"
+			'Every path then asks you to confirm, because withdrawing permanently erases your stored height, gender, weight history and any cycle or pregnancy details'
+		);
+		expect(privacy).not.toContain('withdrawing blocks the corresponding processing immediately');
+		// M3: the full copy is the server-built archive, named as each platform
+		// names it, and it is JSON, not GPX.
+		expect(privacy).toContain(
+			"Download full account archive under Data Export on the Account page on the web (Settings → Account), or Account export on the Account page in the app's You tab"
+		);
+		expect(privacy).not.toContain('JSON plus GPX');
+		expect(privacy).not.toContain('use Data Export on the Account page');
+		// M4: the marketing switches are the two optional emails, on both.
+		expect(privacy).toContain(
+			"Our marketing emails are the weekly digest and the tips and encouragement emails"
+		);
+		expect(privacy).toContain(
+			"under Optional emails on the Notifications page (Settings → Notifications on the web, Notifications in Preferences on the app's You tab)"
 		);
 		expect(privacy).not.toContain('Settings → Export your data');
 		expect(privacy).not.toContain('Settings → Profile');
 
 		await page.goto('/health-data-notice');
 		const notice = (await page.locator('.legal-page').innerText()).replace(/\s+/g, ' ');
-		expect(notice).toContain('Store health data switch under Body metrics');
+		expect(notice).toContain('turn off the switch at the top of the screen (in English it reads "Store health data"');
+		expect(notice).toContain('You are then asked to confirm, because withdrawing permanently erases');
+		expect(notice).not.toContain('blocks further collection');
+		expect(notice).toContain("Account export on the Account page in the app's You tab");
 		expect(notice).not.toContain("or Account in the app's You tab;");
 	});
 
@@ -249,6 +273,11 @@ test.describe('Legal pages', () => {
 		expect(body).toContain('permanent and cannot be undone');
 		// The app has no Settings screen; deletion is under the You tab.
 		expect(body).toContain('open Account in the You tab and choose Delete account');
+		// Both dialogs ask for one localized word, never the account email
+		// (ConfirmDialog requireText on web, issue #1064 in the app).
+		expect(body).toContain('The dialog asks you to type the word DELETE to confirm');
+		expect(body).toContain('The app asks you to type the same word');
+		expect(body).not.toContain('account email');
 	});
 
 	test('/delete-account reads in the browser language, not only in English', async ({
@@ -267,6 +296,7 @@ test.describe('Legal pages', () => {
 		await expect(page.locator('.legal-page')).toContainText(
 			'endgültig und kann nicht rückgängig gemacht werden'
 		);
+		await expect(page.locator('.legal-page')).toContainText('das Wort LÖSCHEN');
 		await context.close();
 	});
 

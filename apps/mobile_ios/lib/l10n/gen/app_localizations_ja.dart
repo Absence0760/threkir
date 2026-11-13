@@ -1280,7 +1280,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyMetricsWithdrawTitle => '健康データの同意を撤回しますか？';
 
   @override
-  String get bodyMetricsWithdrawBody => '保存された身長と体重の履歴がすべて完全に削除されます。元に戻せません。';
+  String get bodyMetricsWithdrawBody =>
+      '保存された身長、性別、体重の履歴のすべてと、周期や妊娠に関する情報が完全に削除され、生年月日はトレーニングの調整に使われなくなります。元に戻せません。';
 
   @override
   String get bodyMetricsWithdrawConfirm => '撤回して削除';

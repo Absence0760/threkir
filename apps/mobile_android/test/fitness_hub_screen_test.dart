@@ -513,9 +513,12 @@ void main() {
     // "Runs" appears once, on the strip: the tab draws no title bar of its
     // own under it.
     expect(find.text('Runs'), findsOneWidget);
-    // The range + count status the title otherwise carries renders as the
-    // filter header's leading row instead (default range = This week).
-    expect(find.text('This week · 1 run'), findsOneWidget);
+    // The range, count and totals share the filter header's one summary
+    // line (default range = This week).
+    expect(
+      find.textContaining(RegExp(r'^This week · 1 run · ')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Gym sub-tab hosts GymScreen with its empty-onboarding state',

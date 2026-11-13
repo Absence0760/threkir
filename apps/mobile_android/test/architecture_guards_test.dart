@@ -3593,9 +3593,16 @@ void main() {
       // — a future refactor that moves the label string into a
       // GestureDetector tooltip would silently drop the
       // button-role announcement.
+      // Argument order is free: the double-read sweep put
+      // `excludeSemantics: true` (and the `onTap` it moves up) first.
+      // The arguments are read up to the block's `child:`.
       final semanticsBlocks = RegExp(
-        r'Semantics\(\s*button:\s*true[\s\S]*?label:\s*[^,)]+',
-      ).allMatches(source).toList();
+        r'Semantics\(((?:(?!\bchild:)[\s\S])*?)\bchild:',
+      ).allMatches(source).where((m) {
+        final args = m.group(1)!;
+        return RegExp(r'\bbutton:\s*true\b').hasMatch(args) &&
+            RegExp(r'\blabel:').hasMatch(args);
+      }).toList();
       expect(
         semanticsBlocks.length,
         greaterThanOrEqualTo(3),

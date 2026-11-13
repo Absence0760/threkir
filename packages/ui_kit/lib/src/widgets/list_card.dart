@@ -256,6 +256,8 @@ class ListCard extends StatelessWidget {
         child: tapArea,
       );
     }
+    // semantics-children: with [semanticLabel] the content is already behind
+    // ExcludeSemantics above; without one there is no label to read twice.
     tapArea = Semantics(
       button: isButton ? true : null,
       enabled: isButton ? enabled : null,

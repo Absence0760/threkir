@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { tick } from 'svelte';
 	import { smartBack } from '#lib/util/smart_back.ts';
@@ -446,7 +447,8 @@
 	// untouched and we show a one-line hint.
 	let nlRequest = $state('');
 	let nlBusy = $state(false);
-	let nlError = $state<string | null>(null);
+	// `upsell` draws the refusal with the link to Pro.
+	let nlError = $state<{ text: string; upsell: boolean } | null>(null);
 	// Set after a successful extraction so the user sees what was applied
 	// (incl. the shape, which the form can't render directly) and which
 	// fields were assumed from a default.
@@ -492,18 +494,21 @@
 			};
 		} catch (err) {
 			if (err instanceof RouteRequestError) {
-				nlError =
-					err.kind === 'upgrade'
-						? m('routeNew.aiRequestProOnly')
-						: err.kind === 'consent'
-							? m('routeNew.aiRequestConsentRequired')
-							: err.kind === 'not_understood'
-								? m('routeNew.aiRequestNotUnderstood')
-								: err.kind === 'not_authenticated'
-									? m('routeNew.aiRequestSignedOut')
-									: m('routeNew.aiRequestUnavailable');
+				nlError = {
+					upsell: err.kind === 'upgrade',
+					text:
+						err.kind === 'upgrade'
+							? m('routeNew.aiRequestProOnly')
+							: err.kind === 'consent'
+								? m('routeNew.aiRequestConsentRequired')
+								: err.kind === 'not_understood'
+									? m('routeNew.aiRequestNotUnderstood')
+									: err.kind === 'not_authenticated'
+										? m('routeNew.aiRequestSignedOut')
+										: m('routeNew.aiRequestUnavailable'),
+				};
 			} else {
-				nlError = m('routeNew.aiRequestUnavailable');
+				nlError = { upsell: false, text: m('routeNew.aiRequestUnavailable') };
 			}
 		} finally {
 			nlBusy = false;
@@ -965,7 +970,9 @@
 							</button>
 						</form>
 						{#if nlError}
-							<p class="ai-request-error" role="alert">{nlError}</p>
+							<p class="ai-request-error" role="alert">
+								{#if nlError.upsell}<ProUpsellLink message={nlError.text} />{:else}{nlError.text}{/if}
+							</p>
 						{/if}
 						{#if nlApplied}
 							<div class="ai-request-applied" role="status">
@@ -1182,8 +1189,7 @@
 					{/if}
 					{#if showGenerateProUpsell}
 						<p class="pro-upsell" role="note">
-							{m('routeNew.generateProUpsell')}
-							<a href="/settings/upgrade">{m('routeNew.generateProUpsellCta')}</a>
+							<ProUpsellLink message={m('routeNew.generateProUpsell')} />
 						</p>
 					{/if}
 					<p class="pref-not-applied" aria-live="polite" data-testid="route-pref-not-applied">

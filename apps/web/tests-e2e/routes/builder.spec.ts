@@ -834,7 +834,7 @@ test.describe('/routes/new — Route Builder control surface', () => {
 		await page.getByRole('button', { name: /Generate .* (loop|route)/ }).click();
 		const upsell = page.locator('.pro-upsell');
 		await expect(upsell).toBeVisible({ timeout: 30_000 });
-		await expect(upsell.getByRole('link', { name: /Upgrade to Pro/i })).toHaveAttribute(
+		await expect(upsell.getByRole('link', { name: 'See Pro' })).toHaveAttribute(
 			'href',
 			'/settings/upgrade',
 		);

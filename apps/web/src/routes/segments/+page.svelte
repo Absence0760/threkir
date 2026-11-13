@@ -5,6 +5,7 @@
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import RoutesViewNav from '#lib/components/RoutesViewNav.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
@@ -82,14 +83,12 @@
 	     catalogue is no longer a run-surface tab of its own. -->
 	<RunSurfaceTabs active="routes" />
 	<RoutesViewNav view="segments" />
-	<header class="page-header">
-		<h1>{m('segments.browseTitle')}</h1>
-		<p class="subtitle">{m('segments.browseIntro')}</p>
+	<PageHeader title={m('segments.browseTitle')} subtitle={m('segments.browseIntro')}>
 		<a class="parks-link" href="/races?show=courses" data-testid="segments-parks-link">
 			<span class="material-symbols" aria-hidden="true">park</span>
 			{m('parks.browseLink')}
 		</a>
-	</header>
+	</PageHeader>
 
 	{#if loading}
 		<p class="state-msg">{m('segments.loadingSegments')}</p>
@@ -238,18 +237,6 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-	.page-header {
-		margin-bottom: var(--space-xl);
-	}
-	.page-header h1 {
-		margin: 0;
-	}
-	.subtitle {
-		margin: 0.25rem 0 0;
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-		line-height: 1.5;
 	}
 	.parks-link {
 		display: inline-flex;

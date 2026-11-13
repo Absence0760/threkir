@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -131,7 +132,7 @@ void main() {
 
   group('PublicRunScreen — long author display name on a narrow phone', () {
     testWidgets(
-        'a long author name ellipsizes and stays inside the row',
+        'a long author name wraps and stays inside the hero',
         (tester) async {
       final view = tester.view;
       view.physicalSize = const Size(720, 1280);
@@ -154,9 +155,8 @@ void main() {
 
       final nameFinder = find.text(longName);
       expect(nameFinder, findsOneWidget);
-      final nameWidget = tester.widget<Text>(nameFinder);
-      expect(nameWidget.maxLines, 1);
-      expect(nameWidget.overflow, TextOverflow.ellipsis);
+      expect(tester.renderObject<RenderParagraph>(nameFinder).didExceedMaxLines,
+          isFalse);
       expect(tester.getRect(nameFinder).right, lessThanOrEqualTo(360.0));
     });
   });

@@ -121,6 +121,9 @@ void main() {
           'Manayunk and back';
       await _pumpLoaded(tester, _OwnerApi(name: name),
           size: const Size(360, 780));
+      // The bar named the page while it loaded; the heading's arrival hides
+      // it on the next frame.
+      await tester.pump();
 
       final inBody = find.descendant(
           of: find.byType(ListView), matching: find.text(name));

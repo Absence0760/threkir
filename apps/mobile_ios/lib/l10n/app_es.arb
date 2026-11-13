@@ -5113,7 +5113,7 @@
   "messagesEmptyTitle": "Aún no hay conversaciones",
   "messagesEmptyBody": "Abre el perfil de un corredor y toca Mensaje para empezar una conversación.",
   "messagesNewMessage": "Nuevo mensaje",
-  "messagesNewMessageNobody": "Todavía no hay nadie a quien escribir. Puedes escribir a quienes sigues o te siguen.",
+  "messagesNewMessageNobody": "Todavía no hay nadie a quien escribir. Puedes escribir a quienes sigues o a quienes te siguen.",
   "messagesNewMessageLoadFailed": "No se pudieron cargar las personas a las que puedes escribir.",
   "messagesLoadError": "No se pudieron cargar tus conversaciones.",
   "messagesThreadLoadError": "No se pudo cargar esta conversación.",

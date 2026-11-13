@@ -18204,7 +18204,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get messagesNewMessageNobody =>
-      'Todavía no hay nadie a quien escribir. Puedes escribir a quienes sigues o te siguen.';
+      'Todavía no hay nadie a quien escribir. Puedes escribir a quienes sigues o a quienes te siguen.';
 
   @override
   String get messagesNewMessageLoadFailed =>

@@ -232,7 +232,7 @@ test.describe('gym routine + progression-signal journey — log → save-as-rout
 					).toHaveCount(2);
 					// The headline est.-1RM delta is in the UP direction (latest e1RM
 					// from 110 > first from 100), rendered via gym.exercise.sinceFirstUp.
-					const delta = page.locator('.head .delta.delta-up');
+					const delta = page.getByTestId('exercise-head').locator('.delta.delta-up');
 					await expect(delta).toBeVisible();
 					await expect(delta).toContainText('since first session');
 				});
@@ -278,7 +278,7 @@ test.describe('gym routine + progression-signal journey — log → save-as-rout
 					await expect(
 						page.locator('.session-row', { hasText: '120 kg × 5' }),
 					).toBeVisible();
-					await expect(page.locator('.head .delta.delta-up')).toContainText(
+					await expect(page.getByTestId('exercise-head').locator('.delta.delta-up')).toContainText(
 						'since first session',
 					);
 

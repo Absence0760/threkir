@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { siteOrigin } from '#lib/core/site_url.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -309,21 +310,21 @@
 				</button>
 			</div>
 		{/if}
-		<header class="detail-head">
-			<div>
-				<h1>{plan.title || t('session.untitled')}{#if plan.is_official}<OfficialBadge size={18} />{/if}</h1>
-				<p class="muted">
-					{#if plan.discipline}{plan.discipline}{/if}
-					{#if plan.equipment}· {plan.equipment}{/if}
+		<PageHeader title={plan.title || t('session.untitled')}>
+			{#snippet badge()}{#if plan?.is_official}<OfficialBadge size={18} />{/if}{/snippet}
+			{#snippet sub()}
+				<p>
+					{#if plan?.discipline}{plan.discipline}{/if}
+					{#if plan?.equipment}· {plan.equipment}{/if}
 					{#if expanded.totalS > 0}
 						· {t('session.estDuration', { minutes: Math.round(expanded.totalS / 60) })}
 					{/if}
-					<span class="visibility-chip" class:is-public={plan.is_public}>
-						{plan.is_public ? t('session.public') : t('session.private')}
+					<span class="visibility-chip" class:is-public={plan?.is_public}>
+						{plan?.is_public ? t('session.public') : t('session.private')}
 					</span>
 				</p>
-			</div>
-			<div class="head-actions">
+			{/snippet}
+			{#snippet actions()}
 				{#if expanded.steps.length > 0}
 					<button
 						type="button"
@@ -360,8 +361,8 @@
 						{t('session.delete')}
 					</button>
 				{/if}
-			</div>
-		</header>
+			{/snippet}
+		</PageHeader>
 
 		<section>
 			<h2>{t('session.steps')}</h2>
@@ -452,19 +453,6 @@
 		margin-bottom: var(--space-md);
 		color: var(--color-text-tertiary);
 		text-decoration: none;
-	}
-	.detail-head {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-		margin-bottom: var(--space-lg);
-	}
-	.head-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
 	}
 	.muted {
 		color: var(--color-text-tertiary);

@@ -10,15 +10,16 @@
 	//
 	// `flush` drops the bottom margin, for a page that spaces its blocks with
 	// a flex gap instead. `back.onclick` takes a `smartBack()` handler, so the
-	// link returns to the page the runner came from when there is one. The
-	// `help` slot holds anything that belongs beside the title (a `HelpLink`,
-	// an `OfficialBadge`). `testid` names the header; `titleTestid` the h1.
+	// link returns to the page the runner came from when there is one. `badge`
+	// renders inside the h1 after the title (an `OfficialBadge`), so it is part
+	// of the heading's name. `testid` names the header; `titleTestid` the h1.
 	let {
 		title,
 		kicker,
 		subtitle,
 		back,
 		help,
+		badge,
 		sub,
 		actions,
 		children,
@@ -30,8 +31,10 @@
 		kicker?: string;
 		subtitle?: string;
 		back?: { href: string; label: string; onclick?: (e: MouseEvent) => void };
-		/// Rendered beside the h1: a `HelpLink`, an `OfficialBadge`.
+		/// Rendered beside the h1, usually a `HelpLink`.
 		help?: Snippet;
+		/// Rendered inside the h1 after the title.
+		badge?: Snippet;
 		/// Replaces `subtitle` when the line needs markup.
 		sub?: Snippet;
 		actions?: Snippet;
@@ -53,7 +56,7 @@
 		{/if}
 		{#if kicker}<p class="page-head-kicker" data-testid="page-header-kicker">{kicker}</p>{/if}
 		<div class="page-head-title">
-			<h1 data-testid={titleTestid}>{title}</h1>
+			<h1 data-testid={titleTestid}>{title}{#if badge}{@render badge()}{/if}</h1>
 			{#if help}{@render help()}{/if}
 		</div>
 		{#if sub}

@@ -26611,7 +26611,7 @@ abstract class AppLocalizations {
   /// How a calibration session runs; the quoted tab is navRun
   ///
   /// In en, this message translates to:
-  /// **'Start a capture, record a run through the line on the Run tab, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.'**
+  /// **'Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.'**
   String get lineCalibrationIntro;
 
   /// Capture status while recording; count is GPS fixes held

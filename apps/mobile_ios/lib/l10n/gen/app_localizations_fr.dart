@@ -16494,7 +16494,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get lineCalibrationIntro =>
-      'Lancez une capture, enregistrez une course qui franchit la ligne dans l\'onglet « Courir », puis arrêtez la capture ici. Chronométrez chaque passage réel sur vidéo avec une horloge synchronisée par NTP et saisissez ces instants. Le CSV ne contient que des chiffres d\'erreur et des comptes.';
+      'Lancez une capture, enregistrez une course qui franchit la ligne, puis arrêtez la capture ici. Chronométrez chaque passage réel sur vidéo avec une horloge synchronisée par NTP et saisissez ces instants. Le CSV ne contient que des chiffres d\'erreur et des comptes.';
 
   @override
   String lineCalibrationCapturing(int count) {

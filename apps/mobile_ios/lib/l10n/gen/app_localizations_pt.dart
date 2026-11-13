@@ -16473,7 +16473,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get lineCalibrationIntro =>
-      'Inicie uma captura, grave uma corrida que atravesse a linha no separador “Corrida” e pare a captura aqui. Cronometre em vídeo cada passagem real com um relógio sincronizado por NTP e introduza esses instantes. O CSV contém apenas valores de erro e contagens.';
+      'Inicie uma captura, grave uma corrida que atravesse a linha e pare a captura aqui. Cronometre em vídeo cada passagem real com um relógio sincronizado por NTP e introduza esses instantes. O CSV contém apenas valores de erro e contagens.';
 
   @override
   String lineCalibrationCapturing(int count) {
@@ -39750,7 +39750,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get lineCalibrationIntro =>
-      'Inicie uma captura, grave uma corrida que cruze a linha na aba “Corrida” e pare a captura aqui. Cronometre em vídeo cada cruzamento real com um relógio sincronizado por NTP e insira esses instantes. O CSV contém apenas valores de erro e contagens.';
+      'Inicie uma captura, grave uma corrida que cruze a linha e pare a captura aqui. Cronometre em vídeo cada cruzamento real com um relógio sincronizado por NTP e insira esses instantes. O CSV contém apenas valores de erro e contagens.';
 
   @override
   String lineCalibrationCapturing(int count) {

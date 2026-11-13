@@ -4545,7 +4545,7 @@
   "lineCalibrationEntryTitle": "Calibración de línea",
   "lineCalibrationEntrySubtitle": "Compilación de depuración: cifras de error de la línea de cronometraje",
   "lineCalibrationTitle": "Calibración de línea (depuración)",
-  "lineCalibrationIntro": "Inicia una captura, graba una carrera que cruce la línea en la pestaña «Correr» y detén la captura aquí. Cronometra en vídeo cada cruce real con un reloj sincronizado por NTP e introduce esos instantes. El CSV solo contiene cifras de error y recuentos.",
+  "lineCalibrationIntro": "Inicia una captura, graba una carrera que cruce la línea y detén la captura aquí. Cronometra en vídeo cada cruce real con un reloj sincronizado por NTP e introduce esos instantes. El CSV solo contiene cifras de error y recuentos.",
   "lineCalibrationCapturing": "{count, plural, one{Capturando: {count} posición} other{Capturando: {count} posiciones}}",
   "lineCalibrationIdle": "{count, plural, one{En pausa: {count} posición guardada} other{En pausa: {count} posiciones guardadas}}",
   "lineCalibrationStart": "Iniciar captura",

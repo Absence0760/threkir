@@ -15703,7 +15703,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get lineCalibrationIntro =>
-      'キャプチャを開始し、「ラン」タブでラインを通過するランを記録してから、ここでキャプチャを停止してください。実際の各通過をNTP同期した時計に対して動画で計時し、その時刻を入力してください。CSVには誤差値と件数のみが含まれます。';
+      'キャプチャを開始し、ラインを通過するランを記録してから、ここでキャプチャを停止してください。実際の各通過をNTP同期した時計に対して動画で計時し、その時刻を入力してください。CSVには誤差値と件数のみが含まれます。';
 
   @override
   String lineCalibrationCapturing(int count) {

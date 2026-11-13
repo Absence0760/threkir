@@ -16481,7 +16481,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get lineCalibrationIntro =>
-      'Starte eine Aufzeichnung, nimm auf dem Tab „Lauf“ einen Lauf über die Linie auf und beende die Aufzeichnung dann hier. Miss jede echte Überquerung per Video gegen eine NTP-synchronisierte Uhr und gib diese Zeitpunkte ein. Die CSV enthält nur Fehlerwerte und Anzahlen.';
+      'Starte eine Aufzeichnung, nimm einen Lauf über die Linie auf und beende die Aufzeichnung dann hier. Miss jede echte Überquerung per Video gegen eine NTP-synchronisierte Uhr und gib diese Zeitpunkte ein. Die CSV enthält nur Fehlerwerte und Anzahlen.';
 
   @override
   String lineCalibrationCapturing(int count) {

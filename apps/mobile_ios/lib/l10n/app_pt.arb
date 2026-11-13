@@ -4545,7 +4545,7 @@
   "lineCalibrationEntryTitle": "Calibração da linha",
   "lineCalibrationEntrySubtitle": "Versão de depuração: valores de erro da linha de cronometragem",
   "lineCalibrationTitle": "Calibração da linha (depuração)",
-  "lineCalibrationIntro": "Inicie uma captura, grave uma corrida que atravesse a linha no separador “Corrida” e pare a captura aqui. Cronometre em vídeo cada passagem real com um relógio sincronizado por NTP e introduza esses instantes. O CSV contém apenas valores de erro e contagens.",
+  "lineCalibrationIntro": "Inicie uma captura, grave uma corrida que atravesse a linha e pare a captura aqui. Cronometre em vídeo cada passagem real com um relógio sincronizado por NTP e introduza esses instantes. O CSV contém apenas valores de erro e contagens.",
   "lineCalibrationCapturing": "{count, plural, one{A capturar: {count} posição} other{A capturar: {count} posições}}",
   "lineCalibrationIdle": "{count, plural, one{Em pausa: {count} posição guardada} other{Em pausa: {count} posições guardadas}}",
   "lineCalibrationStart": "Iniciar captura",

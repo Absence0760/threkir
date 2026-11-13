@@ -16292,7 +16292,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lineCalibrationIntro =>
-      'Start a capture, record a run through the line on the Run tab, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.';
+      'Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.';
 
   @override
   String lineCalibrationCapturing(int count) {

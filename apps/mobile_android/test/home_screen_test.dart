@@ -19,7 +19,11 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/main.dart'
-    show pendingArmGuidedRun, pendingPushTarget, pendingStartWorkout;
+    show
+        pendingArmGuidedRun,
+        pendingPushTarget,
+        pendingStartRunWithRoute,
+        pendingStartWorkout;
 import '../lib/push_target.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
@@ -579,17 +583,24 @@ void main() {
       );
     });
 
-    testWidgets('when a tap starts a run, the centre button says so',
-        (tester) async {
+    testWidgets(
+        'when a tap opens the recorder, the centre button names it, never '
+        'Start (#1374)', (tester) async {
       // "+ Log" read as "add an entry" for a runner whose tap opened the GPS
-      // recorder; they only found out what it did by pressing it.
+      // recorder; they only found out what it did by pressing it. "Start run"
+      // then promised a start the tap never made: off the Run page it opens
+      // the start screen, so it names the page, and only a control that
+      // starts the run says Start.
       final s = await _makeStores();
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.textContaining('Start')),
+          findsNothing);
       expect(find.descendant(of: bar, matching: find.text('Log')), findsNothing);
-      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(_semanticsLabelled('Open the recording screen (Run)'),
+          findsOneWidget);
       expect(
         find.descendant(
             of: find.byType(FloatingActionButton),
@@ -607,17 +618,19 @@ void main() {
       await tester.runAsync(() => s.prefs.setDefaultActivityType('cycle'));
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
-      expect(find.descendant(of: bar, matching: find.text('Start ride')),
+      expect(find.descendant(of: bar, matching: find.text('Cycle')),
           findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsNothing);
-      expect(_semanticsLabelled('Start a ride'), findsOneWidget);
+      expect(_semanticsLabelled('Open the recording screen (Cycle)'),
+          findsOneWidget);
 
       await tester.runAsync(() => s.prefs.setDefaultActivityType('run'));
       await tester.pump();
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsOneWidget);
-      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(_semanticsLabelled('Open the recording screen (Run)'),
+          findsOneWidget);
     });
 
     testWidgets('the centre button turns back into Log once a lift exists',
@@ -625,7 +638,7 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s);
       final bar = find.byType(BottomAppBar);
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsOneWidget);
 
       await _seedLoggedLift(tester, s);
@@ -633,7 +646,7 @@ void main() {
 
       expect(find.descendant(of: bar, matching: find.text('Log')),
           findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.text('Start run')),
+      expect(find.descendant(of: bar, matching: find.text('Run')),
           findsNothing);
     });
 
@@ -1128,8 +1141,117 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s);
       expect(caption('Start'), findsNothing);
-      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(caption('Run'), findsOneWidget);
+      expect(_semanticsLabelled('Open the recording screen (Run)'),
+          findsOneWidget);
       expect(starts, isEmpty);
+    });
+
+    testWidgets(
+        'while the start is in its checks the button says Starting and a '
+        'second tap is not a second start', (tester) async {
+      final starts = _captureStartRequests();
+      addTearDown(() => runStartPending.value = false);
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(shellPage(tester), 2);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      expect(starts, [RunStartRequest.start]);
+      // The recorder raises this while a permission or battery prompt, or a
+      // planned workout still loading, stands before its countdown.
+      runStartPending.value = true;
+      await tester.pump();
+      expect(caption('Starting'), findsOneWidget);
+      expect(caption('Start'), findsNothing);
+      expect(_semanticsLabelled('Starting the run'), findsOneWidget);
+
+      await tester.tap(find.byType(FloatingActionButton), warnIfMissed: false);
+      await tester.pump();
+      await tester.longPress(find.byType(FloatingActionButton),
+          warnIfMissed: false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(starts, [RunStartRequest.start],
+          reason: 'the pending start is the only start');
+      expect(find.byType(BottomSheet), findsNothing,
+          reason: 'no runner menu over a start in progress');
+
+      // The countdown begins: the button is its Cancel again.
+      runStartPending.value = false;
+      runIdleShowing.value = false;
+      runCountdownShowing.value = true;
+      await tester.pump();
+      expect(caption('Cancel'), findsOneWidget);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      expect(starts, [RunStartRequest.start, RunStartRequest.cancel]);
+      tester.takeException();
+    });
+
+    testWidgets("Today's workout Start starts the run with the workout armed",
+        (tester) async {
+      final starts = _captureStartRequests();
+      final armed = <String>[];
+      void record() {
+        final w = pendingStartWorkout.value;
+        if (w != null) armed.add(w.id);
+      }
+
+      pendingStartWorkout.addListener(record);
+      addTearDown(() {
+        pendingStartWorkout.removeListener(record);
+        pendingStartWorkout.value = null;
+      });
+      final s =
+          await _makeStores(training: _PlanTraining(_planWithWorkoutToday()));
+      await _pump(tester, s);
+      await tester.runAsync(() async {});
+      await pumpUntil(
+          tester,
+          () => find
+              .byKey(const Key('todaysWorkoutStart'))
+              .evaluate()
+              .isNotEmpty,
+          describe: "the Today hero's workout Start");
+
+      await tester.tap(find.byKey(const Key('todaysWorkoutStart')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(armed, ['wo-today'], reason: 'the workout is loaded first');
+      expect(starts, [RunStartRequest.start],
+          reason: 'and the run starts behind the countdown');
+      expect(shellPage(tester), 2);
+    });
+
+    testWidgets("a route's Start run starts the run with the route selected",
+        (tester) async {
+      final starts = _captureStartRequests();
+      addTearDown(() => pendingStartRunWithRoute.value = null);
+      final s = await _makeStores();
+      await _pump(tester, s);
+      pendingStartRunWithRoute.value = const cm.Route(
+        id: 'r1',
+        userId: 'u1',
+        name: 'Park loop',
+        waypoints: [
+          cm.Waypoint(lat: 47.37, lng: 8.54),
+          cm.Waypoint(lat: 47.371, lng: 8.541),
+        ],
+        distanceMetres: 5000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(pendingStartRunWithRoute.value, isNull);
+      expect(starts, [RunStartRequest.start]);
+      expect(shellPage(tester), 2);
     });
 
     testWidgets("Home's Start asks for the start and lands on the Run page",
@@ -1266,7 +1388,7 @@ void main() {
         expect(find.byType(HoldToStopButton), findsNothing);
         expect(find.byType(FloatingActionButton), findsOneWidget);
         expect(caption('Stop'), findsNothing);
-        expect(caption(fanMode ? 'Log' : 'Start run'), findsOneWidget);
+        expect(caption(fanMode ? 'Log' : 'Run'), findsOneWidget);
         tester.takeException();
       });
     }
@@ -1938,8 +2060,10 @@ void main() {
       expect(find.byType(AddRunScreen), findsOneWidget);
     });
 
-    testWidgets("today's plan workout is offered, and loads on the recorder",
-        (tester) async {
+    testWidgets(
+        "today's plan workout is offered, and its Start starts the run with "
+        'it armed (#1374)', (tester) async {
+      final starts = _captureStartRequests();
       final loaded = <String>[];
       void record() {
         final w = pendingStartWorkout.value;
@@ -1969,6 +2093,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(loaded, ['wo-today']);
+      expect(starts, [RunStartRequest.start],
+          reason: 'a control that says Start starts the run');
       expect(shellPage(tester), 2, reason: 'the workout loads on the recorder');
       tester.takeException();
     });
@@ -2074,8 +2200,8 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s);
 
-      final semantics =
-          tester.widget<Semantics>(_semanticsLabelled('Start a run'));
+      final semantics = tester.widget<Semantics>(
+          _semanticsLabelled('Open the recording screen (Run)'));
       expect(semantics.properties.hintOverrides?.onLongPressHint,
           'show more options');
       final actions = semantics.properties.customSemanticsActions!;

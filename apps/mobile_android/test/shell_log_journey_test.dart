@@ -449,9 +449,12 @@ void main() {
       expect(s.gymStore.workouts, hasLength(1));
       expect(s.gymStore.workouts.single.syncState, SyncState.pendingCreate);
 
-      // The centre button no longer starts a run outright: there is a lift
-      // to log as well, so it fans the menu with Log lift on it.
-      expect(find.text('Start run'), findsNothing);
+      // The centre button no longer goes straight to the recorder: there is
+      // a lift to log as well, so it fans the menu with Log lift on it.
+      expect(
+          find.descendant(
+              of: find.byType(BottomAppBar), matching: find.text('Run')),
+          findsNothing);
       await openFan(tester);
       expect(fanItem('Log lift'), findsOneWidget);
 

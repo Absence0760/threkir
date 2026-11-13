@@ -661,10 +661,10 @@ void main() {
       expect(find.byIcon(Icons.cloud_upload), findsNothing);
     });
 
-    testWidgets('Runs standing alone tells a runner with no runs to tap Start '
-        'run, which is what the centre button now says', (tester) async {
+    testWidgets('Runs standing alone tells a runner with no runs to tap Run, '
+        'which is what the centre button now says', (tester) async {
       await pump(tester, storedPrefs: const {});
-      expect(find.textContaining('Tap Start run'), findsOneWidget);
+      expect(find.textContaining('Tap Run'), findsOneWidget);
       expect(find.textContaining('Tap Log'), findsNothing);
     });
 

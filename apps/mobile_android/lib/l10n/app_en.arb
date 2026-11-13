@@ -1282,27 +1282,27 @@
   },
   "navStartRun": "Start run",
   "@navStartRun": {
-    "description": "Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun \"Run\", which decisions § 1649 keeps out of the tab-label set"
+    "description": "Caption of the Today hero's quick Start, whose tap starts a run (the countdown with tap-to-cancel). Only a control that starts the run says Start (issue #1374); the centre nav button names the activity instead"
   },
   "navStartWalk": "Start walk",
   "@navStartWalk": {
-    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is walk. Same slot and rules as navStartRun"
+    "description": "As navStartRun, when the default activity is walk"
   },
   "navStartRide": "Start ride",
   "@navStartRide": {
-    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is cycle. Same slot and rules as navStartRun"
+    "description": "As navStartRun, when the default activity is cycle"
   },
   "navStartTrailRun": "Start trail run",
   "@navStartTrailRun": {
-    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is hike (shown as Trail run). Same slot and rules as navStartRun"
+    "description": "As navStartRun, when the default activity is hike (shown as Trail run)"
   },
   "navStartStroller": "Start stroller run",
   "@navStartStroller": {
-    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is stroller. Same slot and rules as navStartRun"
+    "description": "As navStartRun, when the default activity is stroller"
   },
   "startRecordingRun": "Start a run",
   "@startRecordingRun": {
-    "description": "Action that starts recording a run: the centre nav button's screen-reader label and the empty Home's primary button"
+    "description": "Action that starts recording a run: the empty Home's primary button"
   },
   "startRecordingWalk": "Start a walk",
   "@startRecordingWalk": {
@@ -1339,6 +1339,24 @@
   "navStart": "Start",
   "@navStart": {
     "description": "Caption under the centre nav button while the Run page shows its start screen, where a tap starts the 3-2-1 countdown. Must fit the 72dp centre slot"
+  },
+  "navStarting": "Starting",
+  "@navStarting": {
+    "description": "Caption under the centre nav button after its Start was tapped on the Run page, while the permission, GPS, background-location and battery checks (or a planned workout loading) stand between the tap and the 3-2-1; a second tap does nothing. Must fit the 72dp centre slot"
+  },
+  "runStartingA11yLabel": "Starting the run",
+  "@runStartingA11yLabel": {
+    "description": "Screen-reader label for the centre nav button while a start is in its pre-countdown checks (navStarting)"
+  },
+  "navOpenRecorderA11yLabel": "Open the recording screen ({activity})",
+  "@navOpenRecorderA11yLabel": {
+    "description": "Screen-reader label for the centre nav button away from the Run page, when a tap opens the recording screen (it starts nothing; the caption is the activity name)",
+    "placeholders": {
+      "activity": {
+        "type": "String",
+        "example": "Run"
+      }
+    }
   },
   "runCancelStartA11yLabel": "Cancel the start",
   "@runCancelStartA11yLabel": {
@@ -3078,9 +3096,9 @@
   "@runWorkoutNoStructure": {
     "description": "Banner shown when a selected workout has no runnable steps"
   },
-  "runWorkoutLoaded": "Workout loaded · {count, plural, one{{count} step} other{{count} steps}} — tap GO to start",
+  "runWorkoutLoaded": "Workout loaded · {count, plural, one{{count} step} other{{count} steps}}",
   "@runWorkoutLoaded": {
-    "description": "Banner shown when a structured workout is loaded and ready to start",
+    "description": "Banner shown when a structured workout is loaded on the recorder, before its run starts (the centre button's Start, or the countdown a Start on the workout already began)",
     "placeholders": {
       "count": {
         "type": "int"
@@ -3501,13 +3519,13 @@
   "@historyAddPastRun": {
     "description": "Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
   },
-  "historyEmptyBodyRunPrimary": "Tap {button} to start recording, or add one you have already finished",
+  "historyEmptyBodyRunPrimary": "Tap {button} to record one, or add one you have already finished",
   "@historyEmptyBodyRunPrimary": {
-    "description": "Empty Runs list body when the centre button starts recording, so it names that button by its caption (navStartRun / navStartWalk / ...) rather than Log",
+    "description": "Empty Runs list body when a tap on the centre button opens the recording screen, so it names that button by its caption (the default activity: Run / Walk / ...) rather than Log",
     "placeholders": {
       "button": {
         "type": "String",
-        "example": "Start run"
+        "example": "Run"
       }
     }
   },

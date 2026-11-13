@@ -490,7 +490,7 @@ void main() {
       final runStore = await pumpShell(tester);
       expect(find.byType(NavigationRail), findsOneWidget);
       expect(find.byType(BottomAppBar), findsNothing);
-      expect(centreLabelled('Start a run'), findsOneWidget);
+      expect(centreLabelled('Open the recording screen (Run)'), findsOneWidget);
 
       await tapRailFab(tester);
       expect(shellPage(tester), 2);
@@ -517,7 +517,7 @@ void main() {
           reason: 'the Run page shows the finished summary');
       expect(find.text('Done'), findsOneWidget);
       expect(runRecordingActive.value, isFalse);
-      expect(centreLabelled('Start a run'), findsOneWidget);
+      expect(centreLabelled('Open the recording screen (Run)'), findsOneWidget);
 
       await tapRailFab(tester);
       expect(shellPage(tester), 2);

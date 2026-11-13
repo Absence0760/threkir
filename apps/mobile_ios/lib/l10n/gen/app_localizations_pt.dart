@@ -999,6 +999,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get navStart => 'Iniciar';
 
   @override
+  String get navStarting => 'A iniciar';
+
+  @override
+  String get runStartingA11yLabel => 'A iniciar a corrida';
+
+  @override
+  String navOpenRecorderA11yLabel(String activity) {
+    return 'Abrir o ecrã de gravação ($activity)';
+  }
+
+  @override
   String get runCancelStartA11yLabel => 'Cancelar o início';
 
   @override
@@ -2352,7 +2363,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$count etapas',
       one: '$count etapa',
     );
-    return 'Treino carregado · $_temp0 — toque em GO para iniciar';
+    return 'Treino carregado · $_temp0';
   }
 
   @override
@@ -2665,7 +2676,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return 'Toque em $button para começar a gravar ou adicione uma que já tenha feito';
+    return 'Toque em $button para gravar uma ou adicione uma que já tenha feito';
   }
 
   @override
@@ -23599,6 +23610,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get navStart => 'Iniciar';
 
   @override
+  String get navStarting => 'Iniciando';
+
+  @override
+  String get runStartingA11yLabel => 'Iniciando a corrida';
+
+  @override
+  String navOpenRecorderA11yLabel(String activity) {
+    return 'Abrir a tela de gravação ($activity)';
+  }
+
+  @override
   String get runCancelStartA11yLabel => 'Cancelar o início';
 
   @override
@@ -24953,7 +24975,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$count etapas',
       one: '$count etapa',
     );
-    return 'Treino carregado · $_temp0 — toque em GO para iniciar';
+    return 'Treino carregado · $_temp0';
   }
 
   @override
@@ -25265,7 +25287,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return 'Toque em $button para começar a gravar ou adicione uma que você já fez';
+    return 'Toque em $button para gravar uma ou adicione uma que você já fez';
   }
 
   @override

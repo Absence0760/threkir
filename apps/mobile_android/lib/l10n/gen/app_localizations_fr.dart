@@ -1302,7 +1302,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'La taille et le poids sont des données de santé sensibles. Désactivez pour les effacer.';
+      'La taille et le poids sont des données de santé sensibles. Désactivez cette option puis enregistrez pour les effacer.';
 
   @override
   String get bodyMetricsHeight => 'Taille';
@@ -1348,7 +1348,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Cela efface définitivement votre taille enregistrée et tout votre historique de poids. C\'est irréversible.';
+      'Cela efface définitivement votre taille enregistrée, votre genre, tout votre historique de poids et toute information sur le cycle ou la grossesse, et votre date de naissance n\'est plus utilisée pour personnaliser votre entraînement. C\'est irréversible.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirer et effacer';

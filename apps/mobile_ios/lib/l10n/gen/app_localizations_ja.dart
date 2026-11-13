@@ -1241,7 +1241,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyMetricsConsentTitle => '健康データを保存';
 
   @override
-  String get bodyMetricsConsentSubtitle => '身長と体重は特別な健康データです。オフにすると削除されます。';
+  String get bodyMetricsConsentSubtitle =>
+      '身長と体重は、特別な種類の個人データにあたる健康データです。オフにして保存すると、これらのデータが削除されます。';
 
   @override
   String get bodyMetricsHeight => '身長';
@@ -1280,7 +1281,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyMetricsWithdrawTitle => '健康データの同意を撤回しますか？';
 
   @override
-  String get bodyMetricsWithdrawBody => '保存された身長と体重の履歴がすべて完全に削除されます。元に戻せません。';
+  String get bodyMetricsWithdrawBody =>
+      '保存されている身長、性別、体重の履歴と、月経周期や妊娠に関する情報（ある場合）が完全に削除されます。また、生年月日はトレーニングのパーソナライズに使われなくなります。この操作は元に戻せません。';
 
   @override
   String get bodyMetricsWithdrawConfirm => '撤回して削除';

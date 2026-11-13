@@ -1300,7 +1300,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'La altura y el peso son datos de salud sensibles. Desactiva para borrarlos.';
+      'La altura y el peso son datos de salud de categoría especial. Desactívalo y guarda para borrarlos.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -1346,7 +1346,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Esto borra permanentemente tu altura guardada y todo tu historial de peso. No se puede deshacer.';
+      'Esto borra permanentemente la altura, el género, el historial de peso y cualquier dato de ciclo o embarazo que hayas guardado, y tu fecha de nacimiento deja de usarse para personalizar tu entrenamiento. No se puede deshacer.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar y borrar';
@@ -18966,7 +18966,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Sigue a $name para ver sus carreras y a quién sigue. Cada solicitud se aprueba una a una.';
+    return 'Sigue a $name para ver sus carreras y a quién sigue. Esa persona aprueba cada solicitud.';
   }
 
   @override

@@ -2138,7 +2138,7 @@ abstract class AppLocalizations {
   /// Explanation under the health-data consent toggle
   ///
   /// In en, this message translates to:
-  /// **'Height and weight are special-category health data. Turn this off to erase them.'**
+  /// **'Height and weight are special-category health data. Turn this off and save to erase them.'**
   String get bodyMetricsConsentSubtitle;
 
   /// Label for the height input (centimetres)
@@ -2216,7 +2216,7 @@ abstract class AppLocalizations {
   /// No description provided for @bodyMetricsWithdrawBody.
   ///
   /// In en, this message translates to:
-  /// **'This permanently erases your saved height and your entire weight history. This can\'t be undone.'**
+  /// **'This permanently erases your saved height, gender, weight history and any cycle or pregnancy details, and your date of birth is no longer used to personalise your training. This can\'t be undone.'**
   String get bodyMetricsWithdrawBody;
 
   /// No description provided for @bodyMetricsWithdrawConfirm.

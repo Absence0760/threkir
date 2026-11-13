@@ -536,6 +536,19 @@
 		handleSaving = false;
 	}
 
+	// Unticking the consent and saving erases the Art 9 set — height, gender,
+	// the weight series, the cycle inputs — so it asks first, as Body metrics
+	// does (§ Destructive actions). The box itself names only the date of
+	// birth, which made the erasure the one thing the save did not say.
+	let showWithdrawConfirm = $state(false);
+	function requestSave() {
+		if (!healthDataConsent && healthDataConsentAt != null) {
+			showWithdrawConfirm = true;
+			return;
+		}
+		void handleSave();
+	}
+
 	async function handleSave() {
 		if (!auth.user || profileLoad !== 'ready') return;
 		// Checked here as well as on the button's disabled state so the value
@@ -1454,7 +1467,7 @@
 					{/if}
 				</div>
 			{/if}
-			<button class="btn btn-primary btn-save" onclick={handleSave} disabled={saving || maxHrOutOfRange || restingHrOutOfRange || parkrunNumberInvalid}>
+			<button class="btn btn-primary btn-save" onclick={requestSave} disabled={saving || maxHrOutOfRange || restingHrOutOfRange || parkrunNumberInvalid}>
 				{saving ? m('settingsAccount.saving') : saved ? m('settingsAccount.savedDone') : m('settingsAccount.saveProfile')}
 			</button>
 		</fieldset>
@@ -1885,6 +1898,20 @@
 	confirmLabel={m('settingsAccount.signoutEverywhereConfirmLabel')}
 	onconfirm={handleSignOutEverywhere}
 	oncancel={() => (showSignOutEverywhere = false)}
+/>
+
+<ConfirmDialog
+	open={showWithdrawConfirm}
+	title={m('prefs.withdrawConsentTitle')}
+	message={m('prefs.withdrawConsentMessage')}
+	confirmLabel={m('prefs.withdrawConsentConfirm')}
+	danger
+	data-testid="withdraw-health-consent-confirm"
+	onconfirm={() => {
+		showWithdrawConfirm = false;
+		void handleSave();
+	}}
+	oncancel={() => (showWithdrawConfirm = false)}
 />
 
 <ConfirmDialog

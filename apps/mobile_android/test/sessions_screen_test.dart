@@ -11,6 +11,7 @@ import '../lib/local_gym_store.dart';
 import '../lib/screens/session_detail_screen.dart';
 import '../lib/screens/sessions_screen.dart';
 import '../lib/widgets/official_badge.dart';
+import 'worst_case_layout.dart';
 
 SessionPlanRow _plan(String id, String title,
         {String? discipline, int? estMin}) =>
@@ -243,5 +244,68 @@ void main() {
     } finally {
       dir.deleteSync(recursive: true);
     }
+  });
+
+  final longPlans = [
+    _plan('p1', 'Sunrise vinyasa with a long hip-opening sequence to finish',
+        discipline: 'Vinyasa', estMin: 45),
+    _plan('p2', 'Reformer core', discipline: 'Reformer Pilates', estMin: 30),
+  ];
+  final longItems = [
+    _item('i0',
+        position: 0,
+        name: 'Downward-facing dog with a slow pedal',
+        durationS: 60,
+        cue: 'Press the floor away and lengthen through the spine'),
+    _item('i1',
+        position: 1, name: 'Low lunge twist', durationS: 45, perSide: true),
+    _item('i2', position: 2, name: 'The Hundred', kind: 'reps', reps: 100),
+  ];
+
+  worstCaseTestWidgets('the session plan list', (tester, locale) async {
+    final dir = Directory.systemTemp.createTempSync('sessions_wc_list');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final gym = await tester.runAsync(() => _gymStore(dir));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SessionsScreen(
+        api: _FakeApi(plans: longPlans, officialIds: const {'p2'}),
+        gymStore: gym!,
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Sessions');
+  });
+
+  worstCaseTestWidgets('a session plan and its follow-along runner',
+      (tester, locale) async {
+    final dir = Directory.systemTemp.createTempSync('sessions_wc_detail');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final gym = await tester.runAsync(() => _gymStore(dir));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SessionDetailScreen(
+        api: _FakeApi(plans: longPlans, items: longItems),
+        gymStore: gym!,
+        planId: 'p1',
+        titleHint: longPlans.first.title,
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Session plan');
+
+    // The FAB scales in once the plan has loaded.
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expectNoOverflow(tester, 'Session runner');
+    // Leave the runner through its close button and discard, so its timer
+    // is cancelled before the test ends.
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump(const Duration(milliseconds: 400));
+    expectNoOverflow(tester, 'Session runner, abandon dialog');
   });
 }

@@ -16,7 +16,7 @@ import 'waypoint.dart';
 /// heart rate goes. Live heart rate on screen during a run is not affected,
 /// because nothing here runs until the run is saved.
 ///
-/// Twin of `apps/web/src/lib/core/health_consent.ts`'s `stripHeartRate` —
+/// Twin of `apps/web/src/lib/core/heart_rate_consent.ts`'s `stripHeartRate` —
 /// keep the key list, the rule and the test count in lockstep.
 
 /// The `runs.metadata` keys that are heart rate. `hr_series_url` is a column

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { fetchChallenges, browsePublicChallenges } from '#lib/core/data.ts';
 	import type { ChallengeWithMeta } from '#lib/types.ts';
 	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
@@ -122,18 +123,18 @@
 </svelte:head>
 
 <div class="page">
-	<a class="back" href="/social?tab=challenges" onclick={back.handle}>
-		<span class="material-symbols" aria-hidden="true">arrow_back</span>{m('challenges.back')}
-	</a>
-	<header class="page-head">
-		<div class="head-row">
-			<h1>{m('challenges.title')}</h1>
+	<PageHeader
+		flush
+		back={{ href: '/social?tab=challenges', label: m('challenges.back'), onclick: back.handle }}
+		title={m('challenges.title')}
+		subtitle={m('challenges.tagline')}
+	>
+		{#snippet actions()}
 			<button type="button" class="btn btn-primary" onclick={() => (creating = true)}>
 				{m('challenges.create')}
 			</button>
-		</div>
-		<p class="tagline">{m('challenges.tagline')}</p>
-	</header>
+		{/snippet}
+	</PageHeader>
 
 	<section>
 		<h2>{m('challenges.myChallenges')}</h2>
@@ -271,29 +272,6 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-	.back {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.1rem;
-		margin-bottom: var(--space-md);
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--color-primary);
-		text-decoration: none;
-	}
-	.back .material-symbols {
-		font-size: 1.1rem;
-	}
-	.back:hover {
-		text-decoration: underline;
-	}
-	.head-row {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-md);
 	}
 	section {
 		margin-top: var(--space-xl);

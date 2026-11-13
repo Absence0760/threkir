@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { refusalCode } from '#lib/core/supabase_error.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -217,39 +218,38 @@
 			</div>
 		{/if}
 
-		<header class="hero">
-			<div class="hero-head">
-				<h1>{fundraiser.title}</h1>
-				<div class="hero-actions">
-					<button type="button" class="btn btn-secondary" onclick={share}>
-						{m('fundraiser.share')}
-					</button>
-					{#if isOwner}
-						<button type="button" class="btn btn-secondary" onclick={() => (editOpen = true)}>
-							{m('fundraiser.editCta')}
-						</button>
-						{#if !closed}
-							<button
-								type="button"
-								class="btn btn-secondary"
-								onclick={() => (confirmCloseOpen = true)}
-							>
-								{m('fundraiser.close')}
-							</button>
-						{/if}
+		<PageHeader flush title={fundraiser.title}>
+			{#snippet sub()}
+				<p>
+					{#if fundraiser.charity_url}
+						<a href={fundraiser.charity_url} target="_blank" rel="noopener noreferrer nofollow"
+							>{fundraiser.charity_name}</a
+						>
+					{:else}
+						{fundraiser.charity_name}
 					{/if}
-				</div>
-			</div>
-			<p class="charity">
-				{#if fundraiser.charity_url}
-					<a href={fundraiser.charity_url} target="_blank" rel="noopener noreferrer nofollow"
-						>{fundraiser.charity_name}</a
-					>
-				{:else}
-					{fundraiser.charity_name}
+				</p>
+			{/snippet}
+			{#snippet actions()}
+				<button type="button" class="btn btn-secondary" onclick={share}>
+					{m('fundraiser.share')}
+				</button>
+				{#if isOwner}
+					<button type="button" class="btn btn-secondary" onclick={() => (editOpen = true)}>
+						{m('fundraiser.editCta')}
+					</button>
+					{#if !closed}
+						<button
+							type="button"
+							class="btn btn-secondary"
+							onclick={() => (confirmCloseOpen = true)}
+						>
+							{m('fundraiser.close')}
+						</button>
+					{/if}
 				{/if}
-			</p>
-		</header>
+			{/snippet}
+		</PageHeader>
 
 		<section class="card thermometer-card">
 			{#if totalsFailed}
@@ -392,25 +392,6 @@
 	}
 	.panel-error {
 		margin: 0;
-		color: var(--color-text-secondary);
-	}
-	.hero-head {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-		flex-wrap: wrap;
-	}
-	.hero h1 {
-		margin: 0;
-	}
-	.hero-actions {
-		display: flex;
-		gap: var(--space-sm);
-		flex-wrap: wrap;
-	}
-	.charity {
-		margin: var(--space-xs) 0 0;
 		color: var(--color-text-secondary);
 	}
 	.thermometer-card,

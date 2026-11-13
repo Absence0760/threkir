@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { isPlanOverlapError } from '#lib/core/supabase_error.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -250,22 +251,26 @@
 		</div>
 	{:else if notOnRoster}
 		<div class="card">
-			<h1>{m('coachingAthlete.notOnRosterTitle')}</h1>
-			<p class="muted">
-				{m('coachingAthlete.notOnRosterPrefix')}<a href="/coaching">{m('shell.coaching')}</a>{m('coachingAthlete.notOnRosterSuffix')}
-			</p>
+			<PageHeader flush title={m('coachingAthlete.notOnRosterTitle')}>
+				{#snippet sub()}
+					<p class="muted">
+						{m('coachingAthlete.notOnRosterPrefix')}<a href="/coaching">{m('shell.coaching')}</a>{m('coachingAthlete.notOnRosterSuffix')}
+					</p>
+				{/snippet}
+			</PageHeader>
 		</div>
 	{:else}
-		<header class="athlete-head">
+		<div class="athlete-head">
 			<Avatar url={link?.avatar_url} name={link?.display_name} size="3rem" font="1.1rem" />
-			<div>
-				<h1>{link?.display_name ?? m('coachingAthlete.runnerFallback')}</h1>
-				<p class="muted">
-					{m('coachingAthlete.coachingSince', { date: link?.accepted_at ? formatDate(link.accepted_at) : '—' })} ·
-					<a href="/u/{athleteId}">{m('coachingAthlete.publicProfile')}</a>
-				</p>
-			</div>
-		</header>
+			<PageHeader flush title={link?.display_name ?? m('coachingAthlete.runnerFallback')}>
+				{#snippet sub()}
+					<p class="muted">
+						{m('coachingAthlete.coachingSince', { date: link?.accepted_at ? formatDate(link.accepted_at) : '—' })} ·
+						<a href="/u/{athleteId}">{m('coachingAthlete.publicProfile')}</a>
+					</p>
+				{/snippet}
+			</PageHeader>
+		</div>
 
 		<section class="card">
 			<h2>{m('coachingAthlete.planCompliance')}</h2>
@@ -444,12 +449,6 @@
 		align-items: center;
 		gap: var(--space-md);
 		margin-bottom: var(--space-xl);
-	}
-	h1 {
-		margin: 0 0 var(--space-2xs);
-		font-size: 1.7rem;
-		font-weight: 800;
-		letter-spacing: -0.01em;
 	}
 	h2 {
 		margin: 0 0 var(--space-md);

@@ -4,6 +4,7 @@
 	// deadline; a verified organiser reads what became of its reports. The
 	// reviewer is never named: my_organiser_disputes does not return one.
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -70,10 +71,7 @@
 {/snippet}
 
 <div class="page">
-	<header class="head">
-		<h1>{m('organiserDispute.pageTitle')}</h1>
-		<p class="tagline">{m('organiserDispute.pageTagline')}</p>
-	</header>
+	<PageHeader flush title={m('organiserDispute.pageTitle')} subtitle={m('organiserDispute.pageTagline')} />
 
 	{#if loading}
 		<p class="muted" role="status">{m('profile.loadingShort')}</p>
@@ -126,14 +124,10 @@
 		flex-direction: column;
 		gap: var(--space-lg);
 	}
-	.head h1 {
-		margin: 0 0 var(--space-xs) 0;
-	}
 	h2 {
 		font-size: 1rem;
 		margin: 0 0 var(--space-sm);
 	}
-	.tagline,
 	.muted,
 	.when {
 		color: var(--color-text-secondary);

@@ -2923,9 +2923,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addRunTitle => 'Add run';
 
   @override
-  String get addRunSave => 'Save';
-
-  @override
   String get addRunSectionWhen => 'When';
 
   @override

@@ -792,7 +792,6 @@
   "historyDeletePartial": "{deleted} 件削除、{queued} 件は待機中 — オンライン復帰時に再試行します。",
   "historyDeleteDone": "{count, plural, other{{count} 件のランを削除しました}}",
   "addRunTitle": "ランを追加",
-  "addRunSave": "保存",
   "addRunSectionWhen": "いつ",
   "addRunSectionActivity": "アクティビティ",
   "addRunSectionRoute": "ルート（任意）",

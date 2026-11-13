@@ -792,7 +792,6 @@
   "historyDeletePartial": "{deleted} gelöscht; {queued} eingereiht – wird erneut versucht, sobald du wieder online bist.",
   "historyDeleteDone": "{count, plural, one{{count} Lauf gelöscht} other{{count} Läufe gelöscht}}",
   "addRunTitle": "Lauf hinzufügen",
-  "addRunSave": "Speichern",
   "addRunSectionWhen": "Wann",
   "addRunSectionActivity": "Aktivität",
   "addRunSectionRoute": "Route (optional)",

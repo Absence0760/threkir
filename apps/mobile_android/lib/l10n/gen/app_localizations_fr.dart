@@ -2963,9 +2963,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get addRunTitle => 'Ajouter une course';
 
   @override
-  String get addRunSave => 'Enregistrer';
-
-  @override
   String get addRunSectionWhen => 'Quand';
 
   @override

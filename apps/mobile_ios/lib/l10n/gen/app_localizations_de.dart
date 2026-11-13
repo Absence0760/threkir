@@ -2960,9 +2960,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addRunTitle => 'Lauf hinzufügen';
 
   @override
-  String get addRunSave => 'Speichern';
-
-  @override
   String get addRunSectionWhen => 'Wann';
 
   @override

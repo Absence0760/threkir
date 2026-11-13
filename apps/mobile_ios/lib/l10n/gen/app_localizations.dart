@@ -4901,12 +4901,6 @@ abstract class AppLocalizations {
   /// **'Add run'**
   String get addRunTitle;
 
-  /// AppBar save button on the manual add-run form
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get addRunSave;
-
   /// Section header for the date/time pickers on the add-run form
   ///
   /// In en, this message translates to:

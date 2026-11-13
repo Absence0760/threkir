@@ -2955,9 +2955,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addRunTitle => 'Añadir carrera';
 
   @override
-  String get addRunSave => 'Guardar';
-
-  @override
   String get addRunSectionWhen => 'Cuándo';
 
   @override

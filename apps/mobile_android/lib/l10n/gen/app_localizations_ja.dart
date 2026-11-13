@@ -2824,9 +2824,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get addRunTitle => 'ランを追加';
 
   @override
-  String get addRunSave => '保存';
-
-  @override
   String get addRunSectionWhen => 'いつ';
 
   @override

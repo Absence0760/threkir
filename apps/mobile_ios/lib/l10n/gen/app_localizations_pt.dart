@@ -2954,9 +2954,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get addRunTitle => 'Adicionar corrida';
 
   @override
-  String get addRunSave => 'Guardar';
-
-  @override
   String get addRunSectionWhen => 'Quando';
 
   @override
@@ -25576,9 +25573,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get addRunTitle => 'Adicionar corrida';
-
-  @override
-  String get addRunSave => 'Salvar';
 
   @override
   String get addRunSectionWhen => 'Quando';

@@ -2,6 +2,7 @@ import '../activity_type_labels.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
+import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave;
 import 'package:uuid/uuid.dart';
 
 import '../auth_error.dart';
@@ -306,29 +307,20 @@ class _AddRunScreenState extends State<AddRunScreen> {
     final unit = widget.preferences.unit;
     final routes = widget.routeStore.routes;
 
-    final scaffold = Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.addRunTitle),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(l10n.addRunSave),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-          children: [
+    // The fields sit in one Form above the page, and the page's single Save
+    // is pinned under them (issue #1374: Save was in the app bar and again
+    // at the foot of the list).
+    final page = Form(
+      key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      child: EditorPage(
+        title: l10n.addRunTitle,
+        save: EditorSave(
+          label: l10n.addRunSaveButton,
+          busy: _saving,
+          onPressed: _save,
+        ),
+        fields: [
             Text(l10n.addRunSectionWhen, style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             Row(
@@ -498,18 +490,14 @@ class _AddRunScreenState extends State<AddRunScreen> {
                 hintText: l10n.addRunNotesHint,
               ),
             ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _saving ? null : _save,
-              icon: const Icon(Icons.check),
-              label: Text(l10n.addRunSaveButton),
-            ),
-          ],
-          ),
-        ),
+        ],
       ),
     );
-    return DiscardGuard(isDirty: () => _isDirty, child: scaffold);
+    return DiscardGuard(
+      isDirty: () => _isDirty,
+      isBusy: () => _saving,
+      child: page,
+    );
   }
 
   /// [suffix] is the visible 'h' / 'm' / 's' hint, which is decorative:

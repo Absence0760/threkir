@@ -3871,10 +3871,6 @@
   "@addRunTitle": {
     "description": "AppBar title for the manual add-run form"
   },
-  "addRunSave": "Save",
-  "@addRunSave": {
-    "description": "AppBar save button on the manual add-run form"
-  },
   "addRunSectionWhen": "When",
   "@addRunSectionWhen": {
     "description": "Section header for the date/time pickers on the add-run form"

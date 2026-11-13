@@ -792,7 +792,6 @@
   "historyDeletePartial": "{deleted} eliminadas; {queued} na fila — será tentado novamente quando estiver online.",
   "historyDeleteDone": "{count, plural, one{{count} corrida eliminada} other{{count} corridas eliminadas}}",
   "addRunTitle": "Adicionar corrida",
-  "addRunSave": "Guardar",
   "addRunSectionWhen": "Quando",
   "addRunSectionActivity": "Atividade",
   "addRunSectionRoute": "Rota (opcional)",

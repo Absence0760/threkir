@@ -21,6 +21,7 @@ import '../lib/settings_sync.dart';
 import '../lib/widgets/live_run_map.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 late Directory _runsDir;
 
@@ -422,6 +423,7 @@ Future<void> _pump(WidgetTester tester, Run run,
     bool showRawTrack = false,
     bool useMiles = false,
     double textScale = 1.0,
+    Locale locale = const Locale('en'),
     RunPushBlockReason? blocked}) async {
   SharedPreferences.setMockInitialValues({
     if (bodyWeightKg != null) 'body_weight_kg': bodyWeightKg,
@@ -443,6 +445,7 @@ Future<void> _pump(WidgetTester tester, Run run,
 
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
@@ -2225,6 +2228,24 @@ void main() {
       await gesture.up();
       await tester.pump();
     });
+  });
+
+  // Issue #1374 TO-6: run detail walked top to bottom at the worst case in
+  // every locale, with a titled run whose track has elevation and splits.
+  worstCaseTestWidgets('Run detail', (tester, locale) async {
+    await _pump(
+      tester,
+      _run(
+        title: 'Sunday long run along the river',
+        track: _straightTrack(3),
+      ),
+      bodyWeightKg: 70,
+      textScale: kWorstCaseTextScale,
+      locale: locale,
+    );
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Run detail');
+    await _pump(tester, _elevationRun(), textScale: kWorstCaseTextScale, locale: locale);
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Run detail with elevation');
   });
 
   group('splits bar at OS text scale (issue #666 V12)', () {

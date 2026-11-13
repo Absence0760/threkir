@@ -538,35 +538,49 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (_lineLoading) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _lineFailed ? Icons.cloud_off : Icons.route,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _lineFailed ? l10n.routeDetailLineLoadFailed : l10n.routeDetailLineEmpty,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            if (_lineFailed) ...[
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: _retryDisplayWaypoints,
-                child: Text(l10n.routeDetailLineRetry),
+    // The map's box has a fixed height, and at large text in a long
+    // translation the message and its Retry outgrow it (by 35 dp in German at
+    // 2x on 320 dp, issue #1374 TO-6), so the message scrolls inside the box
+    // rather than overflowing it, and stays centred while it fits.
+    return LayoutBuilder(
+      builder: (context, box) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: box.maxHeight),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _lineFailed ? Icons.cloud_off : Icons.route,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _lineFailed
+                        ? l10n.routeDetailLineLoadFailed
+                        : l10n.routeDetailLineEmpty,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  if (_lineFailed) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _retryDisplayWaypoints,
+                      child: Text(l10n.routeDetailLineRetry),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ],
+            ),
+          ),
         ),
       ),
     );
   }
+
 
   /// The "Describe this route" surface shown when the route has no
   /// stored description. Before generation: a single button. After: the

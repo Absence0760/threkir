@@ -15,6 +15,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/route_detail_screen.dart';
 import '../lib/social_service.dart' show ClubView;
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 cm.Route _route({
   String name = 'River Loop',
@@ -175,23 +176,27 @@ Future<void> _pump(
   bool isOwner = false,
   bool useMiles = false,
   ApiClient? apiClient,
+  Locale? locale,
 }) async {
   SharedPreferences.setMockInitialValues({'use_miles': useMiles});
   final prefs = Preferences();
   await prefs.init();
 
+  final screen = RouteDetailScreen(
+    route: route,
+    routeStore: LocalRouteStore(),
+    preferences: prefs,
+    apiClient: apiClient,
+    isOwner: isOwner,
+  );
   await tester.pumpWidget(
-    MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: RouteDetailScreen(
-        route: route,
-        routeStore: LocalRouteStore(),
-        preferences: prefs,
-        apiClient: apiClient,
-        isOwner: isOwner,
-      ),
-    ),
+    locale != null
+        ? worstCaseApp(locale: locale, home: screen)
+        : MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: screen,
+          ),
   );
   // One pump to build; pumpAndSettle would spin LiveRunMap's pulse animation.
   await tester.pump();
@@ -223,6 +228,31 @@ void main() {
       expect(routeShareUrl('r1', webBase: '  '),
           'https://threkir.com/share/route/r1');
     });
+  });
+
+  // Issue #1374 TO-6: route detail walked at the worst case in every locale,
+  // as its owner (tags, markers, segments) with a line, tags and a
+  // description.
+  worstCaseTestWidgets('Route detail', (tester, locale) async {
+    await _pump(
+      tester,
+      _route(
+        name: 'Philadelphia Marathon full course, Art Museum to Manayunk',
+        isPublic: true,
+        description: 'Flat out along the river and back over the bridges.',
+        tags: const ['flat', 'river', 'marathon'],
+        waypoints: [
+          for (var i = 0; i < 8; i++)
+            cm.Waypoint(lat: 39.96 + i * 0.002, lng: -75.18 + i * 0.002),
+        ],
+      ),
+      isOwner: true,
+      locale: locale,
+    );
+    final list = find
+        .descendant(of: find.byType(ListView), matching: find.byType(Scrollable))
+        .first;
+    await walkScrollable(tester, list, 'Route detail');
   });
 
   group('RouteDetailScreen', () {

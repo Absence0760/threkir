@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show AppSemanticColors, ListCard, PageHeader, ProgressBar, PushedPage;
 
+import '../health_consent_gate.dart';
 import '../auth_error.dart';
 import '../backup.dart';
 import '../cross_source_dedup.dart';
@@ -126,6 +127,9 @@ class _ImportScreenState extends State<ImportScreen> {
   // success hid it entirely, and reporting only "some" makes 3-of-400
   // indistinguishable from 400-of-400.
   int _cloudPushDeferredCount = 0;
+  // Runs the last import kept without heart rate, for want of health-data
+  // consent (decisions § 2514).
+  int _heartRateDroppedCount = 0;
   // Sessions the last Health Connect import found a route for but wasn't
   // allowed to read. Drives the route-permission offer — the runner is never
   // shown it speculatively, only once there are maps behind it.
@@ -169,6 +173,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     try {
@@ -234,6 +239,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     final granted = await _requestHealthRoutePermission();
@@ -384,6 +390,14 @@ class _ImportScreenState extends State<ImportScreen> {
 
     final log = failures ?? newImportFailureLog();
     final savedRuns = <Run>[];
+    // Heart rate is kept only with health-data consent (decisions § 2514).
+    // Known absent: the runs are stored without it, here and on the server.
+    // Unknown (offline): kept on this device, stripped by the upload.
+    final heartRateDroppedIds = <String>{};
+    if (await healthDataConsented(widget.apiClient) == false) {
+      heartRateDroppedIds.addAll(runs.where(runHasHeartRate).map((r) => r.id));
+      runs = [for (final r in runs) runWithoutHeartRate(r)];
+    }
     // Persona-hunt Round 2 #3: cross-source dedup. The store's
     // existing runs include any prior Strava + Garmin ZIP imports;
     // an HC import of the same Garmin activity should skip rather
@@ -475,6 +489,8 @@ class _ImportScreenState extends State<ImportScreen> {
       _failures = log;
       _failureProvider = provider;
       _cloudPushDeferredCount = pushDeferredCount;
+      _heartRateDroppedCount =
+          savedRuns.where((r) => heartRateDroppedIds.contains(r.id)).length;
       _status = buildImportStatus(
         savedCount: savedRuns.length,
         errorCount: log.total,
@@ -504,6 +520,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     try {
@@ -544,6 +561,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     try {
@@ -588,6 +606,7 @@ class _ImportScreenState extends State<ImportScreen> {
       _errors = [];
       _failures = newImportFailureLog();
       _cloudPushDeferredCount = 0;
+      _heartRateDroppedCount = 0;
     });
 
     try {
@@ -904,6 +923,17 @@ class _ImportScreenState extends State<ImportScreen> {
                   if (_busy && _total > 0) ...[
                     const SizedBox(height: 12),
                     ProgressBar(value: _imported / _total),
+                  ],
+                  if (!_busy && _heartRateDroppedCount > 0) ...[
+                    const SizedBox(height: 8),
+                    HeartRateNotKeptNote(
+                      message: l10n.importHeartRateNotKept(
+                          _heartRateDroppedCount),
+                      onGiveConsent: () => openHealthConsent(context,
+                          api: widget.apiClient,
+                          settingsSync: widget.settingsSync,
+                          preferences: widget.preferences),
+                    ),
                   ],
                   if (!_busy && _cloudPushDeferredCount > 0) ...[
                     const SizedBox(height: 8),

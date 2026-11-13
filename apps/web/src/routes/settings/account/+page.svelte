@@ -39,7 +39,7 @@
 	import { TABLES } from '#lib/core/schema.ts';
 	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 	import { downloadFile } from '#lib/routes/gpx.ts';
-	import { fetchRunsWithError, uploadAvatar, removeAvatar } from '#lib/core/data.ts';
+	import { fetchRunsWithError, uploadAvatar, removeAvatar, forgetHealthDataConsent } from '#lib/core/data.ts';
 	import {
 		createBackup,
 		restoreBackup,
@@ -588,6 +588,7 @@
 				return;
 			}
 			if (stampedAt) healthDataConsentAt = stampedAt as string;
+			forgetHealthDataConsent();
 		}
 
 		const withdrawing = !healthDataConsent && healthDataConsentAt != null;
@@ -610,6 +611,7 @@
 				saving = false;
 				return;
 			}
+			forgetHealthDataConsent();
 			healthDataConsentAt = null;
 		}
 		const profileUpdate: Updatable<'user_profiles'> = {
@@ -1418,7 +1420,7 @@
 					{/if}
 				</label>
 			</div>
-			<label class="consent-checkbox">
+			<label class="consent-checkbox" id="health-data-consent">
 				<input type="checkbox" bind:checked={healthDataConsent} />
 				<span>
 					{m('settingsAccount.healthConsentLabel')}

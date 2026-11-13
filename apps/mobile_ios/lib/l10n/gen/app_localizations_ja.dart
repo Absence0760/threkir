@@ -517,6 +517,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count件のアクティビティを心拍数なしでインポートしました',
+    );
+    return '$_temp0。Threkir は、健康データの利用に同意した場合にのみ心拍数を保存します。';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Apple Watch、Nike Run Club、Strava など、ヘルスケアに書き込む各アプリで記録したワークアウトを取り込みます';
 
@@ -1242,7 +1252,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      '身長と体重は、特別な種類の個人データにあたる健康データです。オフにして保存すると、これらのデータが削除されます。';
+      'このオプションがオンの間に限り、Threkirはあなたの性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録を保存し、これらと生年月日を健康データとして（GDPR 第9条(2)(a)）、トレーニングと栄養目標のパーソナライズ、および性別・年齢区分別のセグメントのランキングへの振り分けに使用します。オフにして保存すると同意が撤回され、これらのデータが削除されます。生年月日は年齢の記録として残ります。';
 
   @override
   String get bodyMetricsHeight => '身長';
@@ -1282,10 +1292,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      '保存されている身長、性別、体重の履歴と、月経周期や妊娠に関する情報（ある場合）が完全に削除されます。また、生年月日はトレーニングのパーソナライズに使われなくなります。この操作は元に戻せません。';
+      '性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録が完全に削除されます。アクティビティ自体は残ります。生年月日は年齢の記録として残りますが、健康データとしては使われなくなります。この操作は元に戻せません。';
 
   @override
   String get bodyMetricsWithdrawConfirm => '撤回して削除';
+
+  @override
+  String get healthConsentFoodTitle => '食事記録は健康データです';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir は、健康データの利用に同意した場合にのみ食事記録を保存します。同意するまで何も記録されません。';
+
+  @override
+  String get healthConsentGiveAction => '同意内容を確認する';
 
   @override
   String get bodyMetricsSaved => '保存しました';
@@ -1938,7 +1958,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'ペース・心拍・カロリーの推定をパーソナライズするために、Threkir が性別と生年月日を使用することに同意します（特別な区分の健康データ、GDPR 第9条）。';
+      'Threkirが私の性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録を保存し、これらと生年月日を健康データとして（GDPR 第9条(2)(a)）、トレーニングと栄養目標のパーソナライズ、および性別・年齢区分別のセグメントのランキングへの振り分けに使用することに同意します。この同意はいつでも撤回できます。';
 
   @override
   String get setupPrivacyTitle => 'ランは誰が見られる？';
@@ -2224,6 +2244,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSyncing => '同期中…';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'このアクティビティの心拍数は保存されていません。Threkir は、健康データの利用に同意した場合にのみ心拍数を保存します。';
 
   @override
   String get runDone => '完了';
@@ -6234,7 +6258,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventRemoveResultBody =>
-      '登録したフィニッシュタイムがこのイベントのリーダーボードから削除されます。後で再度登録できます。';
+      '登録したフィニッシュタイムがこのイベントのランキングから削除されます。後で再度登録できます。';
 
   @override
   String get eventRemoveResultConfirm => '結果を削除';
@@ -10633,7 +10657,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSegEffortsNoRoute =>
-      'セグメントはルートごとに対応します。このランを保存済みルートに紐付けるとリーダーボードで競えます。';
+      'セグメントはルートごとに照合されます。このランを保存済みルートに紐付けると、そのランキングで競えます。';
 
   @override
   String get runSegEffortsEmpty => 'このランにセグメント記録はありません。';
@@ -13079,7 +13103,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      '身長・体重・生年月日・性別は健康データのため、同意のうえで編集します。';
+      '身長・体重・生年月日・性別は健康データのため、同意したうえで編集します。';
 
   @override
   String get nutritionTargetsEditMetrics => '身体データを編集';
@@ -17385,8 +17409,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get eventResultEditHelp =>
-      '編集した内容でリーダーボードのタイムが置き換わり、主催者による編集として表示されます。';
+  String get eventResultEditHelp => '編集した内容でランキングのタイムが置き換わり、主催者による編集として表示されます。';
 
   @override
   String get eventResultEditTime => 'タイム (h:mm:ss)';

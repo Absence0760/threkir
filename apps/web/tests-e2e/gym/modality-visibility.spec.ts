@@ -25,7 +25,7 @@ test.describe('gym and nutrition visibility switches', () => {
 	let user: SagaUser;
 
 	test.beforeAll(async () => {
-		[user] = await createSagaUsers(1, { displayNames: ['Modality Saga'] });
+		[user] = await createSagaUsers(1, { healthConsent: true, displayNames: ['Modality Saga'] });
 	});
 
 	test.afterAll(async () => {

@@ -84,7 +84,7 @@ test.describe('history cross-modal timeline journey — three modalities interle
 		let foodId: string | null = null;
 
 		try {
-			users = await createSagaUsers(1, { displayNames: ['Cross-Modal Saga'] });
+			users = await createSagaUsers(1, { healthConsent: true, displayNames: ['Cross-Modal Saga'] });
 			const user = users[0];
 
 			// ── Seed all three modalities for this clean, fully-owned canvas ──

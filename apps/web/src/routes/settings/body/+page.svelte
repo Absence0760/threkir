@@ -6,7 +6,7 @@
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
-	import { fetchLatestWeightKg, recordWeightKg } from '#lib/core/data.ts';
+	import { fetchLatestWeightKg, recordWeightKg, forgetHealthDataConsent } from '#lib/core/data.ts';
 	import {
 		kgToDisplay,
 		displayToKg,
@@ -172,6 +172,7 @@
 					return;
 				}
 				if (stampedAt) healthDataConsentAt = stampedAt as string;
+				forgetHealthDataConsent();
 			}
 			if (!healthDataConsent) {
 				// Art 7(3): one SECURITY DEFINER RPC nulls the consent stamp +
@@ -183,6 +184,7 @@
 					'withdraw_health_data_consent',
 				);
 				if (withdrawErr) throw dbError(withdrawErr);
+				forgetHealthDataConsent();
 				healthDataConsentAt = null;
 				loadedWeightKg = null;
 				weightInput = null;

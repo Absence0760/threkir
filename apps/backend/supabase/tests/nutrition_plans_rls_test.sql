@@ -25,6 +25,13 @@ values
   ('99999999-0000-0000-0000-0000000e0a03', 'authenticated', 'authenticated', 'client@np.local', '', now(), now()),
   ('99999999-0000-0000-0000-0000000e0a04', 'authenticated', 'authenticated', 'assigner@np.local', '', now(), now());
 
+-- Food and heart rate are stored only with health-data consent (decisions § 2514).
+insert into user_profiles (id, health_data_consent_at)
+values
+  ('99999999-0000-0000-0000-0000000e0a01', now()),
+  ('99999999-0000-0000-0000-0000000e0a03', now())
+on conflict (id) do update set health_data_consent_at = excluded.health_data_consent_at;
+
 insert into nutrition_plans (id, author_id, title, target_calories, target_protein_g)
 values
   ('99999999-0000-0000-0000-0000000e0b01', '99999999-0000-0000-0000-0000000e0a01', 'Marathon build', 2600, 150),

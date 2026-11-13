@@ -23,6 +23,8 @@
 		createRecipe,
 		deleteRecipe,
 		logRecipe,
+		fetchHealthDataConsented,
+		isFoodConsentRequiredError,
 		fetchNutritionPlansWithError,
 		fetchNutritionPlansByIds,
 		fetchMyNutritionAssignmentsWithError,
@@ -90,6 +92,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
+	import HealthConsentNotice from '#lib/components/HealthConsentNotice.svelte';
 	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
 	import NutritionPlanLibrary from '#lib/components/NutritionPlanLibrary.svelte';
 	import NutritionAdherencePanel from '#lib/components/NutritionAdherencePanel.svelte';
@@ -247,6 +250,17 @@
 			document.removeEventListener('visibilitychange', onVisibility);
 			if (rolloverTimer !== null) clearTimeout(rolloverTimer);
 		};
+	});
+
+	// A food log is health data, kept only with health-data consent (decisions
+	// § 2514). Without it the diary reads empty (the rows are hidden, not
+	// deleted) and every log is refused, so the page says so once, at the top.
+	let foodConsentAbsent = $state(false);
+	$effect(() => {
+		fetchHealthDataConsented().then(
+			(given) => (foodConsentAbsent = !given),
+			() => {},
+		);
 	});
 
 	async function load() {
@@ -502,7 +516,8 @@
 			showToast(m('nutrition.templateLogged', { n, name: t.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.templateLogFailed', { error: errorCopy(e, m, 'nutrition.templateLogFailed') }), 'error');
+			if (isFoodConsentRequiredError(e)) foodConsentAbsent = true;
+			else showToast(m('nutrition.templateLogFailed', { error: errorCopy(e, m, 'nutrition.templateLogFailed') }), 'error');
 		} finally {
 			loggingTemplateId = null;
 		}
@@ -570,7 +585,8 @@
 			showToast(m('nutrition.recipeLogged', { n, name: r.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.recipeLogFailed', { error: errorCopy(e, m, 'nutrition.recipeLogFailed') }), 'error');
+			if (isFoodConsentRequiredError(e)) foodConsentAbsent = true;
+			else showToast(m('nutrition.recipeLogFailed', { error: errorCopy(e, m, 'nutrition.recipeLogFailed') }), 'error');
 		} finally {
 			loggingRecipeId = null;
 		}
@@ -737,6 +753,10 @@
 			<button class="btn btn-primary" type="button" onclick={() => (showLog = true)} data-testid="log-food">{m('nutrition.logFood')}</button>
 		{/snippet}
 	</PageHeader>
+
+	{#if foodConsentAbsent}
+		<HealthConsentNotice testid="food-consent-notice" message={m('healthConsent.foodNeedsConsent')} />
+	{/if}
 
 	<div class="day-bar">
 		<nav class="day-nav" aria-label={m('nutrition.day.navLabel')}>

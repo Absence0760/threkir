@@ -1329,6 +1329,10 @@ Data Safety disclosable). Plan:
   prod gate that keeps that flow dark until sign-off (decisions § 188). Gate
   the nutrition launch on those doc updates (`/audit/*` covers the surfaces).
 
+### The food log needs health-data consent (decisions § 2514)
+
+`food_log` is special-category data and the database enforces it: `food_log_health_gate` refuses an insert or update without `health_data_consent_at` (42501), and a restrictive select policy hides the rows. Rows logged before the gate by a runner without consent are hidden, not deleted; consent shows them again and a withdrawal erases them. Web: `LogFoodPanel` and `/nutrition` show `HealthConsentNotice` (linking to `/settings/account#health-data-consent`) instead of the composer, and a template or recipe log refused for consent shows the same notice. Mobile: every food entry point (`_logFood`, `_logFromPhoto`, `_logTemplate`, `_logRecipe` on the Nutrition tab, `_openAddMeal` on the Train timeline) calls `ensureFoodLogConsent`, which asks first and opens Body metrics; nothing reaches the local store until consent is on record. Meal templates and recipes are plans, not intake, and stay ungated.
+
 ## `activities` view at scale
 
 The view UNION-ALLs runs (potentially thousands) with the gym branch

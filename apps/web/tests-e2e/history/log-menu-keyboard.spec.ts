@@ -23,7 +23,7 @@ test.describe('/history — Log menu keyboard and focus', () => {
 	let user: SagaUser;
 
 	test.beforeAll(async () => {
-		[user] = await createSagaUsers(1, { displayNames: ['Log Menu Keyboard'] });
+		[user] = await createSagaUsers(1, { healthConsent: true, displayNames: ['Log Menu Keyboard'] });
 		const admin = getAdminClient();
 		const at = browserDayAt(-1, 18);
 		const lift = await admin

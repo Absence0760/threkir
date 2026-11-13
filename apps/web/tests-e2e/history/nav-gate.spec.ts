@@ -23,7 +23,7 @@ test.describe('History nav gate', () => {
 	let lifter: SagaUser;
 
 	test.beforeAll(async () => {
-		[runner, lifter] = await createSagaUsers(2, {
+		[runner, lifter] = await createSagaUsers(2, { healthConsent: true,
 			displayNames: ['History Gate Runner', 'History Gate Lifter'],
 		});
 		await insertRun({ user_id: runner.id, started_at: browserDayAt(-1, 8), duration_s: 1500, distance_m: 5000 });

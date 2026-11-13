@@ -29,7 +29,7 @@ test.describe('dashboard legibility', () => {
 	let workoutId: string | null = null;
 
 	test.beforeAll(async () => {
-		[runner] = await createSagaUsers(1, { displayNames: ['Legibility Runner'] });
+		[runner] = await createSagaUsers(1, { healthConsent: true, displayNames: ['Legibility Runner'] });
 		await setUserSetting(runner.id, 'hr_zones', { z1: 130, z2: 145, z3: 160, z4: 175, z5: 195 });
 		await insertRun({
 			user_id: runner.id,

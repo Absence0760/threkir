@@ -138,7 +138,7 @@ test.describe('Legal pages', () => {
 			'open Body metrics under Profile in the You tab, turn off the switch at the top of the screen (in English it reads "Store health data"'
 		);
 		expect(privacy).toContain(
-			'Every path then asks you to confirm, because withdrawing permanently erases your stored height, gender, weight history and any cycle or pregnancy details'
+			'Every path then asks you to confirm, because withdrawing permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log'
 		);
 		expect(privacy).not.toContain('withdrawing blocks the corresponding processing immediately');
 		// M3: the full copy is the server-built archive, named as each platform

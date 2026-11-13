@@ -32,6 +32,7 @@ import 'package:ui_kit/ui_kit.dart'
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../health_consent_gate.dart';
 import '../mascot.dart';
 import '../widgets/grisnir_moments.dart';
 import '../fitness_surface_requests.dart';
@@ -843,6 +844,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // Finished run
   cm.Run? _finishedRun;
   bool _synced = false;
+  // Health-data consent, read when the run starts so the finish never waits
+  // on the network: true / false, or null when it could not be read. Heart
+  // rate shows live either way; without consent it is not saved
+  // (decisions § 2514).
+  bool? _healthConsent;
+  // The finished run had heart rate that was not saved for want of consent.
+  bool _heartRateNotSaved = false;
   String? _syncError;
 
   // Active-plan overview; drives the Training plans chip on idle.
@@ -2388,7 +2396,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// Base URL of the spectator web app.
   String _liveLinkBase() => resolveWebBaseUrl();
 
+  Future<void> _loadHealthConsent() async {
+    final consented = await healthDataConsented(widget.apiClient);
+    if (mounted) _healthConsent = consented;
+  }
+
   Future<void> _begin() async {
+    unawaited(_loadHealthConsent());
     // In the common case prepare has already completed during the 3-second
     // countdown, so this await is a no-op. On a slow device it waits for
     // the GPS stream to come up before starting the clock. If prepare
@@ -4228,6 +4242,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // skip clearInProgress so the next launch promotes the partial via
     // the recovery path in main.dart. Pinned by
     // architecture_guards_test.dart#_stop saves before clearInProgress.
+    // Without health-data consent the heart rate stays on screen during the
+    // run and is not saved (decisions § 2514). Consent unknown (offline at
+    // the start) keeps it on this device; the upload strips it then.
+    final heartRateNotSaved =
+        _healthConsent == false && cm.runHasHeartRate(run);
+    if (heartRateNotSaved) run = cm.runWithoutHeartRate(run);
+
     bool localSaved = false;
     try {
       await widget.runStore.save(run);
@@ -4252,6 +4273,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final guidedWasArmed = _guidedRun != null;
     setState(() {
       _finishedRun = run;
+      _heartRateNotSaved = heartRateNotSaved;
       _setScreenState(_ScreenState.finished);
       // A guided run is armed for ONE recording — the metadata above has the
       // attribution, and leaving it armed would silently script the next run.
@@ -5886,6 +5908,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             syncError: _syncError,
             onDone: _discard,
             milestone: milestone,
+            onGiveHealthConsent: _heartRateNotSaved
+                ? () => openHealthConsent(context,
+                    api: widget.apiClient,
+                    settingsSync: widget.settingsSync,
+                    preferences: widget.preferences)
+                : null,
           ),
         ),
       ],
@@ -5912,11 +5940,17 @@ class FinishedSummary extends StatelessWidget {
     required this.syncError,
     required this.onDone,
     this.milestone,
+    this.onGiveHealthConsent,
   });
 
   /// Grisnir's milestone for this run, or null; the caller passes null on a
   /// failed sync, a DNF and when the runner hides him.
   final MilestoneKind? milestone;
+
+  /// Non-null when the run's heart rate was not saved for want of
+  /// health-data consent: the summary says so and this opens the consent
+  /// screen (decisions § 2514).
+  final VoidCallback? onGiveHealthConsent;
 
   final String distanceValue;
   final String distanceUnit;
@@ -6006,6 +6040,13 @@ class FinishedSummary extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(l10n.runSyncing),
+                ],
+                if (onGiveHealthConsent != null) ...[
+                  const SizedBox(height: 12),
+                  HeartRateNotKeptNote(
+                    message: l10n.runHeartRateNotSaved,
+                    onGiveConsent: onGiveHealthConsent!,
+                  ),
                 ],
                 const SizedBox(height: 12),
                 FilledButton(onPressed: onDone, child: Text(l10n.runDone)),

@@ -1277,6 +1277,16 @@ create table user_profiles (
 -- auth.users cascade. See decisions § 718 for the two-store rule.
 ```
 
+**Heart rate and the food log follow the same consent** (migrations `20271227100001`-`20271227100009`, [decisions § 2514](../architecture/decisions.md)). One predicate, `private.health_data_consented(uid)`, serves every gate; `public.health_data_consented(p_user_id)` is its service-role-only wrapper for the Strava importers and the Go worker. Without consent on record:
+
+- **`runs`**: BEFORE INSERT OR UPDATE OF `metadata, hr_series_url` trigger `runs_health_hr_gate` strips `avg_bpm`, `max_bpm`, `hr_coverage` (`private.run_hr_metadata_keys()`) and nulls `hr_series_url`; the run is kept. On UPDATE, heart rate the row already held is moved to `private.withheld_run_hr` (`run_id` PK → `runs on delete cascade`, `user_id`, `hr jsonb`, `hr_series_url`, `withheld_at`; RLS on, service role only) rather than lost. Every writer is gated, the service role included.
+- **`gym_workouts`**: `gym_workouts_health_hr_gate` strips the same keys from `metadata` (no writer stores gym heart rate today).
+- **`race_pings`**: `race_pings_strip_bpm_before_insert` nulls `bpm`, as `live_run_pings_strip_bpm` does for live pings.
+- **`food_log`**: `food_log_health_gate` refuses an insert or update (42501, every role); the RESTRICTIVE policy "food_log needs health consent" hides the caller's rows; `public_food_log` carries the same term inline (a function call there would run with the reader's EXECUTE rights).
+- **Storage**: RESTRICTIVE policies on `storage.objects` refuse reading, uploading or overwriting a `runs`-bucket object named `%.hr.json.gz`.
+
+The pre-gate backlog is hidden, not deleted: `private.drain_unconsented_run_hr(p_scan)` walks `runs` by primary key from the cursor in `private.health_backlog_drain` (pg_cron `withhold-unconsented-run-hr`, every minute, 2000 ids, unschedules itself when done) and re-writes `metadata` on rows still carrying heart rate for an owner without consent, so the trigger holds it. The AFTER trigger `user_profiles_health_consent_transition` restores held heart rate when consent is given (`private.restore_withheld_health_records`) and erases on a non-null → null transition (`private.erase_health_records`: the held rows, the runs' heart-rate keys and sidecar path, the whole food log, live and race ping bpm, and one `health_hr_erase` job for the Storage copies). `withdraw_health_data_consent()` keeps everything above and also erases for a runner who never consented. `private.purge_health_backlog(p_users)` (pg_cron `purge-health-backlog`, 04:31 UTC) erases the rest only while the `health_backlog_purge` feature flag is on; `ops/prod_config.json` declares it off. Pinned by `health_consent_hr_food_gate_test.sql`.
+
 **The AI consent record is VERSIONED** (migration `20270511_001`, issue #734, decisions § 571).
 `coach_consent_at` alone could only answer *whether* someone consented, never *to what* — so
 `/api/coach/route-describe` and `/api/coach/route-request`, which ship a different payload (the
@@ -2580,10 +2590,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 234 migrations write a function-level `from public, anon` revoke
-today (211 as `revoke execute`, 32 as `revoke all`); it is the house form for
+trigger calls). 241 migrations write a function-level `from public, anon` revoke
+today (218 as `revoke execute`, 33 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 774 migrations in version order and fails the PR on
+keeps it — it replays all 783 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

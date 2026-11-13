@@ -857,6 +857,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{1 run is saved on this device — its upload to the cloud didn\'t go through. It will retry on the next sync.} other{{count} runs are saved on this device — their upload to the cloud didn\'t go through. They will retry on the next sync.}}'**
   String importStatusCloudPushDeferred(int count);
 
+  /// Note after an import whose activities were stored without heart rate, for want of health-data consent
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 activity was imported without its heart rate} other{{count} activities were imported without their heart rate}}: Threkir keeps heart rate only with your health-data consent.'**
+  String importHeartRateNotKept(int count);
+
   /// iOS subtitle naming apps that write to Apple Health
   ///
   /// In en, this message translates to:
@@ -2138,7 +2144,7 @@ abstract class AppLocalizations {
   /// Explanation under the health-data consent toggle
   ///
   /// In en, this message translates to:
-  /// **'Height and weight are special-category health data. Turn this off and save to erase them.'**
+  /// **'Threkir stores your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and uses them and your date of birth as health data (GDPR Art 9(2)(a)) to personalise your training and nutrition targets and to place you in gender and age-band segment leaderboards, only while this is on. Turn it off and save to withdraw consent and erase them; your date of birth stays as your age record.'**
   String get bodyMetricsConsentSubtitle;
 
   /// Label for the height input (centimetres)
@@ -2216,7 +2222,7 @@ abstract class AppLocalizations {
   /// No description provided for @bodyMetricsWithdrawBody.
   ///
   /// In en, this message translates to:
-  /// **'This permanently erases your saved height, gender, weight history and any cycle or pregnancy details, and your date of birth is no longer used to personalise your training. This can\'t be undone.'**
+  /// **'This permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log. Your activities themselves are kept, and your date of birth stays as your age record but is no longer used as health data. This can\'t be undone.'**
   String get bodyMetricsWithdrawBody;
 
   /// No description provided for @bodyMetricsWithdrawConfirm.
@@ -2224,6 +2230,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Withdraw & erase'**
   String get bodyMetricsWithdrawConfirm;
+
+  /// Title of the dialog asking for health-data consent before the first food is logged (decisions § 2514)
+  ///
+  /// In en, this message translates to:
+  /// **'Your food log is health data'**
+  String get healthConsentFoodTitle;
+
+  /// Body of the dialog asking for health-data consent before food is logged
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.'**
+  String get healthConsentFoodBody;
+
+  /// Button that opens the screen where health-data consent is reviewed and given; tapping it does not give consent itself
+  ///
+  /// In en, this message translates to:
+  /// **'Review consent'**
+  String get healthConsentGiveAction;
 
   /// Confirmation toast after saving body metrics
   ///
@@ -3404,7 +3428,7 @@ abstract class AppLocalizations {
   /// Setup wizard health-data (GDPR Art 9) consent checkbox label
   ///
   /// In en, this message translates to:
-  /// **'I consent to Threkir using my gender and date of birth to personalise pace, heart-rate and calorie estimates (special-category health data, GDPR Art 9).'**
+  /// **'I consent to Threkir storing my gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with my activities, the heart-rate targets in my plans, my heart-rate medication setting and my food log, and using them and my date of birth as health data (GDPR Art 9(2)(a)) to personalise my training and nutrition targets and to place me in gender and age-band segment leaderboards. I can withdraw this consent at any time.'**
   String get setupHealthConsent;
 
   /// Setup wizard privacy-default step title
@@ -3916,6 +3940,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Syncing...'**
   String get runSyncing;
+
+  /// Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2514)
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate from this activity wasn\'t saved: Threkir keeps heart rate only with your health-data consent.'**
+  String get runHeartRateNotSaved;
 
   /// Button on the finish summary that dismisses back to the idle run screen
   ///
@@ -21985,7 +22015,7 @@ abstract class AppLocalizations {
   /// No description provided for @nutritionNoTargets.
   ///
   /// In en, this message translates to:
-  /// **'Add your height, weight, age and sex to see calorie + macro targets.'**
+  /// **'Add your height, weight, age and gender to see calorie + macro targets.'**
   String get nutritionNoTargets;
 
   /// CTA on the nutrition rings card that opens the Body metrics page
@@ -22093,7 +22123,7 @@ abstract class AppLocalizations {
   /// Hint explaining that body metrics are health data edited behind the consent gate; the Edit body metrics button beside the heading opens them
   ///
   /// In en, this message translates to:
-  /// **'Height, weight, date of birth and sex are health data, so they\'re edited behind their consent gate.'**
+  /// **'Height, weight, date of birth and gender are health data, so they\'re edited behind their consent gate.'**
   String get nutritionTargetsMetricsHint;
 
   /// Action opening the consent-gated Body metrics page
@@ -22117,7 +22147,7 @@ abstract class AppLocalizations {
   /// Body of the no-targets-yet state on the targets screen
   ///
   /// In en, this message translates to:
-  /// **'Add your height, weight, date of birth and sex and your calorie + macro targets appear here.'**
+  /// **'Add your height, weight, date of birth and gender and your calorie + macro targets appear here.'**
   String get nutritionTargetsEmptyBody;
 
   /// Body-metrics row label for age

@@ -1,5 +1,7 @@
 {
-  "feature_flags": {},
+  "feature_flags": {
+    "health_backlog_purge": { "enabled": false }
+  },
   "function_env": {},
   "web_env": {},
   "cron_urls": [],

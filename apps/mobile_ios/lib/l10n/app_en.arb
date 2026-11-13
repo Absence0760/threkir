@@ -763,6 +763,15 @@
       }
     }
   },
+  "importHeartRateNotKept": "{count, plural, one{1 activity was imported without its heart rate} other{{count} activities were imported without their heart rate}}: Threkir keeps heart rate only with your health-data consent.",
+  "@importHeartRateNotKept": {
+    "description": "Note after an import whose activities were stored without heart rate, for want of health-data consent",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "importHealthSubtitleIos": "Pull workouts you've recorded on Apple Watch, Nike Run Club, Strava, and other apps that write to Apple Health",
   "@importHealthSubtitleIos": {
     "description": "iOS subtitle naming apps that write to Apple Health"
@@ -1700,7 +1709,7 @@
   "@bodyMetricsConsentTitle": {
     "description": "Toggle title for the GDPR Art 9 health-data consent gate"
   },
-  "bodyMetricsConsentSubtitle": "Height and weight are special-category health data. Turn this off and save to erase them.",
+  "bodyMetricsConsentSubtitle": "Threkir stores your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and uses them and your date of birth as health data (GDPR Art 9(2)(a)) to personalise your training and nutrition targets and to place you in gender and age-band segment leaderboards, only while this is on. Turn it off and save to withdraw consent and erase them; your date of birth stays as your age record.",
   "@bodyMetricsConsentSubtitle": {
     "description": "Explanation under the health-data consent toggle"
   },
@@ -1746,8 +1755,20 @@
   },
   "bodyMetricsConsentRequired": "Turn on health-data storage to save height and weight.",
   "bodyMetricsWithdrawTitle": "Withdraw health-data consent?",
-  "bodyMetricsWithdrawBody": "This permanently erases your saved height, gender, weight history and any cycle or pregnancy details, and your date of birth is no longer used to personalise your training. This can't be undone.",
+  "bodyMetricsWithdrawBody": "This permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log. Your activities themselves are kept, and your date of birth stays as your age record but is no longer used as health data. This can't be undone.",
   "bodyMetricsWithdrawConfirm": "Withdraw & erase",
+  "healthConsentFoodTitle": "Your food log is health data",
+  "@healthConsentFoodTitle": {
+    "description": "Title of the dialog asking for health-data consent before the first food is logged (decisions § 2514)"
+  },
+  "healthConsentFoodBody": "Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.",
+  "@healthConsentFoodBody": {
+    "description": "Body of the dialog asking for health-data consent before food is logged"
+  },
+  "healthConsentGiveAction": "Review consent",
+  "@healthConsentGiveAction": {
+    "description": "Button that opens the screen where health-data consent is reviewed and given; tapping it does not give consent itself"
+  },
   "@bodyMetricsConsentRequired": {
     "description": "Error shown when saving body data without consent"
   },
@@ -2621,7 +2642,7 @@
   "@setupWeightPlaceholder": {
     "description": "Setup wizard weight field placeholder"
   },
-  "setupHealthConsent": "I consent to Threkir using my gender and date of birth to personalise pace, heart-rate and calorie estimates (special-category health data, GDPR Art 9).",
+  "setupHealthConsent": "I consent to Threkir storing my gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with my activities, the heart-rate targets in my plans, my heart-rate medication setting and my food log, and using them and my date of birth as health data (GDPR Art 9(2)(a)) to personalise my training and nutrition targets and to place me in gender and age-band segment leaderboards. I can withdraw this consent at any time.",
   "@setupHealthConsent": {
     "description": "Setup wizard health-data (GDPR Art 9) consent checkbox label"
   },
@@ -2997,6 +3018,10 @@
   "runSyncing": "Syncing...",
   "@runSyncing": {
     "description": "Status on the finish summary while the run is uploading"
+  },
+  "runHeartRateNotSaved": "Heart rate from this activity wasn't saved: Threkir keeps heart rate only with your health-data consent.",
+  "@runHeartRateNotSaved": {
+    "description": "Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2514)"
   },
   "runDone": "Done",
   "@runDone": {
@@ -17991,7 +18016,7 @@
   "nutritionWater": "Water",
   "nutritionWaterAdd": "Add water",
   "nutritionWaterRemove": "Remove water",
-  "nutritionNoTargets": "Add your height, weight, age and sex to see calorie + macro targets.",
+  "nutritionNoTargets": "Add your height, weight, age and gender to see calorie + macro targets.",
   "nutritionAddBodyMetrics": "Add body metrics",
   "@nutritionAddBodyMetrics": {
     "description": "CTA on the nutrition rings card that opens the Body metrics page"
@@ -18075,7 +18100,7 @@
   "@nutritionTargetsMetricsHeading": {
     "description": "Heading of the read-only body-metrics card"
   },
-  "nutritionTargetsMetricsHint": "Height, weight, date of birth and sex are health data, so they're edited behind their consent gate.",
+  "nutritionTargetsMetricsHint": "Height, weight, date of birth and gender are health data, so they're edited behind their consent gate.",
   "@nutritionTargetsMetricsHint": {
     "description": "Hint explaining that body metrics are health data edited behind the consent gate; the Edit body metrics button beside the heading opens them"
   },
@@ -18091,7 +18116,7 @@
   "@nutritionTargetsEmptyTitle": {
     "description": "Title of the no-targets-yet state on the targets screen"
   },
-  "nutritionTargetsEmptyBody": "Add your height, weight, date of birth and sex and your calorie + macro targets appear here.",
+  "nutritionTargetsEmptyBody": "Add your height, weight, date of birth and gender and your calorie + macro targets appear here.",
   "@nutritionTargetsEmptyBody": {
     "description": "Body of the no-targets-yet state on the targets screen"
   },

@@ -202,6 +202,7 @@ insert into server_only (fn, keeps_service_role) values
   ('jobs_backlog_summary', true),
   ('jobs_failed_summary', true),
   ('jobs_stuck_summary', true),
+  ('health_data_consented', true),
   ('live_heart_rate_shared', true),
   ('map_match_track_source', true),
   ('notify_data_export_ready', true),

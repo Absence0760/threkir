@@ -21,6 +21,7 @@ import type {
 import { isEntityId } from './entity_id';
 import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
+import { stripHeartRate } from './heart_rate_consent';
 import {
 	keysetAfter,
 	literalSubstringPattern,
@@ -1843,6 +1844,40 @@ export async function createManualRun(input: {
 	return { id: runId };
 }
 
+/// Whether the signed-in runner has health-data consent on record, read
+/// through `get_my_profile()` (the column is closed to a direct select).
+/// Remembered for 30 s so a bulk import does not ask once per run;
+/// `forgetHealthDataConsent()` drops it after a grant or a withdrawal. A
+/// failed read throws rather than guessing: answering "no" would strip a
+/// consenting runner's heart rate for good, answering "yes" would upload it.
+let healthConsentMemo: { userId: string; consented: boolean; at: number } | null = null;
+const HEALTH_CONSENT_MEMO_MS = 30_000;
+
+export async function fetchHealthDataConsented(): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return false;
+	const memo = healthConsentMemo;
+	if (memo && memo.userId === userId && Date.now() - memo.at < HEALTH_CONSENT_MEMO_MS) {
+		return memo.consented;
+	}
+	const { data, error } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
+	if (error) throw dbError(error);
+	const consented = (data as { health_data_consent_at?: string | null } | null)?.health_data_consent_at != null;
+	healthConsentMemo = { userId, consented, at: Date.now() };
+	return consented;
+}
+
+export function forgetHealthDataConsent(): void {
+	healthConsentMemo = null;
+}
+
+/// SQLSTATE 42501 with the food_log gate's message (migration
+/// 20271227100004): the runner has no health-data consent, so nothing was
+/// stored. A surface shows the consent notice for it rather than an error.
+export function isFoodConsentRequiredError(err: unknown): boolean {
+	return err instanceof DbError && err.code === '42501' && /food_log/.test(err.message);
+}
+
 /// Insert a run from an importer (Strava zip, GPX bulk, etc). Uploads
 /// an optional `track` to the Storage bucket and stores the path in
 /// `track_url`. For callers without a GPS track, pass `track: undefined`
@@ -1878,11 +1913,17 @@ export async function saveRun(input: {
 	/// import honours the runner's default visibility.
 	isPublic?: boolean;
 	followersOnly?: boolean;
-}): Promise<{ id: string; trackUploaded: boolean; trackError?: string }> {
+}): Promise<{ id: string; trackUploaded: boolean; trackError?: string; heartRateDropped: boolean }> {
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	const audience = await runAudienceFor(userId, input);
+	// Heart rate is kept only with health-data consent (decisions § 2514). The
+	// database strips the row's keys itself, but not the bpm inside the track
+	// blob, and Storage refuses the HR sidecar, so the input is stripped here.
+	const stripped = (await fetchHealthDataConsented()) ? input : stripHeartRate(input);
+	const heartRateDropped = stripped !== input;
+	input = stripped;
 
 	// `title` has no DB column, so it survives the round-trip in metadata only.
 	// `elevation_m` is different: migration 20270302_001 promoted total ascent to
@@ -2003,7 +2044,7 @@ export async function saveRun(input: {
 
 	await recomputeChallengesForRun(input.started_at);
 
-	return { id: runId, trackUploaded, trackError };
+	return { id: runId, trackUploaded, trackError, heartRateDropped };
 }
 
 async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {

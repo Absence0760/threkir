@@ -18,6 +18,12 @@ const L10N = resolve(HERE, '../../../../mobile_android/lib/l10n');
 const PAIRS: [web: string, arb: string][] = [
 	['socialNearby.heading', 'peopleNearbyHeader'],
 	['prefs.discoverableNearby', 'prefsDiscoverableNearby'],
+	// Health-data consent: the statement a runner agrees to and the withdrawal
+	// they confirm read the same on both (decisions § 2514).
+	['onboarding.healthConsent', 'setupHealthConsent'],
+	['prefs.withdrawConsentMessage', 'bodyMetricsWithdrawBody'],
+	['nutrition.targets.metricsHint', 'nutritionTargetsMetricsHint'],
+	['nutrition.targets.emptyBody', 'nutritionTargetsEmptyBody'],
 ];
 
 const ARB_FILE: Record<Locale, string> = {

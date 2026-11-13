@@ -538,6 +538,17 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aktivitäten wurden ohne Herzfrequenz importiert',
+      one: '1 Aktivität wurde ohne Herzfrequenz importiert',
+    );
+    return '$_temp0: Threkir speichert die Herzfrequenz nur mit deiner Einwilligung zu Gesundheitsdaten.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Hole Workouts, die du auf der Apple Watch, in Nike Run Club, Strava und anderen Apps aufgezeichnet hast, die in Apple Health schreiben';
 
@@ -1305,7 +1316,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Größe und Gewicht sind Gesundheitsdaten und gehören zu den besonderen Kategorien personenbezogener Daten. Schalte die Option aus und speichere, um sie zu löschen.';
+      'Threkir speichert dein Geschlecht, deine Größe, deinen Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in deinen Plänen, deine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und dein Ernährungstagebuch und nutzt sie zusammen mit deinem Geburtsdatum als Gesundheitsdaten (Art. 9 Abs. 2 lit. a DSGVO), um dein Training und deine Ernährungsziele zu personalisieren und dich in Segment-Bestenlisten nach Geschlecht und Altersgruppe einzuordnen – nur solange diese Option aktiviert ist. Schalte sie aus und speichere, um die Einwilligung zu widerrufen und diese Daten zu löschen; dein Geburtsdatum bleibt als Altersangabe gespeichert.';
 
   @override
   String get bodyMetricsHeight => 'Größe';
@@ -1351,10 +1362,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Dadurch werden deine gespeicherte Größe, dein Geschlecht, dein Gewichtsverlauf und alle Angaben zu Zyklus oder Schwangerschaft dauerhaft gelöscht, und dein Geburtsdatum wird nicht mehr verwendet, um dein Training zu personalisieren. Das kann nicht rückgängig gemacht werden.';
+      'Dadurch werden dein Geschlecht, deine Größe, dein Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in deinen Plänen, deine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und dein Ernährungstagebuch dauerhaft gelöscht. Deine Aktivitäten selbst bleiben erhalten, und dein Geburtsdatum bleibt als Altersangabe gespeichert, wird aber nicht mehr als Gesundheitsdatum genutzt. Das kann nicht rückgängig gemacht werden.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Widerrufen & löschen';
+
+  @override
+  String get healthConsentFoodTitle =>
+      'Dein Ernährungstagebuch zählt zu den Gesundheitsdaten';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir speichert ein Ernährungstagebuch nur mit deiner Einwilligung zu Gesundheitsdaten. Bis du sie erteilst, wird nichts erfasst.';
+
+  @override
+  String get healthConsentGiveAction => 'Einwilligung prüfen';
 
   @override
   String get bodyMetricsSaved => 'Gespeichert';
@@ -2037,7 +2059,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'Ich willige ein, dass Threkir mein Geschlecht und Geburtsdatum verwendet, um Tempo-, Herzfrequenz- und Kalorienschätzungen zu personalisieren (besondere Gesundheitsdaten, DSGVO Art. 9).';
+      'Ich willige ein, dass Threkir mein Geschlecht, meine Größe, meinen Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit meinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in meinen Plänen, meine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und mein Ernährungstagebuch speichert und sie zusammen mit meinem Geburtsdatum als Gesundheitsdaten (Art. 9 Abs. 2 lit. a DSGVO) nutzt, um mein Training und meine Ernährungsziele zu personalisieren und mich in Segment-Bestenlisten nach Geschlecht und Altersgruppe einzuordnen. Ich kann diese Einwilligung jederzeit widerrufen.';
 
   @override
   String get setupPrivacyTitle => 'Wer sieht deine Läufe?';
@@ -2332,6 +2354,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runSyncing => 'Synchronisiere …';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'Die Herzfrequenz dieser Aktivität wurde nicht gespeichert: Threkir speichert die Herzfrequenz nur mit deiner Einwilligung zu Gesundheitsdaten.';
 
   @override
   String get runDone => 'Fertig';
@@ -8201,15 +8227,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast: dein Geburtsdatum und deine konfigurierten HF-Zonen, falls eingestellt.';
+      'Nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast: dein Geburtsdatum und deine konfigurierten HF-Zonen, falls eingestellt.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Ein Ausschnitt deiner letzten Läufe: das Datum, die Distanz, die Dauer, der Aktivitätstyp, die Höhenmeter, ob der Lauf drinnen stattfand und wie er im Vergleich zu einer geplanten Einheit lief, sowie deine durchschnittliche Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
+      'Ein Ausschnitt deiner letzten Läufe: das Datum, die Distanz, die Dauer, der Aktivitätstyp, die Höhenmeter, ob der Lauf drinnen stattfand und wie er im Vergleich zu einer geplanten Einheit lief, sowie deine durchschnittliche Herzfrequenz (nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletPlan =>
-      'Der Trainingsplan oder die Trainingspläne, die du ausgewählt hast: für jeden Plan sein Name, sein Status, das Zielrennen und die Zielzeit, die aktuelle 5-km-Zeit und der Fitnesswert, auf denen er beruht, seine Datumsangaben, Trainingstage, Regeln und Notizen; für jede Woche die Phase, die Zieldistanz und die Notizen; und für jede Einheit das Datum, die Art, die Vorgaben, der Aufbau, die Notizen, der Name und die Priorität des Rennens und ob du sie absolviert oder übersprungen hast, sowie die Herzfrequenzvorgaben (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
+      'Der Trainingsplan oder die Trainingspläne, die du ausgewählt hast: für jeden Plan sein Name, sein Status, das Zielrennen und die Zielzeit, die aktuelle 5-km-Zeit und der Fitnesswert, auf denen er beruht, seine Datumsangaben, Trainingstage, Regeln und Notizen; für jede Woche die Phase, die Zieldistanz und die Notizen; und für jede Einheit das Datum, die Art, die Vorgaben, der Aufbau, die Notizen, der Name und die Priorität des Rennens und ob du sie absolviert oder übersprungen hast, sowie die Herzfrequenzvorgaben (nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -8229,7 +8255,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Deine Distanzeinheit, dein Ruhe- und Maximalpuls (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
+      'Deine Distanzeinheit, dein Ruhe- und Maximalpuls (nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
 
   @override
   String get coachConsentBulletLifts =>
@@ -8237,7 +8263,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletNutrition =>
-      'Nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast: eine 7-Tage-Zusammenfassung deines Ernährungstagebuchs (erfasste Tage sowie Durchschnittswerte für Kalorien, Eiweiß, Kohlenhydrate und Fett), niemals einzelne Mahlzeiten.';
+      'Nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast: eine 7-Tage-Zusammenfassung deines Ernährungstagebuchs (erfasste Tage sowie Durchschnittswerte für Kalorien, Eiweiß, Kohlenhydrate und Fett), niemals einzelne Mahlzeiten.';
 
   @override
   String get coachConsentBulletPlanEdit =>
@@ -8245,7 +8271,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Die mit „nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast“ gekennzeichneten Angaben sind Gesundheitsdaten: Mit deiner Zustimmung willigst du ausdrücklich ein, dass sie für diese Funktionen an Anthropic übermittelt werden. Anthropic verarbeitet die Daten im Auftrag von Threkir gemäß seinen Auftragsverarbeitungsbedingungen, trainiert seine Modelle nicht damit und löscht sie innerhalb von 30 Tagen (länger nur bei Inhalten, die seine Sicherheitssysteme markieren). Du kannst diese Einwilligung jederzeit unter Konto im Tab „Du“ widerrufen; dadurch wird nichts weiter übermittelt, bereits Übermitteltes wird jedoch nicht rückgängig gemacht. Alle Details, einschließlich der Garantien für die Datenübermittlung, findest du in unserer Datenschutzerklärung.';
+      'Die mit „nur wenn du die Einwilligung zu Gesundheitsdaten erteilt hast“ gekennzeichneten Angaben sind Gesundheitsdaten: Mit deiner Zustimmung willigst du ausdrücklich ein, dass sie für diese Funktionen an Anthropic übermittelt werden. Anthropic verarbeitet die Daten im Auftrag von Threkir gemäß seinen Auftragsverarbeitungsbedingungen, trainiert seine Modelle nicht damit und löscht sie innerhalb von 30 Tagen (länger nur bei Inhalten, die seine Sicherheitssysteme markieren). Du kannst diese Einwilligung jederzeit unter Konto im Tab „Du“ widerrufen; dadurch wird nichts weiter übermittelt, bereits Übermitteltes wird jedoch nicht rückgängig gemacht. Alle Details, einschließlich der Garantien für die Datenübermittlung, findest du in unserer Datenschutzerklärung.';
 
   @override
   String get coachConsentAction =>
@@ -11795,7 +11821,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get workoutEditHrHint =>
-      'Lass das untere Ende leer für eine Obergrenze, etwa 125. Die Herzfrequenz ist ein Gesundheitsdatum, deshalb braucht ein Zielwert die Gesundheitsdaten-Einwilligung der laufenden Person.';
+      'Lass das untere Ende leer für eine Obergrenze, etwa 125. Die Herzfrequenz ist ein Gesundheitsdatum, deshalb braucht ein Zielwert die Einwilligung der laufenden Person zu Gesundheitsdaten.';
 
   @override
   String workoutEditErrRangeBounds(int min, int max) {
@@ -11808,7 +11834,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get workoutEditErrHrNeedsConsent =>
-      'Ein Herzfrequenz-Ziel braucht die Gesundheitsdaten-Einwilligung der laufenden Person. Lösche es oder bitte sie, in ihren Einstellungen einzuwilligen.';
+      'Eine Herzfrequenzvorgabe braucht die Einwilligung der laufenden Person zu Gesundheitsdaten. Lösche sie oder bitte die Person, in ihren Einstellungen einzuwilligen.';
 
   @override
   String get workoutEditNotesLabel => 'Notizen';
@@ -13881,7 +13907,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsHrMedicationNeedsConsent =>
-      'Das ist ein Gesundheitsdatum und braucht zuerst deine Gesundheitsdaten-Einwilligung.';
+      'Das ist ein Gesundheitsdatum und braucht zuerst deine Einwilligung zu Gesundheitsdaten.';
 
   @override
   String get prefsHrMedicationSetMaxHr =>
@@ -14477,7 +14503,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachingRosterHrDriftHint =>
-      'Bei geplanten lockeren Läufen der letzten zwei Wochen ist die Herzfrequenz beim gleichen Tempo höher als in den sechs Wochen davor. Nur für Athleten mit Gesundheitsdaten-Einwilligung angezeigt.';
+      'Bei geplanten lockeren Läufen der letzten zwei Wochen ist die Herzfrequenz beim gleichen Tempo höher als in den sechs Wochen davor. Nur für Athleten mit Einwilligung zu Gesundheitsdaten angezeigt.';
 
   @override
   String get metricEasyHrDriftLabel => 'Puls-Drift bei lockeren Läufen';
@@ -14997,7 +15023,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get roadbookWeightUnavailable =>
-      'Um die Flüssigkeit an deinem Körpergewicht auszurichten, trage dein Gewicht unter Körperdaten ein und erteile dort die Einwilligung für Gesundheitsdaten.';
+      'Um die Flüssigkeit an deinem Körpergewicht auszurichten, trage dein Gewicht unter Körperdaten ein und erteile dort die Einwilligung zu Gesundheitsdaten.';
 
   @override
   String get roadbookColTarget => 'Zielzeit';
@@ -18251,7 +18277,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventResultEditHelp =>
-      'Deine Änderung ersetzt diese Zeit in der Rangliste und wird als vom Veranstalter bearbeitet markiert.';
+      'Deine Änderung ersetzt diese Zeit in der Bestenliste und wird als vom Veranstalter bearbeitet markiert.';
 
   @override
   String get eventResultEditTime => 'Zeit (h:mm:ss)';
@@ -20860,7 +20886,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthData =>
-      'Pläne können dein Geburtsdatum nur mit deiner Einwilligung zur Nutzung von Gesundheitsdaten an dein Alter anpassen.';
+      'Pläne können dein Geburtsdatum nur mit deiner Einwilligung zu Gesundheitsdaten nutzen, um sich an dein Alter anzupassen.';
 
   @override
   String get planNewDobHintHealthDataAction => 'Einwilligung prüfen';
@@ -21178,11 +21204,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get streamerOverlayShowHeartRateHelp =>
-      'Die Herzfrequenz ist ein Gesundheitsdatum. Sie wird nur angezeigt, solange deine Einwilligung für Gesundheitsdaten aktiv ist.';
+      'Die Herzfrequenz ist ein Gesundheitsdatum. Sie wird nur angezeigt, solange deine Einwilligung zu Gesundheitsdaten aktiv ist.';
 
   @override
   String get streamerOverlayHeartRateNeedsConsent =>
-      'Die Herzfrequenz ist ein Gesundheitsdatum. Erteile die Einwilligung für Gesundheitsdaten, um sie anzuzeigen.';
+      'Die Herzfrequenz ist ein Gesundheitsdatum. Erteile die Einwilligung zu Gesundheitsdaten, um sie anzuzeigen.';
 
   @override
   String get streamerOverlayReviewConsent => 'Einwilligung prüfen';

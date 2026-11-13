@@ -1435,7 +1435,7 @@ export const en = {
 	"routeNew.saveFailedError": "Failed to save route",
 	"routesPage.pageTitle": "Routes",
 	"routesPage.sectionLabel": "Routes section",
-	"routesPage.tabMine": "My routes",
+	"routesPage.tabMine": "Mine",
 	"routesPage.tabExplore": "Explore",
 	"routesPage.tabHeatmap": "Heatmap",
 	"routesPage.loadingRoutes": "Loading your routes…",

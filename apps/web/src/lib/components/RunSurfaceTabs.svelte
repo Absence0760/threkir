@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { m } from '#lib/i18n/store.svelte.ts';
 
-	// Run-surface sub-tab strip: Runs · Plans · Races & courses · Routes · Segments,
-	// in the mobile strip's order (decisions § 2436). These are distinct surfaces at
+	// Run-surface sub-tab strip: Runs · Plans · Races & courses · Routes, in the
+	// mobile strip's order (decisions § 2436). These are distinct surfaces at
 	// distinct URLs, so the strip is a set of links (not an ARIA tablist — tabs
 	// imply same-page panels). Routes, Plans, and the race calendar were relocated
-	// out of their own sidebar slots to live under the run surface; the segment
-	// catalogue joined them rather than take an eighth sidebar slot of its own
-	// (decisions.md § 677). Park courses have no tab: they are the "Run any time"
-	// half of Races & courses, and `/parks` is reached from there and from Segments.
-	let { active }: { active: 'runs' | 'routes' | 'segments' | 'plans' | 'races' } = $props();
+	// out of their own sidebar slots to live under the run surface (decisions.md
+	// § 677). The segment catalogue had a tab here until issue #1374 (owner
+	// decision 1) made it Routes → Explore → Segments, so `/segments` marks
+	// Routes and carries RoutesViewNav. Park courses have no tab: they are the
+	// "Run any time" half of Races & courses, and `/parks` is reached from there
+	// and from Segments.
+	let { active }: { active: 'runs' | 'routes' | 'plans' | 'races' } = $props();
 </script>
 
 <nav class="surface-tabs" aria-label={m('runSurface.label')}>
@@ -24,9 +26,6 @@
 	</a>
 	<a class="surface-tab" class:active={active === 'routes'} href="/routes" aria-current={active === 'routes' ? 'page' : undefined}>
 		{m('runSurface.tabRoutes')}
-	</a>
-	<a class="surface-tab" class:active={active === 'segments'} href="/segments" aria-current={active === 'segments' ? 'page' : undefined}>
-		{m('runSurface.tabSegments')}
 	</a>
 </nav>
 

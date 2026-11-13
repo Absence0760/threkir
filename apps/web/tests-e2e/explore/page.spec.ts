@@ -13,42 +13,33 @@ test.describe('/explore — authed user', () => {
 	test('redirects to /routes?tab=explore', async ({ page }) => {
 		await page.goto('/explore');
 		await page.waitForURL(/\/routes\?tab=explore/, { timeout: 10_000 });
-		await expect(page.getByRole('tab', { name: /Explore/ })).toHaveAttribute(
-			'aria-selected',
-			'true',
-			{ timeout: 10_000 }
-		);
+		await expect(
+			page.getByTestId('routes-view-nav').getByRole('link', { name: 'Explore', exact: true })
+		).toHaveAttribute('aria-current', 'true', { timeout: 10_000 });
 	});
 
-	test('Explore tab is the only one with aria-selected=true post-redirect', async ({ page }) => {
+	test('Explore is the current view post-redirect, on its Routes kind', async ({ page }) => {
 		await page.goto('/explore');
 		await page.waitForURL(/\/routes\?tab=explore/, { timeout: 10_000 });
 
-		const tabs = page.getByRole('tab');
-		await expect(tabs).toHaveCount(3, { timeout: 10_000 });
-		await expect(page.getByRole('tab', { name: /My routes/ })).toHaveAttribute(
-			'aria-selected',
-			'false'
+		const nav = page.getByTestId('routes-view-nav');
+		await expect(nav.getByRole('link')).toHaveCount(2, { timeout: 10_000 });
+		await expect(nav.getByRole('link', { name: 'Mine', exact: true })).not.toHaveAttribute(
+			'aria-current',
+			/.+/
 		);
-		await expect(page.getByRole('tab', { name: /Explore/ })).toHaveAttribute(
-			'aria-selected',
-			'true'
-		);
-		await expect(page.getByRole('tab', { name: /Heatmap/ })).toHaveAttribute(
-			'aria-selected',
-			'false'
-		);
+		await expect(
+			page.getByTestId('routes-explore-kind').getByRole('link', { name: 'Routes', exact: true })
+		).toHaveAttribute('aria-current', 'page');
 	});
 
-	test('Explore tab content (RouteExplorer) mounts after the redirect', async ({ page }) => {
+	test('Explore content (RouteExplorer) mounts after the redirect', async ({ page }) => {
 		await page.goto('/explore');
 		await page.waitForURL(/\/routes\?tab=explore/, { timeout: 10_000 });
-		await expect(page.getByRole('tab', { name: /Explore/ })).toHaveAttribute(
-			'aria-selected',
-			'true',
-			{ timeout: 10_000 }
-		);
-		await expect(page.getByRole('tab', { name: /My routes/ })).toBeVisible();
+		await expect(page.getByTestId('routes-explore-kind')).toBeVisible({ timeout: 10_000 });
+		await expect(
+			page.getByTestId('routes-view-nav').getByRole('link', { name: 'Mine', exact: true })
+		).toBeVisible();
 	});
 
 	test('post-redirect URL preserves no extra query params', async ({ page }) => {

@@ -192,7 +192,7 @@ src/routes/
 ├── u/[id]/
 │   └── +page.svelte            # Public user profile (display_name, avatar, follower/following counts, recent public runs, follow button)
 ├── routes/
-│   ├── +page.svelte            # Tabbed: My routes (saved) + Explore (community discovery)
+│   ├── +page.svelte            # Mine (saved) · Explore (community discovery, led by the heatmap; Segments is /segments), via RoutesViewNav
 │   ├── new/+page.svelte        # Full-screen MapLibre route builder
 │   └── [id]/+page.svelte       # Route detail (public or private)
 ├── runs/

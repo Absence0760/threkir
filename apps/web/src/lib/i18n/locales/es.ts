@@ -1422,7 +1422,7 @@ export const messages = {
 	"routeNew.saveFailedError": "No se pudo guardar la ruta",
 	"routesPage.pageTitle": "Rutas",
 	"routesPage.sectionLabel": "Sección de rutas",
-	"routesPage.tabMine": "Mis rutas",
+	"routesPage.tabMine": "Mías",
 	"routesPage.tabExplore": "Explorar",
 	"routesPage.tabHeatmap": "Mapa de calor",
 	"routesPage.loadingRoutes": "Cargando tus rutas…",

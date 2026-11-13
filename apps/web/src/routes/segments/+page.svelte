@@ -3,6 +3,7 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import RoutesViewNav from '#lib/components/RoutesViewNav.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
@@ -77,7 +78,10 @@
 <svelte:head><title>{m('segments.browseTitle')}</title></svelte:head>
 
 <div class="page">
-	<RunSurfaceTabs active="segments" />
+	<!-- Routes → Explore → Segments (issue #1374, owner decision 1): the
+	     catalogue is no longer a run-surface tab of its own. -->
+	<RunSurfaceTabs active="routes" />
+	<RoutesViewNav view="segments" />
 	<header class="page-header">
 		<h1>{m('segments.browseTitle')}</h1>
 		<p class="subtitle">{m('segments.browseIntro')}</p>

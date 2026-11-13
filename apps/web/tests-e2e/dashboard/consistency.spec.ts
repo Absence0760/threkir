@@ -68,7 +68,7 @@ test.describe('dashboard training-consistency card', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 
 			const card = page.getByTestId('consistency-card');
 			await expect(card).toBeVisible({ timeout: 15_000 });
@@ -88,7 +88,7 @@ test.describe('dashboard training-consistency card', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await page.waitForLoadState('networkidle');
 			await expect(page.getByTestId('consistency-card')).toHaveCount(0);
 		} finally {

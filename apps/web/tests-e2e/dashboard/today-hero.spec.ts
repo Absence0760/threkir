@@ -11,27 +11,32 @@ import { insertRun, setUserSetting } from '../fixtures/simulate';
  * plan hero on a plan (plan-up-next / plan-race-countdown cover those
  * states), the first-run block on a new account (dashboard-first-run), else
  * today's run, else readiness with a prompt to add one. Whatever the state,
- * the hero is the first card, above the week lead.
+ * the hero is the first card, above the progress summary that opens
+ * /dashboard/progress (decisions § 2492).
  *
- * Trend groups can be hidden from Home and brought back from Settings
- * (`dashboard_hidden_cards`, decisions § 2386).
+ * Trend groups live on Progress, and can be hidden from it and brought back
+ * from Settings (`dashboard_hidden_cards`, decisions § 2386).
  */
 
-async function openDashboard(browser: Browser, user: SagaUser): Promise<{ page: Page; close: () => Promise<void> }> {
+async function openDashboard(
+	browser: Browser,
+	user: SagaUser,
+	path: '/dashboard' | '/dashboard/progress' = '/dashboard'
+): Promise<{ page: Page; close: () => Promise<void> }> {
 	const ctx = await browser.newContext({ storageState: user.storageStatePath, viewport: { width: 390, height: 844 } });
 	await acceptCookieConsent(ctx);
 	const page = await ctx.newPage();
-	await page.goto('/dashboard');
+	await page.goto(path);
 	return { page, close: () => ctx.close() };
 }
 
-async function heroLeadsLead(page: Page): Promise<void> {
+async function heroLeadsToday(page: Page): Promise<void> {
 	const hero = page.getByTestId('dash-today-hero');
-	const lead = page.getByTestId('dash-week-lead');
-	await expect(lead).toBeVisible({ timeout: 15_000 });
+	const summary = page.getByTestId('today-progress-summary');
+	await expect(summary).toBeVisible({ timeout: 15_000 });
 	const heroBox = await hero.boundingBox();
-	const leadBox = await lead.boundingBox();
-	expect(heroBox!.y, 'the Today hero sits above the week lead').toBeLessThan(leadBox!.y);
+	const summaryBox = await summary.boundingBox();
+	expect(heroBox!.y, 'the Today hero sits above the progress summary').toBeLessThan(summaryBox!.y);
 }
 
 test.describe('/dashboard — the Today hero', () => {
@@ -60,9 +65,11 @@ test.describe('/dashboard — the Today hero', () => {
 			await expect(hero.getByRole('heading', { name: 'Nothing planned today' })).toBeVisible();
 			await expect(hero.locator('.readiness-card')).toBeVisible();
 			await expect(hero.getByTestId('dash-hero-add-run')).toHaveAttribute('href', '/runs/new');
-			await heroLeadsLead(page);
-			// Readiness moved into the hero, so the trend group holds one load card.
-			await expect(page.locator('#dash-trend-fitness-title')).toBeVisible();
+			await heroLeadsToday(page);
+			// Readiness moved into the hero, so the trend group on Progress holds
+			// one load card.
+			await page.goto('/dashboard/progress');
+			await expect(page.locator('#dash-trend-fitness-title')).toBeVisible({ timeout: 15_000 });
 			await expect(page.locator('section.trend-group .readiness-card')).toHaveCount(0);
 			await expect(page.getByTestId('dash-training-load-card')).toHaveCount(1);
 		} finally {
@@ -78,19 +85,19 @@ test.describe('/dashboard — the Today hero', () => {
 			await expect(hero).toHaveAttribute('href', /^\/runs\//);
 			await expect(hero).toContainText("Today's run");
 			await expect(hero).toContainText('5.00');
-			await heroLeadsLead(page);
+			await heroLeadsToday(page);
 		} finally {
 			await close();
 		}
 	});
 
-	test('a hidden trend group leaves Home and comes back from Settings', async ({ browser }) => {
+	test('a hidden trend group leaves Progress and comes back from Settings', async ({ browser }) => {
 		await setUserSetting(noPlan.id, 'dashboard_hidden_cards', []);
-		const { page, close } = await openDashboard(browser, noPlan);
+		const { page, close } = await openDashboard(browser, noPlan, '/dashboard/progress');
 		try {
 			const volume = page.locator('#dash-trend-volume-title');
 			await expect(volume).toBeVisible({ timeout: 15_000 });
-			await page.getByRole('button', { name: 'Hide Volume from Home' }).click();
+			await page.getByRole('button', { name: 'Hide Volume from Progress' }).click();
 			await expect(volume).toHaveCount(0);
 			await expect(page.getByText('Volume is hidden. You can bring it back in Settings.')).toBeVisible();
 
@@ -106,7 +113,7 @@ test.describe('/dashboard — the Today hero', () => {
 			await expect(box).toBeChecked();
 			await page.waitForLoadState('networkidle');
 
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(volume).toBeVisible({ timeout: 15_000 });
 		} finally {
 			await close();

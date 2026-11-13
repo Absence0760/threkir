@@ -4,7 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /gym/[id] + /dashboard — one lift logged under two spellings is ONE
+ * /gym/[id] + /dashboard/progress — one lift logged under two spellings is ONE
  * exercise on every surface (decisions § 1248).
  *
  * The grouping key is `normaliseExerciseName` (lib/gym/gym_prs.ts): the named
@@ -126,7 +126,7 @@ test.describe('/gym/[id] — two spellings of one lift', () => {
 			// way. The row is a link to the workout, so it can be addressed by
 			// href rather than by position in a list this account shares with
 			// every other gym spec.
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			const liftRow = page.locator(`a.run-row[href="/gym/${workoutIds[titles[1]]}"]`);
 			await expect(liftRow).toBeVisible({ timeout: 10_000 });
 			await expect(liftRow.locator('.run-pace')).toHaveText('1 exercise');

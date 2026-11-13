@@ -13,7 +13,7 @@ import { resolve } from 'node:path';
 import { SUPPORTED_LOCALES } from './i18n/locale';
 
 const SOURCE = readFileSync(
-	resolve('src/routes/dashboard/+page.svelte'),
+	resolve('src/routes/dashboard/DashboardView.svelte'),
 	'utf-8',
 );
 

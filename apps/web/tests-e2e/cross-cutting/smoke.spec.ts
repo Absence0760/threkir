@@ -19,8 +19,13 @@ import { USER_A } from '../fixtures/users';
 test.describe('surface smoke — authed', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('/dashboard mounts with the Distance chart heading', async ({ page }) => {
+	test('/dashboard mounts with the Today hero', async ({ page }) => {
 		await page.goto('/dashboard');
+		await expect(page.getByTestId('dash-today-hero')).toBeVisible({ timeout: 10_000 });
+	});
+
+	test('/dashboard/progress mounts with the Distance chart heading', async ({ page }) => {
+		await page.goto('/dashboard/progress');
 		await expect(page.getByRole('heading', { level: 2, name: 'Distance', exact: true }))
 			.toBeVisible({ timeout: 10_000 });
 	});

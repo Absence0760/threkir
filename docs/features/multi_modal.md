@@ -372,8 +372,20 @@ becomes an **action button**, not a tab.
 > is one reading column on a tablet. Today and Progress read the same
 > load series and HR prefs through `training_load_inputs.dart`. The idle Run
 > page no longer repeats today's workout, the next event or the last run.
-> **Web keeps the single `/dashboard`** (no web change in this round); the
-> blocks below describe web, and mobile's Progress page. Tests:
+> **Web matches (#1374 round 3):** one component, `routes/dashboard/DashboardView.svelte`
+> (`view: 'today' | 'progress'`), serves `/dashboard` (Today, titled Today, with
+> the Add or import menu in its header) and `/dashboard/progress` (Progress,
+> with a back link to Today). Today has the hero, the plan and event cards,
+> today's lift and meals, the last run (`today-last-run`, in the hero instead
+> when it was today's), a goals strip (`today-goals-strip`, up to three,
+> opening `/dashboard/progress#goals`), the summary card
+> (`today-progress-summary`, `training/progress_summary.ts`, the week being
+> `weekLead`'s figure) and the Coach row; Progress has the week lead, the source
+> chips and recap link, the totals and streak, trend deltas, challenges, the
+> full goals and the five trend groups under the same keys. Hiding reads "Hide
+> from Progress", and the Display page's group is "Progress cards". Both pages
+> run the same loaders. Playwright `tests-e2e/dashboard/today-progress.spec.ts`.
+> The blocks below describe web's two pages and mobile's Progress page. Tests:
 > `test/today_progress_layout_test.dart` (320 dp, 2x, 3-button bar),
 > `test/today_*_test.dart`, `test/progress_*_test.dart`, `test/dashboard_layout_test.dart`.
 

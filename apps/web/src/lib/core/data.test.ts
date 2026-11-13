@@ -75,7 +75,7 @@ test('fetchRunsForDashboard is bounded + column-narrowed, not the unbounded sele
 		'DASHBOARD_RUN_COLUMNS must carry fastest_5k_s — the no-plan recent-5K plan suggestion reads it.',
 	);
 	// The dashboard page must call the bounded reader, not the unbounded one.
-	const page = read('src/routes/dashboard/+page.svelte');
+	const page = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(
 		page,
 		/fetchRunsForDashboard\(\)/,
@@ -132,7 +132,7 @@ test('the period drilldown never rolls up an all-time total from the dashboard w
 		/periodNeedsFullHistory\(/,
 		'PeriodSummary must decide via periodNeedsFullHistory whether the prop set can answer the period.',
 	);
-	const page = read('src/routes/dashboard/+page.svelte');
+	const page = read('src/routes/dashboard/DashboardView.svelte');
 	const usage = page.slice(page.indexOf('<PeriodSummary'));
 	assert.match(
 		usage,
@@ -1234,7 +1234,7 @@ test('the exercise-calorie surfaces decide day membership by instant, never by s
 		'the window must come from diaryWindow, which steps the calendar (a DST day is 23 or 25 h).'
 	);
 
-	const dashboard = read('src/routes/dashboard/+page.svelte');
+	const dashboard = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(
 		dashboard,
 		/runs\.filter\(\(r\) => isWithinWindow\(r\.started_at, today\)\)/,

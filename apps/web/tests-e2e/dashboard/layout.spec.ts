@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /dashboard — the shape of the page, and the honesty of the mileage axis.
+ * /dashboard/progress — the shape of the page, and the honesty of the mileage axis.
  *
  * Every card used to be a full-width slab in one flex column, so a desktop
  * screen showed a single column of twenty of them. The cards of equal weight
@@ -16,12 +16,12 @@ import { USER_A } from '../fixtures/users';
 const MOBILE = { width: 390, height: 844 };
 const DESKTOP = { width: 1440, height: 900 };
 
-test.describe('/dashboard layout', () => {
+test.describe('/dashboard/progress layout', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('band-mates share a row on desktop and stack on a phone', async ({ page }) => {
 		await page.setViewportSize(DESKTOP);
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await page.waitForLoadState('networkidle');
 
 		await expect(page.locator('.metric-band').first()).toBeVisible();
@@ -60,7 +60,7 @@ test.describe('/dashboard layout', () => {
 
 	test('the mileage window is all twelve weeks or none', async ({ page }) => {
 		await page.setViewportSize(DESKTOP);
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await page.waitForLoadState('networkidle');
 
 		const bars = page.locator('.bar-col');
@@ -104,7 +104,7 @@ test.describe('/dashboard layout', () => {
 		// which is why this asserts containment directly, for the two edge
 		// bars, while one of them is being read.
 		await page.setViewportSize({ width: 300, height: 720 });
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await page.waitForLoadState('networkidle');
 
 		const bars = page.locator('.bar-col');
@@ -161,36 +161,32 @@ test.describe('/dashboard layout', () => {
 		}
 	});
 
-	test('a Today | Trends divider separates today from the trend groups', async ({ page }) => {
-		// multi_modal.md § Home: "Today" cards, then a thin divider, then
-		// "Trends". The divider is only worth anything if it sits BETWEEN the
-		// two — below the week lead that opens the page, above every group.
+	test('Progress opens on the week lead, with every trend group below it', async ({ page }) => {
+		// Today and the trends used to share one page, split by a "Trends"
+		// divider. Today is its own page now (decisions § 2492), so Progress
+		// needs no divider: the week lead opens it and the groups follow.
 		await page.setViewportSize(MOBILE);
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 
-		const divider = page.getByTestId('dash-trends-divider');
-		await expect(divider).toBeVisible({ timeout: 10_000 });
-		await expect(divider).toHaveText('Trends');
-		await expect(divider, 'the divider is a quiet label, not a shouting header').toHaveCSS(
-			'text-transform',
-			'none'
-		);
+		const lead = page.getByTestId('dash-week-lead');
+		await expect(lead).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('dash-trends-divider')).toHaveCount(0);
 
 		// Volume, Performance and Recent always mount for an account with runs.
 		const groups = page.locator('section.trend-group');
 		expect(await groups.count()).toBeGreaterThanOrEqual(3);
 
-		const dividerBox = await divider.boundingBox();
-		const lead = await page.getByTestId('dash-week-lead').boundingBox();
+		const leadBox = await lead.boundingBox();
 		const firstGroup = await groups.first().boundingBox();
-		expect(lead!.y, 'today sits above the divider').toBeLessThan(dividerBox!.y);
-		expect(firstGroup!.y, 'the trend groups sit below it').toBeGreaterThan(dividerBox!.y);
+		expect(firstGroup!.y, 'the trend groups sit below the week lead').toBeGreaterThan(
+			leadBox!.y + leadBox!.height
+		);
 	});
 
 	test('a trend group folds to its heading and stays folded on the next visit', async ({
 		page
 	}) => {
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		await page.waitForLoadState('networkidle');
 
 		const volume = page.locator('section.trend-group', {

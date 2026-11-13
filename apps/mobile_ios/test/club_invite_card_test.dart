@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/social_service.dart';
 import '../lib/widgets/club_invite_card.dart';
+import 'worst_case_layout.dart';
 
 const _share = MethodChannel('dev.fluttercommunity.plus/share');
 
@@ -81,6 +82,19 @@ ClubInviteCard _card(_FakeSocial social, {String joinPolicy = 'request'}) =>
     );
 
 void main() {
+  worstCaseTestWidgets('Club invite card', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: _card(_FakeSocial(token: 'abc${'0' * 29}')),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+  });
+
   final shared = <Object?>[];
 
   setUp(() {

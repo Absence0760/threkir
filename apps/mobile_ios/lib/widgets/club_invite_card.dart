@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
+import 'package:ui_kit/ui_kit.dart'
+    show ListCard, SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 import '../share_sheet.dart';
@@ -221,75 +222,72 @@ class _ClubInviteCardState extends State<ClubInviteCard> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final token = _token;
-    return Card(
+    return ListCard(
       key: const ValueKey('club-invite-card'),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.clubInviteLinkTitle, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(_body(l10n), style: theme.textTheme.bodySmall),
+      margin: ListCard.listMargin,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.clubInviteLinkTitle, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(_body(l10n), style: theme.textTheme.bodySmall),
+          const SizedBox(height: 8),
+          if (_loading)
+            const Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (_loadFailed) ...[
+            Text(l10n.clubInviteLoadFailed,
+                style: TextStyle(color: theme.colorScheme.error)),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                  onPressed: _load, child: Text(l10n.errorStateRetry)),
+            ),
+          ] else if (token == null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FilledButton.tonal(
+                key: const ValueKey('club-invite-generate'),
+                onPressed: _busy ? null : () => _write(replacing: false),
+                child: Text(l10n.clubInviteGenerate),
+              ),
+            )
+          else ...[
+            SelectableText(
+              _url(token),
+              key: const ValueKey('club-invite-url'),
+              style: theme.textTheme.bodySmall,
+            ),
             const SizedBox(height: 8),
-            if (_loading)
-              const Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonal(
+                  onPressed: () =>
+                      _shareOrCopy(context, _url(token), l10n.clubInviteCopied),
+                  child: Text(l10n.clubInviteShare),
                 ),
-              )
-            else if (_loadFailed) ...[
-              Text(l10n.clubInviteLoadFailed,
-                  style: TextStyle(color: theme.colorScheme.error)),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton(
-                    onPressed: _load, child: Text(l10n.errorStateRetry)),
-              ),
-            ] else if (token == null)
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: FilledButton.tonal(
-                  key: const ValueKey('club-invite-generate'),
-                  onPressed: _busy ? null : () => _write(replacing: false),
-                  child: Text(l10n.clubInviteGenerate),
+                OutlinedButton(
+                  onPressed: () =>
+                      _copy(context, _url(token), l10n.clubInviteCopied),
+                  child: Text(l10n.clubInviteCopy),
                 ),
-              )
-            else ...[
-              SelectableText(
-                _url(token),
-                key: const ValueKey('club-invite-url'),
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  FilledButton.tonal(
-                    onPressed: () =>
-                        _shareOrCopy(context, _url(token), l10n.clubInviteCopied),
-                    child: Text(l10n.clubInviteShare),
-                  ),
-                  OutlinedButton(
-                    onPressed: () =>
-                        _copy(context, _url(token), l10n.clubInviteCopied),
-                    child: Text(l10n.clubInviteCopy),
-                  ),
-                  TextButton(
-                    key: const ValueKey('club-invite-rotate'),
-                    onPressed: _busy ? null : () => _write(replacing: true),
-                    child: Text(l10n.clubInviteRotate),
-                  ),
-                ],
-              ),
-            ],
+                TextButton(
+                  key: const ValueKey('club-invite-rotate'),
+                  onPressed: _busy ? null : () => _write(replacing: true),
+                  child: Text(l10n.clubInviteRotate),
+                ),
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

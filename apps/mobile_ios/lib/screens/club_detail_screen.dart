@@ -818,27 +818,41 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               ),
             ),
             const SizedBox(height: 4),
-            Row(
+            // A Wrap: at 2x on a 320 dp phone the date and the count side by
+            // side ran 38 dp past the card.
+            Wrap(
+              spacing: AppSpace.smPlus,
+              runSpacing: AppSpace.xxs,
               children: [
-                Icon(Icons.calendar_today, size: 14,
-                    color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    fmtEventDate(e.nextInstanceStart,
-                        localeToTag(Localizations.localeOf(context))),
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_today, size: 14,
+                        color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        fmtEventDate(e.nextInstanceStart,
+                            localeToTag(Localizations.localeOf(context))),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Icon(Icons.group, size: 14,
-                    color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Text(
-                  AppLocalizations.of(context)
-                      .clubDetailGoingCount(e.attendeeCount),
-                  style: theme.textTheme.bodySmall,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.group, size: 14,
+                        color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        AppLocalizations.of(context)
+                            .clubDetailGoingCount(e.attendeeCount),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -883,14 +897,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   Widget _buildPostCard(ThemeData theme, ClubView c, ClubPostView p) {
     final l10n = AppLocalizations.of(context);
     final replies = _threads[p.row.id];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor),
-      ),
+    return ListCard(
+      dense: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1082,7 +1090,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             );
           }
           final e = _upcoming[showCreate ? i - 1 : i];
-          return InkWell(
+          final tag = localeToTag(Localizations.localeOf(context));
+          return ListCard.row(
+            margin: EdgeInsets.zero,
+            dense: true,
             onTap: () async {
               await Navigator.of(ctx).push(
                 MaterialPageRoute<void>(
@@ -1095,99 +1106,49 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               );
               _load();
             },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.dividerColor),
-              ),
-              child: Row(
-                children: [
-                  TextLane(
-                    width: 56,
-                    child: Column(
-                      children: [
-                        Text(
-                          formatDateShort(e.nextInstanceStart,
-                              localeToTag(Localizations.localeOf(context))),
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          formatTime(e.nextInstanceStart,
-                              localeToTag(Localizations.localeOf(context))),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+            title: e.row.title,
+            badge: e.viewerRsvp == 'going'
+                ? StatusPill(
+                    label: AppLocalizations.of(context).clubDetailGoing,
+                    foreground: theme.colorScheme.onPrimaryContainer,
+                    fill: theme.colorScheme.primaryContainer,
+                    size: StatusPillSize.compact,
+                  )
+                : null,
+            subtitle: e.row.meetLabel,
+            subtitleMaxLines: 1,
+            // The date is a lane in the meta line rather than the row's
+            // leading: at 2x a leading lane wide enough for "28 de mar."
+            // left the title no room, and in a Wrap it drops to its own line.
+            meta: Wrap(
+              spacing: AppSpace.smPlus,
+              runSpacing: AppSpace.xxs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                TextLane(
+                  width: 56,
+                  child: Text(
+                    formatDateShort(e.nextInstanceStart, tag),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          e.row.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            if (e.row.meetLabel != null) ...[
-                              Icon(Icons.place, size: 14,
-                                  color: theme.colorScheme.outline),
-                              const SizedBox(width: 3),
-                              Expanded(
-                                child: Text(
-                                  e.row.meetLabel!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            ] else
-                              Icon(Icons.event, size: 14,
-                                  color: theme.colorScheme.outline),
-                            Text(
-                              AppLocalizations.of(context)
-                                  .clubDetailGoingCount(e.attendeeCount),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                ),
+                Text(
+                  formatTime(e.nextInstanceStart, tag),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  if (e.viewerRsvp == 'going')
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context).clubDetailGoing,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                ),
+                Text(
+                  AppLocalizations.of(context)
+                      .clubDetailGoingCount(e.attendeeCount),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -1286,16 +1247,14 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
         padding: const EdgeInsets.all(16),
         children: [
           if (c.isMember && _viewerUnnamed) ...[
-            Card(
+            ListCard.row(
               key: const Key('club-name-hint'),
-              child: ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: Text(l10n.clubDetailNameHint(_shownName(
-                    l10n, null, widget.social.currentUserId ?? ''))),
-                subtitle: Text(l10n.clubDetailNameHintAction),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => openSettings(SettingsDestination.account),
-              ),
+              leading: const Icon(Icons.info_outline),
+              title: l10n.clubDetailNameHint(
+                  _shownName(l10n, null, widget.social.currentUserId ?? '')),
+              subtitle: l10n.clubDetailNameHintAction,
+              chevron: true,
+              onTap: () => openSettings(SettingsDestination.account),
             ),
             const SizedBox(height: 12),
           ],
@@ -1314,43 +1273,31 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             ),
             const SizedBox(height: 8),
             for (final m in _pending)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: Row(
-                    children: [
-                      IdentityAvatar(
-                        seed: m.userId,
-                        name: _shownName(l10n, m.displayName, m.userId),
-                        imageUrl: m.avatarUrl,
-                        size: 32,
-                        fontSize: 14,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _shownName(l10n, m.displayName, m.userId),
-                          style: theme.textTheme.bodyMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _pendingBusy.contains(m.userId)
-                            ? null
-                            : () => _deny(m.userId),
-                        child: Text(l10n.clubDetailDeny),
-                      ),
-                      const SizedBox(width: 4),
-                      FilledButton(
-                        onPressed: _pendingBusy.contains(m.userId)
-                            ? null
-                            : () => _approve(m.userId),
-                        child: Text(l10n.clubDetailApprove),
-                      ),
-                    ],
-                  ),
+              ListCard.row(
+                dense: true,
+                leading: IdentityAvatar(
+                  seed: m.userId,
+                  name: _shownName(l10n, m.displayName, m.userId),
+                  imageUrl: m.avatarUrl,
+                  size: 32,
+                  fontSize: 14,
                 ),
+                title: _shownName(l10n, m.displayName, m.userId),
+                titleMaxLines: 1,
+                actions: [
+                  TextButton(
+                    onPressed: _pendingBusy.contains(m.userId)
+                        ? null
+                        : () => _deny(m.userId),
+                    child: Text(l10n.clubDetailDeny),
+                  ),
+                  FilledButton(
+                    onPressed: _pendingBusy.contains(m.userId)
+                        ? null
+                        : () => _approve(m.userId),
+                    child: Text(l10n.clubDetailApprove),
+                  ),
+                ],
               ),
             const SizedBox(height: 24),
           ],
@@ -1799,48 +1746,41 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
           }
           final i = index - (canBuild ? 1 : 0);
           final r = routes[i];
-          return Card(
-            child: ListTile(
-              leading: r.waypoints.length >= 2
-                  ? SizedBox(
-                      width: 72,
-                      height: 40,
-                      // Club routes are owned by other admins / members.
-                      // Non-owner thumbnails route through
-                      // clip_route_for_viewer (decisions §33).
-                      child: RouteTrackPreview(
-                        routeId: r.id,
-                        waypoints: r.waypoints,
-                        ownerUserId: r.userId,
-                        api: ApiClient(),
-                      ),
-                    )
-                  : SizedBox(
-                      width: 56,
-                      height: 40,
-                      child: CircleAvatar(
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                        child: Icon(Icons.route,
-                            color: theme.colorScheme.secondary),
-                      ),
-                    ),
-              title: Text(r.name),
-              subtitle: Text(
-                '${formatDistanceForPref(r.distanceMetres)}'
-                '  •  ${formatElevationForPref(r.elevationGainMetres)} ↑',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => PublicRouteScreen(
-                    api: ApiClient(),
-                    routeId: r.id,
-                  ),
-                ),
-              ),
-            ),
-          );
+          return ListCard.row(
+                   dense: true,
+                   leadingWidth: 72,
+                   leading: r.waypoints.length >= 2
+                       ? SizedBox(
+                           width: 72,
+                           height: 40,
+                           // Club routes are owned by other admins / members.
+                           // Non-owner thumbnails route through
+                           // clip_route_for_viewer (decisions §33).
+                           child: RouteTrackPreview(
+                             routeId: r.id,
+                             waypoints: r.waypoints,
+                             ownerUserId: r.userId,
+                             api: ApiClient(),
+                           ),
+                         )
+                       : CircleAvatar(
+                           backgroundColor: theme.colorScheme.secondaryContainer,
+                           child: Icon(Icons.route, color: theme.colorScheme.secondary),
+                         ),
+                   title: r.name,
+                   subtitle: '${formatDistanceForPref(r.distanceMetres)}'
+                       '  •  ${formatElevationForPref(r.elevationGainMetres)} ↑',
+                   chevron: true,
+                   onTap: () => Navigator.push(
+                     context,
+                     MaterialPageRoute<void>(
+                       builder: (_) => PublicRouteScreen(
+                         api: ApiClient(),
+                         routeId: r.id,
+                       ),
+                     ),
+                   ),
+                 );
         },
       ),
     );
@@ -1877,38 +1817,17 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
         padding: const EdgeInsets.all(16),
         children: [
           for (final t in _templates) ...[
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(t.name, style: theme.textTheme.titleSmall),
-                          if (t.notes != null && t.notes!.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              t.notes!,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: _adoptingPlanId == t.id
-                          ? null
-                          : () => _adoptTemplate(t),
-                      child: Text(l10n.clubDetailAdopt),
-                    ),
-                  ],
+            ListCard.row(
+              dense: true,
+              title: t.name,
+              subtitle: (t.notes?.isNotEmpty ?? false) ? t.notes : null,
+              subtitleMaxLines: 3,
+              actions: [
+                FilledButton(
+                  onPressed: _adoptingPlanId == t.id ? null : () => _adoptTemplate(t),
+                  child: Text(l10n.clubDetailAdopt),
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 8),
           ],
@@ -1919,38 +1838,18 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                   style: theme.textTheme.titleMedium),
             ),
             for (final s in _sessionTemplates) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(s.title, style: theme.textTheme.titleSmall),
-                            if (s.discipline != null && s.discipline!.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                s.discipline!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: _adoptingSessionId == s.id
-                            ? null
-                            : () => _adoptSessionTemplate(s),
-                        child: Text(l10n.clubDetailAdopt),
-                      ),
-                    ],
+              ListCard.row(
+                dense: true,
+                title: s.title,
+                subtitle: (s.discipline?.isNotEmpty ?? false) ? s.discipline : null,
+                actions: [
+                  FilledButton(
+                    onPressed: _adoptingSessionId == s.id
+                        ? null
+                        : () => _adoptSessionTemplate(s),
+                    child: Text(l10n.clubDetailAdopt),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 8),
             ],
@@ -1970,42 +1869,22 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               ),
             ),
             for (final g in _gymRoutineTemplates) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(g.title, style: theme.textTheme.titleSmall),
-                            if (_officialGymRoutineIds.contains(g.id)) ...[
-                              const SizedBox(height: 2),
-                              const OfficialBadge(),
-                            ],
-                            const SizedBox(height: 4),
-                            Text(
-                              l10n.clubDetailRoutineExerciseCount(
-                                  g.exerciseCount),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (c.isMember)
-                        FilledButton(
-                          onPressed: _adoptingRoutineId == g.id
-                              ? null
-                              : () => _adoptGymRoutineTemplate(g),
-                          child: Text(l10n.clubDetailAdopt),
-                        ),
-                    ],
-                  ),
-                ),
+              ListCard.row(
+                dense: true,
+                title: g.title,
+                badge: _officialGymRoutineIds.contains(g.id)
+                    ? const OfficialBadge()
+                    : null,
+                subtitle: l10n.clubDetailRoutineExerciseCount(g.exerciseCount),
+                actions: [
+                  if (c.isMember)
+                    FilledButton(
+                      onPressed: _adoptingRoutineId == g.id
+                          ? null
+                          : () => _adoptGymRoutineTemplate(g),
+                      child: Text(l10n.clubDetailAdopt),
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
             ],

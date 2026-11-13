@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { onMount } from 'svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { goto } from '$app/navigation';
@@ -61,16 +62,14 @@
 		<p class="sub">{m('planLibrary.subheading')}</p>
 	</header>
 
-	<label class="search">
-		<span class="visually-hidden">{m('planLibrary.searchAria')}</span>
-		<input
-			type="search"
+	<div class="search">
+		<AppSearchField
 			bind:value={query}
 			oninput={onSearchInput}
+			label={m('planLibrary.searchAria')}
 			placeholder={m('planLibrary.searchPlaceholder')}
-			aria-label={m('planLibrary.searchAria')}
 		/>
-	</label>
+	</div>
 
 	{#if loading && !loaded}
 		<p class="state">{m('planLibrary.loading')}</p>
@@ -131,15 +130,8 @@
 		color: var(--color-text-secondary);
 	}
 	.search {
-		display: block;
+		display: flex;
 		margin-bottom: 1rem;
-	}
-	.search input {
-		width: 100%;
-		padding: 0.6rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.5rem;
-		font-size: 1rem;
 	}
 	.state {
 		text-align: center;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchExerciseRecordsWithError, type ExerciseRecord } from '#lib/core/data.ts';
@@ -49,10 +50,9 @@
 		<span class="material-symbols">arrow_back</span>{t('gym.back')}
 	</a>
 
-	<header class="page-header">
-		<h1>{t('gym.records.title')}</h1>
-		<p class="head-sub"><MetricLabel metric="e1rm" variant="inline" sentence="gym.records.subtitle" /></p>
-	</header>
+	<PageHeader title={t('gym.records.title')}>
+		{#snippet sub()}<p><MetricLabel metric="e1rm" variant="inline" sentence="gym.records.subtitle" /></p>{/snippet}
+	</PageHeader>
 
 	{#if loading}
 		<ul class="record-grid" aria-hidden="true">
@@ -138,17 +138,6 @@
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
 		border-radius: var(--radius-sm);
-	}
-	.page-header {
-		margin-bottom: var(--space-xl);
-	}
-	.page-header h1 {
-		margin: 0;
-	}
-	.head-sub {
-		margin: 0.15rem 0 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
 	}
 
 	.record-grid {

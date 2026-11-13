@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -22,13 +23,7 @@
 <svelte:head><title>{t('gym.routine.editor.newTitle')} — Threkir</title></svelte:head>
 
 <div class="page">
-	<header class="page-header">
-		<a class="back-link" href="/gym/routines">
-			<span class="material-symbols" aria-hidden="true">arrow_back</span>
-			{t('gym.routine.back')}
-		</a>
-		<h1>{t('gym.routine.editor.newTitle')}</h1>
-	</header>
+	<PageHeader back={{ href: '/gym/routines', label: t('gym.routine.back') }} title={t('gym.routine.editor.newTitle')} />
 
 	<div class="editor-wrap">
 		<RoutineEditor {suggestions} oncreated={onCreated} oncancel={() => goto('/gym/routines')} />
@@ -39,13 +34,6 @@
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 48rem;
-	}
-	.back-link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		color: var(--color-text-tertiary);
-		font-size: 0.9rem;
 	}
 	.editor-wrap {
 		margin-top: var(--space-md);

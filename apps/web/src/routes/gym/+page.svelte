@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -166,24 +167,21 @@
 <svelte:head><title>{t('gym.title')} — Threkir</title></svelte:head>
 
 <div class="page">
-	<header class="page-header">
-		<div class="head-text">
-			<h1>{t('gym.title')}</h1>
-			{#if !loading && workouts.length > 0}
-				<p class="head-sub">
-					{workouts.length === 1
-						? t('gym.workoutsOne')
-						: t('gym.workoutsMany', { count: workouts.length })}
-				</p>
-			{/if}
-		</div>
-		<div class="head-actions">
+	<PageHeader
+		title={t('gym.title')}
+		subtitle={!loading && workouts.length > 0
+			? workouts.length === 1
+				? t('gym.workoutsOne')
+				: t('gym.workoutsMany', { count: workouts.length })
+			: undefined}
+	>
+		{#snippet actions()}
 			<button class="btn btn-primary" onclick={() => (showCreate = true)} data-testid="gym-log">
 				<span class="material-symbols" aria-hidden="true">add</span>
 				{t('gym.log')}
 			</button>
-		</div>
-	</header>
+		{/snippet}
+	</PageHeader>
 
 	{#if resumable}
 		<div class="card-elevated draft-card" data-testid="gym-session-draft-card">
@@ -372,42 +370,6 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-	.page-header {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: var(--space-xl);
-		gap: var(--space-md);
-	}
-	.head-text {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2xs);
-	}
-	.page-header h1 {
-		margin: 0;
-	}
-	.head-sub {
-		margin: 0;
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-	}
-	.head-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
-	}
-	.page-header .btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		flex-shrink: 0;
-		text-decoration: none;
-	}
-	.page-header .material-symbols {
-		font-size: 1.1rem;
 	}
 
 	.destinations {

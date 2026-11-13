@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { onMount } from 'svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { fetchPublicGymRoutineLibrary, type PublicGymRoutineEntry } from '#lib/core/data.ts';
@@ -38,16 +39,14 @@
 		<p class="sub">{t('gymLibrary.subheading')}</p>
 	</header>
 
-	<label class="search">
-		<span class="visually-hidden">{t('gymLibrary.searchAria')}</span>
-		<input
-			type="search"
+	<div class="search">
+		<AppSearchField
 			bind:value={query}
 			oninput={onSearchInput}
+			label={t('gymLibrary.searchAria')}
 			placeholder={t('gymLibrary.searchPlaceholder')}
-			aria-label={t('gymLibrary.searchAria')}
 		/>
-	</label>
+	</div>
 
 	{#if loading}
 		<p class="state" role="status">{t('gymLibrary.loading')}</p>
@@ -105,15 +104,8 @@
 		color: var(--color-text-secondary);
 	}
 	.search {
-		display: block;
+		display: flex;
 		margin-bottom: 1rem;
-	}
-	.search input {
-		width: 100%;
-		padding: 0.6rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.5rem;
-		font-size: 1rem;
 	}
 	.state {
 		text-align: center;

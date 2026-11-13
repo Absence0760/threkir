@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchGymRoutinesWithError, type GymRoutineSummary } from '#lib/core/data.ts';
@@ -31,18 +32,12 @@
 <svelte:head><title>{t('gym.routine.title')} — Threkir</title></svelte:head>
 
 <div class="page">
-	<header class="page-header">
-		<div class="head-text">
-			<a class="back-link" href="/gym">
-				<span class="material-symbols" aria-hidden="true">arrow_back</span>
-				{t('gym.back')}
-			</a>
-			<h1>{t('gym.routine.title')}</h1>
-			{#if !loading && routines.length > 0}
-				<p class="head-sub">{t('gym.routine.subtitle', { count: routines.length })}</p>
-			{/if}
-		</div>
-		<div class="head-actions">
+	<PageHeader
+		back={{ href: '/gym', label: t('gym.back') }}
+		title={t('gym.routine.title')}
+		subtitle={!loading && routines.length > 0 ? t('gym.routine.subtitle', { count: routines.length }) : undefined}
+	>
+		{#snippet actions()}
 			<a class="btn btn-outline" href="/gym/routines/library" data-testid="routine-library">
 				<span class="material-symbols" aria-hidden="true">public</span>
 				{t('gymLibrary.link')}
@@ -51,8 +46,8 @@
 				<span class="material-symbols" aria-hidden="true">add</span>
 				{t('gym.routine.new')}
 			</a>
-		</div>
-	</header>
+		{/snippet}
+	</PageHeader>
 
 	{#if loading}
 		<ul class="routine-list" aria-hidden="true" data-testid="routine-skeleton">
@@ -111,25 +106,6 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-	.page-header {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-		margin-bottom: var(--space-lg);
-	}
-	.back-link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		color: var(--color-text-tertiary);
-		font-size: 0.9rem;
-	}
-	.head-sub {
-		color: var(--color-text-tertiary);
-		margin: var(--space-2xs) 0 0;
 	}
 	.routine-list {
 		list-style: none;

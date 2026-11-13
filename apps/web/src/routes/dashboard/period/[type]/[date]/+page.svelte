@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -105,11 +106,7 @@
 		{m('period.back')}
 	</a>
 
-	<header class="page-header">
-		<span class="kicker">{kicker}</span>
-		<h1>{m('period.heading')}</h1>
-		<p class="tagline">{tagline}</p>
-	</header>
+	<PageHeader {kicker} title={m('period.heading')} subtitle={tagline} />
 
 	{#if loading}
 		<div class="skel-card" aria-hidden="true">
@@ -151,33 +148,6 @@
 	}
 	.back:hover { color: var(--color-primary); }
 	.back .material-symbols { font-size: 1.05rem; }
-
-	.page-header {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2xs);
-		margin-bottom: var(--space-lg);
-	}
-	.kicker {
-		font-size: var(--font-size-section-label);
-		letter-spacing: 0.1em;
-		color: var(--color-primary);
-		font-weight: 700;
-		text-transform: uppercase;
-	}
-	.page-header h1 {
-		font-size: 1.75rem;
-		font-weight: 700;
-		line-height: 1.15;
-		margin: 0;
-	}
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		max-width: 44rem;
-		margin: var(--space-2xs) 0 0 0;
-	}
 
 	.skel-card {
 		display: flex;

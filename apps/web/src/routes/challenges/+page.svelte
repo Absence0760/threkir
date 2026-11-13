@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { fetchChallenges, browsePublicChallenges } from '#lib/core/data.ts';
 	import type { ChallengeWithMeta } from '#lib/types.ts';
 	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
@@ -203,13 +204,7 @@
 		<div class="browse-head">
 			<h2>{m('challenges.browse')}</h2>
 			<div class="search">
-				<span class="material-symbols" aria-hidden="true">search</span>
-				<input
-					type="search"
-					bind:value={search}
-					placeholder={m('challenges.searchPlaceholder')}
-					aria-label={m('challenges.searchPlaceholder')}
-				/>
+				<AppSearchField bind:value={search} label={m('challenges.searchPlaceholder')} />
 			</div>
 		</div>
 		{#if browseError !== null}
@@ -319,29 +314,8 @@
 		margin: 0;
 	}
 	.search {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-xs);
-		padding: 0.3rem 0.7rem;
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: var(--color-surface);
-		min-width: min(14rem, 100%);
-	}
-	.search:focus-within {
-		border-color: var(--color-primary);
-	}
-	.search .material-symbols {
-		font-size: 1.1rem;
-		color: var(--color-text-tertiary);
-	}
-	.search input {
-		border: none;
-		background: transparent;
-		outline: none;
-		font: inherit;
-		color: inherit;
-		width: 100%;
+		display: flex;
+		min-width: min(16rem, 100%);
 	}
 	.load-more {
 		display: flex;

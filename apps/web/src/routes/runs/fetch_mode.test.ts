@@ -20,6 +20,15 @@ test('any narrowing forces a full fetch', () => {
 	assert.equal(runsFetchMode({ ...browse, activityFilter: 'cycle' }), 'full');
 });
 
+// The name search filters in the browser like the other filters, so it is only
+// sound over the whole history: a match from three years ago is not in the
+// newest page.
+test('a run-name search forces a full fetch, and a blank one does not', () => {
+	assert.equal(runsFetchMode({ ...browse, query: 'loop' }), 'full');
+	assert.equal(runsFetchMode({ ...browse, query: '   ' }), 'paginated');
+	assert.equal(runsFetchMode({ ...browse, query: '' }), 'paginated');
+});
+
 // The regression this file exists for: `fetchRuns` pages by `started_at`
 // descending, so a client-side re-sort over a paginated window ranks only the
 // rows already in memory. "All time · Longest" reported the longest of the

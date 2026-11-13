@@ -305,7 +305,7 @@
 
 <div class="page">
 	<RunSurfaceTabs active="plans" />
-	<header class="page-header">
+	<div class="surface-toolbar">
 		<div class="toolbar">
 			<!-- A filter over nothing is noise: with no plans every bucket is 0.
 			     Shown while loading so a populated list doesn't shift on arrival. -->
@@ -347,7 +347,7 @@
 				</button>
 			</div>
 		</div>
-	</header>
+	</div>
 
 	{#if loading}
 		<div class="grid grid-skel" aria-hidden="true" aria-busy="true">
@@ -555,7 +555,7 @@
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
 
-	.page-header {
+	.surface-toolbar {
 		margin-bottom: var(--space-xl);
 	}
 

@@ -25,6 +25,9 @@
 	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import RaceListingEditor from '#lib/components/RaceListingEditor.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
+	import FilterBar, { type ActiveFilter, type FilterChip } from '#lib/components/FilterBar.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
 	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
 	import { orderAnyTimeCourses } from '#lib/parks/any_time_courses.ts';
@@ -96,6 +99,33 @@
 	let distanceLabel = $derived.by(() => {
 		const band = DISTANCES.find((d) => d.v === distance && d.v !== '');
 		return band ? m(band.k) : '';
+	});
+
+	const showChips = $derived<FilterChip[]>(
+		SHOWS.map((s) => ({
+			key: s.v,
+			label: m(s.k),
+			pressed: show === s.v,
+			onclick: () => setShow(s.v),
+			testid: `races-show-${s.v}`,
+		})),
+	);
+
+	// The race filters that are on, as removable chips on the bar's line. The
+	// Courses view hides the race calendar, so it hides them with it.
+	const activeFilters = $derived.by<ActiveFilter[]>(() => {
+		if (show === 'courses') return [];
+		const out: ActiveFilter[] = [];
+		if (when === 'recent') {
+			out.push({ key: 'when', label: m('races.whenRecent'), onRemove: () => (when = 'upcoming'), testid: 'races-chip-when' });
+		}
+		if (distanceLabel) {
+			out.push({ key: 'distance', label: distanceLabel, onRemove: () => (distance = ''), testid: 'races-chip-distance' });
+		}
+		if (nearLabel) {
+			out.push({ key: 'near', label: `${m('discover.nearLabel')}: ${nearLabel}`, onRemove: clearNear, testid: 'races-near-clear' });
+		}
+		return out;
 	});
 
 	async function run() {
@@ -240,9 +270,10 @@
 	});
 
 	let placeTimer: ReturnType<typeof setTimeout> | undefined;
-	function onNearPlaceInput() {
+	function onNearPlaceInput(value: string) {
 		clearTimeout(placeTimer);
-		const term = nearPlace.trim();
+		nearPlace = value;
+		const term = value.trim();
 		if (!term) {
 			center = null;
 			radiusM = undefined;
@@ -316,17 +347,18 @@
 
 <svelte:head><title>{m('races.pageTitle')}</title></svelte:head>
 
+<!-- One place field for both homes it has: the Filters sheet, and the top of
+     the courses in the Courses view, where the sheet is hidden with the race
+     calendar. Its description is `races-near-hint`, which each home renders and
+     never both at once. -->
 {#snippet nearInputs()}
 	<div class="near-row">
-		<input
-			type="search"
-			class="search near-input"
-			bind:value={nearPlace}
+		<AppSearchField
+			value={nearPlace}
 			oninput={onNearPlaceInput}
-			placeholder={m('races.nearPlace')}
-			aria-label={m('races.nearPlace')}
-			data-testid="races-near"
-			aria-describedby="races-near-hint"
+			label={m('races.nearPlace')}
+			testid="races-near"
+			describedby="races-near-hint"
 		/>
 		<button type="button" class="chip near-locate" onclick={useMyLocation} data-testid="races-use-location">
 			{m('discover.useMyLocation')}
@@ -339,7 +371,7 @@
 		type="button"
 		class="chip active removable"
 		onclick={clearNear}
-		aria-label={m('races.removeFilter', { filter: `${m('discover.nearLabel')}: ${nearLabel}` })}
+		aria-label={m('filterBar.removeFilter', { filter: `${m('discover.nearLabel')}: ${nearLabel}` })}
 		data-testid="races-near-clear"
 	>
 		<span>{m('discover.nearLabel')}: {nearLabel}</span>
@@ -347,51 +379,132 @@
 	</button>
 {/snippet}
 
-<div class="races-page">
-	<RunSurfaceTabs active="races" />
-	<header class="races-header">
-		<div>
-			<h1>{m('races.pageTitle')}</h1>
-			<HelpLink route="/races" />
-			<p class="subtitle">{m('races.pageSubtitle')}</p>
-			{#if suggestionsToReview > 0}
-				<a class="review-link" href="/races/course-suggestions" data-testid="race-course-queue-link">
-					{m('raceCourse.queueLink', { n: suggestionsToReview })}
-				</a>
-			{/if}
-		</div>
-		<button
-			type="button"
-			class="btn btn-primary"
-			onclick={() => (showEditor = true)}
-			data-testid="race-submit"
-		>
-			{m('races.submitRace')}
-		</button>
-	</header>
+<!-- The search's explanation is shown in the Filters sheet; a screen reader
+     hears it on the field too, which is the one place it is always present. -->
+{#snippet raceSearch()}
+	<AppSearchField
+		bind:value={query}
+		label={m('races.searchPlaceholder')}
+		testid="races-search"
+		describedby="races-search-desc"
+	/>
+	<span class="visually-hidden" id="races-search-desc">{m('races.searchHint')}</span>
+{/snippet}
 
-	<div class="show-row">
+<!-- The Filters sheet. Every control's explanation sits here, beside it and
+     named by its aria-describedby, rather than under each control on the page
+     (issue #1374 owner decision; control_hints_guard.test.ts). The search and
+     the Show chips stay on the bar, so their explanations open here too. -->
+{#snippet raceFilters()}
+	<dl class="sheet-notes" data-testid="races-sheet-notes">
+		<div>
+			<dt>{m('filterBar.search')}</dt>
+			<dd>{m('races.searchHint')}</dd>
+		</div>
+		<div>
+			<dt>{m('races.showGroup')}</dt>
+			<dd>{m('races.showHint')}</dd>
+		</div>
+	</dl>
+
+	<section class="sheet-field" aria-labelledby="races-near-heading">
+		<h3 id="races-near-heading">{m('discover.nearLabel')}</h3>
+		{@render nearInputs()}
+		<p class="filter-hint" id="races-near-hint">{m('races.nearPlaceHint')}</p>
+		{#if geoError}
+			<p class="near-error" role="status">{geoError}</p>
+		{/if}
+	</section>
+
+	<section class="sheet-field" aria-labelledby="races-when-heading">
+		<h3 id="races-when-heading">{m('races.whenGroup')}</h3>
+		<div class="chip-row" role="group" aria-labelledby="races-when-heading" aria-describedby="races-when-hint">
+			<button
+				type="button"
+				class="chip"
+				class:active={when === 'upcoming'}
+				aria-pressed={when === 'upcoming'}
+				onclick={() => (when = 'upcoming')}
+				data-testid="races-when-upcoming"
+			>
+				{m('races.whenUpcoming')}
+			</button>
+			<button
+				type="button"
+				class="chip"
+				class:active={when === 'recent'}
+				aria-pressed={when === 'recent'}
+				onclick={() => (when = 'recent')}
+				data-testid="races-when-recent"
+			>
+				{m('races.whenRecent')}
+			</button>
+		</div>
+		<p class="filter-hint" id="races-when-hint">{m('races.whenHint', { days: RECENT_WINDOW_DAYS })}</p>
+	</section>
+
+	<section class="sheet-field" aria-labelledby="races-distance-heading">
+		<h3 id="races-distance-heading">{m('races.distanceGroup')}</h3>
 		<div
-			class="seg-group"
+			class="chip-row"
 			role="group"
-			aria-label={m('races.showGroup')}
-			aria-describedby="races-show-hint"
-			data-testid="races-show"
+			aria-labelledby="races-distance-heading"
+			aria-describedby="races-distance-hint"
 		>
-			{#each SHOWS as s (s.v)}
+			{#each DISTANCES as d (d.v)}
 				<button
 					type="button"
-					class="seg-btn"
-					class:active={show === s.v}
-					aria-pressed={show === s.v}
-					onclick={() => setShow(s.v)}
-					data-testid="races-show-{s.v}"
+					class="chip"
+					class:active={distance === d.v}
+					aria-pressed={distance === d.v}
+					onclick={() => (distance = d.v)}
+					data-testid="races-dist-{d.v || 'any'}"
 				>
-					{m(s.k)}
+					{m(d.k)}
 				</button>
 			{/each}
 		</div>
-		<p class="filter-hint" id="races-show-hint">{m('races.showHint')}</p>
+		<p class="filter-hint" id="races-distance-hint">{m('races.distanceFilterHint')}</p>
+	</section>
+{/snippet}
+
+<div class="races-page">
+	<RunSurfaceTabs active="races" />
+	<PageHeader title={m('races.pageTitle')} subtitle={m('races.pageSubtitle')} flush>
+		{#snippet help()}<HelpLink route="/races" />{/snippet}
+		{#if suggestionsToReview > 0}
+			<a class="review-link" href="/races/course-suggestions" data-testid="race-course-queue-link">
+				{m('raceCourse.queueLink', { n: suggestionsToReview })}
+			</a>
+		{/if}
+		{#snippet actions()}
+			<button
+				type="button"
+				class="btn btn-primary"
+				onclick={() => (showEditor = true)}
+				data-testid="race-submit"
+			>
+				{m('races.submitRace')}
+			</button>
+		{/snippet}
+	</PageHeader>
+
+	<!-- The search and Filters belong to the race calendar, so the Courses
+	     view, which hides it, keeps only the Show chips. -->
+	<div class="races-filter-bar" data-testid="races-filter-bar">
+		<FilterBar
+			idPrefix="races"
+			search={show === 'courses' ? undefined : raceSearch}
+			chips={showChips}
+			chipsLabel={m('races.showGroup')}
+			{activeFilters}
+			filters={show === 'courses' ? undefined : raceFilters}
+			activeFilterCount={activeCount}
+			bind:filtersOpen
+		/>
+		{#if geoError && !filtersOpen && show !== 'courses'}
+			<p class="near-error" role="status">{geoError}</p>
+		{/if}
 	</div>
 
 	{#if show !== 'courses'}
@@ -399,130 +512,6 @@
 			<div class="section-head">
 				<h2 id="races-upcoming-heading">{m('races.sectionUpcoming')}</h2>
 				<p class="section-intro">{m('races.subtitle')}</p>
-			</div>
-
-			<div class="filters">
-				<div class="toolbar">
-					<input
-						type="search"
-						class="search"
-						bind:value={query}
-						placeholder={m('races.searchPlaceholder')}
-						aria-label={m('races.searchPlaceholder')}
-						data-testid="races-search"
-						aria-describedby="races-search-hint"
-					/>
-					<button
-						type="button"
-						class="filters-toggle"
-						class:active={activeCount > 0}
-						aria-expanded={filtersOpen}
-						aria-controls="races-filters-panel"
-						aria-label={activeCount > 0 ? m('races.filtersCount', { count: activeCount }) : m('races.filters')}
-						onclick={() => (filtersOpen = !filtersOpen)}
-						data-testid="races-filters-toggle"
-					>
-						<span class="material-symbols" aria-hidden="true">tune</span>
-						<span>{m('races.filters')}</span>
-						{#if activeCount > 0}
-							<span class="filter-count" aria-hidden="true" data-testid="races-filter-count">{activeCount}</span>
-						{/if}
-					</button>
-				</div>
-
-				{#if activeCount > 0}
-					<div class="active-filters" data-testid="races-active-filters">
-						{#if when === 'recent'}
-							<button
-								type="button"
-								class="chip active removable"
-								onclick={() => (when = 'upcoming')}
-								aria-label={m('races.removeFilter', { filter: m('races.whenRecent') })}
-								data-testid="races-chip-when"
-							>
-								<span>{m('races.whenRecent')}</span>
-								<span class="material-symbols" aria-hidden="true">close</span>
-							</button>
-						{/if}
-						{#if distanceLabel}
-							<button
-								type="button"
-								class="chip active removable"
-								onclick={() => (distance = '')}
-								aria-label={m('races.removeFilter', { filter: distanceLabel })}
-								data-testid="races-chip-distance"
-							>
-								<span>{distanceLabel}</span>
-								<span class="material-symbols" aria-hidden="true">close</span>
-							</button>
-						{/if}
-						{#if nearLabel}
-							{@render nearChip()}
-						{/if}
-					</div>
-				{/if}
-				{#if geoError}
-					<p class="near-error" role="status">{geoError}</p>
-				{/if}
-
-				<!-- `hidden`, not {#if}: the search field's description lives in here,
-				     and aria-describedby still resolves against a hidden element. -->
-				<div class="filters-panel" id="races-filters-panel" hidden={!filtersOpen} data-testid="races-filters-panel">
-					<p class="filter-hint" id="races-search-hint">{m('races.searchHint')}</p>
-
-					{@render nearInputs()}
-					<p class="filter-hint" id="races-near-hint">{m('races.nearPlaceHint')}</p>
-
-					<div
-						class="chip-row"
-						role="group"
-						aria-label={m('races.whenGroup')}
-						aria-describedby="races-when-hint"
-					>
-						<button
-							type="button"
-							class="chip"
-							class:active={when === 'upcoming'}
-							aria-pressed={when === 'upcoming'}
-							onclick={() => (when = 'upcoming')}
-							data-testid="races-when-upcoming"
-						>
-							{m('races.whenUpcoming')}
-						</button>
-						<button
-							type="button"
-							class="chip"
-							class:active={when === 'recent'}
-							aria-pressed={when === 'recent'}
-							onclick={() => (when = 'recent')}
-							data-testid="races-when-recent"
-						>
-							{m('races.whenRecent')}
-						</button>
-					</div>
-					<p class="filter-hint" id="races-when-hint">{m('races.whenHint', { days: RECENT_WINDOW_DAYS })}</p>
-
-					<div
-						class="chip-row"
-						role="group"
-						aria-label={m('races.distanceAny')}
-						aria-describedby="races-distance-hint"
-					>
-						{#each DISTANCES as d (d.v)}
-							<button
-								type="button"
-								class="chip"
-								class:active={distance === d.v}
-								aria-pressed={distance === d.v}
-								onclick={() => (distance = d.v)}
-								data-testid="races-dist-{d.v || 'any'}"
-							>
-								{m(d.k)}
-							</button>
-						{/each}
-					</div>
-					<p class="filter-hint" id="races-distance-hint">{m('races.distanceFilterHint')}</p>
-				</div>
 			</div>
 
 			{#if loading}
@@ -677,54 +666,6 @@
 		gap: var(--space-lg);
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
-	/* The /runs segmented-control idiom: one continuous pill that scrolls
-	   itself rather than wrapping or widening the page (WCAG 1.4.10). */
-	.seg-group {
-		display: inline-flex;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-bg-secondary);
-		padding: var(--space-2xs);
-		gap: var(--space-2xs);
-		max-width: 100%;
-		overflow-x: auto;
-	}
-	.seg-btn {
-		flex: 0 0 auto;
-		min-height: var(--tap-target-min);
-		padding: var(--space-xs) var(--space-md);
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font: inherit;
-		font-size: 0.9rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-		transition: background var(--transition-fast), color var(--transition-fast),
-			box-shadow var(--transition-fast);
-	}
-	.seg-btn:hover {
-		color: var(--color-text);
-	}
-	.seg-btn.active {
-		background: var(--color-surface);
-		color: var(--color-primary);
-		box-shadow: var(--shadow-sm);
-	}
-	.seg-btn:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 1px;
-	}
-	.show-row {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.25rem;
-	}
-	.show-row .filter-hint {
-		margin: 0;
-	}
 	.races-section {
 		display: flex;
 		flex-direction: column;
@@ -849,17 +790,6 @@
 	.see-all .material-symbols {
 		font-size: 1.1rem;
 	}
-	.races-header {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-	}
-	.subtitle {
-		color: var(--color-text-secondary);
-		margin: 0.25rem 0 0;
-	}
 	.review-link {
 		display: inline-block;
 		margin-top: var(--space-xs);
@@ -869,61 +799,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
-	}
-	.toolbar {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
-		align-items: stretch;
-	}
-	.toolbar .search {
-		flex: 1 1 10rem;
-		min-width: 0;
-		width: auto;
-	}
-	.search {
-		width: 100%;
-		min-height: var(--tap-target-min);
-		padding: 0.6rem 0.85rem;
-		border: 1.5px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.95rem;
-	}
-	.filters-toggle {
-		appearance: none;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		min-height: var(--tap-target-min);
-		min-width: var(--tap-target-min);
-		padding: 0 0.85rem;
-		border: 1.5px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.9rem;
-		font-weight: 600;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-	.filters-toggle.active {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-	}
-	.filters-toggle .material-symbols {
-		font-size: 1.25rem;
-	}
-	.filter-count {
-		min-width: 1.4rem;
-		padding: 0 0.35rem;
-		border-radius: 999px;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		font-size: 0.8rem;
-		line-height: 1.4rem;
-		text-align: center;
 	}
 	/* One row that scrolls inside itself rather than wrapping: the state stays
 	   a single line however many filters are on. */
@@ -946,24 +821,11 @@
 	.removable .material-symbols {
 		font-size: 1rem;
 	}
-	.filters-panel:not([hidden]) {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-md);
-		padding: var(--space-md);
-		border: 1.5px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-	}
 	.near-row {
 		display: flex;
 		gap: 0.4rem;
 		align-items: stretch;
 		flex-wrap: wrap;
-	}
-	.near-input {
-		flex: 1 1 12rem;
-		min-width: 0;
 	}
 	.near-locate {
 		flex-shrink: 0;
@@ -1020,13 +882,46 @@
 		gap: var(--space-md);
 		color: var(--color-danger-text);
 	}
+	.races-filter-bar {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	/* The Filters sheet: each control under its heading with its explanation
+	   right below it. */
+	.sheet-notes {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		margin: 0;
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-md);
+		background: var(--color-bg-secondary);
+	}
+	.sheet-notes dt {
+		font-weight: 600;
+		font-size: 0.85rem;
+	}
+	.sheet-notes dd {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+		line-height: 1.45;
+	}
+	.sheet-field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.sheet-field h3 {
+		margin: 0;
+		font-size: var(--font-size-section-title);
+		font-weight: 600;
+	}
 	.filter-hint {
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		line-height: 1.45;
-		margin: calc(var(--space-md) * -1 + 0.25rem) 0 0;
-	}
-	.filters-panel > .filter-hint:first-child {
-		margin-top: 0;
+		margin: 0;
 	}
 </style>

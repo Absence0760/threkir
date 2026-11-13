@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { onMount } from 'svelte';
@@ -151,10 +152,7 @@
 		<span class="material-symbols" aria-hidden="true">arrow_back</span>{m('nutrition.back')}
 	</a>
 
-	<header class="page-header">
-		<h1>{m('nutrition.targets.title')}</h1>
-		<p class="head-sub">{m('nutrition.targets.subtitle')}</p>
-	</header>
+	<PageHeader title={m('nutrition.targets.title')} subtitle={m('nutrition.targets.subtitle')} />
 
 	{#if loading}
 		<div class="skeleton-stack" aria-hidden="true">
@@ -369,21 +367,6 @@
 
 	.back:hover {
 		color: var(--color-text);
-	}
-
-	.page-header {
-		margin-bottom: var(--space-lg);
-	}
-
-	.page-header h1 {
-		margin: 0;
-		font-size: 1.6rem;
-	}
-
-	.head-sub {
-		margin: 0.3rem 0 0;
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
 	}
 
 	section {

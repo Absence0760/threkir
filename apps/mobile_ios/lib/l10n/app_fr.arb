@@ -1714,7 +1714,7 @@
   "eventAttendanceAttended": "Présent",
   "eventAttendanceNoShow": "Absent",
   "eventAttendanceFailed": "Impossible de mettre à jour la présence. Veuillez réessayer.",
-  "eventRsvpFailed": "Impossible de mettre à jour votre réponse. Veuillez réessayer.",
+  "eventRsvpFailed": "Impossible de mettre à jour votre réponse : {error}",
   "eventOccurrenceCancelled": "Cette occurrence a été annulée.",
   "eventRsvpWaitlisted": "En liste d'attente",
   "eventRsvpGoing": "Je viens",

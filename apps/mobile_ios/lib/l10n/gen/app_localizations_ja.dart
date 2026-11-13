@@ -5953,7 +5953,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventAttendanceFailed => '出席を更新できませんでした。もう一度お試しください。';
 
   @override
-  String get eventRsvpFailed => '参加可否を更新できませんでした。もう一度お試しください。';
+  String eventRsvpFailed(String error) {
+    return '参加可否を更新できませんでした: $error';
+  }
 
   @override
   String get eventRsvpGoing => '参加する';

@@ -1714,7 +1714,7 @@
   "eventAttendanceAttended": "Teilgenommen",
   "eventAttendanceNoShow": "Nicht erschienen",
   "eventAttendanceFailed": "Teilnahme konnte nicht aktualisiert werden. Bitte erneut versuchen.",
-  "eventRsvpFailed": "Deine Zusage konnte nicht aktualisiert werden. Bitte erneut versuchen.",
+  "eventRsvpFailed": "Deine Zusage konnte nicht aktualisiert werden: {error}",
   "eventOccurrenceCancelled": "Dieser Termin wurde abgesagt.",
   "eventRsvpWaitlisted": "Warteliste",
   "eventRsvpGoing": "Bin dabei",

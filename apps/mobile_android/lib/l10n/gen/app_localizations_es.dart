@@ -6293,8 +6293,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo actualizar la asistencia. Inténtalo de nuevo.';
 
   @override
-  String get eventRsvpFailed =>
-      'No se pudo actualizar tu confirmación. Inténtalo de nuevo.';
+  String eventRsvpFailed(String error) {
+    return 'No se pudo actualizar tu confirmación: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Me apunto';

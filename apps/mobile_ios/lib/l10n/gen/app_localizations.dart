@@ -10150,11 +10150,11 @@ abstract class AppLocalizations {
   /// **'Could not update attendance. Please try again.'**
   String get eventAttendanceFailed;
 
-  /// Error banner when an RSVP write fails
+  /// Error banner when an RSVP write fails; {error} is the classified reason (offline, signed out, generic)
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t update your RSVP. Please try again.'**
-  String get eventRsvpFailed;
+  /// **'Couldn\'t update your RSVP: {error}'**
+  String eventRsvpFailed(String error);
 
   /// RSVP chip — going
   ///

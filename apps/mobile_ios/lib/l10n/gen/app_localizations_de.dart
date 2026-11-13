@@ -6316,8 +6316,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Teilnahme konnte nicht aktualisiert werden. Bitte erneut versuchen.';
 
   @override
-  String get eventRsvpFailed =>
-      'Deine Zusage konnte nicht aktualisiert werden. Bitte erneut versuchen.';
+  String eventRsvpFailed(String error) {
+    return 'Deine Zusage konnte nicht aktualisiert werden: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Bin dabei';

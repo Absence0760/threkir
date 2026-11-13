@@ -6237,7 +6237,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not update attendance. Please try again.';
 
   @override
-  String get eventRsvpFailed => 'Couldn\'t update your RSVP. Please try again.';
+  String eventRsvpFailed(String error) {
+    return 'Couldn\'t update your RSVP: $error';
+  }
 
   @override
   String get eventRsvpGoing => 'I\'m in';

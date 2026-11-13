@@ -6312,8 +6312,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de mettre à jour la présence. Veuillez réessayer.';
 
   @override
-  String get eventRsvpFailed =>
-      'Impossible de mettre à jour votre réponse. Veuillez réessayer.';
+  String eventRsvpFailed(String error) {
+    return 'Impossible de mettre à jour votre réponse : $error';
+  }
 
   @override
   String get eventRsvpGoing => 'Je viens';

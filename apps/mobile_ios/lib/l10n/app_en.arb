@@ -8433,9 +8433,14 @@
   "@eventAttendanceFailed": {
     "description": "Error banner when marking attendance fails"
   },
-  "eventRsvpFailed": "Couldn't update your RSVP. Please try again.",
+  "eventRsvpFailed": "Couldn't update your RSVP: {error}",
   "@eventRsvpFailed": {
-    "description": "Error banner when an RSVP write fails"
+    "description": "Error banner when an RSVP write fails; {error} is the classified reason (offline, signed out, generic)",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "eventRsvpGoing": "I'm in",
   "@eventRsvpGoing": {

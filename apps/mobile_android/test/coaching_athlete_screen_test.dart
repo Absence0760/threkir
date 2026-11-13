@@ -16,6 +16,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/coaching_athlete_screen.dart';
 import '../lib/training_service.dart';
+import 'worst_case_layout.dart';
 
 class _FakeApi extends ApiClient {
   _FakeApi({
@@ -315,6 +316,23 @@ class _EditTraining extends TrainingService {
 
 void main() {
   setUpAll(() => initializeDateFormatting());
+
+  worstCaseTestWidgets('Coaching athlete cards', (tester, locale) async {
+    final prefs = await _prefs();
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: CoachingAthleteScreen(
+        api: _FakeApi(runs: [_run('r1')]),
+        preferences: prefs,
+        athleteId: 'a1',
+        displayName: 'Alice Runner',
+        acceptedAt: DateTime.utc(2026, 1, 2),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Athlete');
+  });
 
   testWidgets('the loading frame stands card blocks, not a bare spinner',
       (tester) async {

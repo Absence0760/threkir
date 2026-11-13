@@ -5,7 +5,7 @@
 // in a `DetailHero` or `PageHeader` that wraps, with the bar repeating it only
 // once that heading has scrolled away (TO-12).
 //
-// Three checks:
+// Four checks:
 //   * Every file that hosts a detail page (`*_detail_screen.dart` and the
 //     files in `_hosts`) builds a `DetailPage`, and counts the `AppBar(` /
 //     `SliverAppBar(` it still builds by hand. The counts left are pinned in
@@ -14,6 +14,9 @@
 //     around a `headline` style is what `PageHeading` is for.
 //   * The pushed pages whose titles were cut in fr/de (TO-12) and the root
 //     pages are `PushedPage`s / `PageHeader`s and build no `AppBar(`.
+//   * Anywhere in lib/, an `AppBar(` / `SliverAppBar(` built by hand is
+//     counted per file against `_barsLeft`, each with why the page keeps a
+//     bar of its own; the map may only shrink.
 
 import 'dart:io';
 
@@ -31,14 +34,95 @@ const _hosts = <String>{
 };
 
 const _handBuilt = <String, ({int count, String why})>{
-  'lib/screens/park_courses_screen.dart': (
-    count: 1,
-    why: 'ParksScreen is the parks list, beside the park and course pages',
-  ),
   'lib/screens/session_detail_screen.dart': (
     count: 1,
     why: 'the follow-along runner is a full-screen execution page whose '
         'close button abandons the session, not a detail page',
+  ),
+};
+
+/// Hand-built app bars left anywhere in lib/, and why each page is not a
+/// `PushedPage`. The counts may only shrink.
+const _barsLeft = <String, ({int count, String why})>{
+  'lib/screens/add_run_screen.dart': (
+    count: 1,
+    why: 'the route picker is a search: its query field is the bar title',
+  ),
+  'lib/screens/avatar_crop_screen.dart': (
+    count: 1,
+    why: 'a full-screen crop with a close button; the image takes the body',
+  ),
+  'lib/screens/coach_screen.dart': (
+    count: 1,
+    why: 'the chat is a conversation, with its history drawer opened from '
+        'the bar; its signed-out and consent states are PushedPages',
+  ),
+  'lib/screens/fitness_hub_screen.dart': (
+    count: 1,
+    why: 'a root hub: a zero-height bar that only holds its tab strip',
+  ),
+  'lib/screens/group_thread_screen.dart': (
+    count: 1,
+    why: 'a conversation: its name stays in the bar (ThreadTitle, with a '
+        'tooltip holding the whole name) above the messages',
+  ),
+  'lib/screens/gym_session_screen.dart': (
+    count: 1,
+    why: 'a live execution screen: the room goes to the entry fields and '
+        'the band pinned under them, like the session runner',
+  ),
+  'lib/screens/live_spectator_screen.dart': (
+    count: 1,
+    why: 'a MapFirstPage, which takes its bar as a slot over the map',
+  ),
+  'lib/screens/message_thread_screen.dart': (
+    count: 1,
+    why: 'a conversation: its name stays in the bar (ThreadTitle, with a '
+        'tooltip holding the whole name) above the messages',
+  ),
+  'lib/screens/parkrun_barcode_screen.dart': (
+    count: 1,
+    why: 'a barcode held up to a scanner on a fixed light surface: the code '
+        'must stay in view, so nothing sits above it',
+  ),
+  'lib/screens/privacy_zones_screen.dart': (
+    count: 1,
+    why: 'a MapFirstPage, which takes its bar as a slot over the map',
+  ),
+  'lib/screens/route_builder_screen.dart': (
+    count: 1,
+    why: 'a full-screen map whose place search is the bar title',
+  ),
+  'lib/screens/routes_heatmap_screen.dart': (
+    count: 1,
+    why: 'a full-screen map whose place search is the bar title',
+  ),
+  'lib/screens/run_heatmap_screen.dart': (
+    count: 1,
+    why: 'a full-screen map: the map is the body, with no heading to hold',
+  ),
+  'lib/screens/session_detail_screen.dart': (
+    count: 1,
+    why: 'the follow-along runner is a full-screen execution page whose '
+        'close button abandons the session',
+  ),
+  'lib/screens/setup_wizard_screen.dart': (
+    count: 1,
+    why: 'the wizard has no Back; it is in a PageTitleScope and says its '
+        'title in the step, the bar repeating it as a PushedPage would',
+  ),
+  'lib/screens/social_screen.dart': (
+    count: 2,
+    why: 'a root hub, not a pushed page: its bar holds the tab strip and '
+        'the inbox and bell (and the same bar while signed out)',
+  ),
+  'lib/widgets/collapsing_tab_host.dart': (
+    count: 1,
+    why: 'the pinned zero-height bar that holds the club and profile tabs',
+  ),
+  'lib/widgets/nutrition_log_sheet.dart': (
+    count: 1,
+    why: 'the barcode scanner: a full-screen camera preview',
   ),
 };
 
@@ -153,6 +237,31 @@ void main() {
       }
     }
     expect(bad, isEmpty);
+  });
+
+  test('a hand-built app bar anywhere in lib/ only shrinks', () {
+    final problems = <String>[];
+    final found = <String, int>{};
+    for (final f in _lib()) {
+      final n = appBarsIn(f.readAsStringSync());
+      if (n > 0) found[f.path.replaceAll(r'\', '/')] = n;
+    }
+    for (final e in found.entries) {
+      final allowed = _barsLeft[e.key]?.count ?? 0;
+      if (e.value > allowed) {
+        problems.add('${e.key}: ${e.value} bars, $allowed allowed — lay the '
+            'page out with PushedPage and a PageHeader');
+      }
+    }
+    for (final e in _barsLeft.entries) {
+      final n = found[e.key] ?? 0;
+      if (n < e.value.count) {
+        problems.add('${e.key}: $n bars, ${e.value.count} listed — lower the '
+            'count in _barsLeft (drop the entry at zero)');
+      }
+      if (e.value.why.trim().isEmpty) problems.add('${e.key}: needs a reason');
+    }
+    expect(problems, isEmpty);
   });
 
   test('the scans see what they are for', () {

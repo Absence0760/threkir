@@ -84,8 +84,8 @@ class _FollowRequestsScreenState extends State<FollowRequestsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.followRequestsTitle)),
+    return PushedPage(
+      title: l10n.followRequestsTitle,
       body: _body(l10n),
     );
   }
@@ -105,10 +105,12 @@ class _FollowRequestsScreenState extends State<FollowRequestsScreen> {
     }
     return ListView.separated(
       key: const ValueKey('follow-requests-list'),
-      itemCount: _requests.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (context, i) {
-        final r = _requests[i];
+      itemCount: _requests.length + 1,
+      separatorBuilder: (_, i) =>
+          i == 0 ? const SizedBox.shrink() : const Divider(height: 1),
+      itemBuilder: (context, index) {
+        if (index == 0) return PageHeader(title: l10n.followRequestsTitle);
+        final r = _requests[index - 1];
         final p = r.requester;
         final busy = _busy.contains(p.id);
         return ListTile(

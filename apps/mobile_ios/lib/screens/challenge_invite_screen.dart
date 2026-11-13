@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import 'package:ui_kit/ui_kit.dart' show PageHeading, PushedPage;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -162,7 +163,7 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
               style: theme.textTheme.labelLarge
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 4),
-          Text(p.title, style: theme.textTheme.headlineSmall),
+          PageHeading(p.title),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -210,8 +211,8 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
         ],
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.challengeInviteTitle)),
+    return PushedPage(
+      title: p?.title ?? l10n.challengeInviteTitle,
       body: body,
     );
   }

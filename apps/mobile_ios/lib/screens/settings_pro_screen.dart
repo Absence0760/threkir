@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader, PushedPage;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -392,11 +393,12 @@ class _SettingsProScreenState extends State<SettingsProScreen>
     final sellable = proPurchasable(_perks,
         storeConfigured: rcConfigured,
         webLinksAllowed: webPaymentLinksAllowed());
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.proTitle)),
+    return PushedPage(
+      title: l10n.proTitle,
       body: SafeArea(
         child: ListView(
           children: [
+            PageHeader(title: l10n.proTitle),
             // A subscriber is shown what they have, not a storefront that
             // sells it to them again.
             if (isPro) ...[

@@ -4,7 +4,14 @@ import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppInsets, AppSpace, ListRow, SettingsList, SettingsSection;
+    show
+        AppInsets,
+        AppSpace,
+        ListRow,
+        PageHeader,
+        PushedPage,
+        SettingsList,
+        SettingsSection;
 
 import '../adaptive_width.dart';
 import '../dashboard_layout.dart';
@@ -2352,13 +2359,15 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       PreferencesPage.privacy => _privacySections(l10n),
       PreferencesPage.notifications => _notificationSections(l10n),
     };
-    return Scaffold(
-      appBar: AppBar(title: Text(preferencesPageTitle(l10n, widget.page))),
+    final title = preferencesPageTitle(l10n, widget.page);
+    return PushedPage(
+      title: title,
       body: contentColumn(
         context,
         SafeArea(
           child: SettingsList(
             header: [
+              PageHeader(title: title),
               if (offline)
                 Container(
                   key: const ValueKey('prefs-offline-notice'),

@@ -1,7 +1,12 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SectionHeader;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        SectionHeader;
 
 import '../auth_error.dart';
 import '../e164.dart';
@@ -455,8 +460,8 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.safetyTitle)),
+    return PushedPage(
+      title: l10n.safetyTitle,
       body: _loading
           ? ListSkeleton(
               label: l10n.commonLoading,
@@ -467,6 +472,7 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
+                PageHeader(title: l10n.safetyTitle),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                   child: Text(

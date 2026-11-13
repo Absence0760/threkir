@@ -1,7 +1,8 @@
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SectionHeader;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, PageHeader, PushedPage, SectionHeader;
 
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
@@ -79,24 +80,23 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
     final l10n = AppLocalizations.of(context);
     final routes = _filteredAndSorted();
     final hasStarred = routes.any((r) => r.isStarred);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.routePickerTitle),
-        // "No route" lives as a leading-style trailing action so
-        // users running without a preselected route can dismiss
-        // back to the run screen without scrolling.
-        actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.pop<RoutePick>(context, const NoRoutePicked()),
-            child: Text(l10n.routePickerNoRoute),
-          ),
-        ],
-      ),
+    return PushedPage(
+      title: l10n.routePickerTitle,
+      // "No route" lives in the toolbar so users running without a
+      // preselected route can dismiss back to the run screen without
+      // scrolling.
+      pinned: [
+        TextButton(
+          onPressed: () =>
+              Navigator.pop<RoutePick>(context, const NoRoutePicked()),
+          child: Text(l10n.routePickerNoRoute),
+        ),
+      ],
       body: SafeArea(
         top: false,
         child: Column(
           children: [
+            PageHeader(title: l10n.routePickerTitle),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(

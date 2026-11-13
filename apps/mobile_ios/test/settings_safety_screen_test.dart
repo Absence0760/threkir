@@ -775,7 +775,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -846,6 +846,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _scrollTo(tester, find.byType(DropdownButton<int?>));
       expect(
           tester.widget<DropdownButton<int?>>(find.byType(DropdownButton<int?>))
               .value,
@@ -1076,7 +1077,7 @@ void main() {
     testWidgets('arming the overdue alert turns the unset switch on',
         (tester) async {
       final sync = await pumpGateOpen(tester);
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -1088,7 +1089,7 @@ void main() {
 
     testWidgets('an explicit off wins over the default', (tester) async {
       final sync = await pumpGateOpen(tester);
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -1112,7 +1113,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();

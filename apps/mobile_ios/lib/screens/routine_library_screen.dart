@@ -180,19 +180,18 @@ class _RoutineLibraryScreenState extends State<RoutineLibraryScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final routines = widget.store.routines;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.gymRoutineTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.gymRoutineNew,
-            icon: const Icon(Icons.add),
-            onPressed: _refreshing ? null : _create,
-          ),
-        ],
-      ),
+    return PushedPage(
+      title: l10n.gymRoutineTitle,
+      actions: [
+        AppBarAction(
+          label: l10n.gymRoutineNew,
+          icon: const Icon(Icons.add),
+          onPressed: _refreshing ? null : _create,
+        ),
+      ],
       body: Column(
         children: [
+          PageHeader(title: l10n.gymRoutineTitle),
           // The public routine library was an icon-only `Icons.public` glyph
           // whose name lived in a tooltip; web renders it as a labelled link
           // in the routines header (#666 I8).

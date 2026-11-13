@@ -18,6 +18,8 @@ import 'package:ui_kit/ui_kit.dart'
         DetailParentChip,
         ListCard,
         ListSkeleton,
+        PageHeader,
+        PushedPage,
         SectionHeader,
         StatGrid,
         StatTile,
@@ -137,8 +139,8 @@ class _ParksScreenState extends State<ParksScreen> {
       nameOf: (p) => p.park.name,
     );
     final wide = widthClassOf(context) == WidthClass.expanded;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.parksTitle)),
+    return PushedPage(
+      title: l10n.parksTitle,
       body: _loading
           ? ListView(
               physics: const NeverScrollableScrollPhysics(),
@@ -165,6 +167,10 @@ class _ParksScreenState extends State<ParksScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      PageHeader(
+                        title: l10n.parksTitle,
+                        padding: const EdgeInsets.only(bottom: 8),
+                      ),
                       Text(
                         l10n.parksIntro,
                         key: const Key('parks-intro'),

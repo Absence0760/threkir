@@ -1,7 +1,13 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, AppSpace, ListCard, ProgressBar;
+    show
+        AppSemanticColors,
+        AppSpace,
+        ListCard,
+        PageHeader,
+        ProgressBar,
+        PushedPage;
 
 import '../exercise_history.dart';
 import '../l10n/date_format.dart';
@@ -69,10 +75,9 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
     final theme = Theme.of(context);
     final progress =
         exerciseProgress(gymSetHistory(widget.store.workouts), widget.exerciseName);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(progress?.exerciseName ?? widget.exerciseName),
-      ),
+    final title = progress?.exerciseName ?? widget.exerciseName;
+    return PushedPage(
+      title: title,
       body: progress == null
           ? Center(
               child: Padding(
@@ -85,17 +90,22 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
                 ),
               ),
             )
-          : _body(progress, theme, l10n),
+          : _body(progress, title, theme, l10n),
     );
   }
 
-  Widget _body(ExerciseProgress p, ThemeData theme, AppLocalizations l10n) {
+  Widget _body(ExerciseProgress p, String title, ThemeData theme,
+      AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     // Most-recent first (sessions come oldest-first).
     final reversed = p.sessions.reversed.toList();
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        PageHeader(
+          title: title,
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+        ),
         _headline(p, theme, l10n),
         const SizedBox(height: 16),
         for (final s in reversed) _sessionRow(s, p, tag, theme, l10n),

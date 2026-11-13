@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/challenge_invite_screen.dart';
@@ -77,7 +78,8 @@ Future<void> _pump(WidgetTester tester, _FakeSocial social) async {
 void main() {
   testWidgets('shows the challenge the link names and who sent it', (tester) async {
     await _pump(tester, _FakeSocial(preview: _preview()));
-    expect(find.text('Run 50 km with me'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Run 50 km with me'),
+        findsOneWidget);
     expect(find.text('Invited by Cass'), findsOneWidget);
     expect(find.text('12 runners in'), findsOneWidget);
     expect(find.text('Every km counts.'), findsOneWidget);
@@ -135,6 +137,7 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pump();
     await tester.pump();
-    expect(find.text('Run 50 km with me'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Run 50 km with me'),
+        findsOneWidget);
   });
 }

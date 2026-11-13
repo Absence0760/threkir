@@ -10,6 +10,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:run_recorder/run_recorder.dart' show WorkoutStep, WorkoutStepKind;
+import 'package:ui_kit/ui_kit.dart' show AppSpace, PageHeader, PushedPage;
 
 import '../l10n/gen/app_localizations.dart';
 import '../reactive_ble_watch_transport.dart';
@@ -409,60 +410,59 @@ class _SimWatchScreenState extends State<SimWatchScreen> {
     final status = _status;
     final fix = status?.fix;
     final elev = status?.elev;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.simWatchTitle),
-        actions: [
-          AppBarActions(
-            actions: [
-              // Sync leads: it is the round trip the other five set up for.
-              AppBarAction(
-                icon: _syncing ? _actionSpinner : const Icon(Icons.sync),
-                label: l10n.simWatchSyncAction,
-                onPressed: _syncing ? null : _syncRuns,
+    return PushedPage(
+      title: l10n.simWatchTitle,
+      moreTooltip: l10n.commonMore,
+      actions: [
+        // Sync leads: it is the round trip the other five set up for.
+        AppBarAction(
+          icon: _syncing ? _actionSpinner : const Icon(Icons.sync),
+          label: l10n.simWatchSyncAction,
+          onPressed: _syncing ? null : _syncRuns,
+        ),
+        AppBarAction(
+          icon: _pushingSettings ? _actionSpinner : const Icon(Icons.tune),
+          label: l10n.simWatchPushSettingsAction,
+          onPressed: _pushingSettings ? null : _pushSettings,
+        ),
+        AppBarAction(
+          icon: _pushingWorkout
+              ? _actionSpinner
+              : const Icon(Icons.checklist),
+          label: l10n.simWatchPushWorkoutAction,
+          onPressed: _pushingWorkout ? null : _pushWorkout,
+        ),
+        AppBarAction(
+          icon: _pushingCourse ? _actionSpinner : const Icon(Icons.route),
+          label: l10n.simWatchPushCourseAction,
+          onPressed: _pushingCourse ? null : _pushCourse,
+        ),
+        AppBarAction(
+          icon: _pushingRoadbook
+              ? _actionSpinner
+              : const Icon(Icons.table_chart_outlined),
+          label: l10n.simWatchPushRoadbookAction,
+          onPressed: _pushingRoadbook ? null : _pushRoadbook,
+        ),
+        AppBarAction(
+          icon: const Icon(Icons.dashboard_customize),
+          label: l10n.watchScreensAction,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => WatchScreensEditorScreen(
+                transportFactory: widget.transportFactory,
               ),
-              AppBarAction(
-                icon: _pushingSettings ? _actionSpinner : const Icon(Icons.tune),
-                label: l10n.simWatchPushSettingsAction,
-                onPressed: _pushingSettings ? null : _pushSettings,
-              ),
-              AppBarAction(
-                icon: _pushingWorkout
-                    ? _actionSpinner
-                    : const Icon(Icons.checklist),
-                label: l10n.simWatchPushWorkoutAction,
-                onPressed: _pushingWorkout ? null : _pushWorkout,
-              ),
-              AppBarAction(
-                icon: _pushingCourse ? _actionSpinner : const Icon(Icons.route),
-                label: l10n.simWatchPushCourseAction,
-                onPressed: _pushingCourse ? null : _pushCourse,
-              ),
-              AppBarAction(
-                icon: _pushingRoadbook
-                    ? _actionSpinner
-                    : const Icon(Icons.table_chart_outlined),
-                label: l10n.simWatchPushRoadbookAction,
-                onPressed: _pushingRoadbook ? null : _pushRoadbook,
-              ),
-              AppBarAction(
-                icon: const Icon(Icons.dashboard_customize),
-                label: l10n.watchScreensAction,
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => WatchScreensEditorScreen(
-                      transportFactory: widget.transportFactory,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          PageHeader(
+            title: l10n.simWatchTitle,
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          ),
           if (_syncMessage != null) ...[
             Text(_syncMessage!, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 12),

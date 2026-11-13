@@ -58,8 +58,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.sessionTitle)),
+    return PushedPage(
+      title: l10n.sessionTitle,
       body: _loading
           ? ListSkeleton(label: l10n.commonLoading, hasLeading: false)
           : _error
@@ -71,8 +71,12 @@ class _SessionsScreenState extends State<SessionsScreen> {
                       body: l10n.sessionEmptyHint,
                     )
                   : ListView.builder(
-                      itemCount: _plans.length,
-                      itemBuilder: (context, i) {
+                      itemCount: _plans.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return PageHeader(title: l10n.sessionTitle);
+                        }
+                        final i = index - 1;
                         final p = _plans[i].plan;
                         final subtitleParts = <String>[
                           if (p.discipline != null) p.discipline!,

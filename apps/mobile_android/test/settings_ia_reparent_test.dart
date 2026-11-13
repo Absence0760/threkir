@@ -18,6 +18,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -94,7 +95,8 @@ void main() {
 
       // Assert the population: the page itself is up, so a pass cannot come
       // from an empty list that scrolled past nothing.
-      expect(find.text('Privacy & sharing'), findsOneWidget);
+      expect(find.widgetWithText(PageHeader, 'Privacy & sharing'),
+          findsOneWidget);
 
       final row = find.byKey(const ValueKey('prefs-privacy-zones'));
       await _scrollTo(tester, row);

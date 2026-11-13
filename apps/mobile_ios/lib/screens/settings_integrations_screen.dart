@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
+import 'package:ui_kit/ui_kit.dart' show PageHeader, PushedPage, SheetScaffold;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../fitness_surface_requests.dart';
@@ -516,14 +516,13 @@ class _SettingsIntegrationsScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final signedIn = widget.apiClient?.userId != null;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.integrationsTitle),
-        actions: const [HelpButton(routes: ['/settings/integrations'])],
-      ),
+    return PushedPage(
+      title: l10n.integrationsTitle,
+      pinned: const [HelpButton(routes: ['/settings/integrations'])],
       body: SafeArea(
         child: ListView(
           children: [
+            PageHeader(title: l10n.integrationsTitle),
             if (signedIn) ...[
               // Only what this deployment can honour. A tile whose gate has not
               // answered, or has answered no, is not drawn — except while a

@@ -751,20 +751,25 @@ class _MessagesScreenState extends State<MessagesScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.messagesTitle),
-        actions: [
-          if (_groupsEnabled && widget.api.userId != null)
-            IconButton(
-              key: const ValueKey('inbox-new-group'),
-              tooltip: l10n.groupsNewGroup,
-              icon: const Icon(Icons.group_add_outlined),
-              onPressed: _createGroup,
-            ),
+    return PushedPage(
+      title: l10n.messagesTitle,
+      actions: [
+        if (_groupsEnabled && widget.api.userId != null)
+          AppBarAction(
+            key: const ValueKey('inbox-new-group'),
+            label: l10n.groupsNewGroup,
+            icon: const Icon(Icons.group_add_outlined),
+            onPressed: _createGroup,
+          ),
+      ],
+      // The heading stays above the search field and the list: the inbox
+      // scrolls under it, and Messages is short enough never to crowd them.
+      body: Column(
+        children: [
+          PageHeader(title: l10n.messagesTitle),
+          Expanded(child: _body(l10n)),
         ],
       ),
-      body: _body(l10n),
       floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: widget.api.userId == null
           ? null

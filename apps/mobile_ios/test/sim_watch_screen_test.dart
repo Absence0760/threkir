@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
@@ -418,7 +419,7 @@ void main() {
       await pumpUntil(tester, () => tester.any(find.text('No screens composed')),
           describe: "the editor's stored-screens read to resolve to empty");
 
-      expect(find.text('Watch screens'), findsOneWidget);
+      expect(find.widgetWithText(PageHeader, 'Watch screens'), findsOneWidget);
       expect(find.text('No screens composed'), findsOneWidget);
     });
   });

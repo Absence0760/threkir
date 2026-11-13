@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader, PushedPage;
 
 import '../catalogue_browse.dart' show compareFoldedNames;
 import '../gym_prs.dart';
@@ -262,10 +263,11 @@ class _ExerciseCataloguePickerScreenState
     final filtered = _filtered;
     final hiddenExact = _hiddenExact;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.gymCatalogueTitle)),
+    return PushedPage(
+      title: l10n.gymCatalogueTitle,
       body: Column(
         children: [
+          PageHeader(title: l10n.gymCatalogueTitle),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Column(

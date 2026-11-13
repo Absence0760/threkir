@@ -6,7 +6,15 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppBarAction,
+        AppSemanticColors,
+        AppSpace,
+        ChoiceChipOption,
+        ChoiceChipRow,
+        PageHeader,
+        PushedPage;
 
 import '../elevation.dart';
 import '../fuel_plan.dart';
@@ -494,21 +502,23 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
     final unit = activeDistanceUnit;
     final rb = _roadbook;
     final fuel = _fueling ? _fuelPlanFor(rb) : null;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.roadbookTitle),
-        actions: [
-          if (_markers.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.ios_share),
-              tooltip: l10n.roadbookShare,
-              onPressed: _share,
-            ),
-        ],
-      ),
+    return PushedPage(
+      title: l10n.roadbookTitle,
+      actions: [
+        if (_markers.isNotEmpty)
+          AppBarAction(
+            icon: const Icon(Icons.ios_share),
+            label: l10n.roadbookShare,
+            onPressed: _share,
+          ),
+      ],
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          PageHeader(
+            title: l10n.roadbookTitle,
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          ),
           Row(
             children: [
               Expanded(

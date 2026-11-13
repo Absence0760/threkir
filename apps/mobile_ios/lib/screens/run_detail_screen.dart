@@ -2482,6 +2482,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                     MaterialPageRoute(
                       builder: (_) => SettingsPreferencesScreen(
                         page: PreferencesPage.training,
+                        focus: PreferencesRow.maxHr,
                         apiClient: widget.apiClient,
                         preferences: widget.preferences,
                         settingsSync: widget.settingsSync,

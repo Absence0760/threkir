@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
@@ -1243,7 +1244,7 @@
 
 	<!-- Profile -->
 	<section class="card">
-		<SectionHeader label={m('settingsAccount.profileHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.profileHeading')} label={m('settingsAccount.profileHeading')} class="account-section-head" />
 		{#if profileLoad === 'failed'}
 			<div class="load-error-banner" role="alert" data-testid="profile-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -1290,11 +1291,11 @@
 				</div>
 			</div>
 			<div class="form-grid">
-				<label>
+				<label id={settingRowId('settingsAccount.displayName')}>
 					<span class="label-text">{m('settingsAccount.displayName')}</span>
 					<input type="text" bind:value={displayName} maxlength={TEXT_LIMITS.displayName} />
 				</label>
-				<label>
+				<label id={settingRowId('settingsAccount.handleLabel')}>
 					<span class="label-text">{m('settingsAccount.handleLabel')}</span>
 					<div class="handle-row">
 						<span class="handle-at" aria-hidden="true">@</span>
@@ -1330,7 +1331,7 @@
 					<span class="handle-help">{m('settingsAccount.handleHelp')}</span>
 					{#if handleError}<p class="error-text" role="alert" data-testid="handle-error">{handleError}</p>{/if}
 				</label>
-				<label>
+				<label id={settingRowId('settingsAccount.email')}>
 					<span class="label-text">{m('settingsAccount.email')}</span>
 					<input type="email" value={auth.user?.email ?? ''} disabled />
 					{#if !emailEditing}
@@ -1385,7 +1386,7 @@
 						</p>
 					{/if}
 				</label>
-				<label>
+				<label id={settingRowId('settingsAccount.parkrunNumber')}>
 					<span class="label-text">{m('settingsAccount.parkrunNumber')}</span>
 					<input
 						type="text"
@@ -1404,15 +1405,15 @@
 				<!-- Not consent-disabled: the column it writes is the under-18
 				     discoverability floor's age record (§ 718). Consent gates
 				     the Art 9 prefs mirror, not the field. -->
-				<DateOfBirthInput bind:value={dateOfBirth} label={m('settingsAccount.dateOfBirth')} />
-				<label>
+				<DateOfBirthInput id={settingRowId('settingsAccount.dateOfBirth')} bind:value={dateOfBirth} label={m('settingsAccount.dateOfBirth')} />
+				<label id={settingRowId('settingsAccount.restingHr')}>
 					<span class="label-text">{m('settingsAccount.restingHr')}</span>
 					<input type="number" bind:value={restingHr} placeholder={m('settingsAccount.restingHrPlaceholder')} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} aria-invalid={restingHrOutOfRange} data-testid="resting-hr" />
 					{#if restingHrOutOfRange}
 						<span class="field-error" data-testid="resting-hr-error">{m('limits.restingHrOutOfRange', restingHrBounds)}</span>
 					{/if}
 				</label>
-				<label>
+				<label id={settingRowId('settingsAccount.maxHr')}>
 					<span class="label-text">{m('settingsAccount.maxHr')}</span>
 					<input type="number" bind:value={maxHr} placeholder={m('settingsAccount.maxHrPlaceholder')} min={MAX_HR_BPM_MIN} max={MAX_HR_BPM_MAX} aria-invalid={maxHrOutOfRange} data-testid="max-hr" />
 					{#if maxHrOutOfRange}
@@ -1420,7 +1421,7 @@
 					{/if}
 				</label>
 			</div>
-			<label class="consent-checkbox" id="health-data-consent">
+			<label id={settingRowId('settingsAccount.healthConsentLabel')} class="consent-checkbox">
 				<input type="checkbox" bind:checked={healthDataConsent} />
 				<span>
 					{m('settingsAccount.healthConsentLabel')}
@@ -1433,9 +1434,9 @@
 			{/if}
 			{#if cyclePlansEnabled}
 				<div class="cycle-block" data-testid="cycle-plans-inputs">
-					<h3 class="cycle-heading">{m('settingsAccount.cycleHeading')}</h3>
+					<h3 id={settingRowId('settingsAccount.cycleHeading')} class="cycle-heading">{m('settingsAccount.cycleHeading')}</h3>
 					<p class="section-desc">{m('settingsAccount.cycleDescription')}</p>
-					<label>
+					<label id={settingRowId('settingsAccount.cycleMode')}>
 						<span class="label-text">{m('settingsAccount.cycleMode')}</span>
 						<select bind:value={cycleMode} disabled={!healthDataConsent}>
 							<option value="off">{m('settingsAccount.cycleModeOff')}</option>
@@ -1477,7 +1478,7 @@
 
 	<!-- Sign-in methods -->
 	<section class="card" id="sign-in-methods">
-		<SectionHeader label={m('settingsAccount.signinMethodsHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.signinMethodsHeading')} label={m('settingsAccount.signinMethodsHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.signinMethodsDesc')}
 		</p>
@@ -1567,7 +1568,7 @@
 
 	<!-- Password -->
 	<section class="card">
-		<SectionHeader label={m('settingsAccount.passwordHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.passwordHeading')} label={m('settingsAccount.passwordHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.passwordDesc')}
 		</p>
@@ -1602,7 +1603,7 @@
 	     that nothing ever read (persona-woman CRITICAL: two conflated
 	     Safety surfaces, one inert) — replaced per docs/features/safety.md. -->
 	<section class="card" data-testid="account-safety-pointer">
-		<SectionHeader label={m('settingsAccount.safetyHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.safetyHeading')} label={m('settingsAccount.safetyHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.safetyPointerDesc')}
 		</p>
@@ -1614,7 +1615,7 @@
 
 	<!-- Notifications -->
 	<section class="card">
-		<SectionHeader label={m('settingsAccount.notificationsHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.notificationsHeading')} label={m('settingsAccount.notificationsHeading')} class="account-section-head" />
 		{#if !pushSupported}
 			<p class="section-desc">
 				{m('settingsAccount.pushUnsupported')}
@@ -1645,7 +1646,7 @@
 
 	<!-- Backup & Restore -->
 	<section class="card">
-		<SectionHeader label={m('settingsAccount.backupHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.backupHeading')} label={m('settingsAccount.backupHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.backupDesc')}
 		</p>
@@ -1703,7 +1704,7 @@
 
 	<!-- Data Export -->
 	<section class="card">
-		<SectionHeader label={m('settingsAccount.dataExportHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.dataExportHeading')} label={m('settingsAccount.dataExportHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.dataExportDescPrefix')}<code>runs.json</code>{m('settingsAccount.dataExportDescBetween')}<code>runs.json</code>{m('settingsAccount.dataExportDescSuffix')}
 		</p>
@@ -1790,7 +1791,7 @@
 	</section>
 
 	<section class="card" id="ai-consent" data-testid="ai-consent">
-		<SectionHeader label={m('settingsAccount.coachConsentHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.coachConsentHeading')} label={m('settingsAccount.coachConsentHeading')} class="account-section-head" />
 		{#if aiConsentGranted}
 			<p class="section-desc">{m('settingsAccount.coachConsentActive')}</p>
 			{#if aiConsentStale}
@@ -1842,7 +1843,7 @@
 
 	<!-- Sign out everywhere -->
 	<section class="card" data-testid="signout-everywhere">
-		<SectionHeader label={m('settingsAccount.signoutEverywhereHeading')} class="account-section-head" />
+		<SectionHeader id={settingRowId('settingsAccount.signoutEverywhereHeading')} label={m('settingsAccount.signoutEverywhereHeading')} class="account-section-head" />
 		<p class="section-desc">{m('settingsAccount.signoutEverywhereDesc')}</p>
 		<button
 			class="btn btn-outline"
@@ -1871,7 +1872,7 @@
 		heading={m('settingsAccount.dangerZoneHeading')}
 		description={m('settingsAccount.dangerZoneDesc')}
 	>
-		<button class="btn btn-danger" onclick={() => (showDeleteAccount = true)} disabled={deleting}>
+		<button id={settingRowId('settingsAccount.deleteAccount')} class="btn btn-danger" onclick={() => (showDeleteAccount = true)} disabled={deleting}>
 			{deleting ? m('settingsAccount.deleting') : m('settingsAccount.deleteAccount')}
 		</button>
 	</DangerZone>

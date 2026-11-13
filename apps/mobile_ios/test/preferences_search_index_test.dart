@@ -1,15 +1,16 @@
 // You's settings search finds a Preferences row without opening its page, so
-// it reads `preferencesRowTitles`, a list beside the page builders. These
-// keep the list and the pages in step: every row a page draws is in its
-// page's list, and every listed title is drawn by a default mount or named
-// here as gated, with the gate.
+// it reads `PreferencesRow`, a list beside the page builders, and a result
+// opens the page landed on the row by its id (`SettingsAnchor`). These keep
+// the list and the pages in step: every row a page draws carries an id from
+// its page's list under its own title, and every listed id is drawn by a
+// default mount or named here as gated, with the gate.
 
 import 'package:api_client/api_client.dart' show SettingsService;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show ListRow;
+import 'package:ui_kit/ui_kit.dart' show ListRow, SettingsAnchor;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
@@ -29,42 +30,60 @@ class _SyncedNoBag extends SettingsSyncService {
 
 /// Rows a default mount (no API, no stores, nearby gate off, medication
 /// unset) cannot show, each with what shows it.
-Map<String, String> _gated(AppLocalizations l) => {
-      l.prefsShowGym: 'the Gym and Nutrition stores',
-      l.prefsShowNutrition: 'the Gym and Nutrition stores',
-      l.prefsHrMedicationSetMaxHr: 'medication on with no max HR',
-      l.prefsPrivateProfile: 'an ApiClient',
-      l.followRequestsTitle: 'an ApiClient and a private profile',
-      l.prefsDiscoverableNearby: 'the nearby deploy gate',
-      l.nearbyAreaTitle: 'the nearby deploy gate and an ApiClient',
-      l.prefsReadReceipts: 'an ApiClient',
-      l.prefsMessageRequests: 'an ApiClient',
-    };
+const Map<PreferencesRow, String> _gated = {
+  PreferencesRow.showGym: 'the Gym and Nutrition stores',
+  PreferencesRow.showNutrition: 'the Gym and Nutrition stores',
+  PreferencesRow.hrMedicationSetMaxHr: 'medication on with no max HR',
+  PreferencesRow.privateProfile: 'an ApiClient',
+  PreferencesRow.followRequests: 'an ApiClient and a private profile',
+  PreferencesRow.discoverableNearby: 'the nearby deploy gate',
+  PreferencesRow.nearbyArea: 'the nearby deploy gate and an ApiClient',
+  PreferencesRow.readReceipts: 'an ApiClient',
+  PreferencesRow.messageRequests: 'an ApiClient',
+};
 
-Future<Set<String>> _drawn(WidgetTester tester, PreferencesPage page) async {
+typedef _Drawn = ({
+  List<SettingsAnchor> anchors,
+  List<(String title, String? anchor)> rows,
+});
+
+Future<_Drawn> _drawn(WidgetTester tester, PreferencesPage page) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = Preferences();
   await prefs.init();
   tester.view.physicalSize = const Size(400, 12000);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: SettingsPreferencesScreen(
-      page: page,
-      preferences: prefs,
-      settingsSync: _SyncedNoBag(prefs),
-      hrPrescription: true,
+  await tester.pumpWidget(
+    MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: SettingsPreferencesScreen(
+        page: page,
+        preferences: prefs,
+        settingsSync: _SyncedNoBag(prefs),
+        hrPrescription: true,
+      ),
     ),
-  ));
+  );
   await tester.pumpAndSettle();
-  return {
-    for (final r in tester.widgetList<ListRow>(find.byType(ListRow))) r.title,
-    for (final r
-        in tester.widgetList<AsyncSwitchTile>(find.byType(AsyncSwitchTile)))
-      r.title,
-  };
+  return (
+    anchors: tester
+        .widgetList<SettingsAnchor>(
+          find.byType(SettingsAnchor, skipOffstage: false),
+        )
+        .toList(),
+    rows: [
+      for (final r in tester.widgetList<ListRow>(
+        find.byType(ListRow, skipOffstage: false),
+      ))
+        (r.title, r.anchor),
+      for (final r in tester.widgetList<AsyncSwitchTile>(
+        find.byType(AsyncSwitchTile, skipOffstage: false),
+      ))
+        (r.title, r.anchor),
+    ],
+  );
 }
 
 void main() {
@@ -75,30 +94,60 @@ void main() {
   });
 
   for (final page in PreferencesPage.values) {
-    testWidgets('${page.name}: the search index matches the drawn rows',
-        (tester) async {
+    testWidgets('${page.name}: every row is indexed and every id lands', (
+      tester,
+    ) async {
       final drawn = await _drawn(tester, page);
-      final index = preferencesRowTitles(l10n, page).toSet();
-      expect(drawn, isNotEmpty);
-      expect(drawn.difference(index), isEmpty,
-          reason: 'a row the search cannot find: add it to '
-              'preferencesRowTitles');
-      final gated = _gated(l10n);
+      final index = {for (final r in PreferencesRow.on(page)) r.name: r};
+      expect(drawn.rows, isNotEmpty);
       expect(
-        index.difference(drawn).where((t) => !gated.containsKey(t)),
+        [
+          for (final (title, anchor) in drawn.rows)
+            if (anchor == null) title,
+        ],
         isEmpty,
-        reason: 'a listed title no page draws: drop it, or name its gate',
+        reason:
+            'a row with no anchor cannot be searched for or linked to: '
+            'add it to PreferencesRow and pass anchor: PreferencesRow.x.name',
+      );
+      final ids = [for (final a in drawn.anchors) a.id];
+      expect(
+        ids.toSet(),
+        hasLength(ids.length),
+        reason: 'an id is drawn twice on one page',
+      );
+      for (final a in drawn.anchors) {
+        final row = index[a.id];
+        expect(
+          row,
+          isNotNull,
+          reason: '"${a.id}" is not a ${page.name} row in PreferencesRow',
+        );
+        expect(
+          a.label,
+          preferencesRowTitle(l10n, row!),
+          reason: '"${a.id}" is drawn under another row\'s title',
+        );
+      }
+      final missing = index.values.where(
+        (r) => !ids.contains(r.name) && !_gated.containsKey(r),
+      );
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'a listed row no mount draws: a search result for it '
+            'would land nowhere. Drop it, or name its gate in _gated',
       );
     });
   }
 
-  test('a title belongs to one page, so a result opens one place', () {
-    final seen = <String, PreferencesPage>{};
-    for (final page in PreferencesPage.values) {
-      for (final t in preferencesRowTitles(l10n, page)) {
-        expect(seen[t], isNull, reason: '"$t" is on ${seen[t]} and $page');
-        seen[t] = page;
-      }
+  test('a title belongs to one row, so a result opens one place', () {
+    final seen = <String, PreferencesRow>{};
+    for (final r in PreferencesRow.values) {
+      final t = preferencesRowTitle(l10n, r);
+      expect(seen[t], isNull, reason: '"$t" is ${seen[t]} and $r');
+      seen[t] = r;
     }
   });
 }

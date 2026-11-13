@@ -116,8 +116,7 @@ class IntensityCard extends StatelessWidget {
                   minimumSize: const Size(0, 44),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                onPressed: () =>
-                    openSettings(SettingsDestination.training),
+                onPressed: () => openSettingsRow(PreferencesRow.maxHr),
                 child: Text(l10n.runDetailHrDisclaimerAction),
               ),
             ),

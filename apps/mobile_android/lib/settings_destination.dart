@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import 'preferences_page.dart';
 
+export 'preferences_page.dart' show PreferencesRow;
+
 /// A Settings sub-screen named as an INTENT rather than as a widget.
 ///
 /// Every settings screen takes some slice of `Preferences` +
@@ -40,6 +42,10 @@ enum SettingsDestination {
   /// The Preferences page this destination is, or null for any other
   /// settings screen.
   final PreferencesPage? preferencesPage;
+
+  /// The destination that is [page].
+  static SettingsDestination of(PreferencesPage page) =>
+      values.firstWhere((d) => d.preferencesPage == page);
 }
 
 /// Cross-screen handoff for "open this Settings sub-screen".
@@ -64,5 +70,27 @@ final ValueNotifier<SettingsDestination?> pendingSettingsDestination =
 /// host clears the slot as it navigates, which is also what lets the same
 /// destination be requested twice in a row.
 void openSettings(SettingsDestination destination) {
+  _pendingRow = null;
   pendingSettingsDestination.value = destination;
+}
+
+PreferencesRow? _pendingRow;
+
+/// Ask the shell to open the Preferences page [row] is on, landed on [row]:
+/// scrolled into view, highlighted and announced. A link about one setting
+/// names the setting, not only its page, so nobody is left at the top of a
+/// page the setting is several screens down (decisions § 2494, amended).
+void openSettingsRow(PreferencesRow row) {
+  _pendingRow = row;
+  pendingSettingsDestination.value = SettingsDestination.of(row.page);
+}
+
+/// The row the parked destination lands on, if any.
+PreferencesRow? get pendingSettingsRow => _pendingRow;
+
+/// [pendingSettingsRow], cleared: the shell takes it once per drain.
+PreferencesRow? takePendingSettingsRow() {
+  final row = _pendingRow;
+  _pendingRow = null;
+  return row;
 }

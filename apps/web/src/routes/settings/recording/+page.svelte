@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import ListRow from '#lib/components/ListRow.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { effective } from '#lib/settings/settings.ts';
@@ -80,9 +81,9 @@
 
 <PrefsPage heading={m('prefs.activityRecordingHeading')} tagline={m('prefs.recordingTagline')} page={prefs}>
 	<section class="card">
-		<SectionHeader label={m('prefs.startingRunHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.startingRunHeading')} label={m('prefs.startingRunHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.defaultActivity')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.defaultActivity')}</span>
 					<select bind:value={defaultActivity} onchange={() => prefs.save({ default_activity_type: defaultActivity })} aria-describedby="default-activity-hint">
@@ -97,10 +98,11 @@
 	</section>
 
 	<section class="card">
-		<SectionHeader label={m('prefs.voiceFeedbackHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.voiceFeedbackHeading')} label={m('prefs.voiceFeedbackHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<ListRow
 				kind="toggle"
+				id={settingRowId('prefs.spokenSplits')}
 				title={m('prefs.spokenSplits')}
 				subtitle={m('prefs.spokenSplitsHint')}
 				bind:checked={voiceFeedbackEnabled}
@@ -108,7 +110,7 @@
 				class="recording-master-toggle"
 			/>
 			{#if voiceFeedbackEnabled}
-				<div class="field">
+				<div id={settingRowId('prefs.cueDetail')} class="field">
 					<label>
 						<span class="label-text">{m('prefs.cueDetail')}</span>
 						<select bind:value={voiceFeedbackVerbosity} onchange={() => prefs.save({ voice_feedback_verbosity: voiceFeedbackVerbosity })} aria-describedby="cue-detail-hint">
@@ -118,7 +120,7 @@
 					</label>
 					<p class="hint" id="cue-detail-hint">{m('prefs.cueDetailHint')}</p>
 				</div>
-				<div class="field">
+				<div id={settingRowId('prefs.splitInterval')} class="field">
 					<label>
 						<span class="label-text">{m('prefs.splitInterval', { unit: preferredUnit })}</span>
 						<!-- min/max/step are in the displayed unit by design — a 0.5–10
@@ -145,7 +147,7 @@
 					</label>
 					<p class="hint" id="split-interval-hint">{m('prefs.splitIntervalHint')}</p>
 				</div>
-				<div class="field">
+				<div id={settingRowId('prefs.splitPaceMode')} class="field">
 					<label>
 						<span class="label-text">{m('prefs.splitPaceMode')}</span>
 						<select
@@ -162,7 +164,7 @@
 					</label>
 					<p class="hint" id="split-pace-mode-hint">{m('prefs.splitPaceModeHint')}</p>
 				</div>
-				<fieldset class="cue-list" data-testid="voice-cue-types">
+				<fieldset id={settingRowId('prefs.voiceCueTypes')} class="cue-list" data-testid="voice-cue-types">
 					<legend class="label-text">{m('prefs.voiceCueTypes')}</legend>
 					<p class="section-hint">{m('prefs.voiceCueTypesHint')}</p>
 					{#each VOICE_CUE_IDS as cueId (cueId)}

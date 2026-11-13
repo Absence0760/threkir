@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	// Says why something health-related was not stored, and where consent is
 	// given (decisions § 2514). Heart rate and the food log are kept only with
 	// health-data consent; the consent itself is the checkbox on the Account
@@ -16,7 +17,7 @@
 	<span class="material-symbols" aria-hidden="true">favorite</span>
 	<span>
 		{message}
-		<a href="/settings/account#health-data-consent">{m('healthConsent.giveConsent')}</a>
+		<a href={`/settings/account#${settingRowId('settingsAccount.healthConsentLabel')}`}>{m('healthConsent.giveConsent')}</a>
 	</span>
 </p>
 

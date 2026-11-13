@@ -68,7 +68,7 @@ test.describe('heart rate and the food log need health-data consent', () => {
 			await expect(page.getByTestId('food-consent-notice').first()).toBeVisible({ timeout: 10_000 });
 			await expect(
 				page.getByTestId('food-consent-notice').first().getByRole('link'),
-			).toHaveAttribute('href', '/settings/account#health-data-consent');
+			).toHaveAttribute('href', '/settings/account#setting-settingsAccount-healthConsentLabel');
 			await page.getByTestId('log-food').click();
 			const dialog = page.getByRole('dialog');
 			await expect(dialog.getByTestId('food-consent-notice')).toBeVisible();

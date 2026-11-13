@@ -709,10 +709,17 @@ class _HomeScreenState extends State<HomeScreen>
     final destination = pendingSettingsDestination.value;
     if (destination == null || !mounted) return;
     pendingSettingsDestination.value = null;
-    _pushScreen(_settingsDestinationScreen(destination));
+    final row = takePendingSettingsRow();
+    _pushScreen(_settingsDestinationScreen(
+      destination,
+      focus: row?.page == destination.preferencesPage ? row : null,
+    ));
   }
 
-  Widget _settingsDestinationScreen(SettingsDestination destination) =>
+  Widget _settingsDestinationScreen(
+    SettingsDestination destination, {
+    PreferencesRow? focus,
+  }) =>
       switch (destination) {
         SettingsDestination.display ||
         SettingsDestination.recording ||
@@ -721,6 +728,7 @@ class _HomeScreenState extends State<HomeScreen>
         SettingsDestination.notifications =>
           SettingsPreferencesScreen(
             page: destination.preferencesPage!,
+            focus: focus,
             apiClient: widget.apiClient,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,

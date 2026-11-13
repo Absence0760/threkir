@@ -43,6 +43,7 @@
 		info,
 		testid,
 		rowTestid,
+		id,
 		class: extra = '',
 	}: {
 		kind: 'nav' | 'value' | 'toggle';
@@ -72,6 +73,9 @@
 		testid?: string;
 		/// On the row itself.
 		rowTestid?: string;
+		/// The row's id: where a settings-search result lands
+		/// (`settingRowId`, settings_search.ts).
+		id?: string;
 		class?: string;
 	} = $props();
 
@@ -95,7 +99,7 @@
 {/snippet}
 
 {#if kind === 'toggle'}
-	<div class="list-row lr-toggle {extra}" class:lr-disabled={disabled} data-testid={rowTestid}>
+	<div {id} class="list-row lr-toggle {extra}" class:lr-disabled={disabled} data-testid={rowTestid}>
 		<label class="lr-hit" for={inputId}>
 			{@render texts()}
 		</label>
@@ -117,7 +121,7 @@
 		/>
 	</div>
 {:else}
-	<div class="list-row lr-{kind} {extra}" class:lr-disabled={inert} data-testid={rowTestid}>
+	<div {id} class="list-row lr-{kind} {extra}" class:lr-disabled={inert} data-testid={rowTestid}>
 		{#if icon}<span class="material-symbols lr-icon" aria-hidden="true">{icon}</span>{/if}
 		{#if inert}
 			<span class="lr-hit" aria-disabled="true" data-testid={testid}>{@render texts()}</span>

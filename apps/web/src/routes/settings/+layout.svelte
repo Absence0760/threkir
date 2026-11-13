@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -7,6 +7,7 @@
 	import { BODY_METRICS_PAGE, PREFERENCES_PAGES } from '#lib/settings/preferences_ia.ts';
 	import { shareAttributionEnabled } from '#lib/share/share_attribution.ts';
 	import { searchSettings } from '#lib/settings/settings_search.ts';
+	import { focusSettingFromHash } from '#lib/settings/setting_focus.ts';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import ListRow from '#lib/components/ListRow.svelte';
@@ -82,13 +83,27 @@
 	]);
 
 	// Search over every settings page's rows (decisions § 2494): a result
-	// opens the page the setting is on. Only pages the nav shows are searched.
+	// lands on the row itself (`#setting-…`), scrolled into view, focused and
+	// briefly highlighted. Only pages the nav shows are searched.
 	let query = $state('');
 	const results = $derived(
 		query.trim() === ''
 			? null
 			: searchSettings(query, m, new Set(sections.flatMap((s) => s.tabs.map((tab) => tab.href)))),
 	);
+
+	// Every navigation whose fragment names a row lands on it, including a
+	// direct load of a shared link; a result for the row already in the URL
+	// changes nothing the effect reads, so its click lands on it directly.
+	$effect(() => {
+		const hash = page.url.hash;
+		void page.url.pathname;
+		return untrack(() => focusSettingFromHash(hash));
+	});
+	function pickResult(href: string) {
+		query = '';
+		if (href === page.url.pathname + page.url.hash) focusSettingFromHash(page.url.hash);
+	}
 </script>
 
 <svelte:head>
@@ -110,7 +125,7 @@
 							title={hit.title}
 							subtitle={hit.where}
 							href={hit.href}
-							onclick={() => (query = '')}
+							onclick={() => pickResult(hit.href)}
 							testid="settings-search-result"
 						/>
 					</li>
@@ -266,6 +281,38 @@
 	.settings-content {
 		flex: 1;
 		min-width: 0;
+	}
+	/* The row a search result landed on (setting_focus.ts): a tint and a ring
+	   that fade out, so the eye finds it among its neighbours. The tint sits
+	   behind the row's own content; the ring replaces the focus ring the
+	   programmatic focus would otherwise draw. */
+	.settings-content :global(.setting-flash) {
+		border-radius: var(--radius-md);
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+		animation: -global-setting-flash 2s ease-out forwards;
+	}
+	.settings-content :global([id^='setting-'][tabindex='-1']:focus:not(.setting-flash)) {
+		outline: none;
+	}
+	@keyframes -global-setting-flash {
+		0%,
+		60% {
+			background-color: var(--color-primary-light);
+			outline-color: var(--color-primary);
+		}
+		100% {
+			background-color: transparent;
+			outline-color: transparent;
+		}
+	}
+	/* Reduced motion: the same highlight, held still for its two seconds and
+	   then removed, with no fade. */
+	@media (prefers-reduced-motion: reduce) {
+		.settings-content :global(.setting-flash) {
+			animation: none;
+			background-color: var(--color-primary-light);
+		}
 	}
 	.finish-setup {
 		display: flex;

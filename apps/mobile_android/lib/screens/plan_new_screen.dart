@@ -2125,7 +2125,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         ),
       ];
     }
-    Widget hint(Key key, String text, String action, SettingsDestination to) =>
+    Widget hint(Key key, String text, String action, VoidCallback open) =>
         Padding(
           key: key,
           padding: const EdgeInsets.only(top: 4),
@@ -2139,7 +2139,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                   minimumSize: const Size(0, 44),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                onPressed: () => openSettings(to),
+                onPressed: open,
                 child: Text(action),
               ),
             ],
@@ -2175,14 +2175,14 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           const Key('plan-new-dob-hint'),
           l10n.planNewDobHintAbsent,
           l10n.planNewDobHintAbsentAction,
-          SettingsDestination.training,
+          () => openSettingsRow(PreferencesRow.dateOfBirth),
         )
       else if (_viewerDobState == HealthUseDobState.consentWithheld)
         hint(
           const Key('plan-new-dob-consent-hint'),
           l10n.planNewDobHintHealthData,
           l10n.planNewDobHintHealthDataAction,
-          SettingsDestination.bodyMetrics,
+          () => openSettings(SettingsDestination.bodyMetrics),
         ),
     ];
   }

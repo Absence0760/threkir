@@ -63,6 +63,10 @@ class SettingsPreferencesScreen extends StatefulWidget {
   /// deploy flag. A test passes it directly.
   final bool? hrPrescription;
 
+  /// The row to land on, on [page]: a settings-search result or a link about
+  /// one setting opens the page scrolled to that row and highlighted.
+  final PreferencesRow? focus;
+
   const SettingsPreferencesScreen({
     super.key,
     required this.page,
@@ -73,6 +77,7 @@ class SettingsPreferencesScreen extends StatefulWidget {
     this.foodStore,
     this.runStore,
     this.hrPrescription,
+    this.focus,
   });
 
   @override
@@ -1301,6 +1306,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       ListRow.toggle(
         key: const Key('prefsHrMedicationAffected'),
         title: l10n.prefsHrMedicationAffected,
+        anchor: PreferencesRow.hrMedicationAffected.name,
         subtitle: consented
             ? l10n.prefsHrMedicationAffectedHint
             : l10n.prefsHrMedicationNeedsConsent,
@@ -1314,6 +1320,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           key: const Key('prefsHrMedicationMaxPrompt'),
           icon: Icons.info_outline,
           title: l10n.prefsHrMedicationSetMaxHr,
+          anchor: PreferencesRow.hrMedicationSetMaxHr.name,
           enabled: _bagReady,
           onTap: _editMaxHr,
         ),
@@ -1579,6 +1586,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   }
 
   Widget _cueSwitch(
+    PreferencesRow row,
     String title,
     String subtitle,
     String cueId,
@@ -1586,6 +1594,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   ) {
     final prefs = widget.preferences;
     return ListRow.toggle(
+      anchor: row.name,
       info: _info(title, infoBody),
       title: title,
       subtitle: subtitle,
@@ -1613,6 +1622,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.value(
             title: l10n.prefsLanguage,
+            anchor: PreferencesRow.language.name,
             value: prefs.locale == null
                 ? l10n.prefsLanguageSystem
                 : localeLabels[localeToTag(prefs.locale!)] ?? '—',
@@ -1620,6 +1630,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.toggle(
             title: l10n.prefsDarkMode,
+            anchor: PreferencesRow.darkMode.name,
             value: _darkMode,
             onChanged: (v) {
               final mode = v ? ThemeMode.dark : ThemeMode.light;
@@ -1635,6 +1646,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.toggle(
             title: l10n.prefsUseMiles,
+            anchor: PreferencesRow.useMiles.name,
             subtitle: _unitSubtitle(),
             value: prefs.useMiles,
             onChanged: (v) async {
@@ -1645,6 +1657,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.value(
             title: l10n.prefsPaceFormat,
+            anchor: PreferencesRow.paceFormat.name,
             value: _paceFormatLabel(
               l10n,
               _bagValue<String>(SettingsKeys.unitsPaceFormat) ?? 'min_per_km',
@@ -1654,6 +1667,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.value(
             title: l10n.prefsWeightUnit,
+            anchor: PreferencesRow.weightUnit.name,
             value: _weightUnitLabel(
               l10n,
               _bagValue<String>(SettingsKeys.weightUnit) ?? 'kg',
@@ -1663,6 +1677,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.value(
             title: l10n.prefsWeekStart,
+            anchor: PreferencesRow.weekStart.name,
             value: _weekStartLabel(
               l10n,
               _bagValue<String>(SettingsKeys.weekStartDay) ??
@@ -1679,6 +1694,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ListRow.value(
             key: const Key('prefsDisclosureLevel'),
             title: l10n.prefsDisclosureLevel,
+            anchor: PreferencesRow.disclosureLevel.name,
             value: _disclosureLabel(l10n, _disclosureChoice),
             hint: l10n.prefsDisclosureHint(
               _disclosureLabel(l10n, _derivedDisclosure),
@@ -1689,24 +1705,28 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ListRow.nav(
             key: const Key('prefsProgressCards'),
             title: l10n.prefsProgressCards,
+            anchor: PreferencesRow.progressCards.name,
             subtitle: l10n.prefsProgressCardsHint,
             enabled: _bagReady,
             onTap: _editProgressCards,
           ),
           ListRow.value(
             title: l10n.prefsMapStyle,
+            anchor: PreferencesRow.mapStyle.name,
             value: _mapStyleLabel(l10n, _mapStylePref),
             enabled: _bagReady,
             onTap: _editMapStyle,
           ),
           ListRow.value(
             title: l10n.prefsUndoWindow,
+            anchor: PreferencesRow.undoWindow.name,
             value: _undoWindowLabel(l10n, _undoWindowS),
             enabled: _bagReady,
             onTap: _editUndoWindow,
           ),
           ListRow.toggle(
             title: l10n.prefsShowCalories,
+            anchor: PreferencesRow.showCalories.name,
             subtitle: l10n.prefsShowCaloriesHint,
             value: _bagValue<bool>(SettingsKeys.showCalories) ?? true,
             onChanged: _bagReady
@@ -1716,6 +1736,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ListRow.toggle(
             key: const Key('prefsShowMascot'),
             title: l10n.prefsShowMascot,
+            anchor: PreferencesRow.showMascot.name,
             subtitle: l10n.prefsShowMascotHint,
             value: _bagValue<bool>(SettingsKeys.showMascot) != false,
             onChanged: _bagReady
@@ -1730,6 +1751,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ListRow.value(
             key: const Key('prefsCoachInMessages'),
             title: l10n.prefsCoachInMessages,
+            anchor: PreferencesRow.coachInMessages.name,
             value: _coachPlacementLabel(
               l10n,
               parseCoachInboxPlacement(
@@ -1751,6 +1773,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             rows: [
               ListRow.toggle(
                 title: l10n.prefsShowGym,
+                anchor: PreferencesRow.showGym.name,
                 subtitle: l10n.prefsShowGymSubtitle,
                 value: prefs.gymShown(hasData: gym.workouts.isNotEmpty),
                 onChanged: (v) async {
@@ -1760,6 +1783,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
               ),
               ListRow.toggle(
                 title: l10n.prefsShowNutrition,
+                anchor: PreferencesRow.showNutrition.name,
                 subtitle: l10n.prefsShowNutritionSubtitle,
                 value: prefs.nutritionShown(hasData: food.rows.isNotEmpty),
                 onChanged: (v) async {
@@ -1785,6 +1809,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.value(
             title: l10n.prefsDefaultActivity,
+            anchor: PreferencesRow.defaultActivity.name,
             value: activityTypeLabelFor(
               l10n,
               _bagValue<String>(SettingsKeys.defaultActivityType),
@@ -1798,6 +1823,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ListRow.toggle(
             key: const Key('prefsKeepRunPrimary'),
             title: l10n.prefsKeepRunPrimary,
+            anchor: PreferencesRow.keepRunPrimary.name,
             subtitle: runPrimaryForced
                 ? l10n.prefsKeepRunPrimaryForcedSubtitle
                 : l10n.prefsKeepRunPrimarySubtitle,
@@ -1806,6 +1832,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.toggle(
             title: l10n.prefsKeepScreenOn,
+            anchor: PreferencesRow.keepScreenOn.name,
             subtitle: l10n.prefsKeepScreenOnSubtitle,
             value: prefs.keepScreenOn,
             onChanged: (v) async {
@@ -1815,6 +1842,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.toggle(
             title: l10n.prefsDimScreenWhileRecording,
+            anchor: PreferencesRow.dimScreenWhileRecording.name,
             subtitle: l10n.prefsDimScreenWhileRecordingSubtitle,
             value: prefs.dimScreenWhileRecording,
             onChanged: prefs.keepScreenOn
@@ -1827,12 +1855,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.toggle(
             title: l10n.prefsAdvancedGps,
+            anchor: PreferencesRow.advancedGps.name,
             subtitle: l10n.prefsAdvancedGpsSubtitle,
             value: prefs.advancedGps,
             onChanged: prefs.setAdvancedGps,
           ),
           ListRow.toggle(
             title: l10n.prefsShowRawTrack,
+            anchor: PreferencesRow.showRawTrack.name,
             subtitle: l10n.prefsShowRawTrackSubtitle,
             value: prefs.showRawTrack,
             onChanged: prefs.setShowRawTrack,
@@ -1844,6 +1874,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.toggle(
             title: l10n.prefsAudioCues,
+            anchor: PreferencesRow.audioCues.name,
             subtitle: l10n.prefsAudioCuesSubtitle,
             value: prefs.audioCues,
             onChanged: (v) async {
@@ -1853,6 +1884,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.toggle(
             title: l10n.phoneSurfaceVibrationCues,
+            anchor: PreferencesRow.vibrationCues.name,
             subtitle: l10n.phoneSurfaceVibrationCuesSubtitle,
             value: prefs.hapticFeedback,
             onChanged: (v) async {
@@ -1863,6 +1895,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           if (prefs.audioCues)
             ListRow.toggle(
               title: l10n.prefsMinimalVoiceCues,
+              anchor: PreferencesRow.minimalVoiceCues.name,
               subtitle: l10n.prefsMinimalVoiceCuesSubtitle,
               value: prefs.voiceFeedbackVerbosity == 'minimal',
               onChanged: (v) async {
@@ -1877,6 +1910,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           if (prefs.audioCues)
             ListRow.toggle(
               title: l10n.prefTurnByTurnCues,
+              anchor: PreferencesRow.turnByTurnCues.name,
               subtitle: l10n.prefTurnByTurnCuesSubtitle,
               value: prefs.turnByTurnCues,
               onChanged: (v) async {
@@ -1885,6 +1919,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ),
           ListRow.value(
             title: l10n.prefsSplitInterval,
+            anchor: PreferencesRow.splitInterval.name,
             value: prefs.splitIntervalMetres > 0
                 ? _splitIntervalLabel(prefs.splitIntervalMetres, prefs.unit)
                 : l10n.prefsSplitIntervalDefaultSubtitle(
@@ -1905,6 +1940,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.value(
             title: l10n.prefsTargetPace,
+            anchor: PreferencesRow.targetPace.name,
             value: prefs.targetPaceSecPerKm > 0
                 ? l10n.prefsLivePaceAlertOn(
                     UnitFormat.pace(
@@ -1924,54 +1960,63 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           label: l10n.prefsVoiceCueTypesLabel,
           rows: [
             _cueSwitch(
+              PreferencesRow.cueSplits,
               l10n.prefsCueSplits,
               l10n.prefsCueSplitsSubtitle,
               VoiceCue.splits,
               l10n.prefsCueSplitsInfo,
             ),
             _cueSwitch(
+              PreferencesRow.cueStartFinish,
               l10n.prefsCueStartFinish,
               l10n.prefsCueStartFinishSubtitle,
               VoiceCue.startFinish,
               l10n.prefsCueStartFinishInfo,
             ),
             _cueSwitch(
+              PreferencesRow.cueOffRoute,
               l10n.prefsCueOffRoute,
               l10n.prefsCueOffRouteSubtitle,
               VoiceCue.offRoute,
               l10n.prefsCueOffRouteInfo,
             ),
             _cueSwitch(
+              PreferencesRow.cuePaceAlerts,
               l10n.prefsCuePaceAlerts,
               l10n.prefsCuePaceAlertsSubtitle,
               VoiceCue.paceAlerts,
               l10n.prefsCuePaceAlertsInfo,
             ),
             _cueSwitch(
+              PreferencesRow.cueWorkoutSteps,
               l10n.prefsCueWorkoutSteps,
               l10n.prefsCueWorkoutStepsSubtitle,
               VoiceCue.workoutSteps,
               l10n.prefsCueWorkoutStepsInfo,
             ),
             _cueSwitch(
+              PreferencesRow.cueCutoffCatchUp,
               l10n.prefsCueCutoffCatchUp,
               l10n.prefsCueCutoffCatchUpSubtitle,
               VoiceCue.cutoffCatchUp,
               l10n.prefsCueCutoffCatchUpInfo,
             ),
             _cueSwitch(
+              PreferencesRow.cueMarkerTargets,
               l10n.prefsCueMarkerTargets,
               l10n.prefsCueMarkerTargetsSubtitle,
               VoiceCue.markerTargets,
               l10n.prefsCueMarkerTargetsInfo,
             ),
             _cueSwitch(
+              PreferencesRow.cuePhaseTransitions,
               l10n.prefsCuePhaseTransitions,
               l10n.prefsCuePhaseTransitionsSubtitle,
               VoiceCue.phaseTransitions,
               l10n.prefsCuePhaseTransitionsInfo,
             ),
             _cueSwitch(
+              PreferencesRow.cueGuidedRun,
               l10n.prefsCueGuidedRun,
               l10n.prefsCueGuidedRunSubtitle,
               VoiceCue.guidedRun,
@@ -1979,6 +2024,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ),
             ListRow.value(
               title: l10n.prefsSplitPaceMode,
+              anchor: PreferencesRow.splitPaceMode.name,
               value: _splitPaceModeLabel(l10n, prefs.splitPaceMode),
               info: _info(l10n.prefsSplitPaceMode, l10n.prefsSplitPaceModeInfo),
               onTap: _editSplitPaceMode,
@@ -2001,6 +2047,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.value(
             title: l10n.prefsWeeklyGoal,
+            anchor: PreferencesRow.weeklyGoal.name,
             value: _weeklyGoalSummary(),
             enabled: _bagReady,
             onTap: _editWeeklyGoal,
@@ -2012,12 +2059,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.value(
             title: l10n.prefsDateOfBirth,
+            anchor: PreferencesRow.dateOfBirth.name,
             value: _dateOfBirthDisplay ?? l10n.prefsNotSet,
             enabled: _bagReady,
             onTap: _editDateOfBirth,
           ),
           ListRow.value(
             title: l10n.prefsRestingHr,
+            anchor: PreferencesRow.restingHr.name,
             value: _bagValue<num>(SettingsKeys.restingHrBpm) != null
                 ? l10n.prefsHrBpm(
                     _bagValue<num>(SettingsKeys.restingHrBpm)!.round(),
@@ -2028,6 +2077,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.value(
             title: l10n.prefsMaxHr,
+            anchor: PreferencesRow.maxHr.name,
             value: _bagValue<num>(SettingsKeys.maxHrBpm) != null
                 ? l10n.prefsHrBpm(
                     _bagValue<num>(SettingsKeys.maxHrBpm)!.round(),
@@ -2039,6 +2089,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           if (_hrPrescription) ..._hrMedicationTiles(l10n),
           ListRow.value(
             title: l10n.prefsHrZones,
+            anchor: PreferencesRow.hrZones.name,
             value: _hrZonesSummary(),
             enabled: _bagReady,
             onTap: _editHrZones,
@@ -2047,6 +2098,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ListRow.toggle(
               key: const Key('prefsExcludeGymFromReadiness'),
               title: l10n.prefsExcludeGymFromReadiness,
+              anchor: PreferencesRow.excludeGymFromReadiness.name,
               subtitle: l10n.prefsExcludeGymFromReadinessHint,
               value:
                   _bagValue<bool>(SettingsKeys.excludeGymFromReadiness) ??
@@ -2062,6 +2114,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ListRow.toggle(
             key: const Key('prefsExtraRecovery'),
             title: l10n.prefsExtraRecovery,
+            anchor: PreferencesRow.extraRecovery.name,
             subtitle: l10n.prefsExtraRecoveryHint,
             value: _bagValue<Object>(SettingsKeys.extraRecovery) == true,
             onChanged: _bagReady
@@ -2075,6 +2128,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.value(
             title: l10n.prefsCarbsPerHour,
+            anchor: PreferencesRow.carbsPerHour.name,
             value: l10n.prefsCarbsPerHourValue(
               (_bagValue<num>(SettingsKeys.carbsPerHour) ??
                       widget.preferences.carbsPerHourG)
@@ -2085,6 +2139,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.value(
             title: l10n.prefsFluidPerHour,
+            anchor: PreferencesRow.fluidPerHour.name,
             value: l10n.prefsFluidPerHourValue(
               (_bagValue<num>(SettingsKeys.fluidPerHour) ??
                       widget.preferences.fluidPerHourMl)
@@ -2100,6 +2155,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.value(
             title: l10n.prefsCoachPersonality,
+            anchor: PreferencesRow.coachPersonality.name,
             value: _coachLabel(
               l10n,
               _bagValue<String>(SettingsKeys.coachPersonality) ?? 'supportive',
@@ -2124,6 +2180,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         rows: [
           ListRow.value(
             title: l10n.prefsDefaultRunPrivacy,
+            anchor: PreferencesRow.defaultRunPrivacy.name,
             value: _privacyLabel(
               l10n,
               _bagValue<String>(SettingsKeys.privacyDefault) ?? 'followers',
@@ -2133,6 +2190,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ),
           ListRow.toggle(
             title: l10n.prefsStravaAutoShare,
+            anchor: PreferencesRow.stravaAutoShare.name,
             subtitle: l10n.prefsStravaAutoShareSubtitle,
             value: _bagValue<bool>(SettingsKeys.stravaAutoShare) ?? false,
             onChanged: _bagReady ? (_) => _editStravaAutoShare() : null,
@@ -2146,6 +2204,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             AsyncSwitchTile(
               switchKey: const ValueKey('prefs-private-profile'),
               title: l10n.prefsPrivateProfile,
+              anchor: PreferencesRow.privateProfile.name,
               subtitle: l10n.prefsPrivateProfileSubtitle,
               value: _profilePrivate,
               failed: _profilePrivateFailed,
@@ -2157,11 +2216,13 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
               ListRow.nav(
                 key: const ValueKey('prefs-follow-requests'),
                 title: l10n.followRequestsTitle,
+                anchor: PreferencesRow.followRequests.name,
                 onTap: _openFollowRequests,
               ),
           ],
           ListRow.toggle(
             title: l10n.prefsDiscoverable,
+            anchor: PreferencesRow.discoverable.name,
             subtitle: l10n.prefsDiscoverableSubtitle,
             value: _bagValue<bool>(SettingsKeys.discoverableInSearch) ?? true,
             onChanged: _bagReady ? (_) => _editDiscoverableInSearch() : null,
@@ -2173,6 +2234,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           if (_nearbyGate) ...[
             ListRow.toggle(
               title: l10n.prefsDiscoverableNearby,
+              anchor: PreferencesRow.discoverableNearby.name,
               subtitle: l10n.prefsDiscoverableNearbySubtitle,
               value: _bagValue<bool>(SettingsKeys.discoverableNearby) ?? false,
               onChanged: _bagReady ? (_) => _editDiscoverableNearby() : null,
@@ -2180,6 +2242,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             if (api != null)
               ListRow.value(
                 title: l10n.nearbyAreaTitle,
+                anchor: PreferencesRow.nearbyArea.name,
                 value: _nearbyAreaLabel == null
                     ? l10n.nearbyAreaNone
                     : l10n.nearbyAreaCurrent(_nearbyAreaLabel!),
@@ -2195,6 +2258,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             AsyncSwitchTile(
               switchKey: const Key('prefsReadReceipts'),
               title: l10n.prefsReadReceipts,
+              anchor: PreferencesRow.readReceipts.name,
               subtitle: l10n.prefsReadReceiptsHint,
               value: _readReceipts,
               failed: _readReceiptsFailed,
@@ -2205,6 +2269,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             AsyncSwitchTile(
               switchKey: const Key('prefsMessageRequests'),
               title: l10n.prefsMessageRequests,
+              anchor: PreferencesRow.messageRequests.name,
               subtitle: l10n.prefsMessageRequestsHint,
               value: _messageRequests,
               failed: _messageRequestsFailed,
@@ -2223,6 +2288,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ListRow.nav(
               key: const ValueKey('prefs-privacy-zones'),
               title: l10n.privacyZonesTitle,
+              anchor: PreferencesRow.privacyZones.name,
               subtitle: l10n.privacyZonesSubtitle,
               onTap: () => Navigator.push(
                 context,
@@ -2239,6 +2305,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           ListRow.toggle(
             key: const ValueKey('prefs-error-reports'),
             title: l10n.settingsAccountSendErrorReports,
+            anchor: PreferencesRow.errorReports.name,
             subtitle: l10n.settingsAccountSendErrorReportsSubtitle,
             value: !prefs.sentryOptOut,
             onChanged: (enabled) async {
@@ -2265,6 +2332,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           rows: [
             ListRow.value(
               title: l10n.prefsEmailNotifications,
+              anchor: PreferencesRow.emailNotifications.name,
               value: _emailNotifLabel(
                 l10n,
                 _bagValue<String>(SettingsKeys.emailNotifications) ??
@@ -2275,6 +2343,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ),
             ListRow.value(
               title: l10n.prefsPushNotifications,
+              anchor: PreferencesRow.pushNotifications.name,
               value: _pushNotifLabel(
                 l10n,
                 _bagValue<String>(SettingsKeys.pushNotifications) ??
@@ -2285,6 +2354,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ),
             ListRow.toggle(
               title: l10n.prefsNotifyWorkoutReminder,
+              anchor: PreferencesRow.workoutReminder.name,
               subtitle: l10n.prefsNotifyWorkoutReminderHint,
               value:
                   _bagValue<String>(SettingsKeys.notifyWorkoutReminder) !=
@@ -2295,6 +2365,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ListRow.toggle(
               key: const ValueKey('prefs-notify-race-starting-soon'),
               title: l10n.prefsNotifyRaceStartingSoon,
+              anchor: PreferencesRow.raceStartingSoon.name,
               subtitle: l10n.prefsNotifyRaceStartingSoonHint,
               value:
                   _bagValue<String>(SettingsKeys.notifyRaceStartingSoon) !=
@@ -2305,6 +2376,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ListRow.toggle(
               key: const ValueKey('prefs-notify-park-course-month'),
               title: l10n.prefsNotifyParkCourseMonth,
+              anchor: PreferencesRow.parkCourseMonth.name,
               subtitle: l10n.prefsNotifyParkCourseMonthHint,
               value:
                   _bagValue<String>(SettingsKeys.notifyParkCourseMonth) !=
@@ -2314,6 +2386,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             ),
             ListRow.toggle(
               title: l10n.prefsEmailNewDeviceAlerts,
+              anchor: PreferencesRow.newDeviceAlerts.name,
               subtitle: l10n.prefsEmailNewDeviceAlertsHint,
               value:
                   _bagValue<String>(SettingsKeys.emailNewDeviceAlerts) != 'off',
@@ -2327,12 +2400,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
           rows: [
             ListRow.toggle(
               title: l10n.prefsEmailWeeklyDigest,
+              anchor: PreferencesRow.weeklyDigest.name,
               subtitle: l10n.prefsEmailWeeklyDigestHint,
               value: _bagValue<String>(SettingsKeys.emailWeeklyDigest) == 'on',
               onChanged: _bagReady ? (_) => _editEmailWeeklyDigest() : null,
             ),
             ListRow.toggle(
               title: l10n.prefsEmailLifecycleDrip,
+              anchor: PreferencesRow.lifecycleEmails.name,
               subtitle: l10n.prefsEmailLifecycleDripHint,
               value: _bagValue<String>(SettingsKeys.emailLifecycleDrip) == 'on',
               onChanged: _bagReady ? (_) => _editEmailLifecycleDrip() : null,
@@ -2381,6 +2456,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         context,
         SafeArea(
           child: SettingsList(
+            focus: widget.focus?.name,
             header: [
               PageHeader(title: title),
               if (offline)
@@ -2452,88 +2528,76 @@ IconData preferencesPageIcon(PreferencesPage page) => switch (page) {
       PreferencesPage.notifications => Icons.notifications_outlined,
     };
 
-/// Every row title each Preferences page can show, gated rows included: the
-/// index You's settings search reads, since the pages are not built until
-/// opened. `preferences_search_index_test.dart` mounts each page with every
-/// gate open and fails when a row and this list disagree.
-List<String> preferencesRowTitles(AppLocalizations l10n, PreferencesPage page) =>
-    switch (page) {
-      PreferencesPage.display => [
-          l10n.prefsLanguage,
-          l10n.prefsDarkMode,
-          l10n.prefsUseMiles,
-          l10n.prefsPaceFormat,
-          l10n.prefsWeightUnit,
-          l10n.prefsWeekStart,
-          l10n.prefsDisclosureLevel,
-          l10n.prefsProgressCards,
-          l10n.prefsMapStyle,
-          l10n.prefsUndoWindow,
-          l10n.prefsShowCalories,
-          l10n.prefsShowMascot,
-          l10n.prefsCoachInMessages,
-          l10n.prefsShowGym,
-          l10n.prefsShowNutrition,
-        ],
-      PreferencesPage.recording => [
-          l10n.prefsDefaultActivity,
-          l10n.prefsKeepRunPrimary,
-          l10n.prefsKeepScreenOn,
-          l10n.prefsDimScreenWhileRecording,
-          l10n.prefsAdvancedGps,
-          l10n.prefsShowRawTrack,
-          l10n.prefsAudioCues,
-          l10n.phoneSurfaceVibrationCues,
-          l10n.prefsMinimalVoiceCues,
-          l10n.prefTurnByTurnCues,
-          l10n.prefsSplitInterval,
-          l10n.prefsTargetPace,
-          l10n.prefsCueSplits,
-          l10n.prefsCueStartFinish,
-          l10n.prefsCueOffRoute,
-          l10n.prefsCuePaceAlerts,
-          l10n.prefsCueWorkoutSteps,
-          l10n.prefsCueCutoffCatchUp,
-          l10n.prefsCueMarkerTargets,
-          l10n.prefsCuePhaseTransitions,
-          l10n.prefsCueGuidedRun,
-          l10n.prefsSplitPaceMode,
-        ],
-      PreferencesPage.training => [
-          l10n.prefsWeeklyGoal,
-          l10n.prefsDateOfBirth,
-          l10n.prefsRestingHr,
-          l10n.prefsMaxHr,
-          l10n.prefsHrMedicationAffected,
-          l10n.prefsHrMedicationSetMaxHr,
-          l10n.prefsHrZones,
-          l10n.prefsExcludeGymFromReadiness,
-          l10n.prefsExtraRecovery,
-          l10n.prefsCarbsPerHour,
-          l10n.prefsFluidPerHour,
-          l10n.prefsCoachPersonality,
-        ],
-      PreferencesPage.privacy => [
-          l10n.prefsDefaultRunPrivacy,
-          l10n.prefsStravaAutoShare,
-          l10n.prefsPrivateProfile,
-          l10n.followRequestsTitle,
-          l10n.prefsDiscoverable,
-          l10n.prefsDiscoverableNearby,
-          l10n.nearbyAreaTitle,
-          l10n.prefsReadReceipts,
-          l10n.prefsMessageRequests,
-          l10n.privacyZonesTitle,
-          l10n.settingsAccountSendErrorReports,
-        ],
-      PreferencesPage.notifications => [
-          l10n.prefsEmailNotifications,
-          l10n.prefsPushNotifications,
-          l10n.prefsNotifyWorkoutReminder,
-          l10n.prefsNotifyRaceStartingSoon,
-          l10n.prefsNotifyParkCourseMonth,
-          l10n.prefsEmailNewDeviceAlerts,
-          l10n.prefsEmailWeeklyDigest,
-          l10n.prefsEmailLifecycleDrip,
-        ],
+/// A Preferences row's title: what the row says, what the settings search
+/// matches and what is announced when a link lands on it.
+String preferencesRowTitle(AppLocalizations l10n, PreferencesRow row) =>
+    switch (row) {
+      PreferencesRow.language => l10n.prefsLanguage,
+      PreferencesRow.darkMode => l10n.prefsDarkMode,
+      PreferencesRow.useMiles => l10n.prefsUseMiles,
+      PreferencesRow.paceFormat => l10n.prefsPaceFormat,
+      PreferencesRow.weightUnit => l10n.prefsWeightUnit,
+      PreferencesRow.weekStart => l10n.prefsWeekStart,
+      PreferencesRow.disclosureLevel => l10n.prefsDisclosureLevel,
+      PreferencesRow.progressCards => l10n.prefsProgressCards,
+      PreferencesRow.mapStyle => l10n.prefsMapStyle,
+      PreferencesRow.undoWindow => l10n.prefsUndoWindow,
+      PreferencesRow.showCalories => l10n.prefsShowCalories,
+      PreferencesRow.showMascot => l10n.prefsShowMascot,
+      PreferencesRow.coachInMessages => l10n.prefsCoachInMessages,
+      PreferencesRow.showGym => l10n.prefsShowGym,
+      PreferencesRow.showNutrition => l10n.prefsShowNutrition,
+      PreferencesRow.defaultActivity => l10n.prefsDefaultActivity,
+      PreferencesRow.keepRunPrimary => l10n.prefsKeepRunPrimary,
+      PreferencesRow.keepScreenOn => l10n.prefsKeepScreenOn,
+      PreferencesRow.dimScreenWhileRecording => l10n.prefsDimScreenWhileRecording,
+      PreferencesRow.advancedGps => l10n.prefsAdvancedGps,
+      PreferencesRow.showRawTrack => l10n.prefsShowRawTrack,
+      PreferencesRow.audioCues => l10n.prefsAudioCues,
+      PreferencesRow.vibrationCues => l10n.phoneSurfaceVibrationCues,
+      PreferencesRow.minimalVoiceCues => l10n.prefsMinimalVoiceCues,
+      PreferencesRow.turnByTurnCues => l10n.prefTurnByTurnCues,
+      PreferencesRow.splitInterval => l10n.prefsSplitInterval,
+      PreferencesRow.targetPace => l10n.prefsTargetPace,
+      PreferencesRow.cueSplits => l10n.prefsCueSplits,
+      PreferencesRow.cueStartFinish => l10n.prefsCueStartFinish,
+      PreferencesRow.cueOffRoute => l10n.prefsCueOffRoute,
+      PreferencesRow.cuePaceAlerts => l10n.prefsCuePaceAlerts,
+      PreferencesRow.cueWorkoutSteps => l10n.prefsCueWorkoutSteps,
+      PreferencesRow.cueCutoffCatchUp => l10n.prefsCueCutoffCatchUp,
+      PreferencesRow.cueMarkerTargets => l10n.prefsCueMarkerTargets,
+      PreferencesRow.cuePhaseTransitions => l10n.prefsCuePhaseTransitions,
+      PreferencesRow.cueGuidedRun => l10n.prefsCueGuidedRun,
+      PreferencesRow.splitPaceMode => l10n.prefsSplitPaceMode,
+      PreferencesRow.weeklyGoal => l10n.prefsWeeklyGoal,
+      PreferencesRow.dateOfBirth => l10n.prefsDateOfBirth,
+      PreferencesRow.restingHr => l10n.prefsRestingHr,
+      PreferencesRow.maxHr => l10n.prefsMaxHr,
+      PreferencesRow.hrMedicationAffected => l10n.prefsHrMedicationAffected,
+      PreferencesRow.hrMedicationSetMaxHr => l10n.prefsHrMedicationSetMaxHr,
+      PreferencesRow.hrZones => l10n.prefsHrZones,
+      PreferencesRow.excludeGymFromReadiness => l10n.prefsExcludeGymFromReadiness,
+      PreferencesRow.extraRecovery => l10n.prefsExtraRecovery,
+      PreferencesRow.carbsPerHour => l10n.prefsCarbsPerHour,
+      PreferencesRow.fluidPerHour => l10n.prefsFluidPerHour,
+      PreferencesRow.coachPersonality => l10n.prefsCoachPersonality,
+      PreferencesRow.defaultRunPrivacy => l10n.prefsDefaultRunPrivacy,
+      PreferencesRow.stravaAutoShare => l10n.prefsStravaAutoShare,
+      PreferencesRow.privateProfile => l10n.prefsPrivateProfile,
+      PreferencesRow.followRequests => l10n.followRequestsTitle,
+      PreferencesRow.discoverable => l10n.prefsDiscoverable,
+      PreferencesRow.discoverableNearby => l10n.prefsDiscoverableNearby,
+      PreferencesRow.nearbyArea => l10n.nearbyAreaTitle,
+      PreferencesRow.readReceipts => l10n.prefsReadReceipts,
+      PreferencesRow.messageRequests => l10n.prefsMessageRequests,
+      PreferencesRow.privacyZones => l10n.privacyZonesTitle,
+      PreferencesRow.errorReports => l10n.settingsAccountSendErrorReports,
+      PreferencesRow.emailNotifications => l10n.prefsEmailNotifications,
+      PreferencesRow.pushNotifications => l10n.prefsPushNotifications,
+      PreferencesRow.workoutReminder => l10n.prefsNotifyWorkoutReminder,
+      PreferencesRow.raceStartingSoon => l10n.prefsNotifyRaceStartingSoon,
+      PreferencesRow.parkCourseMonth => l10n.prefsNotifyParkCourseMonth,
+      PreferencesRow.newDeviceAlerts => l10n.prefsEmailNewDeviceAlerts,
+      PreferencesRow.weeklyDigest => l10n.prefsEmailWeeklyDigest,
+      PreferencesRow.lifecycleEmails => l10n.prefsEmailLifecycleDrip,
     };

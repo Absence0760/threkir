@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
@@ -389,7 +390,7 @@
 		{/if}
 		{#if visibleConnect.length > 0}
 		<section class="provider-section">
-			<SectionHeader label={m('settingsIntegrations.availableHeading')} class="integrations-section-head" />
+			<SectionHeader id={settingRowId('settingsIntegrations.availableHeading')} label={m('settingsIntegrations.availableHeading')} class="integrations-section-head" />
 			<div class="integration-list">
 			{#each visibleConnect as gated (gated.spec.provider)}
 				{@const integration = uiFor(gated.spec.provider)}
@@ -490,7 +491,7 @@
 
 		<section class="card bulk-import">
 			<div class="title-row">
-				<h2>{m('settingsIntegrations.stravaBulkHeading')}</h2>
+				<h2 id={settingRowId('settingsIntegrations.stravaBulkHeading')}>{m('settingsIntegrations.stravaBulkHeading')}</h2>
 				<InfoTip
 					label={m('settingsIntegrations.infoAbout', { name: 'Strava' })}
 					title={m('settingsIntegrations.stravaBulkHeading')}
@@ -579,7 +580,7 @@
 
 		<section class="card bulk-import">
 			<div class="title-row">
-				<h2>{m('settingsIntegrations.garminBulkHeading')}</h2>
+				<h2 id={settingRowId('settingsIntegrations.garminBulkHeading')}>{m('settingsIntegrations.garminBulkHeading')}</h2>
 				<InfoTip
 					label={m('settingsIntegrations.infoAbout', { name: 'Garmin' })}
 					title={m('settingsIntegrations.garminBulkHeading')}

@@ -82,6 +82,7 @@ src/
     settings/prefs_page.svelte.ts  # `createPrefsPage(load)` — the runes shell over the queue: loadSettings + preferredUnit context, fail-closed load phase, beforeNavigate flush, locale backfill, scroll-to-anchor after load.
     settings/preferences_ia.ts  # The split preference pages (href/icon/label/summary) feeding the settings nav and the /settings/preferences landing page, plus LEGACY_PREFERENCES_ANCHORS + legacyPreferencesTarget for old section links (decisions §1640).
     settings/settings_search.ts  # The settings search index (each page's nav label + row/section title keys) and searchSettings, read by the settings nav's search field; settings_search_index.test.ts keeps it in step with the pages (decisions §2494 web twin).
+    settings/setting_focus.ts    # Lands a settings-search result on its row: waits for the `#setting-…` id (settingRowId) to render, scrolls it into view, focuses it and flashes it (static under reduced motion); run by the settings layout on every navigation with such a fragment.
     settings/modality_visibility.ts  # `modalityShown` (explicit show_gym / show_nutrition choice, else data presence) + `explicitModalityChoice` reading the universal bag; mirrors mobile's preferences.dart helper (decisions §1739).
     settings/weekly_goal.ts  # weekly_mileage_goal_m entered in km/mi, stored in metres; parity pair with mobile weekly_goal.dart (issue #902 §5).
     settings/theme.ts        # light/dark/auto theme toggle, persisted in localStorage

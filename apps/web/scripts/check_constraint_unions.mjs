@@ -713,19 +713,26 @@ export const PAIRS = [
 		// other; that is the grouping contract, not an oversight. `refund_failed`
 		// is deliberately among them: two reversed refunds are two sums of money
 		// owed, and "and 1 other" would hide one of them.
+		//
+		// `park_course_month_closed` is in the CHECK ahead of the clients
+		// (issue #1343 phase 3): the bell renders it with the monthly board in
+		// phase 2, and until then `enqueue_park_course_month_notices` raises no
+		// row because its `park_course_month_notices` flag is seeded off. Each
+		// exemption goes stale, and fails, the moment its client names the kind.
 		tableColumn: 'notifications.kind',
 		clients: [
-			{ file: TS_TYPES, decl: 'NotificationKind', shape: 'union' },
+			{ file: TS_TYPES, decl: 'NotificationKind', shape: 'union', allowMissing: ['park_course_month_closed'] },
 			{
 				file: 'apps/mobile_android/lib/notification_groups.dart',
 				decl: '_targetKeyFor',
 				shape: 'switch',
-				allowMissing: ['content_hidden', 'data_export_ready', 'refund_failed'],
+				allowMissing: ['content_hidden', 'data_export_ready', 'refund_failed', 'park_course_month_closed'],
 			},
 			{
 				file: 'apps/mobile_android/lib/screens/profile_screen.dart',
 				decl: '_verbFor',
 				shape: 'switch',
+				allowMissing: ['park_course_month_closed'],
 			},
 		],
 	},

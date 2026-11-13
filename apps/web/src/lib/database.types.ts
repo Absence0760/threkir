@@ -3353,6 +3353,9 @@ export type Database = {
           id: string
           kind: string
           native_push_sent_at: string | null
+          park_course_id: string | null
+          park_course_month: string | null
+          park_course_time_s: number | null
           plan_id: string | null
           read_at: string | null
           refunded: boolean
@@ -3378,6 +3381,9 @@ export type Database = {
           id?: string
           kind: string
           native_push_sent_at?: string | null
+          park_course_id?: string | null
+          park_course_month?: string | null
+          park_course_time_s?: number | null
           plan_id?: string | null
           read_at?: string | null
           refunded?: boolean
@@ -3403,6 +3409,9 @@ export type Database = {
           id?: string
           kind?: string
           native_push_sent_at?: string | null
+          park_course_id?: string | null
+          park_course_month?: string | null
+          park_course_time_s?: number | null
           plan_id?: string | null
           read_at?: string | null
           refunded?: boolean
@@ -3465,6 +3474,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_park_course_id_fkey"
+            columns: ["park_course_id"]
+            isOneToOne: false
+            referencedRelation: "park_courses"
             referencedColumns: ["id"]
           },
           {
@@ -3732,6 +3748,7 @@ export type Database = {
           created_at: string
           id: number
           note: string | null
+          park_course_id: string | null
           reports_resolved: number
           status_before: string
         }
@@ -3742,6 +3759,7 @@ export type Database = {
           created_at?: string
           id?: never
           note?: string | null
+          park_course_id?: string | null
           reports_resolved?: number
           status_before: string
         }
@@ -3752,6 +3770,7 @@ export type Database = {
           created_at?: string
           id?: never
           note?: string | null
+          park_course_id?: string | null
           reports_resolved?: number
           status_before?: string
         }
@@ -8191,6 +8210,10 @@ export type Database = {
       enqueue_event_reminders: { Args: never; Returns: undefined }
       enqueue_export_blob_reap: { Args: never; Returns: undefined }
       enqueue_lifecycle_drip: { Args: never; Returns: number }
+      enqueue_park_course_month_notices: {
+        Args: { p_now?: string }
+        Returns: number
+      }
       enqueue_route_photo_orphan_sweep: { Args: never; Returns: undefined }
       enqueue_run_rematch: { Args: { p_run_id: string }; Returns: Json }
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }

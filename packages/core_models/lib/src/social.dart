@@ -192,6 +192,10 @@ class NotificationView {
   final String? clubName;
   final String? clubSlug;
 
+  /// The name of a park course month-close notice's course; null when the
+  /// reader can no longer see the course (its park or segment pulled).
+  final String? parkCourseName;
+
   const NotificationView({
     required this.row,
     this.actor,
@@ -201,6 +205,7 @@ class NotificationView {
     this.eventClubSlug,
     this.clubName,
     this.clubSlug,
+    this.parkCourseName,
   });
 
   /// This notification with its row stamped read at [at]. The row half goes
@@ -216,6 +221,7 @@ class NotificationView {
         eventClubSlug: eventClubSlug,
         clubName: clubName,
         clubSlug: clubSlug,
+        parkCourseName: parkCourseName,
       );
 }
 
@@ -397,7 +403,15 @@ class ParkListing {
   final ParkRow park;
   final int season;
 
-  const ParkListing({required this.park, required this.season});
+  /// The calendar month (1-12) it is now where the park is (`park_month`),
+  /// read beside [season] so the two agree at midnight on 1 January.
+  final int month;
+
+  const ParkListing({
+    required this.park,
+    required this.season,
+    required this.month,
+  });
 }
 
 /// A park course with the catalogue segment it is timed on. [checkpoints] is

@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/screens/park_courses_screen.dart';
 import '../lib/widgets/run_park_course_chips.dart';
 
-Map<String, dynamic> _row(String name, int? rank) => {
+Map<String, dynamic> _row(String name, int? rank, {int? monthRank}) => {
       'effort_id': 'effort-$name',
       'global_segment_id': 'seg-$name',
       'course_name': name,
@@ -20,6 +21,8 @@ Map<String, dynamic> _row(String name, int? rank) => {
       'started_at': '2027-05-01T12:00:00Z',
       'season': 2027,
       'season_rank': rank,
+      'month': 5,
+      'month_rank': monthRank ?? rank,
     };
 
 class _FakeApi extends ApiClient {
@@ -54,6 +57,56 @@ class _FakeApi extends ApiClient {
   }
 }
 
+/// Resolves the course, so the chip pushes the course screen.
+class _OpeningApi extends _FakeApi {
+  _OpeningApi({super.rows});
+
+  @override
+  Future<({ParkListing park, ParkCourseListing course})?> fetchParkCourseBySlugs(
+      String parkSlug, String courseSlug) async {
+    final created = DateTime.parse('2027-01-01T00:00:00Z');
+    return (
+      park: ParkListing(
+        park: ParkRow(
+          id: 'p1',
+          slug: parkSlug,
+          name: 'Pocahontas State Park',
+          agency: 'state',
+          regionCode: 'US-VA',
+          countryCode: 'US',
+          timezone: 'America/New_York',
+          isActive: true,
+          createdAt: created,
+        ),
+        season: 2027,
+        month: 6,
+      ),
+      course: ParkCourseListing(
+        course: ParkCourseRow(
+          id: 'c1',
+          parkId: 'p1',
+          globalSegmentId: 's1',
+          slug: courseSlug,
+          courseShape: 'loop',
+          status: 'open',
+          geometrySource: 'osm',
+          checkpoints: const [],
+          createdAt: created,
+        ),
+        segment: GlobalSegmentRow(
+          id: 's1',
+          name: 'Beaver Lake Trail',
+          waypoints: const [],
+          distanceM: 3595,
+          surface: 'trail',
+          isActive: true,
+          createdAt: created,
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> _pump(WidgetTester tester, ApiClient api) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -66,11 +119,16 @@ Future<void> _pump(WidgetTester tester, ApiClient api) async {
 }
 
 void main() {
-  testWidgets('a ranked course shows its name, time and season place', (tester) async {
-    await _pump(tester, _FakeApi(rows: [_row('Beaver Lake Trail', 3)]));
+  testWidgets('a placed course shows its name, time, month and season places', (tester) async {
+    await _pump(tester, _FakeApi(rows: [_row('Beaver Lake Trail', 3, monthRank: 2)]));
     expect(find.byKey(const Key('run-park-courses')), findsOneWidget);
-    expect(find.text('Beaver Lake Trail · 24:12 · #3 in 2027'), findsOneWidget);
+    expect(find.text('Beaver Lake Trail · 24:12 · #2 in May, #3 in 2027'), findsOneWidget);
     expect(find.bySemanticsLabel('Park courses on this run'), findsOneWidget);
+  });
+
+  testWidgets('a month place without a season place shows the month alone', (tester) async {
+    await _pump(tester, _FakeApi(rows: [_row('Beaver Lake Trail', null, monthRank: 14)]));
+    expect(find.text('Beaver Lake Trail · 24:12 · #14 in May'), findsOneWidget);
   });
 
   testWidgets('an unranked course shows no place', (tester) async {
@@ -106,8 +164,22 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pump();
     expect(api.reads, 2);
-    expect(find.text('Beaver Lake Trail · 24:12 · #1 in 2027'), findsOneWidget);
+    expect(find.text('Beaver Lake Trail · 24:12 · #1 in May, #1 in 2027'), findsOneWidget);
     expect(find.byKey(const Key('run-park-courses-error')), findsNothing);
+  });
+
+  testWidgets('a chip opens its course on the effort\'s month', (tester) async {
+    final api = _OpeningApi(rows: [_row('Beaver Lake Trail', 3, monthRank: 2)]);
+    await _pump(tester, api);
+    await tester.tap(find.byType(ActionChip));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump();
+    }
+    final screen = tester.widget<ParkCourseScreen>(find.byType(ParkCourseScreen));
+    expect(screen.initialPeriod?.season, 2027);
+    expect(screen.initialPeriod?.month, 5);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('a course that can no longer be opened says so', (tester) async {

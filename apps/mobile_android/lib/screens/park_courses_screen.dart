@@ -497,6 +497,9 @@ String _recordLine(AppLocalizations l10n, ParkCourseRecord? r) {
       : l10n.racesAnyTimeFastest('${r.season}', formatEffortTime(r.timeSeconds));
 }
 
+String? _monthRunnersLine(AppLocalizations l10n, int? runners) =>
+    runners == null || runners <= 0 ? null : l10n.parksMonthRunners(runners);
+
 Future<void> _openParkWebsite(BuildContext context, String url) async {
   final l10n = AppLocalizations.of(context);
   var ok = false;
@@ -529,12 +532,32 @@ class _ParkScreenState extends State<ParkScreen> {
   bool _error = false;
   Map<String, ParkCourseRecord> _records = const {};
   bool _recordsFailed = false;
+  // How many ran each course this month where the park is: an auxiliary read
+  // of its own, like the records. A course nobody ran has no entry and no line.
+  Map<String, int> _monthRunners = const {};
+  bool _monthRunnersFailed = false;
 
   @override
   void initState() {
     super.initState();
     _load();
     _loadRecords();
+    _loadMonthRunners();
+  }
+
+  Future<void> _loadMonthRunners() async {
+    final api = widget.api;
+    if (api == null || api.userId == null) return;
+    setState(() => _monthRunnersFailed = false);
+    try {
+      final counts = await api
+          .fetchParkCourseMonthRunners(widget.listing.park.id)
+          .timeout(kBackendLoadTimeout);
+      if (mounted) setState(() => _monthRunners = counts);
+    } catch (e) {
+      debugPrint('park page: month runners read failed: $e');
+      if (mounted) setState(() => _monthRunnersFailed = true);
+    }
   }
 
   Future<void> _load() async {
@@ -692,6 +715,23 @@ class _ParkScreenState extends State<ParkScreen> {
                               ],
                             ),
                           ),
+                        if (_monthRunnersFailed)
+                          Padding(
+                            key: const Key('park-month-runners-failed'),
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              children: [
+                                Text(l10n.parksMonthRunnersFailed),
+                                OutlinedButton.icon(
+                                  onPressed: _loadMonthRunners,
+                                  icon: const Icon(Icons.refresh),
+                                  label: Text(l10n.parksRetry),
+                                ),
+                              ],
+                            ),
+                          ),
                         for (var i = 0; i < _courses.length; i++)
                           _ParkCourseCard(
                             key: ValueKey(
@@ -708,6 +748,10 @@ class _ParkScreenState extends State<ParkScreen> {
                                     _records[_courses[i].course.id],
                                   )
                                 : null,
+                            monthRunnersLine: _monthRunnersLine(
+                              l10n,
+                              _monthRunners[_courses[i].course.id],
+                            ),
                             onTap: () => _open(_courses[i]),
                           ),
                       ],
@@ -728,6 +772,7 @@ class _ParkCourseCard extends StatelessWidget {
   final ParkCourseListing course;
   final Color colour;
   final String? recordLine;
+  final String? monthRunnersLine;
   final VoidCallback onTap;
 
   const _ParkCourseCard({
@@ -735,6 +780,7 @@ class _ParkCourseCard extends StatelessWidget {
     required this.course,
     required this.colour,
     required this.recordLine,
+    required this.monthRunnersLine,
     required this.onTap,
   });
 
@@ -789,6 +835,16 @@ class _ParkCourseCard extends StatelessWidget {
               style: theme.textTheme.bodySmall,
             ),
           ],
+          if (monthRunnersLine != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              monthRunnersLine!,
+              key: ValueKey('park-course-month-runners-${course.course.id}'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -814,7 +870,7 @@ enum ParkBoardKind { fastest, completions }
 
 /// One park course: stats, map with its legend, the elevation profile, one
 /// credit line, the notices, the actions and the fastest / most-completions
-/// boards for this season or all time. Mobile mirror of web
+/// boards for a month, this season or all time. Mobile mirror of web
 /// `/parks/[region]/[park]/[course]`.
 class ParkCourseScreen extends StatefulWidget {
   final ApiClient? api;
@@ -825,12 +881,17 @@ class ParkCourseScreen extends StatefulWidget {
   /// rather than stacking a second copy of it.
   final bool fromPark;
 
+  /// The board period to open on, as a month-close notice opens on its month;
+  /// null opens on this year. Web carries it as `?period=`.
+  final BoardPeriod? initialPeriod;
+
   const ParkCourseScreen({
     super.key,
     required this.api,
     required this.listing,
     required this.course,
     this.fromPark = false,
+    this.initialPeriod,
   });
 
   @override
@@ -839,7 +900,8 @@ class ParkCourseScreen extends StatefulWidget {
 
 class _ParkCourseScreenState extends State<ParkCourseScreen> {
   ParkBoardKind _kind = ParkBoardKind.fastest;
-  bool _allTime = false;
+  late BoardPeriod _period =
+      widget.initialPeriod ?? BoardPeriod.year(widget.listing.season);
   String? _gender;
   String? _ageBand;
   List<GlobalSegmentLeaderboardEntry>? _fastest;
@@ -851,13 +913,19 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
   /// hidden, since there is nothing for them to sort or filter.
   bool? _neverRun;
 
-  int? get _season => _allTime ? null : widget.listing.season;
+  ParkNow get _parkNow =>
+      (season: widget.listing.season, month: widget.listing.month);
 
   bool get _defaultSelection =>
       _kind == ParkBoardKind.fastest &&
-      !_allTime &&
+      _period.kind == BoardPeriodKind.year &&
       _gender == null &&
       _ageBand == null;
+
+  void _setPeriod(BoardPeriod next) {
+    setState(() => _period = next);
+    _refreshBoard();
+  }
 
   @override
   void initState() {
@@ -874,6 +942,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
       _boardFailed = false;
     });
     final segmentId = widget.course.segment.id;
+    final args = boardPeriodArgs(_period);
     try {
       if (_kind == ParkBoardKind.fastest) {
         final board = await api
@@ -881,7 +950,8 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
               segmentId,
               gender: _gender,
               ageBand: _ageBand,
-              season: _season,
+              season: args.season,
+              month: args.month,
             )
             .timeout(kBackendLoadTimeout);
         if (!mounted) return;
@@ -894,7 +964,11 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
         }
       } else {
         final board = await api
-            .fetchGlobalSegmentCompletions(segmentId, season: _season)
+            .fetchGlobalSegmentCompletions(
+              segmentId,
+              season: args.season,
+              month: args.month,
+            )
             .timeout(kBackendLoadTimeout);
         if (!mounted) return;
         setState(() => _completions = board);
@@ -1253,21 +1327,38 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           },
         ),
         const SizedBox(height: 8),
-        ChoiceChipRow<bool>(
+        ChoiceChipRow<BoardPeriodKind>(
           key: const Key('park-board-season'),
           options: [
             ChoiceChipOption(
-              value: false,
+              value: BoardPeriodKind.month,
+              label: l10n.parksPeriodThisMonth,
+            ),
+            ChoiceChipOption(
+              value: BoardPeriodKind.year,
               label: l10n.parksSeasonThisYear(widget.listing.season),
             ),
-            ChoiceChipOption(value: true, label: l10n.parksSeasonAllTime),
+            ChoiceChipOption(
+              value: BoardPeriodKind.all,
+              label: l10n.parksSeasonAllTime,
+            ),
           ],
-          selected: _allTime,
-          onChanged: (allTime) {
-            setState(() => _allTime = allTime);
-            _refreshBoard();
-          },
+          selected: _period.kind,
+          onChanged: (kind) => _setPeriod(switch (kind) {
+            BoardPeriodKind.month =>
+              BoardPeriod.month(widget.listing.season, widget.listing.month),
+            BoardPeriodKind.year => BoardPeriod.year(widget.listing.season),
+            BoardPeriodKind.all => const BoardPeriod.all(),
+          }),
         ),
+        if (_period.kind == BoardPeriodKind.month)
+          _BoardMonthNav(
+            key: const Key('park-board-month-nav'),
+            period: _period,
+            previous: stepBoardMonth(_period, -1, _parkNow),
+            next: stepBoardMonth(_period, 1, _parkNow),
+            onChanged: _setPeriod,
+          ),
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: TextButton.icon(
@@ -1353,6 +1444,62 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           isViewer: e.athlete.id == viewerId,
         ),
     ];
+  }
+}
+
+/// The month a park course board shows, with arrows to the month before and
+/// after; an arrow with no month to go to (past the park's current month, or
+/// before the boards' first season) is disabled. Mirrors web's month row.
+class _BoardMonthNav extends StatelessWidget {
+  final BoardPeriod period;
+  final BoardPeriod? previous;
+  final BoardPeriod? next;
+  final ValueChanged<BoardPeriod> onChanged;
+
+  const _BoardMonthNav({
+    super.key,
+    required this.period,
+    required this.previous,
+    required this.next,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final tag = localeToTag(Localizations.localeOf(context));
+    final label = formatMonthYear(DateTime(period.season!, period.month!), tag);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          IconButton(
+            key: const Key('park-board-month-prev'),
+            tooltip: l10n.parksPeriodPrevMonth,
+            onPressed: previous == null ? null : () => onChanged(previous!),
+            icon: const Icon(Icons.chevron_left),
+          ),
+          Expanded(
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                label,
+                key: const Key('park-board-month-label'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleSmall,
+              ),
+            ),
+          ),
+          IconButton(
+            key: const Key('park-board-month-next'),
+            tooltip: l10n.parksPeriodNextMonth,
+            onPressed: next == null ? null : () => onChanged(next!),
+            icon: const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
+    );
   }
 }
 

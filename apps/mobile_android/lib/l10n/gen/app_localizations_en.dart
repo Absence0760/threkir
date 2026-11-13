@@ -3489,6 +3489,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseMonthRank(String rank, String month) {
+    return '#$rank in $month';
+  }
+
+  @override
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '#$monthRank in $month, #$seasonRank in $season';
+  }
+
+  @override
   String get runDetailParkCoursesLoadFailed =>
       'Couldn\'t load your park course times.';
 
@@ -16210,6 +16225,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Completed a park passport in 10 states';
 
   @override
+  String get badgesParkMonths3Label => 'Park months';
+
+  @override
+  String get badgesParkMonths3Desc =>
+      'Completed a park course in 3 different months';
+
+  @override
+  String get badgesParkMonths6Label => 'Half a year of parks';
+
+  @override
+  String get badgesParkMonths6Desc =>
+      'Completed a park course in 6 different months';
+
+  @override
+  String get badgesParkMonths12Label => 'A year of parks';
+
+  @override
+  String get badgesParkMonths12Desc =>
+      'Completed a park course in 12 different months';
+
+  @override
+  String get badgesParkMonths24Label => 'Two years of parks';
+
+  @override
+  String get badgesParkMonths24Desc =>
+      'Completed a park course in 24 different months';
+
+  @override
   String get racePredictorTitle => 'Race-time predictor';
 
   @override
@@ -20975,8 +21018,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCardCourseKicker => 'Park course time';
 
   @override
-  String shareCardCourseRank(String rank, String season) {
-    return '#$rank in $season';
+  String shareCardCourseMonthRank(String rank, String month) {
+    return '#$rank in $month';
+  }
+
+  @override
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '#$monthRank in $month · #$seasonRank in $season';
   }
 
   @override
@@ -21452,12 +21505,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksBoardCompletions => 'Most completions';
 
   @override
+  String get parksPeriodThisMonth => 'This month';
+
+  @override
   String parksSeasonThisYear(int year) {
     return 'This year ($year)';
   }
 
   @override
   String get parksSeasonAllTime => 'All time';
+
+  @override
+  String get parksPeriodPrevMonth => 'Previous month';
+
+  @override
+  String get parksPeriodNextMonth => 'Next month';
 
   @override
   String parksCompletionDays(int n) {
@@ -21469,6 +21531,21 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String parksMonthRunners(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n runners this month',
+      one: '$n runner this month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksMonthRunnersFailed =>
+      'Couldn\'t load how many ran each course this month.';
 
   @override
   String get parksNoEfforts =>
@@ -21775,6 +21852,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get prefsNotifyRaceStartingSoonHint =>
       'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.';
+
+  @override
+  String get prefsNotifyParkCourseMonth => 'Park course months';
+
+  @override
+  String get prefsNotifyParkCourseMonthHint =>
+      'When a month ends at a park course you ran, a note in your inbox with your best time from it.';
 
   @override
   String get clubVerificationStatusTitle => 'Official verification';
@@ -22330,6 +22414,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileNotifParkCourseReport => 'A park course was reported';
+
+  @override
+  String get profileNotifParkCourseMonthClosed =>
+      'A month has closed on a park course you ran';
+
+  @override
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  ) {
+    return '$course: the $month board has closed. Your best: $time';
+  }
 
   @override
   String rateLimitReaction(String wait) {

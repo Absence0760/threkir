@@ -27,7 +27,7 @@ void main() {
     // Author ids off a feed page capped by fetchFollowingFeed /
     // _fetchFollowingLifts' own `limit`, asserted below.
     '.inFilter(UserProfileRow.colId, authorIds);': 2,
-    // The five notification-context joins, each off a page of notifications
+    // The six notification-context joins, each off a page of notifications
     // capped by fetchNotificationViews' own `limit`, asserted below. The club
     // leg is NOT here: it unions event clubs with club-link ids, so it is the
     // one join that can reach twice the page size.
@@ -35,6 +35,7 @@ void main() {
     '.inFilter(RunRow.colId, runIds);': 2,
     '.inFilter(RunCommentRow.colId, commentIds);': 1,
     '.inFilter(EventRow.colId, eventIds);': 1,
+    '.inFilter(ParkCourseRow.colId, parkCourseIds);': 1,
     // Author ids off a template search with a literal `.limit(100)`.
     ".inFilter('id', authorIds);": 1,
     // The two participants of one conversation (fetchDmThread): always

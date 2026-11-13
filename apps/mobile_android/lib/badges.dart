@@ -111,6 +111,10 @@ class BadgeInput {
   /// with at least three such parks; the server applies that floor).
   final double passportRegionCount;
 
+  /// Count of distinct calendar months, each read where its park is, with a
+  /// park course completed.
+  final double parkMonthCount;
+
   const BadgeInput({
     this.longestRunM = 0,
     this.lifetimeDistanceM = 0,
@@ -120,6 +124,7 @@ class BadgeInput {
     this.parkCourseCount = 0,
     this.completeParkCount = 0,
     this.passportRegionCount = 0,
+    this.parkMonthCount = 0,
   });
 }
 
@@ -203,6 +208,16 @@ const List<Badge> kBadgeCatalogue = [
       BadgeTier(tier: 'gold', threshold: 10, icon: 'public', labelKey: 'badgesParkPassport10Label', descKey: 'badgesParkPassport10Desc'),
     ],
   ),
+  Badge(
+    id: 'park_months',
+    sourceKind: 'segment',
+    tiers: [
+      BadgeTier(tier: 'bronze', threshold: 3, icon: 'calendar_month', labelKey: 'badgesParkMonths3Label', descKey: 'badgesParkMonths3Desc'),
+      BadgeTier(tier: 'silver', threshold: 6, icon: 'event_repeat', labelKey: 'badgesParkMonths6Label', descKey: 'badgesParkMonths6Desc'),
+      BadgeTier(tier: 'gold', threshold: 12, icon: 'event_available', labelKey: 'badgesParkMonths12Label', descKey: 'badgesParkMonths12Desc'),
+      BadgeTier(tier: 'platinum', threshold: 24, icon: 'date_range', labelKey: 'badgesParkMonths24Label', descKey: 'badgesParkMonths24Desc'),
+    ],
+  ),
 ];
 
 double _valueForBadge(Badge badge, BadgeInput input) {
@@ -223,6 +238,8 @@ double _valueForBadge(Badge badge, BadgeInput input) {
       return input.completeParkCount;
     case 'park_passport':
       return input.passportRegionCount;
+    case 'park_months':
+      return input.parkMonthCount;
     default:
       return 0;
   }

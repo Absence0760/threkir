@@ -45,6 +45,14 @@ void main() {
     });
   });
 
+  group('formatMonthYear', () {
+    test('a month with its year, in each locale order', () {
+      expect(formatMonthYear(DateTime(2026, 11), 'en'), 'November 2026');
+      expect(formatMonthYear(DateTime(2026, 1), 'de'), 'Januar 2026');
+      expect(formatMonthYear(DateTime(2026, 11), 'ja'), '2026年11月');
+    });
+  });
+
   group('formatMonthName', () {
     test('en full month name', () {
       expect(formatMonthName(DateTime(2026, 1), 'en'), 'January');

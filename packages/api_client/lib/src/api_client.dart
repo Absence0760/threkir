@@ -5914,6 +5914,7 @@ class ApiClient {
     String? ageBand,
     String? clubId,
     int? season,
+    int? month,
     int limit = 50,
   }) async {
     final rows = await _client.rpc(
@@ -5925,6 +5926,7 @@ class ApiClient {
         'p_limit': limit,
         'p_club_id': ?clubId,
         'p_season': ?season,
+        'p_month': ?month,
       },
       get: true,
     );
@@ -5966,7 +5968,7 @@ class ApiClient {
   Future<List<ParkListing>> fetchParks() async {
     final rows = await _client
         .from(ParkRow.table)
-        .select('*, park_season')
+        .select('*, park_season, park_month')
         .order(ParkRow.colRegionCode, ascending: true)
         .order(ParkRow.colName, ascending: true);
     return [
@@ -5974,6 +5976,7 @@ class ApiClient {
         ParkListing(
           park: ParkRow.fromJson(r),
           season: (r['park_season'] as num).toInt(),
+          month: (r['park_month'] as num).toInt(),
         ),
     ];
   }
@@ -5988,7 +5991,7 @@ class ApiClient {
   ) async {
     final park = await _client
         .from(ParkRow.table)
-        .select('*, park_season')
+        .select('*, park_season, park_month')
         .eq(ParkRow.colSlug, parkSlug)
         .maybeSingle();
     if (park == null) return null;
@@ -6003,6 +6006,7 @@ class ApiClient {
       park: ParkListing(
         park: ParkRow.fromJson(park),
         season: (park['park_season'] as num).toInt(),
+        month: (park['park_month'] as num).toInt(),
       ),
       course: ParkCourseListing(
         course: ParkCourseRow.fromJson(course),
@@ -6029,7 +6033,7 @@ class ApiClient {
     if (course == null || course['global_segments'] is! Map) return null;
     final park = await _client
         .from(ParkRow.table)
-        .select('*, park_season')
+        .select('*, park_season, park_month')
         .eq(ParkRow.colId, course[ParkCourseRow.colParkId] as String)
         .maybeSingle();
     if (park == null) return null;
@@ -6037,6 +6041,7 @@ class ApiClient {
       park: ParkListing(
         park: ParkRow.fromJson(park),
         season: (park['park_season'] as num).toInt(),
+        month: (park['park_month'] as num).toInt(),
       ),
       course: ParkCourseListing(
         course: ParkCourseRow.fromJson(course),
@@ -6110,6 +6115,56 @@ class ApiClient {
     };
   }
 
+  /// How many runners the caller can see with a time on each of a park's
+  /// courses in the park's current calendar month
+  /// (`park_course_month_runners`), keyed by course id; a course with none
+  /// has no entry. Signed-in only. Mirrors web `fetchParkCourseMonthRunners`.
+  /// Throws on a failed read.
+  Future<Map<String, int>> fetchParkCourseMonthRunners(String parkId) async {
+    final rows = await _client.rpc('park_course_month_runners',
+        params: {'p_park_id': parkId}, get: true);
+    if (rows is! List) return const {};
+    return {
+      for (final r in rows)
+        if (r is Map && r['course_id'] is String && r['runners'] is num)
+          r['course_id'] as String: (r['runners'] as num).toInt(),
+    };
+  }
+
+  /// One park course by its id, with its park and the park's current season
+  /// and month, for opening a course from a month-close notice (the row
+  /// carries only the course id). Null when RLS hides either or it is gone.
+  /// Throws on a failed read.
+  Future<({ParkListing park, ParkCourseListing course})?> fetchParkCourseById(
+    String courseId,
+  ) async {
+    final course = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colId, courseId)
+        .maybeSingle();
+    if (course == null || course['global_segments'] is! Map) return null;
+    final park = await _client
+        .from(ParkRow.table)
+        .select('*, park_season, park_month')
+        .eq(ParkRow.colId, course[ParkCourseRow.colParkId] as String)
+        .maybeSingle();
+    if (park == null) return null;
+    return (
+      park: ParkListing(
+        park: ParkRow.fromJson(park),
+        season: (park['park_season'] as num).toInt(),
+        month: (park['park_month'] as num).toInt(),
+      ),
+      course: ParkCourseListing(
+        course: ParkCourseRow.fromJson(course),
+        segment: GlobalSegmentRow.fromJson(
+          (course['global_segments'] as Map).cast<String, dynamic>(),
+        ),
+      ),
+    );
+  }
+
   /// Which of [routeIds] are a park course's official route, so their
   /// Official badge can read "Official Threkir course". Mirrors web
   /// `fetchParkCourseRouteIds`. Throws on a failed read.
@@ -6173,11 +6228,13 @@ class ApiClient {
 
   /// The most-completions board on a catalogue segment
   /// (`global_segment_completions`): one row per athlete, distinct local days
-  /// in the park's timezone. [season] null is all time. Tied counts share a
+  /// in the park's timezone. [season] null is all time; [month] (1-12)
+  /// narrows it to one calendar month where the park is. Tied counts share a
   /// rank. Throws on a failed read.
   Future<List<GlobalSegmentCompletionsEntry>> fetchGlobalSegmentCompletions(
     String segmentId, {
     int? season,
+    int? month,
     int limit = 50,
   }) async {
     final rows = await _client.rpc(
@@ -6186,6 +6243,7 @@ class ApiClient {
         'p_segment_id': segmentId,
         'p_season': ?season,
         'p_limit': limit,
+        'p_month': ?month,
       },
       get: true,
     );
@@ -6222,7 +6280,8 @@ class ApiClient {
   /// The park courses the signed-in runner's own [runId] completed, from
   /// `run_park_course_times`: course and park names, the time, the season (the
   /// calendar year in the park's timezone) and the effort's place on that
-  /// season's fastest board when it is the runner's best and in the top 100.
+  /// season's fastest board when it is the runner's best and in the top 100,
+  /// and the same for its calendar month there (`month`, `month_rank`).
   /// Raw rows; the app parses them in its `park_courses` pair. Mirrors web
   /// `fetchRunParkCourseTimes`. Throws on a failed read.
   Future<List<Map<String, dynamic>>> fetchRunParkCourseTimes(String runId) async {
@@ -7217,18 +7276,42 @@ class ApiClient {
             .select('${EventRow.colId}, ${EventRow.colTitle}, ${EventRow.colClubId}')
             .inFilter(EventRow.colId, eventIds);
 
+    final parkCourseIds = {
+      for (final row in rows)
+        if (row.parkCourseId != null) row.parkCourseId!,
+    }.toList();
+    final parkCourseRowsF = parkCourseIds.isEmpty
+        ? Future.value(<dynamic>[])
+        : _client
+            .from(ParkCourseRow.table)
+            .select('${ParkCourseRow.colId}, global_segments(name)')
+            .inFilter(ParkCourseRow.colId, parkCourseIds);
+
     final results = await Future.wait([
       actorRowsF,
       runRowsF,
       publicRunRowsF,
       commentRowsF,
       eventRowsF,
+      parkCourseRowsF,
     ]);
     final actorRows = results[0];
     final runRows = results[1];
     final publicRunRows = results[2];
     final commentRows = results[3];
     final eventRows = results[4];
+    final parkCourseRows = results[5];
+    // A course whose segment was pulled is hidden by RLS, so its notice keeps
+    // its line without a name.
+    final parkCourseNameById = <String, String>{};
+    for (final r in parkCourseRows) {
+      final row = r as Map<String, dynamic>;
+      final segment = row['global_segments'];
+      final name = segment is Map ? segment['name'] : null;
+      if (name is String && name.isNotEmpty) {
+        parkCourseNameById[row[ParkCourseRow.colId] as String] = name;
+      }
+    }
 
     final actorsById = <String, PublicProfile>{};
     for (final r in actorRows) {
@@ -7322,6 +7405,8 @@ class ApiClient {
         eventClubSlug: eventClubSlug,
         clubName: (linkedClub?.name.isNotEmpty ?? false) ? linkedClub!.name : null,
         clubSlug: (linkedClub?.slug.isNotEmpty ?? false) ? linkedClub!.slug : null,
+        parkCourseName:
+            row.parkCourseId == null ? null : parkCourseNameById[row.parkCourseId!],
       );
     }).toList();
   }

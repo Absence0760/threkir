@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show FieldColumn;
 
 import '../device_timezone.dart';
 import '../column_limits.dart';
@@ -429,121 +430,115 @@ class _EventFormState extends State<_EventForm> {
               ),
             ),
             const SizedBox(height: 12),
-            if (_category == 'class') ...[
+            FieldColumn(children: [
+              if (_category == 'class') ...[
+                TextField(
+                  controller: _discipline,
+                  maxLength: 60,
+                  decoration: InputDecoration(
+                    labelText: l10n.eventEditorDiscipline,
+                    hintText: l10n.eventEditorDisciplinePlaceholder,
+                  ),
+                ),
+                SessionPlanPicker(
+                  fieldKey: const Key('event-form-session-plan'),
+                  value: _sessionPlanId,
+                  plans: _sessionPlans,
+                  onChanged: (v) => setState(() {
+                    _sessionPlanId = v;
+                    if (v != null) _gymRoutineId = null;
+                  }),
+                ),
+                GymRoutinePicker(
+                  fieldKey: const Key('event-form-gym-routine'),
+                  value: _gymRoutineId,
+                  routines: _gymRoutines,
+                  onChanged: (v) => setState(() {
+                    _gymRoutineId = v;
+                    if (v != null) _sessionPlanId = null;
+                  }),
+                ),
+              ],
               TextField(
-                controller: _discipline,
-                maxLength: 60,
+                controller: _title,
+                autofocus: true,
+                maxLength: 120,
                 decoration: InputDecoration(
-                  labelText: l10n.eventEditorDiscipline,
-                  hintText: l10n.eventEditorDisciplinePlaceholder,
+                  labelText: l10n.eventFormTitleLabel,
+                  errorText: _titleError,
+                ),
+                onChanged: (_) {
+                  if (_titleError != null) setState(() => _titleError = null);
+                },
+              ),
+              InkWell(
+                onTap: _pickDateTime,
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: l10n.eventFormStartsAt,
+                    suffixIcon: const Icon(Icons.event),
+                  ),
+                  child: Text(formatDateTime(
+                      _starts, localeToTag(Localizations.localeOf(context)))),
                 ),
               ),
-              const SizedBox(height: 8),
-              SessionPlanPicker(
-                fieldKey: const Key('event-form-session-plan'),
-                value: _sessionPlanId,
-                plans: _sessionPlans,
-                onChanged: (v) => setState(() {
-                  _sessionPlanId = v;
-                  if (v != null) _gymRoutineId = null;
-                }),
-              ),
-              const SizedBox(height: 8),
-              GymRoutinePicker(
-                fieldKey: const Key('event-form-gym-routine'),
-                value: _gymRoutineId,
-                routines: _gymRoutines,
-                onChanged: (v) => setState(() {
-                  _gymRoutineId = v;
-                  if (v != null) _sessionPlanId = null;
-                }),
-              ),
-              const SizedBox(height: 8),
-            ],
-            TextField(
-              controller: _title,
-              autofocus: true,
-              maxLength: 120,
-              decoration: InputDecoration(
-                labelText: l10n.eventFormTitleLabel,
-                errorText: _titleError,
-              ),
-              onChanged: (_) {
-                if (_titleError != null) setState(() => _titleError = null);
-              },
-            ),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: _pickDateTime,
-              child: InputDecorator(
+              TextField(
+                controller: _description,
+                maxLines: 3,
+                maxLength: columnLength('events.description'),
                 decoration: InputDecoration(
-                  labelText: l10n.eventFormStartsAt,
-                  suffixIcon: const Icon(Icons.event),
+                  labelText: l10n.eventFormDescriptionLabel,
                 ),
-                child: Text(formatDateTime(
-                    _starts, localeToTag(Localizations.localeOf(context)))),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _description,
-              maxLines: 3,
-              maxLength: columnLength('events.description'),
-              decoration: InputDecoration(
-                labelText: l10n.eventFormDescriptionLabel,
+              TextField(
+                controller: _meetLabel,
+                maxLength: 120,
+                decoration: InputDecoration(
+                  labelText: l10n.eventFormMeetLabel,
+                  hintText: l10n.eventFormMeetHint,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _meetLabel,
-              maxLength: 120,
-              decoration: InputDecoration(
-                labelText: l10n.eventFormMeetLabel,
-                hintText: l10n.eventFormMeetHint,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (athletic) ...[
+              Row(
+                children: [
+                  if (athletic) ...[
+                    Expanded(
+                      child: TextField(
+                        controller: _distanceKm,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: l10n.eventFormDistanceLabel,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
                     child: TextField(
-                      controller: _distanceKm,
+                      controller: _durationMin,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: l10n.eventFormDistanceLabel,
+                        labelText: l10n.eventFormDurationLabel,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
                 ],
-                Expanded(
-                  child: TextField(
-                    controller: _durationMin,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: l10n.eventFormDurationLabel,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              key: const Key('event-form-capacity'),
-              controller: _capacity,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: l10n.eventFormCapacity,
-                helperText: l10n.eventFormCapacityHint,
-                errorText: _capacityError,
               ),
-              onChanged: (_) {
-                if (_capacityError != null) {
-                  setState(() => _capacityError = null);
-                }
-              },
-            ),
+              TextField(
+                key: const Key('event-form-capacity'),
+                controller: _capacity,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: l10n.eventFormCapacity,
+                  helperText: l10n.eventFormCapacityHint,
+                  errorText: _capacityError,
+                ),
+                onChanged: (_) {
+                  if (_capacityError != null) {
+                    setState(() => _capacityError = null);
+                  }
+                },
+              ),
+            ]),
             const SizedBox(height: 12),
             Text(l10n.eventFormRecurrence, style: theme.textTheme.labelLarge),
             const SizedBox(height: 4),
@@ -566,41 +561,42 @@ class _EventFormState extends State<_EventForm> {
             ),
             if (_recurrence != 'none') ...[
               const SizedBox(height: 8),
-              InkWell(
-                key: const Key('event-form-until'),
-                onTap: _pickUntil,
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: l10n.eventFormEndsOn,
-                    suffixIcon: _until == null
-                        ? const Icon(Icons.event)
-                        : IconButton(
-                            tooltip: l10n.eventFormEndsOnClear,
-                            icon: const Icon(Icons.clear),
-                            onPressed: () => setState(() => _until = null),
-                          ),
+              FieldColumn(children: [
+                InkWell(
+                  key: const Key('event-form-until'),
+                  onTap: _pickUntil,
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: l10n.eventFormEndsOn,
+                      suffixIcon: _until == null
+                          ? const Icon(Icons.event)
+                          : IconButton(
+                              tooltip: l10n.eventFormEndsOnClear,
+                              icon: const Icon(Icons.clear),
+                              onPressed: () => setState(() => _until = null),
+                            ),
+                    ),
+                    child: Text(_until == null
+                        ? l10n.eventFormEndsOnNone
+                        : formatDateMed(_until!,
+                            localeToTag(Localizations.localeOf(context)))),
                   ),
-                  child: Text(_until == null
-                      ? l10n.eventFormEndsOnNone
-                      : formatDateMed(_until!,
-                          localeToTag(Localizations.localeOf(context)))),
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                key: const Key('event-form-count'),
-                controller: _count,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: l10n.eventFormEndAfter,
-                  helperText: l10n.eventFormRepeatEndHint,
-                  helperMaxLines: 3,
-                  errorText: _countError,
+                TextField(
+                  key: const Key('event-form-count'),
+                  controller: _count,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: l10n.eventFormEndAfter,
+                    helperText: l10n.eventFormRepeatEndHint,
+                    helperMaxLines: 3,
+                    errorText: _countError,
+                  ),
+                  onChanged: (_) {
+                    if (_countError != null) setState(() => _countError = null);
+                  },
                 ),
-                onChanged: (_) {
-                  if (_countError != null) setState(() => _countError = null);
-                },
-              ),
+              ]),
             ],
             if (widget.clubIsPublic) ...[
               const SizedBox(height: 12),
@@ -626,82 +622,82 @@ class _EventFormState extends State<_EventForm> {
                   : l10n.eventFormChargeNeedsPayout),
             ),
             if (_charge && _chargesEnabled) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: TextField(
-                      key: const Key('event-form-price'),
-                      controller: _price,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: l10n.eventFormPrice,
-                        errorText: _priceError,
+              FieldColumn(children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        key: const Key('event-form-price'),
+                        controller: _price,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: l10n.eventFormPrice,
+                          errorText: _priceError,
+                        ),
+                        onChanged: (_) {
+                          if (_priceError != null) {
+                            setState(() => _priceError = null);
+                          }
+                        },
                       ),
-                      onChanged: (_) {
-                        if (_priceError != null) {
-                          setState(() => _priceError = null);
-                        }
-                      },
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      key: const Key('event-form-currency'),
-                      controller: _currency,
-                      maxLength: 3,
-                      decoration: InputDecoration(
-                        labelText: l10n.eventFormCurrency,
-                        errorText: _currencyError,
-                        counterText: '',
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        key: const Key('event-form-currency'),
+                        controller: _currency,
+                        maxLength: 3,
+                        decoration: InputDecoration(
+                          labelText: l10n.eventFormCurrency,
+                          errorText: _currencyError,
+                          counterText: '',
+                        ),
+                        onChanged: (_) {
+                          if (_currencyError != null) {
+                            setState(() => _currencyError = null);
+                          }
+                        },
                       ),
-                      onChanged: (_) {
-                        if (_currencyError != null) {
-                          setState(() => _currencyError = null);
-                        }
-                      },
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                key: const Key('event-form-sales-close'),
-                controller: _salesClose,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: l10n.eventFormSalesClose,
-                  helperText: l10n.eventFormSalesCloseHint,
-                  helperMaxLines: 2,
-                  errorText: _salesCloseError,
+                  ],
                 ),
-                onChanged: (_) {
-                  if (_salesCloseError != null) {
-                    setState(() => _salesCloseError = null);
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                key: const Key('event-form-refund-policy'),
-                initialValue: _refundPolicy,
-                isExpanded: true,
-                decoration:
-                    InputDecoration(labelText: l10n.eventFormRefundPolicy),
-                items: [
-                  for (final p in kEventRefundPolicies)
-                    DropdownMenuItem<String>(
-                      value: p,
-                      child: Text(eventRefundPolicyLabel(l10n, p)),
-                    ),
-                ],
-                onChanged: (v) {
-                  if (v != null) setState(() => _refundPolicy = v);
-                },
-              ),
+                TextField(
+                  key: const Key('event-form-sales-close'),
+                  controller: _salesClose,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: l10n.eventFormSalesClose,
+                    helperText: l10n.eventFormSalesCloseHint,
+                    helperMaxLines: 2,
+                    errorText: _salesCloseError,
+                  ),
+                  onChanged: (_) {
+                    if (_salesCloseError != null) {
+                      setState(() => _salesCloseError = null);
+                    }
+                  },
+                ),
+                DropdownButtonFormField<String>(
+                  key: const Key('event-form-refund-policy'),
+                  initialValue: _refundPolicy,
+                  isExpanded: true,
+                  decoration:
+                      InputDecoration(labelText: l10n.eventFormRefundPolicy),
+                  items: [
+                    for (final p in kEventRefundPolicies)
+                      DropdownMenuItem<String>(
+                        value: p,
+                        child: Text(eventRefundPolicyLabel(l10n, p)),
+                      ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _refundPolicy = v);
+                  },
+                ),
+              ]),
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),

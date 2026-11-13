@@ -1,6 +1,6 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
+import 'package:ui_kit/ui_kit.dart' show FieldColumn, SheetScaffold;
 import 'package:flutter/services.dart';
 
 import '../l10n/gen/app_localizations.dart';
@@ -167,26 +167,28 @@ class _PlanDetailsSheetState extends State<_PlanDetailsSheet> {
           children: [
             Text(l10n.planDetailEditDetails, style: theme.textTheme.titleLarge),
             const SizedBox(height: 12),
-            TextField(
-              key: const Key('planDetailsName'),
-              controller: _name,
-              maxLength: 120,
-              decoration: InputDecoration(
-                labelText: l10n.planNewNameLabel,
-                errorText: _nameError,
+            FieldColumn(children: [
+              TextField(
+                key: const Key('planDetailsName'),
+                controller: _name,
+                maxLength: 120,
+                decoration: InputDecoration(
+                  labelText: l10n.planNewNameLabel,
+                  errorText: _nameError,
+                ),
               ),
-            ),
-            DropdownButtonFormField<int>(
-              key: const Key('planDetailsDays'),
-              initialValue: _days,
-              decoration: InputDecoration(labelText: l10n.planNewDaysPerWeek),
-              items: [
-                for (var n = 3; n <= 7; n++)
-                  DropdownMenuItem(
-                      value: n, child: Text(l10n.planNewDaysOption(n))),
-              ],
-              onChanged: (v) => setState(() => _days = v ?? _days),
-            ),
+              DropdownButtonFormField<int>(
+                key: const Key('planDetailsDays'),
+                initialValue: _days,
+                decoration: InputDecoration(labelText: l10n.planNewDaysPerWeek),
+                items: [
+                  for (var n = 3; n <= 7; n++)
+                    DropdownMenuItem(
+                        value: n, child: Text(l10n.planNewDaysOption(n))),
+                ],
+                onChanged: (v) => setState(() => _days = v ?? _days),
+              ),
+            ]),
             const SizedBox(height: 16),
             Text(l10n.planNewGoalTimeSection, style: theme.textTheme.titleSmall),
             Row(
@@ -211,18 +213,20 @@ class _PlanDetailsSheetState extends State<_PlanDetailsSheet> {
             const SizedBox(height: 4),
             Text(l10n.planDetailGoalTimeRepaceHint, style: muted),
             const SizedBox(height: 12),
-            TextField(
-              controller: _notes,
-              maxLength: 500,
-              maxLines: 2,
-              decoration: InputDecoration(labelText: l10n.planDetailNotesLabel),
-            ),
-            TextField(
-              controller: _rules,
-              maxLines: 4,
-              minLines: 2,
-              decoration: InputDecoration(labelText: l10n.planDetailRulesLabel),
-            ),
+            FieldColumn(children: [
+              TextField(
+                controller: _notes,
+                maxLength: 500,
+                maxLines: 2,
+                decoration: InputDecoration(labelText: l10n.planDetailNotesLabel),
+              ),
+              TextField(
+                controller: _rules,
+                maxLines: 4,
+                minLines: 2,
+                decoration: InputDecoration(labelText: l10n.planDetailRulesLabel),
+              ),
+            ]),
           ],
         ),
     );

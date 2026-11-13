@@ -4,7 +4,13 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show ListCard, PageBarTitle, PageBody, PageHeader, PageTitleScope;
+    show
+        FieldColumn,
+        ListCard,
+        PageBarTitle,
+        PageBody,
+        PageHeader,
+        PageTitleScope;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -707,54 +713,54 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // isExpanded: at 2x on a 320 dp phone the longest choice is wider
-          // than the field, and an unexpanded dropdown overflows instead of
-          // ellipsizing it.
-          DropdownButtonFormField<String>(
-            initialValue: _gender.value,
-            isExpanded: true,
-            decoration: InputDecoration(labelText: l10n.setupGenderLabel),
-            items: [
-              DropdownMenuItem(
-                value: '',
-                child: Text(l10n.setupGenderPreferNot),
+          FieldColumn(children: [
+            // isExpanded: at 2x on a 320 dp phone the longest choice is wider
+            // than the field, and an unexpanded dropdown overflows instead of
+            // ellipsizing it.
+            DropdownButtonFormField<String>(
+              initialValue: _gender.value,
+              isExpanded: true,
+              decoration: InputDecoration(labelText: l10n.setupGenderLabel),
+              items: [
+                DropdownMenuItem(
+                  value: '',
+                  child: Text(l10n.setupGenderPreferNot),
+                ),
+                DropdownMenuItem(
+                  value: 'female',
+                  child: Text(l10n.setupGenderFemale),
+                ),
+                DropdownMenuItem(
+                  value: 'male',
+                  child: Text(l10n.setupGenderMale),
+                ),
+              ],
+              onChanged: (v) => setState(() => _gender.value = v ?? ''),
+            ),
+            InkWell(
+              onTap: _pickDob,
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: l10n.setupDobLabel,
+                  helperText: l10n.setupDobNote,
+                  helperMaxLines: 3,
+                ),
+                child: Text(
+                  _dateOfBirth.value == null
+                      ? l10n.setupDobPlaceholder
+                      : ApiClient.dateOnly(_dateOfBirth.value!),
+                ),
               ),
-              DropdownMenuItem(
-                value: 'female',
-                child: Text(l10n.setupGenderFemale),
-              ),
-              DropdownMenuItem(
-                value: 'male',
-                child: Text(l10n.setupGenderMale),
-              ),
-            ],
-            onChanged: (v) => setState(() => _gender.value = v ?? ''),
-          ),
-          const SizedBox(height: 16),
-          InkWell(
-            onTap: _pickDob,
-            child: InputDecorator(
+            ),
+            TextField(
+              controller: _weightCtl.value,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: l10n.setupDobLabel,
-                helperText: l10n.setupDobNote,
-                helperMaxLines: 3,
-              ),
-              child: Text(
-                _dateOfBirth.value == null
-                    ? l10n.setupDobPlaceholder
-                    : ApiClient.dateOnly(_dateOfBirth.value!),
+                labelText: l10n.setupWeightLabel,
+                hintText: l10n.setupWeightPlaceholder,
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _weightCtl.value,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: l10n.setupWeightLabel,
-              hintText: l10n.setupWeightPlaceholder,
-            ),
-          ),
+          ]),
           if (_gender.value.isNotEmpty || _dateOfBirth.value != null) ...[
             const SizedBox(height: 16),
             CheckboxListTile(

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
+import 'package:ui_kit/ui_kit.dart' show FieldColumn, SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 import '../race_phases.dart';
@@ -122,27 +122,28 @@ class _RaceStrategySheetState extends State<_RaceStrategySheet> {
             ),
             if (_preset != null) ...[
               const SizedBox(height: 8),
-              TextField(
-                key: const ValueKey('race-strategy-distance'),
-                controller: _distance,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+              FieldColumn(children: [
+                TextField(
+                  key: const ValueKey('race-strategy-distance'),
+                  controller: _distance,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: l10n.runStrategyDistance,
+                    suffixText: widget.miles ? 'mi' : 'km',
+                  ),
                 ),
-                decoration: InputDecoration(
-                  labelText: l10n.runStrategyDistance,
-                  suffixText: widget.miles ? 'mi' : 'km',
+                TextField(
+                  key: const ValueKey('race-strategy-goal'),
+                  controller: _goal,
+                  keyboardType: TextInputType.datetime,
+                  decoration: InputDecoration(
+                    labelText: l10n.runStrategyGoalTime,
+                    hintText: 'hh:mm:ss',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const ValueKey('race-strategy-goal'),
-                controller: _goal,
-                keyboardType: TextInputType.datetime,
-                decoration: InputDecoration(
-                  labelText: l10n.runStrategyGoalTime,
-                  hintText: 'hh:mm:ss',
-                ),
-              ),
+              ]),
             ],
           ],
         ),

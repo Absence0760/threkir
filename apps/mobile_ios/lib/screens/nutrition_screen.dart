@@ -714,29 +714,30 @@ class _NutritionScreenState extends State<NutritionScreen>
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: nameController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.nutritionRecipeName,
-                    hintText: l10n.nutritionRecipeNamePlaceholder,
+                FieldColumn(children: [
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: l10n.nutritionRecipeName,
+                      hintText: l10n.nutritionRecipeNamePlaceholder,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: servingsController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setDialogState(() {}),
-                  decoration: InputDecoration(
-                    labelText: l10n.nutritionRecipeServings,
-                    errorText: outOfRange
-                        ? l10n.limitsServingsOutOfRange(
-                            boundText(columnMin(servingsKey)),
-                            boundText(columnMax(servingsKey)))
-                        : null,
+                  TextField(
+                    controller: servingsController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: InputDecoration(
+                      labelText: l10n.nutritionRecipeServings,
+                      errorText: outOfRange
+                          ? l10n.limitsServingsOutOfRange(
+                              boundText(columnMin(servingsKey)),
+                              boundText(columnMax(servingsKey)))
+                          : null,
+                    ),
                   ),
-                ),
+                ]),
                 const SizedBox(height: 8),
                 Text(l10n.nutritionRecipeServingsHint,
                     style: Theme.of(ctx).textTheme.bodySmall),

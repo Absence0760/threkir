@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppBarAction,
+        FieldColumn,
         ListSkeleton,
         PageHeader,
         PushedPage,
@@ -306,38 +307,39 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
           const SizedBox(height: 16),
           SectionHeader(label: l10n.checkpointPickLabel),
           const SizedBox(height: 8),
-          // Expanded, so a long checkpoint name ("Rucky Chucky river
-          // crossing, far side") ellipsizes in the field rather than
-          // overflowing it; the menu still lists each name in full.
-          DropdownButtonFormField<String>(
-            initialValue: selected?.id,
-            isExpanded: true,
-            items: [
-              for (final cp in _checkpoints)
-                DropdownMenuItem(
-                  value: cp.id,
-                  child: Text(cp.requiresWeighIn && weighInGate
-                      ? '${cp.name}  ⚖'
-                      : cp.name),
-                ),
-            ],
-            onChanged: (id) => setState(() {
-              _selected = _checkpoints.firstWhere((c) => c.id == id);
-            }),
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: _bib,
-            autofocus: true,
-            textInputAction: TextInputAction.done,
-            keyboardType: TextInputType.text,
-            decoration: InputDecoration(
-              labelText: l10n.checkpointBibLabel,
-              hintText: l10n.checkpointBibHint,
-              prefixIcon: const Icon(Icons.tag),
+          FieldColumn(children: [
+            // Expanded, so a long checkpoint name ("Rucky Chucky river
+            // crossing, far side") ellipsizes in the field rather than
+            // overflowing it; the menu still lists each name in full.
+            DropdownButtonFormField<String>(
+              initialValue: selected?.id,
+              isExpanded: true,
+              items: [
+                for (final cp in _checkpoints)
+                  DropdownMenuItem(
+                    value: cp.id,
+                    child: Text(cp.requiresWeighIn && weighInGate
+                        ? '${cp.name}  ⚖'
+                        : cp.name),
+                  ),
+              ],
+              onChanged: (id) => setState(() {
+                _selected = _checkpoints.firstWhere((c) => c.id == id);
+              }),
             ),
-            onSubmitted: (_) => _busy ? null : _stamp(isOut: false),
-          ),
+            TextField(
+              controller: _bib,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                labelText: l10n.checkpointBibLabel,
+                hintText: l10n.checkpointBibHint,
+                prefixIcon: const Icon(Icons.tag),
+              ),
+              onSubmitted: (_) => _busy ? null : _stamp(isOut: false),
+            ),
+          ]),
           const SizedBox(height: 16),
           Row(
             children: [

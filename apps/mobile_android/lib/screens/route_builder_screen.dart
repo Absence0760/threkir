@@ -17,6 +17,7 @@ import 'package:ui_kit/ui_kit.dart'
         AppSemanticColors,
         ChoiceChipOption,
         ChoiceChipRow,
+        FieldColumn,
         ListCard,
         MapFirstPage,
         SheetScaffold,
@@ -2198,45 +2199,45 @@ class _SaveRouteDialogState extends State<SaveRouteDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: _name,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: l10n.routeBuilderNameLabel,
-                hintText: l10n.routeBuilderNameHint,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _description,
-              decoration: InputDecoration(
-                labelText: l10n.routeBuilderDescriptionLabel,
-                hintText: l10n.routeBuilderDescriptionHint,
-              ),
-              maxLines: 3,
-            ),
-            if (hasClubs) ...[
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String?>(
-                key: const Key('save-route-dialog-club-picker'),
-                initialValue: _clubId,
+            FieldColumn(children: [
+              TextField(
+                controller: _name,
+                autofocus: true,
                 decoration: InputDecoration(
-                  labelText: l10n.routeBuilderSaveToLabel,
+                  labelText: l10n.routeBuilderNameLabel,
+                  hintText: l10n.routeBuilderNameHint,
                 ),
-                items: <DropdownMenuItem<String?>>[
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text(l10n.routeBuilderSaveToPersonal),
-                  ),
-                  for (final c in widget.clubChoices)
-                    DropdownMenuItem<String?>(
-                      value: c.id,
-                      child: Text(c.name),
-                    ),
-                ],
-                onChanged: (v) => setState(() => _clubId = v),
               ),
-            ],
+              TextField(
+                controller: _description,
+                decoration: InputDecoration(
+                  labelText: l10n.routeBuilderDescriptionLabel,
+                  hintText: l10n.routeBuilderDescriptionHint,
+                ),
+                maxLines: 3,
+              ),
+              if (hasClubs) ...[
+                DropdownButtonFormField<String?>(
+                  key: const Key('save-route-dialog-club-picker'),
+                  initialValue: _clubId,
+                  decoration: InputDecoration(
+                    labelText: l10n.routeBuilderSaveToLabel,
+                  ),
+                  items: <DropdownMenuItem<String?>>[
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(l10n.routeBuilderSaveToPersonal),
+                    ),
+                    for (final c in widget.clubChoices)
+                      DropdownMenuItem<String?>(
+                        value: c.id,
+                        child: Text(c.name),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => _clubId = v),
+                ),
+              ],
+            ]),
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,

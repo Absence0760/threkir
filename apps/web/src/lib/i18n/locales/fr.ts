@@ -7,6 +7,7 @@ export const messages = {
 	'common.unsavedTitle': 'Abandonner les modifications ?',
 	'common.unsavedBody': 'Vous avez des modifications non enregistrées. Quitter sans enregistrer ?',
 	'common.discard': 'Abandonner',
+	"common.unsavedBusy": "Enregistrement en cours. Vous pourrez quitter une fois terminé.",
 	"metricLabel.about": "À propos de {name}",
 	"rateLimit.createClub": "Vous créez des clubs trop rapidement — veuillez patienter {wait} et réessayer.",
 	"rateLimit.createRoute": "Vous créez des parcours trop rapidement — veuillez patienter {wait} et réessayer.",

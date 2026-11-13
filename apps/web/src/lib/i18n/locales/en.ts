@@ -18,6 +18,7 @@ export const en = {
 	'common.unsavedTitle': 'Discard changes?',
 	'common.unsavedBody': 'You have unsaved changes. Leave without saving?',
 	'common.discard': 'Discard',
+	"common.unsavedBusy": "Still saving. You can leave when it finishes.",
 	"metricLabel.about": "About {name}",
 	// Rate-limit refusals (postgres P0001 from enforce_create_rate_limit).
 	// The bucket picks the whole sentence; {wait} is the one noun phrase

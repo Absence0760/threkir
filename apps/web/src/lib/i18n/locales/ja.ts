@@ -7,6 +7,7 @@ export const messages = {
 	'common.unsavedTitle': '変更を破棄しますか？',
 	'common.unsavedBody': '保存していない変更があります。保存せずに移動しますか？',
 	'common.discard': '破棄',
+	"common.unsavedBusy": "保存中です。完了してから移動してください。",
 	"metricLabel.about": "{name}について",
 	"rateLimit.createClub": "クラブの作成が速すぎます。{wait}待ってから、もう一度お試しください。",
 	"rateLimit.createRoute": "ルートの作成が速すぎます。{wait}待ってから、もう一度お試しください。",

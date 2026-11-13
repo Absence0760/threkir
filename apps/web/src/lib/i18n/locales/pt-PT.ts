@@ -7,6 +7,7 @@ export const messages = {
 	'common.unsavedTitle': 'Descartar as alterações?',
 	'common.unsavedBody': 'Tem alterações não guardadas. Sair sem guardar?',
 	'common.discard': 'Descartar',
+	"common.unsavedBusy": "Ainda a guardar. Pode sair quando terminar.",
 	"metricLabel.about": "Sobre {name}",
 	"rateLimit.createClub": "Está a criar clubes demasiado depressa — aguarde {wait} e tente novamente.",
 	"rateLimit.createRoute": "Está a criar percursos demasiado depressa — aguarde {wait} e tente novamente.",

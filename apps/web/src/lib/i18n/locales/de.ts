@@ -7,6 +7,7 @@ export const messages = {
 	'common.unsavedTitle': 'Änderungen verwerfen?',
 	'common.unsavedBody': 'Du hast ungespeicherte Änderungen. Ohne Speichern verlassen?',
 	'common.discard': 'Verwerfen',
+	"common.unsavedBusy": "Wird noch gespeichert. Du kannst die Seite verlassen, sobald es fertig ist.",
 	"metricLabel.about": "Über {name}",
 	"rateLimit.createClub": "Du erstellst zu schnell Vereine – bitte warte {wait} und versuche es erneut.",
 	"rateLimit.createRoute": "Du erstellst zu schnell Routen – bitte warte {wait} und versuche es erneut.",

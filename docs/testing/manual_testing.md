@@ -51,6 +51,8 @@ supabase status -o env
 
 The local stack ports: API `24321`, DB `24322`, Studio `24323`, Mailpit `24324`. The web dev server runs on `7777`, preview on `8888`. The seed user is **`runner@test.com` / `testtest`**, with 12 seeded runs and 5 routes (Melbourne-area; matches the OSRM dev region).
 
+To review screens with a full, realistic dataset rather than the test fixture (park course boards with several runners, a busy feed and inbox, races, clubs, challenges, messages, six months of history), run `bin/seed-demo.sh` after `supabase db reset`. It adds rows on top of the seed, local stacks only; details in [apps/backend/local_testing.md § Demo data](../../apps/backend/local_testing.md#demo-data-optional).
+
 For each app the canonical environment-setup guide is its own `local_testing.md`:
 
 - [apps/backend/local_testing.md](../../apps/backend/local_testing.md)

@@ -54,6 +54,17 @@ This drops and recreates the local database using the migration files in `supaba
 
 The seed includes 12 runs (across app, Strava, parkrun, HealthKit sources), 5 routes, a user profile, and a connected Strava integration. The parkrun runs stand for history imported before the parkrun import was removed (decisions § 2467). This is enough to test the dashboard, run history, route library, and all other pages with real data.
 
+### Demo data (optional)
+
+To click through every page with realistic data (a crowd of runners in the feed, 34 Virginia parks with 172 park courses and their monthly boards, races, 58 routes, six months of activities, clubs with events, challenges, messages, a past plan, gym, food and weight history), load the demo dataset on top of the seed:
+
+```bash
+supabase db reset
+../../bin/seed-demo.sh            # from apps/backend; add --db-url <url> for a stack on other ports
+```
+
+It refuses any host other than `localhost`, `127.0.0.1` or `::1`, is safe to run twice (the second run adds nothing), and is dated relative to the day it runs; to move the dates forward, reset and run it again. Every demo runner signs in with `testtest` (for example `sam.patel@test.com`). Demo runs have no GPS track, and the park course lines are generated, not surveyed. Never use it for test fixtures: specs count against `seed.sql` alone ([decisions § 2521](../../docs/architecture/decisions.md)).
+
 ### Regenerate client row types
 
 After `supabase db reset` picks up a new migration, refresh the generated row classes both clients depend on:

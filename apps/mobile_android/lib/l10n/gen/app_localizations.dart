@@ -371,12 +371,6 @@ abstract class AppLocalizations {
   /// **'No route'**
   String get routePickerNoRoute;
 
-  /// Tooltip for the clear-search button in the route picker
-  ///
-  /// In en, this message translates to:
-  /// **'Clear search'**
-  String get routePickerClearSearchTooltip;
-
   /// Placeholder hint for the route-picker search field
   ///
   /// In en, this message translates to:
@@ -5272,36 +5266,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run added to history'**
   String get addRunSaved;
-
-  /// Search-field hint in the full-screen route picker
-  ///
-  /// In en, this message translates to:
-  /// **'Search routes'**
-  String get addRunPickerSearchHint;
-
-  /// Tooltip on the clear-search button in the route picker
-  ///
-  /// In en, this message translates to:
-  /// **'Clear'**
-  String get addRunPickerClear;
-
-  /// Tooltip on the close button in the route picker
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get addRunPickerCancel;
-
-  /// Empty-state in the route picker when the search matches nothing
-  ///
-  /// In en, this message translates to:
-  /// **'No routes match \"{query}\"'**
-  String addRunPickerNoMatch(String query);
-
-  /// Leading option in the route picker that attaches no route
-  ///
-  /// In en, this message translates to:
-  /// **'No route'**
-  String get addRunPickerNoRoute;
 
   /// Did-not-finish badge in the run-detail AppBar title — abbreviation, usually left as DNF
   ///

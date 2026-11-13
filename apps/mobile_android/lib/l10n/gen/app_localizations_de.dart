@@ -196,9 +196,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get routePickerNoRoute => 'Keine Route';
 
   @override
-  String get routePickerClearSearchTooltip => 'Suche löschen';
-
-  @override
   String get routePickerSearchHint => 'Routen nach Namen suchen…';
 
   @override
@@ -3224,23 +3221,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get addRunSaved => 'Lauf zum Verlauf hinzugefügt';
-
-  @override
-  String get addRunPickerSearchHint => 'Routen suchen';
-
-  @override
-  String get addRunPickerClear => 'Leeren';
-
-  @override
-  String get addRunPickerCancel => 'Abbrechen';
-
-  @override
-  String addRunPickerNoMatch(String query) {
-    return 'Keine Routen passen zu „$query“';
-  }
-
-  @override
-  String get addRunPickerNoRoute => 'Keine Route';
 
   @override
   String get runDetailDnfBadge => 'DNF';

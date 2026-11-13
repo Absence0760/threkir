@@ -17,6 +17,7 @@ import '../route_file_import.dart';
 import '../social_service.dart';
 import '../typed_decimal.dart';
 import '../widgets/confirm_discard.dart';
+import '../widgets/route_picker_sheet.dart';
 import '../widgets/top_banner.dart';
 import 'route_builder_screen.dart';
 
@@ -164,15 +165,17 @@ class _AddRunScreenState extends State<AddRunScreen> {
   }
 
   Future<void> _pickRoute(List<Route> routes, DistanceUnit unit) async {
-    final picked = await Navigator.push<_RoutePick>(
+    final picked = await pickRoute(
       context,
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => _RoutePickerPage(routes: routes, unit: unit),
-      ),
+      routes: routes,
+      unit: unit,
+      selected: _selectedRoute,
     );
-    if (picked == null) return;
-    _onRouteSelected(picked.route);
+    if (picked == null || !mounted) return;
+    _onRouteSelected(switch (picked) {
+      RoutePicked(:final route) => route,
+      NoRoutePicked() => null,
+    });
   }
 
   Future<void> _addRoute() async {
@@ -559,144 +562,4 @@ class _AddRunScreenState extends State<AddRunScreen> {
   }
 }
 
-/// Result wrapper so `Navigator.pop(null)` (dismiss) is distinguishable
-/// from "the user picked the No route option" — the latter pops a
-/// [_RoutePick] whose `route` field is null.
 enum _NewRouteSource { build, import }
-
-class _RoutePick {
-  final Route? route;
-  const _RoutePick(this.route);
-}
-
-/// Full-screen searchable route picker. Pushed as a Material full-screen
-/// dialog rather than a modal bottom sheet — sheets fight the keyboard
-/// animation (viewInsets + FractionallySizedBox both reflow during open),
-/// which is the "slow and glitchy" feel users notice. A pushed Scaffold
-/// has the OS soft keyboard, AppBar, and list layout all playing by
-/// their normal rules.
-class _RoutePickerPage extends StatefulWidget {
-  final List<Route> routes;
-  final DistanceUnit unit;
-  const _RoutePickerPage({required this.routes, required this.unit});
-
-  @override
-  State<_RoutePickerPage> createState() => _RoutePickerPageState();
-}
-
-class _RoutePickerPageState extends State<_RoutePickerPage> {
-  final _searchCtl = TextEditingController();
-  String _query = '';
-
-  /// Lowercased route names, indexed parallel to `widget.routes`. Filled
-  /// once in `initState` so typing a 6-character query doesn't re-allocate
-  /// N lowercase strings per keystroke.
-  late final List<String> _lowerNames;
-
-  @override
-  void initState() {
-    super.initState();
-    _lowerNames = widget.routes.map((r) => r.name.toLowerCase()).toList();
-  }
-
-  @override
-  void dispose() {
-    _searchCtl.dispose();
-    super.dispose();
-  }
-
-  List<Route> _filtered() {
-    final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return widget.routes;
-    final out = <Route>[];
-    for (var i = 0; i < widget.routes.length; i++) {
-      if (_lowerNames[i].contains(q)) out.add(widget.routes[i]);
-    }
-    return out;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final filtered = _filtered();
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          tooltip: l10n.addRunPickerCancel,
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: TextField(
-          controller: _searchCtl,
-          autofocus: true,
-          textInputAction: TextInputAction.search,
-          style: theme.textTheme.titleMedium,
-          decoration: InputDecoration(
-            hintText: l10n.addRunPickerSearchHint,
-            border: InputBorder.none,
-          ),
-          onChanged: (v) => setState(() => _query = v),
-        ),
-        actions: [
-          if (_query.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: l10n.addRunPickerClear,
-              onPressed: () {
-                _searchCtl.clear();
-                setState(() => _query = '');
-              },
-            ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: filtered.isEmpty
-            ? Center(
-                child: Text(
-                  l10n.addRunPickerNoMatch(_query),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              )
-            : ListView.builder(
-                // `+1` for the leading "No route" row.
-                itemCount: filtered.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return ListTile(
-                      leading: const Icon(Icons.block),
-                      title: Text(l10n.addRunPickerNoRoute),
-                      onTap: () =>
-                          Navigator.pop(context, const _RoutePick(null)),
-                    );
-                  }
-                  final route = filtered[index - 1];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.route,
-                        color: theme.colorScheme.primary,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      route.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      UnitFormat.distance(route.distanceMetres, widget.unit),
-                    ),
-                    onTap: () => Navigator.pop(context, _RoutePick(route)),
-                  );
-                },
-              ),
-      ),
-    );
-  }
-}

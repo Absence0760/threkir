@@ -244,10 +244,6 @@
   "@routePickerNoRoute": {
     "description": "App bar action to dismiss the picker without choosing a route"
   },
-  "routePickerClearSearchTooltip": "Clear search",
-  "@routePickerClearSearchTooltip": {
-    "description": "Tooltip for the clear-search button in the route picker"
-  },
   "routePickerSearchHint": "Search routes by name…",
   "@routePickerSearchHint": {
     "description": "Placeholder hint for the route-picker search field"
@@ -4145,31 +4141,6 @@
   "addRunSaved": "Run added to history",
   "@addRunSaved": {
     "description": "Banner shown after a manual run is saved"
-  },
-  "addRunPickerSearchHint": "Search routes",
-  "@addRunPickerSearchHint": {
-    "description": "Search-field hint in the full-screen route picker"
-  },
-  "addRunPickerClear": "Clear",
-  "@addRunPickerClear": {
-    "description": "Tooltip on the clear-search button in the route picker"
-  },
-  "addRunPickerCancel": "Cancel",
-  "@addRunPickerCancel": {
-    "description": "Tooltip on the close button in the route picker"
-  },
-  "addRunPickerNoMatch": "No routes match \"{query}\"",
-  "@addRunPickerNoMatch": {
-    "description": "Empty-state in the route picker when the search matches nothing",
-    "placeholders": {
-      "query": {
-        "type": "String"
-      }
-    }
-  },
-  "addRunPickerNoRoute": "No route",
-  "@addRunPickerNoRoute": {
-    "description": "Leading option in the route picker that attaches no route"
   },
   "runDetailDnfBadge": "DNF",
   "@runDetailDnfBadge": {

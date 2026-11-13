@@ -274,8 +274,9 @@ becomes an **action button**, not a tab.
     the active plan has a workout today that is not a rest day, not done,
     not skipped, and has a structure or a target distance to follow. It
     loads on the recorder through the same handoff as the plan's own Start.
-  - **Choose route**, only when a route is saved: the route picker, then
-    the recorder with that route selected.
+  - **Choose route**, only when a route is saved: the route picker sheet
+    (the same one the Run tab opens, without "No route", which has nothing
+    to clear here), then the recorder with that route selected.
   - **Add past run**, always: the manual entry, which is what web's Log run
     is from its History Log menu.
   - **Log lift / Log food**, only when that modality is shown **and the tap

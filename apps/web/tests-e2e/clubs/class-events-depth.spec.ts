@@ -418,6 +418,9 @@ test.describe('/social — discover a class by cadence + weekday', () => {
 
 		// Cadence weekly keeps the recurring class; one_off drops it (it has a
 		// recurrence_freq).
+		// Cadence and day live in the Filters sheet (#1374); its changes apply
+		// at once, so the list behind it is already filtered.
+		await page.getByTestId('discover-filters-toggle').click();
 		await page.getByTestId('discover-cadence').selectOption('weekly');
 		await expect(row).toBeVisible({ timeout: 10_000 });
 		await page.getByTestId('discover-cadence').selectOption('one_off');

@@ -4674,7 +4674,6 @@ export const en = {
 	"discover.nearNoMatch": "Couldn't find that place.",
 	"discover.geoNeedsHttps": "Location needs a secure (HTTPS) connection.",
 	"discover.geoFailed": "Couldn't get your location.",
-	"discover.clearNear": "Clear location filter",
 	"nav.races": "Races",
 	"races.title": "Race calendar",
 	"races.subtitle": "Find a race near you, then import your official result.",

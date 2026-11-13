@@ -4660,7 +4660,6 @@ export const messages = {
 	"discover.nearNoMatch": "Não foi possível encontrar esse lugar.",
 	"discover.geoNeedsHttps": "A localização exige uma ligação segura (HTTPS).",
 	"discover.geoFailed": "Não foi possível obter a sua localização.",
-	"discover.clearNear": "Limpar filtro de localização",
 	"nav.races": "Provas",
 	"races.title": "Calendário de provas",
 	"races.subtitle": "Encontre uma prova perto de si e importe o seu resultado oficial.",

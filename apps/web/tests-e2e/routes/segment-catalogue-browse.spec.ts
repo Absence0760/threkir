@@ -101,6 +101,9 @@ test.describe('famous-segment catalogue browse', () => {
 
 			await test.step('longest-first reorders the pair', async () => {
 				await page.getByTestId('segment-catalogue-search').fill(token);
+				// Sort and the region filter live in the Filters sheet (#1374); its
+				// changes apply at once, so the list behind it is already right.
+				await page.getByTestId('segment-catalogue-filters-toggle').click();
 				await page.getByTestId('segment-catalogue-sort').selectOption('longest');
 				const hrefs = await page.locator('a.card').evaluateAll((els) =>
 					els.map((el) => el.getAttribute('href'))
@@ -116,6 +119,8 @@ test.describe('famous-segment catalogue browse', () => {
 
 			await test.step('the region filter narrows to one', async () => {
 				await page.getByTestId('segment-catalogue-region').selectOption(longRegion);
+				await page.getByTestId('segment-catalogue-filters-done').click();
+				await expect(page.getByTestId('segment-catalogue-chip-region')).toBeVisible();
 				await expect(page.locator('a.card')).toHaveCount(1);
 				await expect(page.locator(`a.card[href="/segments/${longId}"]`)).toBeVisible();
 			});

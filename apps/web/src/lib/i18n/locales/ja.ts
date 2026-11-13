@@ -4656,7 +4656,6 @@ export const messages = {
 	"discover.nearNoMatch": "その場所が見つかりませんでした。",
 	"discover.geoNeedsHttps": "現在地の取得には安全な（HTTPS）接続が必要です。",
 	"discover.geoFailed": "現在地を取得できませんでした。",
-	"discover.clearNear": "場所フィルターをクリア",
 	"nav.races": "レース",
 	"races.title": "レースカレンダー",
 	"races.subtitle": "近くのレースを見つけて、公式記録をインポートしましょう。",

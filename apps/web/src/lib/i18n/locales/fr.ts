@@ -4661,7 +4661,6 @@ export const messages = {
 	"discover.nearNoMatch": "Lieu introuvable.",
 	"discover.geoNeedsHttps": "La localisation nécessite une connexion sécurisée (HTTPS).",
 	"discover.geoFailed": "Impossible d'obtenir votre position.",
-	"discover.clearNear": "Effacer le filtre de localisation",
 	"nav.races": "Courses",
 	"races.title": "Calendrier des courses",
 	"races.subtitle": "Trouvez une course près de chez vous, puis importez votre résultat officiel.",

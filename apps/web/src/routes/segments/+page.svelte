@@ -5,6 +5,9 @@
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import RoutesViewNav from '#lib/components/RoutesViewNav.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
+	import FilterBar, { type ActiveFilter } from '#lib/components/FilterBar.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
@@ -37,6 +40,28 @@
 	const surfaces = $derived(catalogueSurfaces(segments));
 	const shown = $derived(sortCatalogue(filterCatalogue(segments, { query, region, surface }), sort));
 	const filtered = $derived(query.trim() !== '' || region != null || surface != null);
+
+	// The sheet's filters that are on, as removable chips on the bar's line.
+	const activeFilters = $derived.by<ActiveFilter[]>(() => {
+		const out: ActiveFilter[] = [];
+		if (region != null) {
+			out.push({ key: 'region', label: region, onRemove: () => (region = null), testid: 'segment-catalogue-chip-region' });
+		}
+		if (surface != null) {
+			out.push({
+				key: 'surface',
+				label: routeSurfaceLabel(surface),
+				onRemove: () => (surface = null),
+				testid: 'segment-catalogue-chip-surface',
+			});
+		}
+		if (sort !== 'name') {
+			const key = SORTS.find((o) => o.value === sort)?.key;
+			if (key) out.push({ key: 'sort', label: m(key), onRemove: () => (sort = 'name'), testid: 'segment-catalogue-chip-sort' });
+		}
+		return out;
+	});
+	let filtersOpen = $state(false);
 
 	// The catalogue is world-readable, so this page works signed out — no
 	// auth.ready() gate, unlike the leaderboard on /segments/[id].
@@ -77,19 +102,88 @@
 
 <svelte:head><title>{m('segments.browseTitle')}</title></svelte:head>
 
+<!-- The search's explanation is shown in the Filters sheet; a screen reader
+     hears it on the field too, which is the one place it is always present. -->
+{#snippet catalogueSearch()}
+	<AppSearchField
+		bind:value={query}
+		label={m('segments.browseSearchLabel')}
+		placeholder={m('segments.browseSearchPlaceholder')}
+		testid="segment-catalogue-search"
+		describedby="segment-search-desc"
+	/>
+	<span class="visually-hidden" id="segment-search-desc">{m('segments.browseFiltersHint')}</span>
+{/snippet}
+
+{#snippet catalogueReset()}
+	{#if filtered || sort !== 'name'}
+		<button
+			type="button"
+			class="btn btn-outline"
+			onclick={resetFilters}
+			title={m('segments.clearFilters')}
+			data-testid="segment-catalogue-reset"
+		>
+			{m('segments.reset')}
+		</button>
+	{/if}
+{/snippet}
+
+<!-- The Filters sheet: each control's explanation sits beside it, named by
+     its aria-describedby (conventions.md § Web lists). -->
+{#snippet catalogueFilters()}
+	{#if regions.length > 1}
+		<label class="field">
+			<span>{m('segments.browseRegion')}</span>
+			<select
+				bind:value={region}
+				data-testid="segment-catalogue-region"
+				aria-describedby="segment-filters-hint"
+			>
+				<option value={null}>{m('segments.browseAllRegions')}</option>
+				{#each regions as r (r)}
+					<option value={r}>{r}</option>
+				{/each}
+			</select>
+		</label>
+	{/if}
+	{#if surfaces.length > 1}
+		<label class="field">
+			<span>{m('segments.browseSurface')}</span>
+			<select
+				bind:value={surface}
+				data-testid="segment-catalogue-surface"
+				aria-describedby="segment-filters-hint"
+			>
+				<option value={null}>{m('segments.browseAllSurfaces')}</option>
+				{#each surfaces as s (s)}
+					<option value={s}>{routeSurfaceLabel(s)}</option>
+				{/each}
+			</select>
+		</label>
+	{/if}
+	<label class="field">
+		<span>{m('segments.browseSort')}</span>
+		<select bind:value={sort} data-testid="segment-catalogue-sort" aria-describedby="segment-filters-hint">
+			{#each SORTS as option (option.value)}
+				<option value={option.value}>{m(option.key)}</option>
+			{/each}
+		</select>
+	</label>
+	<p class="filter-hint" id="segment-filters-hint">{m('segments.browseFiltersHint')}</p>
+{/snippet}
+
 <div class="page">
 	<!-- Routes → Explore → Segments (issue #1374, owner decision 1): the
 	     catalogue is no longer a run-surface tab of its own. -->
 	<RunSurfaceTabs active="routes" />
 	<RoutesViewNav view="segments" />
-	<header class="page-header">
-		<h1>{m('segments.browseTitle')}</h1>
-		<p class="subtitle">{m('segments.browseIntro')}</p>
+	<PageHeader title={m('segments.browseTitle')} subtitle={m('segments.browseIntro')}>
 		<a class="parks-link" href="/races?show=courses" data-testid="segments-parks-link">
 			<span class="material-symbols" aria-hidden="true">park</span>
 			{m('parks.browseLink')}
 		</a>
-	</header>
+	</PageHeader>
 
 	{#if loading}
 		<p class="state-msg">{m('segments.loadingSegments')}</p>
@@ -114,72 +208,17 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
-		<div class="filters">
-			<label class="field search-field">
-				<span>{m('segments.browseSearchLabel')}</span>
-				<input
-					type="search"
-					bind:value={query}
-					placeholder={m('segments.browseSearchPlaceholder')}
-					data-testid="segment-catalogue-search"
-					aria-describedby="segment-filters-hint"
-				/>
-			</label>
-			{#if regions.length > 1}
-				<label class="field">
-					<span>{m('segments.browseRegion')}</span>
-					<select
-						bind:value={region}
-						data-testid="segment-catalogue-region"
-						aria-describedby="segment-filters-hint"
-					>
-						<option value={null}>{m('segments.browseAllRegions')}</option>
-						{#each regions as r (r)}
-							<option value={r}>{r}</option>
-						{/each}
-					</select>
-				</label>
-			{/if}
-			{#if surfaces.length > 1}
-				<label class="field">
-					<span>{m('segments.browseSurface')}</span>
-					<select
-						bind:value={surface}
-						data-testid="segment-catalogue-surface"
-						aria-describedby="segment-filters-hint"
-					>
-						<option value={null}>{m('segments.browseAllSurfaces')}</option>
-						{#each surfaces as s (s)}
-							<option value={s}>{routeSurfaceLabel(s)}</option>
-						{/each}
-					</select>
-				</label>
-			{/if}
-			<label class="field">
-				<span>{m('segments.browseSort')}</span>
-				<select
-					bind:value={sort}
-					data-testid="segment-catalogue-sort"
-					aria-describedby="segment-filters-hint"
-				>
-					{#each SORTS as option (option.value)}
-						<option value={option.value}>{m(option.key)}</option>
-					{/each}
-				</select>
-			</label>
-			{#if filtered || sort !== 'name'}
-				<button
-					type="button"
-					class="clear-btn"
-					onclick={resetFilters}
-					title={m('segments.clearFilters')}
-					data-testid="segment-catalogue-reset"
-				>
-					{m('segments.reset')}
-				</button>
-			{/if}
+		<div class="catalogue-filter-bar">
+			<FilterBar
+				idPrefix="segment-catalogue"
+				search={catalogueSearch}
+				trailing={catalogueReset}
+				{activeFilters}
+				filters={catalogueFilters}
+				activeFilterCount={activeFilters.length}
+				bind:filtersOpen
+			/>
 		</div>
-		<p class="filter-hint" id="segment-filters-hint">{m('segments.browseFiltersHint')}</p>
 
 		<!-- One persistent live region rather than one per branch: a role="status"
 		     that is REMOVED when the result set empties announces nothing on the
@@ -239,23 +278,10 @@
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
-	.page-header {
-		margin-bottom: var(--space-xl);
-	}
-	.page-header h1 {
-		margin: 0;
-	}
-	.subtitle {
-		margin: 0.25rem 0 0;
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-		line-height: 1.5;
-	}
 	.parks-link {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.3rem;
-		margin-top: var(--space-sm);
 		font-size: 0.9rem;
 	}
 	.parks-link .material-symbols {
@@ -294,17 +320,10 @@
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		line-height: 1.45;
-		margin: calc(var(--space-md) * -1) 0 var(--space-md);
+		margin: 0;
 	}
-	.filters {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: end;
-		gap: var(--space-sm);
+	.catalogue-filter-bar {
 		margin-bottom: var(--space-md);
-		padding: var(--space-sm);
-		background: var(--color-bg-secondary);
-		border-radius: var(--radius-sm);
 	}
 	.field {
 		display: flex;
@@ -315,10 +334,6 @@
 		letter-spacing: 0.04em;
 		color: var(--color-text-secondary);
 	}
-	.search-field {
-		flex: 1 1 14rem;
-	}
-	.field input,
 	.field select {
 		padding: 0.35rem 0.5rem;
 		border: 1px solid var(--color-border);
@@ -328,22 +343,6 @@
 		color: var(--color-text);
 		text-transform: none;
 		letter-spacing: normal;
-	}
-	.field select {
-		min-width: 9rem;
-	}
-	.clear-btn {
-		padding: 0.35rem 0.7rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: transparent;
-		font-size: 0.78rem;
-		cursor: pointer;
-		color: var(--color-text-secondary);
-	}
-	.clear-btn:hover {
-		color: var(--color-primary);
-		border-color: var(--color-primary);
 	}
 	.results-status {
 		margin-bottom: var(--space-sm);

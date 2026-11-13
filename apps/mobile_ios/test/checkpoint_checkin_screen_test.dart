@@ -14,12 +14,14 @@ import '../lib/preferences.dart';
 import '../lib/screens/checkpoint_checkin_screen.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 /// Fake [ApiClient] returning one checkpoint + no server crossings, recording
 /// any upsert the screen pushes through the store's drain.
 class _FakeApi extends ApiClient {
   final List<Map<String, dynamic>> upserts = [];
   bool requiresWeighIn = false;
+  String checkpointName = 'Mile 25 Aid';
 
   @override
   Future<List<EventCheckpointRow>> fetchEventCheckpoints(
@@ -28,7 +30,7 @@ class _FakeApi extends ApiClient {
       EventCheckpointRow(
         id: 'cp-1',
         eventId: eventId,
-        name: 'Mile 25 Aid',
+        name: checkpointName,
         ordinal: 0,
         requiresWeighIn: requiresWeighIn,
         createdBy: 'organiser',
@@ -120,6 +122,35 @@ void main() {
     await _settleUntil(tester, () => tester.any(find.byType(TextField)),
         describe: 'the bib field to replace the loading state');
   }
+
+  worstCaseTestWidgets('Checkpoint check-in', (tester, locale) async {
+    api.checkpointName =
+        'Rucky Chucky river crossing, far side (Green Gate aid station)';
+    await tester.runAsync(() => store.createLocal(
+          eventId: 'evt-1',
+          checkpointId: 'cp-1',
+          instanceStart: DateTime.utc(2026, 6, 14, 7),
+          bib: '10101',
+          inTime: DateTime.utc(2026, 6, 14, 9, 41),
+        ));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: CheckpointCheckinScreen(
+        eventId: 'evt-1',
+        instanceStart: DateTime.utc(2026, 6, 14, 7),
+        api: api,
+        store: store,
+      ),
+    ));
+    await tester.pump();
+    // Below the fold in a long locale, so looked for offstage too.
+    await _settleUntil(
+        tester, () => tester.any(find.byType(TextField, skipOffstage: false)),
+        describe: 'the bib field to replace the loading state');
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Checkpoint check-in');
+    await pumpUntilStoreWritesSettle(tester);
+  });
 
   testWidgets('stamping IN writes a pending crossing through the store',
       (tester) async {

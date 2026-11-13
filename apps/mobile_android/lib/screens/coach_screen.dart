@@ -13,7 +13,10 @@ import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
         ListSkeleton,
+        PageHeader,
+        PushedPage,
         SkeletonBlock,
+        StatusPill,
         reduceMotion,
         syncMotionLoop;
 
@@ -23,7 +26,7 @@ import '../ai_disclosure_memo.dart';
 import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../payload_hash.dart';
-import '../preferences.dart' show activeDistanceUnit;
+import '../preferences.dart' show activeDistanceUnit, activePreferences;
 import '../race_service.dart';
 import '../pro_sellable.dart';
 import '../l10n/date_format.dart';
@@ -38,14 +41,26 @@ import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/ai_tag.dart';
 import '../widgets/chat_stick_to_bottom.dart';
 import '../widgets/coach_share_sheet.dart';
+import '../widgets/pro_upsell_link.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/surface_peer_strip.dart';
 import '../widgets/top_banner.dart';
+import 'coaching_screen.dart';
 import 'guided_runs_screen.dart';
 import 'message_thread_screen.dart';
 import 'plan_new_screen.dart';
 import 'races_screen.dart';
+
+/// The banner for a refused `/api/coach` request other than the daily cap,
+/// always from the catalogue: the response body is English for logs and is
+/// never shown (§ 2509). Twin of the status ladder in web's `CoachChat`.
+String coachHttpErrorCopy(AppLocalizations l10n, int status) {
+  if (status == 401) return l10n.coachSessionExpired;
+  if (status == 409) return l10n.coachStaleThread;
+  if (status >= 500) return l10n.coachUnavailable;
+  return l10n.coachGenericError(status);
+}
 
 /// Truncate a coach message to a sidebar-thread title. Strips repeated
 /// whitespace so multi-line user prompts collapse to a single line, then
@@ -807,17 +822,15 @@ class _CoachScreenState extends State<CoachScreen> {
                 _dailyLimit = (j['limit'] as num).toInt();
               }
             });
-            showTopBanner(
-                context,
-                (j['message'] as String?) ??
-                    l10n.coachDailyLimitError(_dailyLimit));
+            showTopBanner(context, l10n.coachDailyLimitError(_dailyLimit));
           }
         } else {
           if (mounted) {
+            // Every status maps to catalogue copy: the server's `error` /
+            // `message` fields are English and are for logs (§ 2509).
             showTopBanner(
               context,
-              (j['error'] as String?) ??
-                  l10n.coachGenericError(res.statusCode),
+              coachHttpErrorCopy(l10n, res.statusCode),
               duration: const Duration(seconds: 6),
               actionLabel: l10n.errorStateRetry,
               onAction: () => _retryTurn(
@@ -951,10 +964,7 @@ class _CoachScreenState extends State<CoachScreen> {
         setState(() => _messages[assistantIdx].id = id);
       }
     } else if (event == 'error') {
-      showTopBanner(
-          context,
-          (data['message'] as String?) ??
-              AppLocalizations.of(context).coachStreamFailed);
+      showTopBanner(context, AppLocalizations.of(context).coachStreamFailed);
     }
   }
 
@@ -1213,9 +1223,31 @@ class _CoachScreenState extends State<CoachScreen> {
     // RPC silently default and only learn at send time. Fail closed
     // into the sign-in state instead (issue #237).
     if (widget.api.userId == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.coachTitle)),
-        body: SignInRequiredState(api: widget.api, onSignedIn: _bootstrap),
+      return PushedPage(
+        title: l10n.coachTitle,
+        // The heading and the peers scroll with the sign-in prompt, so at
+        // large text they never push it off the screen.
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PageHeader(title: l10n.coachTitle),
+                  // Guided runs are local scripts with no API behind them,
+                  // so the library stays reachable from here signed out.
+                  _peerStrip(l10n),
+                ],
+              ),
+            ),
+            // The prompt scrolls itself (it is a pull-to-refresh surface
+            // elsewhere), so it fills what the heading leaves.
+            SliverFillRemaining(
+              child: SignInRequiredState(
+                  api: widget.api, onSignedIn: _bootstrap),
+            ),
+          ],
+        ),
       );
     }
 
@@ -1225,8 +1257,8 @@ class _CoachScreenState extends State<CoachScreen> {
     // Coach rung means the user must accept the disclosure before any
     // chat fans out.
     if (!_consentChecked) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.coachTitle)),
+      return PushedPage(
+        title: l10n.coachTitle,
         body: Column(
           key: const ValueKey('coach-consent-skeleton'),
           children: [
@@ -1288,26 +1320,7 @@ class _CoachScreenState extends State<CoachScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Guided runs are coach-driven training content, and web
-                  // reaches them from a rail on `/coach`. On mobile they were
-                  // filed under Settings → Account, where nothing about the
-                  // surrounding screen (sign-in, backup, delete account)
-                  // suggests a workout library (#666 I7). A labelled peer is
-                  // the mobile shape of that rail.
-                  SurfacePeerStrip(
-                    label: l10n.coachTitle,
-                    peers: [
-                      SurfacePeer(label: l10n.coachTitle),
-                      SurfacePeer(
-                        label: l10n.guidedRunsTitle,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const GuidedRunsScreen(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _peerStrip(l10n),
                   // The plan picker does not wait for the context read: until
                   // that lands the runner could not change scope at all.
                   if (_ctx != null || _plans.isNotEmpty)
@@ -1335,15 +1348,64 @@ class _CoachScreenState extends State<CoachScreen> {
     );
   }
 
+  /// Coaching's three surfaces as peers: this chat, Guided runs and Athletes
+  /// & coaches. Web reaches guided runs from a rail on `/coach`; on mobile
+  /// they and Athletes & coaches sat on You, a page of settings, where
+  /// nothing about the surrounding rows suggests a workout library or a
+  /// roster (#666 I7, issue #1374 owner decision). A labelled peer is the
+  /// mobile shape of that rail. Athletes & coaches needs an account, so a
+  /// signed-out viewer sees the two that work without one.
+  Widget _peerStrip(AppLocalizations l10n) {
+    final prefs = activePreferences;
+    final signedIn = widget.api.userId != null;
+    return SurfacePeerStrip(
+      label: l10n.coachTitle,
+      peers: [
+        SurfacePeer(label: l10n.coachTitle),
+        SurfacePeer(
+          label: l10n.guidedRunsTitle,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const GuidedRunsScreen(),
+            ),
+          ),
+        ),
+        if (signedIn && prefs != null)
+          SurfacePeer(
+            label: l10n.coachingTitle,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    CoachingScreen(api: widget.api, preferences: prefs),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildCoachConsentScaffold(ThemeData theme, AppLocalizations l10n) {
     // GDPR Art 6(1)(a) first-use disclosure. Renders instead of the
     // chat surface until the user clicks "I consent". Mirrors the
     // /coach disclosure modal on web. See audit/gdpr (2026-05-25).
     final cs = theme.colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.coachTitle)),
-      body: SafeArea(
-        child: SingleChildScrollView(
+    return PushedPage(
+      title: l10n.coachTitle,
+      // One scroll: the heading and the peers move with the disclosure.
+      body: ListView(
+        children: [
+          PageHeader(title: l10n.coachTitle),
+          // The disclosure gates the AI chat only; the peers it sits beside
+          // need no consent.
+          _peerStrip(l10n),
+          _consentBody(theme, l10n, cs),
+        ],
+      ),
+    );
+  }
+
+  Widget _consentBody(ThemeData theme, AppLocalizations l10n, ColorScheme cs) {
+    return Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1388,9 +1450,7 @@ class _CoachScreenState extends State<CoachScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildArchivesDrawer(ThemeData theme, AppLocalizations l10n) {
@@ -1667,29 +1727,13 @@ class _CoachScreenState extends State<CoachScreen> {
 
   Widget _chip(ColorScheme cs,
       {required IconData icon, required String label, bool muted = false}) {
-    final color = muted ? cs.onSurfaceVariant : cs.onSurface;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          border: Border.all(color: cs.outlineVariant),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(color: color)),
-            ),
-          ],
-        ),
+      child: StatusPill(
+        icon: icon,
+        label: label,
+        foreground: muted ? cs.onSurfaceVariant : cs.onSurface,
+        outline: cs.outlineVariant,
       ),
     );
   }
@@ -1720,6 +1764,7 @@ class _CoachScreenState extends State<CoachScreen> {
 
   Widget _buildLimitBanner(
       ThemeData theme, AppLocalizations l10n, ColorScheme cs) {
+    final upsell = _limitReached && _tier != 'pro';
     final String text;
     if (_limitReached) {
       text = _tier == 'pro'
@@ -1739,10 +1784,12 @@ class _CoachScreenState extends State<CoachScreen> {
       width: double.infinity,
       color: background,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(color: foreground),
-      ),
+      child: upsell
+          ? ProUpsellLink(message: text, color: foreground)
+          : Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(color: foreground),
+            ),
     );
   }
 

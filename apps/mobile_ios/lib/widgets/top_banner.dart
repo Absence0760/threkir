@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../return_to_shell.dart' show topRoute;
+
 /// Top-anchored notification pill — the canonical replacement for
 /// `ScaffoldMessenger.of(context).showSnackBar(...)` across the mobile
 /// app. Material's floating SnackBar docks at the bottom and on the
@@ -153,13 +155,8 @@ double _appBarBottomFor(BuildContext context, OverlayState overlay) {
   if (route == null) {
     // Above every route — a banner said after its screen was popped. Without
     // this it drew over the title of whatever screen was left showing.
-    // A predicate that holds at once pops nothing: it reads the top route.
-    Route<dynamic>? top;
-    Navigator.maybeOf(context, rootNavigator: true)?.popUntil((r) {
-      top = r;
-      return true;
-    });
-    final candidate = top;
+    final navigator = Navigator.maybeOf(context, rootNavigator: true);
+    final candidate = navigator == null ? null : topRoute(navigator);
     if (candidate is ModalRoute) route = candidate;
   }
   final subtree = route?.subtreeContext;
@@ -314,13 +311,15 @@ class _TopBannerWidgetState extends State<_TopBannerWidget> {
                     ),
                     if (widget.actionLabel != null) ...[
                       const SizedBox(width: 8),
+                      // A time-limited Undo / Retry: Material's 48 dp target,
+                      // not the 28 dp shrink-wrapped one it had (#1374
+                      // A11Y-15).
                       TextButton(
+                        key: const Key('topBannerAction'),
                         onPressed: widget.onAction,
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          tapTargetSize: MaterialTapTargetSize.padded,
                         ),
                         child: Text(
                           widget.actionLabel!,

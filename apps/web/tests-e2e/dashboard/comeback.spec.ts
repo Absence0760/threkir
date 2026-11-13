@@ -5,7 +5,7 @@ import { insertRun } from '../fixtures/simulate';
 import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
- * Comeback-load card on /dashboard.
+ * Comeback-load card on /dashboard/progress.
  *
  * The acute:chronic ratio behind LoadRampCard refuses to grade a runner whose
  * recent month is nearly empty — correctly, but that leaves the runner coming
@@ -65,7 +65,7 @@ test.describe('dashboard comeback-load card', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(page.getByTestId('comeback')).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByTestId('comeback-verdict')).toHaveText(/first week/i);
 			// 36 / 40 = 90 %.
@@ -83,7 +83,7 @@ test.describe('dashboard comeback-load card', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(page.getByTestId('comeback')).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByTestId('comeback-verdict')).toHaveText(/easing/i);
 			// 12 / 40 = 30 %.
@@ -98,7 +98,7 @@ test.describe('dashboard comeback-load card', () => {
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			// Absence proves nothing on a page that never loaded its runs — and
 			// a dev server serving a build without the card would pass this test
 			// silently. Anchor on the seeded history reaching the client first.

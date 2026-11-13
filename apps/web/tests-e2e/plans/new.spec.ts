@@ -47,7 +47,7 @@ test.describe('/plans/new — standalone wizard', () => {
 		await expect(page.getByRole('heading', { level: 1, name: 'Build a training plan' }))
 			.toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.kicker')).toHaveText(/New plan/i);
-		await expect(page.locator('.tagline')).toContainText(/Pick a goal race/i);
+		await expect(page.getByTestId('page-header-subtitle')).toContainText(/Pick a goal race/i);
 		await expect(page.getByRole('link', { name: /Back to plans/ })).toBeVisible();
 		await expect(page.locator('.plan-editor')).toBeVisible({ timeout: 5_000 });
 	});
@@ -186,6 +186,11 @@ test.describe('/plans/new — standalone wizard', () => {
 		await page.locator('.plan-editor').getByPlaceholder('Autumn half marathon').fill(name);
 
 		await page.getByRole('link', { name: /Back to plans/ }).click();
+		// The named plan makes the wizard dirty, so PlanEditor's unsaved-changes
+		// guard holds the back link until the discard is confirmed.
+		const dialog = page.getByTestId('unsaved-changes-dialog');
+		await expect(dialog).toBeVisible({ timeout: 10_000 });
+		await dialog.getByRole('button', { name: 'Discard' }).click();
 		await page.waitForURL(/\/plans(\?|$)/, { timeout: 5_000 });
 
 		const admin = getAdminClient();

@@ -3,6 +3,7 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import {
 		searchPeople,
@@ -140,25 +141,14 @@
 
 <div class="people">
 	<div class="search-wrap">
-		<span class="material-symbols" aria-hidden="true">search</span>
-		<input
-			type="search"
-			class="search-input"
-			placeholder={m('socialPeople.searchPlaceholder')}
+		<AppSearchField
 			bind:value={query}
-			oninput={onSearchInput}
-			aria-label={m('socialPeople.searchAriaLabel')}
+			label={m('socialPeople.searchAriaLabel')}
+			placeholder={m('socialPeople.searchPlaceholder')}
+			clearLabel={m('socialPeople.clearSearch')}
+			testid="people-search"
+			oninput={(v) => (v === '' ? clearSearch() : onSearchInput())}
 		/>
-		{#if hasQuery}
-			<button
-				type="button"
-				class="search-clear"
-				aria-label={m('socialPeople.clearSearch')}
-				onclick={clearSearch}
-			>
-				<span class="material-symbols" aria-hidden="true">close</span>
-			</button>
-		{/if}
 	</div>
 
 	{#if hasQuery}
@@ -224,10 +214,10 @@
 							<span class="person-handle">@{person.handle}</span>
 						{/if}
 						<span class="person-meta">
-							{m(person.public_runs_count === 1 ? 'socialPeople.publicRunsOne' : 'socialPeople.publicRunsMany', { n: person.public_runs_count })}
+							{m('socialPeople.publicRuns', { n: person.public_runs_count })}
 							{#if person.shared_clubs > 0}
 								<span class="dot">·</span>
-								{m(person.shared_clubs === 1 ? 'socialPeople.sharedClubsOne' : 'socialPeople.sharedClubsMany', { n: person.shared_clubs })}
+								{m('socialPeople.sharedClubs', { n: person.shared_clubs })}
 							{/if}
 						</span>
 					</div>
@@ -271,7 +261,7 @@
 					{#snippet actions()}
 						<a class="btn btn-outline" href="/settings/privacy">
 							<span class="material-symbols" aria-hidden="true">settings</span>
-							{m('shell.settings')}
+							{m('settingsLayout.tabPrivacy')}
 						</a>
 					{/snippet}
 				</EmptyState>
@@ -335,63 +325,8 @@
 		gap: var(--space-md);
 	}
 	.search-wrap {
-		position: relative;
 		display: flex;
-		align-items: center;
 		max-width: 32rem;
-	}
-	.search-wrap > .material-symbols:first-child {
-		position: absolute;
-		inset-inline-start: 0.75rem;
-		color: var(--color-text-tertiary);
-		pointer-events: none;
-		font-size: 1.1rem;
-	}
-	.search-input {
-		width: 100%;
-		padding: 0.55rem 2.25rem 0.55rem 2.25rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.95rem;
-	}
-	.search-input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
-	}
-	/* audit/accessibility (May 2026) WCAG 2.4.7 + 2.4.11: pair the
-	   :focus rule above with :focus-visible so keyboard users get a real
-	   outline. The :focus rule still removes the default ring on mouse
-	   focus (no visible outline on click); :focus-visible re-adds a
-	   proper one for keyboard / programmatic focus. */
-	.search-input:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 2px;
-	}
-
-	.search-clear {
-		position: absolute;
-		inset-inline-end: 0.5rem;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 1.5rem;
-		height: 1.5rem;
-		padding: 0;
-		background: transparent;
-		border: none;
-		color: var(--color-text-tertiary);
-		cursor: pointer;
-		border-radius: 50%;
-	}
-	.search-clear:hover {
-		background: var(--color-primary-light);
-		color: var(--color-text);
-	}
-	.search-clear .material-symbols {
-		font-size: 1rem;
 	}
 	.section-title {
 		font-size: 0.95rem;

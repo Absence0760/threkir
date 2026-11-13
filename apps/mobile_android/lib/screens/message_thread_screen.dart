@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../auth_error.dart';
 import '../coach_share.dart';
 import '../dm_attachment.dart';
+import '../dm_drafts.dart';
 import '../dm_edit.dart';
 import '../dm_image.dart';
 import '../dm_image_encode.dart';
@@ -26,12 +27,14 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../undo_queue.dart';
+import '../widgets/thread_title.dart';
 import '../widgets/coach_share_card.dart';
 import '../widgets/dm_bubble.dart';
 import '../widgets/dm_photo.dart';
 import '../widgets/dm_reaction_chips.dart';
 import '../widgets/dm_route_attachment.dart';
 import '../widgets/error_state.dart';
+import '../widgets/message_actions_sheet.dart';
 import '../widgets/plan_change_requests.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
@@ -241,6 +244,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     _archived = widget.initialArchived ?? false;
     _request = widget.initialRequest ?? false;
     WidgetsBinding.instance.addObserver(this);
+    _composer.text = DmDrafts.read(_draftKey);
     _composer.addListener(_onComposerChanged);
     if (widget.api.userId == null) return;
     _load();
@@ -264,7 +268,13 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     if (state == AppLifecycleState.resumed) _refresh();
   }
 
-  void _onComposerChanged() => setState(() {});
+  String get _draftKey => DmDrafts.directKey(
+      widget.api.userId, widget.partnerId ?? widget.deletedPartnerKey!);
+
+  void _onComposerChanged() {
+    DmDrafts.write(_draftKey, _composer.text);
+    setState(() {});
+  }
 
   bool get _appInForeground {
     final s = WidgetsBinding.instance.lifecycleState;
@@ -945,7 +955,12 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       });
     } catch (e) {
       debugPrint('message send failed: ${safeErrorLabel(e)}');
-      if (!mounted) return;
+      if (!mounted) {
+        // Left mid-send: the text goes back to the draft the thread opens
+        // with next time, rather than vanishing with the failure.
+        if (DmDrafts.read(_draftKey).isEmpty) DmDrafts.write(_draftKey, body);
+        return;
+      }
       setState(() => _pending.remove(pending));
       if (_composer.text.isEmpty) {
         _composer.value = TextEditingValue(
@@ -979,49 +994,14 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// and Unsend on your own, Report on the other person's. An unsent message
   /// has none.
   Future<void> _showOptions(DirectMessageRow m) async {
-    final l10n = AppLocalizations.of(context);
     final mine = m.senderId == widget.api.userId;
     final editable = canEditDm(m, widget.api.userId, DateTime.now());
     final canReact = _canReact(m);
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      useSafeArea: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (canReact)
-              ListTile(
-                key: const ValueKey('message-action-react'),
-                leading: const Icon(Icons.add_reaction_outlined),
-                title: Text(l10n.messagesReact),
-                onTap: () => Navigator.pop(ctx, 'react'),
-              ),
-            if (editable)
-              ListTile(
-                key: const ValueKey('message-action-edit'),
-                leading: const Icon(Icons.edit_outlined),
-                title: Text(l10n.messagesEdit),
-                onTap: () => Navigator.pop(ctx, 'edit'),
-              ),
-            if (mine)
-              ListTile(
-                key: const ValueKey('message-action-unsend'),
-                leading: Icon(Icons.undo,
-                    color: AppSemanticColors.of(ctx).danger),
-                title: Text(l10n.messagesUnsend),
-                onTap: () => Navigator.pop(ctx, 'unsend'),
-              )
-            else
-              ListTile(
-                key: const ValueKey('message-action-report'),
-                leading: const Icon(Icons.flag_outlined),
-                title: Text(l10n.messagesReport),
-                onTap: () => Navigator.pop(ctx, 'report'),
-              ),
-          ],
-        ),
-      ),
+    final action = await showMessageActionsSheet(
+      context,
+      mine: mine,
+      editable: editable,
+      canReact: canReact,
     );
     if (!mounted || action == null) return;
     switch (action) {
@@ -1101,25 +1081,17 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
-        title: Row(
-          children: [
-            IdentityAvatar(
-              seed: widget.partnerId ?? widget.deletedPartnerKey!,
-              name: _partnerName,
-              imageUrl: widget.partnerAvatarUrl,
-              size: 32,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                widget.partnerId == null
-                    ? l10n.messagesDeletedAccount
-                    : _partnerName ?? l10n.profileRunnerFallback,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        toolbarHeight: ThreadTitle.toolbarHeight(context, subtitle: false),
+        title: ThreadTitle(
+          avatar: IdentityAvatar(
+            seed: widget.partnerId ?? widget.deletedPartnerKey!,
+            name: _partnerName,
+            imageUrl: widget.partnerAvatarUrl,
+            size: 32,
+          ),
+          title: widget.partnerId == null
+              ? l10n.messagesDeletedAccount
+              : _partnerName ?? l10n.profileRunnerFallback,
         ),
         actions: [
           if (signedIn && widget.partnerId != null)
@@ -1267,7 +1239,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       );
     }
     if (_loadError != null) {
-      return ErrorState(message: l10n.messagesThreadLoadError, onRetry: _load);
+      return AppErrorState(message: l10n.messagesThreadLoadError, onRetry: _load);
     }
     if (_messages.isEmpty && _pending.isEmpty) {
       return EmptyState(

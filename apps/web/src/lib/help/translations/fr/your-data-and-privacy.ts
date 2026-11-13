@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 						'Les courses que vous rendez publiques apparaissent sur votre profil et dans le fil. Les courses privées ne sont visibles que par vous.',
 						'Votre appartenance à un club public, et tout ce que vous y publiez, peut être vu par les personnes qui peuvent voir le club.',
 						'Tant que vous partagez un lien en direct, la course en cours peut être vue par toute personne disposant du lien.',
-						'Une photo pour laquelle vous cochez **Afficher sur la page de la course**, sur une course publique liée à une course officielle, apparaît sur la page publique de cette course avec sa légende et votre nom. Décochez-la, ou rendez votre course privée, pour la retirer.',
+						'Une photo pour laquelle vous cochez **Afficher sur la page de l\'épreuve**, sur une course publique liée à une épreuve, apparaît sur la page publique de cette épreuve avec sa légende et votre nom. Décochez l\'option, ou rendez la course privée, pour la retirer.',
 					],
 				},
 				{
@@ -30,8 +30,8 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l\'app mobile, il s\'agit de **Confidentialité par défaut des courses** sous **Préférences** dans l\'onglet **Vous**.',
-						'Pour modifier une seule course plus tard, ouvrez-la et appuyez sur **Privé** ou **Public** sous son titre. Avant qu\'une course devienne publique, l\'app vous demande confirmation et vous montre ce que vos zones de confidentialité masqueront.',
+						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l\'app mobile, il s\'agit de **Confidentialité par défaut des courses** sous **Confidentialité et partage** dans l\'onglet **Vous**.',
+						'Pour modifier une seule course plus tard, ouvrez-la et touchez **Privé** ou **Public** sous son titre. Avant qu\'une course devienne publique, l\'app vous demande confirmation et vous montre ce que vos zones de confidentialité masqueront.',
 					],
 				},
 				{
@@ -53,7 +53,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Sur le web, ouvrez **Compte** dans les Paramètres. L\'app mobile propose les mêmes options sous **Compte** dans l\'onglet **Vous**.',
+					text: 'Sur le web, ouvrez **Compte** dans les Réglages. L\'app mobile propose les mêmes options sous **Compte** dans l\'onglet **Vous**.',
 				},
 				{
 					type: 'list',
@@ -73,7 +73,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Téléchargez d\'abord tout ce que vous voulez garder. La suppression est irréversible.',
-						'Sur le web, ouvrez **Compte** dans les Paramètres et sélectionnez **Supprimer le compte** sous **Zone de danger**. Dans l\'app mobile, ouvrez **Compte** dans l\'onglet **Vous** et touchez **Supprimer le compte**.',
+						'Sur le web, ouvrez **Compte** dans les Réglages et sélectionnez **Supprimer le compte** sous **Zone de danger**. Dans l\'app mobile, ouvrez **Compte** dans l\'onglet **Vous** et touchez **Supprimer le compte**.',
 						'Saisissez SUPPRIMER pour confirmer, puis sélectionnez **Supprimer mon compte** sur le web ou **Supprimer** dans l\'app.',
 					],
 				},
@@ -100,7 +100,7 @@ export const translation: GuideTranslation = {
 		's0.b0.i4': 'cc3a91ab3dc6a2a6',
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
-		's1.b0.i0': '7b3a2d8b5b822576',
+		's1.b0.i0': 'bf8692c8ac6194c3',
 		's1.b0.i1': '8b40e69003586cd6',
 		's1.b1': 'bdd9bb09bf384ad6',
 		's1.b2.i0': 'aab065e45ac34e20',

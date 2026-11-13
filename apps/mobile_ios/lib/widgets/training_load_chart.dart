@@ -7,6 +7,7 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../metrics.dart';
+import '../settings_destination.dart';
 import '../training_load.dart';
 import 'metric_label.dart';
 
@@ -48,57 +49,69 @@ class TrainingLoadChart extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final last = points.isEmpty ? null : points.last;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ChartCardHeader(title: l10n.trainingLoadTitle),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ChartCardHeader(title: l10n.trainingLoadTitle),
+          const SizedBox(height: 4),
+          MetricSentence(
+            metric: Metric.trimp,
+            sentence: hasHr ? 'hr' : 'volume',
+            args: {'days': '${points.length}'},
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (!hasHr)
+            TextButton(
+              key: const Key('trainingLoadSetHeartRate'),
+              onPressed: () => openSettings(SettingsDestination.training),
+              child: Text(l10n.trainingLoadSetHeartRate),
+            ),
+          if (lowConfidence) ...[
             const SizedBox(height: 4),
-            MetricSentence(
-              metric: Metric.trimp,
-              sentence: hasHr ? 'hr' : 'volume',
-              args: {'days': '${points.length}'},
+            Text(
+              l10n.trainingLoadLowConfidenceMedication,
+              key: const Key('trainingLoadLowConfidence'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            if (lowConfidence) ...[
-              const SizedBox(height: 4),
-              Text(
-                l10n.trainingLoadLowConfidenceMedication,
-                key: const Key('trainingLoadLowConfidence'),
+          ],
+          if (includesLifts) ...[
+            const SizedBox(height: 4),
+            Text(
+              l10n.trainingLoadIncludesLifts,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          if (points.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                l10n.trainingLoadEmpty,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
+                textAlign: TextAlign.center,
               ),
-            ],
-            if (includesLifts) ...[
-              const SizedBox(height: 4),
-              Text(
-                l10n.trainingLoadIncludesLifts,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+            )
+          else ...[
+            _Legend(last: last!),
             const SizedBox(height: 12),
-            if (points.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  l10n.trainingLoadEmpty,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              )
-            else ...[
-              _Legend(last: last!),
-              const SizedBox(height: 12),
-              SizedBox(
+            // The legend above reads only the latest day; the paint says
+            // where each line went, so its node carries that (#1374
+            // A11Y-14).
+            Semantics(
+              key: const Key('trainingLoadChartSemantics'),
+              container: true,
+              excludeSemantics: true,
+              label: _summaryFor(context, l10n, points),
+              child: SizedBox(
                 height: 180,
                 width: double.infinity,
                 child: CustomPaint(
@@ -114,50 +127,77 @@ class TrainingLoadChart extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Text(
-                      formatDateShort(points.first.date,
-                          localeToTag(Localizations.localeOf(context))),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    formatDateShort(
+                      points.first.date,
+                      localeToTag(Localizations.localeOf(context)),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  Flexible(
-                    child: Text(
-                      formatDateShort(points.last.date,
-                          localeToTag(Localizations.localeOf(context))),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                ),
+                Flexible(
+                  child: Text(
+                    formatDateShort(
+                      points.last.date,
+                      localeToTag(Localizations.localeOf(context)),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  _readingFor(l10n, last.tsb),
-                  style: theme.textTheme.bodySmall,
-                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
               ),
-            ],
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _readingFor(l10n, last.tsb),
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
           ],
-        ),
+        ],
       ),
+    );
+  }
+
+  static String _summaryFor(
+    BuildContext context,
+    AppLocalizations l10n,
+    List<TrainingLoadPoint> points,
+  ) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    String n(double v) => v.round().toString();
+    final a = points.first, b = points.last;
+    return l10n.trainingLoadChartSummary(
+      n(a.ctl),
+      n(b.ctl),
+      n(a.atl),
+      n(b.atl),
+      n(a.tsb),
+      n(b.tsb),
+      formatDateShort(a.date, tag),
+      formatDateShort(b.date, tag),
     );
   }
 
@@ -225,11 +265,16 @@ class _LegendKey extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          AppLocalizations.of(context)
-              .trainingLoadLegendEntry(label, value.round()),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        // Flexible, so at 2x on a 320 dp phone the entry wraps under its
+        // swatch instead of running 55 dp past the card (issue #1374).
+        Flexible(
+          child: Text(
+            AppLocalizations.of(
+              context,
+            ).trainingLoadLegendEntry(label, value.round()),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -249,10 +294,10 @@ double trainingLoadTickStep(double span, {int maxTicks = 4}) {
   final mult = norm <= 1
       ? 1.0
       : norm <= 2
-          ? 2.0
-          : norm <= 5
-              ? 5.0
-              : 10.0;
+      ? 2.0
+      : norm <= 5
+      ? 5.0
+      : 10.0;
   // Labels print `tick.round()`, so a sub-1 step (a near-zero load, e.g. one
   // 10 s run) labels neighbouring gridlines with the same number.
   return math.max(1.0, mult * mag);
@@ -265,9 +310,7 @@ List<int> trainingLoadTickValues(double min, double max) {
   if (!min.isFinite || !max.isFinite || max < min) return const [];
   final step = trainingLoadTickStep(max - min);
   final out = <int>[];
-  for (var v = (min / step).ceil() * step;
-      v <= max + step * 0.001;
-      v += step) {
+  for (var v = (min / step).ceil() * step; v <= max + step * 0.001; v += step) {
     out.add(v.round());
   }
   return out;
@@ -349,10 +392,7 @@ class _ChartPainter extends CustomPainter {
         text: TextSpan(text: tick.toString(), style: labelStyle),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: padL - 4);
-      label.paint(
-        canvas,
-        Offset(padL - 4 - label.width, y - label.height / 2),
-      );
+      label.paint(canvas, Offset(padL - 4 - label.width, y - label.height / 2));
     }
 
     // Zero line — dashed, so the TSB sign stays distinct from the grid without

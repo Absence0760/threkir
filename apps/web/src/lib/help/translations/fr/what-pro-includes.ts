@@ -25,7 +25,7 @@ export const translation: GuideTranslation = {
 						'**Map-matching prioritaire** : vos traces GPS sont calées sur les routes avant celles des comptes gratuits, elles sont donc prêtes plus tôt.',
 						'**Exports cloud prioritaires** : jusqu\'à 8 exports groupés GPX par heure au lieu de 2.',
 						'**Génération de parcours côté serveur** : des boucles tracées sur le vrai réseau de rues quand vous générez un itinéraire par distance. Les comptes gratuits ont toujours la génération de boucles, calculée dans le navigateur.',
-						'Des descriptions d\'itinéraire plus riches : sur la page d\'un itinéraire, **Améliorer avec l\'IA** transforme la description standard en un paragraphe plus complet.',
+						'Des descriptions d\'itinéraire plus riches : sur la page d\'un itinéraire, **Décrire cet itinéraire** rédige un paragraphe plus complet à la place de la description standard.',
 						'**Saisir depuis une photo** : photographiez un repas et votre journal alimentaire est prérempli pour que vous le vérifiiez. Voir [[guide:log-a-meal-from-a-photo|Saisir un repas depuis une photo]].',
 					],
 				},
@@ -47,7 +47,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Sur un iPhone, ouvrez **Pro et soutien** dans l\'onglet **Vous** et abonnez-vous via l\'App Store.',
-						'Sur le web, ouvrez [[route:/settings/upgrade|Pro et soutien]] dans les Paramètres. S\'il est indiqué **L\'abonnement sur le web arrive bientôt.**, abonnez-vous plutôt dans l\'app iPhone.',
+						'Sur le web, ouvrez [[route:/settings/upgrade|Pro et soutien]] dans les Réglages. S\'il est indiqué **L\'abonnement sur le web arrive bientôt.**, abonnez-vous plutôt dans l\'app iPhone.',
 					],
 				},
 				{
@@ -86,7 +86,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i2': '3be7590bced0492d',
 		's1.b0.i3': 'a120796543f347bd',
 		's1.b0.i4': 'abbb1f922ffbfa10',
-		's1.b0.i5': 'dd0fa90eed200d7c',
+		's1.b0.i5': 'a5b09d8e626e04b0',
 		's1.b0.i6': '0d98bcce46d47d2f',
 		's1.b1': '076479f3bd42d0b5',
 		's2.heading': '912eb19f965419db',

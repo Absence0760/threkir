@@ -245,7 +245,12 @@ void main() {
         final f = File(path);
         expect(f.existsSync(), isTrue, reason: '$path moved');
         final src = f.readAsStringSync();
-        expect(src.contains('capturePngBytes('), isTrue,
+        // The period card rasterises through ShareCanvas (§ 2502, TO-3),
+        // which wraps capturePngBytes; either call makes it a rasteriser.
+        expect(
+            src.contains('capturePngBytes(') ||
+                src.contains('captureShareCanvas('),
+            isTrue,
             reason: '$path is no longer a rasteriser — retarget this guard');
         expect(RegExp(r'Future\.delayed').hasMatch(src), isFalse,
             reason: '$path draws no map tiles, so there is nothing for a '

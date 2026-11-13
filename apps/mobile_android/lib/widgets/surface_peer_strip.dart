@@ -39,6 +39,7 @@ class SurfacePeerStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
       explicitChildNodes: true,
@@ -47,7 +48,7 @@ class SurfacePeerStrip extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Wrap(
           spacing: 8,
-          runSpacing: 8,
+          runSpacing: 0,
           children: [
             for (final peer in peers)
               ChoiceChip(
@@ -58,8 +59,7 @@ class SurfacePeerStrip extends StatelessWidget {
                 ),
                 selected: peer.isCurrent,
                 onSelected: (_) => peer.onTap?.call(),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                materialTapTargetSize: MaterialTapTargetSize.padded,
               ),
           ],
         ),

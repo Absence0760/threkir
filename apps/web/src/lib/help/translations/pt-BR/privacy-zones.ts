@@ -52,7 +52,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Abra a aba **Você**, depois **Preferências**, e em **Privacidade e compartilhamento** toque em **Zonas de privacidade**.',
+						'Abra a aba **Você**, depois **Privacidade e compartilhamento**, e toque em **Zonas de privacidade**.',
 						'Toque no mapa para colocar uma zona. Use **Buscar lugares…** ou **Localizar-me** para mover o mapa antes.',
 						'Ajuste o controle deslizante **Raio**.',
 						'Toque em **Salvar**. Nada muda até você salvar.',
@@ -100,7 +100,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i4': '150b03da903ccf27',
 		's1.b1': 'b395019ec1836f1e',
 		's2.heading': 'd50fe7d487cde78b',
-		's2.b0.i0': '0f37a464ec66cdc7',
+		's2.b0.i0': '012a8f29f3d8755b',
 		's2.b0.i1': 'e3478863d167e8fe',
 		's2.b0.i2': 'ca9cc061ff309425',
 		's2.b0.i3': '2f1655078cb4ae12',

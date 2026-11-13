@@ -58,41 +58,55 @@ class ChoiceChipRow<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No run spacing: each chip's padded 48 dp target already leaves 16 dp
+    // between the drawn chips of two runs.
     return Wrap(
       spacing: 6,
-      runSpacing: 6,
+      runSpacing: 0,
       alignment: alignment,
       children: [
         for (final option in options)
-          ChoiceChip(
-            label: Text(option.label),
-            // Never a null avatar. With no avatar, Material grows the chip to
-            // fit the checkmark as it animates in and shrinks the one losing
-            // it, so every selection resized two chips and slid the row
-            // sideways. With one, every chip holds the same square slot.
-            //
-            // The checkmark is ours, not Material's: Material paints its own
-            // over the avatar after darkening the avatar's circle, so a chip
-            // with an icon showed a dark disc with the glyph and the check
-            // drawn through each other. Swapping the glyph for the check
-            // keeps the cue and drops the collision.
-            avatar: option.value == selected
-                ? Icon(
-                    Icons.check,
-                    size: 18,
-                    color: Theme.of(context).chipTheme.checkmarkColor,
-                  )
-                : option.icon == null
-                    ? const SizedBox.shrink()
-                    : Icon(option.icon, size: 18),
-            showCheckmark: false,
-            selected: option.value == selected,
-            onSelected:
-                onChanged == null ? null : (_) => onChanged!(option.value),
-            visualDensity: VisualDensity.compact,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
+          buildChoiceChip(context, option, selected, onChanged),
       ],
     );
   }
 }
+
+/// One chip of a [ChoiceChipRow], also laid in `FilterBar`'s single line so
+/// the two read the same: a checkmark in the avatar slot while selected, and
+/// a slot held when not, so selecting never resizes a chip.
+Widget buildChoiceChip<T>(
+  BuildContext context,
+  ChoiceChipOption<T> option,
+  T selected,
+  ValueChanged<T>? onChanged,
+) =>
+    ChoiceChip(
+      label: Text(option.label),
+      // Never a null avatar. With no avatar, Material grows the chip to fit
+      // the checkmark as it animates in and shrinks the one losing it, so
+      // every selection resized two chips and slid the row sideways. With one,
+      // every chip holds the same square slot.
+      //
+      // The checkmark is ours, not Material's: Material paints its own over
+      // the avatar after darkening the avatar's circle, so a chip with an icon
+      // showed a dark disc with the glyph and the check drawn through each
+      // other. Swapping the glyph for the check keeps the cue and drops the
+      // collision.
+      avatar: option.value == selected
+          ? Icon(
+              Icons.check,
+              size: 18,
+              color: Theme.of(context).chipTheme.checkmarkColor,
+            )
+          : option.icon == null
+              ? const SizedBox.shrink()
+              : Icon(option.icon, size: 18),
+      showCheckmark: false,
+      selected: option.value == selected,
+      onSelected: onChanged == null ? null : (_) => onChanged(option.value),
+      // The theme's density and a padded tap target: compact and shrink-wrap
+      // made each chip a 24-32 dp target (#1374 A11Y-15). The padding is
+      // vertical, so a run of chips keeps its spacing.
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+    );

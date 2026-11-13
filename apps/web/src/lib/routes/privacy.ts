@@ -29,11 +29,26 @@ export type LatLng = {
 
 export const PRIVACY_ZONES_KEY = 'privacy_zones';
 
+/// The radius range a zone is created with, on every platform. The floor is
+/// also applied when a zone is READ: the phone once offered 50 m, and a zone
+/// saved then covers 100 m now rather than the 50 it was stored with, so
+/// aligning the range never shrank anyone's privacy (decisions § 33). The
+/// server's `privacy_in_any_zone` and the live hub apply the same floor.
+export const PRIVACY_ZONE_MIN_RADIUS_M = 100;
+export const PRIVACY_ZONE_MAX_RADIUS_M = 1000;
+
+/// The radius a zone covers: what was stored, never less than
+/// `PRIVACY_ZONE_MIN_RADIUS_M`. A missing or non-finite radius is the floor.
+export function effectiveZoneRadius(zone: Pick<PrivacyZone, 'radius_m'>): number {
+	const r = zone.radius_m;
+	return Number.isFinite(r) ? Math.max(r, PRIVACY_ZONE_MIN_RADIUS_M) : PRIVACY_ZONE_MIN_RADIUS_M;
+}
+
 /// Returns true when `point` is within any of `zones` by haversine
 /// distance. Empty zone list -> always false.
 export function isInAnyZone(point: LatLng, zones: PrivacyZone[]): boolean {
 	for (const z of zones) {
-		if (haversineMetres(point.lat, point.lng, z.lat, z.lng) <= z.radius_m) return true;
+		if (haversineMetres(point.lat, point.lng, z.lat, z.lng) <= effectiveZoneRadius(z)) return true;
 	}
 	return false;
 }

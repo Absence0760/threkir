@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/segments_panel.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// Segments list fetch always fails.
 class _ThrowingListApi extends ApiClient {
@@ -137,6 +138,29 @@ Future<void> _pump(WidgetTester tester, {bool canCreate = false}) {
 
 void main() {
   setUpAll(_ensureSupabase);
+
+  // Issue #1374 TO-6 (and decisions § 2482's note on line 243): the panel's
+  // heading and its New / Cancel action at the worst case.
+  worstCaseTestWidgets('the segments panel', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: SegmentsPanel(
+            api: ApiClient(),
+            routeId: 'fake-route-id',
+            routeDistanceM: 5000,
+            canCreate: true,
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expectNoOverflow(tester, 'segments heading');
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+  });
 
   group('SegmentsPanel — initial render', () {
     testWidgets('renders the Segments heading', (tester) async {

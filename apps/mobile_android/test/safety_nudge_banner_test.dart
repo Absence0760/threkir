@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/safety_nudge_banner.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -38,6 +39,21 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
+  // Issue #1374: the banner is a ListCard; its prompt and two buttons fit.
+  // The run screen hangs it from the top of a Positioned column with no
+  // bottom, so its height is unbounded there; the scroll view stands in.
+  worstCaseTestWidgets('Safety nudge banner', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: SafetyNudgeBanner(onShare: () {}, onDismiss: () {}),
+        ),
+      ),
+    ));
+    await tester.pump();
+  });
+
   testWidgets('renders the prompt with Share + Not now actions',
       (tester) async {
     await _pump(tester, onShare: () {}, onDismiss: () {});

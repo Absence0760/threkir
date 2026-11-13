@@ -71,6 +71,23 @@ func TestIsInAnyZone_RadiusBoundary(t *testing.T) {
 	}
 }
 
+func TestIsInAnyZone_SmallZoneCoversTheFloor(t *testing.T) {
+	// A 50 m zone saved before the floor covers 100 m: 80 m east is in,
+	// 110 m east is out.
+	zone := PrivacyZone{Lat: testLat, Lng: 8.54, RadiusM: 50}
+	lat, lng := eastOf(80)
+	if !IsInAnyZone(lat, lng, []PrivacyZone{zone}) {
+		t.Fatal("80 m east of a 50 m zone must be in-zone under the 100 m floor")
+	}
+	lat, lng = eastOf(110)
+	if IsInAnyZone(lat, lng, []PrivacyZone{zone}) {
+		t.Fatal("110 m east of a 50 m zone must be out of zone")
+	}
+	if got := (PrivacyZone{RadiusM: math.NaN()}).EffectiveRadiusM(); got != MinZoneRadiusM {
+		t.Fatalf("a NaN radius must read as the floor, got %v", got)
+	}
+}
+
 // haversineMetres is the engine behind IsInAnyZone — keep one direct
 // test so a future refactor that swaps the formula stays honest.
 func TestHaversineMetres_ZeroDistance(t *testing.T) {

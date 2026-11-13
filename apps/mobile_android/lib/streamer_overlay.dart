@@ -10,10 +10,17 @@ import 'package:core_models/core_models.dart' show DistanceUnit;
 const streamerOverlayDelayPresets = <int>[0, 30, 60, 120, 300, 600];
 
 /// The overlay's URL. `units` is a display hint the web page reads from the
-/// query; everything the token may see is decided by the server.
-String streamerOverlayUrl(String webBase, String token, {DistanceUnit? unit}) {
+/// query, and `map=1` asks it to draw the trace; everything the token may
+/// see is decided by the server, which sends no positions unless the trace
+/// is switched on (so the link changes when it is).
+String streamerOverlayUrl(String webBase, String token,
+    {DistanceUnit? unit, bool showMap = false}) {
   final base = webBase.replaceAll(RegExp(r'/+$'), '');
-  final query = unit == null ? '' : '?units=${unit.name}';
+  final params = [
+    if (unit != null) 'units=${unit.name}',
+    if (showMap) 'map=1',
+  ];
+  final query = params.isEmpty ? '' : '?${params.join('&')}';
   return '$base/live/overlay$query#${Uri.encodeComponent(token)}';
 }
 
@@ -28,9 +35,13 @@ abstract class StreamerOverlayController {
   Future<String> create();
   Future<void> revoke();
 
-  /// Saves [delaySeconds] and returns the settings now on the server, or
-  /// null when the overlay no longer exists.
-  Future<LiveOverlay?> setDelay(int delaySeconds);
+  /// Saves the settings given and returns those now on the server, or null
+  /// when the overlay no longer exists.
+  Future<LiveOverlay?> save({
+    int? delaySeconds,
+    bool? showMap,
+    bool? showHeartRate,
+  });
 }
 
 class ApiStreamerOverlayController implements StreamerOverlayController {
@@ -46,18 +57,28 @@ class ApiStreamerOverlayController implements StreamerOverlayController {
   @override
   Future<void> revoke() => api.revokeLiveOverlayToken();
 
-  /// `update_live_overlay_settings` writes all three settings, so the map
-  /// and heart-rate choices are read back from the server first: the copy
-  /// the sheet loaded may predate a change made on the web.
+  /// `update_live_overlay_settings` writes all three settings, so the ones
+  /// not being changed are read back from the server first: the copy the
+  /// sheet loaded may predate a change made on the web. Mirrors web's
+  /// `saveLiveOverlaySettings`.
   @override
-  Future<LiveOverlay?> setDelay(int delaySeconds) async {
+  Future<LiveOverlay?> save({
+    int? delaySeconds,
+    bool? showMap,
+    bool? showHeartRate,
+  }) async {
     final latest = await api.fetchLiveOverlay();
     if (latest == null) return null;
-    await api.updateLiveOverlaySettings(
+    final next = latest.copyWith(
       delaySeconds: delaySeconds,
-      showMap: latest.showMap,
-      showHeartRate: latest.showHeartRate,
+      showMap: showMap,
+      showHeartRate: showHeartRate,
     );
-    return latest.copyWith(delaySeconds: delaySeconds);
+    await api.updateLiveOverlaySettings(
+      delaySeconds: next.delaySeconds,
+      showMap: next.showMap,
+      showHeartRate: next.showHeartRate,
+    );
+    return next;
   }
 }

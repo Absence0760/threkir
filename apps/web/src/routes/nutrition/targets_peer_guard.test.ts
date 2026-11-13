@@ -20,9 +20,9 @@ const PREFS = readFileSync(
 // number you can see but not reach.
 
 function headerBlock(src: string): string {
-	const open = src.indexOf('<header class="page-header">');
-	const close = src.indexOf('</header>', open);
-	assert.ok(open >= 0 && close > open, 'page-header block not found');
+	const open = src.indexOf('<PageHeader');
+	const close = src.indexOf('</PageHeader>', open);
+	assert.ok(open >= 0 && close > open, 'PageHeader block not found');
 	return src.slice(open, close);
 }
 

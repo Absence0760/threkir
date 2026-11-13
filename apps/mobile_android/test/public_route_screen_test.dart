@@ -10,6 +10,7 @@ import '../lib/screens/public_route_screen.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 
@@ -33,6 +34,24 @@ Future<void> _pump(WidgetTester tester) {
 
 void main() {
   setUpAll(_ensureSupabase);
+
+  worstCaseTestWidgets('Public route', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: PublicRouteScreen(
+        api: _OwnerApi(
+          name: 'Philadelphia Marathon full course, Art Museum to Manayunk '
+              'and back',
+        ),
+        routeId: 'r1',
+      ),
+    ));
+    await pumpUntil(
+        tester, () => find.byType(MapDetailSkeleton).evaluate().isEmpty,
+        describe: 'the route to load');
+    await walkScrollable(tester, primaryScrollable(), 'Public route');
+    await _drain(tester);
+  }, layoutOnly: true);
 
   group('publicRouteStartTarget', () {
     test('starts against the clipped waypoints, not the source trace', () {
@@ -121,6 +140,9 @@ void main() {
           'Manayunk and back';
       await _pumpLoaded(tester, _OwnerApi(name: name),
           size: const Size(360, 780));
+      // The bar named the page while it loaded; the heading's arrival hides
+      // it on the next frame.
+      await tester.pump();
 
       final inBody = find.descendant(
           of: find.byType(ListView), matching: find.text(name));

@@ -11,6 +11,7 @@ import '../lib/local_routine_store.dart';
 import '../lib/screens/routine_public_library_screen.dart';
 import '../lib/widgets/official_badge.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 GymRoutineRow _routine(String id, String title) => GymRoutineRow(
       id: id,
@@ -97,6 +98,26 @@ class _AdoptApi extends ApiClient {
       );
 }
 
+/// The clone lands, then the follow-up read of the copy fails.
+class _HydrateFailsApi extends _AdoptApi {
+  _HydrateFailsApi() : super('r-adopted');
+  int cloneCalls = 0;
+
+  @override
+  Future<String> cloneGymRoutineTemplate(String templateId) async {
+    cloneCalls++;
+    return clonedId;
+  }
+
+  @override
+  Future<({
+    GymRoutineRow routine,
+    List<({GymRoutineExerciseRow exercise, List<GymRoutineSetRow> sets})>
+        exercises,
+  })?> fetchGymRoutineDetail(String id) async =>
+      throw const SocketException('offline');
+}
+
 ({Map<String, dynamic> routine, List<StoredRoutineExercise> exercises})
     _stored(String id) => (
           routine: <String, dynamic>{
@@ -133,6 +154,46 @@ Widget _app(ApiClient api, LocalRoutineStore store, LocalGymStore gym) =>
     );
 
 void main() {
+  worstCaseTestWidgets('the library cards', (tester, locale) async {
+    final f = await _fixture('wc');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    final api = _LibraryApi([
+      (
+        routine: _routine('r-off', 'Strength and mobility for distance runners'),
+        authorHandle: 'Threkir',
+        isOfficial: true,
+      ),
+    ]);
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoutinePublicLibraryScreen(api: api, store: f.store, gymStore: f.gym),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Library');
+  });
+
+  worstCaseTestWidgets('the preview exercise cards', (tester, locale) async {
+    final f = await _fixture('wcp');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoutinePublicPreviewScreen(
+        api: _AdoptApi('r-adopted'),
+        store: f.store,
+        gymStore: f.gym,
+        entry: (
+          routine: _routine('r-off', 'Strength for runners'),
+          authorHandle: 'Threkir',
+          isOfficial: true,
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await walkScrollable(tester, primaryScrollable(), 'Library preview');
+  });
+
   testWidgets('lists public routines with author handle', (tester) async {
     final f = await _fixture('list');
     try {
@@ -264,6 +325,50 @@ void main() {
       );
       expect(f.store.byId(pending.id)!.syncState,
           RoutineSyncState.pendingCreate);
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  // Issue #1374 FS-8: a failure AFTER the clone landed read as "Couldn't
+  // adopt", and the retry made a second copy.
+  testWidgets('a failed follow-up read after the clone is not a failed adopt',
+      (tester) async {
+    final f = await _fixture('adopt-hydrate-fails');
+    final api = _HydrateFailsApi();
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RoutinePublicPreviewScreen(
+          api: api,
+          store: f.store,
+          gymStore: f.gym,
+          entry: (
+            routine: _routine('r-pub', 'Wendler'),
+            authorHandle: null,
+            isOfficial: false,
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.runAsync(() => tester.tap(find.byType(FloatingActionButton)));
+      await pumpUntil(
+          tester, () => find.text(l10n.gymLibraryAdopted).evaluate().isNotEmpty,
+          describe: 'the adopt to settle');
+      await pumpUntil(
+          tester,
+          () => find.text(l10n.gymLibraryAdoptedNotSynced).evaluate().isNotEmpty,
+          describe: 'the not-synced banner');
+      expect(find.text(l10n.gymLibraryAdoptFailed), findsNothing);
+
+      await tester.tap(find.byType(FloatingActionButton), warnIfMissed: false);
+      await tester.pump();
+      expect(api.cloneCalls, 1);
+      await tester.runAsync(() => f.store.debugWritesSettled());
+      await tester.pump(const Duration(seconds: 4));
     } finally {
       f.dir.deleteSync(recursive: true);
     }

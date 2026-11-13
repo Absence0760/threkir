@@ -2,6 +2,7 @@ import '../activity_type_labels.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
+import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave, SheetScaffold;
 import 'package:uuid/uuid.dart';
 
 import '../auth_error.dart';
@@ -179,16 +180,16 @@ class _AddRunScreenState extends State<AddRunScreen> {
     final api = widget.apiClient;
     final source = await showModalBottomSheet<_NewRouteSource>(
       context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
+      builder: (sheetContext) => SheetScaffold(
+        padding: EdgeInsets.zero,
+        body: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (api != null)
               ListTile(
                 leading: const Icon(Icons.add_location_alt),
                 title: Text(l10n.addRunBuildRoute),
-                onTap: () =>
-                    Navigator.pop(sheetContext, _NewRouteSource.build),
+                onTap: () => Navigator.pop(sheetContext, _NewRouteSource.build),
               ),
             ListTile(
               leading: const Icon(Icons.upload_file),
@@ -202,20 +203,23 @@ class _AddRunScreenState extends State<AddRunScreen> {
     if (source == null || !mounted) return;
     switch (source) {
       case _NewRouteSource.build:
-        final created = await (widget.openRouteBuilder?.call(context) ??
-            Navigator.of(context).push<Route>(
-              MaterialPageRoute(
-                builder: (_) => RouteBuilderScreen(
-                  apiClient: api!,
-                  routeStore: widget.routeStore,
-                  social: widget.social,
-                ),
-              ),
-            ));
+        final created =
+            await (widget.openRouteBuilder?.call(context) ??
+                Navigator.of(context).push<Route>(
+                  MaterialPageRoute(
+                    builder: (_) => RouteBuilderScreen(
+                      apiClient: api!,
+                      routeStore: widget.routeStore,
+                      social: widget.social,
+                    ),
+                  ),
+                ));
         if (created != null && mounted) _onRouteSelected(created);
       case _NewRouteSource.import:
-        final imported =
-            await pickAndImportRouteFile(context, widget.routeStore);
+        final imported = await pickAndImportRouteFile(
+          context,
+          widget.routeStore,
+        );
         if (!mounted) return;
         if (imported.length == 1) {
           _onRouteSelected(imported.first);
@@ -242,7 +246,10 @@ class _AddRunScreenState extends State<AddRunScreen> {
   }
 
   ManualDurationResult _duration() => validateManualDuration(
-      _hoursCtl.text, _minutesCtl.text, _secondsCtl.text);
+    _hoursCtl.text,
+    _minutesCtl.text,
+    _secondsCtl.text,
+  );
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -289,7 +296,11 @@ class _AddRunScreenState extends State<AddRunScreen> {
       if (!mounted) return;
       setState(() => _saving = false);
       showTopBanner(
-          context, AppLocalizations.of(context).addRunSaveFailed(friendlyError(AppLocalizations.of(context), e)));
+        context,
+        AppLocalizations.of(
+          context,
+        ).addRunSaveFailed(friendlyError(AppLocalizations.of(context), e)),
+      );
       return;
     }
 
@@ -306,210 +317,213 @@ class _AddRunScreenState extends State<AddRunScreen> {
     final unit = widget.preferences.unit;
     final routes = widget.routeStore.routes;
 
-    final scaffold = Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.addRunTitle),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(l10n.addRunSave),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-          children: [
-            Text(l10n.addRunSectionWhen, style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(formatDateMed(
-                        _startedAt, localeToTag(Localizations.localeOf(context)))),
-                    onPressed: _pickDate,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.schedule),
-                    label: Text(_formatTime(_startedAt)),
-                    onPressed: _pickTime,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(l10n.addRunSectionActivity, style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: ActivityType.values.map((a) {
-                final selected = _activityType == a;
-                return ChoiceChip(
-                  label: Text(activityTypeLabel(l10n, a)),
-                  avatar: Icon(a.icon, size: 18),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _activityType = a),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-            Text(l10n.addRunSectionRoute, style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            if (routes.isNotEmpty) ...[
-              InkWell(
-                onTap: () => _pickRoute(routes, unit),
-                borderRadius: BorderRadius.circular(4),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    suffixIcon: _selectedRoute == null
-                        ? const Icon(Icons.search)
-                        : IconButton(
-                            icon: const Icon(Icons.clear),
-                            tooltip: l10n.addRunClearRoute,
-                            onPressed: () => _onRouteSelected(null),
-                          ),
-                  ),
-                  child: Text(
-                    _selectedRoute == null
-                        ? l10n.addRunSearchRoutes
-                        : '${_selectedRoute!.name} • '
-                            '${UnitFormat.distance(_selectedRoute!.distanceMetres, unit)}',
-                    style: _selectedRoute == null
-                        ? theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          )
-                        : theme.textTheme.bodyLarge,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ] else ...[
-              InkWell(
-                key: const Key('add_run_add_route'),
-                onTap: _addRoute,
-                borderRadius: BorderRadius.circular(4),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    suffixIcon: Icon(Icons.add),
-                  ),
-                  child: Text(
-                    l10n.addRunNoRoutes,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+    // The fields sit in one Form above the page, and the page's single Save
+    // is pinned under them (issue #1374: Save was in the app bar and again
+    // at the foot of the list).
+    final page = Form(
+      key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      child: EditorPage(
+        title: l10n.addRunTitle,
+        save: EditorSave(
+          label: l10n.addRunSaveButton,
+          busy: _saving,
+          onPressed: _save,
+        ),
+        fields: [
+          Text(l10n.addRunSectionWhen, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(
+                    formatDateMed(
+                      _startedAt,
+                      localeToTag(Localizations.localeOf(context)),
                     ),
                   ),
+                  onPressed: _pickDate,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.schedule),
+                  label: Text(_formatTime(_startedAt)),
+                  onPressed: _pickTime,
                 ),
               ),
             ],
-            const SizedBox(height: 20),
-            Text(l10n.addRunSectionDistance, style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            Semantics(
-              label: l10n.addRunSectionDistance,
-              child: TextFormField(
-                controller: _distanceCtl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: typedDecimalInputFormatters,
+          ),
+          const SizedBox(height: 20),
+          Text(l10n.addRunSectionActivity, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: ActivityType.values.map((a) {
+              final selected = _activityType == a;
+              return ChoiceChip(
+                label: Text(activityTypeLabel(l10n, a)),
+                avatar: Icon(a.icon, size: 18),
+                selected: selected,
+                onSelected: (_) => setState(() => _activityType = a),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          Text(l10n.addRunSectionRoute, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          if (routes.isNotEmpty) ...[
+            InkWell(
+              onTap: () => _pickRoute(routes, unit),
+              borderRadius: BorderRadius.circular(4),
+              child: InputDecorator(
                 decoration: InputDecoration(
-                  suffixText: UnitFormat.distanceLabel(unit),
-                ),
-                validator: (v) {
-                  if (_parseDistanceMetres(v ?? '') == null) {
-                    return l10n.addRunDistanceInvalid;
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(l10n.addRunSectionDuration, style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            FormField<Duration>(
-              validator: (_) {
-                final error = _duration().error;
-                return error == null
-                    ? null
-                    : manualDurationErrorText(l10n, error);
-              },
-              builder: (state) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _durationField(_hoursCtl, 'h', state,
-                                l10n.durationFieldHours,
-                                hours: true)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: _durationField(_minutesCtl, 'm', state,
-                                l10n.durationFieldMinutes)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: _durationField(_secondsCtl, 's', state,
-                                l10n.durationFieldSeconds)),
-                      ],
-                    ),
-                    if (state.hasError)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6, left: 12),
-                        child: Text(
-                          state.errorText!,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: theme.colorScheme.error),
+                  suffixIcon: _selectedRoute == null
+                      ? const Icon(Icons.search)
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          tooltip: l10n.addRunClearRoute,
+                          onPressed: () => _onRouteSelected(null),
                         ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            Text(l10n.addRunSectionTitle, style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _titleCtl,
-              decoration: InputDecoration(
-                hintText: l10n.addRunTitleHint,
+                ),
+                child: Text(
+                  _selectedRoute == null
+                      ? l10n.addRunSearchRoutes
+                      : '${_selectedRoute!.name} • '
+                            '${UnitFormat.distance(_selectedRoute!.distanceMetres, unit)}',
+                  style: _selectedRoute == null
+                      ? theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        )
+                      : theme.textTheme.bodyLarge,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            Text(l10n.addRunSectionNotes, style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _notesCtl,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: l10n.addRunNotesHint,
+          ] else ...[
+            InkWell(
+              key: const Key('add_run_add_route'),
+              onTap: _addRoute,
+              borderRadius: BorderRadius.circular(4),
+              child: InputDecorator(
+                decoration: const InputDecoration(suffixIcon: Icon(Icons.add)),
+                child: Text(
+                  l10n.addRunNoRoutes,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _saving ? null : _save,
-              icon: const Icon(Icons.check),
-              label: Text(l10n.addRunSaveButton),
             ),
           ],
+          const SizedBox(height: 20),
+          Text(l10n.addRunSectionDistance, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          // semantics-children: names a field that shows no label or hint of its own
+          Semantics(
+            label: l10n.addRunSectionDistance,
+            child: TextFormField(
+              controller: _distanceCtl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: typedDecimalInputFormatters,
+              decoration: InputDecoration(
+                suffixText: UnitFormat.distanceLabel(unit),
+              ),
+              validator: (v) {
+                if (_parseDistanceMetres(v ?? '') == null) {
+                  return l10n.addRunDistanceInvalid;
+                }
+                return null;
+              },
+            ),
           ),
-        ),
+          const SizedBox(height: 20),
+          Text(l10n.addRunSectionDuration, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          FormField<Duration>(
+            validator: (_) {
+              final error = _duration().error;
+              return error == null
+                  ? null
+                  : manualDurationErrorText(l10n, error);
+            },
+            builder: (state) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _durationField(
+                          _hoursCtl,
+                          'h',
+                          state,
+                          l10n.durationFieldHours,
+                          hours: true,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _durationField(
+                          _minutesCtl,
+                          'm',
+                          state,
+                          l10n.durationFieldMinutes,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _durationField(
+                          _secondsCtl,
+                          's',
+                          state,
+                          l10n.durationFieldSeconds,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (state.hasError)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, left: 12),
+                      child: Text(
+                        state.errorText!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          Text(l10n.addRunSectionTitle, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _titleCtl,
+            decoration: InputDecoration(hintText: l10n.addRunTitleHint),
+          ),
+          const SizedBox(height: 20),
+          Text(l10n.addRunSectionNotes, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _notesCtl,
+            maxLines: 3,
+            decoration: InputDecoration(hintText: l10n.addRunNotesHint),
+          ),
+        ],
       ),
     );
-    return DiscardGuard(isDirty: () => _isDirty, child: scaffold);
+    return DiscardGuard(
+      isDirty: () => _isDirty,
+      isBusy: () => _saving,
+      child: page,
+    );
   }
 
   /// [suffix] is the visible 'h' / 'm' / 's' hint, which is decorative:
@@ -524,6 +538,7 @@ class _AddRunScreenState extends State<AddRunScreen> {
     String label, {
     bool hours = false,
   }) {
+    // semantics-children: names a field that shows no label or hint of its own
     return Semantics(
       label: label,
       textField: true,
@@ -532,9 +547,7 @@ class _AddRunScreenState extends State<AddRunScreen> {
         keyboardType: TextInputType.number,
         inputFormatters: durationBoxFormatters(hours: hours),
         onChanged: (_) => state.didChange(null),
-        decoration: InputDecoration(
-          suffixText: suffix,
-        ),
+        decoration: InputDecoration(suffixText: suffix),
       ),
     );
   }
@@ -677,10 +690,7 @@ class _RoutePickerPageState extends State<_RoutePickerPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     subtitle: Text(
-                      UnitFormat.distance(
-                        route.distanceMetres,
-                        widget.unit,
-                      ),
+                      UnitFormat.distance(route.distanceMetres, widget.unit),
                     ),
                     onTap: () => Navigator.pop(context, _RoutePick(route)),
                   );

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -123,20 +124,21 @@
 	{:else if notFound || !detail}
 		<p class="state" data-testid="gym-library-not-found">{t('gymLibrary.notFound')}</p>
 	{:else}
-		<header class="preview-head">
-			<h1>{detail.routine.title}{#if isOfficial}<OfficialBadge size={18} />{/if}</h1>
-			<p class="author">
-				{t('gymLibrary.byAuthor', {
-					author: authorHandle ?? t('gymLibrary.anonymousAuthor'),
-				})}
-			</p>
+		<PageHeader
+			flush
+			title={detail.routine.title}
+			subtitle={t('gymLibrary.byAuthor', {
+				author: authorHandle ?? t('gymLibrary.anonymousAuthor'),
+			})}
+		>
+			{#snippet badge()}{#if isOfficial}<OfficialBadge size={18} />{/if}{/snippet}
 			<div class="chips">
 				<span class="chip">{t('gymLibrary.exercisesLabel', { count: detail.routine.exercise_count })}</span>
 			</div>
 			{#if detail.routine.notes}
 				<p class="notes">{detail.routine.notes}</p>
 			{/if}
-		</header>
+		</PageHeader>
 
 		<section class="adopt-row">
 			<button
@@ -208,14 +210,6 @@
 		gap: 0.75rem;
 		align-items: center;
 	}
-	.preview-head h1 {
-		margin: 0.5rem 0 0.25rem;
-		font-size: 1.5rem;
-	}
-	.author {
-		margin: 0 0 0.5rem;
-		color: var(--color-text-secondary);
-	}
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
@@ -229,7 +223,7 @@
 		color: var(--chip-fg);
 	}
 	.notes {
-		margin: 0.5rem 0 0;
+		margin: 0;
 	}
 	.adopt-row {
 		display: flex;

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'settings_destination.dart';
+
 /// In-app help guides — the pure model behind the Help screens.
 ///
 /// The source of truth is web: one TypeScript file per guide under
@@ -359,16 +361,29 @@ List<HelpSpan> _merge(List<HelpSpan> spans) {
 /// seam as `SettingsDestination`, decisions § 710). A guide link cannot carry
 /// a club slug or an event id, so a route addressing one entity opens the list
 /// that entity is found in.
+///
+/// A settings page carries its [SettingsDestination], which the shell builds
+/// the same way as any other settings link.
 enum HelpDestination {
   clubs,
   races,
   runs,
   notifications,
-  integrations,
-  preferences,
-  safety,
-  account,
-  pro,
+  integrations(SettingsDestination.integrations),
+  display(SettingsDestination.display),
+  recording(SettingsDestination.recording),
+  training(SettingsDestination.training),
+  privacy(SettingsDestination.privacy),
+  notificationSettings(SettingsDestination.notifications),
+  bodyMetrics(SettingsDestination.bodyMetrics),
+  safety(SettingsDestination.safety),
+  account(SettingsDestination.account),
+  pro(SettingsDestination.pro);
+
+  const HelpDestination([this.settings]);
+
+  /// The settings screen this destination is, or null for a tab or list.
+  final SettingsDestination? settings;
 }
 
 /// Web route id → the mobile destination a `[[route:...]]` link opens. A route
@@ -385,8 +400,12 @@ const Map<String, HelpDestination> helpRouteToScreen = {
   '/runs/[id]': HelpDestination.runs,
   '/notifications': HelpDestination.notifications,
   '/settings/integrations': HelpDestination.integrations,
-  '/settings/notifications': HelpDestination.preferences,
-  '/settings/preferences': HelpDestination.preferences,
+  '/settings/display': HelpDestination.display,
+  '/settings/recording': HelpDestination.recording,
+  '/settings/training': HelpDestination.training,
+  '/settings/privacy': HelpDestination.privacy,
+  '/settings/notifications': HelpDestination.notificationSettings,
+  '/settings/body': HelpDestination.bodyMetrics,
   '/settings/safety': HelpDestination.safety,
   '/settings/account': HelpDestination.account,
   '/settings/upgrade': HelpDestination.pro,

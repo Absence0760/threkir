@@ -14,6 +14,7 @@ import '../lib/training_service.dart';
 import '../lib/widgets/ai_tag.dart';
 import 'realtime_drain.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// The AI Coach as a conversation in the Messages inbox (decisions § 2227):
 /// placed by the runner's setting, labelled as AI, previewing the newest
@@ -274,5 +275,29 @@ void main() {
 
     final coach = tester.widget<CoachScreen>(find.byType(CoachScreen));
     expect(coach.initialPlanId, 'plan-9');
+  });
+
+  worstCaseTestWidgets('the inbox', (tester, locale) async {
+    final api = _FakeApi(
+      latest: _coachMsg('**Easy** 6 km today, then strides', older),
+      threads: [
+        _thread('p-1', newer),
+        _thread('p-2', older),
+      ],
+    );
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: MessagesScreen(
+        api: api,
+        training: TrainingService(),
+        pollInterval: _quiet,
+        loadPerks: _coachOn,
+        readCoachPlacement: () => null,
+        writeUniversal: (_) async {},
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Messages');
   });
 }

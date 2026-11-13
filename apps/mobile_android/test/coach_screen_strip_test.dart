@@ -223,6 +223,7 @@ void main() {
       final cs = Theme.of(tester.element(find.byType(CoachScreen))).colorScheme;
       expect(find.text(_en.coachMessagesLeft(2)), findsOneWidget);
       expect(banner.color, cs.surfaceContainerHighest);
+      expect(find.text(_en.proUpsellAction), findsNothing);
       await drainRealtimeTimers(tester);
     });
 
@@ -234,6 +235,15 @@ void main() {
       final theme = Theme.of(tester.element(find.byType(CoachScreen)));
       expect(find.text(_en.coachLimitReachedFree), findsOneWidget);
       expect(banner.color, AppSemanticColors.ofTheme(theme).warning);
+      // The free tier's cap names Pro, so it links there (issue #1374
+      // finding 11) rather than telling the runner to go and find it.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('coach-limit-banner')),
+          matching: find.text(_en.proUpsellAction),
+        ),
+        findsOneWidget,
+      );
       await drainRealtimeTimers(tester);
     });
   });

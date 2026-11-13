@@ -58,7 +58,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Chaque demande utilise l\'un de vos messages quotidiens du Coach IA, le même quota que le Coach.',
-						'Elle nécessite la dernière version de l\'avis sur l\'IA. Si on vous demande de l\'accepter, sélectionnez **La consulter dans les Réglages** et acceptez-la là.',
+						'Elle nécessite la dernière version de l\'information sur l\'IA. Si on vous demande de l\'accepter, sélectionnez **La consulter dans les Réglages** et acceptez-la là.',
 						'Seules les séances à venir de votre plan et la modification que vous avez tapée sont envoyées à l\'IA.',
 					],
 				},

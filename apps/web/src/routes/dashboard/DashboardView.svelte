@@ -1,0 +1,4506 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
+	import { sourceColor, sourceInk } from '#lib/runs/source_badge.ts';
+	import { formatDate, formatDateShort, formatDuration, activeFormatLocale } from '#lib/format/time.ts';
+	import {
+		fetchRunsForDashboard,
+		fetchRunAllTimeStats,
+		fetchRunStreaks,
+		fetchRunsForPeriodSummary,
+		fetchPersonalRecords,
+		fetchActivePlanOverview,
+		fetchNextRsvpedEvent,
+		fetchFitnessSnapshots,
+		insertFitnessSnapshot,
+		type FitnessSnapshotRow,
+		type PeriodSummaryRun,
+	} from '#lib/core/data.ts';
+	import { dashboardRunsWindowStart, visibleRunSources } from '#lib/core/dashboard_runs.ts';
+	import { bucketWeeklyMileage } from '#lib/core/weekly_mileage.ts';
+	import {
+		computeSnapshot,
+		recoveryAdviceKind,
+		daysUntilNextHardSession,
+		isReturningFromLayoff,
+		isReturningFromGap,
+	} from '#lib/training/fitness.ts';
+	import { computeRunStreaks, type RunStreaks } from '#lib/runs/streaks.ts';
+	import { streakCardState } from '#lib/runs/streak_card.ts';
+	import { ageGradeForRun, formatAgeGradePercent } from '#lib/runs/age_grade.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+
+	// Hide the "Ask the Coach" promo when the Coach is off (rock-bottom deploy).
+	const coachOn = coachEnabled();
+	import { computeReadiness, readinessAdviceText, type ReadinessContributorKind } from '#lib/training/readiness.ts';
+	import { computeTrainingLoadSeries, hasTrimpSignal, isTrimpLowConfidence } from '#lib/training/training_load.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
+	import { planRaceCountdown } from '#lib/training/plan_week.ts';
+	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
+	import { formatISO } from '#lib/training/training.ts';
+	import { goalEventLabel } from '#lib/training/goal_event_label.ts';
+	import {
+		DISCLOSURE_LEVEL_KEY,
+		resolveDisclosureLevel,
+	} from '#lib/settings/disclosure.ts';
+	import { PRIMARY_GOAL_KEY } from '#lib/settings/onboarding.ts';
+	import { fetchGymSetHistory, fetchGymWorkouts } from '#lib/core/data.ts';
+	import { fetchFoodLog, fetchLatestWeightKg, type FoodEntry } from '#lib/core/data.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import type { GymWorkout, GymSetWithDate, DashboardRun, PlanOverviewRead } from '#lib/core/data.ts';
+	import { liftsFromSetHistory } from '#lib/gym/lift_load.ts';
+	import { distinctExerciseCount } from '#lib/gym/gym_prs.ts';
+	import {
+		computeNutritionTargets,
+		ageFromDob,
+		type ActivityLevel,
+		type WeightGoal,
+		type NutritionTargets,
+	} from '#lib/nutrition/nutrition_targets.ts';
+	import { healthUseDob } from '#lib/core/health_consent.ts';
+	import { exerciseCaloriesForDay } from '#lib/nutrition/exercise_calories.ts';
+	import { isWithinWindow } from '#lib/nutrition/diary_day.ts';
+	import { sumMacros } from '#lib/nutrition/nutrition_totals.ts';
+	import NutritionRingsCard from '#lib/components/NutritionRingsCard.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import TrainingLoadChart from '#lib/components/TrainingLoadChart.svelte';
+	import RacePredictorCard from '#lib/components/RacePredictorCard.svelte';
+	import ConsistencyCard from '#lib/components/ConsistencyCard.svelte';
+	import IntensityBalanceCard from '#lib/components/IntensityBalanceCard.svelte';
+	import TrendDeltasCard from '#lib/components/TrendDeltasCard.svelte';
+	import LoadRampCard from '#lib/components/LoadRampCard.svelte';
+	import ComebackCard from '#lib/components/ComebackCard.svelte';
+	import DashboardFirstRun from '#lib/components/DashboardFirstRun.svelte';
+	import {
+		modalityExplicit,
+		modalityVisible,
+		revealOnNavigate,
+	} from '#lib/stores/modality_visibility.svelte.ts';
+	import DashboardWeekLead from '#lib/components/DashboardWeekLead.svelte';
+	import DashboardActionsMenu from '#lib/components/DashboardActionsMenu.svelte';
+	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import Recent5kPlanCard from '#lib/components/Recent5kPlanCard.svelte';
+	import {
+		PLAN_SUGGESTION_DISMISSED_KEY,
+		pickRecent5k,
+	} from '#lib/training/recent_5k_suggestion.ts';
+	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import { loadBreakContext } from '#lib/core/plan_break_context.ts';
+	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
+	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
+	import PlanNudgeCard from '#lib/components/PlanNudgeCard.svelte';
+	import RestDayGrisnir from '#lib/components/RestDayGrisnir.svelte';
+	import { DISMISSED_NUDGES_KEY, parseDismissedNudges, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
+	import { plannedWalkRunPattern, plannedWorkoutSize } from '#lib/training/workout_summary.ts';
+	import { formatPlannedSize, formatWalkRunPattern } from '#lib/training/workout_summary_format.ts';
+	import { isPlanFinished } from '#lib/training/plan_current.ts';
+	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
+	import {
+		DASHBOARD_HIDDEN_CARDS_KEY,
+		parseHiddenCards,
+		todayHeroState,
+		withCardHidden,
+		type HideableDashboardCard,
+	} from '#lib/training/dashboard_layout.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
+	import PeriodSummary from '#lib/components/PeriodSummary.svelte';
+	import ChallengesPanel from '#lib/components/ChallengesPanel.svelte';
+	import DisclosureSection from '#lib/components/DisclosureSection.svelte';
+	import {
+		readDisclosureState,
+		writeDisclosureState,
+		type DisclosureState,
+	} from '#lib/util/disclosure_state.ts';
+	import Modal from '#lib/components/Modal.svelte';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import type { PlanWorkout } from '#lib/types.ts';
+	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
+	import { relativeAge } from '#lib/runs/pr_recency.ts';
+	import type { LoadedSettings } from '#lib/settings/settings.ts';
+	import { fmtKm, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
+	import { fmtOverrun } from '#lib/format/overrun.ts';
+	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
+	import { formatSignedInteger } from '#lib/format/number.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { isPlausibleRunDuration } from '#lib/runs/run_duration.ts';
+	import {
+		loadGoals,
+		saveGoals,
+		evaluateGoal,
+		newGoalId,
+		periodLabel,
+		type RunGoal,
+	} from '#lib/training/goals.ts';
+	import type { Run, RunSource, ActivePlanOverview } from '#lib/types.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
+	import { progressSummary } from '#lib/training/progress_summary.ts';
+
+	// One loader, two pages (issue #1374, decisions § 2492; the web twin of
+	// mobile's Today and Progress): `/dashboard` is Today, about six blocks of
+	// what to do now and what was just done, and `/dashboard/progress` holds
+	// the week lead, the totals and streak, the full goals and the trend
+	// groups. Both read the same data, so a card hidden or a group folded on
+	// one is what the other would show.
+	let { view }: { view: 'today' | 'progress' } = $props();
+
+	// Recent runs only (~2-year window, column-narrowed) — the dashboard's
+	// cards are all recency-scoped. Lifetime totals come from `allTimeStats`.
+	let runs = $state<DashboardRun[]>([]);
+	// All-time run count + longest run, served by a cheap aggregate so the
+	// "all sources" / "all time" stat cards stay exact for a deep history
+	// even though `runs` above is windowed. See fetchRunAllTimeStats.
+	let allTimeStats = $state<{ totalRuns: number; longestRunM: number }>({
+		totalRuns: 0,
+		longestRunM: 0,
+	});
+	let personalRecords = $state<{ key: string; distance: string; time_s: number; date: string }[]>([]);
+	// Distance keys the runner has chosen to hide (comeback persona #28). Stored
+	// in the universal `hidden_prs` settings bag, so it roams across devices.
+	let hiddenPrs = $state<string[]>([]);
+	let planNudgesDismissed = $state<string[]>([]);
+	let showHiddenPrs = $state(false);
+	let visiblePrs = $derived(personalRecords.filter((pr) => !hiddenPrs.includes(pr.key)));
+
+	// A returning runner whose every shown PR predates their break can find
+	// the all-time records demoralising. Flag when all visible PRs are >12
+	// months old so the section can frame them as past form (round-5 older
+	// / comeback). Pairs with isReturningRunner below.
+	const PR_STALE_MS = 365 * 24 * 60 * 60 * 1000;
+	let allPrsStale = $derived(
+		visiblePrs.length > 0 &&
+			visiblePrs.every((pr) => Date.now() - new Date(pr.date).getTime() > PR_STALE_MS),
+	);
+	let hiddenPrRows = $derived(personalRecords.filter((pr) => hiddenPrs.includes(pr.key)));
+
+	// Viewer DOB + sex, read once on mount from get_my_profile (same self-read
+	// path runs/[id] uses). Feed the shared age-grade helper so the PR table can
+	// score each record against the world standard for the runner's age & sex.
+	// Both stay null when the profile lacks the data → the column self-hides.
+	// `height_cm` on the same row feeds the nutrition targets.
+	//
+	// The date is taken through `healthUseDob` (§ 722) rather than off the row:
+	// age-grading and a calorie target are Art 9 uses of the age record, which
+	// itself carries no consent term because the under-18 search floor depends
+	// on it. The consent stamp rides on the same `get_my_profile()` row — this
+	// interface names only the fields read directly.
+	interface DashboardProfile {
+		height_cm?: number | null;
+		gender?: string | null;
+	}
+	let viewerDobIso = $state<string | null>(null);
+	let viewerGender = $state<string | null>(null);
+
+	// PR distance keys map to the canonical standard-distance metres age grading
+	// is defined at. Any key not here (or a profile missing DOB/sex) yields no
+	// grade for that row.
+	const PR_KEY_DISTANCE_M: Record<string, number> = {
+		'1_mile': 1609.344,
+		'5k': 5000,
+		'8k': 8000,
+		'10k': 10000,
+		'12k': 12000,
+		half_marathon: 21097.5,
+		marathon: 42195,
+	};
+
+	function ageGradeForPr(pr: { key: string; time_s: number; date: string }): string | null {
+		const distanceM = PR_KEY_DISTANCE_M[pr.key];
+		if (!distanceM) return null;
+		const sex = viewerGender === 'male' || viewerGender === 'female' ? viewerGender : null;
+		const res = ageGradeForRun({
+			distanceM,
+			durationSec: pr.time_s,
+			dobIso: viewerDobIso,
+			runStartIso: pr.date,
+			sex,
+		});
+		return res ? formatAgeGradePercent(res.percent) : null;
+	}
+
+	let prAgeGrades = $derived.by(() => {
+		const map: Record<string, string | null> = {};
+		for (const pr of visiblePrs) map[pr.key] = ageGradeForPr(pr);
+		return map;
+	});
+	let showAgeGradeCol = $derived(Object.values(prAgeGrades).some((v) => v != null));
+	let planOverview = $state<ActivePlanOverview | null>(null);
+	/// The break offer's reads (decisions § 2128): undefined while loading,
+	/// null when they failed. The offer outranks the missed-workout prompt
+	/// and the plan nudge, so Home holds the state rather than the card.
+	let breakContext = $state<BreakContext | null | undefined>(undefined);
+	let breakContextFor = '';
+	let pausedPlan = $state<{ id: string; name: string } | null>(null);
+	/// The plan read failed: the plan slot says so rather than offering to
+	/// create a plan the runner may already have.
+	let planLoadError = $state<Error | null>(null);
+	/// When the runner last dismissed the recent-5K plan suggestion: null for
+	/// never, undefined while the settings bag is unread or failed to read, so
+	/// an unknown answer never shows a suggestion they already waved away.
+	let recent5kDismissedAt = $state<string | null | undefined>(undefined);
+	let loading = $state(true);
+	let loadError = $state<Error | null>(null);
+	let mileageView = $state<'weekly' | 'monthly' | 'yearly'>('weekly');
+	let sourceFilter = $state<RunSource | 'all'>('all');
+	/// User's weekly mileage goal in metres, from the universal settings
+	/// bag (`weekly_mileage_goal_m` — shared with Android + mobile iOS).
+	/// Null until loaded; null-stays-null if the user hasn't set one yet,
+	/// in which case the progress card hides itself.
+	let weeklyGoalMetres = $state<number | null>(null);
+	let preferredUnit = $state<'km' | 'mi'>('km');
+	let weekStartDay = $state<'monday' | 'sunday'>('monday');
+	let upcomingEvent = $state<Awaited<ReturnType<typeof fetchNextRsvpedEvent>>>(null);
+	/// How far ahead the Today block looks for the next `going` club event:
+	/// a week, so a Saturday group run is on Home from the Sunday before
+	/// (decisions § 2285). Mobile Home's `kHomeEventWindow` is the twin.
+	const HOME_EVENT_WINDOW_HOURS = 7 * 24;
+	let fitnessHistory = $state<FitnessSnapshotRow[]>([]);
+	let liveSnap = $derived(computeSnapshot(runs));
+
+	// Welcome-back surface (persona round-5 comeback): a returning runner
+	// who opens the dashboard after a long gap should be met warmly, not
+	// with a cold near-empty grid. `isReturningFromLayoff` covers the
+	// already-back case (a recent run after a gap); this covers the
+	// not-yet-back case — historical runs exist but the most recent is
+	// older than the layoff threshold, so they're still mid-gap on the day
+	// they reopen the app.
+	let isReturningRunner = $derived(isReturningFromGap(runs));
+
+	// Gym sessions feed the SAME fitness/fatigue/form curve as runs
+	// (multi_modal.md Tier-1 lift→load). A pure runner has logged none, so
+	// `lifts` stays [] and the series is byte-for-byte the run-only curve —
+	// the gym data drives everything purely by presence, no flag (decisions
+	// §63 amendment). The load curve reads `lifts` (derived); the Home cards
+	// read `gymWorkouts` + a sets-by-workout map. All self-hide when empty.
+	let gymWorkouts = $state<GymWorkout[]>([]);
+	let gymHistory = $state<GymSetWithDate[]>([]);
+	// A brand-new account — no run ever logged (all-time, not the dashboard's
+	// 90-day window) and no gym session. Every card below this point derives
+	// from one or the other, so without this branch the first screen after
+	// onboarding is eleven empty cards with the only "add a run" CTA 700 lines
+	// further down the page, under the training-load model. #905.
+	// Deliberately not gated on nutrition: `todaysFood` only ever holds the
+	// current calendar day, so it cannot answer "has this account done
+	// anything yet".
+	let isNewAccount = $derived(allTimeStats.totalRuns === 0 && gymWorkouts.length === 0);
+	// Floored on the window for the reason § 1658 gives: the all-time count
+	// degrades to zero on a failed read.
+	let hasRuns = $derived(Math.max(allTimeStats.totalRuns, runs.length) > 0);
+	let lifts = $derived(liftsFromSetHistory(gymHistory));
+	// Today's nutrition — the "today's modality" rings card (multi_modal.md §
+	// Home), mirroring the mobile NutritionRingsCard + the today's-lift card
+	// above. `todaysFood` holds only food logged on the local calendar day, so
+	// the card self-hides for a runner who logged nothing today; `nutritionTargets`
+	// stays null when the Art 9 health-consent body-metrics are absent (exactly
+	// as /nutrition behaves — the rings render unfilled rather than zeroed).
+	let todaysFood = $state<FoodEntry[]>([]);
+	// The runner's show_gym / show_nutrition switches, over and above each
+	// card's own data check: an explicit Off hides a card even when data exists.
+	let gymShown = $derived(modalityVisible('gym'));
+	let nutritionShown = $derived(modalityVisible('nutrition'));
+	let nutritionTargets = $state<NutritionTargets | null>(null);
+	let nutritionConsumed = $derived(sumMacros(todaysFood));
+	// Opt-out: a runner who wants a pure run-only readiness curve can exclude
+	// gym load (Settings → Preferences). When set, the readiness series sees
+	// no lifts — the run-only curve is byte-for-byte recoverable (the same
+	// separability the model already guarantees). The gym cards below are
+	// unaffected; only the fatigue/form math drops lifts.
+	let excludeGymFromReadiness = $state(false);
+	let readinessLifts = $derived(excludeGymFromReadiness ? [] : lifts);
+	// True when a gym session lands inside the ~fatigue-relevant window, so the
+	// "factored in" note only shows when gym is actually moving the curve.
+	let hasRecentLift = $derived.by(() => {
+		const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+		return lifts.some((l) => new Date(l.started_at).getTime() >= cutoff);
+	});
+	// HR prefs feed both the TRIMP-eligible flag and the stress score.
+	let trimpPrefs = $state<{ resting_hr_bpm?: number | null; max_hr_bpm?: number | null }>({});
+	let trainingLoadSeries = $derived(
+		computeTrainingLoadSeries(runs, trimpPrefs, 90, new Date(), readinessLifts),
+	);
+
+	// Sets grouped by workout id — drives the per-session volume +
+	// exercise-count stats on the Home gym cards. Mirrors /gym.
+	let setsByWorkout = $derived.by(() => {
+		const map = new Map<string, GymSetWithDate[]>();
+		for (const s of gymHistory) {
+			const arr = map.get(s.workout_id) ?? [];
+			arr.push(s);
+			map.set(s.workout_id, arr);
+		}
+		return map;
+	});
+	function liftVolume(id: string): number {
+		let v = 0;
+		for (const s of setsByWorkout.get(id) ?? []) {
+			if (s.reps != null && s.weight_kg != null) v += s.reps * s.weight_kg;
+		}
+		return Math.round(v);
+	}
+	function liftExerciseCount(id: string): number {
+		return distinctExerciseCount((setsByWorkout.get(id) ?? []).map((s) => s.exercise_name));
+	}
+
+	// Today's logged lift(s) — the "today's modality" card the Home spec
+	// puts near the top (multi_modal.md § Home). Compared on the local
+	// calendar day so an 11pm session still counts as today.
+	let todaysLifts = $derived.by(() => {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
+		return gymWorkouts.filter((w) => new Date(w.started_at) >= start);
+	});
+	let latestTodayLift = $derived(todaysLifts[0] ?? null);
+	/// Universal-prefs key the "Training load" expander remembers itself in.
+	/// Not a control, so it has no settings page — see settings.md.
+	const TRAINING_LOAD_EXPANDED_KEY = 'dashboard_training_load_expanded';
+
+	// ─── Trend groups (multi_modal.md § Home, contract v1) ───
+	// On the Progress page each group of trend cards folds to its
+	// one-line heading, remembered per account on this device. Every default
+	// is open: a runner who reads these cards today must not find them gone on
+	// the first visit after this shipped (decisions § 2080). The memory is what
+	// makes a collapse stick, not the default. Mobile twin: today_screen.dart.
+	const TREND_SCOPE = 'dashboard_trends';
+	const TREND_DEFAULTS: DisclosureState = {
+		volume: true,
+		fitness: true,
+		performance: true,
+		effort: true,
+		recent: true,
+	};
+	let trendOpen = $state<DisclosureState>({ ...TREND_DEFAULTS });
+
+	// Keyed on the account, and `auth.ready()` can resolve before `auth.user`
+	// is set, so read once the id is known rather than once on mount: a read
+	// under 'anon' would hand back the defaults over a remembered fold.
+	let trendOwner: string | undefined;
+	$effect(() => {
+		const uid = auth.user?.id;
+		if (!uid || uid === trendOwner) return;
+		trendOwner = uid;
+		trendOpen = readDisclosureState(TREND_SCOPE, uid, TREND_DEFAULTS);
+	});
+
+	/// Trend groups the runner hid from this page (`dashboard_hidden_cards`).
+	/// Universal, unlike the folds above: a fold is how much of a card this
+	/// screen shows, a hide is "I never want this on Home", which is a choice
+	/// about the runner rather than the screen (decisions § 2386).
+	let hiddenCards = $state<HideableDashboardCard[]>([]);
+	/// Grisnir on a rest day (universal `show_mascot`, default on). Off until
+	/// the settings land, so a runner who hid him never sees him flash in; a
+	/// failed read leaves him out, which costs the page nothing.
+	let showMascot = $state(false);
+	const TREND_GROUP_TITLES: Record<HideableDashboardCard, MessageKey> = {
+		volume: 'dash.trendGroupVolume',
+		fitness: 'dash.trendGroupFitness',
+		performance: 'dash.trendGroupPerformance',
+		effort: 'dash.trendGroupEffort',
+		recent: 'dash.trendGroupRecent',
+	};
+
+	/// Hiding is honestly reversible (the Progress cards switches bring a group
+	/// back), so it takes no confirm; the toast's action opens them.
+	async function hideTrendGroup(id: HideableDashboardCard) {
+		const previous = hiddenCards;
+		hiddenCards = withCardHidden(previous, id, true);
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			await updateUniversal(uid, { [DASHBOARD_HIDDEN_CARDS_KEY]: hiddenCards });
+			showToast(m('dash.cardHidden', { name: m(TREND_GROUP_TITLES[id]) }), 'success', 8000, {
+				label: m('dash.cardHiddenAction'),
+				href: '/settings/display#home-cards',
+			});
+		} catch (e) {
+			hiddenCards = previous;
+			showToast(m('dash.hideCardFailed', { error: errorCopy(e, m, 'dash.hideCardFailed') }), 'error');
+		}
+	}
+
+	function setTrendOpen(key: string, open: boolean): void {
+		if (trendOpen[key] === open) return;
+		trendOpen = { ...trendOpen, [key]: open };
+		writeDisclosureState(TREND_SCOPE, auth.user?.id, trendOpen);
+	}
+
+	let storedDisclosure = $state<string | undefined>(undefined);
+	let primaryGoal = $state<string | null>(null);
+	let trainingLoadExpanded = $state(false);
+	/// How much this page opens up before the runner asks for more (#905).
+	/// `allTimeStats` degrades to zeros on a failed count read, which would
+	/// read as a brand-new account and fold a veteran's numbers away; the
+	/// loaded window is a lower bound on the history, so take the larger.
+	let disclosure = $derived(
+		resolveDisclosureLevel(
+			storedDisclosure,
+			primaryGoal,
+			Math.max(allTimeStats.totalRuns, runs.length),
+		),
+	);
+
+	let trainingLoadHasHr = $derived(hasTrimpSignal(runs, trimpPrefs));
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
+	let hrMedicationAffected = $state(false);
+	let trainingLoadLowConfidence = $derived(
+		hrPrescription && isTrimpLowConfidence(trainingLoadHasHr, hrMedicationAffected)
+	);
+	// Single source of truth for CTL/ATL/TSB on this page. The fitness
+	// card's numbers, the recovery advice, and the readiness ring used to
+	// read computeSnapshot (fitness.ts) while the chart below read
+	// computeTrainingLoadSeries (training_load.ts) — different EWMA AND
+	// different stress model, so the advice could contradict the chart
+	// around the TSB threshold (round-5 pro). Drive all four off the chart's
+	// own final point so the number, the advice, and the curve always agree.
+	// computeSnapshot stays the source for VO₂max / VDOT only.
+	let loadNow = $derived.by(() => {
+		const s = trainingLoadSeries;
+		if (s.length === 0) return null;
+		const last = s[s.length - 1];
+		// No training load (no qualifying runs) → hide like the old null.
+		if (last.ctl <= 0 && last.atl <= 0) return null;
+		return last;
+	});
+
+	// Forward-looking companion to the recovery-advice line: how many
+	// easy days until the next hard session is advisable. Only shown
+	// when currently loaded (≥1 day out) and not framed as a comeback
+	// (the rebuild-gradually advice already covers a returning runner).
+	let daysToHard = $derived.by(() => {
+		if (loadNow == null || isReturningFromLayoff(runs)) return null;
+		const d = daysUntilNextHardSession(loadNow.atl, loadNow.ctl);
+		return d != null && d >= 1 ? d : null;
+	});
+
+	/// HR zone thresholds (z1..z5 = upper bound of each zone, bpm) live in
+	/// `user_settings.prefs.hr_zones`. Null until loaded; null means the
+	/// user hasn't configured zones, so the intensity card shows the
+	/// configure-zones empty state.
+	let hrZones = $state<{ z1: number; z2: number; z3: number; z4: number; z5: number } | null>(null);
+
+	/// The zone names Preferences sets them under, so a runner reads the same
+	/// words in both places rather than bare digits here.
+	const ZONE_NAMES = [
+		'prefs.zone1Recovery',
+		'prefs.zone2Easy',
+		'prefs.zone3Tempo',
+		'prefs.zone4Threshold',
+		'prefs.zone5Max',
+	] as const;
+
+	const CONTRIBUTOR_NAMES: Record<ReadinessContributorKind, MessageKey> = {
+		form: 'dash.readinessFromForm',
+		sleep: 'dash.readinessFromSleep',
+		resting_hr: 'dash.readinessFromRestingHr',
+	};
+
+	/// Time spent in each HR zone over the configurable mileage window.
+	/// MVP classifies the whole run by `metadata.avg_bpm` against the
+	/// thresholds; per-point analysis from the gzipped track would be
+	/// more accurate but requires a per-run fetch. The card carries an
+	/// in-line note that this is the upgrade path.
+	let intensityWindow = $derived<'30d' | '90d' | '365d'>(
+		mileageView === 'weekly' ? '30d' : mileageView === 'monthly' ? '365d' : '365d',
+	);
+	let intensityBreakdown = $derived.by(() => {
+		if (!hrZones) return null;
+		const z = hrZones;
+		const days = intensityWindow === '30d' ? 30 : intensityWindow === '90d' ? 90 : 365;
+		const cutoff = Date.now() - days * 86_400_000;
+		const zoneSeconds: number[] = [0, 0, 0, 0, 0];
+		let hrTrackedRuns = 0;
+		// Persona-hunt Pro #4: sensor glitches (chest-strap contact
+		// loss, dropped pairing) commonly produce avg_bpm spikes
+		// (215+) or collapses (sub-40). Treat out-of-band values as
+		// "missing" — same disposition as avg <= 0. Bounds mirror the
+		// Dart twin's kHrSanityFloorBpm / kHrSanityCeilingBpm.
+		const HR_FLOOR = 40;
+		const HR_CEIL = 220;
+		for (const r of filteredRuns) {
+			const started = new Date(r.started_at).getTime();
+			if (started < cutoff) continue;
+			const avg = (r.metadata as { avg_bpm?: number } | null)?.avg_bpm;
+			if (typeof avg !== 'number' || avg < HR_FLOOR || avg > HR_CEIL) continue;
+			hrTrackedRuns += 1;
+			let idx: number;
+			if (avg < z.z1) idx = 0;
+			else if (avg < z.z2) idx = 1;
+			else if (avg < z.z3) idx = 2;
+			else if (avg < z.z4) idx = 3;
+			else idx = 4;
+			if (isPlausibleRunDuration(r.duration_s)) zoneSeconds[idx] += r.duration_s;
+		}
+		const total = zoneSeconds.reduce((a, b) => a + b, 0);
+		return { zoneSeconds, total, hrTrackedRuns };
+	});
+
+	/// Normalised VO2 max sparkline points for the trend chart. Kept
+	/// in the script (not as `{@const}` under `<svg>`, which Svelte 5
+	/// rejects — const-tags must be immediate children of block tags
+	/// like `#if` / `#each`, not HTML elements).
+	let trendPath = $derived.by(() => {
+		const vals = fitnessHistory.map((s) => s.vo2_max ?? 0).filter((v) => v > 0);
+		if (vals.length < 2) return '';
+		const lo = Math.min(...vals);
+		const hi = Math.max(...vals);
+		const range = Math.max(0.5, hi - lo);
+		const stepX = 200 / (vals.length - 1);
+		return vals
+			.map((v, i) => {
+				const x = i * stepX;
+				const y = 36 - ((v - lo) / range) * 32;
+				return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+			})
+			.join(' ');
+	});
+
+	// Multi-metric goals — local-only today, per browser. Load on
+	// mount; every edit writes back synchronously. See `lib/goals.ts`.
+	let goals = $state<RunGoal[]>([]);
+	let showGoalEditor = $state(false);
+	let editingGoal = $state<RunGoal | null>(null);
+	let confirmDeleteGoalId = $state<string | null>(null);
+
+	/// The legacy `weekly_mileage_goal_m` setting (shared with Android
+	/// via Settings → Preferences) is folded into the same Goals
+	/// section so the dashboard only has ONE goal surface. We surface
+	/// it as a read-only synthetic goal — clicking it routes to
+	/// /settings/training instead of opening the multi-metric
+	/// editor — and skip rendering it if the user already has a
+	/// week-period distance goal of their own.
+	const SYNTHETIC_WEEKLY_GOAL_ID = '__weekly_mileage_pref__';
+	let displayGoals = $derived.by<RunGoal[]>(() => {
+		const userHasWeeklyDistance = goals.some(
+			(g) => g.period === 'week' && (g.distanceMetres ?? 0) > 0,
+		);
+		if (!weeklyGoalMetres || weeklyGoalMetres <= 0 || userHasWeeklyDistance) {
+			return goals;
+		}
+		const synthetic: RunGoal = {
+			id: SYNTHETIC_WEEKLY_GOAL_ID,
+			period: 'week',
+			distanceMetres: weeklyGoalMetres,
+		};
+		return [synthetic, ...goals];
+	});
+
+	/// Today's-workout modal — opened by clicking the today card. Hosted
+	/// on the dashboard directly so we don't need to round-trip through
+	/// /plans/[id] with a `?edit=` query.
+	let editingWorkout = $state<PlanWorkout | null>(null);
+
+	/// Period-summary modal state. The stat cards (This Week / All time)
+	/// open the same `<PeriodSummary>` component that the standalone
+	/// /dashboard/period/... page uses, so deep-linking still works.
+	let periodModal = $state<{ type: 'week' | 'month' | 'all'; date: Date } | null>(null);
+
+	/// `runs` above only reaches back `DASHBOARD_RUNS_WINDOW_DAYS`, so the
+	/// drilldown's all-time tab (and Previous-paging past the bound) needs
+	/// the real history. Fetched on demand, column-narrowed, and filtered
+	/// the same way `filteredRuns` is so the modal agrees with the card
+	/// that opened it.
+	const periodRunsCoveredFrom = dashboardRunsWindowStart(new Date());
+	async function loadFullRunHistory(): Promise<PeriodSummaryRun[]> {
+		const all = await fetchRunsForPeriodSummary();
+		return sourceFilter === 'all' ? all : all.filter((r) => r.source === sourceFilter);
+	}
+
+	const goalDirty = trackDirty(() => (editingGoal ? { ...editingGoal } : null));
+	const goalEditorDirty = () => showGoalEditor && goalDirty.isDirty();
+
+	function openNewGoal() {
+		editingGoal = {
+			id: newGoalId(),
+			period: 'week',
+			distanceMetres: undefined,
+			timeSeconds: undefined,
+			paceSecPerKm: undefined,
+			runCount: undefined,
+		};
+		goalDirty.rebaseline();
+		showGoalEditor = true;
+	}
+
+	function openEditGoal(g: RunGoal) {
+		editingGoal = { ...g };
+		goalDirty.rebaseline();
+		showGoalEditor = true;
+	}
+
+	function commitGoal(g: RunGoal) {
+		const hasAny =
+			(g.distanceMetres ?? 0) > 0 ||
+			(g.timeSeconds ?? 0) > 0 ||
+			(g.paceSecPerKm ?? 0) > 0 ||
+			(g.runCount ?? 0) > 0;
+		if (!hasAny) {
+			// "Save" on an empty goal is effectively delete.
+			goals = goals.filter((x) => x.id !== g.id);
+		} else {
+			const idx = goals.findIndex((x) => x.id === g.id);
+			if (idx >= 0) goals = goals.map((x, i) => (i === idx ? g : x));
+			else goals = [...goals, g];
+		}
+		saveGoals(auth.user?.id, goals);
+		showGoalEditor = false;
+		editingGoal = null;
+	}
+
+	function deleteGoal() {
+		const id = confirmDeleteGoalId;
+		if (!id) return;
+		goals = goals.filter((g) => g.id !== id);
+		saveGoals(auth.user?.id, goals);
+		confirmDeleteGoalId = null;
+		showGoalEditor = false;
+		editingGoal = null;
+	}
+
+	const sources: { value: RunSource | 'all'; label: string }[] = [
+		{ value: 'all', label: 'All' },
+		{ value: 'app', label: 'Recorded' },
+		{ value: 'strava', label: 'Strava' },
+		{ value: 'parkrun', label: 'parkrun' },
+		{ value: 'healthkit', label: 'HealthKit' },
+	];
+	/// Only the sources this runner actually has runs from. A chip for a
+	/// source they have never used resolves to an empty dashboard, and on a
+	/// deployment that cannot connect that provider it is a control for
+	/// something that does not exist here at all. Measured against the runs the
+	/// chips filter, not against what is configured, so a deployment that later
+	/// loses its Strava client ID still lets a runner filter the Strava runs
+	/// they already have.
+	const visibleSources = $derived(visibleRunSources(sources, runs.map((r) => r.source)));
+
+	/// Locale-aware display label for a source chip. `sources[].label`
+	/// stays an English literal for the two translatable values ("All",
+	/// "Recorded") so the empty-state fallback keeps a stable string;
+	/// the chips + empty state route through here for the live locale.
+	function sourceChipLabel(label: string): string {
+		if (label === 'All') return m('dash.sourceAll');
+		if (label === 'Recorded') return m('dash.sourceRecorded');
+		return label;
+	}
+
+	onMount(async () => {
+		// Wait for the auth store to hydrate before reading user-scoped
+		// goals out of localStorage — otherwise auth.user.id is null on
+		// first paint and `loadGoals` returns []. The /coach route uses
+		// the same pattern.
+		await auth.ready();
+		goals = loadGoals(auth.user?.id);
+		const uid = auth.user?.id;
+		// Offline-first: paint every bag-backed widget from the cache before a
+		// single request leaves, so the Fitness + Intensity cards and the
+		// weekly-mileage chart's week anchor aren't held hostage by network
+		// latency. The loadSettings below reconciles with the server and its
+		// values overwrite these. Decisions §79.
+		if (uid) applyDashboardSettings(peekCachedSettings(uid));
+		// One batch. Nothing here reads anything else here, so the only reason
+		// the settings / gym / profile reads used to run after this one was
+		// that they were written after it — three extra serial round trips on
+		// the app's highest-traffic page, two of them duplicates of a read
+		// further down. The ordering that IS real is preserved below:
+		// loadTodaysNutrition reads `runs` and `gymWorkouts`, and the snapshot
+		// write reads `runs`, so both stay downstream of this batch.
+		//
+		// Each additive read is guarded individually: a rejection inside a
+		// Promise.all rejects the whole batch, and a settings or gym blip must
+		// not take the run-derived cards down with it — the same contract the
+		// per-read try/catch blocks gave.
+		let runsRead: { runs: DashboardRun[]; error: Error | null };
+		let planRead: PlanOverviewRead;
+		let settingsRead: LoadedSettings | null;
+		let gymRead: [GymWorkout[], GymSetWithDate[]] | null;
+		let profileRead: DashboardProfile | null;
+		[
+			runsRead,
+			allTimeStats,
+			personalRecords,
+			planRead,
+			upcomingEvent,
+			fitnessHistory,
+			settingsRead,
+			gymRead,
+			profileRead,
+		] = await Promise.all([
+			fetchRunsForDashboard(),
+			fetchRunAllTimeStats(),
+			fetchPersonalRecords(),
+			fetchActivePlanOverview(),
+			fetchNextRsvpedEvent(HOME_EVENT_WINDOW_HOURS),
+			fetchFitnessSnapshots(60),
+			uid ? loadSettings(uid).catch(() => null) : Promise.resolve(null),
+			// Multi-modal: fold logged gym sessions into the same load curve as
+			// runs. A pure runner's queries return empty, so the cards + curve
+			// stay run-only purely by data presence. multi_modal.md Tier-1
+			// lift→load. The 180-day bound is because the dashboard only
+			// reasons about recent training — the 90-day load curve and the 5
+			// most-recent-lift cards. perf-hunt 2026-06-10.
+			Promise.all([fetchGymWorkouts({ limit: 50 }), fetchGymSetHistory({ sinceDays: 180 })]).catch(
+				() => null,
+			),
+			// Viewer DOB + sex for age-grading the PR table, and height for the
+			// nutrition targets. Self-read via get_my_profile (gender is
+			// deny-by-default for direct SELECTs).
+			fetchDashboardProfile(),
+		]);
+		runs = runsRead.runs;
+		planOverview = planRead.overview;
+		planLoadError = planRead.error;
+		pausedPlan = planRead.paused ?? null;
+		// Every card below derives from `runs`. If that read failed there is
+		// nothing truthful to render, so state it rather than painting an
+		// empty account over the top of it.
+		loadError = runsRead.error;
+		// A missing bag (new user, or RLS blip) just leaves `weeklyGoalMetres`
+		// null and the goal card hidden.
+		if (settingsRead) applyDashboardSettings(settingsRead);
+		if (settingsRead && !settingsRead.universalUnknown) {
+			const stamp = effective<unknown>(settingsRead, PLAN_SUGGESTION_DISMISSED_KEY);
+			recent5kDismissedAt = typeof stamp === 'string' ? stamp : null;
+		}
+		// An RLS blip just leaves the curve run-only — the contract: a
+		// lift-load failure can't corrupt run readiness.
+		if (gymRead) [gymWorkouts, gymHistory] = gymRead;
+		viewerDobIso = healthUseDob(profileRead);
+		if (
+			profileRead?.gender === 'male' ||
+			profileRead?.gender === 'female' ||
+			profileRead?.gender === 'prefer_not_to_say'
+		) {
+			viewerGender = profileRead.gender;
+		}
+		await Promise.all([
+			// Compute a fresh snapshot from today's runs and persist it so
+			// the trend chart accumulates history over time. Best-effort —
+			// an RLS blip just leaves the chart with yesterday's data.
+			insertFitnessSnapshot(computeSnapshot(runs)).catch(() => {
+				/* silent */
+			}),
+			// Today's nutrition rings — the "today's modality" Home card.
+			// Best-effort + self-hiding: a runner who logged nothing today gets
+			// `todaysFood = []` and the card never renders. Reuses the SAME
+			// target math + dynamic-TDEE exercise add as /nutrition so the rings
+			// agree across surfaces, and inherits its Art 9 health-consent gate
+			// (targets stay null without body metrics — the rings then render
+			// unfilled, exactly as /nutrition does).
+			loadTodaysNutrition(settingsRead, profileRead),
+		]);
+		loading = false;
+	});
+
+	async function reloadPlanOverview(): Promise<void> {
+		const read = await fetchActivePlanOverview();
+		planOverview = read.overview;
+		planLoadError = read.error;
+		pausedPlan = read.paused ?? null;
+	}
+
+	/// The self-read the age-grade column and the nutrition targets both need.
+	/// `gender` is deny-by-default for direct SELECTs, so it comes through the
+	/// get_my_profile RPC. Degrades to null — both consumers are additive.
+	async function fetchDashboardProfile(): Promise<DashboardProfile | null> {
+		try {
+			const { data } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
+			return (data as DashboardProfile | null) ?? null;
+		} catch (_) {
+			return null;
+		}
+	}
+
+	/// `settings` and `profile` are the ones onMount already loaded — this used
+	/// to re-read both, duplicating three round trips behind two more serial
+	/// stages. Null means that read failed; the targets then fall back to the
+	/// same defaults a missing value gives.
+	async function loadTodaysNutrition(
+		settings: LoadedSettings | null,
+		profile: DashboardProfile | null,
+	) {
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			const day = new Date();
+			const todayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+			const tomorrow = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+			const todayStartIso = todayStart.toISOString();
+			const tomorrowIso = tomorrow.toISOString();
+			todaysFood = await fetchFoodLog(todayStartIso, tomorrowIso);
+			// No food today → the card self-hides; skip the target round-trip.
+			if (todaysFood.length === 0) {
+				nutritionTargets = null;
+				return;
+			}
+			// A failed settings read degrades to the cached bag, exactly as
+			// loadSettings itself does when the network is unreachable.
+			const prefs = settings ?? peekCachedSettings(uid);
+			const weight = await fetchLatestWeightKg();
+			// Filtered in the browser rather than windowed at the fetch because
+			// `runs` and `gymWorkouts` are the shared batch reads a dozen other
+			// cards on this page consume. The membership test is over INSTANTS:
+			// Postgres renders the timestamp as `…+00:00` while the bound is built
+			// as `…Z`, and '+' sorts below '.', so a string compare drops a row
+			// landing exactly on local midnight (decisions § 591).
+			const today = { startIso: todayStartIso, endIso: tomorrowIso };
+			const todayRuns = runs.filter((r) => isWithinWindow(r.started_at, today));
+			const todayGym = gymWorkouts.filter((w) => isWithinWindow(w.started_at, today));
+			const exerciseKcal = exerciseCaloriesForDay({
+				runs: todayRuns.map((r) => ({ distanceM: r.distance_m })),
+				gymSessions: todayGym.map((w) => ({ durationS: w.duration_s })),
+				weightKg: weight,
+			});
+			nutritionTargets = computeNutritionTargets({
+				weightKg: weight,
+				heightCm: profile?.height_cm ?? null,
+				ageYears: ageFromDob(healthUseDob(profile), Date.now()),
+				sex: profile?.gender ?? null,
+				activityLevel:
+					effective<ActivityLevel>(prefs, 'nutrition_activity_level', 'moderate') ?? 'moderate',
+				goal: effective<WeightGoal>(prefs, 'nutrition_goal', 'maintain') ?? 'maintain',
+				exerciseKcal,
+			});
+		} catch (_) {
+			/* silent — nutrition card is additive, not load-blocking */
+		}
+	}
+
+	function applyDashboardSettings(settings: LoadedSettings) {
+		weeklyGoalMetres = effective<number>(settings, 'weekly_mileage_goal_m') ?? null;
+		const hidden = effective<string[]>(settings, 'hidden_prs');
+		hiddenPrs = Array.isArray(hidden) ? hidden : [];
+		planNudgesDismissed = parseDismissedNudges(effective<unknown>(settings, DISMISSED_NUDGES_KEY));
+		const unit = effective<string>(settings, 'preferred_unit');
+		if (unit === 'mi' || unit === 'km') {
+			preferredUnit = unit;
+			setUnit(unit);
+		}
+		const wsd = effective<string>(settings, 'week_start_day');
+		if (wsd === 'sunday' || wsd === 'monday') weekStartDay = wsd;
+		trimpPrefs = {
+			resting_hr_bpm: effective<number>(settings, 'resting_hr_bpm') ?? null,
+			max_hr_bpm: effective<number>(settings, 'max_hr_bpm') ?? null,
+		};
+		excludeGymFromReadiness = effective<boolean>(settings, 'exclude_gym_from_readiness') === true;
+		hrMedicationAffected = effective<boolean>(settings, 'hr_medication_affected') === true;
+		storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
+		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
+		trainingLoadExpanded = effective<boolean>(settings, TRAINING_LOAD_EXPANDED_KEY) === true;
+		hiddenCards = parseHiddenCards(effective<unknown>(settings, DASHBOARD_HIDDEN_CARDS_KEY));
+		showMascot = effective<boolean>(settings, 'show_mascot', true) !== false;
+		try {
+			// Layered resilience: a bad shape in the jsonb bag must
+			// not crash the dashboard. If the read or the validation
+			// throws, the intensity card falls through to its
+			// configure-zones empty state.
+			const z = effective<Record<string, number>>(settings, 'hr_zones');
+			if (
+				z &&
+				[z.z1, z.z2, z.z3, z.z4, z.z5].every((v) => typeof v === 'number' && v > 0)
+			) {
+				hrZones = { z1: z.z1, z2: z.z2, z3: z.z3, z4: z.z4, z5: z.z5 };
+			}
+		} catch (_) {
+			// silent — intensity card is additive, not load-blocking
+		}
+	}
+
+	async function setHiddenPrs(next: string[]) {
+		const previous = hiddenPrs;
+		hiddenPrs = next;
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			await updateUniversal(uid, { hidden_prs: next });
+		} catch (e) {
+			hiddenPrs = previous;
+			showToast(m('dash.hidePrFailed', { error: errorCopy(e, m, 'dash.hidePrFailed') }), 'error');
+		}
+	}
+	/// Remembering the expander is auxiliary (L4): the section is open for this
+	/// visit either way, so a refused write is not worth a toast — it would be
+	/// one on every toggle of a signed-out or offline visit.
+	async function setTrainingLoadExpanded(next: boolean) {
+		if (trainingLoadExpanded === next) return;
+		trainingLoadExpanded = next;
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			await updateUniversal(uid, { [TRAINING_LOAD_EXPANDED_KEY]: next });
+		} catch (e) {
+			console.warn('Training-load expander state not saved', e);
+		}
+	}
+
+	/// The plan slot's suggestion for a runner with no plan: a measured 5K from
+	/// the last eight weeks to seed the wizard with. Only once the plan read has
+	/// answered "no plan" and the settings bag has answered too.
+	let recent5kSuggestion = $derived(
+		!loading && !planOverview && !planLoadError && !pausedPlan && recent5kDismissedAt !== undefined
+			? pickRecent5k(
+					runs.map((r) => ({
+						id: r.id,
+						startedAt: r.started_at,
+						fastest5kS: r.fastest_5k_s,
+						activityType: r.activity_type,
+						isDnf: r.is_dnf,
+					})),
+					Date.now(),
+					recent5kDismissedAt,
+				)
+			: null
+	);
+
+	/// Hidden at once and remembered in the universal bag, so the phone stops
+	/// offering it too. A refused write is said, since the card can come back.
+	async function dismissRecent5k() {
+		const stamp = new Date().toISOString();
+		recent5kDismissedAt = stamp;
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			await updateUniversal(uid, { [PLAN_SUGGESTION_DISMISSED_KEY]: stamp });
+		} catch (e) {
+			console.warn('Recent-5K suggestion dismissal not saved', e);
+			showToast(m('dash.recent5kDismissFailed'), 'error');
+		}
+	}
+
+	const hidePr = (key: string) => setHiddenPrs([...new Set([...hiddenPrs, key])]);
+	const unhidePr = (key: string) => setHiddenPrs(hiddenPrs.filter((k) => k !== key));
+
+	const now = new Date();
+
+	let filteredRuns = $derived(
+		sourceFilter === 'all' ? runs : runs.filter((r) => r.source === sourceFilter)
+	);
+	// Derived, not fetched: the chart's current-week bar must be the tile's
+	// seven days. As a read in the opening batch it was handed `weekStartDay`
+	// before the settings in that same batch had set it, so a Sunday-first
+	// runner's chart was always bucketed Monday-first.
+	let weeklyMileage = $derived(
+		bucketWeeklyMileage(filteredRuns, 12, currentLocale(), weekStartDay, now)
+	);
+	/// Calendar-position helpers for the active-plan hero card. Match
+	/// the shape of the corresponding helpers on /plans/+page.svelte so
+	/// the two surfaces line up (week index, calendar percentage, time
+	/// relation). Inlined here rather than lifted to #lib so the only
+	/// other caller — the plan list — keeps owning its own copy until a
+	/// third surface needs them.
+	function planMidnight(iso: string): Date {
+		const [y, m, d] = iso.split('-').map(Number);
+		return new Date(y, (m ?? 1) - 1, d ?? 1);
+	}
+	const todayMidnight = $derived.by(() => {
+		const t = new Date();
+		t.setHours(0, 0, 0, 0);
+		return t;
+	});
+	/// Today's size as the plan states it: a walk-run session in minutes.
+	const todaySize = $derived.by(() => {
+		const t = planOverview?.todayWorkout;
+		if (!t) return null;
+		const size = plannedWorkoutSize({
+			kind: t.kind,
+			targetDistanceM: t.target_distance_m,
+			targetDurationS: t.target_duration_seconds,
+			structure: t.structure
+		});
+		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres));
+	});
+	/// Today's walk-run intervals ("8 × (1 min run / 90 s walk)"), which the
+	/// minutes alone don't tell a beginner; null for any other session.
+	const todayPattern = $derived.by(() => {
+		const t = planOverview?.todayWorkout;
+		if (!t) return null;
+		const p = plannedWalkRunPattern({ kind: t.kind, structure: t.structure });
+		return p == null ? null : formatWalkRunPattern(m, p, fmtOverrun);
+	});
+	/// How far today's done workout ran past its target, when a linked run
+	/// says so (`workoutOverrunMetres`); null for a tick, a short run or noise.
+	const todayOverrunM = $derived.by(() => {
+		const t = planOverview?.todayWorkout;
+		if (!t?.completed_run_id) return null;
+		const run = runs.find((r) => r.id === t.completed_run_id);
+		return workoutOverrunMetres(t.target_distance_m, run?.distance_m ?? null, t.kind);
+	});
+
+	/// The plan's next race (plan_races.ts): a B race mid-block owns the
+	/// countdown and goal row until it has been run, then the plan's A race.
+	let heroRace = $derived(
+		planOverview
+			? nextRace(planRaces(planOverview.plan, planOverview.workouts), formatISO(todayMidnight))
+			: null
+	);
+	/// The shown plan's dates have run out but the runner has not filed it yet:
+	/// the hero asks them to, and the week lead stops offering its sessions.
+	let breakToday = $derived(formatISO(todayMidnight));
+	$effect(() => {
+		const uid = auth.user?.id;
+		const active = planOverview?.plan.status === 'active';
+		const key = `${uid}:${breakToday}`;
+		if (!uid || !active || key === breakContextFor) return;
+		breakContextFor = key;
+		breakContext = undefined;
+		void loadBreakContext(uid, breakToday).then((c) => {
+			if (breakContextFor === key) breakContext = c;
+		});
+	});
+	let planBreak = $derived(
+		planOverview && planOverview.plan.status === 'active'
+			? breakState(planOverview.plan, planOverview.weeks, planOverview.workouts, breakToday, breakContext)
+			: null
+	);
+	/// The missed-workout prompt and the plan nudge wait for the break reads
+	/// and give way to the offer while it shows.
+	let planBreakQuiet = $derived(planBreak == null || (!planBreak.pending && !planBreak.showing));
+
+	let planFinished = $derived(
+		planOverview != null && isPlanFinished(planOverview.plan, formatISO(todayMidnight))
+	);
+	let planPosition = $derived.by(() => {
+		const overview = planOverview;
+		if (!overview) return null;
+		const start = planMidnight(overview.plan.start_date);
+		const end = planMidnight(overview.plan.end_date);
+		const startMs = start.getTime();
+		const endMs = end.getTime();
+		const todayMs = todayMidnight.getTime();
+		const dayMs = 86_400_000;
+		const totalDays = Math.max(1, Math.round((endMs - startMs) / dayMs) + 1);
+		const totalWeeks = Math.max(1, Math.ceil(totalDays / 7));
+		let weekIndex: number;
+		if (todayMs < startMs) weekIndex = 1;
+		else weekIndex = Math.min(totalWeeks, Math.floor((todayMs - startMs) / (7 * dayMs)) + 1);
+		let calendarPct: number;
+		if (todayMs <= startMs) calendarPct = 0;
+		else if (todayMs >= endMs) calendarPct = 100;
+		else calendarPct = Math.round(((todayMs - startMs) / (endMs - startMs)) * 100);
+		// The relation is the shared plan_week helper, so mobile's Home card
+		// and this one can never disagree on how many days remain.
+		const countdown = planRaceCountdown(
+			overview.plan.start_date,
+			heroRace?.date ?? overview.plan.end_date,
+			formatISO(todayMidnight)
+		);
+		let relation: string;
+		let raceState: 'upcoming' | 'today' | 'past';
+		switch (countdown.kind) {
+			case 'starts_in':
+				relation =
+					m('dash.planStartsIn', { d: countdown.days });
+				raceState = 'upcoming';
+				break;
+			case 'race_past':
+				relation = m('dash.raceDayPast');
+				raceState = 'past';
+				break;
+			case 'race_day':
+				relation = m('dash.raceDay');
+				raceState = 'today';
+				break;
+			case 'race_in':
+				relation =
+					m('dash.raceIn', { d: countdown.days });
+				raceState = 'upcoming';
+				break;
+		}
+		return { weekIndex, totalWeeks, calendarPct, relation, raceState };
+	});
+
+	/// Compact "1h 12m" / "12m" duration for the HR-zone bar labels —
+	/// the standard `formatDuration` is HH:MM:SS which reads as a per-run
+	/// time, not an aggregate.
+	function fmtCompactDuration(seconds: number): string {
+		if (seconds < 60) return '<1m';
+		const h = Math.floor(seconds / 3600);
+		const m = Math.floor((seconds % 3600) / 60);
+		if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+		return `${m}m`;
+	}
+
+
+	function fmtRaceDate(iso: string): string {
+		const d = planMidnight(iso);
+		return d.toLocaleDateString(activeFormatLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
+	}
+
+	// Lifetime totals from the all-time aggregate (not the ~2-year `runs`
+	// window), so the "all sources" / "all time" cards stay exact for a
+	// deep-history runner. Unlike the recency cards these are not scoped to
+	// the source filter — the sub-labels say "all sources" / "all time".
+	let totalRuns = $derived(allTimeStats.totalRuns);
+	let longestRun = $derived(allTimeStats.longestRunM);
+
+	/// Current + best run streak. Daily granularity; Strava's grace
+	/// rule means a missing today doesn't break the streak if
+	/// yesterday is intact. Filtered runs feed in so the user's
+	/// activity-type filter on the dashboard scopes the streak too —
+	/// "run streak" view shows running-only, "walk" shows walks, etc.
+	/// Windowed to ~2 years like every recency card — the all-time
+	/// figures come from `allTimeStreaks` below.
+	let runStreaks = $derived.by(() => {
+		const starts = filteredRuns.map((r) => new Date(r.started_at));
+		return computeRunStreaks(starts, now);
+	});
+
+	// All-time streaks from the run_streaks_for_user aggregate, re-fetched
+	// per source filter so the sub-label's "all-time" claim stays true under
+	// a filter (decisions §471). Null while loading or after a failed RPC —
+	// streakCardState then suppresses the numeric best claim rather than
+	// presenting the windowed figure as all-time (§470's fail-closed rule).
+	let allTimeStreaks = $state<RunStreaks | null>(null);
+	let streakReq = 0;
+	$effect(() => {
+		const src = sourceFilter;
+		const uid = auth.user?.id;
+		allTimeStreaks = null;
+		if (!uid) return;
+		const req = ++streakReq;
+		fetchRunStreaks(src === 'all' ? null : src).then((s) => {
+			if (req === streakReq) allTimeStreaks = s;
+		});
+	});
+
+	let streakCard = $derived(streakCardState(allTimeStreaks, runStreaks));
+
+	/// Today's summary card: this week and this month (`progress_summary.ts`).
+	let summary = $derived(progressSummary({ activities: runs, weekStart: weekStartDay, now }));
+	/// How many goals Today lists before leaving the rest to Progress.
+	const GOALS_STRIP_MAX = 3;
+
+	/// Readiness-to-run score (0–100) derived from the live fitness
+	/// snapshot. Sleep + resting-HR inputs aren't piped yet (Health
+	/// Connect / HealthKit reads ship separately); the helper handles
+	/// null gracefully so the card shows a TSB-only score for now.
+	let readiness = $derived.by(() =>
+		computeReadiness({ tsb: loadNow?.tsb ?? null }),
+	);
+
+	/// The newest run started on the local calendar day (`runs` is newest
+	/// first), for the Today hero's ran-today state.
+	let ranTodayRun = $derived.by(() => {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
+		return runs.find((r) => new Date(r.started_at) >= start) ?? null;
+	});
+	/// What leads the page (#1187, decisions § 2385): the plan hero on a plan,
+	/// the first-run block on a new account, else today's run, else readiness
+	/// with a prompt to add one. Mobile Home reads the same `todayHeroState`.
+	let heroState = $derived(
+		todayHeroState({
+			hasPlan: planOverview != null && planPosition != null,
+			raceToday: planPosition?.raceState === 'today',
+			todayWorkoutKind: planOverview?.todayWorkout?.kind ?? null,
+			isNewAccount,
+			ranToday: ranTodayRun != null,
+		}),
+	);
+
+	// Mileage chart data based on view mode.
+	//
+	// Persona-hunt Round 2 finding Intermediate #4. Pre-fix the
+	// monthly/yearly buckets had two issues: (1) bars rendered in
+	// insertion order — `filteredRuns` arrives newest-first from
+	// fetchRuns, so newest-month-on-left / oldest-on-right; (2) the
+	// monthly key used `toLocaleDateString(... month: 'short', year:
+	// '2-digit')` — locale-dependent labels (Jan / ene / 1月) shatter
+	// the grouping when the user's locale changes between sessions,
+	// and `year: '2-digit'` would collide 2026 with 2126 for a
+	// century-spanning history.
+	//
+	// Fix: bucket by a stable `YYYY-MM` (monthly) / `YYYY` (yearly)
+	// sort key, present a separate locale-aware display label, and
+	// sort chronologically before emitting to the chart.
+	let mileageData = $derived.by(() => {
+		if (mileageView === 'weekly') return weeklyMileage;
+
+		const groups = new Map<
+			string,
+			{ distance_m: number; display: string; axis: string }
+		>();
+		for (const run of filteredRuns) {
+			const d = new Date(run.started_at);
+			let sortKey: string;
+			let display: string;
+			// The axis label is formatted in its own right rather than cut out
+			// of `display` — see WeekBar.axis in core/weekly_mileage.ts for
+			// what splitting a localised date on a space did to five locales.
+			let axis: string;
+			if (mileageView === 'monthly') {
+				// `YYYY-MM` is locale-independent + sort-stable. Pad
+				// month to 2 digits so a January 2026 row sorts before
+				// October 2026 (lex would otherwise put 10 before 2).
+				sortKey =
+					`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+				// Display label honours the user's locale for the month
+				// abbreviation but uses a 4-digit year so a 100-year-old
+				// row doesn't collide with the current decade.
+				display = d.toLocaleDateString(activeFormatLocale(), {
+					month: 'short',
+					year: 'numeric',
+				});
+				axis = d.toLocaleDateString(activeFormatLocale(), { month: 'short' });
+			} else {
+				sortKey = String(d.getFullYear());
+				display = sortKey;
+				axis = sortKey;
+			}
+			const cur = groups.get(sortKey);
+			if (cur) {
+				cur.distance_m += run.distance_m;
+			} else {
+				groups.set(sortKey, { distance_m: run.distance_m, display, axis });
+			}
+		}
+		return Array.from(groups.entries())
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([, v]) => ({
+				week: v.display,
+				axis: v.axis,
+				distance_m: Math.round(v.distance_m),
+			}));
+	});
+
+	// The bar whose date + distance the readout above the chart shows. An
+	// index rather than the row, so a view toggle mid-hover reads whatever
+	// now sits in that slot instead of holding a row from the old view.
+	let mileageInspect = $state<number | null>(null);
+	let inspectedBar = $derived(
+		mileageInspect === null ? null : (mileageData[mileageInspect] ?? null)
+	);
+
+	let maxBar = $derived(Math.max(1, ...mileageData.map((w) => w.distance_m)));
+
+	// Once a column may be narrower than its label, a narrow chart sets the
+	// labels edge to edge and "13 20 27" reads as "132027". Which labels fit
+	// depends on the rendered width of THIS chart, this locale's labels and
+	// this device's font, and the monthly and yearly views have no fixed
+	// bucket count — so it is measured rather than broken at a width. Every
+	// Nth label is kept, counted back from the latest bucket so the current
+	// period is always the one named.
+	const AXIS_LABEL_GAP_PX = 6;
+	let chartWidth = $state(0);
+	let axisLabelWidths = $state<number[]>([]);
+	let axisLabelStep = $derived.by(() => {
+		const count = mileageData.length;
+		if (count === 0 || chartWidth === 0) return 1;
+		const widest = Math.max(0, ...axisLabelWidths.slice(0, count));
+		return Math.max(1, Math.ceil((widest + AXIS_LABEL_GAP_PX) / (chartWidth / count)));
+	});
+</script>
+
+<svelte:head>
+	<title>{view === 'today' ? m('dash.pageTitle') : m('dash.progressTitle')} — Threkir</title>
+</svelte:head>
+
+<div class="page">
+	{#if view === 'today'}
+		<PageHeader title={m('dash.pageTitle')} testid="dash-page-header">
+			{#snippet actions()}<DashboardActionsMenu />{/snippet}
+		</PageHeader>
+	{:else}
+		<PageHeader
+			title={m('dash.progressTitle')}
+			back={{ href: '/dashboard', label: m('dash.pageTitle') }}
+			testid="dash-page-header"
+		/>
+	{/if}
+	{#if loading}
+		<SkeletonBlock height="5rem" radius="var(--radius-lg)" />
+		<SkeletonBlock height="2rem" width="22rem" radius="var(--radius-lg)" />
+		<div class="stat-grid" aria-hidden="true" data-testid="dash-skeleton">
+			{#each Array(5) as _, i (i)}
+				<div class="stat-card skeleton-card">
+					<SkeletonBlock height="0.75rem" width="50%" />
+					<SkeletonBlock height="1.6rem" width="65%" />
+				</div>
+			{/each}
+		</div>
+		<SkeletonBlock height="18rem" radius="var(--radius-lg)" />
+		<SkeletonBlock height="12rem" radius="var(--radius-lg)" />
+		<p class="visually-hidden" role="status">{m('shell.loading')}</p>
+	{:else if loadError}
+		<div class="dash-load-error" role="alert" data-testid="dash-load-error">
+			<span class="material-symbols" aria-hidden="true">error</span>
+			<div>
+				<strong>{m('dash.loadErrorTitle')}</strong>
+				<span class="dash-load-error-detail">{m('dash.loadErrorBody')}</span>
+			</div>
+			<button
+				class="btn btn-outline"
+				onclick={() => location.reload()}
+				data-testid="dash-load-retry">{m('dash.retry')}</button
+			>
+		</div>
+	{:else}
+		<!-- Readiness lives in the Today hero (#1187): the whole card where
+		     nothing is planned, one line beside a plan session or today's run.
+		     Inputs are TSB-only until sleep + resting-HR reads land. -->
+		{#snippet readinessCard()}
+			{#if loadNow != null}
+				<section class="readiness-card readiness-{readiness.band}" data-testid="hero-readiness-card">
+					<div class="readiness-head">
+						<span class="readiness-label">{m('dash.readinessLabel')}</span>
+						<span class="readiness-band">{m(`dash.readinessBand_${readiness.band}`)}</span>
+					</div>
+					<div class="readiness-score">{readiness.score}</div>
+					<p class="readiness-advice">{readinessAdviceText(readiness, m)}</p>
+					{#if readiness.contributors.length > 0}
+						<ul class="readiness-contribs">
+							{#each readiness.contributors as c (c.kind)}
+								<li>
+									<span class="contrib-name">{m(CONTRIBUTOR_NAMES[c.kind])}</span>
+									<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
+										{c.delta > 0 ? '+' : ''}{c.delta}
+									</span>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+					{#if readiness.contributors.every((c) => c.kind === 'form')}
+						<p class="readiness-source" data-testid="readiness-load-only">
+							{m('dash.readinessFromLoadOnly')}
+						</p>
+					{/if}
+				</section>
+			{/if}
+		{/snippet}
+		{#snippet readinessLine()}
+			{#if loadNow != null}
+				<p class="hero-readiness readiness-{readiness.band}" data-testid="hero-readiness">
+					<span class="hero-readiness-score">{m('dash.heroReadiness', { score: readiness.score })}</span>
+					<span class="readiness-band">{m(`dash.readinessBand_${readiness.band}`)}</span>
+					<span class="hero-readiness-advice">{readinessAdviceText(readiness, m)}</span>
+				</p>
+			{/if}
+		{/snippet}
+		{#if view === 'today'}
+			{#if isReturningRunner}
+				<section class="welcome-back-card">
+					<span class="material-symbols welcome-back-icon" aria-hidden="true">waving_hand</span>
+					<div class="welcome-back-body">
+						<h2>{m('dash.welcomeBackTitle')}</h2>
+						<p>{m('dash.welcomeBackBody')}</p>
+					</div>
+				</section>
+			{/if}
+			<!-- The adaptive Today hero leads the page in every state (#1187,
+			     decisions § 2385); `heroState` picks which. -->
+			{#if planOverview && planPosition}
+				{@const t = planOverview.todayWorkout}
+				{@const todayDone = t != null && (t.manually_completed === true || t.completed_run_id != null)}
+				{@const raceGoal = heroRace ? heroRace.goalTimeSec : planOverview.plan.goal_time_seconds}
+				<section
+					class="plan-hero"
+					class:race-today={planPosition.raceState === 'today'}
+					data-testid="dash-today-hero"
+					data-state={heroState}
+				>
+					<header class="plan-hero-head">
+						<div class="plan-hero-ident">
+							<span class="plan-hero-label">{m('dash.trainingPlanLabel')}</span>
+							<h2 class="plan-hero-name">{planOverview.plan.name}</h2>
+							<div class="plan-hero-goal">
+								<span>
+									<span class="material-symbols">flag</span>
+									{heroRace?.name ?? goalEventLabel(m, formatUnitDistance, planOverview.plan.goal_event, planOverview.plan.goal_distance_m)}
+								</span>
+								{#if raceGoal}
+									<span>
+										<span class="material-symbols">timer</span>
+										{formatDuration(raceGoal)}
+									</span>
+								{/if}
+								<span>
+									<span class="material-symbols">event</span>
+									{fmtRaceDate(heroRace?.date ?? planOverview.plan.end_date)}
+								</span>
+							</div>
+						</div>
+						<div class="plan-hero-position">
+							<span class="plan-hero-week">
+								{m('dash.weekPrefix', { n: planPosition.weekIndex })} <em>{m('dash.weekOfSuffix', { total: planPosition.totalWeeks })}</em>
+							</span>
+							<span
+								class="plan-hero-relation"
+								class:race-today={planPosition.raceState === 'today'}
+								class:race-past={planPosition.raceState === 'past'}
+							>
+								{planPosition.relation}
+							</span>
+						</div>
+					</header>
+
+					<div class="plan-hero-progress">
+						<div
+							class="plan-hero-progress-bar"
+							role="progressbar"
+							aria-valuemin="0"
+							aria-valuemax="100"
+							aria-valuenow={planPosition.calendarPct}
+							aria-label={m('dash.calendarProgressAria')}
+						>
+							<span
+								class="plan-hero-progress-fill"
+								style="width: {planPosition.calendarPct}%"
+							></span>
+						</div>
+						<span class="plan-hero-progress-meta">
+							{m('dash.pctOfCalendar', { pct: planPosition.calendarPct })}
+							<span class="plan-hero-progress-sep">·</span>
+							{m('dash.pctOfWorkouts', { pct: planOverview.completionPct })}
+						</span>
+					</div>
+
+					{#if planFinished}
+						<FinishPlanPrompt plan={planOverview.plan} onfinished={reloadPlanOverview} />
+					{:else}
+					{#if planBreak?.showing && planBreak.found && breakContext}
+						<PlanBreakCard
+							plan={planOverview.plan}
+							weeks={planOverview.weeks}
+							workouts={planOverview.workouts}
+							today={breakToday}
+							found={planBreak.found}
+							context={breakContext}
+							onanswered={(pref) => {
+								if (breakContext) breakContext = { ...breakContext, dismissedPref: pref };
+							}}
+							onapplied={reloadPlanOverview}
+						/>
+					{:else if planBreakQuiet}
+						<MissedWorkoutPrompt
+							planId={planOverview.plan.id}
+							weeks={planOverview.weeks}
+							workouts={planOverview.workouts}
+							today={formatISO(todayMidnight)}
+							makeUpHref="/plans/{planOverview.plan.id}?makeup=1"
+						/>
+					{/if}
+					<div class="plan-hero-today">
+						{#if t}
+							<button
+								type="button"
+								class="plan-hero-today-btn"
+								class:done={todayDone}
+								onclick={() => (editingWorkout = t)}
+							>
+								<div class="plan-hero-today-icon">
+									{#if todayDone}
+										<span class="material-symbols done-icon">check_circle</span>
+									{:else if t.kind === 'rest'}
+										<span class="material-symbols">self_improvement</span>
+									{:else}
+										<span class="material-symbols">directions_run</span>
+									{/if}
+								</div>
+								<div class="plan-hero-today-body">
+									<span class="plan-hero-today-label">{m('dash.today')}</span>
+									<span class="plan-hero-today-kind">
+										{workoutKindLabel(t.kind)}
+									</span>
+									<div class="plan-hero-today-meta">
+										{#if todaySize != null}
+											<span data-testid="plan-hero-today-size">{todaySize}</span>
+										{/if}
+										{#if t.target_pace_sec_per_km && t.kind !== 'walk_run'}
+											<span>{m('workoutDetail.atPace', { pace: fmtPace(t.target_pace_sec_per_km) })}</span>
+										{/if}
+										{#if todayDone}
+											<span class="plan-hero-today-done" data-testid="plan-hero-done"
+												>{m('dash.completed')}{#if todayOverrunM != null}<span aria-hidden="true"
+														>{' · '}{m('plan.overrun', { distance: fmtOverrun(todayOverrunM) })}</span
+													><span class="sr-only">, {m('plan.overrunAria', { distance: fmtOverrun(todayOverrunM) })}</span
+													>{/if}</span
+											>
+										{/if}
+									</div>
+									{#if todayPattern != null}
+										<span class="plan-hero-today-pattern" data-testid="plan-hero-today-pattern"
+											>{todayPattern}</span
+										>
+									{/if}
+								</div>
+								<span class="material-symbols plan-hero-today-arrow">chevron_right</span>
+							</button>
+						{:else}
+							<div class="plan-hero-today-btn plan-hero-today-rest">
+								<div class="plan-hero-today-icon">
+									<span class="material-symbols">self_improvement</span>
+								</div>
+								<div class="plan-hero-today-body">
+									<span class="plan-hero-today-label">{m('dash.today')}</span>
+									<span class="plan-hero-today-kind">{m('dash.restDay')}</span>
+									<span class="plan-hero-today-meta-quiet">
+										{m('dash.noWorkoutScheduled')}
+									</span>
+								</div>
+							</div>
+						{/if}
+					</div>
+					{#if showMascot && (!t || t.kind === 'rest')}
+						<RestDayGrisnir />
+					{/if}
+					{/if}
+
+					{@render readinessLine()}
+
+					{#if planOverview.upcoming}
+						<a class="plan-hero-next" href="/plans/{planOverview.upcoming.id}" data-testid="plan-hero-next">
+							<span class="material-symbols">event_upcoming</span>
+							{m('dash.planUpNext', {
+								name: planOverview.upcoming.name,
+								date: fmtRaceDate(planOverview.upcoming.start_date)
+							})}
+						</a>
+					{/if}
+
+					<footer class="plan-hero-actions">
+						<a class="btn btn-primary btn-sm plan-hero-cta" href="/plans/{planOverview.plan.id}">
+							<span class="material-symbols">calendar_month</span>
+							{m('dash.viewFullPlan')}
+						</a>
+						<a class="plan-hero-manage" href="/plans">
+							{m('dash.managePlans')}
+							<span class="material-symbols">chevron_right</span>
+						</a>
+					</footer>
+				</section>
+				{#if !planFinished && !loading && planBreakQuiet}
+					<PlanNudgeCard
+						plan={planOverview.plan}
+						weeks={planOverview.weeks}
+						workouts={planOverview.workouts}
+						{runs}
+						dismissed={planNudgesDismissed}
+						today={formatISO(todayMidnight)}
+						breakWindow={planBreak?.window ?? null}
+					/>
+				{/if}
+			{:else if heroState === 'new_account'}
+				<div data-testid="dash-today-hero" data-state={heroState}>
+					<DashboardFirstRun hasPlan={false} />
+				</div>
+			{:else if heroState === 'ran_today' && ranTodayRun}
+				<a
+					class="today-hero today-hero-run"
+					href="/runs/{ranTodayRun.id}"
+					data-testid="dash-today-hero"
+					data-state={heroState}
+				>
+					<span class="today-hero-icon" aria-hidden="true">
+						<span class="material-symbols">directions_run</span>
+					</span>
+					<div class="today-hero-main">
+						<span class="today-label">{m('dash.heroRanToday')}</span>
+						<strong class="today-hero-title">
+							{formatDistance(ranTodayRun.distance_m)} &middot; {formatDuration(ranTodayRun.duration_s)}
+						</strong>
+						{@render readinessLine()}
+					</div>
+					<span class="material-symbols today-hero-arrow" aria-hidden="true">chevron_right</span>
+				</a>
+			{:else}
+				<section class="today-hero" data-testid="dash-today-hero" data-state={heroState}>
+					<div class="today-hero-main">
+						<span class="today-label">{m('dash.today')}</span>
+						<h2 class="today-hero-title">{m('dash.heroNothingPlanned')}</h2>
+						<p class="today-hero-body">{m('dash.heroNothingPlannedBody')}</p>
+					</div>
+					{@render readinessCard()}
+					<a class="btn btn-primary btn-sm today-hero-cta" href="/runs/new" data-testid="dash-hero-add-run">
+						<span class="material-symbols" aria-hidden="true">add</span>
+						{m('dash.heroAddRun')}
+					</a>
+				</section>
+			{/if}
+			{#if planOverview && planPosition}
+				<!-- The plan hero above already leads the page. -->
+			{:else if planLoadError}
+				<div class="dash-load-error" role="alert" data-testid="dash-plan-load-error">
+					<span class="material-symbols" aria-hidden="true">error</span>
+					<div>
+						<strong>{m('dash.planLoadErrorTitle')}</strong>
+						<span class="dash-load-error-detail">{m('dash.planLoadErrorBody')}</span>
+					</div>
+					<button class="btn btn-outline" onclick={reloadPlanOverview} data-testid="dash-plan-load-retry"
+						>{m('dash.retry')}</button
+					>
+				</div>
+			{:else if !planOverview && pausedPlan}
+				<a class="plan-promo" href="/plans/{pausedPlan.id}?resume=1" data-testid="dash-paused-plan">
+					<div>
+						<span class="today-label">{m('dash.planPausedKicker')}</span>
+						<h3>{pausedPlan.name}</h3>
+						<p>{m('dash.planPausedBody')}</p>
+					</div>
+					<span class="material-symbols">chevron_right</span>
+				</a>
+			{:else if !planOverview && recent5kSuggestion}
+				<Recent5kPlanCard suggestion={recent5kSuggestion} ondismiss={dismissRecent5k} />
+			{:else if !planOverview}
+				<a class="plan-promo" href="/plans?new=1">
+					<div>
+						<span class="today-label">{m('dash.trainingPlansKicker')}</span>
+						<h3>{m('dash.planPromoTitle')}</h3>
+						<p>{m('dash.planPromoBody')}</p>
+					</div>
+					<span class="material-symbols">chevron_right</span>
+				</a>
+			{/if}
+
+			<!-- Next RSVP'd event within seven days, in the Today block so runners
+			     remember to show up. Mirrors mobile Home's UpcomingEventCard.
+			     Hides when nothing matches. -->
+			{#if upcomingEvent}
+				{@const when = new Date(upcomingEvent.instance_start)}
+				{@const whenLabel = when.toLocaleString(activeFormatLocale(), {
+					weekday: 'short',
+					month: 'short',
+					day: 'numeric',
+					hour: 'numeric',
+					minute: '2-digit',
+				})}
+				<a
+					href="/clubs/{upcomingEvent.club_slug}/events/{upcomingEvent.event_id}"
+					class="event-card"
+					data-testid="dash-upcoming-event"
+				>
+					<div class="event-icon">
+						<span class="material-symbols">event</span>
+					</div>
+					<div class="event-body">
+						<span class="event-label">{m('dash.upcomingEventLabel')}</span>
+						<strong class="event-title">{upcomingEvent.title}</strong>
+						<span class="event-when">
+							{whenLabel}{#if upcomingEvent.meet_label} &middot; {upcomingEvent.meet_label}{/if}
+						</span>
+					</div>
+					<span class="material-symbols event-arrow">chevron_right</span>
+				</a>
+			{/if}
+
+			<!-- Today's lift — a "today's modality" card (multi_modal.md §
+			     Home). Self-hiding: only renders when a gym session was logged
+			     today. A pure runner has none, so never sees it. -->
+			{#if latestTodayLift && gymShown}
+				<a class="card-elevated today-lift-card" href="/gym/{latestTodayLift.id}">
+					<div class="today-lift-icon">
+						<span class="material-symbols">fitness_center</span>
+					</div>
+					<div class="today-lift-body">
+						<span class="today-label">{m('dash.todayLiftLabel')}</span>
+						<strong class="today-lift-title">{latestTodayLift.title || m('gym.untitled')}</strong>
+						<span class="today-lift-meta">
+							{m('gym.exercisesShort', { count: liftExerciseCount(latestTodayLift.id) })}
+							{#if liftVolume(latestTodayLift.id) > 0}
+								&middot; {formatWeight(liftVolume(latestTodayLift.id))}
+							{/if}
+						</span>
+					</div>
+					<span class="material-symbols today-lift-arrow">chevron_right</span>
+				</a>
+			{/if}
+
+			<!-- Today's nutrition — a "today's modality" card (multi_modal.md §
+			     Home), the rings companion to the today's-lift card above. Self-
+			     hiding: only renders when food was logged today (a runner who tracks
+			     no food never sees it). Targets stay null without body metrics
+			     (Art 9 health-consent gate), so the rings render unfilled. -->
+			{#if todaysFood.length > 0 && nutritionShown}
+				<NutritionRingsCard consumed={nutritionConsumed} targets={nutritionTargets} />
+			{/if}
+
+			<!-- A brand-new account has nothing to derive any of the cards below
+			     from, so it gets one screen with one action instead of eleven empty
+			     ones. The plan hero and the upcoming-event card above still render:
+			     onboarding creates a plan before the first run exists. #905. -->
+			{#if isNewAccount}
+				{#if heroState !== 'new_account'}
+					<DashboardFirstRun hasPlan={planOverview != null} />
+				{/if}
+			{:else}
+			{#if hasRuns && heroState !== 'ran_today' && runs.length > 0}
+				{@const last = runs[0]}
+				<!-- The last run, as on mobile's Today: "how did that go, and did it
+				     save?" is the first question after a run. It sits in the hero
+				     instead when it was today's. -->
+				<a class="card-elevated today-lift-card" href="/runs/{last.id}" data-testid="today-last-run">
+					<div class="today-lift-icon">
+						<span class="material-symbols" aria-hidden="true">directions_run</span>
+					</div>
+					<div class="today-lift-body">
+						<span class="today-label">{m('dash.lastRunLabel')}</span>
+						<strong class="today-lift-title">{formatDistance(last.distance_m)} &middot; {formatDuration(last.duration_s)}</strong>
+						<span class="today-lift-meta">{formatDateShort(last.started_at)}</span>
+					</div>
+					<span class="material-symbols today-lift-arrow" aria-hidden="true">chevron_right</span>
+				</a>
+			{/if}
+
+			<!-- Goals strip: each goal's name and how far along it is, up to
+			     three. The full cards and the editor are on Progress. -->
+			{#if displayGoals.length > 0}
+				<a class="card-elevated today-summary" href="/dashboard/progress#goals" data-testid="today-goals-strip">
+					<span class="today-summary-head">
+						<h2>{m('dash.goalsTitle')}</h2>
+						<span class="material-symbols" aria-hidden="true">chevron_right</span>
+					</span>
+					<ul class="goals-strip">
+						{#each displayGoals.slice(0, GOALS_STRIP_MAX) as g (g.id)}
+							{@const p = evaluateGoal(g, runs, new Date(), weekStartDay, planOverview?.workouts ?? [])}
+							{@const done = p.overallPercent >= 1}
+							<li>
+								<span class="goals-strip-row">
+									<span class="goals-strip-name">{g.title || periodLabel(g.period)}</span>
+									<span class="goals-strip-pct" class:done>{Math.round(p.overallPercent * 100)}%</span>
+								</span>
+								<span class="goal-target-bar" aria-hidden="true">
+									<span
+										class="goal-target-fill"
+										class:complete={done}
+										style="width: {Math.min(100, Math.round(p.overallPercent * 100))}%"
+									></span>
+								</span>
+							</li>
+						{/each}
+					</ul>
+					{#if displayGoals.length > GOALS_STRIP_MAX}
+						<p class="goals-strip-more">{m('dash.goalsMore')}</p>
+					{/if}
+				</a>
+			{/if}
+
+			<!-- One progress summary card: this week, this month and the current
+			     streak. It opens Progress, where the trends live. -->
+			<a class="card-elevated today-summary" href="/dashboard/progress" data-testid="today-progress-summary">
+				<span class="today-summary-head">
+					<h2>{m('dash.progressSummaryTitle')}</h2>
+					<span class="material-symbols" aria-hidden="true">chevron_right</span>
+				</span>
+				<dl class="summary-grid">
+					<div>
+						<dt>{m('dash.progressSummaryWeek')}</dt>
+						<dd data-testid="today-summary-week">{formatDistance(summary.weekM)}</dd>
+					</div>
+					<div>
+						<dt>{m('dash.progressSummaryMonth')}</dt>
+						<dd data-testid="today-summary-month">{formatDistance(summary.monthM)}</dd>
+					</div>
+					<div>
+						<dt>{m('dash.statStreak')}</dt>
+						<dd>
+							{streakCard.current}
+							<span class="stat-unit">{m('dash.dayUnit', { n: streakCard.current })}</span>
+						</dd>
+					</div>
+				</dl>
+			</a>
+
+				<!-- A compact row, not a promo card (#1187, decisions § 2387): Coach
+				     also has a sidebar item, so on Home it is a reminder, not a pitch. -->
+				{#if coachOn}
+					<a class="coach-row" href="/messages/coach" data-testid="dash-coach-row">
+						<span class="material-symbols coach-row-icon" aria-hidden="true">sports</span>
+						<strong>{m('dash.coachRowTitle')}</strong>
+						<span class="coach-row-sub">
+							{#if planOverview}
+								{m('dash.coachGroundedPlan')}
+							{:else}
+								{m('dash.coachGroundedRuns')}
+							{/if}
+						</span>
+						<span class="material-symbols coach-row-arrow" aria-hidden="true">chevron_right</span>
+					</a>
+				{/if}
+			{/if}
+		{:else if isNewAccount}
+			<DashboardFirstRun hasPlan={planOverview != null} />
+		{:else}
+			{#if hasRuns}
+				<DashboardWeekLead
+					activities={runs}
+					planWorkouts={planFinished ? null : (planOverview?.workouts ?? null)}
+					weeklyGoal={weeklyGoalTarget(displayGoals)}
+					weekStart={weekStartDay}
+					{now}
+					onopensession={(w) => (editingWorkout = w)}
+					onopenweek={() => (periodModal = { type: 'week', date: new Date() })}
+				/>
+			{/if}
+			<!-- Source filter — applies to every metric below the today
+			     card / upcoming event. Sits up here so the user understands
+			     which slice of their data drives the analytics that follow.
+			     Year-recap link rides on the right side of the same row so
+			     the dashboard doesn't burn two horizontal rails on a single
+			     line of controls. -->
+			<div class="filter-row">
+				{#if visibleSources.length > 0}
+					<div class="filter-chips">
+						{#each visibleSources as src (src.value)}
+							<button
+								class="filter-btn"
+								class:active={sourceFilter === src.value}
+								onclick={() => (sourceFilter = src.value)}
+							>
+								{sourceChipLabel(src.label)}
+							</button>
+						{/each}
+					</div>
+				{/if}
+				<a href="/recap/{new Date().getFullYear()}" class="recap-link">
+					<span class="material-symbols">auto_awesome</span>
+					{m('dash.viewRecap', { year: new Date().getFullYear() })}
+				</a>
+			</div>
+			<!-- This week lives on the week lead above, and its day strip, climb
+			     and pace in the weekly summary the lead opens (decisions § 2283):
+			     the grid keeps the all-time figures. -->
+			<div class="stat-grid">
+				<div class="stat-card">
+					<span class="stat-label">{m('dash.statTotalRuns')}</span>
+					<span class="stat-value" data-testid="dash-total-runs">{totalRuns}</span>
+					<span class="stat-sub">{m('dash.allSources')}</span>
+				</div>
+				<button
+					type="button"
+					class="stat-card stat-card-button"
+					onclick={() => (periodModal = { type: 'all', date: new Date() })}
+				>
+					<span class="stat-label">{m('dash.statLongestRun')}</span>
+					<span class="stat-value">{formatDistance(longestRun)}</span>
+					<span class="stat-sub">{m('dash.allTime')}</span>
+				</button>
+				<div class="stat-card" class:streak-active={streakCard.current > 0}>
+					<span class="stat-label">{m('dash.statStreak')}</span>
+					<span class="stat-value">
+						{streakCard.current}
+						<span class="stat-unit">{m('dash.dayUnit', { n: streakCard.current })}</span>
+					</span>
+					<span class="stat-sub">
+						{#if streakCard.sub.kind === 'best'}
+							{m('dash.streakBest', { n: streakCard.sub.n })}
+						{:else if streakCard.sub.kind === 'allTimeBest'}
+							{m('dash.streakAllTimeBest')}
+						{:else if streakCard.sub.kind === 'restart'}
+							{m('dash.streakRunToRestart')}
+						{:else if streakCard.sub.kind === 'start'}
+							{m('dash.streakRunToStart')}
+						{/if}
+					</span>
+				</div>
+			</div>
+
+			<!-- Week-over-week + month-over-month trend deltas on the summary
+			     stats (distance / time / runs). Compares each period-to-date
+			     against the same to-date slice of the prior period so a mid-week
+			     glance is honest. Scoped to filteredRuns + week_start_day so it
+			     agrees with the stat grid above. Self-hides with no activity.
+			     Pure derivation in lib/training/trend_deltas.ts. Backlog #11. -->
+			<TrendDeltasCard runs={filteredRuns} weekStart={weekStartDay} {now} />
+
+			<!-- Self-hiding challenges strip: renders nothing when the user is in
+			     no live challenge (data-presence self-hide, matching the gym /
+			     nutrition cards). challenges.md. -->
+			<ChallengesPanel />
+
+			<!-- Multi-metric goals — local-only. Lives directly under the
+			     stat-grid so the "what am I working toward?" lens sits next
+			     to the "where am I right now?" stats. The empty state is the
+			     shared EmptyState card. The legacy `weekly_mileage_goal_m`
+			     setting (still shared with Android via Settings → Preferences)
+			     is surfaced as a synthetic weekly distance goal so it shows
+			     up here without needing a separate card. -->
+			<section class="goals-section" id="goals">
+				<header class="goals-header">
+					<h2>{m('dash.goalsTitle')}</h2>
+					{#if displayGoals.length > 0}
+						<button type="button" class="link-btn" onclick={openNewGoal}>
+							{m('dash.addGoalLink')}
+						</button>
+					{/if}
+				</header>
+				{#if displayGoals.length === 0}
+					<EmptyState
+						icon="flag"
+						headingLevel={3}
+						title={m('dash.noGoalsSet')}
+						text={m('dash.noGoalsBody')}
+						data-testid="goals-empty"
+					>
+						{#snippet actions()}
+							<button type="button" class="btn btn-primary" onclick={openNewGoal}>
+								<span class="material-symbols" aria-hidden="true">add</span>
+								{m('dash.addGoal')}
+							</button>
+						{/snippet}
+					</EmptyState>
+				{:else}
+					<div class="goal-grid">
+						{#each displayGoals as g (g.id)}
+							{@const p = evaluateGoal(g, runs, new Date(), weekStartDay, planOverview?.workouts ?? [])}
+							{@const isSynthetic = g.id === SYNTHETIC_WEEKLY_GOAL_ID}
+							{@const isDone = p.overallPercent >= 1}
+							<button
+								class="goal-card"
+								class:goal-card-done={isDone}
+								type="button"
+								onclick={() =>
+									isSynthetic ? goto('/settings/training#weekly-distance-goal') : openEditGoal(g)}
+							>
+								<header class="goal-card-top">
+									<span class="goal-period">{periodLabel(g.period)}</span>
+									<span class="goal-card-top-right">
+										{#if isDone}
+											<span class="goal-done-badge">
+												<span class="material-symbols">check_circle</span>
+												{m('dash.doneBadge')}
+											</span>
+										{/if}
+										<span class="goal-overall">
+											{Math.round(p.overallPercent * 100)}%
+										</span>
+									</span>
+								</header>
+								<ul class="goal-targets">
+									{#each p.targets as t}
+										<li>
+											<div class="goal-target-top">
+												<span>{t.label}</span>
+												<span class="goal-target-value">
+													{t.currentLabel} / {t.targetLabel}
+												</span>
+											</div>
+											<div class="goal-target-bar">
+												<div
+													class="goal-target-fill"
+													class:complete={t.complete}
+													style="width: {Math.round(t.percent * 100)}%"
+												></div>
+											</div>
+										</li>
+									{/each}
+								</ul>
+								{#if isSynthetic}
+									<p class="goal-card-footer">{m('dash.fromSettingsEditThere')}</p>
+								{/if}
+							</button>
+						{/each}
+					</div>
+				{/if}
+			</section>
+
+			<!-- Fitness snapshot — VO2 max + training-load (ATL / CTL / TSB)
+			     + a rule-based recovery advice line. Computed client-side
+			     from recent runs via `lib/fitness.ts`; persisted to
+			     `fitness_snapshots` on every dashboard open so the trend
+			     chart has history. Hides when the user has no qualifying
+			     runs yet (short / non-recording sources only). -->
+			{#snippet fitnessSnapshot()}
+				<section class="fitness-card">
+					<div class="fitness-row">
+						<div class="fitness-metric">
+							<span class="fitness-label"><MetricLabel metric="vo2max" /></span>
+							<span class="fitness-value">
+								{liveSnap.vo2Max != null ? liveSnap.vo2Max.toFixed(1) : '—'}
+							</span>
+							<span class="fitness-unit">ml/kg/min</span>
+						</div>
+						{#if loadNow != null}
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="ctl" /></span>
+								<span class="fitness-value">{loadNow.ctl.toFixed(0)}</span>
+								<span class="fitness-unit">{m('dash.ctlUnit')}</span>
+							</div>
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="atl" /></span>
+								<span class="fitness-value">{loadNow.atl.toFixed(0)}</span>
+								<span class="fitness-unit">{m('dash.atlUnit')}</span>
+							</div>
+							<div class="fitness-metric">
+								<span class="fitness-label"><MetricLabel metric="tsb" /></span>
+								<span
+									class="fitness-value"
+									class:tsb-neg={loadNow.tsb < -10}
+									class:tsb-pos={loadNow.tsb > 10}
+								>
+									{formatSignedInteger(loadNow.tsb, currentLocale())}
+								</span>
+								<span class="fitness-unit">{m('dash.tsbUnit')}</span>
+							</div>
+						{/if}
+					</div>
+					<p class="fitness-advice">
+						{m(`dash.recoveryAdvice_${recoveryAdviceKind(loadNow?.tsb ?? null, loadNow?.ctl ?? null, isReturningFromLayoff(runs))}`)}
+					</p>
+					{#if daysToHard != null}
+						<p class="fitness-next-hard">
+							{m('dash.nextHard', { days: daysToHard })}
+						</p>
+					{/if}
+					{#if excludeGymFromReadiness && hasRecentLift}
+						<p class="fitness-gym-note" data-testid="gym-readiness-note">
+							<span class="material-symbols" aria-hidden="true">fitness_center</span>
+							{m('dash.gymReadinessExcluded')}
+						</p>
+					{:else if !excludeGymFromReadiness && hasRecentLift}
+						<p class="fitness-gym-note" data-testid="gym-readiness-note">
+							<span class="material-symbols" aria-hidden="true">fitness_center</span>
+							{m('dash.gymReadinessIncluded')}
+						</p>
+					{/if}
+					{#if trendPath}
+						<!-- Trend sparkline: VO2 max over the persisted
+						     snapshot history. Rendered as an inline SVG path
+						     — no chart lib needed for a shape this simple. -->
+						<svg class="trend" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">
+							<path d={trendPath} stroke="currentColor" stroke-width="1.5" fill="none" />
+						</svg>
+					{/if}
+				</section>
+			{/snippet}
+
+			{#snippet trainingLoadChart()}
+				<section class="fitness-card">
+					<TrainingLoadChart
+						points={trainingLoadSeries}
+						hasHr={trainingLoadHasHr}
+						lowConfidence={trainingLoadLowConfidence}
+					/>
+				</section>
+			{/snippet}
+
+			<!-- The trend cards, grouped. Each group folds to its one-line heading
+			     (multi_modal.md § Home, contract v1). A group is mounted only when
+			     at least one card in it is sure to render, so a fold never opens on
+			     nothing; the cards that self-hide still do so inside it. Order is
+			     volume, fitness, performance, effort, recent — the same on mobile. -->
+			{#if !hiddenCards.includes('volume')}
+				<DisclosureSection
+					id="dash-trend-volume"
+					title={m('dash.trendGroupVolume')}
+					hint={m('dash.trendGroupVolumeHint')}
+					open={trendOpen.volume}
+					ontoggle={(o) => setTrendOpen('volume', o)}
+					sectionClass="trend-group"
+					onhide={() => hideTrendGroup('volume')}
+					hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.volume) })}
+				>
+					<div class="metric-band">
+						<!-- Mileage chart -->
+						<section class="card-elevated">
+							<div class="chart-header">
+								<h2>{m('dash.mileageTitle')}</h2>
+								<div class="view-toggle">
+									<button class:active={mileageView === 'weekly'} onclick={() => (mileageView = 'weekly')}>{m('dash.viewWeek')}</button>
+									<button class:active={mileageView === 'monthly'} onclick={() => (mileageView = 'monthly')}>{m('dash.viewMonth')}</button>
+									<button class:active={mileageView === 'yearly'} onclick={() => (mileageView = 'yearly')}>{m('dash.viewYear')}</button>
+								</div>
+							</div>
+							{#if mileageData.length === 0}
+								<p class="empty-text">{m('dash.mileageEmpty')}</p>
+							{:else}
+								<!-- A readout rail above the chart, the shape ElevationProfile
+								     uses, rather than a tooltip per bar. A tooltip centred on
+								     its column overhung the card once the window became twelve
+								     narrow weeks: the last bar's label ran past a 300px
+								     viewport and scrolled the page sideways even at opacity 0,
+								     because a transparent box still has layout. The rail is in
+								     flow, reserves its line so the bars never jump, and wraps
+								     inside the card in any locale. -->
+								<p class="chart-readout" data-testid="mileage-readout">
+									{#if inspectedBar}{inspectedBar.week} · {formatDistance(inspectedBar.distance_m)}{/if}
+								</p>
+								<!-- A list of named weeks, so the figures the readout shows on
+								     hover are also what a screen reader reads per bar. -->
+								<div
+									class="chart"
+									role="list"
+									bind:clientWidth={chartWidth}
+									onpointerleave={(e) => {
+										// A touch lifts before it leaves, so clearing on a touch
+										// pointerleave would wipe the reading the tap just made.
+										if (e.pointerType !== 'touch') mileageInspect = null;
+									}}
+								>
+									{#each mileageData as week, i (week.week)}
+										<!-- `class:empty` rather than a hidden column: a week with
+										     no run is the chart's most load-bearing datum, and the
+										     slot has to be visibly there for the gap to read as a
+										     gap. The bar keeps its zero height and the column
+										     shows a baseline tick instead. -->
+										<div
+											class="bar-col"
+											role="listitem"
+											aria-label="{week.week} · {formatDistance(week.distance_m)}"
+											class:empty={week.distance_m === 0}
+											class:inspected={mileageInspect === i}
+											onpointerenter={() => (mileageInspect = i)}
+											onpointerdown={() => (mileageInspect = i)}
+										>
+											<div
+												class="bar"
+												style="height: {(week.distance_m / maxBar) * 100}%"
+											></div>
+											<span
+												class="bar-label"
+												class:thinned={(mileageData.length - 1 - i) % axisLabelStep !== 0}
+												bind:offsetWidth={axisLabelWidths[i]}>{week.axis}</span
+											>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</section>
+
+						<!-- Training consistency — the fraction of the last 12 calendar weeks
+						     with any activity, the trailing active-week streak, and whether
+						     weekly volume is steady or spiky. A distinct signal from VDOT
+						     (fitness ceiling), the load trio (acute fatigue/form), and the
+						     day-streak (consecutive days). Scoped to filteredRuns so the
+						     source filter + activity-type view carry through, like the week
+						     strip + streak card. Self-hides with < 2 active weeks. Backlog #11
+						     (advanced analytics polish). -->
+						<ConsistencyCard activities={filteredRuns} weekStart={weekStartDay} {now} />
+					</div>
+				</DisclosureSection>
+			{/if}
+			{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
+				{#if !hiddenCards.includes('fitness')}
+					<DisclosureSection
+						id="dash-trend-fitness"
+						title={m('dash.trendGroupFitness')}
+						hint={m('dash.trendGroupFitnessHint')}
+						open={trendOpen.fitness}
+						ontoggle={(o) => setTrendOpen('fitness', o)}
+						sectionClass="trend-group"
+						onhide={() => hideTrendGroup('fitness')}
+						hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.fitness) })}
+					>
+						<div class="metric-band">
+							<!-- One card for the load views (#1187): the fitness snapshot, the
+							     load curve and the ramp or comeback read one series (§ 109), so
+							     they are one card's rows rather than four cards. -->
+							<section class="card-elevated load-merged" data-testid="dash-training-load-card">
+								{#if disclosure !== 'simple'}
+								<h2 class="load-merged-title">{m('dash.trainingLoadSection')}</h2>
+							{/if}
+
+								{#if disclosure !== 'simple' && (liveSnap.vo2Max != null || loadNow != null)}
+									{@render fitnessSnapshot()}
+								{/if}
+
+								<!-- Training-load curves over the last 90 days (decisions §34).
+								     Uses TRIMP when avg_bpm + HR prefs are available, distance
+								     fallback otherwise. Hides when there's nothing to plot. -->
+								{#if disclosure === 'simple'}
+									<!-- Progressive disclosure (#905): at `simple` the fitness snapshot
+									     and the load curve are FOLDED, never dropped — one expander, named
+									     for what is inside it, remembering per account whether it was
+									     opened. At `standard` / `full` the page is exactly as it was.
+									     The override on /settings/display is what makes folding safe. -->
+									{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
+										<details
+											class="load-disclosure"
+											open={trainingLoadExpanded}
+											ontoggle={(e) => setTrainingLoadExpanded(e.currentTarget.open)}
+											data-testid="training-load-disclosure"
+										>
+											<summary>
+												<span class="material-symbols" aria-hidden="true">expand_more</span>
+												<span class="load-disclosure-text">
+													<span class="load-disclosure-title">{m('dash.trainingLoadSection')}</span>
+													<span class="load-disclosure-sub">{m('dash.trainingLoadSectionHint')}</span>
+												</span>
+											</summary>
+											{#if liveSnap.vo2Max != null || loadNow != null}
+												{@render fitnessSnapshot()}
+											{/if}
+											{#if runs.length > 0}
+												{@render trainingLoadChart()}
+											{/if}
+										</details>
+									{/if}
+								{:else if runs.length > 0}
+									{@render trainingLoadChart()}
+								{/if}
+
+								<!-- Training-load ramp — the runner's own acute:chronic workload ratio
+								     and its injury-risk band. The same ACWR policy the coach roster
+								     classifies athletes through (lib/training/coach_load.ts), finally
+								     shown to the runner it describes; most runners have no coach, so
+								     this signal had no reader. Distinct from the readiness ring, which
+								     scores TODAY (form + sleep + resting HR) rather than the last
+								     month's ramp. Scoped to filteredRuns like its neighbours;
+								     self-hides below MIN_ACTIVE_WEEKS of history rather than dividing
+								     by a base that isn't there. Pure derivation in
+								     lib/training/self_load.ts. -->
+								<LoadRampCard runs={filteredRuns} />
+
+								<!-- The same question for the runner the ratio above refuses to grade:
+								     back from a break, no chronic month to divide by, and so no card at
+								     all in exactly the case that most warrants one. Anchored on their
+								     own pre-break weekly average instead of a near-empty one. Mutually
+								     exclusive with LoadRampCard by construction (same activeWeeks gate,
+								     read the other way), pinned by a unit test. Pure derivation in
+								     lib/training/comeback.ts. -->
+								<ComebackCard runs={filteredRuns} />
+							</section>
+						</div>
+					</DisclosureSection>
+				{/if}
+			{/if}
+			{#if !hiddenCards.includes('performance')}
+				<DisclosureSection
+					id="dash-trend-performance"
+					title={m('dash.trendGroupPerformance')}
+					hint={m('dash.trendGroupPerformanceHint')}
+					open={trendOpen.performance}
+					ontoggle={(o) => setTrendOpen('performance', o)}
+					sectionClass="trend-group"
+					onhide={() => hideTrendGroup('performance')}
+					hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.performance) })}
+				>
+					<div class="metric-band">
+						<!-- Multi-distance race-time predictor — projects the 5K / 10K / Half /
+						     Marathon ladder from recency-weighted qualifying efforts, each rung
+						     graded for confidence. Self-hides when no run qualifies (its own
+						     null return). Backlog #11 (advanced analytics polish). -->
+						<RacePredictorCard {runs} />
+
+						<!-- Personal records -->
+						<section class="card-elevated">
+							<h2>{m('dash.personalRecordsTitle')}</h2>
+							{#if visiblePrs.length > 0}
+								{#if isReturningRunner && allPrsStale}
+									<p class="pr-stale-note">
+										{m('dash.prStaleNote')}
+									</p>
+								{/if}
+								<div class="table-scroll" tabindex="0">
+									<table class="pr-table">
+										<thead>
+											<tr>
+												<th>{m('dash.prColDistance')}</th>
+												<th>{m('dash.prColTime')}</th>
+												<th>{m('dash.prColDate')}</th>
+												{#if showAgeGradeCol}
+													<th class="pr-age-grade-th"><MetricLabel metric="ageGrade" /></th>
+												{/if}
+												<th></th>
+											</tr>
+										</thead>
+										<tbody>
+											{#each visiblePrs as pr}
+												<tr>
+													<td class="pr-distance">{pr.distance}</td>
+													<td class="pr-time">{formatDuration(pr.time_s)}</td>
+													<td class="pr-date">
+														{formatDate(pr.date)}
+														<span class="pr-age">{relativeAge(pr.date)}</span>
+													</td>
+													{#if showAgeGradeCol}
+														<td class="pr-age-grade">
+															{prAgeGrades[pr.key] ?? '—'}
+														</td>
+													{/if}
+													<td>
+														<button
+															type="button"
+															class="pr-hide"
+															title={m('dash.hideRecordTitle')}
+															aria-label={m('dash.hideRecordAria', { distance: pr.distance })}
+															onclick={() => hidePr(pr.key)}>×</button
+														>
+													</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							{:else if personalRecords.length === 0}
+								<p class="empty-text">{m('dash.prEmptyNoRuns')}</p>
+							{:else}
+								<p class="empty-text">{m('dash.prAllHidden')}</p>
+							{/if}
+							{#if hiddenPrRows.length > 0}
+								<button
+									type="button"
+									class="pr-show-hidden"
+									onclick={() => (showHiddenPrs = !showHiddenPrs)}
+									aria-expanded={showHiddenPrs}
+								>
+									{showHiddenPrs ? m('dash.hideHidden') : m('dash.showHidden', { n: hiddenPrRows.length })}
+								</button>
+								{#if showHiddenPrs}
+									<ul class="pr-hidden-list">
+										{#each hiddenPrRows as pr}
+											<li>
+												<span>{pr.distance} · {formatDuration(pr.time_s)}</span>
+												<button type="button" class="pr-unhide" onclick={() => unhidePr(pr.key)}>
+													{m('dash.unhide')}
+												</button>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							{/if}
+						</section>
+					</div>
+				</DisclosureSection>
+			{/if}
+			{#if runs.length > 0}
+				{#if !hiddenCards.includes('effort')}
+					<DisclosureSection
+						id="dash-trend-effort"
+						title={m('dash.trendGroupEffort')}
+						hint={m('dash.trendGroupEffortHint')}
+						open={trendOpen.effort}
+						ontoggle={(o) => setTrendOpen('effort', o)}
+						sectionClass="trend-group"
+						onhide={() => hideTrendGroup('effort')}
+						hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.effort) })}
+					>
+						<div class="metric-band">
+							<!-- Easy / hard intensity balance — the time-weighted easy vs hard
+							     split against the ~80/20 polarised-training guideline, with a
+							     verdict (on guideline / too hard / all easy). Classifies each run
+							     by pace against the runner's own VDOT-derived threshold (same
+							     anchor as the load trio). Self-hides when no threshold derives or
+							     the sample is too small. Pure derivation in
+							     lib/training/intensity.ts. Backlog #11. -->
+							<IntensityBalanceCard runs={filteredRuns} />
+
+							<!-- Training intensity — time in HR zones over the last 30/365 days
+							     (window mirrors the Mileage view). Empty state links to
+							     /settings/training#heart-rate-zones when the user hasn't set zones,
+							     or to the same anchor with a "no HR data" hint when zones
+							     are set but no run in window carries avg_bpm.
+							     Layered resilience: hrZones load is wrapped in onMount; a
+							     failure leaves the card in its empty state and never blocks
+							     the rest of the dashboard. Per-point analysis from the
+							     gzipped track is the eventual accuracy upgrade. -->
+							<section class="card-elevated intensity-card">
+								<div class="card-head">
+									<h2>{m('dash.trainingIntensityTitle')}</h2>
+									{#if hrZones && intensityBreakdown && intensityBreakdown.total > 0}
+										<span class="intensity-window">
+											{intensityWindow === '30d'
+												? m('dash.windowLast30Days')
+												: intensityWindow === '90d'
+													? m('dash.windowLast90Days')
+													: m('dash.windowLast12Months')}
+											· {m('dash.runsWithHr', { n: intensityBreakdown.hrTrackedRuns })}
+										</span>
+									{/if}
+								</div>
+								{#if !hrZones}
+									<div class="intensity-empty">
+										<span class="material-symbols intensity-empty-icon">favorite</span>
+										<div class="intensity-empty-body">
+											<strong>{m('dash.setHrZonesTitle')}</strong>
+											<p>{m('dash.setHrZonesBody')}</p>
+										</div>
+										<a class="btn btn-primary btn-sm" href="/settings/training#heart-rate-zones">
+											{m('dash.setZones')}
+										</a>
+									</div>
+								{:else if !intensityBreakdown || intensityBreakdown.total === 0}
+									<div class="intensity-empty">
+										<span class="material-symbols intensity-empty-icon">monitoring</span>
+										<div class="intensity-empty-body">
+											<strong>{m('dash.noHrDataTitle')}</strong>
+											<p>{m('dash.noHrDataBody')}</p>
+										</div>
+										<a class="btn btn-secondary btn-sm" href="/settings/training#heart-rate-zones">
+											{m('dash.reviewZones')}
+										</a>
+									</div>
+								{:else}
+									{@const zb = intensityBreakdown}
+									<ul class="zone-list">
+										{#each zb.zoneSeconds as secs, i}
+											{@const pct = secs / zb.total}
+											<li class="zone-row zone-row-{i + 1}">
+												<span class="zone-name">{m(ZONE_NAMES[i])}</span>
+												<div class="zone-bar-wrap">
+													<div class="zone-bar" style="width: {Math.max(pct * 100, secs > 0 ? 1.5 : 0)}%"></div>
+												</div>
+												<span class="zone-duration">{fmtCompactDuration(secs)}</span>
+												<span class="zone-pct">{Math.round(pct * 100)}%</span>
+											</li>
+										{/each}
+									</ul>
+									<p class="intensity-foot">
+										{m('dash.intensityFoot', { total: fmtCompactDuration(zb.total) })}
+									</p>
+								{/if}
+							</section>
+						</div>
+					</DisclosureSection>
+				{/if}
+			{/if}
+			{#if !hiddenCards.includes('recent')}
+				<DisclosureSection
+					id="dash-trend-recent"
+					title={m('dash.trendGroupRecent')}
+					hint={m('dash.trendGroupRecentHint')}
+					open={trendOpen.recent}
+					ontoggle={(o) => setTrendOpen('recent', o)}
+					sectionClass="trend-group"
+					onhide={() => hideTrendGroup('recent')}
+					hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.recent) })}
+				>
+					<div class="metric-band">
+						<!-- Recent runs -->
+						<section class="card-elevated">
+							<h2>{m('dash.recentRunsTitle')}</h2>
+							{#if filteredRuns.length > 0}
+								<div class="run-list">
+									{#each filteredRuns.slice(0, 7) as run}
+										<a href="/runs/{run.id}" class="run-row">
+											<div class="run-info">
+												<span class="run-date">{formatDateShort(run.started_at)}</span>
+												<span class="run-distance">{formatDistance(run.distance_m)}</span>
+											</div>
+											<div class="run-meta">
+												<span class="run-pace">{formatPace(run.duration_s, run.distance_m)}</span>
+												<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
+											</div>
+										</a>
+									{/each}
+								</div>
+							{:else if sourceFilter === 'all'}
+								<p class="empty-text">
+									{m('dash.recentEmptyAll')}
+								</p>
+								<div class="recent-empty-actions">
+									<a class="btn btn-primary btn-sm" href="/runs/new">{m('dash.addARun')}</a>
+									<a class="btn btn-outline btn-sm" href="/settings/integrations">{m('dash.importFromStravaGarmin')}</a>
+								</div>
+							{:else}
+								<p class="empty-text">
+									{m('dash.recentEmptyFiltered', {
+										source: sourceChipLabel(sources.find((s) => s.value === sourceFilter)?.label ?? sourceFilter),
+									})}
+								</p>
+							{/if}
+						</section>
+						<!-- Recent lifts — gym trend card (multi_modal.md § Home). Self-
+						     hides unless the user has logged a session. Mirrors the
+						     "Recent runs" list above it. -->
+						{#if gymWorkouts.length > 0 && gymShown}
+							<section class="card-elevated">
+								<div class="card-head">
+									<h2>{m('dash.recentLiftsTitle')}</h2>
+									<a class="link-btn" href="/gym">{m('dash.viewAllGym')}</a>
+								</div>
+								<div class="run-list">
+									{#each gymWorkouts.slice(0, 5) as w (w.id)}
+										<a href="/gym/{w.id}" class="run-row">
+											<div class="run-info">
+												<span class="run-date">{formatDateShort(w.started_at)}</span>
+												<span class="run-distance">{w.title || m('gym.untitled')}</span>
+											</div>
+											<div class="run-meta lift-row-meta">
+												<span class="run-pace">{m('gym.exercisesShort', { count: liftExerciseCount(w.id) })}</span>
+												{#if liftVolume(w.id) > 0}
+													<span class="lift-volume">{formatWeight(liftVolume(w.id))}</span>
+												{/if}
+											</div>
+										</a>
+									{/each}
+								</div>
+							</section>
+						{/if}
+					</div>
+				</DisclosureSection>
+			{/if}
+
+			<!-- First-run gym affordance — one slim line, below the fold, for a
+			     runner who hasn't logged a lift yet (the web equivalent of
+			     mobile's always-present Log sheet — discoverability without an
+			     empty card / zeroed chart, anti-clutter checklist). Following it
+			     switches a hidden Gym on; a runner who switched Gym off is not
+			     offered it. -->
+			{#if !loading && gymWorkouts.length === 0 && modalityExplicit('gym') !== false}
+				<a class="gym-footer-prompt" href="/gym" onclick={revealOnNavigate('gym')}>
+					<span class="material-symbols">fitness_center</span>
+					<span>{m('dash.gymFooterPrompt')}</span>
+					<span class="gym-footer-cta">{m('dash.logALift')}</span>
+				</a>
+			{/if}
+		{/if}
+	{/if}
+</div>
+
+{#if editingWorkout}
+	<WorkoutEditor
+		workout={editingWorkout}
+		onClose={() => (editingWorkout = null)}
+		onSaved={async () => {
+			editingWorkout = null;
+			// Re-fetch the active plan overview so the today card picks up
+			// any changes (e.g. new target distance / pace) without a refresh.
+			await reloadPlanOverview();
+		}}
+	/>
+{/if}
+
+<Modal
+	open={periodModal != null}
+	title={m('dash.periodSummaryTitle')}
+	wide
+	onclose={() => (periodModal = null)}
+>
+	{#if periodModal}
+		<PeriodSummary
+			runs={filteredRuns}
+			initialType={periodModal.type}
+			initialDate={periodModal.date}
+			{weekStartDay}
+			coveredFrom={periodRunsCoveredFrom}
+			loadFullHistory={loadFullRunHistory}
+		/>
+	{/if}
+</Modal>
+
+<UnsavedChangesGuard isDirty={goalEditorDirty} />
+
+<Modal
+	open={showGoalEditor && editingGoal != null}
+	title={m('dash.editGoalTitle')}
+	onclose={() => (showGoalEditor = false)}
+	bodyClass="goal-editor-body"
+>
+	{#if editingGoal}
+		{@const eg = editingGoal}
+		<label class="field">
+			<span class="field-label">{m('dash.fieldPeriod')}</span>
+			<div class="toggle-row">
+				<button
+					class="toggle-btn"
+					class:active={eg.period === 'week'}
+					type="button"
+					onclick={() => (editingGoal = { ...eg, period: 'week' })}
+				>{m('dash.periodWeek')}</button>
+				<button
+					class="toggle-btn"
+					class:active={eg.period === 'month'}
+					type="button"
+					onclick={() => (editingGoal = { ...eg, period: 'month' })}
+				>{m('dash.periodMonth')}</button>
+			</div>
+		</label>
+		<label class="field">
+			<span class="field-label">{m('dash.fieldDistance', { unit: preferredUnit })}</span>
+			<input
+				type="number"
+				min="0"
+				step="0.5"
+				value={eg.distanceMetres != null
+					? (preferredUnit === 'mi' ? eg.distanceMetres / 1609.344 : eg.distanceMetres / 1000)
+					: ''}
+				placeholder="—"
+				oninput={(e) => {
+					const v = (e.currentTarget as HTMLInputElement).value;
+					const perUnit = preferredUnit === 'mi' ? 1609.344 : 1000;
+					editingGoal = {
+						...eg,
+						distanceMetres: v === '' ? undefined : Math.max(0, parseFloat(v) * perUnit),
+					};
+				}}
+				class="input"
+			/>
+		</label>
+		<label class="field">
+			<span class="field-label">{m('dash.fieldTimeMinutes')}</span>
+			<input
+				type="number"
+				min="0"
+				step="5"
+				value={eg.timeSeconds != null ? Math.round(eg.timeSeconds / 60) : ''}
+				placeholder="—"
+				oninput={(e) => {
+					const v = (e.currentTarget as HTMLInputElement).value;
+					editingGoal = {
+						...eg,
+						timeSeconds: v === '' ? undefined : Math.max(0, parseFloat(v) * 60),
+					};
+				}}
+				class="input"
+			/>
+		</label>
+		<label class="field">
+			<span class="field-label">
+				{m('dash.fieldAvgPace', { unit: preferredUnit === 'mi' ? 'mi' : 'km' })}
+			</span>
+			<input
+				type="text"
+				inputmode="numeric"
+				pattern={'[0-9]{1,2}:[0-9]{2}'}
+				placeholder={preferredUnit === 'mi' ? '8:00' : '5:00'}
+				value={eg.paceSecPerKm != null
+					? paceMinutesSeconds(
+						preferredUnit === 'mi' ? eg.paceSecPerKm * 1.609344 : eg.paceSecPerKm
+					)
+					: ''}
+				oninput={(e) => {
+					const raw = (e.currentTarget as HTMLInputElement).value.trim();
+					if (raw === '') {
+						editingGoal = { ...eg, paceSecPerKm: undefined };
+						return;
+					}
+					const m = raw.match(/^(\d{1,2}):(\d{2})$/);
+					if (!m) return; // wait for a complete mm:ss
+					const perDisplay = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+					if (perDisplay <= 0) return;
+					const perKm = preferredUnit === 'mi' ? perDisplay / 1.609344 : perDisplay;
+					editingGoal = { ...eg, paceSecPerKm: perKm };
+				}}
+				class="input"
+			/>
+		</label>
+		<label class="field">
+			<span class="field-label">{m('dash.fieldRunCount')}</span>
+			<input
+				type="number"
+				min="0"
+				step="1"
+				value={eg.runCount ?? ''}
+				placeholder="—"
+				oninput={(e) => {
+					const v = (e.currentTarget as HTMLInputElement).value;
+					editingGoal = {
+						...eg,
+						runCount: v === '' ? undefined : Math.max(0, parseInt(v, 10)),
+					};
+				}}
+				class="input"
+			/>
+		</label>
+		<p class="goal-editor-hint">
+			{m('dash.goalEditorHint')}
+		</p>
+		<div class="goal-editor-actions">
+			{#if goals.some((x) => x.id === eg.id)}
+				<button type="button" class="btn btn-danger" onclick={() => (confirmDeleteGoalId = eg.id)}>
+					{m('dash.deleteButton')}
+				</button>
+			{/if}
+			<button type="button" class="btn btn-secondary" onclick={() => (showGoalEditor = false)}>
+				{m('dash.cancelButton')}
+			</button>
+			<button type="button" class="btn btn-primary" onclick={() => commitGoal(eg)}>
+				{m('dash.saveButton')}
+			</button>
+		</div>
+	{/if}
+</Modal>
+
+<ConfirmDialog
+	open={confirmDeleteGoalId !== null}
+	title={m('dash.deleteGoalTitle')}
+	message={m('dash.deleteGoalMessage')}
+	confirmLabel={m('dash.deleteButton')}
+	onconfirm={deleteGoal}
+	oncancel={() => (confirmDeleteGoalId = null)}
+	danger
+/>
+
+<style>
+	.page {
+		padding: var(--page-padding-y) var(--page-padding-x);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-lg);
+	}
+
+	h2 {
+		font-size: var(--font-size-section-title);
+		font-weight: 700;
+		margin: 0 0 var(--space-md);
+		color: var(--color-text);
+		letter-spacing: -0.005em;
+	}
+
+	/* Why: groups a section heading + its body without trapping the
+	   heading inside card chrome. The old pattern put h2 inside `.card`
+	   which made every section title visually indistinguishable from
+	   table headers below it. */
+	.section { display: flex; flex-direction: column; gap: var(--space-sm); }
+	.section-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-md);
+	}
+	.section-head h2 { margin: 0; }
+	.section-desc {
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+		margin: 0;
+	}
+
+	.empty-text {
+		color: var(--color-text-tertiary);
+		font-size: 0.85rem;
+	}
+	.recent-empty-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		margin-top: var(--space-md);
+	}
+	.pr-stale-note {
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+		line-height: 1.45;
+		margin: 0 0 var(--space-md);
+		padding: var(--space-sm) var(--space-md);
+		background: var(--color-bg-tertiary);
+		border-inline-start: 3px solid var(--color-primary);
+		border-radius: var(--radius-sm);
+	}
+
+	.dash-load-error {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		padding: var(--space-md) var(--space-lg);
+		background: rgba(239, 68, 68, 0.08);
+		border: 1px solid rgba(239, 68, 68, 0.3);
+		border-radius: var(--radius-md);
+		color: var(--color-text);
+	}
+	.dash-load-error > div {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+	.dash-load-error-detail {
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+	}
+	.dash-load-error .material-symbols {
+		color: var(--color-danger-text);
+		font-size: 1.4rem;
+	}
+	.skeleton-card {
+		height: 6.5rem;
+		gap: var(--space-sm);
+		pointer-events: none;
+	}
+
+	.filter-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-md);
+		flex-wrap: wrap;
+	}
+	.filter-chips {
+		display: flex;
+		gap: var(--space-xs);
+		flex-wrap: wrap;
+	}
+	.filter-btn {
+		padding: var(--space-xs) var(--space-md);
+		border: 1px solid var(--color-border);
+		border-radius: 9999px;
+		background: var(--color-surface);
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: var(--color-text-secondary);
+		transition: all var(--transition-fast);
+		cursor: pointer;
+	}
+	.filter-btn:hover {
+		border-color: var(--color-primary);
+		color: var(--color-primary);
+	}
+	.filter-btn.active {
+		background: var(--color-primary);
+		border-color: var(--color-primary);
+		color: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+	}
+
+	.chart-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--space-md);
+	}
+	.chart-header h2 { margin-bottom: 0; }
+
+	.view-toggle {
+		display: inline-flex;
+		flex-wrap: wrap;
+		gap: 0.15rem;
+		background: var(--color-bg-tertiary);
+		padding: 0.2rem;
+		border-radius: var(--radius-md);
+	}
+	.view-toggle button {
+		padding: 0.3rem 0.85rem;
+		border: none;
+		background: transparent;
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+		transition: all var(--transition-fast);
+	}
+	.view-toggle button:hover { color: var(--color-text); }
+	.view-toggle button.active {
+		background: var(--color-surface);
+		color: var(--color-primary);
+		box-shadow: var(--shadow-sm);
+	}
+
+	/* Active-plan hero. Single rich card: identity row, calendar
+	   position + progress bar, embedded today's-workout panel, primary
+	   CTA to the plan detail, secondary "Manage plans" link. Replaces
+	   the old standalone today-card + footnote links so the user reads
+	   the plan as one surface, not three loose fragments. */
+	.plan-hero {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-md);
+		padding: var(--space-lg) var(--space-xl);
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--color-primary) 14%, var(--color-surface)) 0%,
+			var(--color-surface) 70%
+		);
+		border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+		border-radius: var(--radius-xl);
+		box-shadow: var(--shadow-sm);
+		transition: box-shadow var(--transition-base), border-color var(--transition-base);
+	}
+	.plan-hero.race-today {
+		border-color: var(--color-primary);
+		box-shadow: var(--shadow-md), var(--shadow-glow, 0 0 0 0 transparent);
+	}
+	.plan-hero-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: var(--space-lg);
+		flex-wrap: wrap;
+	}
+	.plan-hero-ident {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+		min-width: 0;
+		flex: 1 1 auto;
+	}
+	.plan-hero-label {
+		font-size: var(--font-size-section-label);
+		letter-spacing: 0.1em;
+		color: var(--color-primary);
+		font-weight: 700;
+		text-transform: uppercase;
+	}
+	.plan-hero-name {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--color-text);
+		line-height: 1.15;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.plan-hero-goal {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-md);
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+		margin-top: var(--space-xs);
+		font-variant-numeric: tabular-nums;
+	}
+	.plan-hero-goal > span {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+	}
+	.plan-hero-goal :global(.material-symbols) {
+		font-size: 1.1rem;
+		color: var(--color-text-tertiary);
+	}
+	.plan-hero-position {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: var(--space-2xs);
+		text-align: end;
+		flex-shrink: 0;
+	}
+	.plan-hero-week {
+		font-size: 1.05rem;
+		font-weight: 700;
+		color: var(--color-text);
+		font-variant-numeric: tabular-nums;
+	}
+	.plan-hero-week em {
+		font-style: normal;
+		font-weight: 500;
+		color: var(--color-text-tertiary);
+	}
+	.plan-hero-relation {
+		display: inline-flex;
+		align-items: center;
+		padding: var(--space-2xs) var(--space-sm);
+		border-radius: 9999px;
+		background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+		color: var(--color-primary);
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+	.plan-hero-relation.race-today {
+		background: var(--color-primary);
+		color: var(--color-surface);
+	}
+	.plan-hero-relation.race-past {
+		background: color-mix(in srgb, var(--color-text-tertiary) 18%, transparent);
+		color: var(--color-text-tertiary);
+	}
+
+	.plan-hero-progress {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+	}
+	.plan-hero-progress-bar {
+		height: 0.5rem;
+		background: color-mix(in srgb, var(--color-primary) 12%, var(--color-bg-tertiary, var(--color-bg-secondary)));
+		border-radius: 9999px;
+		overflow: hidden;
+	}
+	.plan-hero-progress-fill {
+		display: block;
+		height: 100%;
+		background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 70%, var(--color-accent-orange, var(--color-primary))));
+		border-radius: inherit;
+		transition: width var(--transition-base);
+	}
+	.plan-hero-progress-meta {
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+		font-variant-numeric: tabular-nums;
+		display: inline-flex;
+		gap: var(--space-2xs);
+		align-items: center;
+	}
+	.plan-hero-progress-sep { color: var(--color-text-tertiary); opacity: 0.7; }
+
+	.plan-hero-today {
+		display: block;
+	}
+	.plan-hero-today-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		width: 100%;
+		padding: var(--space-md) var(--space-lg);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		color: inherit;
+		font: inherit;
+		text-align: start;
+		cursor: pointer;
+		transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+	}
+	button.plan-hero-today-btn:hover {
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-sm);
+		border-color: var(--color-primary);
+	}
+	.plan-hero-today-btn.done { opacity: 0.85; }
+	.plan-hero-today-rest {
+		cursor: default;
+		background: color-mix(in srgb, var(--color-text-tertiary) 4%, var(--color-surface));
+	}
+	.plan-hero-today-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+		color: var(--color-primary);
+		flex-shrink: 0;
+	}
+	.plan-hero-today-icon :global(.material-symbols) { font-size: 1.5rem; }
+	.plan-hero-today-rest .plan-hero-today-icon {
+		background: color-mix(in srgb, var(--color-text-tertiary) 14%, transparent);
+		color: var(--color-text-tertiary);
+	}
+	.plan-hero-today-body {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+	}
+	.plan-hero-today-label {
+		font-size: var(--font-size-section-label);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		font-weight: 700;
+		color: var(--color-text-tertiary);
+	}
+	.plan-hero-today-kind {
+		font-size: 1.15rem;
+		font-weight: 700;
+		color: var(--color-text);
+		line-height: 1.2;
+	}
+	.plan-hero-today-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.plan-hero-today-pattern {
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.plan-hero-today-meta-quiet {
+		font-size: 0.85rem;
+		color: var(--color-text-tertiary);
+	}
+	.plan-hero-today-done {
+		color: var(--color-success-text);
+		font-weight: 600;
+	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+	.plan-hero-today-arrow {
+		color: var(--color-text-tertiary);
+		flex-shrink: 0;
+	}
+
+	.plan-hero-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-md);
+		flex-wrap: wrap;
+	}
+	.plan-hero-cta {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+	}
+	.plan-hero-cta :global(.material-symbols) { font-size: 1.1rem; }
+	.plan-hero-manage {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		transition: color var(--transition-fast);
+	}
+	.plan-hero-manage:hover {
+		color: var(--color-primary);
+	}
+	.plan-hero-manage :global(.material-symbols) { font-size: 1.05rem; }
+	.plan-hero-next {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		overflow-wrap: anywhere;
+	}
+	.plan-hero-next:hover {
+		color: var(--color-primary);
+	}
+	.plan-hero-next :global(.material-symbols) { font-size: 1.05rem; }
+
+	.today-label {
+		font-size: var(--font-size-section-label);
+		letter-spacing: 0.1em;
+		color: var(--color-primary);
+		font-weight: 700;
+		text-transform: uppercase;
+	}
+	.done-icon {
+		color: var(--color-success-text);
+		font-size: 1.75rem;
+	}
+	.plan-promo {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--space-md);
+		padding: var(--space-lg) var(--space-xl);
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--color-accent-orange) 12%, var(--color-surface)) 0%,
+			var(--color-surface) 70%
+		);
+		border: 1px dashed color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+		border-radius: var(--radius-xl);
+		color: inherit;
+		text-decoration: none;
+		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+	}
+	.plan-promo:hover {
+		border-color: var(--color-primary);
+		box-shadow: var(--shadow-sm);
+	}
+	.plan-promo h3 {
+		font-size: 1.15rem;
+		font-weight: 700;
+		margin: var(--space-xs) 0 var(--space-2xs);
+		color: var(--color-text);
+	}
+	.plan-promo p {
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+		margin: 0;
+	}
+	.plan-promo > :global(.material-symbols) {
+		color: var(--color-primary);
+		font-size: 1.5rem;
+		flex-shrink: 0;
+	}
+
+	/* A row of equal-weight metric cards. Every card on this page used to be
+	   a full-width slab in one flex column, so a 1,440 px screen showed a
+	   single column of them and the page ran to ~4,000 px — three screens of
+	   scrolling for what fits in one and a half.
+
+	   auto-fit rather than auto-fill: with a short final row auto-fill keeps
+	   the empty tracks and the last card sits in a 24rem slot beside a void,
+	   which is the same defect § 901 fixed on the Learn hub. Every card in a
+	   band self-hides, so short rows are the common case here, not the edge
+	   one. The cards are the grid items themselves (each component's root is
+	   a `section.card-elevated`), so they stretch to the tallest in the row
+	   without a height rule. */
+	.metric-band {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+		gap: var(--space-lg);
+		align-items: stretch;
+	}
+
+	.stat-grid {
+		display: grid;
+		/* One column per card: Total Runs, Longest Run, Streak. The three
+		   this-week cards left with § 2283, so three stay one row at every
+		   width rather than leaving a lone card on a second row. */
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--space-md);
+	}
+
+	.event-card {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		padding: var(--space-md) var(--space-lg);
+		background: var(--color-surface);
+		border: 1px solid color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+		border-inline-start: 3px solid var(--color-primary);
+		border-radius: var(--radius-lg);
+		text-decoration: none;
+		color: inherit;
+		transition: background var(--transition-fast), box-shadow var(--transition-fast);
+	}
+	.event-card:hover {
+		background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+		box-shadow: var(--shadow-sm);
+	}
+	.event-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+		color: var(--color-primary);
+		flex-shrink: 0;
+	}
+	.event-body {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+		min-width: 0;
+	}
+	.event-label {
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		color: var(--color-primary);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+	}
+	.event-title {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--color-text);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.event-when {
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.event-arrow { color: var(--color-text-tertiary); }
+
+	/* Gym (multi-modal) accent — the shared --section-gym pair, so this card
+	   and the Gym sidebar entry are the same green by construction. Kept
+	   distinct from the running/primary accent so a runner reads the modality
+	   at a glance without relying on it (label + glyph carry it). The `-ink`
+	   rung is what the rail, the glyph and the CTA take: the pastel fill is
+	   2.075:1 on the light card and the fixed deep green was 2.359:1 on the
+	   dark one, so neither half can serve both themes (decisions § 529). */
+	.today-lift-card {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		padding: var(--space-md) var(--space-lg);
+		border-inline-start: 3px solid var(--section-gym-ink);
+		text-decoration: none;
+		color: inherit;
+		transition: background var(--transition-fast), box-shadow var(--transition-fast);
+	}
+	.today-lift-card:hover {
+		background: color-mix(in srgb, var(--section-gym) 8%, var(--color-surface));
+		box-shadow: var(--shadow-sm);
+	}
+	.today-lift-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--section-gym) 18%, transparent);
+		color: var(--section-gym-ink);
+		flex-shrink: 0;
+	}
+	.today-lift-body {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+		min-width: 0;
+	}
+	.today-lift-title {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--color-text);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.today-lift-meta {
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.today-lift-arrow { color: var(--color-text-tertiary); }
+
+	.lift-row-meta { gap: var(--space-sm); }
+	.lift-volume {
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+		white-space: nowrap;
+	}
+
+	.gym-footer-prompt {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-sm) var(--space-md);
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		border: 1px dashed var(--color-border);
+		border-radius: var(--radius-md);
+	}
+	.gym-footer-prompt:hover { border-color: var(--section-gym-ink); }
+	.gym-footer-prompt .material-symbols { color: var(--section-gym-ink); font-size: 1.2rem; }
+	.gym-footer-prompt > span:nth-child(2) { flex: 1; }
+	.gym-footer-cta {
+		font-weight: 600;
+		color: var(--section-gym-ink);
+		white-space: nowrap;
+	}
+
+	.coach-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		min-height: 2.75rem;
+		padding: var(--space-xs) var(--space-md);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		color: inherit;
+		text-decoration: none;
+		font-size: 0.9rem;
+	}
+	.coach-row:hover {
+		border-color: var(--color-primary);
+		background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+	}
+	.coach-row-icon { color: var(--color-primary); font-size: 1.2rem; }
+	.coach-row strong { font-weight: 600; white-space: nowrap; }
+	.coach-row-sub {
+		flex: 1;
+		min-width: 0;
+		color: var(--color-text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.coach-row-arrow { color: var(--color-text-tertiary); }
+
+	/* The adaptive Today hero (#1187) — the no-plan and ran-today states; the
+	   plan states reuse .plan-hero. */
+	.today-hero {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-md);
+		padding: var(--space-lg);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sm);
+		color: inherit;
+		text-decoration: none;
+	}
+	.today-hero-run {
+		flex-direction: row;
+		align-items: center;
+	}
+	.today-hero-run:hover {
+		border-color: var(--color-primary);
+	}
+	.today-hero-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+		color: var(--color-primary);
+		flex-shrink: 0;
+	}
+	.today-hero-main {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+	}
+	.today-hero-title {
+		margin: 0;
+		font-size: 1.15rem;
+		font-weight: 700;
+		color: var(--color-text);
+	}
+	.today-hero-body {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.today-hero-cta { align-self: flex-start; }
+	.today-hero-arrow { color: var(--color-text-tertiary); }
+	.today-hero .readiness-card { box-shadow: none; }
+	.hero-readiness {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--space-xs);
+		margin: var(--space-sm) 0 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.hero-readiness-score { font-weight: 700; color: var(--color-text); }
+	.hero-readiness .readiness-band {
+		font-size: 0.72rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.hero-readiness.readiness-high .readiness-band { color: var(--color-success-text); }
+	.hero-readiness.readiness-moderate .readiness-band { color: var(--color-warning-text); }
+	.hero-readiness.readiness-low .readiness-band { color: var(--color-danger-text); }
+	.hero-readiness-advice { min-width: 0; overflow-wrap: anywhere; }
+
+	/* One training-load card (#1187): its rows were free-standing cards, so
+	   they drop their chrome and become rows split by a hairline. */
+	.load-merged {
+		grid-column: 1 / -1;
+		display: flex;
+		flex-direction: column;
+	}
+	.load-merged-title {
+		margin: 0 0 var(--space-sm);
+		font-size: 1rem;
+	}
+	.load-merged > .fitness-card,
+	.load-merged > .load-disclosure,
+	.load-merged > :global(.card-elevated) {
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+		padding-inline: 0;
+		transform: none;
+	}
+	.load-merged > .fitness-card + .fitness-card,
+	.load-merged > :global(.card-elevated) {
+		border-top: 1px solid var(--color-border);
+	}
+
+	/* Progressive disclosure (#905). Spans the whole band rather than taking one
+	   auto-fit column, so the two cards folded inside it open at the width they
+	   had when they were band children in their own right. */
+	.load-disclosure {
+		grid-column: 1 / -1;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sm);
+	}
+	.load-disclosure > summary {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-md) var(--space-lg);
+		cursor: pointer;
+		list-style: none;
+	}
+	.load-disclosure > summary::-webkit-details-marker {
+		display: none;
+	}
+	.load-disclosure > summary:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.load-disclosure > summary .material-symbols {
+		color: var(--color-text-tertiary);
+		transition: transform var(--transition-fast);
+	}
+	.load-disclosure[open] > summary .material-symbols {
+		transform: rotate(180deg);
+	}
+	.load-disclosure-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+	.load-disclosure-title {
+		font-weight: 600;
+		font-size: 0.95rem;
+	}
+	.load-disclosure-sub {
+		font-size: 0.78rem;
+		color: var(--color-text-secondary);
+		line-height: 1.4;
+	}
+	/* The cards keep their own padding but drop the chrome they had as
+	   free-standing band children — inside the expander they are its rows. */
+	.load-disclosure .fitness-card {
+		border: 0;
+		border-top: 1px solid var(--color-border);
+		border-radius: 0;
+		box-shadow: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.load-disclosure > summary .material-symbols {
+			transition: none;
+		}
+	}
+
+	.fitness-card {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		padding: var(--space-lg);
+		box-shadow: var(--shadow-sm);
+	}
+	.fitness-row {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr));
+		gap: var(--space-md);
+		margin-bottom: var(--space-sm);
+	}
+	.fitness-metric { display: flex; flex-direction: column; }
+	.fitness-label {
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		color: var(--color-text-tertiary);
+		text-transform: uppercase;
+		letter-spacing: var(--section-label-tracking);
+	}
+	.fitness-value {
+		font-size: 1.5rem;
+		font-weight: 800;
+		margin-top: var(--space-2xs);
+		color: var(--color-text);
+		font-variant-numeric: tabular-nums;
+	}
+	.fitness-value.tsb-neg { color: var(--color-danger-text); }
+	.fitness-value.tsb-pos { color: var(--color-success-text); }
+
+	.recap-link {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
+		padding: var(--space-xs) var(--space-md);
+		background: color-mix(in srgb, var(--color-secondary) 14%, transparent);
+		color: var(--color-secondary-text);
+		border-radius: 9999px;
+		font-weight: 600;
+		font-size: 0.85rem;
+		text-decoration: none;
+		transition: background var(--transition-fast);
+	}
+	.recap-link:hover {
+		background: color-mix(in srgb, var(--color-secondary) 22%, transparent);
+	}
+
+	.readiness-card {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		padding: var(--space-lg);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		box-shadow: var(--shadow-sm);
+	}
+	.readiness-card.readiness-high { border-inline-start: 4px solid var(--color-success); }
+	.readiness-card.readiness-moderate { border-inline-start: 4px solid var(--color-warning); }
+	.readiness-card.readiness-low { border-inline-start: 4px solid var(--color-danger); }
+	.readiness-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-text-secondary);
+	}
+	.readiness-band {
+		padding: var(--space-2xs) var(--space-sm);
+		border-radius: 999px;
+		background: var(--color-bg-secondary);
+	}
+	.readiness-card.readiness-high .readiness-band {
+		background: color-mix(in srgb, var(--color-success) 14%, transparent);
+		color: var(--color-success-text);
+	}
+	.readiness-card.readiness-moderate .readiness-band {
+		background: color-mix(in srgb, var(--color-warning) 22%, transparent);
+		color: var(--color-warning-text);
+	}
+	.readiness-card.readiness-low .readiness-band {
+		background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+		color: var(--color-danger-text);
+	}
+	.readiness-score {
+		font-size: 2.75rem;
+		font-weight: 800;
+		line-height: 1;
+		color: var(--color-text);
+		font-variant-numeric: tabular-nums;
+	}
+	.readiness-advice {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: 0.95rem;
+	}
+	.readiness-contribs {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-md);
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.readiness-contribs li {
+		display: inline-flex;
+		gap: var(--space-xs);
+		align-items: baseline;
+	}
+	.readiness-source {
+		margin: 0;
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-tertiary);
+	}
+	.contrib-delta { font-variant-numeric: tabular-nums; font-weight: 700; }
+	.contrib-delta.positive { color: var(--color-success-text); }
+	.contrib-delta.negative { color: var(--color-danger-text); }
+	.fitness-unit {
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-tertiary);
+		margin-top: var(--space-2xs);
+	}
+	.fitness-advice {
+		margin: var(--space-xs) 0 0;
+		font-size: 0.88rem;
+		color: var(--color-text-secondary);
+		line-height: 1.5;
+	}
+	.fitness-next-hard {
+		margin: var(--space-xs) 0 0;
+		font-size: 0.82rem;
+		font-weight: 600;
+		color: var(--color-primary);
+	}
+	.fitness-gym-note {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		margin: var(--space-xs) 0 0;
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+	}
+	.fitness-gym-note .material-symbols {
+		font-size: 0.95rem;
+	}
+	.trend {
+		width: 100%;
+		height: 40px;
+		margin-top: var(--space-sm);
+		display: block;
+		color: var(--color-primary);
+	}
+
+	.goals-section { display: flex; flex-direction: column; gap: var(--space-sm); }
+	.goals-header {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+	}
+	.goals-header h2 {
+		font-size: var(--font-size-section-title);
+		font-weight: 700;
+		margin: 0;
+	}
+	.link-btn {
+		background: transparent;
+		border: none;
+		color: var(--color-primary);
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+		padding: var(--space-xs) var(--space-sm);
+		border-radius: var(--radius-sm);
+		transition: background var(--transition-fast);
+	}
+	.link-btn:hover { background: var(--color-primary-light); }
+
+	.welcome-back-card {
+		display: flex;
+		align-items: center;
+		gap: var(--space-lg);
+		padding: var(--space-lg) var(--space-xl);
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)) 0%,
+			var(--color-surface) 70%
+		);
+		border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+		border-radius: var(--radius-xl);
+	}
+	.welcome-back-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+		color: var(--color-primary);
+		font-size: 1.5rem;
+		flex-shrink: 0;
+	}
+	.welcome-back-body { flex: 1; min-width: 0; }
+	.welcome-back-body h2 {
+		margin: 0 0 var(--space-2xs);
+		font-size: 1.1rem;
+		font-weight: 700;
+		color: var(--color-text);
+	}
+	.welcome-back-body p {
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--color-text-tertiary);
+	}
+	.goal-grid {
+		display: grid;
+		/* auto-fit: one goal under auto-fill sat in a 24rem track with two
+		   empty ones beside it, which is what put a card at a third of the
+		   width in the middle of a page of full-width blocks. */
+		grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+		gap: var(--space-lg);
+	}
+	.goal-card {
+		display: block;
+		text-align: start;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		padding: var(--space-xl);
+		cursor: pointer;
+		font: inherit;
+		color: inherit;
+		box-shadow: var(--shadow-sm);
+		transition: border-color var(--transition-fast),
+			box-shadow var(--transition-fast),
+			transform var(--transition-fast);
+	}
+	.goal-card:hover {
+		border-color: var(--color-primary);
+		box-shadow: var(--shadow-md);
+		transform: translateY(-1px);
+	}
+	.goal-card-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--space-md);
+	}
+	.goal-card-top-right {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-sm);
+	}
+	.goal-period {
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		color: var(--color-text-tertiary);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+	}
+	.goal-overall {
+		font-size: 1.65rem;
+		font-weight: 800;
+		color: var(--color-primary);
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
+	}
+	.goal-card-done .goal-overall { color: var(--color-success-text); }
+	.goal-card-done {
+		border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-border));
+		background: color-mix(in srgb, var(--color-success) 4%, var(--color-surface));
+	}
+	.goal-done-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		padding: var(--space-2xs) var(--space-sm);
+		background: color-mix(in srgb, var(--color-success) 16%, transparent);
+		color: var(--color-success-text);
+		border-radius: 9999px;
+		font-size: 0.72rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.goal-done-badge :global(.material-symbols) {
+		font-size: 0.95rem;
+	}
+	.goal-targets {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: var(--space-md);
+	}
+	.goal-target-top {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.95rem;
+		font-weight: 500;
+		margin-bottom: var(--space-xs);
+	}
+	.goal-target-value {
+		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
+	}
+	.goal-target-bar {
+		height: 0.55rem;
+		background: var(--color-bg-tertiary);
+		border-radius: 9999px;
+		overflow: hidden;
+	}
+	.goal-target-fill {
+		height: 100%;
+		background: var(--color-primary);
+		transition: width 0.4s ease;
+	}
+	.goal-target-fill.complete { background: var(--color-success); }
+	.goal-card-footer {
+		margin: var(--space-sm) 0 0;
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-tertiary);
+	}
+
+	/* Goal editor reuses the canonical .modal-* classes from app.css.
+	   Only field-level styling stays local. */
+	:global(.goal-editor-body) { display: grid; gap: var(--space-md); }
+	.field { display: grid; gap: var(--space-xs); }
+	.field-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.input {
+		padding: var(--space-sm) var(--space-md);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-bg);
+		color: var(--color-text);
+		font-size: 0.9rem;
+		font-family: inherit;
+	}
+	/* :focus-visible (not :focus) so the ring only shows for keyboard
+	   intent, not on every mouse click — WCAG 2.4.11. */
+	.input:focus-visible {
+		outline: 2px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+		outline-offset: 1px;
+		border-color: var(--color-primary);
+	}
+	.toggle-row { display: flex; gap: var(--space-xs); }
+	.toggle-btn {
+		padding: var(--space-sm) var(--space-md);
+		background: transparent;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+		cursor: pointer;
+	}
+	.toggle-btn.active {
+		background: var(--color-primary);
+		color: var(--color-surface);
+		border-color: var(--color-primary);
+	}
+	.goal-editor-hint {
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+		margin: 0;
+	}
+	.goal-editor-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-xs);
+	}
+	.goal-editor-actions .btn-danger { margin-inline-end: auto; }
+
+	/* Stat cards: quiet family. The old per-card rainbow `::before` is
+	   gone; cards share the same surface treatment so the eye reads the
+	   data, not the decoration. The interactive "This Week" tile lifts
+	   on hover; the rest are static. */
+	.stat-card {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		padding: var(--space-lg);
+		display: flex;
+		flex-direction: column;
+		box-shadow: var(--shadow-sm);
+		transition: box-shadow var(--transition-base),
+			border-color var(--transition-base),
+			transform var(--transition-base);
+	}
+	.stat-card:hover {
+		box-shadow: var(--shadow-md);
+		border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+	}
+	.stat-card-button {
+		font: inherit;
+		text-align: start;
+		cursor: pointer;
+		color: inherit;
+	}
+	.stat-card-button:hover { transform: translateY(-1px); }
+	.stat-label {
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		color: var(--color-text-tertiary);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		margin-bottom: var(--space-xs);
+	}
+	.stat-value {
+		font-size: 1.6rem;
+		font-weight: 700;
+		color: var(--color-text);
+		font-variant-numeric: tabular-nums;
+		line-height: 1.1;
+	}
+	.stat-value.stat-value-empty {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+		line-height: 1.3;
+	}
+	.stat-unit {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--color-text-tertiary);
+		margin-inline-start: var(--space-2xs);
+	}
+	.streak-active .stat-value { color: var(--color-warning-text); }
+	.stat-sub {
+		font-size: 0.8rem;
+		color: var(--color-text-tertiary);
+		margin-top: var(--space-xs);
+	}
+	.manual-hint {
+		display: block;
+		font-size: 0.72rem;
+		color: var(--color-primary);
+		margin-top: var(--space-2xs);
+	}
+
+
+	/* Generic card header row reused by the intensity card and any
+	   future card that wants a heading + small right-side meta. */
+	.card-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: var(--space-md);
+		margin-bottom: var(--space-md);
+		flex-wrap: wrap;
+	}
+	.card-head h2 { margin: 0; }
+
+	/* Training-intensity card — replaces the calendar-heatmap "Activity"
+	   card. Cool → hot ramp from Z1 (cyan) to Z5 (danger) matches the
+	   palette already in `app.css`. Zone rows use a fixed-template grid
+	   so the bars align across rows regardless of label length. */
+	.intensity-card {
+		container: intensity / inline-size;
+		transition: box-shadow var(--transition-base);
+	}
+	.intensity-window {
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+		font-variant-numeric: tabular-nums;
+	}
+	/* One column template shared by every row through subgrid, so a zone's
+	   name sizes its own column once instead of a fixed width it overflows. */
+	.zone-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: fit-content(9rem) minmax(0, 1fr) max-content max-content;
+		column-gap: var(--space-md);
+		row-gap: var(--space-sm);
+	}
+	.zone-row {
+		display: grid;
+		grid-column: 1 / -1;
+		grid-template-columns: subgrid;
+		align-items: center;
+	}
+	/* A named zone is wider than a bare "Z4", and beside its bar, time and
+	   share it no longer fits a phone-width card: "(threshold)" cannot break,
+	   so the row overflowed the card and scrolled the page sideways at 300 px.
+	   Below this width the name takes its own line and the bar keeps a column
+	   that still lines up across rows. */
+	@container intensity (max-width: 22rem) {
+		.zone-list {
+			grid-template-columns: minmax(0, 1fr) max-content max-content;
+		}
+		.zone-row {
+			row-gap: var(--space-xs);
+		}
+		.zone-name {
+			grid-column: 1 / -1;
+		}
+	}
+	.zone-name {
+		font-size: 0.85rem;
+		font-weight: 700;
+		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
+	}
+	/* --color-bg-secondary, not -tertiary: the bar's extent against its track is
+	   the datum, and --zone-5 computes to 2.86:1 against the darker track. */
+	.zone-bar-wrap {
+		height: 0.7rem;
+		background: var(--color-bg-secondary);
+		border-radius: 9999px;
+		overflow: hidden;
+	}
+	.zone-bar {
+		height: 100%;
+		border-radius: inherit;
+		transition: width 0.4s ease;
+	}
+	/* The shared per-brightness zone ladder. The five bespoke hues this replaces
+	   were the fourth HR-zone palette in the codebase and the worst: z3 and z4
+	   were 1.016:1 apart in light, and in dark four of the five sat inside
+	   1.08:1 of each other. The names deliberately carry no per-row colour —
+	   --zone-5 is 3.59:1 in light and cannot be text, and a name tinted a hue
+	   its own bar does not draw is the mislabelled-key defect of §489. */
+	.zone-row-1 .zone-bar { background: var(--zone-1); }
+	.zone-row-2 .zone-bar { background: var(--zone-2); }
+	.zone-row-3 .zone-bar { background: var(--zone-3); }
+	.zone-row-4 .zone-bar { background: var(--zone-4); }
+	.zone-row-5 .zone-bar { background: var(--zone-5); }
+	.zone-duration {
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
+		text-align: end;
+	}
+	.zone-pct {
+		font-size: 0.9rem;
+		font-weight: 700;
+		color: var(--color-text);
+		font-variant-numeric: tabular-nums;
+		text-align: end;
+	}
+	.intensity-foot {
+		margin: var(--space-md) 0 0;
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+	}
+	.intensity-empty {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		padding: var(--space-sm) 0;
+	}
+	.intensity-empty-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+		color: var(--color-primary);
+		font-size: 1.4rem;
+		flex-shrink: 0;
+	}
+	.intensity-empty-body {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2xs);
+	}
+	.intensity-empty-body strong {
+		font-weight: 600;
+		color: var(--color-text);
+		font-size: 0.95rem;
+	}
+	.intensity-empty-body p {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+
+	/* Twelve weekly columns have to fit a phone-width card, so neither the
+	   gap nor a column's axis label may set the chart's minimum width. A
+	   flex item floors at its min-content by default, which made each
+	   column exactly as wide as its label and pushed the row past the card
+	   on any font whose digits run wider. */
+	.chart {
+		display: flex;
+		align-items: flex-end;
+		gap: min(var(--space-sm), 2%);
+		height: 12rem;
+		padding-top: var(--space-md);
+	}
+	.bar-col {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		height: 100%;
+		justify-content: flex-end;
+	}
+	.chart-readout {
+		margin: var(--space-sm) 0 0;
+		min-height: 1.5em;
+		line-height: 1.5;
+		font-size: var(--font-size-section-label);
+		font-weight: 600;
+		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
+	}
+	.bar {
+		width: 100%;
+		max-width: 2.5rem;
+		background: linear-gradient(
+			180deg,
+			var(--color-primary) 0%,
+			color-mix(in srgb, var(--color-secondary) 75%, var(--color-primary)) 100%
+		);
+		border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+		min-height: 4px;
+		transition: height var(--transition-base), background var(--transition-fast);
+	}
+	.bar-col:hover .bar,
+	.bar-col.inspected .bar {
+		background: linear-gradient(
+			180deg,
+			var(--color-primary-hover) 0%,
+			var(--color-secondary) 100%
+		);
+	}
+	/* An empty week must not borrow the 4px min-height every bar carries: a
+	   stub above a zero reads as "a short run", which is the opposite of what
+	   happened. It flattens to a neutral rule on the axis instead — present,
+	   so the gap is visible, and plainly not a quantity. */
+	.bar-col.empty .bar {
+		min-height: 2px;
+		background: var(--color-border);
+		border-radius: var(--radius-pill);
+	}
+	.bar-col.empty:hover .bar,
+	.bar-col.empty.inspected .bar {
+		background: var(--color-text-tertiary);
+	}
+	.bar-label {
+		font-size: 0.65rem;
+		color: var(--color-text-tertiary);
+		margin-top: var(--space-xs);
+		white-space: nowrap;
+	}
+	/* Hidden rather than removed, so the label keeps being measured and a
+	   wider chart can bring it back. The column's aria-label names the
+	   bucket either way. */
+	.bar-label.thinned {
+		visibility: hidden;
+	}
+
+	/* Today's goals strip and progress summary: whole-card links to Progress. */
+	.today-summary {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		text-decoration: none;
+		color: inherit;
+	}
+	.today-summary-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+	}
+	.today-summary-head h2 {
+		margin: 0;
+		font-size: 1rem;
+	}
+	.today-summary-head .material-symbols {
+		color: var(--color-text-tertiary);
+	}
+	.goals-strip {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+	}
+	.goals-strip-row {
+		display: flex;
+		justify-content: space-between;
+		gap: var(--space-sm);
+		margin-bottom: var(--space-2xs);
+	}
+	.goals-strip-name {
+		font-weight: 600;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.goals-strip-pct {
+		font-weight: 700;
+		color: var(--color-primary);
+	}
+	.goals-strip-pct.done {
+		color: var(--color-success-text);
+	}
+	.goals-strip li .goal-target-bar {
+		display: block;
+	}
+	.goals-strip li .goal-target-fill {
+		display: block;
+	}
+	.goals-strip-more {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.summary-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+		gap: var(--space-sm);
+		margin: 0;
+	}
+	.summary-grid dt {
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-secondary);
+	}
+	.summary-grid dd {
+		margin: 0;
+		font-size: 1.25rem;
+		font-weight: 700;
+	}
+
+	.pr-table { width: 100%; border-collapse: collapse; }
+	.pr-table th {
+		text-align: start;
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--color-text-tertiary);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: var(--space-sm) 0;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.pr-table td {
+		padding: var(--space-md) 0;
+		border-bottom: 1px solid var(--color-bg-secondary);
+	}
+	.pr-table tbody tr:last-child td { border-bottom: none; }
+	.pr-distance { font-weight: 600; }
+	.pr-age-grade {
+		font-variant-numeric: tabular-nums;
+		font-weight: 600;
+		color: var(--color-primary);
+	}
+	.pr-age {
+		display: block;
+		font-size: 0.72rem;
+		color: var(--color-text-tertiary);
+	}
+	.pr-hide {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: var(--tap-target-min);
+		min-height: var(--tap-target-min);
+		background: none;
+		border: none;
+		color: var(--color-text-tertiary);
+		font-size: 1.1rem;
+		line-height: 1;
+		cursor: pointer;
+		padding: 0;
+	}
+	.pr-hide:hover { color: var(--color-text); }
+	.pr-show-hidden {
+		margin-top: 0.6rem;
+		background: none;
+		border: none;
+		padding: 0;
+		color: var(--color-primary);
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.pr-hidden-list {
+		list-style: none;
+		margin: 0.5rem 0 0;
+		padding: 0;
+		display: grid;
+		gap: 0.35rem;
+	}
+	.pr-hidden-list li {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+	}
+	.pr-unhide {
+		background: none;
+		border: none;
+		color: var(--color-primary);
+		font-size: 0.8rem;
+		cursor: pointer;
+		padding: 0;
+	}
+	.pr-time {
+		font-family: 'SF Mono', 'Menlo', monospace;
+		font-weight: 600;
+		color: var(--color-primary);
+		font-variant-numeric: tabular-nums;
+	}
+	.pr-date {
+		color: var(--color-text-secondary);
+		font-size: 0.875rem;
+	}
+
+	.run-list { display: flex; flex-direction: column; }
+	.run-row {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--space-2xs) var(--space-sm);
+		padding: var(--space-sm) 0;
+		border-bottom: 1px solid var(--color-bg-secondary);
+		transition: background var(--transition-fast);
+		text-decoration: none;
+		color: inherit;
+	}
+	.run-row:last-child { border-bottom: none; }
+	.run-row:hover {
+		background: var(--color-bg-secondary);
+		margin: 0 calc(-1 * var(--space-sm));
+		padding: var(--space-sm);
+		border-radius: var(--radius-sm);
+	}
+	.run-info { display: flex; gap: var(--space-md); align-items: baseline; }
+	.run-date {
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+		min-width: 4rem;
+	}
+	.run-distance {
+		font-weight: 600;
+		font-size: 0.9rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.run-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-2xs) var(--space-sm);
+	}
+	.run-pace {
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
+		font-family: 'SF Mono', 'Menlo', monospace;
+		font-variant-numeric: tabular-nums;
+	}
+	.source-badge {
+		font-size: 0.65rem;
+		font-weight: 600;
+		padding: 0.15rem 0.5rem;
+		border-radius: 9999px;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+
+	/* Why: hero rows reflow before the 4-up stat grid does — keep the
+	   reading order intact. 900px collapses the plan-hero head into a
+	   vertical stack so the position chip slots under the identity
+	   block; 768 tablet first, then 480 phone for the smaller widgets. */
+	@media (max-width: 900px) {
+		.plan-hero-head {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+		.plan-hero-position {
+			align-items: flex-start;
+			text-align: start;
+			flex-direction: row;
+			gap: var(--space-sm);
+			flex-wrap: wrap;
+		}
+	}
+	/* Tablet: tighten the wide grids so cards don't crash into each
+	   other at typical 1024 widths. Two-col PRs/Recent stays side by
+	   side here — it doesn't have a hero band of metrics inside. */
+	@media (max-width: 1100px) {
+		.fitness-row { grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr)); }
+	}
+	@media (max-width: 768px) {
+		.plan-hero,
+		.plan-promo {
+			padding: var(--space-md) var(--space-lg);
+		}
+		/* nowrap makes the whole plan name this element's min-content
+		   width, so on a phone the ellipsis never engages — the box grows
+		   and takes the page with it. Below this width the name wraps. */
+		.plan-hero-name { font-size: 1.25rem; white-space: normal; }
+		.intensity-empty {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+		.zone-list {
+			column-gap: var(--space-sm);
+		}
+	}
+	@media (max-width: 480px) {
+		.page {
+			padding: var(--space-lg) var(--space-md);
+			gap: var(--space-md);
+		}
+		.stat-grid { gap: var(--space-sm); }
+		.stat-card { padding: var(--space-md); }
+		.stat-value { font-size: 1.35rem; }
+		.plan-promo {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: var(--space-sm);
+		}
+		.plan-hero { gap: var(--space-sm); }
+		.plan-hero-today-btn { padding: var(--space-sm) var(--space-md); }
+		.plan-hero-actions { flex-direction: column; align-items: stretch; }
+		.plan-hero-actions .plan-hero-cta { justify-content: center; }
+		.plan-hero-actions .plan-hero-manage { justify-content: space-between; }
+		.fitness-card,
+		.card,
+		.readiness-card,
+		.goal-card {
+			padding: var(--space-md);
+		}
+		.chart { height: 9rem; gap: var(--space-xs); }
+		.bar-label { font-size: 0.6rem; }
+	}
+</style>

@@ -37,7 +37,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Öffne im Web in den Einstellungen [[route:/settings/notifications|Benachrichtigungen]]. Öffne in der Handy-App **Voreinstellungen** im Tab **Du** und scrolle zu **Benachrichtigungen**.',
+						'Öffne im Web in den Einstellungen [[route:/settings/notifications|Benachrichtigungen]]. Öffne in der Handy-App **Benachrichtigungen** im Tab **Du**.',
 						'Stelle **E-Mail-Benachrichtigungen** und **Push-Benachrichtigungen** getrennt ein.',
 					],
 				},
@@ -82,7 +82,7 @@ export const translation: GuideTranslation = {
 		's1.heading': '074e9ceb824efc1f',
 		's1.b0': '93884f29ad0c80fc',
 		's2.heading': 'effb878df9e1a9ea',
-		's2.b0.i0': '1c0dfd20d4a186e9',
+		's2.b0.i0': 'cb34200fcb6ec620',
 		's2.b0.i1': '5a887c760fb14d6f',
 		's2.b1.i0': '3adf3c1bbb3ad28d',
 		's2.b1.i1': '20670a8e203c8f76',

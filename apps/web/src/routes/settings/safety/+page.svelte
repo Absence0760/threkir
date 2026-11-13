@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
 		fetchMySafetyContacts,
@@ -238,11 +239,7 @@
 </svelte:head>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{m('safety.kicker')}</p>
-		<h1>{m('safety.title')}</h1>
-		<p class="tagline">{m('safety.intro')}</p>
-	</header>
+	<PageHeader kicker={m('safety.kicker')} title={m('safety.title')} subtitle={m('safety.intro')} />
 
 	<section class="card">
 		<form
@@ -498,16 +495,6 @@
 
 <style>
 	.page { padding: var(--page-padding-y) var(--page-padding-x); max-width: 48rem; }
-	.page-head { margin-bottom: var(--space-xl); }
-	.kicker {
-		font-size: 0.72rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	h1 { margin: 0 0 var(--space-sm); font-size: 1.6rem; }
 	.tagline {
 		color: var(--color-text-secondary);
 		margin: 0;

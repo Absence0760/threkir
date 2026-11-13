@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../lib/fitness_surface_requests.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/global_segments_screen.dart';
 import '../lib/widgets/run_segment_efforts.dart';
@@ -253,6 +254,30 @@ void main() {
       await tester.tap(find.text('Browse all'));
       await tester.pumpAndSettle();
       expect(find.byType(GlobalSegmentsScreen), findsOneWidget);
+    });
+
+    // The catalogue is Routes → Explore on Segments (issue #1374), so with a
+    // shell listening Browse all selects that tab and view and pushes nothing.
+    testWidgets('with a shell listening, Browse all asks it for Routes on '
+        'Explore → Segments', (tester) async {
+      final drained = <FitnessSurfaceRequest?>[];
+      void shell() => drained.add(fitnessSurfaceRequests.take());
+      fitnessSurfaceRequests.addListener(shell);
+      addTearDown(() => fitnessSurfaceRequests.removeListener(shell));
+      await _pumpWith(
+        tester,
+        _CatalogueBrowseApi(globalEfforts: [_catalogueEffort()]),
+      );
+      await tester.tap(find.text('Browse all'));
+      await tester.pumpAndSettle();
+      expect(drained, [
+        (
+          tab: FitnessTab.routes,
+          racesShow: null,
+          routesShow: RoutesShow.segments,
+        ),
+      ]);
+      expect(find.byType(GlobalSegmentsScreen), findsNothing);
     });
 
     testWidgets('a failed catalogue read keeps the route-segment chips',

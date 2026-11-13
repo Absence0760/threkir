@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { goto } from '$app/navigation';
 	import SocialFeed from '#lib/components/SocialFeed.svelte';
 	import SocialPeople from '#lib/components/SocialPeople.svelte';
@@ -9,21 +10,34 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 
-	type Tab = 'feed' | 'people' | 'clubs' | 'discover' | 'challenges';
+	// Feed · Clubs · Events · Challenges · People (issue #1374, owner decision
+	// "Social tabs"): Events is the cross-club activity search that was called
+	// Discover, named for what it lists, and People goes last. The mobile hub
+	// has the same five in the same order.
+	type Tab = 'feed' | 'clubs' | 'events' | 'challenges' | 'people';
 	const TABS: { id: Tab; labelKey: MessageKey; icon: string }[] = [
 		{ id: 'feed', labelKey: 'socialHub.tabFeed', icon: 'dynamic_feed' },
-		{ id: 'people', labelKey: 'socialHub.tabPeople', icon: 'person_search' },
 		{ id: 'clubs', labelKey: 'socialHub.tabClubs', icon: 'groups' },
-		{ id: 'discover', labelKey: 'socialHub.tabDiscover', icon: 'event_available' },
+		{ id: 'events', labelKey: 'socialHub.tabEvents', icon: 'event_available' },
 		{ id: 'challenges', labelKey: 'challenges.title', icon: 'trophy' },
+		{ id: 'people', labelKey: 'socialHub.tabPeople', icon: 'person_search' },
 	];
+	const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
 
 	let tab = $state<Tab>('feed');
 
 	$effect(() => {
 		const t = page.url.searchParams.get('tab');
-		if (t === 'people' || t === 'clubs' || t === 'discover' || t === 'challenges' || t === 'feed') tab = t;
-		else tab = 'feed';
+		// The Events tab's old URL keeps working: a saved or shared
+		// `?tab=discover` is rewritten in place, so Back does not return to it.
+		if (t === 'discover') {
+			const url = new URL(page.url.href);
+			url.searchParams.set('tab', 'events');
+			goto(url, { replace: true });
+			tab = 'events';
+			return;
+		}
+		tab = t !== null && TAB_IDS.has(t) ? (t as Tab) : 'feed';
 	});
 
 	function setTab(next: Tab) {
@@ -44,11 +58,12 @@
 </svelte:head>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{m('socialHub.kicker')}</p>
-		<h1>{m('socialHub.heading')}</h1>
-		<p class="tagline">{m('socialHub.tagline')}</p>
-	</header>
+	<PageHeader
+		flush
+		kicker={m('socialHub.kicker')}
+		title={m('socialHub.heading')}
+		subtitle={m('socialHub.tagline')}
+	/>
 
 	<div class="tabs" role="tablist" aria-label={m('socialHub.sectionsLabel')}>
 		{#each TABS as t}
@@ -104,29 +119,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-lg);
-	}
-	.page-head {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-xs);
-	}
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		font-size: 0.78rem;
-		font-weight: 600;
-		color: var(--color-text-tertiary);
-		margin: 0;
-	}
-	h1 {
-		margin: 0;
-		font-size: 1.75rem;
-		font-weight: 800;
-	}
-	.tagline {
-		margin: 0;
-		color: var(--color-text-secondary);
-		max-width: 48rem;
 	}
 	.tabs {
 		display: flex;

@@ -3,7 +3,15 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SectionHeader;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppInsets,
+        AppSpace,
+        ListRow,
+        PageHeader,
+        PushedPage,
+        SettingsList,
+        SettingsSection;
 
 import '../adaptive_width.dart';
 import '../dashboard_layout.dart';
@@ -23,65 +31,24 @@ import '../locale_defaults.dart';
 import '../main.dart' show themeModeNotifier, localeNotifier;
 import '../nearby_flag.dart';
 import '../preferences.dart';
+import '../preferences_page.dart';
 import '../push_messaging_bridge.dart';
 import '../settings_sync.dart';
 import '../typed_decimal.dart';
 import '../undo_queue.dart';
 import '../weekly_goal.dart';
+import '../widgets/async_switch_tile.dart';
 import '../widgets/top_banner.dart';
 import 'follow_requests_screen.dart';
 import 'nearby_area_screen.dart';
 import 'privacy_zones_screen.dart';
-import 'settings_body_metrics_screen.dart';
 
-/// Inset around a pinned group eyebrow. The generous top gap is what makes a
-/// group boundary legible while scrolling past it.
-const EdgeInsets kPrefsSectionHeaderPadding = EdgeInsets.fromLTRB(
-  16,
-  20,
-  16,
-  4,
-);
+export '../preferences_page.dart';
 
-/// A [SectionHeader] that stays put at the top of its group's rows.
-///
-/// [extent] is derived by the caller from the current text scale rather than
-/// fixed, and [background] is the surface the list sits on so the rows pass
-/// behind the eyebrow instead of through it.
-class PinnedSectionHeader extends SliverPersistentHeaderDelegate {
-  const PinnedSectionHeader({
-    required this.label,
-    required this.extent,
-    required this.background,
-  });
-
-  final String label;
-  final double extent;
-  final Color background;
-
-  @override
-  double get minExtent => extent;
-
-  @override
-  double get maxExtent => extent;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
-      Container(
-        color: background,
-        padding: kPrefsSectionHeaderPadding,
-        alignment: AlignmentDirectional.centerStart,
-        child: SectionHeader(label: label),
-      );
-
-  @override
-  bool shouldRebuild(PinnedSectionHeader old) =>
-      old.label != label ||
-      old.extent != extent ||
-      old.background != background;
-}
-
+/// One Preferences page ([PreferencesPage]): the rows of one subject, in
+/// groups mirroring web's page of the same name. Every row applies at once.
 class SettingsPreferencesScreen extends StatefulWidget {
+  final PreferencesPage page;
   final ApiClient? apiClient;
   final Preferences preferences;
   final SettingsSyncService? settingsSync;
@@ -98,6 +65,7 @@ class SettingsPreferencesScreen extends StatefulWidget {
 
   const SettingsPreferencesScreen({
     super.key,
+    required this.page,
     this.apiClient,
     required this.preferences,
     required this.settingsSync,
@@ -129,19 +97,24 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
 
   /// user_profiles.profile_private, not a prefs key: RLS and the public views
   /// read it (decisions § 1967), so it is read and written on the profile row.
-  bool _profilePrivate = false;
+  /// Null until read; a failed read sets [_profilePrivateFailed] instead of
+  /// guessing (issue #1374 FS-6).
+  bool? _profilePrivate;
   bool _profilePrivateSaving = false;
+  bool _profilePrivateFailed = false;
 
   /// user_settings.dm_read_receipts, a column because the server reads it when
   /// a message is marked read (migration 20271113000001). Null until read: the
   /// switch stays disabled rather than claim a state it has not seen.
   bool? _readReceipts;
   bool _readReceiptsSaving = false;
+  bool _readReceiptsFailed = false;
 
   /// user_settings.dm_requests, a column because the INSERT policy reads it
   /// (migration 20271213121601). Null until read, like [_readReceipts].
   bool? _messageRequests;
   bool _messageRequestsSaving = false;
+  bool _messageRequestsFailed = false;
 
   /// Date of birth lives in two stores under two rules (decisions § 718).
   /// [_profileDob] is the `user_profiles` age record behind the under-18
@@ -160,11 +133,21 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     widget.preferences.addListener(_onChange);
     widget.settingsSync?.addListener(_onChange);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeBackfillLocale());
-    if (_nearbyGate) _loadNearbyAreaLabel();
-    _loadProfilePrivate();
-    _loadReadReceipts();
-    _loadMessageRequests();
-    _loadHealthProfile();
+    // Each read backs rows on one page only; a page that does not show them
+    // does not ask.
+    switch (widget.page) {
+      case PreferencesPage.privacy:
+        if (_nearbyGate) _loadNearbyAreaLabel();
+        _loadProfilePrivate();
+        _loadReadReceipts();
+        _loadMessageRequests();
+      case PreferencesPage.training:
+        _loadHealthProfile();
+      case PreferencesPage.display ||
+            PreferencesPage.recording ||
+            PreferencesPage.notifications:
+        break;
+    }
   }
 
   /// Best-effort (L4), for the same reason as [_loadNearbyAreaLabel]: a
@@ -581,6 +564,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: Text(title),
+          // semantics-children: names a field that shows no label or hint of its own
           content: Semantics(
             label: title,
             child: TextField(
@@ -645,6 +629,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),
+        // semantics-children: names a field that shows no label or hint of its own
         content: Semantics(
           label: title,
           child: TextField(
@@ -1056,7 +1041,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _putUniversal(disclosureLevelKey, picked == 'auto' ? null : picked);
   }
 
-  String _homeCardLabel(AppLocalizations l10n, String id) => switch (id) {
+  String _progressCardLabel(AppLocalizations l10n, String id) => switch (id) {
         'volume' => l10n.dashboardTrendGroupVolume,
         'fitness' => l10n.dashboardTrendGroupFitness,
         'performance' => l10n.dashboardTrendGroupPerformance,
@@ -1064,10 +1049,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         _ => l10n.dashboardTrendGroupRecent,
       };
 
-  /// Where a trend group hidden from Home comes back, and where one can be
-  /// hidden too (`dashboard_hidden_cards`, decisions § 2386). Web twin: the
-  /// Home section of `/settings/display`.
-  Future<void> _editHomeCards() async {
+  /// Where a trend group hidden from the Progress page comes back, and where
+  /// one can be hidden too (`dashboard_hidden_cards`, decisions § 2386; the
+  /// groups moved from Home to Progress in § 2492). Web twin: the Home
+  /// section of `/settings/display`, since web keeps one dashboard.
+  Future<void> _editProgressCards() async {
     final l10n = AppLocalizations.of(context);
     var hidden =
         parseHiddenCards(_bagValue<Object>(SettingsKeys.dashboardHiddenCards));
@@ -1075,17 +1061,17 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       context: context,
       builder: (dialog) => StatefulBuilder(
         builder: (dialog, setDialogState) => AlertDialog(
-          title: Text(l10n.prefsHomeCards),
+          title: Text(l10n.prefsProgressCards),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(l10n.prefsHomeCardsHint),
+                Text(l10n.prefsProgressCardsHint),
                 for (final id in hideableDashboardCards)
                   CheckboxListTile(
-                    key: Key('prefsHomeCard-$id'),
+                    key: Key('prefsProgressCard-$id'),
                     contentPadding: EdgeInsets.zero,
-                    title: Text(_homeCardLabel(l10n, id)),
+                    title: Text(_progressCardLabel(l10n, id)),
                     value: !hidden.contains(id),
                     onChanged: (shown) {
                       hidden = withCardHidden(hidden, id, shown != true);
@@ -1172,17 +1158,19 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     }
   }
 
-  /// Best-effort (L4) on read: a failed read leaves the switch off, which is
-  /// the account's state until its owner turned it on.
+  /// A failed read shows a retry row, not the switch: OFF over a private
+  /// account would tell its owner their activity is public.
   Future<void> _loadProfilePrivate() async {
     final api = widget.apiClient;
     if (api == null) return;
+    if (_profilePrivateFailed) setState(() => _profilePrivateFailed = false);
     try {
       final value = await api.fetchMyProfilePrivate();
       if (!mounted) return;
       setState(() => _profilePrivate = value);
     } catch (e) {
       debugPrint('profile privacy read failed: $e');
+      if (mounted) setState(() => _profilePrivateFailed = true);
     }
   }
 
@@ -1210,12 +1198,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   Future<void> _loadReadReceipts() async {
     final api = widget.apiClient;
     if (api == null) return;
+    if (_readReceiptsFailed) setState(() => _readReceiptsFailed = false);
     try {
       final value = await api.fetchMyDmReadReceipts();
       if (!mounted) return;
       setState(() => _readReceipts = value);
     } catch (e) {
       debugPrint('read receipts read failed: $e');
+      if (mounted) setState(() => _readReceiptsFailed = true);
     }
   }
 
@@ -1243,12 +1233,14 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   Future<void> _loadMessageRequests() async {
     final api = widget.apiClient;
     if (api == null) return;
+    if (_messageRequestsFailed) setState(() => _messageRequestsFailed = false);
     try {
       final value = await api.fetchMyDmRequests();
       if (!mounted) return;
       setState(() => _messageRequests = value);
     } catch (e) {
       debugPrint('message requests read failed: $e');
+      if (mounted) setState(() => _messageRequestsFailed = true);
     }
   }
 
@@ -1301,22 +1293,22 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     final on = _bagValue<bool>(SettingsKeys.hrMedicationAffected) ?? false;
     final consented = _healthConsentAt != null;
     return [
-      SwitchListTile(
+      ListRow.toggle(
         key: const Key('prefsHrMedicationAffected'),
-        title: Text(l10n.prefsHrMedicationAffected),
-        subtitle: Text(consented
+        title: l10n.prefsHrMedicationAffected,
+        subtitle: consented
             ? l10n.prefsHrMedicationAffectedHint
-            : l10n.prefsHrMedicationNeedsConsent),
+            : l10n.prefsHrMedicationNeedsConsent,
         value: on,
         onChanged: _bagReady && (consented || on)
             ? (_) => _toggleHrMedicationAffected()
             : null,
       ),
       if (on && _bagValue<num>(SettingsKeys.maxHrBpm) == null)
-        ListTile(
+        ListRow.nav(
           key: const Key('prefsHrMedicationMaxPrompt'),
-          leading: const Icon(Icons.info_outline),
-          title: Text(l10n.prefsHrMedicationSetMaxHr),
+          icon: Icons.info_outline,
+          title: l10n.prefsHrMedicationSetMaxHr,
           enabled: _bagReady,
           onTap: _editMaxHr,
         ),
@@ -1588,14 +1580,10 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     String infoBody,
   ) {
     final prefs = widget.preferences;
-    return SwitchListTile(
-      secondary: IconButton(
-        icon: const Icon(Icons.info_outline),
-        tooltip: AppLocalizations.of(context).prefsCueInfoTooltip,
-        onPressed: () => _showCueInfo(title, infoBody),
-      ),
-      title: Text(title),
-      subtitle: Text(subtitle),
+    return ListRow.toggle(
+      info: _info(title, infoBody),
+      title: title,
+      subtitle: subtitle,
       value: prefs.voiceCueEnabled(cueId),
       onChanged: (v) async {
         await prefs.setVoiceCueEnabled(cueId, v);
@@ -1604,55 +1592,745 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     );
   }
 
-  /// One PINNED eyebrow per group over that group's rows.
-  ///
-  /// Everything else in Settings is a thin router whose sub-screen AppBar
-  /// names the page; this one page carries 46 rows under eight groups behind
-  /// a single "Preferences" title, and with the labels inline in the scroll
-  /// they have all gone by two flicks in — nothing on screen then says which
-  /// group a switch belongs to (issue #666 C13).
-  List<Widget> _prefSlivers(
-    BuildContext context,
-    List<(String, List<Widget>)> groups,
-  ) {
-    final theme = Theme.of(context);
-    // Derived, not a constant: the eyebrow is one line of `labelSmall` at
-    // whatever the OS text scale is, plus its own padding. A literal extent
-    // would clip the label the moment someone raises the scale.
-    final probe = TextPainter(
-      text: TextSpan(text: 'Hg', style: theme.textTheme.labelSmall),
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-      maxLines: 1,
-    )..layout();
-    final extent = probe.height + kPrefsSectionHeaderPadding.vertical;
-    probe.dispose();
+  Widget _info(String title, String body) => IconButton(
+        icon: const Icon(Icons.info_outline),
+        tooltip: AppLocalizations.of(context).prefsCueInfoTooltip,
+        onPressed: () => _showCueInfo(title, body),
+      );
+
+  /// Units & display: the language, theme and units everything is drawn in,
+  /// and how much the pages show. Web: `/settings/display`.
+  List<SettingsSection> _displaySections(AppLocalizations l10n) {
+    final prefs = widget.preferences;
     return [
-      // SliverMainAxisGroup, not two loose slivers: a bare pinned header pins
-      // against the viewport and every group's eyebrow would stack on the one
-      // before it — eight of them by the bottom of this page. Grouped, a
-      // header pins only over its own rows and the next group pushes it out.
-      for (final (label, rows) in groups)
-        SliverMainAxisGroup(
-          slivers: [
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: PinnedSectionHeader(
-                label: label,
-                extent: extent,
-                background: theme.scaffoldBackgroundColor,
+      SettingsSection(
+        label: l10n.prefsGroupLanguageTheme,
+        rows: [
+          ListRow.value(
+            title: l10n.prefsLanguage,
+            value: prefs.locale == null
+                ? l10n.prefsLanguageSystem
+                : localeLabels[localeToTag(prefs.locale!)] ?? '—',
+            onTap: _editLanguage,
+          ),
+          ListRow.toggle(
+            title: l10n.prefsDarkMode,
+            value: _darkMode,
+            onChanged: (v) {
+              final mode = v ? ThemeMode.dark : ThemeMode.light;
+              setState(() => _darkMode = v);
+              themeModeNotifier.value = mode;
+              prefs.setThemeMode(mode);
+            },
+          ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsGroupUnits,
+        rows: [
+          ListRow.toggle(
+            title: l10n.prefsUseMiles,
+            subtitle: _unitSubtitle(),
+            value: prefs.useMiles,
+            onChanged: (v) async {
+              await prefs.setUseMiles(v);
+              await _roamPush(widget.settingsSync?.pushPreferredUnit);
+              if (mounted) setState(() {});
+            },
+          ),
+          ListRow.value(
+            title: l10n.prefsPaceFormat,
+            value: _paceFormatLabel(
+              l10n,
+              _bagValue<String>(SettingsKeys.unitsPaceFormat) ?? 'min_per_km',
+            ),
+            enabled: _bagReady,
+            onTap: _editPaceFormat,
+          ),
+          ListRow.value(
+            title: l10n.prefsWeightUnit,
+            value: _weightUnitLabel(
+              l10n,
+              _bagValue<String>(SettingsKeys.weightUnit) ?? 'kg',
+            ),
+            enabled: _bagReady,
+            onTap: _editWeightUnit,
+          ),
+          ListRow.value(
+            title: l10n.prefsWeekStart,
+            value: _weekStartLabel(
+              l10n,
+              _bagValue<String>(SettingsKeys.weekStartDay) ??
+                  _weekStartLocaleDefault,
+            ),
+            enabled: _bagReady,
+            onTap: _editWeekStartDay,
+          ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsGroupMapsPages,
+        rows: [
+          ListRow.value(
+            key: const Key('prefsDisclosureLevel'),
+            title: l10n.prefsDisclosureLevel,
+            value: _disclosureLabel(l10n, _disclosureChoice),
+            hint: l10n.prefsDisclosureHint(
+              _disclosureLabel(l10n, _derivedDisclosure),
+            ),
+            enabled: _bagReady,
+            onTap: _editDisclosureLevel,
+          ),
+          ListRow.nav(
+            key: const Key('prefsProgressCards'),
+            title: l10n.prefsProgressCards,
+            subtitle: l10n.prefsProgressCardsHint,
+            enabled: _bagReady,
+            onTap: _editProgressCards,
+          ),
+          ListRow.value(
+            title: l10n.prefsMapStyle,
+            value: _mapStyleLabel(l10n, _mapStylePref),
+            enabled: _bagReady,
+            onTap: _editMapStyle,
+          ),
+          ListRow.value(
+            title: l10n.prefsUndoWindow,
+            value: _undoWindowLabel(l10n, _undoWindowS),
+            enabled: _bagReady,
+            onTap: _editUndoWindow,
+          ),
+          ListRow.toggle(
+            title: l10n.prefsShowCalories,
+            subtitle: l10n.prefsShowCaloriesHint,
+            value: _bagValue<bool>(SettingsKeys.showCalories) ?? true,
+            onChanged: _bagReady
+                ? (v) => _putUniversal(SettingsKeys.showCalories, v)
+                : null,
+          ),
+          ListRow.toggle(
+            key: const Key('prefsShowMascot'),
+            title: l10n.prefsShowMascot,
+            subtitle: l10n.prefsShowMascotHint,
+            value: _bagValue<bool>(SettingsKeys.showMascot) != false,
+            onChanged: _bagReady
+                ? (v) => _putUniversal(SettingsKeys.showMascot, v)
+                : null,
+          ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsSectionMessages,
+        rows: [
+          ListRow.value(
+            key: const Key('prefsCoachInMessages'),
+            title: l10n.prefsCoachInMessages,
+            value: _coachPlacementLabel(
+              l10n,
+              parseCoachInboxPlacement(
+                _bagValue<Object>(SettingsKeys.messagesCoachRow),
               ),
             ),
-            SliverList(delegate: SliverChildListDelegate(rows)),
+            enabled: _bagReady,
+            onTap: _editCoachInMessages,
+          ),
+        ],
+      ),
+      // Showing the resolved state takes the stores (unset means "shown once
+      // there is data"), so a mount without them leaves the section out
+      // rather than render a switch that may be wrong.
+      if (widget.gymStore case final gym?)
+        if (widget.foodStore case final food?)
+          SettingsSection(
+            label: l10n.prefsSectionModalities,
+            rows: [
+              ListRow.toggle(
+                title: l10n.prefsShowGym,
+                subtitle: l10n.prefsShowGymSubtitle,
+                value: prefs.gymShown(hasData: gym.workouts.isNotEmpty),
+                onChanged: (v) async {
+                  await prefs.setShowGym(v);
+                  await _roamPush(widget.settingsSync?.pushModalityVisibility);
+                },
+              ),
+              ListRow.toggle(
+                title: l10n.prefsShowNutrition,
+                subtitle: l10n.prefsShowNutritionSubtitle,
+                value: prefs.nutritionShown(hasData: food.rows.isNotEmpty),
+                onChanged: (v) async {
+                  await prefs.setShowNutrition(v);
+                  await _roamPush(widget.settingsSync?.pushModalityVisibility);
+                },
+              ),
+            ],
+          ),
+    ];
+  }
+
+  /// Recording & voice: what a recording starts as, how the phone behaves
+  /// while it runs, and what it says out loud. Web: `/settings/recording`.
+  List<SettingsSection> _recordingSections(
+    AppLocalizations l10n, {
+    required bool runPrimaryForced,
+  }) {
+    final prefs = widget.preferences;
+    return [
+      SettingsSection(
+        label: l10n.prefsSectionActivityRecording,
+        rows: [
+          ListRow.value(
+            title: l10n.prefsDefaultActivity,
+            value: activityTypeLabelFor(
+              l10n,
+              _bagValue<String>(SettingsKeys.defaultActivityType),
+            ),
+            enabled: _bagReady,
+            onTap: _editDefaultActivityType,
+          ),
+          // multi_modal.md § "Protect the core runner": a pure runner can
+          // keep the centre Log button as a one-tap run start (long-press
+          // still opens the full capture sheet).
+          ListRow.toggle(
+            key: const Key('prefsKeepRunPrimary'),
+            title: l10n.prefsKeepRunPrimary,
+            subtitle: runPrimaryForced
+                ? l10n.prefsKeepRunPrimaryForcedSubtitle
+                : l10n.prefsKeepRunPrimarySubtitle,
+            value: runPrimaryForced || prefs.keepRunPrimary,
+            onChanged: runPrimaryForced ? null : prefs.setKeepRunPrimary,
+          ),
+          ListRow.toggle(
+            title: l10n.prefsKeepScreenOn,
+            subtitle: l10n.prefsKeepScreenOnSubtitle,
+            value: prefs.keepScreenOn,
+            onChanged: (v) async {
+              await prefs.setKeepScreenOn(v);
+              await _roamPush(widget.settingsSync?.pushKeepScreenOn);
+            },
+          ),
+          ListRow.toggle(
+            title: l10n.prefsDimScreenWhileRecording,
+            subtitle: l10n.prefsDimScreenWhileRecordingSubtitle,
+            value: prefs.dimScreenWhileRecording,
+            onChanged: prefs.keepScreenOn
+                ? (v) async {
+                    await prefs.setDimScreenWhileRecording(v);
+                    await _roamPush(
+                        widget.settingsSync?.pushDimScreenWhileRecording);
+                  }
+                : null,
+          ),
+          ListRow.toggle(
+            title: l10n.prefsAdvancedGps,
+            subtitle: l10n.prefsAdvancedGpsSubtitle,
+            value: prefs.advancedGps,
+            onChanged: prefs.setAdvancedGps,
+          ),
+          ListRow.toggle(
+            title: l10n.prefsShowRawTrack,
+            subtitle: l10n.prefsShowRawTrackSubtitle,
+            value: prefs.showRawTrack,
+            onChanged: prefs.setShowRawTrack,
+          ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsGroupVoiceFeedback,
+        rows: [
+          ListRow.toggle(
+            title: l10n.prefsAudioCues,
+            subtitle: l10n.prefsAudioCuesSubtitle,
+            value: prefs.audioCues,
+            onChanged: (v) async {
+              await prefs.setAudioCues(v);
+              await _roamPush(widget.settingsSync?.pushAudioCues);
+            },
+          ),
+          ListRow.toggle(
+            title: l10n.phoneSurfaceVibrationCues,
+            subtitle: l10n.phoneSurfaceVibrationCuesSubtitle,
+            value: prefs.hapticFeedback,
+            onChanged: (v) async {
+              await prefs.setHapticFeedback(v);
+              await _roamPush(widget.settingsSync?.pushHapticFeedback);
+            },
+          ),
+          if (prefs.audioCues)
+            ListRow.toggle(
+              title: l10n.prefsMinimalVoiceCues,
+              subtitle: l10n.prefsMinimalVoiceCuesSubtitle,
+              value: prefs.voiceFeedbackVerbosity == 'minimal',
+              onChanged: (v) async {
+                final value = v ? 'minimal' : 'full';
+                await prefs.setVoiceFeedbackVerbosity(value);
+                await _putUniversal(
+                  SettingsKeys.voiceFeedbackVerbosity,
+                  value,
+                );
+              },
+            ),
+          if (prefs.audioCues)
+            ListRow.toggle(
+              title: l10n.prefTurnByTurnCues,
+              subtitle: l10n.prefTurnByTurnCuesSubtitle,
+              value: prefs.turnByTurnCues,
+              onChanged: (v) async {
+                await prefs.setTurnByTurnCues(v);
+              },
+            ),
+          ListRow.value(
+            title: l10n.prefsSplitInterval,
+            value: prefs.splitIntervalMetres > 0
+                ? _splitIntervalLabel(prefs.splitIntervalMetres, prefs.unit)
+                : l10n.prefsSplitIntervalDefaultSubtitle(
+                    _splitIntervalLabel(
+                      ActivityType.run
+                          .splitIntervalMetresFor(prefs.unit)
+                          .round(),
+                      prefs.unit,
+                    ),
+                    _splitIntervalLabel(
+                      ActivityType.cycle
+                          .splitIntervalMetresFor(prefs.unit)
+                          .round(),
+                      prefs.unit,
+                    ),
+                  ),
+            onTap: _editSplitInterval,
+          ),
+          ListRow.value(
+            title: l10n.prefsTargetPace,
+            value: prefs.targetPaceSecPerKm > 0
+                ? l10n.prefsLivePaceAlertOn(
+                    UnitFormat.pace(
+                      prefs.targetPaceSecPerKm.toDouble(),
+                      prefs.unit,
+                    ),
+                    UnitFormat.paceLabel(prefs.unit),
+                  )
+                : l10n.prefsLivePaceAlertOff,
+            info: _info(l10n.prefsTargetPace, l10n.prefsTargetPaceInfo),
+            onTap: _editTargetPace,
+          ),
+        ],
+      ),
+      if (prefs.audioCues)
+        SettingsSection(
+          label: l10n.prefsVoiceCueTypesLabel,
+          rows: [
+            _cueSwitch(
+              l10n.prefsCueSplits,
+              l10n.prefsCueSplitsSubtitle,
+              VoiceCue.splits,
+              l10n.prefsCueSplitsInfo,
+            ),
+            _cueSwitch(
+              l10n.prefsCueStartFinish,
+              l10n.prefsCueStartFinishSubtitle,
+              VoiceCue.startFinish,
+              l10n.prefsCueStartFinishInfo,
+            ),
+            _cueSwitch(
+              l10n.prefsCueOffRoute,
+              l10n.prefsCueOffRouteSubtitle,
+              VoiceCue.offRoute,
+              l10n.prefsCueOffRouteInfo,
+            ),
+            _cueSwitch(
+              l10n.prefsCuePaceAlerts,
+              l10n.prefsCuePaceAlertsSubtitle,
+              VoiceCue.paceAlerts,
+              l10n.prefsCuePaceAlertsInfo,
+            ),
+            _cueSwitch(
+              l10n.prefsCueWorkoutSteps,
+              l10n.prefsCueWorkoutStepsSubtitle,
+              VoiceCue.workoutSteps,
+              l10n.prefsCueWorkoutStepsInfo,
+            ),
+            _cueSwitch(
+              l10n.prefsCueCutoffCatchUp,
+              l10n.prefsCueCutoffCatchUpSubtitle,
+              VoiceCue.cutoffCatchUp,
+              l10n.prefsCueCutoffCatchUpInfo,
+            ),
+            _cueSwitch(
+              l10n.prefsCueMarkerTargets,
+              l10n.prefsCueMarkerTargetsSubtitle,
+              VoiceCue.markerTargets,
+              l10n.prefsCueMarkerTargetsInfo,
+            ),
+            _cueSwitch(
+              l10n.prefsCuePhaseTransitions,
+              l10n.prefsCuePhaseTransitionsSubtitle,
+              VoiceCue.phaseTransitions,
+              l10n.prefsCuePhaseTransitionsInfo,
+            ),
+            _cueSwitch(
+              l10n.prefsCueGuidedRun,
+              l10n.prefsCueGuidedRunSubtitle,
+              VoiceCue.guidedRun,
+              l10n.prefsCueGuidedRunInfo,
+            ),
+            ListRow.value(
+              title: l10n.prefsSplitPaceMode,
+              value: _splitPaceModeLabel(l10n, prefs.splitPaceMode),
+              info: _info(l10n.prefsSplitPaceMode, l10n.prefsSplitPaceModeInfo),
+              onTap: _editSplitPaceMode,
+            ),
           ],
         ),
     ];
   }
 
+  /// Training: the goal, the heart-rate numbers zones and load are derived
+  /// from, plan recovery, race fuelling and the coach's tone. Web:
+  /// `/settings/training`.
+  List<SettingsSection> _trainingSections(
+    AppLocalizations l10n, {
+    required bool hideGymReadiness,
+  }) {
+    return [
+      SettingsSection(
+        label: l10n.prefsGroupWeeklyGoal,
+        rows: [
+          ListRow.value(
+            title: l10n.prefsWeeklyGoal,
+            value: _weeklyGoalSummary(),
+            enabled: _bagReady,
+            onTap: _editWeeklyGoal,
+          ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsGroupHeartRate,
+        rows: [
+          ListRow.value(
+            title: l10n.prefsDateOfBirth,
+            value: _dateOfBirthDisplay ?? l10n.prefsNotSet,
+            enabled: _bagReady,
+            onTap: _editDateOfBirth,
+          ),
+          ListRow.value(
+            title: l10n.prefsRestingHr,
+            value: _bagValue<num>(SettingsKeys.restingHrBpm) != null
+                ? l10n.prefsHrBpm(
+                    _bagValue<num>(SettingsKeys.restingHrBpm)!.round(),
+                  )
+                : l10n.prefsNotSet,
+            enabled: _bagReady,
+            onTap: _editRestingHr,
+          ),
+          ListRow.value(
+            title: l10n.prefsMaxHr,
+            value: _bagValue<num>(SettingsKeys.maxHrBpm) != null
+                ? l10n.prefsHrBpm(
+                    _bagValue<num>(SettingsKeys.maxHrBpm)!.round(),
+                  )
+                : l10n.prefsMaxHrNotSet,
+            enabled: _bagReady,
+            onTap: _editMaxHr,
+          ),
+          if (_hrPrescription) ..._hrMedicationTiles(l10n),
+          ListRow.value(
+            title: l10n.prefsHrZones,
+            value: _hrZonesSummary(),
+            enabled: _bagReady,
+            onTap: _editHrZones,
+          ),
+          if (!hideGymReadiness)
+            ListRow.toggle(
+              key: const Key('prefsExcludeGymFromReadiness'),
+              title: l10n.prefsExcludeGymFromReadiness,
+              subtitle: l10n.prefsExcludeGymFromReadinessHint,
+              value:
+                  _bagValue<bool>(SettingsKeys.excludeGymFromReadiness) ??
+                      false,
+              onChanged:
+                  _bagReady ? (_) => _editExcludeGymFromReadiness() : null,
+            ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsGroupPlans,
+        rows: [
+          ListRow.toggle(
+            key: const Key('prefsExtraRecovery'),
+            title: l10n.prefsExtraRecovery,
+            subtitle: l10n.prefsExtraRecoveryHint,
+            value: _bagValue<Object>(SettingsKeys.extraRecovery) == true,
+            onChanged: _bagReady
+                ? (on) => _putUniversal(SettingsKeys.extraRecovery, on)
+                : null,
+          ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsSectionFueling,
+        rows: [
+          ListRow.value(
+            title: l10n.prefsCarbsPerHour,
+            value: l10n.prefsCarbsPerHourValue(
+              (_bagValue<num>(SettingsKeys.carbsPerHour) ??
+                      widget.preferences.carbsPerHourG)
+                  .round(),
+            ),
+            enabled: _bagReady,
+            onTap: _editCarbsPerHour,
+          ),
+          ListRow.value(
+            title: l10n.prefsFluidPerHour,
+            value: l10n.prefsFluidPerHourValue(
+              (_bagValue<num>(SettingsKeys.fluidPerHour) ??
+                      widget.preferences.fluidPerHourMl)
+                  .round(),
+            ),
+            enabled: _bagReady,
+            onTap: _editFluidPerHour,
+          ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsSectionAiCoach,
+        rows: [
+          ListRow.value(
+            title: l10n.prefsCoachPersonality,
+            value: _coachLabel(
+              l10n,
+              _bagValue<String>(SettingsKeys.coachPersonality) ?? 'supportive',
+            ),
+            enabled: _bagReady,
+            onTap: _editCoachPersonality,
+          ),
+        ],
+      ),
+    ];
+  }
+
+  /// Privacy & sharing: who sees your runs, whether you can be found, who
+  /// can message you, the zones clipped from every track, and error
+  /// reports. Web: `/settings/privacy`.
+  List<SettingsSection> _privacySections(AppLocalizations l10n) {
+    final prefs = widget.preferences;
+    final api = widget.apiClient;
+    return [
+      SettingsSection(
+        label: l10n.prefsGroupYourRuns,
+        rows: [
+          ListRow.value(
+            title: l10n.prefsDefaultRunPrivacy,
+            value: _privacyLabel(
+              l10n,
+              _bagValue<String>(SettingsKeys.privacyDefault) ?? 'followers',
+            ),
+            enabled: _bagReady,
+            onTap: _editPrivacyDefault,
+          ),
+          ListRow.toggle(
+            title: l10n.prefsStravaAutoShare,
+            subtitle: l10n.prefsStravaAutoShareSubtitle,
+            value: _bagValue<bool>(SettingsKeys.stravaAutoShare) ?? false,
+            onChanged: _bagReady ? (_) => _editStravaAutoShare() : null,
+          ),
+        ],
+      ),
+      SettingsSection(
+        label: l10n.prefsGroupBeingFound,
+        rows: [
+          if (api != null) ...[
+            AsyncSwitchTile(
+              switchKey: const ValueKey('prefs-private-profile'),
+              title: l10n.prefsPrivateProfile,
+              subtitle: l10n.prefsPrivateProfileSubtitle,
+              value: _profilePrivate,
+              failed: _profilePrivateFailed,
+              saving: _profilePrivateSaving,
+              onChanged: _editProfilePrivate,
+              onRetry: _loadProfilePrivate,
+            ),
+            if (_profilePrivate == true)
+              ListRow.nav(
+                key: const ValueKey('prefs-follow-requests'),
+                title: l10n.followRequestsTitle,
+                onTap: _openFollowRequests,
+              ),
+          ],
+          ListRow.toggle(
+            title: l10n.prefsDiscoverable,
+            subtitle: l10n.prefsDiscoverableSubtitle,
+            value: _bagValue<bool>(SettingsKeys.discoverableInSearch) ?? true,
+            onChanged: _bagReady ? (_) => _editDiscoverableInSearch() : null,
+          ),
+          // Opt-in coarse-location discovery (issue #466). Both rows are
+          // absent — not merely disabled — while the default-off deploy gate
+          // holds, and the area row needs an ApiClient to reach its definer
+          // RPCs at all.
+          if (_nearbyGate) ...[
+            ListRow.toggle(
+              title: l10n.prefsDiscoverableNearby,
+              subtitle: l10n.prefsDiscoverableNearbySubtitle,
+              value: _bagValue<bool>(SettingsKeys.discoverableNearby) ?? false,
+              onChanged: _bagReady ? (_) => _editDiscoverableNearby() : null,
+            ),
+            if (api != null)
+              ListRow.value(
+                title: l10n.nearbyAreaTitle,
+                value: _nearbyAreaLabel == null
+                    ? l10n.nearbyAreaNone
+                    : l10n.nearbyAreaCurrent(_nearbyAreaLabel!),
+                onTap: _openNearbyArea,
+              ),
+          ],
+        ],
+      ),
+      if (api != null)
+        SettingsSection(
+          label: l10n.prefsSectionMessages,
+          rows: [
+            AsyncSwitchTile(
+              switchKey: const Key('prefsReadReceipts'),
+              title: l10n.prefsReadReceipts,
+              subtitle: l10n.prefsReadReceiptsHint,
+              value: _readReceipts,
+              failed: _readReceiptsFailed,
+              saving: _readReceiptsSaving,
+              onChanged: _editReadReceipts,
+              onRetry: _loadReadReceipts,
+            ),
+            AsyncSwitchTile(
+              switchKey: const Key('prefsMessageRequests'),
+              title: l10n.prefsMessageRequests,
+              subtitle: l10n.prefsMessageRequestsHint,
+              value: _messageRequests,
+              failed: _messageRequestsFailed,
+              saving: _messageRequestsSaving,
+              onChanged: _editMessageRequests,
+              onRetry: _loadMessageRequests,
+            ),
+          ],
+        ),
+      // Mirrors web's privacy-zones section (#666 I11): a zone is a sharing
+      // preference, not an account setting.
+      if (widget.settingsSync case final sync?)
+        SettingsSection(
+          label: l10n.privacyZonesTitle,
+          rows: [
+            ListRow.nav(
+              key: const ValueKey('prefs-privacy-zones'),
+              title: l10n.privacyZonesTitle,
+              subtitle: l10n.privacyZonesSubtitle,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => PrivacyZonesScreen(settingsSync: sync),
+                ),
+              ),
+            ),
+          ],
+        ),
+      SettingsSection(
+        label: l10n.prefsGroupTelemetry,
+        rows: [
+          ListRow.toggle(
+            key: const ValueKey('prefs-error-reports'),
+            title: l10n.settingsAccountSendErrorReports,
+            subtitle: l10n.settingsAccountSendErrorReportsSubtitle,
+            value: !prefs.sentryOptOut,
+            onChanged: (enabled) async {
+              await prefs.setSentryOptOut(!enabled);
+              if (!mounted) return;
+              showTopBanner(
+                context,
+                enabled
+                    ? l10n.settingsAccountErrorReportingEnabled
+                    : l10n.settingsAccountErrorReportingDisabled,
+              );
+            },
+          ),
+        ],
+      ),
+    ];
+  }
+
+  /// Notifications: which emails and pushes arrive. Web:
+  /// `/settings/notifications`.
+  List<SettingsSection> _notificationSections(AppLocalizations l10n) => [
+        SettingsSection(
+          label: l10n.prefsGroupEmailPush,
+          rows: [
+            ListRow.value(
+              title: l10n.prefsEmailNotifications,
+              value: _emailNotifLabel(
+                l10n,
+                _bagValue<String>(SettingsKeys.emailNotifications) ??
+                    'important',
+              ),
+              enabled: _bagReady,
+              onTap: _editEmailNotifications,
+            ),
+            ListRow.value(
+              title: l10n.prefsPushNotifications,
+              value: _pushNotifLabel(
+                l10n,
+                _bagValue<String>(SettingsKeys.pushNotifications) ??
+                    'important',
+              ),
+              enabled: _bagReady,
+              onTap: _editPushNotifications,
+            ),
+            ListRow.toggle(
+              title: l10n.prefsNotifyWorkoutReminder,
+              subtitle: l10n.prefsNotifyWorkoutReminderHint,
+              value:
+                  _bagValue<String>(SettingsKeys.notifyWorkoutReminder) !=
+                      'off',
+              onChanged:
+                  _bagReady ? (_) => _toggleNotifyWorkoutReminder() : null,
+            ),
+            ListRow.toggle(
+              key: const ValueKey('prefs-notify-race-starting-soon'),
+              title: l10n.prefsNotifyRaceStartingSoon,
+              subtitle: l10n.prefsNotifyRaceStartingSoonHint,
+              value:
+                  _bagValue<String>(SettingsKeys.notifyRaceStartingSoon) !=
+                      'off',
+              onChanged:
+                  _bagReady ? (_) => _toggleNotifyRaceStartingSoon() : null,
+            ),
+            ListRow.toggle(
+              title: l10n.prefsEmailNewDeviceAlerts,
+              subtitle: l10n.prefsEmailNewDeviceAlertsHint,
+              value:
+                  _bagValue<String>(SettingsKeys.emailNewDeviceAlerts) != 'off',
+              onChanged:
+                  _bagReady ? (_) => _toggleEmailNewDeviceAlerts() : null,
+            ),
+          ],
+        ),
+        SettingsSection(
+          label: l10n.prefsGroupOptionalEmails,
+          rows: [
+            ListRow.toggle(
+              title: l10n.prefsEmailWeeklyDigest,
+              subtitle: l10n.prefsEmailWeeklyDigestHint,
+              value: _bagValue<String>(SettingsKeys.emailWeeklyDigest) == 'on',
+              onChanged: _bagReady ? (_) => _editEmailWeeklyDigest() : null,
+            ),
+            ListRow.toggle(
+              title: l10n.prefsEmailLifecycleDrip,
+              subtitle: l10n.prefsEmailLifecycleDripHint,
+              value: _bagValue<String>(SettingsKeys.emailLifecycleDrip) == 'on',
+              onChanged: _bagReady ? (_) => _editEmailLifecycleDrip() : null,
+            ),
+          ],
+        ),
+      ];
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final prefs = widget.preferences;
+    final theme = Theme.of(context);
     // Null when this mount has no stores to resolve visibility against (the
     // run-detail HR shortcut); those rows then keep their plain behaviour.
     final gymShown = switch (widget.gymStore) {
@@ -1670,840 +2348,176 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     // Nothing to exclude for a runner who neither shows Gym nor has a lift.
     final hideGymReadiness =
         gymShown == false && (widget.gymStore?.workouts.isEmpty ?? false);
-    final offlineNotice =
-        widget.settingsSync?.synced == true &&
-            widget.settingsSync?.service?.isServerHydrated == false
-        ? AppLocalizations.of(context).prefsOfflineNotice
-        : null;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.prefsTitle)),
+    final offline = widget.settingsSync?.synced == true &&
+        widget.settingsSync?.service?.isServerHydrated == false;
+    final sections = switch (widget.page) {
+      PreferencesPage.display => _displaySections(l10n),
+      PreferencesPage.recording =>
+        _recordingSections(l10n, runPrimaryForced: runPrimaryForced),
+      PreferencesPage.training =>
+        _trainingSections(l10n, hideGymReadiness: hideGymReadiness),
+      PreferencesPage.privacy => _privacySections(l10n),
+      PreferencesPage.notifications => _notificationSections(l10n),
+    };
+    final title = preferencesPageTitle(l10n, widget.page);
+    return PushedPage(
+      title: title,
       body: contentColumn(
         context,
         SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              if (offlineNotice != null)
-                SliverToBoxAdapter(
-                  child: Container(
-                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.cloud_off, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(offlineNotice)),
-                      ],
-                    ),
+          child: SettingsList(
+            header: [
+              PageHeader(title: title),
+              if (offline)
+                Container(
+                  key: const ValueKey('prefs-offline-notice'),
+                  margin: const EdgeInsets.fromLTRB(
+                      AppInsets.gutter, AppSpace.smPlus, AppInsets.gutter, 0),
+                  padding: const EdgeInsets.all(AppSpace.smPlus),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.cloud_off, size: 18),
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(child: Text(l10n.prefsOfflineNotice)),
+                    ],
                   ),
                 ),
-              ..._prefSlivers(context, [
-                (
-                  AppLocalizations.of(context).prefsSectionUnitsDisplay,
-                  [
-                    ListTile(
-                      title: Text(AppLocalizations.of(context).prefsLanguage),
-                      subtitle: Text(
-                        widget.preferences.locale == null
-                            ? AppLocalizations.of(context).prefsLanguageSystem
-                            : localeLabels[localeToTag(
-                                    widget.preferences.locale!,
-                                  )] ??
-                                  '—',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: _editLanguage,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsUseMiles),
-                      subtitle: Text(_unitSubtitle()),
-                      value: prefs.useMiles,
-                      onChanged: (v) async {
-                        await prefs.setUseMiles(v);
-                        await _roamPush(
-                            widget.settingsSync?.pushPreferredUnit);
-                        if (mounted) setState(() {});
-                      },
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsPaceFormat),
-                      subtitle: Text(
-                        _paceFormatLabel(
-                          l10n,
-                          _bagValue<String>(SettingsKeys.unitsPaceFormat) ??
-                              'min_per_km',
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editPaceFormat,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsWeightUnit),
-                      subtitle: Text(
-                        _weightUnitLabel(
-                          l10n,
-                          _bagValue<String>(SettingsKeys.weightUnit) ?? 'kg',
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editWeightUnit,
-                    ),
-                    ListTile(
-                      key: const Key('prefsDisclosureLevel'),
-                      title: Text(l10n.prefsDisclosureLevel),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_disclosureLabel(l10n, _disclosureChoice)),
-                          Text(
-                            l10n.prefsDisclosureHint(
-                              _disclosureLabel(l10n, _derivedDisclosure),
-                            ),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                      isThreeLine: true,
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editDisclosureLevel,
-                    ),
-                    ListTile(
-                      key: const Key('prefsHomeCards'),
-                      title: Text(l10n.prefsHomeCards),
-                      subtitle: Text(l10n.prefsHomeCardsHint),
-                      isThreeLine: true,
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editHomeCards,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsMapStyle),
-                      subtitle: Text(_mapStyleLabel(l10n, _mapStylePref)),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editMapStyle,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsDarkMode),
-                      value: _darkMode,
-                      onChanged: (v) {
-                        final mode = v ? ThemeMode.dark : ThemeMode.light;
-                        setState(() => _darkMode = v);
-                        themeModeNotifier.value = mode;
-                        widget.preferences.setThemeMode(mode);
-                      },
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsUndoWindow),
-                      subtitle: Text(_undoWindowLabel(l10n, _undoWindowS)),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editUndoWindow,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsShowCalories),
-                      subtitle: Text(l10n.prefsShowCaloriesHint),
-                      value: _bagValue<bool>(SettingsKeys.showCalories) ?? true,
-                      onChanged: _bagReady
-                          ? (v) => _putUniversal(SettingsKeys.showCalories, v)
-                          : null,
-                    ),
-                    SwitchListTile(
-                      key: const Key('prefsShowMascot'),
-                      title: Text(l10n.prefsShowMascot),
-                      subtitle: Text(l10n.prefsShowMascotHint),
-                      value: _bagValue<bool>(SettingsKeys.showMascot) != false,
-                      onChanged: _bagReady
-                          ? (v) => _putUniversal(SettingsKeys.showMascot, v)
-                          : null,
-                    ),
-                  ],
-                ),
-                (
-                  l10n.prefsSectionActivityRecording,
-                  [
-                    ListTile(
-                      title: Text(l10n.prefsDefaultActivity),
-                      subtitle: Text(
-                        activityTypeLabelFor(
-                          l10n,
-                          _bagValue<String>(SettingsKeys.defaultActivityType),
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editDefaultActivityType,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsAudioCues),
-                      subtitle: Text(l10n.prefsAudioCuesSubtitle),
-                      value: prefs.audioCues,
-                      onChanged: (v) async {
-                        await prefs.setAudioCues(v);
-                        await _roamPush(widget.settingsSync?.pushAudioCues);
-                      },
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.phoneSurfaceVibrationCues),
-                      subtitle: Text(l10n.phoneSurfaceVibrationCuesSubtitle),
-                      value: prefs.hapticFeedback,
-                      onChanged: (v) async {
-                        await prefs.setHapticFeedback(v);
-                        await _roamPush(
-                            widget.settingsSync?.pushHapticFeedback);
-                      },
-                    ),
-                    if (prefs.audioCues)
-                      SwitchListTile(
-                        title: Text(l10n.prefsMinimalVoiceCues),
-                        subtitle: Text(l10n.prefsMinimalVoiceCuesSubtitle),
-                        value: prefs.voiceFeedbackVerbosity == 'minimal',
-                        onChanged: (v) async {
-                          final value = v ? 'minimal' : 'full';
-                          await prefs.setVoiceFeedbackVerbosity(value);
-                          await _putUniversal(
-                            SettingsKeys.voiceFeedbackVerbosity,
-                            value,
-                          );
-                        },
-                      ),
-                    if (prefs.audioCues)
-                      SwitchListTile(
-                        title: Text(l10n.prefTurnByTurnCues),
-                        subtitle: Text(l10n.prefTurnByTurnCuesSubtitle),
-                        value: prefs.turnByTurnCues,
-                        onChanged: (v) async {
-                          await prefs.setTurnByTurnCues(v);
-                        },
-                      ),
-                    ListTile(
-                      title: Text(l10n.prefsSplitInterval),
-                      subtitle: Text(
-                        prefs.splitIntervalMetres > 0
-                            ? _splitIntervalLabel(
-                                prefs.splitIntervalMetres,
-                                prefs.unit,
-                              )
-                            : l10n.prefsSplitIntervalDefaultSubtitle(
-                                _splitIntervalLabel(
-                                  ActivityType.run
-                                      .splitIntervalMetresFor(prefs.unit)
-                                      .round(),
-                                  prefs.unit,
-                                ),
-                                _splitIntervalLabel(
-                                  ActivityType.cycle
-                                      .splitIntervalMetresFor(prefs.unit)
-                                      .round(),
-                                  prefs.unit,
-                                ),
-                              ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: _editSplitInterval,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsTargetPace),
-                      subtitle: Text(
-                        prefs.targetPaceSecPerKm > 0
-                            ? l10n.prefsLivePaceAlertOn(
-                                UnitFormat.pace(
-                                  prefs.targetPaceSecPerKm.toDouble(),
-                                  prefs.unit,
-                                ),
-                                UnitFormat.paceLabel(prefs.unit),
-                              )
-                            : l10n.prefsLivePaceAlertOff,
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.info_outline),
-                            tooltip: l10n.prefsCueInfoTooltip,
-                            onPressed: () => _showCueInfo(
-                              l10n.prefsTargetPace,
-                              l10n.prefsTargetPaceInfo,
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right),
-                        ],
-                      ),
-                      onTap: _editTargetPace,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsKeepScreenOn),
-                      subtitle: Text(l10n.prefsKeepScreenOnSubtitle),
-                      value: prefs.keepScreenOn,
-                      onChanged: (v) async {
-                        await prefs.setKeepScreenOn(v);
-                        await _roamPush(
-                            widget.settingsSync?.pushKeepScreenOn);
-                      },
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsDimScreenWhileRecording),
-                      subtitle: Text(l10n.prefsDimScreenWhileRecordingSubtitle),
-                      value: prefs.dimScreenWhileRecording,
-                      onChanged: prefs.keepScreenOn
-                          ? (v) async {
-                              await prefs.setDimScreenWhileRecording(v);
-                              await _roamPush(widget.settingsSync
-                                  ?.pushDimScreenWhileRecording);
-                            }
-                          : null,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsAdvancedGps),
-                      subtitle: Text(l10n.prefsAdvancedGpsSubtitle),
-                      value: prefs.advancedGps,
-                      onChanged: prefs.setAdvancedGps,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsShowRawTrack),
-                      subtitle: Text(l10n.prefsShowRawTrackSubtitle),
-                      value: prefs.showRawTrack,
-                      onChanged: prefs.setShowRawTrack,
-                    ),
-                    // multi_modal.md § "Protect the core runner": a pure runner can
-                    // keep the centre Log button as a one-tap run start (long-press
-                    // still opens the full capture sheet).
-                    SwitchListTile(
-                      key: const Key('prefsKeepRunPrimary'),
-                      title: Text(l10n.prefsKeepRunPrimary),
-                      subtitle: Text(runPrimaryForced
-                          ? l10n.prefsKeepRunPrimaryForcedSubtitle
-                          : l10n.prefsKeepRunPrimarySubtitle),
-                      value: runPrimaryForced || prefs.keepRunPrimary,
-                      onChanged:
-                          runPrimaryForced ? null : prefs.setKeepRunPrimary,
-                    ),
-                  ],
-                ),
-                (
-                  l10n.prefsSectionMessages,
-                  [
-                    ListTile(
-                      key: const Key('prefsCoachInMessages'),
-                      title: Text(l10n.prefsCoachInMessages),
-                      subtitle: Text(
-                        _coachPlacementLabel(
-                          l10n,
-                          parseCoachInboxPlacement(
-                            _bagValue<Object>(SettingsKeys.messagesCoachRow),
-                          ),
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editCoachInMessages,
-                    ),
-                    if (widget.apiClient != null)
-                      SwitchListTile(
-                        key: const Key('prefsReadReceipts'),
-                        title: Text(l10n.prefsReadReceipts),
-                        subtitle: Text(l10n.prefsReadReceiptsHint),
-                        value: _readReceipts ?? false,
-                        onChanged: _readReceipts == null || _readReceiptsSaving
-                            ? null
-                            : _editReadReceipts,
-                      ),
-                    if (widget.apiClient != null)
-                      SwitchListTile(
-                        key: const Key('prefsMessageRequests'),
-                        title: Text(l10n.prefsMessageRequests),
-                        subtitle: Text(l10n.prefsMessageRequestsHint),
-                        value: _messageRequests ?? false,
-                        onChanged:
-                            _messageRequests == null || _messageRequestsSaving
-                                ? null
-                                : _editMessageRequests,
-                      ),
-                  ],
-                ),
-                // Showing the resolved state takes the stores (unset means
-                // "shown once there is data"), so a mount without them — the
-                // run-detail HR shortcut — leaves the section out rather than
-                // render a switch that may be wrong.
-                if (widget.gymStore case final gym?)
-                  if (widget.foodStore case final food?)
-                    (
-                      l10n.prefsSectionModalities,
-                      [
-                        SwitchListTile(
-                          title: Text(l10n.prefsShowGym),
-                          subtitle: Text(l10n.prefsShowGymSubtitle),
-                          value: prefs.gymShown(
-                              hasData: gym.workouts.isNotEmpty),
-                          onChanged: (v) async {
-                            await prefs.setShowGym(v);
-                            await _roamPush(
-                                widget.settingsSync?.pushModalityVisibility);
-                          },
-                        ),
-                        SwitchListTile(
-                          title: Text(l10n.prefsShowNutrition),
-                          subtitle: Text(l10n.prefsShowNutritionSubtitle),
-                          value: prefs.nutritionShown(
-                              hasData: food.rows.isNotEmpty),
-                          onChanged: (v) async {
-                            await prefs.setShowNutrition(v);
-                            await _roamPush(
-                                widget.settingsSync?.pushModalityVisibility);
-                          },
-                        ),
-                      ],
-                    ),
-                if (prefs.audioCues)
-                  (
-                    l10n.prefsVoiceCueTypesLabel,
-                    [
-                      _cueSwitch(
-                        l10n.prefsCueSplits,
-                        l10n.prefsCueSplitsSubtitle,
-                        VoiceCue.splits,
-                        l10n.prefsCueSplitsInfo,
-                      ),
-                      _cueSwitch(
-                        l10n.prefsCueStartFinish,
-                        l10n.prefsCueStartFinishSubtitle,
-                        VoiceCue.startFinish,
-                        l10n.prefsCueStartFinishInfo,
-                      ),
-                      _cueSwitch(
-                        l10n.prefsCueOffRoute,
-                        l10n.prefsCueOffRouteSubtitle,
-                        VoiceCue.offRoute,
-                        l10n.prefsCueOffRouteInfo,
-                      ),
-                      _cueSwitch(
-                        l10n.prefsCuePaceAlerts,
-                        l10n.prefsCuePaceAlertsSubtitle,
-                        VoiceCue.paceAlerts,
-                        l10n.prefsCuePaceAlertsInfo,
-                      ),
-                      _cueSwitch(
-                        l10n.prefsCueWorkoutSteps,
-                        l10n.prefsCueWorkoutStepsSubtitle,
-                        VoiceCue.workoutSteps,
-                        l10n.prefsCueWorkoutStepsInfo,
-                      ),
-                      _cueSwitch(
-                        l10n.prefsCueCutoffCatchUp,
-                        l10n.prefsCueCutoffCatchUpSubtitle,
-                        VoiceCue.cutoffCatchUp,
-                        l10n.prefsCueCutoffCatchUpInfo,
-                      ),
-                      _cueSwitch(
-                        l10n.prefsCueMarkerTargets,
-                        l10n.prefsCueMarkerTargetsSubtitle,
-                        VoiceCue.markerTargets,
-                        l10n.prefsCueMarkerTargetsInfo,
-                      ),
-                      _cueSwitch(
-                        l10n.prefsCuePhaseTransitions,
-                        l10n.prefsCuePhaseTransitionsSubtitle,
-                        VoiceCue.phaseTransitions,
-                        l10n.prefsCuePhaseTransitionsInfo,
-                      ),
-                      _cueSwitch(
-                        l10n.prefsCueGuidedRun,
-                        l10n.prefsCueGuidedRunSubtitle,
-                        VoiceCue.guidedRun,
-                        l10n.prefsCueGuidedRunInfo,
-                      ),
-                      ListTile(
-                        title: Text(l10n.prefsSplitPaceMode),
-                        subtitle: Text(
-                          _splitPaceModeLabel(l10n, prefs.splitPaceMode),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.info_outline),
-                              tooltip: l10n.prefsCueInfoTooltip,
-                              onPressed: () => _showCueInfo(
-                                l10n.prefsSplitPaceMode,
-                                l10n.prefsSplitPaceModeInfo,
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right),
-                          ],
-                        ),
-                        onTap: _editSplitPaceMode,
-                      ),
-                    ],
+              // Rows that sync through the settings bag are disabled until
+              // it is ready, which signed out it never is; say why once, at
+              // the top, rather than leave a page of greyed-out rows.
+              if (!_bagReady)
+                Padding(
+                  key: const ValueKey('prefs-sign-in-note'),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppInsets.gutter, AppSpace.smPlus, AppInsets.gutter, 0),
+                  child: Text(
+                    l10n.prefsSignInToEdit,
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                   ),
-                (
-                  l10n.prefsSectionTrainingDemographics,
-                  [
-                    if (!_bagReady)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: Text(
-                          l10n.prefsSignInToEdit,
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ListTile(
-                      title: Text(l10n.bodyMetricsTitle),
-                      subtitle: Text(l10n.bodyMetricsTileSubtitle),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => SettingsBodyMetricsScreen(
-                            api: widget.apiClient,
-                            settingsSync: widget.settingsSync,
-                            preferences: widget.preferences,
-                          ),
-                        ),
-                      ),
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsDateOfBirth),
-                      subtitle: Text(_dateOfBirthDisplay ?? l10n.prefsNotSet),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editDateOfBirth,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsRestingHr),
-                      subtitle: Text(
-                        _bagValue<num>(SettingsKeys.restingHrBpm) != null
-                            ? l10n.prefsHrBpm(
-                                _bagValue<num>(
-                                  SettingsKeys.restingHrBpm,
-                                )!.round(),
-                              )
-                            : l10n.prefsNotSet,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editRestingHr,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsMaxHr),
-                      subtitle: Text(
-                        _bagValue<num>(SettingsKeys.maxHrBpm) != null
-                            ? l10n.prefsHrBpm(
-                                _bagValue<num>(SettingsKeys.maxHrBpm)!.round(),
-                              )
-                            : l10n.prefsMaxHrNotSet,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editMaxHr,
-                    ),
-                    if (_hrPrescription) ..._hrMedicationTiles(l10n),
-                    ListTile(
-                      title: Text(l10n.prefsHrZones),
-                      subtitle: Text(_hrZonesSummary()),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editHrZones,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsWeeklyGoal),
-                      subtitle: Text(_weeklyGoalSummary()),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editWeeklyGoal,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsWeekStart),
-                      subtitle: Text(
-                        _weekStartLabel(
-                          l10n,
-                          _bagValue<String>(SettingsKeys.weekStartDay) ??
-                              _weekStartLocaleDefault,
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editWeekStartDay,
-                    ),
-                    if (!hideGymReadiness)
-                      SwitchListTile(
-                        key: const Key('prefsExcludeGymFromReadiness'),
-                        title: Text(l10n.prefsExcludeGymFromReadiness),
-                        subtitle: Text(l10n.prefsExcludeGymFromReadinessHint),
-                        value:
-                            _bagValue<bool>(
-                              SettingsKeys.excludeGymFromReadiness,
-                            ) ??
-                            false,
-                        onChanged: _bagReady
-                            ? (_) => _editExcludeGymFromReadiness()
-                            : null,
-                      ),
-                    SwitchListTile(
-                      key: const Key('prefsExtraRecovery'),
-                      title: Text(l10n.prefsExtraRecovery),
-                      subtitle: Text(l10n.prefsExtraRecoveryHint),
-                      value:
-                          _bagValue<Object>(SettingsKeys.extraRecovery) == true,
-                      onChanged: _bagReady
-                          ? (on) =>
-                              _putUniversal(SettingsKeys.extraRecovery, on)
-                          : null,
-                    ),
-                  ],
                 ),
-                (
-                  l10n.prefsSectionFueling,
-                  [
-                    ListTile(
-                      title: Text(l10n.prefsCarbsPerHour),
-                      subtitle: Text(
-                        l10n.prefsCarbsPerHourValue(
-                          (_bagValue<num>(SettingsKeys.carbsPerHour) ??
-                                  widget.preferences.carbsPerHourG)
-                              .round(),
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editCarbsPerHour,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsFluidPerHour),
-                      subtitle: Text(
-                        l10n.prefsFluidPerHourValue(
-                          (_bagValue<num>(SettingsKeys.fluidPerHour) ??
-                                  widget.preferences.fluidPerHourMl)
-                              .round(),
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editFluidPerHour,
-                    ),
-                  ],
-                ),
-                (
-                  l10n.prefsSectionPrivacySharing,
-                  [
-                    ListTile(
-                      title: Text(l10n.prefsDefaultRunPrivacy),
-                      subtitle: Text(
-                        _privacyLabel(
-                          l10n,
-                          _bagValue<String>(SettingsKeys.privacyDefault) ??
-                              'followers',
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editPrivacyDefault,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsStravaAutoShare),
-                      subtitle: Text(l10n.prefsStravaAutoShareSubtitle),
-                      value:
-                          _bagValue<bool>(SettingsKeys.stravaAutoShare) ??
-                          false,
-                      onChanged: _bagReady
-                          ? (_) => _editStravaAutoShare()
-                          : null,
-                    ),
-                    if (widget.apiClient != null) ...[
-                      SwitchListTile(
-                        key: const ValueKey('prefs-private-profile'),
-                        title: Text(l10n.prefsPrivateProfile),
-                        subtitle: Text(l10n.prefsPrivateProfileSubtitle),
-                        value: _profilePrivate,
-                        onChanged:
-                            _profilePrivateSaving ? null : _editProfilePrivate,
-                      ),
-                      if (_profilePrivate)
-                        ListTile(
-                          key: const ValueKey('prefs-follow-requests'),
-                          title: Text(l10n.followRequestsTitle),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: _openFollowRequests,
-                        ),
-                    ],
-                    SwitchListTile(
-                      title: Text(l10n.prefsDiscoverable),
-                      subtitle: Text(l10n.prefsDiscoverableSubtitle),
-                      value:
-                          _bagValue<bool>(SettingsKeys.discoverableInSearch) ??
-                          true,
-                      onChanged: _bagReady
-                          ? (_) => _editDiscoverableInSearch()
-                          : null,
-                    ),
-                    // Opt-in coarse-location discovery (issue #466). Both
-                    // rows are absent — not merely disabled — while the
-                    // default-off deploy gate holds, and the area row needs an
-                    // ApiClient to reach its definer RPCs at all.
-                    if (_nearbyGate) ...[
-                      SwitchListTile(
-                        title: Text(l10n.prefsDiscoverableNearby),
-                        subtitle: Text(l10n.prefsDiscoverableNearbySubtitle),
-                        value:
-                            _bagValue<bool>(SettingsKeys.discoverableNearby) ??
-                            false,
-                        onChanged: _bagReady
-                            ? (_) => _editDiscoverableNearby()
-                            : null,
-                      ),
-                      if (widget.apiClient != null)
-                        ListTile(
-                          title: Text(l10n.nearbyAreaTitle),
-                          subtitle: Text(
-                            _nearbyAreaLabel == null
-                                ? l10n.nearbyAreaNone
-                                : l10n.nearbyAreaCurrent(_nearbyAreaLabel!),
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: _openNearbyArea,
-                        ),
-                    ],
-                    // Mirrors web's `/settings/preferences` privacy-zones
-                    // section (#666 I11). It used to sit under Account, which
-                    // is sign-in / backup / deletion — a zone is a sharing
-                    // preference.
-                    if (widget.settingsSync != null)
-                      ListTile(
-                        title: Text(l10n.privacyZonesTitle),
-                        subtitle: Text(l10n.privacyZonesSubtitle),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (_) => PrivacyZonesScreen(
-                              settingsSync: widget.settingsSync!,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                (
-                  l10n.prefsSectionAiCoach,
-                  [
-                    ListTile(
-                      title: Text(l10n.prefsCoachPersonality),
-                      subtitle: Text(
-                        _coachLabel(
-                          l10n,
-                          _bagValue<String>(SettingsKeys.coachPersonality) ??
-                              'supportive',
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editCoachPersonality,
-                    ),
-                  ],
-                ),
-                (
-                  l10n.prefsSectionNotifications,
-                  [
-                    ListTile(
-                      title: Text(l10n.prefsEmailNotifications),
-                      subtitle: Text(
-                        _emailNotifLabel(
-                          l10n,
-                          _bagValue<String>(SettingsKeys.emailNotifications) ??
-                              'important',
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editEmailNotifications,
-                    ),
-                    ListTile(
-                      title: Text(l10n.prefsPushNotifications),
-                      subtitle: Text(
-                        _pushNotifLabel(
-                          l10n,
-                          _bagValue<String>(SettingsKeys.pushNotifications) ??
-                              'important',
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      enabled: _bagReady,
-                      onTap: _editPushNotifications,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsNotifyWorkoutReminder),
-                      subtitle: Text(l10n.prefsNotifyWorkoutReminderHint),
-                      value:
-                          _bagValue<String>(
-                            SettingsKeys.notifyWorkoutReminder,
-                          ) !=
-                          'off',
-                      onChanged: _bagReady
-                          ? (_) => _toggleNotifyWorkoutReminder()
-                          : null,
-                    ),
-                    SwitchListTile(
-                      key: const ValueKey('prefs-notify-race-starting-soon'),
-                      title: Text(l10n.prefsNotifyRaceStartingSoon),
-                      subtitle: Text(l10n.prefsNotifyRaceStartingSoonHint),
-                      value:
-                          _bagValue<String>(
-                            SettingsKeys.notifyRaceStartingSoon,
-                          ) !=
-                          'off',
-                      onChanged: _bagReady
-                          ? (_) => _toggleNotifyRaceStartingSoon()
-                          : null,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsEmailNewDeviceAlerts),
-                      subtitle: Text(l10n.prefsEmailNewDeviceAlertsHint),
-                      value:
-                          _bagValue<String>(
-                            SettingsKeys.emailNewDeviceAlerts,
-                          ) !=
-                          'off',
-                      onChanged: _bagReady
-                          ? (_) => _toggleEmailNewDeviceAlerts()
-                          : null,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsEmailWeeklyDigest),
-                      subtitle: Text(l10n.prefsEmailWeeklyDigestHint),
-                      value:
-                          _bagValue<String>(SettingsKeys.emailWeeklyDigest) ==
-                          'on',
-                      onChanged: _bagReady
-                          ? (_) => _editEmailWeeklyDigest()
-                          : null,
-                    ),
-                    SwitchListTile(
-                      title: Text(l10n.prefsEmailLifecycleDrip),
-                      subtitle: Text(l10n.prefsEmailLifecycleDripHint),
-                      value:
-                          _bagValue<String>(SettingsKeys.emailLifecycleDrip) ==
-                          'on',
-                      onChanged: _bagReady
-                          ? (_) => _editEmailLifecycleDrip()
-                          : null,
-                    ),
-                  ],
-                ),
-              ]),
             ],
+            sections: sections,
           ),
         ),
       ),
     );
   }
 }
+
+/// A Preferences page's title: its app bar, its row on You, and the page a
+/// settings-search result names.
+String preferencesPageTitle(AppLocalizations l10n, PreferencesPage page) =>
+    switch (page) {
+      PreferencesPage.display => l10n.prefsPageDisplay,
+      PreferencesPage.recording => l10n.prefsPageRecording,
+      PreferencesPage.training => l10n.prefsPageTraining,
+      PreferencesPage.privacy => l10n.prefsPagePrivacy,
+      PreferencesPage.notifications => l10n.prefsPageNotifications,
+    };
+
+/// What a Preferences page holds, as the subtitle of its row on You.
+String preferencesPageSummary(AppLocalizations l10n, PreferencesPage page) =>
+    switch (page) {
+      PreferencesPage.display => l10n.prefsPageDisplaySummary,
+      PreferencesPage.recording => l10n.prefsPageRecordingSummary,
+      PreferencesPage.training => l10n.prefsPageTrainingSummary,
+      PreferencesPage.privacy => l10n.prefsPagePrivacySummary,
+      PreferencesPage.notifications => l10n.prefsPageNotificationsSummary,
+    };
+
+IconData preferencesPageIcon(PreferencesPage page) => switch (page) {
+      PreferencesPage.display => Icons.straighten,
+      PreferencesPage.recording => Icons.directions_run,
+      PreferencesPage.training => Icons.monitor_heart,
+      PreferencesPage.privacy => Icons.lock_outline,
+      PreferencesPage.notifications => Icons.notifications_outlined,
+    };
+
+/// Every row title each Preferences page can show, gated rows included: the
+/// index You's settings search reads, since the pages are not built until
+/// opened. `preferences_search_index_test.dart` mounts each page with every
+/// gate open and fails when a row and this list disagree.
+List<String> preferencesRowTitles(AppLocalizations l10n, PreferencesPage page) =>
+    switch (page) {
+      PreferencesPage.display => [
+          l10n.prefsLanguage,
+          l10n.prefsDarkMode,
+          l10n.prefsUseMiles,
+          l10n.prefsPaceFormat,
+          l10n.prefsWeightUnit,
+          l10n.prefsWeekStart,
+          l10n.prefsDisclosureLevel,
+          l10n.prefsProgressCards,
+          l10n.prefsMapStyle,
+          l10n.prefsUndoWindow,
+          l10n.prefsShowCalories,
+          l10n.prefsShowMascot,
+          l10n.prefsCoachInMessages,
+          l10n.prefsShowGym,
+          l10n.prefsShowNutrition,
+        ],
+      PreferencesPage.recording => [
+          l10n.prefsDefaultActivity,
+          l10n.prefsKeepRunPrimary,
+          l10n.prefsKeepScreenOn,
+          l10n.prefsDimScreenWhileRecording,
+          l10n.prefsAdvancedGps,
+          l10n.prefsShowRawTrack,
+          l10n.prefsAudioCues,
+          l10n.phoneSurfaceVibrationCues,
+          l10n.prefsMinimalVoiceCues,
+          l10n.prefTurnByTurnCues,
+          l10n.prefsSplitInterval,
+          l10n.prefsTargetPace,
+          l10n.prefsCueSplits,
+          l10n.prefsCueStartFinish,
+          l10n.prefsCueOffRoute,
+          l10n.prefsCuePaceAlerts,
+          l10n.prefsCueWorkoutSteps,
+          l10n.prefsCueCutoffCatchUp,
+          l10n.prefsCueMarkerTargets,
+          l10n.prefsCuePhaseTransitions,
+          l10n.prefsCueGuidedRun,
+          l10n.prefsSplitPaceMode,
+        ],
+      PreferencesPage.training => [
+          l10n.prefsWeeklyGoal,
+          l10n.prefsDateOfBirth,
+          l10n.prefsRestingHr,
+          l10n.prefsMaxHr,
+          l10n.prefsHrMedicationAffected,
+          l10n.prefsHrMedicationSetMaxHr,
+          l10n.prefsHrZones,
+          l10n.prefsExcludeGymFromReadiness,
+          l10n.prefsExtraRecovery,
+          l10n.prefsCarbsPerHour,
+          l10n.prefsFluidPerHour,
+          l10n.prefsCoachPersonality,
+        ],
+      PreferencesPage.privacy => [
+          l10n.prefsDefaultRunPrivacy,
+          l10n.prefsStravaAutoShare,
+          l10n.prefsPrivateProfile,
+          l10n.followRequestsTitle,
+          l10n.prefsDiscoverable,
+          l10n.prefsDiscoverableNearby,
+          l10n.nearbyAreaTitle,
+          l10n.prefsReadReceipts,
+          l10n.prefsMessageRequests,
+          l10n.privacyZonesTitle,
+          l10n.settingsAccountSendErrorReports,
+        ],
+      PreferencesPage.notifications => [
+          l10n.prefsEmailNotifications,
+          l10n.prefsPushNotifications,
+          l10n.prefsNotifyWorkoutReminder,
+          l10n.prefsNotifyRaceStartingSoon,
+          l10n.prefsEmailNewDeviceAlerts,
+          l10n.prefsEmailWeeklyDigest,
+          l10n.prefsEmailLifecycleDrip,
+        ],
+    };

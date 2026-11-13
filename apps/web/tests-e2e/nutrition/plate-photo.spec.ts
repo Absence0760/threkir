@@ -162,6 +162,10 @@ test.describe('/nutrition/log — plate photo', () => {
 			const panel = await pick(page);
 			await panel.getByTestId('plate-photo-estimate').click();
 			await expect(panel.getByTestId('plate-photo-error')).toContainText(text, { timeout: 10_000 });
+			// Only the Pro refusal carries the link to Pro.
+			await expect(panel.getByTestId('plate-photo-error').getByRole('link', { name: 'See Pro' })).toHaveCount(
+				label === 'Pro' ? 1 : 0,
+			);
 			await expect(page.getByTestId('meal-slot')).toBeVisible();
 		});
 	}

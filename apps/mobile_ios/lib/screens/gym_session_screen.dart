@@ -727,10 +727,15 @@ class _GymSessionScreenState extends State<GymSessionScreen> {
           metadata: metadata,
         );
       }
+      // The workout is saved on the phone; wait only briefly for it to sync,
+      // and say which happened (issue #1374 FS-15).
       final api = widget.api;
-      if (api != null) await widget.gymStore.syncWithServer(api);
+      // Signed out, the phone is the only copy, so there is nothing to wait for.
+      final synced = api == null ||
+          await widget.gymStore.syncRowBriefly(api, _draftId!);
       if (mounted) {
-        showTopBanner(context, l10n.gymSessionSaved);
+        showTopBanner(
+            context, synced ? l10n.gymSessionSaved : l10n.commonSavedOnPhone);
         Navigator.pop(context, _draftId);
       }
     } catch (e) {

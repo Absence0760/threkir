@@ -63,6 +63,7 @@ Future<_Sync> _pump(WidgetTester tester,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SettingsPreferencesScreen(
+        page: PreferencesPage.training,
         apiClient: _Api(consented: consented),
         preferences: prefs,
         settingsSync: sync,
@@ -74,8 +75,10 @@ Future<_Sync> _pump(WidgetTester tester,
   return sync;
 }
 
-SwitchListTile _switch(WidgetTester tester) => tester.widget<SwitchListTile>(
-    find.byKey(const Key('prefsHrMedicationAffected')));
+SwitchListTile _switch(WidgetTester tester) => tester.widget<SwitchListTile>(find.descendant(
+        of: find.byKey(const Key('prefsHrMedicationAffected')),
+        matching: find.byType(SwitchListTile),
+      ));
 
 void main() {
   setUp(initializeDateFormatting);

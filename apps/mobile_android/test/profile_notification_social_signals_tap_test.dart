@@ -115,6 +115,17 @@ class _NotifApi extends ApiClient {
   }
 }
 
+/// A mark-read the server refuses.
+class _MarkReadFailsApi extends _NotifApi {
+  _MarkReadFailsApi(super.views);
+
+  @override
+  Future<void> markNotificationRead(String id) async {
+    read.add(id);
+    throw Exception('offline');
+  }
+}
+
 bool _supabaseReady = false;
 
 Future<void> _ensureSupabase() async {
@@ -179,6 +190,38 @@ void main() {
       expect(api.opened, isEmpty);
     });
   }
+
+  // Issue #1374 FS-14: mark-read was optimistic with no rollback, so a row
+  // showed read and came back unread on the next load.
+  testWidgets('a refused mark-read puts the row back to unread', (tester) async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    final title = l10n.profileNotifKudos('Ana', l10n.profileNotifYourRun);
+    // An unread row carries the tile tint; a read one does not.
+    bool tinted() => tester
+            .widget<ListTile>(find.ancestor(
+                of: find.text(title), matching: find.byType(ListTile)))
+            .tileColor !=
+        null;
+    final ok = _NotifApi([_view('kudos')]);
+    await _pump(tester, ok);
+    expect(tinted(), isTrue);
+    await tester.tap(find.text(title));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(tinted(), isFalse, reason: 'a stored mark-read drops the tint');
+
+    pendingEntityLink.value = null;
+    await tester.pumpWidget(const SizedBox());
+    final failing = _MarkReadFailsApi([_view('kudos')]);
+    await _pump(tester, failing);
+    await tester.tap(find.text(title));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(failing.read, ['n-kudos']);
+    expect(tinted(), isTrue);
+  });
 
   Future<void> tapAndSettle(WidgetTester tester, String text) async {
     await tester.tap(find.text(text));

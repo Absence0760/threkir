@@ -82,6 +82,13 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | cadence (steps/min) | ケイデンス | `runStatCadence`; 「頻度」 in `discover.cadenceLabel` means *recurrence* |
 | training plan | トレーニングプラン; short プラン | |
 | race | レース; 勝負 for the race phase intent | |
+| counting cues | 「# 件のキュー」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「#個のキュー」 |
+| mapped run (personal heatmap) | 「地図に#件のラン」「地図に表示できるランはまだありません」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「マップ化されたラン」 |
+| AI disclosure | **AIに関する説明** | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「AIの説明」, which collides with 「AIによる説明」 (an AI description) |
+| waitlist | **キャンセル待ち** everywhere — status 「キャンセル待ち」, 「満員 · キャンセル待ち{n}人」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 補欠 |
+| safety contact | **緊急連絡先** everywhere, including 「緊急連絡先のみ」 on the live view | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 安全連絡先 |
+| payouts (a host or fundraiser receiving money: the Payouts page and tab, "Set up payouts", the payout account) | **受け取り** — 「受け取り」, 「受け取りを設定」, 「受け取りの設定を完了する」, 「受け取りアカウント」 | settled 2026-11-13 (#1374 round 3.7), web (mobile has no payouts surface); never 支払い for this, which reads as money paid out by the reader. 支払い / お支払い stays for a reader paying (「お支払いで確定します」, 支払い方法) and 決済 for payment processing (「まだ決済が設定されていません」) |
+| form (TSB), fitness and form | **調子** — 「TSB（調子）」「フィットネス、疲労、調子」「体力と調子」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; コンディション stays for route conditions and Readiness, so it is never form |
 | finish | ゴール (finish line), フィニッシュ (roadbook), 完走 (finished a race), 終了 (ended), 完了 (completed) | mixed — inconsistency 3 |
 | DNF | DNF | web `liveEvent.statusDnf` 「途中棄権」 |
 | route | ルート; コース for a race course | |
@@ -101,6 +108,10 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | warm-up / cool-down / recovery | ウォームアップ / クールダウン / リカバリー | 回復 once on mobile |
 | save / settings / feed / followers | 保存 / 設定 / フィード / フォロワー | |
 | sign in | サインイン | ログイン in 4 / 21 strings — inconsistency 4 |
+| device / phone | **デバイス** for *device* (「このデバイス」「他のデバイス」「サインイン中のデバイス」「すべてのデバイスからサインアウト」); **スマートフォン** where the English says *phone* (「このスマートフォンに保存」) | settled 2026-11-12: 31 mobile / 13 web strings and 3 help guides moved off 「端末」. Never 端末, and スマホ is not the short form: "phone" is スマートフォン in full |
+| watch (the device) | **ウォッチ** (「スマートフォンやウォッチ」「ウォッチに送信」「Wear OS ウォッチ」) | settled 2026-11-13; never 時計 for the device. 時計 stays for a *clock* (「レースの時計」「サーバーの時計」「デバイスの時計」) and in 時計回り |
+| browser | **ブラウザ** | settled 2026-11-13; never ブラウザー |
+| run (the activity) | **ラン**, also where the English says "a run" in a sentence about saving or syncing it (「ランを保存すると解除されます。圏外で終えたランは…」) | settled 2026-11-13; アクティビティ is for *activity* in the English |
 | arm / armed (race control) | **準備する** / **準備完了** — 「レースを準備」「このまま準備する」「早めに準備」「レース準備完了」 | settled 2026-11-10; never 「準備完了にする」 for the action |
 | set up (a race created automatically before its start) | **設定される** (「レースはスタートの前日に設定されます」) | settled 2026-11-10; never 準備, which is *arm* |
 | self-timed (race) | **セルフタイム**; a self-timed race is 「セルフタイム方式のレース」, the window 「セルフタイム期間」 | settled 2026-11-10; never 「セルフ計測」 |

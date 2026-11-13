@@ -11,7 +11,7 @@ import { USER_A } from '../fixtures/users';
  * confirm the dialog, then verify two downstream surfaces actually
  * see the new rows:
  *
- *   1. /dashboard — the "This Week" mileage card increases by the
+ *   1. /dashboard/progress — the "This Week" mileage card increases by the
  *      total distance of imported runs that fall in the current
  *      week. This is the easiest user-visible signal that the
  *      restore actually wrote data, since the card aggregates runs
@@ -81,12 +81,12 @@ async function cleanup(ids: string[]): Promise<void> {
 	await admin.from('runs').delete().in('id', ids);
 }
 
-/** Read the current week's distance from the dashboard week lead, Home's
+/** Read the current week's distance from the Progress week lead, Progress's
  *  one this-week view (decisions § 2283). It renders e.g. "12.4 km" or
  *  "7.7 mi" — we just scrape the numeric prefix. Returns 0 for an empty
  *  week, which the lead says in words. */
 async function thisWeekDistanceKm(page: import('@playwright/test').Page): Promise<number> {
-	await page.goto('/dashboard');
+	await page.goto('/dashboard/progress');
 	const card = page.getByTestId('dash-week-lead');
 	await expect(card).toBeVisible({ timeout: 10_000 });
 	const text = (await card.locator('.week-lead-value').innerText()).trim();

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import CaptionEditForm from './CaptionEditForm.svelte';
 	import { onMount } from 'svelte';
 	import {
 		fetchRoutePhotosWithError,
@@ -30,7 +31,6 @@
 	let lightbox = $state<RoutePhoto | null>(null);
 	let confirmDelete = $state<RoutePhoto | null>(null);
 	let editingId = $state<string | null>(null);
-	let editingCaption = $state('');
 	let fileInput: HTMLInputElement | undefined = $state();
 
 	let canManage = $derived(auth.user?.id === routeOwnerId);
@@ -105,19 +105,18 @@
 
 	function startEdit(p: RoutePhoto) {
 		editingId = p.id;
-		editingCaption = p.caption ?? '';
 	}
 
-	async function saveCaption() {
-		if (!editingId) return;
-		const id = editingId;
-		const next = editingCaption.trim() || null;
-		editingId = null;
+	// Answers whether the caption was stored: the editor closes only then, so
+	// a failed write keeps the typed text (issue #1374 FS-11).
+	async function saveCaption(id: string, next: string | null): Promise<boolean> {
 		try {
 			await updateRoutePhotoCaption(id, next);
 			photos = photos.map((p) => (p.id === id ? { ...p, caption: next } : p));
+			return true;
 		} catch (e: any) {
 			showToast(m('routePhotos.captionUpdateFailed', { error: errorCopy(e, m, 'routePhotos.captionUpdateFailed') }), 'error');
+			return false;
 		}
 	}
 </script>
@@ -194,25 +193,15 @@
 						<img src={safeImageSrc(p.thumbUrl ?? p.url)} alt={p.caption ?? ''} loading="lazy" />
 					</button>
 					{#if editingId === p.id}
-						<form
-							class="caption-edit"
-							onsubmit={(e) => {
-								e.preventDefault();
-								saveCaption();
-							}}
-						>
-							<input
-								type="text"
-								bind:value={editingCaption}
-								maxlength="280"
-								placeholder={m('routePhotos.captionEditPlaceholder')}
-								aria-label={m('routePhotos.captionEditAriaLabel')}
-							/>
-							<button class="btn btn-primary btn-sm" type="submit">{m('routePhotos.save')}</button>
-							<button class="btn btn-secondary btn-sm" type="button" onclick={() => (editingId = null)}>
-								{m('routePhotos.cancel')}
-							</button>
-						</form>
+						<CaptionEditForm
+							initial={p.caption}
+							placeholder={m('routePhotos.captionEditPlaceholder')}
+							ariaLabel={m('routePhotos.captionEditAriaLabel')}
+							saveLabel={m('routePhotos.save')}
+							cancelLabel={m('routePhotos.cancel')}
+							onSave={(next) => saveCaption(p.id, next)}
+							onClose={() => (editingId = null)}
+						/>
 					{:else if p.caption}
 						<figcaption>{p.caption}</figcaption>
 					{/if}
@@ -383,21 +372,6 @@
 		line-height: 1.35;
 		white-space: pre-wrap;
 		word-break: break-word;
-	}
-
-	.caption-edit {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.3rem;
-	}
-
-	.caption-edit input {
-		flex: 1 1 100%;
-		padding: 0.35rem 0.55rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		font-size: 0.85rem;
 	}
 
 	.tile-actions {

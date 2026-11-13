@@ -13,6 +13,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_safety_screen.dart';
 import '../lib/settings_sync.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(WidgetTester tester) async {
   await tester.pumpWidget(
@@ -60,6 +61,9 @@ class _SafetyApi extends ApiClient {
     await confirmGate.future;
     return true;
   }
+
+  @override
+  Future<List<SafetyContactOf>> fetchSafetyContactOf() async => const [];
 }
 
 /// Lists the four SMS states an owner's contact row can be in.
@@ -77,6 +81,9 @@ class _ContactListApi extends ApiClient {
   @override
   Future<List<PendingSafetyRequest>> fetchPendingSafetyRequests() async =>
       const [];
+
+  @override
+  Future<List<SafetyContactOf>> fetchSafetyContactOf() async => const [];
 }
 
 /// Records what the add call was handed, so the normalisation the screen
@@ -104,6 +111,9 @@ class _AddCaptureApi extends ApiClient {
       createdAt: DateTime.utc(2026, 5, 1),
     );
   }
+
+  @override
+  Future<List<SafetyContactOf>> fetchSafetyContactOf() async => const [];
 }
 
 
@@ -127,6 +137,9 @@ class _AddFailApi extends ApiClient {
     addCalls++;
     throw Exception('network down');
   }
+
+  @override
+  Future<List<SafetyContactOf>> fetchSafetyContactOf() async => const [];
 }
 
 /// One confirmed relationship the signed-in user is the CONTACT of. The
@@ -199,6 +212,10 @@ class _HangingApi extends ApiClient {
   @override
   Future<List<PendingSafetyRequest>> fetchPendingSafetyRequests() =>
       Completer<List<PendingSafetyRequest>>().future;
+
+  @override
+  Future<List<SafetyContactOf>> fetchSafetyContactOf() =>
+      Completer<List<SafetyContactOf>>().future;
 }
 
 /// The server's safety_audience gate reads open (decisions § 1964).
@@ -215,6 +232,54 @@ class _SafetyAudienceApi extends ApiClient {
 
   @override
   Future<bool> safetyAudienceEnabled() async => true;
+
+  @override
+  Future<List<SafetyContactOf>> fetchSafetyContactOf() async => const [];
+}
+
+/// Fails the next [failReads] list reads, then serves one saved contact.
+/// Drives the "couldn't load" state that used to read as "no contacts"
+/// (issue #1374 FS-1).
+class _FlakyReadApi extends ApiClient {
+  _FlakyReadApi({this.failReads = 1, this.contactOfFails = false});
+
+  int failReads;
+  final bool contactOfFails;
+  int reads = 0;
+
+  @override
+  String? get userId => 'me';
+
+  @override
+  Future<List<SafetyContact>> fetchMySafetyContacts() async {
+    reads++;
+    if (failReads > 0) {
+      failReads--;
+      throw Exception('network down');
+    }
+    return [
+      SafetyContact(
+        id: 'sc-1',
+        contactEmail: 'sam@example.com',
+        createdAt: DateTime.utc(2026, 5, 1),
+      ),
+    ];
+  }
+
+  @override
+  Future<List<PendingSafetyRequest>> fetchPendingSafetyRequests() async =>
+      const [];
+
+  @override
+  Future<List<SafetyContactOf>> fetchSafetyContactOf() async {
+    if (contactOfFails) throw Exception('network down');
+    return const [];
+  }
+
+  @override
+  Future<void> removeSafetyContact(String id) async {
+    failReads = 1;
+  }
 }
 
 /// Records bag writes and reports `synced` so the pref controls enable —
@@ -311,6 +376,71 @@ void main() {
       expect(find.byType(ListSkeleton), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       await tester.pump(const Duration(milliseconds: 400));
+    });
+
+    testWidgets('a failed read says it could not load, never "no contacts"',
+        (tester) async {
+      final api = _FlakyReadApi();
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SettingsSafetyScreen(api: api),
+      ));
+      await tester.pumpAndSettle();
+      final l10n =
+          AppLocalizations.of(tester.element(find.byType(SettingsSafetyScreen)));
+
+      expect(find.text(l10n.safetyLoadFailed), findsOneWidget);
+      expect(find.text(l10n.safetyEmpty), findsNothing);
+
+      await tester.tap(find.text(l10n.errorStateRetry));
+      await tester.pumpAndSettle();
+      expect(api.reads, 2);
+      expect(find.text(l10n.safetyLoadFailed), findsNothing);
+      expect(find.text('sam@example.com'), findsOneWidget);
+    });
+
+    testWidgets('one failed section leaves the other sections standing',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SettingsSafetyScreen(
+            api: _FlakyReadApi(failReads: 0, contactOfFails: true)),
+      ));
+      await tester.pumpAndSettle();
+      final l10n =
+          AppLocalizations.of(tester.element(find.byType(SettingsSafetyScreen)));
+
+      expect(find.text('sam@example.com'), findsOneWidget);
+      final error = await _scrollTo(tester, find.text(l10n.safetyLoadFailed));
+      expect(error, findsOneWidget);
+      expect(find.text(l10n.safetyContactOfTitle), findsOneWidget);
+    });
+
+    testWidgets('a failed reload keeps the last good list and says it is stale',
+        (tester) async {
+      final api = _FlakyReadApi(failReads: 0);
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SettingsSafetyScreen(api: api),
+      ));
+      await tester.pumpAndSettle();
+      final l10n =
+          AppLocalizations.of(tester.element(find.byType(SettingsSafetyScreen)));
+      expect(find.text('sam@example.com'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, l10n.safetyRemove));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, l10n.safetyRemove));
+      await tester.pumpAndSettle();
+
+      expect(find.text('sam@example.com'), findsOneWidget);
+      expect(find.text(l10n.safetyLoadFailed), findsNothing);
+      expect(find.text(l10n.commonStaleRefreshFailed), findsOneWidget);
+      expect(find.text(l10n.safetyRemovedToast), findsNothing);
+      await tester.pump(const Duration(seconds: 10));
     });
 
     testWidgets('renders the add form, intro and empty state', (tester) async {
@@ -599,6 +729,9 @@ void main() {
         250,
         scrollable: find.byType(Scrollable).first,
       );
+      // scrollUntilVisible stops once any of it shows; bring it all in.
+      await tester.ensureVisible(confirm);
+      await tester.pumpAndSettle();
       await tester.tap(confirm);
       await tester.pump();
 
@@ -646,7 +779,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -717,6 +850,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _scrollTo(tester, find.byType(DropdownButton<int?>));
       expect(
           tester.widget<DropdownButton<int?>>(find.byType(DropdownButton<int?>))
               .value,
@@ -947,7 +1081,7 @@ void main() {
     testWidgets('arming the overdue alert turns the unset switch on',
         (tester) async {
       final sync = await pumpGateOpen(tester);
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -959,7 +1093,7 @@ void main() {
 
     testWidgets('an explicit off wins over the default', (tester) async {
       final sync = await pumpGateOpen(tester);
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -983,12 +1117,23 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
       await _scrollTo(tester, find.text('Auto live share'));
       expect(autoToggle(tester).value, isFalse);
     });
+  });
+
+  worstCaseTestWidgets('the safety page', (tester, locale) async {
+    final sync = await tester.runAsync(_fakeSync);
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SettingsSafetyScreen(api: null, settingsSync: sync),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Safety');
   });
 }

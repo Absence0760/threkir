@@ -49,6 +49,7 @@ const month = (s: MinimalActivity) => String(Number(day(s).slice(5, 7)));
 
 const ROUTES: readonly SweepRoute[] = [
 	{ name: 'dashboard', path: () => '/dashboard' },
+	{ name: 'dashboard progress', path: () => '/dashboard/progress' },
 	{ name: 'dashboard week', path: (s) => `/dashboard/period/week/${day(s)}` },
 	{ name: 'dashboard month', path: (s) => `/dashboard/period/month/${day(s)}` },
 	{ name: 'dashboard all time', path: (s) => `/dashboard/period/all/${day(s)}` },

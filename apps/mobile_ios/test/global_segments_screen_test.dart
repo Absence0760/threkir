@@ -6,11 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState;
+import 'package:ui_kit/ui_kit.dart' show EmptyState, PageHeading;
 
+import '../lib/fitness_surface_requests.dart';
 import '../lib/screens/global_segments_screen.dart';
 import '../lib/screens/park_courses_screen.dart';
+import '../lib/screens/races_screen.dart';
+import '../lib/routes_views.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 GlobalSegmentRow _segment({
   required String id,
@@ -54,7 +58,12 @@ final _catalogue = [
 ];
 
 class _CatalogueApi extends ApiClient {
-  _CatalogueApi(this.segments, {this.viewer = 'viewer-1', this.credit});
+  _CatalogueApi(
+    this.segments, {
+    this.viewer = 'viewer-1',
+    this.credit,
+    this.parkCourse = false,
+  });
 
   final List<GlobalSegmentRow> segments;
   final String? viewer;
@@ -63,12 +72,48 @@ class _CatalogueApi extends ApiClient {
   /// reads as; null for a segment no park course is built on.
   final String? credit;
 
+  /// The park course every segment is built on, carrying [credit]; null for
+  /// none.
+  final bool parkCourse;
+
   @override
-  Future<String?> fetchParkCourseCredit({
-    String? routeId,
-    String? segmentId,
-  }) async =>
-      credit;
+  Future<({ParkListing park, ParkCourseListing course})?>
+      fetchParkCourseForSegment(String segmentId) async {
+    if (!parkCourse && credit == null) return null;
+    final segment = segments.firstWhere((s) => s.id == segmentId);
+    final created = DateTime.parse('2026-01-01T00:00:00Z');
+    return (
+      park: ParkListing(
+        park: ParkRow(
+          id: 'p1',
+          slug: 'beaver-lake',
+          name: 'Beaver Lake Park',
+          agency: 'state',
+          regionCode: 'US-VA',
+          countryCode: 'US',
+          timezone: 'America/New_York',
+          isActive: true,
+          createdAt: created,
+        ),
+        season: 2026,
+      ),
+      course: ParkCourseListing(
+        course: ParkCourseRow(
+          id: 'c1',
+          parkId: 'p1',
+          globalSegmentId: segmentId,
+          slug: 'loop',
+          courseShape: 'loop',
+          status: 'open',
+          geometrySource: 'osm',
+          checkpoints: const [],
+          attribution: credit,
+          createdAt: created,
+        ),
+        segment: segment,
+      ),
+    );
+  }
 
   @override
   String? get userId => viewer;
@@ -220,6 +265,31 @@ void main() {
   setUpAll(_ensureEnvironment);
 
   group('GlobalSegmentsScreen — browse', () {
+    worstCaseTestWidgets('the segment cards', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: GlobalSegmentsScreen(api: _CatalogueApi(_catalogue)),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await walkScrollable(tester, primaryScrollable(), 'Segments');
+    });
+
+    worstCaseTestWidgets('the park course link', (tester, locale) async {
+      final api = _CatalogueApi(
+        [_segment(id: 'a', name: 'Beaver Lake Trail')],
+        parkCourse: true,
+      );
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: GlobalSegmentDetailScreen(api: api, segmentId: 'a'),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await walkScrollable(tester, primaryScrollable(), 'Segment detail');
+    });
+
     testWidgets('renders one card per catalogue segment with its region',
         (tester) async {
       await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _CatalogueApi(_catalogue))));
@@ -274,10 +344,14 @@ void main() {
         (tester) async {
       await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _CatalogueApi(_catalogue))));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('All surfaces').first);
+      // Surface waits in the Filters sheet, and shows as a removable chip.
+      await tester.tap(find.byTooltip('Filters'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Trail').last);
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Trail'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(InputChip, 'Trail'), findsOneWidget);
       expect(find.text('Harlem Hill'), findsOneWidget);
       expect(find.text('Champs-Élysées Sprint'), findsNothing);
     });
@@ -312,13 +386,83 @@ void main() {
       expect(find.byType(TextField), findsNothing);
     });
 
-    testWidgets('the empty catalogue points to park courses', (tester) async {
+    // Under the Routes tab (issue #1374, decisions § 2490) the catalogue is
+    // Explore → Segments: the tab hands it the Mine · Explore row and the
+    // Routes · Segments chips, which sit above the list, and stay when the
+    // catalogue is empty so the runner can still switch back.
+    RoutesExploreChrome chrome() => RoutesExploreChrome(
+          viewBar: const SizedBox(key: Key('test-view-bar'), height: 40),
+          chips: [
+            FilterChip(
+              key: const Key('test-chip-segments'),
+              label: const Text('Segments'),
+              selected: true,
+              onSelected: (_) {},
+            ),
+          ],
+        );
+
+    testWidgets('a chrome puts the view row and its chips above the list',
+        (tester) async {
+      await tester.pumpWidget(_host(GlobalSegmentsScreen(
+          api: _CatalogueApi(_catalogue), chrome: chrome())));
+      await tester.pumpAndSettle();
+      final viewBar = find.byKey(const Key('test-view-bar'));
+      final chip = find.byKey(const Key('test-chip-segments'));
+      final card = find.text('Champs-Élysées Sprint');
+      expect(viewBar, findsOneWidget);
+      expect(chip, findsOneWidget);
+      expect(card, findsOneWidget);
+      expect(tester.getTopLeft(viewBar).dy,
+          lessThan(tester.getTopLeft(chip).dy));
+      expect(tester.getTopLeft(chip).dy, lessThan(tester.getTopLeft(card).dy));
+    });
+
+    testWidgets('an empty catalogue keeps the view row and its chips',
+        (tester) async {
+      await tester.pumpWidget(
+          _host(GlobalSegmentsScreen(api: _NoParksApi(), chrome: chrome())));
+      await tester.pumpAndSettle();
+      expect(find.byType(EmptyState), findsOneWidget);
+      expect(find.byKey(const Key('test-view-bar')), findsOneWidget);
+      expect(find.byKey(const Key('test-chip-segments')), findsOneWidget);
+    });
+
+    // Park courses live in Races & courses (decisions § 2480). With no shell
+    // to ask, the action opens that screen on its Courses view.
+    testWidgets('the empty catalogue points to the Courses view of Races & '
+        'courses', (tester) async {
       await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _NoParksApi())));
       await tester.pumpAndSettle();
       await tester.tap(find.descendant(
           of: find.byType(EmptyState), matching: find.text('Park courses')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ParksScreen), findsNothing);
+      expect(tester.widget<RacesScreen>(find.byType(RacesScreen)).initialShow,
+          RacesShow.courses);
+      expect(
+        tester
+            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Courses'))
+            .selected,
+        isTrue,
+      );
+    });
+
+    testWidgets('with a shell listening, Park courses asks it for Races & '
+        'courses on Courses and pushes nothing', (tester) async {
+      final drained = <FitnessSurfaceRequest?>[];
+      void shell() => drained.add(fitnessSurfaceRequests.take());
+      fitnessSurfaceRequests.addListener(shell);
+      addTearDown(() => fitnessSurfaceRequests.removeListener(shell));
+      await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _NoParksApi())));
       await tester.pumpAndSettle();
-      expect(find.byType(ParksScreen), findsOneWidget);
+      await tester.tap(find.byKey(const Key('segments-parks-link')));
+      await tester.pumpAndSettle();
+      expect(drained, [
+        (tab: FitnessTab.races, racesShow: RacesShow.courses, routesShow: null),
+      ]);
+      expect(find.byType(RacesScreen), findsNothing);
     });
 
     testWidgets('a signed-out viewer still browses the world-readable catalogue',
@@ -356,7 +500,7 @@ void main() {
         _host(GlobalSegmentDetailScreen(api: api, segmentId: 'a')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Harlem Hill'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Harlem Hill'), findsOneWidget);
       expect(find.text('The classic north-end climb.'), findsOneWidget);
       expect(find.byKey(const Key('help-how-this-works')), findsOneWidget);
       expect(find.text('Distance'), findsOneWidget);
@@ -383,6 +527,29 @@ void main() {
       expect(find.byKey(const Key('segment-course-credit')), findsOneWidget);
     });
 
+    testWidgets('a park course segment links to its course page',
+        (tester) async {
+      final api = _CatalogueApi(
+        [_segment(id: 'a', name: 'Beaver Lake Trail')],
+        parkCourse: true,
+      );
+      await tester.pumpWidget(
+        _host(GlobalSegmentDetailScreen(api: api, segmentId: 'a')),
+      );
+      await tester.pumpAndSettle();
+      final link = find.byKey(const Key('segment-park-course-link'));
+      expect(
+          find.descendant(
+              of: link, matching: find.text('Park course at Beaver Lake Park')),
+          findsOneWidget);
+      expect(find.byKey(const Key('segment-course-credit')), findsNothing);
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ParkCourseScreen), findsOneWidget);
+    });
+
     testWidgets('a segment no park course is built on shows no credit',
         (tester) async {
       final api = _CatalogueApi([_segment(id: 'a', name: 'Harlem Hill')]);
@@ -391,6 +558,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('segment-course-credit')), findsNothing);
+      expect(find.byKey(const Key('segment-park-course-link')), findsNothing);
     });
 
     testWidgets('a segment with geometry lays its preview out in a bounded box',

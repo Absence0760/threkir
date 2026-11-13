@@ -3,12 +3,12 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'park-courses',
 	title: "Parcours des parcs : points de contrôle, saisons et classements",
-	summary: "Comment un parcours de parc chronomètre votre sortie, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
+	summary: "Comment un parcours de parc chronomètre votre course, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
 	sections: [
 		{
 			heading: "Qu'est-ce qu'un parcours de parc",
 			blocks: [
-				{ type: 'p', text: "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]." },
+				{ type: 'p', text: "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de compétition : courez-le quand le parc est ouvert, et toute course qui couvre l'ensemble du parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]. Sélectionnez **Parcours** en haut d'Épreuves et parcours pour afficher tous les parcours seuls, sans le calendrier des épreuves." },
 				{
 					type: 'list',
 					items: [
@@ -18,13 +18,13 @@ export const translation: GuideTranslation = {
 						"La rubrique **Description du parcours** de la page du parcours indique où se garer et chaque changement de direction dans l'ordre, par nom de sentier, avec les ponts, les gués, les changements de revêtement et les montées. Elle est rédigée à partir des données cartographiques ; tant que personne ne l'a vérifiée sur place, c'est indiqué au-dessus de la liste. La même description figure dans le fichier GPX du parcours.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Un parcours fermé ne prend aucun nouveau temps : une sortie dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois." },
+				{ type: 'note', tone: 'caution', text: "Un parcours fermé ne prend aucun nouveau temps : une course dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois." },
 			],
 		},
 		{
 			heading: "Points de contrôle : pourquoi les raccourcis ne comptent jamais",
 			blocks: [
-				{ type: 'p', text: "En plus du départ et de l'arrivée, un parcours peut avoir des points de contrôle en chemin. Votre sortie n'est chronométrée que si elle passe par chaque point de contrôle, dans l'ordre, entre le départ et l'arrivée. Une sortie qui coupe un virage, saute un lacet ou traverse par le milieu manque un point de contrôle et n'obtient pas de temps." },
+				{ type: 'p', text: "En plus du départ et de l'arrivée, un parcours peut avoir des points de contrôle en chemin. Votre course n'est chronométrée que si elle passe par chaque point de contrôle, dans l'ordre, entre le départ et l'arrivée. Une course qui coupe un virage, saute un lacet ou traverse par le milieu manque un point de contrôle et n'obtient pas de temps." },
 				{ type: 'p', text: "Restez sur le sentier balisé. Couper un sentier l'abîme, et les parcs le considèrent comme une infraction à leur règlement." },
 			],
 		},
@@ -32,7 +32,7 @@ export const translation: GuideTranslation = {
 			heading: "Les saisons suivent l'heure du parc",
 			blocks: [
 				{ type: 'p', text: "Une saison est une année civile dans le fuseau horaire du parc, pas le vôtre. Les classements repartent à zéro à minuit le 1er janvier là où se trouve le parc." },
-				{ type: 'p', text: "Par exemple, une sortie qui démarre à 22 h le 31 décembre dans un parc de Virginie compte pour cette année-là, même si votre téléphone est réglé sur un fuseau où l'on est déjà le 1er janvier." },
+				{ type: 'p', text: "Par exemple, une course qui démarre à 22 h le 31 décembre dans un parc de Virginie compte pour cette année-là, même si votre téléphone est réglé sur un fuseau où l'on est déjà le 1er janvier." },
 			],
 		},
 		{
@@ -41,7 +41,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						"**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure sortie.",
+						"**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure course.",
 						"Il affiche cette année par défaut. Sélectionnez **Depuis toujours** pour les meilleurs temps de tous les temps.",
 						"Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont accepté de partager leurs données de santé, il peut donc être plus court que le classement complet.",
 					],
@@ -61,11 +61,11 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						"Vous devez être connecté pour voir les classements. Sans connexion, une page de parcours affiche quand même le parcours et un lien **Se connecter**.",
-						"Le temps d'une sortie que les autres ne peuvent pas voir ne leur est pas montré.",
+						"Le temps d'une course que les autres ne peuvent pas voir ne leur est pas montré.",
 						"Vous ne voyez pas les personnes que vous avez bloquées, et elles ne vous voient pas.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Une sortie est comparée aux parcours de parc sur nos serveurs peu après son enregistrement ou son import, quel que soit l'appareil. Un nouveau temps peut mettre quelques minutes à apparaître dans un classement." },
+				{ type: 'note', tone: 'caution', text: "Une course est comparée aux parcours de parc sur nos serveurs peu après son enregistrement ou son import, quel que soit l'appareil. Un nouveau temps peut mettre quelques minutes à apparaître dans un classement." },
 			],
 		},
 	],
@@ -73,7 +73,7 @@ export const translation: GuideTranslation = {
 		title: "c0967d2bf224e3d2",
 		summary: "6a173631b44944bc",
 		"s0.heading": "216fc084817bfda9",
-		"s0.b0": "a96a5717c602367f",
+		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",

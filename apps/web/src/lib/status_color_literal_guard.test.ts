@@ -959,7 +959,7 @@ test('the open-debt set is exactly what is recorded', () => {
 	for (const rel of [
 		'lib/components/VerifiedBadge.svelte',
 		'routes/+layout.svelte',
-		'routes/dashboard/+page.svelte',
+		'routes/dashboard/DashboardView.svelte',
 		'routes/history/+page.svelte',
 		'routes/settings/integrations/+page.svelte',
 	]) {

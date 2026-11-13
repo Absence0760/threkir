@@ -86,6 +86,40 @@ class Route {
     this.officialDistanceMetres,
   });
 
+  /// This route with the named fields replaced and every other field kept.
+  /// A toggle rewrites one flag through this rather than rebuilding the
+  /// route by hand, which dropped whichever field the hand copy forgot
+  /// (`clubId`, `official`; issue #1374 FS-12). A nullable field can be
+  /// changed, not cleared.
+  Route copyWith({
+    String? name,
+    List<Waypoint>? waypoints,
+    bool? isPublic,
+    List<String>? tags,
+    bool? isStarred,
+    String? clubId,
+    String? description,
+  }) =>
+      Route(
+        id: id,
+        userId: userId,
+        name: name ?? this.name,
+        waypoints: waypoints ?? this.waypoints,
+        distanceMetres: distanceMetres,
+        elevationGainMetres: elevationGainMetres,
+        isPublic: isPublic ?? this.isPublic,
+        createdAt: createdAt,
+        surface: surface,
+        tags: tags ?? this.tags,
+        featured: featured,
+        runCount: runCount,
+        isStarred: isStarred ?? this.isStarred,
+        clubId: clubId ?? this.clubId,
+        description: description ?? this.description,
+        official: official,
+        officialDistanceMetres: officialDistanceMetres,
+      );
+
   factory Route.fromJson(Map<String, dynamic> json) => _$RouteFromJson(json);
 
   Map<String, dynamic> toJson() => _$RouteToJson(this);

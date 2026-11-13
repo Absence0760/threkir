@@ -85,7 +85,7 @@ test.describe('dashboard all-time drilldown vs the fetch window', () => {
 		const page = await ctx.newPage();
 
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 
 			// The lifetime aggregate cards see both runs — they always did.
 			const longestCard = page
@@ -130,7 +130,7 @@ test.describe('dashboard all-time drilldown vs the fetch window', () => {
 		const page = await ctx.newPage();
 
 		try {
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			// The week lead's Week summary is the week drilldown (§ 2283).
 			const weekCard = page.getByTestId('dash-week-lead-open');
 			await expect(weekCard).toBeVisible({ timeout: 15_000 });

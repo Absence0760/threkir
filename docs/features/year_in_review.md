@@ -37,14 +37,14 @@ parity pair into the house lockstep registry so it stops drifting.
   stat-card grid + badge grid + monthly bar chart + closing CTA + `shareRecap()`
   (Web Share API w/ image file → download → text fallback). Fully i18n'd
   (`recap.*` keys). Entry points already wired in
-  `apps/web/src/routes/+layout.svelte` + `apps/web/src/routes/dashboard/+page.svelte`.
+  `apps/web/src/routes/+layout.svelte` + `apps/web/src/routes/dashboard/DashboardView.svelte`.
 - **Web data helper:** `fetchRecapExtras(year)` in
   `apps/web/src/lib/core/data.ts:157` (photo + personal-record counts).
 - **Web e2e:** `apps/web/tests-e2e/recap/page.spec.ts`.
 - **Mobile twin:** `apps/mobile_android/lib/recap.dart` (239 lines) +
   `apps/mobile_android/lib/screens/recap_screen.dart`, test
   `apps/mobile_android/test/recap_test.dart` (344 lines), entry from
-  `apps/mobile_android/lib/screens/dashboard_screen.dart`. iOS twin
+  `apps/mobile_android/lib/screens/today_screen.dart`. iOS twin
   byte-identical under `apps/mobile_ios/`.
 - **Aggregates available:** `personal_records` table + the
   `gym_exercise_records`-style server roll-up pattern, and the `run_photos`

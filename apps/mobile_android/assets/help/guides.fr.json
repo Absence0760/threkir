@@ -51,7 +51,7 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/notifications|Notifications]] dans les Paramètres. Dans l'app mobile, ouvrez **Préférences** dans l'onglet **Vous** et faites défiler jusqu'à **Notifications**.",
+              "Sur le web, ouvrez [[route:/settings/notifications|Notifications]] dans les Réglages. Dans l'app mobile, ouvrez **Notifications** dans l'onglet **Vous**.",
               "Réglez séparément **Notifications par e-mail** et **Notifications push**."
             ]
           },
@@ -136,8 +136,8 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et cochez **Profil privé** sous **Être trouvé**.",
-              "Dans l'app mobile, ouvrez **Préférences** dans l'onglet **Vous** et activez **Profil privé** sous **Confidentialité et partage**."
+              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages et cochez **Profil privé** sous **Être trouvé**.",
+              "Dans l'app mobile, ouvrez **Confidentialité et partage** dans l'onglet **Vous** et activez **Profil privé**."
             ]
           },
           {
@@ -313,7 +313,7 @@
               "**Map-matching prioritaire** : vos traces GPS sont calées sur les routes avant celles des comptes gratuits, elles sont donc prêtes plus tôt.",
               "**Exports cloud prioritaires** : jusqu'à 8 exports groupés GPX par heure au lieu de 2.",
               "**Génération de parcours côté serveur** : des boucles tracées sur le vrai réseau de rues quand vous générez un itinéraire par distance. Les comptes gratuits ont toujours la génération de boucles, calculée dans le navigateur.",
-              "Des descriptions d'itinéraire plus riches : sur la page d'un itinéraire, **Améliorer avec l'IA** transforme la description standard en un paragraphe plus complet.",
+              "Des descriptions d'itinéraire plus riches : sur la page d'un itinéraire, **Décrire cet itinéraire** rédige un paragraphe plus complet à la place de la description standard.",
               "**Saisir depuis une photo** : photographiez un repas et votre journal alimentaire est prérempli pour que vous le vérifiiez. Voir [[guide:log-a-meal-from-a-photo|Saisir un repas depuis une photo]]."
             ]
           },
@@ -335,7 +335,7 @@
             "type": "list",
             "items": [
               "Sur un iPhone, ouvrez **Pro et soutien** dans l'onglet **Vous** et abonnez-vous via l'App Store.",
-              "Sur le web, ouvrez [[route:/settings/upgrade|Pro et soutien]] dans les Paramètres. S'il est indiqué **L'abonnement sur le web arrive bientôt.**, abonnez-vous plutôt dans l'app iPhone."
+              "Sur le web, ouvrez [[route:/settings/upgrade|Pro et soutien]] dans les Réglages. S'il est indiqué **L'abonnement sur le web arrive bientôt.**, abonnez-vous plutôt dans l'app iPhone."
             ]
           },
           {
@@ -401,7 +401,7 @@
               "Les courses que vous rendez publiques apparaissent sur votre profil et dans le fil. Les courses privées ne sont visibles que par vous.",
               "Votre appartenance à un club public, et tout ce que vous y publiez, peut être vu par les personnes qui peuvent voir le club.",
               "Tant que vous partagez un lien en direct, la course en cours peut être vue par toute personne disposant du lien.",
-              "Une photo pour laquelle vous cochez **Afficher sur la page de la course**, sur une course publique liée à une course officielle, apparaît sur la page publique de cette course avec sa légende et votre nom. Décochez-la, ou rendez votre course privée, pour la retirer."
+              "Une photo pour laquelle vous cochez **Afficher sur la page de l'épreuve**, sur une course publique liée à une épreuve, apparaît sur la page publique de cette épreuve avec sa légende et votre nom. Décochez l'option, ou rendez la course privée, pour la retirer."
             ]
           },
           {
@@ -416,8 +416,8 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l'app mobile, il s'agit de **Confidentialité par défaut des courses** sous **Préférences** dans l'onglet **Vous**.",
-              "Pour modifier une seule course plus tard, ouvrez-la et appuyez sur **Privé** ou **Public** sous son titre. Avant qu'une course devienne publique, l'app vous demande confirmation et vous montre ce que vos zones de confidentialité masqueront."
+              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l'app mobile, il s'agit de **Confidentialité par défaut des courses** sous **Confidentialité et partage** dans l'onglet **Vous**.",
+              "Pour modifier une seule course plus tard, ouvrez-la et touchez **Privé** ou **Public** sous son titre. Avant qu'une course devienne publique, l'app vous demande confirmation et vous montre ce que vos zones de confidentialité masqueront."
             ]
           },
           {
@@ -439,7 +439,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Sur le web, ouvrez **Compte** dans les Paramètres. L'app mobile propose les mêmes options sous **Compte** dans l'onglet **Vous**."
+            "text": "Sur le web, ouvrez **Compte** dans les Réglages. L'app mobile propose les mêmes options sous **Compte** dans l'onglet **Vous**."
           },
           {
             "type": "list",
@@ -459,7 +459,7 @@
             "type": "steps",
             "items": [
               "Téléchargez d'abord tout ce que vous voulez garder. La suppression est irréversible.",
-              "Sur le web, ouvrez **Compte** dans les Paramètres et sélectionnez **Supprimer le compte** sous **Zone de danger**. Dans l'app mobile, ouvrez **Compte** dans l'onglet **Vous** et touchez **Supprimer le compte**.",
+              "Sur le web, ouvrez **Compte** dans les Réglages et sélectionnez **Supprimer le compte** sous **Zone de danger**. Dans l'app mobile, ouvrez **Compte** dans l'onglet **Vous** et touchez **Supprimer le compte**.",
               "Saisissez SUPPRIMER pour confirmer, puis sélectionnez **Supprimer mon compte** sur le web ou **Supprimer** dans l'app."
             ]
           },
@@ -516,7 +516,7 @@
               "Ajoutez une **Description** et un **Lieu** si vous le souhaitez. Les deux sont facultatifs, mais une ville et un pays dans **Lieu** aident les coureurs à proximité à vous trouver quand ils cherchent dans leur région.",
               "Choisissez une **Visibilité** : les clubs **Public** apparaissent dans **Parcourir**, tandis que les clubs **Privé** sont masqués et ne peuvent être rejoints que par un lien d'invitation.",
               "Sous **Qui peut rejoindre ?**, choisissez **Tout le monde peut rejoindre**, **Approbation requise** ou **Sur invitation uniquement**.",
-              "Cochez **Exiger une reconnaissance des risques liés à l'activité pour rejoindre** si vous voulez que chaque nouveau membre confirme qu'il comprend les risques des sorties en groupe. Ce réglage ne peut être défini que maintenant, pendant la création du club.",
+              "Cochez **Exiger une reconnaissance des risques liés à l'activité pour rejoindre** si vous voulez que chaque nouveau membre confirme qu'il comprend les risques des courses en groupe. Ce réglage ne peut être défini que maintenant, pendant la création du club.",
               "Sélectionnez **Créer le club**. Vous arrivez sur la page du nouveau club, dont vous êtes le propriétaire."
             ]
           }
@@ -553,7 +553,7 @@
             "type": "list",
             "items": [
               "Pour modifier plus tard le nom, la description, la visibilité, la politique d'adhésion ou les liens, ouvrez le club sur le web et sélectionnez **Modifier le club**.",
-              "Pour ajouter votre première sortie en groupe, sélectionnez **Nouvel événement** sur le web, ou touchez **Créer un événement** dans l'onglet **Événements** de l'app mobile.",
+              "Pour ajouter votre première course en groupe, sélectionnez **Nouvel événement** sur le web, ou touchez **Créer un événement** dans l'onglet **Événements** de l'app mobile.",
               "Pour faire venir du monde, voir [[guide:invite-members-and-roles|Inviter des membres et leur attribuer des rôles]]."
             ]
           },
@@ -582,7 +582,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Seul un administrateur du club sur Strava peut le lier, et seulement à un club dont il est propriétaire ou administrateur ici. Si la section n'apparaît pas, connectez d'abord Strava dans [[route:/settings/integrations|Intégrations]] dans les Paramètres."
+            "text": "Seul un administrateur du club sur Strava peut le lier, et seulement à un club dont il est propriétaire ou administrateur ici. Si la section n'apparaît pas, connectez d'abord Strava depuis [[route:/settings/integrations|Intégrations]] dans les Réglages."
           }
         ]
       }
@@ -1139,7 +1139,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Les cours payants ne sont pas encore actifs : il faut que le compte Stripe de l'organisateur soit connecté et que la plateforme ait activé les paiements. Si les paiements ne sont pas disponibles quand vous essayez d'annuler une occurrence qui a des inscriptions payées, vous verrez **Cette occurrence a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : elle ne peut donc pas encore être annulée. Rien n’a été modifié.** Le cours est maintenu, pour que personne ne se retrouve avec un paiement pour un cours qui n'a pas lieu."
+            "text": "Les cours payants ne sont pas encore actifs : il faut que le compte Stripe de l'organisateur soit connecté et que la plateforme ait activé les paiements. Si les paiements ne sont pas disponibles quand vous essayez d'annuler une occurrence qui a des inscriptions payées, vous verrez **Cette occurrence a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : elle ne peut donc pas encore être annulée. Rien n'a été modifié.** Le cours est maintenu, pour que personne ne se retrouve avec un paiement pour un cours qui n'a pas lieu."
           },
           {
             "type": "p",
@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez [[route:/settings/payouts|Paramètres, Paiements]] sur le web.",
+              "Ouvrez [[route:/settings/payouts|Paiements]] sur le web.",
               "Appuyez sur **Configurer les paiements**. Vous êtes redirigé vers Stripe pour saisir vos informations et le compte bancaire sur lequel vous voulez être payé.",
               "Terminez les étapes de Stripe. À votre retour, la page affiche votre statut.",
               "S'il indique **Configuration incomplète — terminez pour commencer à facturer** ou **Votre compte de paiement nécessite une action avant de pouvoir encaisser**, appuyez sur **Terminer la configuration des paiements** pour retourner sur Stripe et reprendre là où vous en étiez."
@@ -1322,7 +1322,7 @@
           },
           {
             "type": "p",
-            "text": "Avant que quiconque ait payé, elle affiche **Aucune inscription payée pour l’instant. Dès que quelqu’un paie l’un de vos cours, il apparaît ici.** Les revenus ne sont visibles que sur le web pour le moment."
+            "text": "Avant que quiconque ait payé, elle affiche **Aucune inscription payée pour l'instant. Dès que quelqu'un paie l'un de vos cours, il apparaît ici.** Les revenus ne sont visibles que sur le web pour le moment."
           }
         ]
       }
@@ -1436,7 +1436,7 @@
             "type": "list",
             "items": [
               "Les participants s'inscrivent et paient sur le web, voient **Vous êtes inscrit** et peuvent annuler selon votre [[guide:refund-policies|politique de remboursement]].",
-              "Quand toutes les places sont prises, le cours affiche **Complet** et propose **Rejoindre la liste d’attente** : voir [[guide:waitlist-and-claim-window|Listes d'attente et délai de 12 heures pour réclamer une place]].",
+              "Quand toutes les places sont prises, le cours affiche **Complet** et propose **Rejoindre la liste d'attente** : voir [[guide:waitlist-and-claim-window|Listes d'attente et délai de 12 heures pour réclamer une place]].",
               "Notez qui est venu : [[guide:take-attendance|Faire l'appel]].",
               "Annuler une séance rembourse tous ceux qui ont payé : [[guide:cancel-a-class|Annuler un cours]]."
             ]
@@ -1523,7 +1523,7 @@
               "Réglez la **Capacité** sur le nombre de tapis. Une fois ce nombre d'inscrits atteint, la personne suivante rejoint une liste d'attente.",
               "Activez **Faire payer cet événement** et saisissez le **Prix** et la **Devise**. Les deux sont figés une fois l'événement créé : vérifiez-les maintenant.",
               "Réglez **Clôturer les ventes (minutes avant le début)**. Zéro laisse les inscriptions ouvertes jusqu'au début.",
-              "Choisissez une **Politique de remboursement** : **Remboursement intégral jusqu’à l’heure de début**, **Remboursement intégral jusqu’à 24 h avant** ou **Aucun remboursement**. Voir [[guide:refund-policies|Politiques de remboursement]].",
+              "Choisissez une **Politique de remboursement** : **Remboursement intégral jusqu'à l'heure de début**, **Remboursement intégral jusqu'à 24 h avant** ou **Aucun remboursement**. Voir [[guide:refund-policies|Politiques de remboursement]].",
               "Appuyez sur **Créer l'événement**."
             ]
           },
@@ -1541,8 +1541,8 @@
             "type": "list",
             "items": [
               "La discipline, l'heure, le lieu, le **Prix** et une ligne sur l'annulation, comme **Annulation gratuite jusqu'à 24 heures avant le début**.",
-              "Un bouton *S’inscrire · 22,00 $US* (avec votre prix) qui les mène au paiement. À leur retour, il indique **Paiement confirmé — vous êtes inscrit.**",
-              "**Complet** quand tous les tapis sont pris, avec **Rejoindre la liste d’attente** tant que les ventes sont ouvertes ([[guide:waitlist-and-claim-window|fonctionnement de la liste d'attente]]), et **Inscriptions closes** une fois les ventes arrêtées.",
+              "Un bouton *S'inscrire · 22,00 $US* (avec votre prix) qui les mène au paiement. À leur retour, il indique **Paiement confirmé — vous êtes inscrit.**",
+              "**Complet** quand tous les tapis sont pris, avec **Rejoindre la liste d'attente** tant que les ventes sont ouvertes ([[guide:waitlist-and-claim-window|fonctionnement de la liste d'attente]]), et **Inscriptions closes** une fois les ventes arrêtées.",
               "Votre séquence sous **Séquence de la séance**. Ils peuvent l'ouvrir et appuyer sur **Démarrer la séance** pour la suivre chez eux."
             ]
           },
@@ -1623,8 +1623,8 @@
           {
             "type": "list",
             "items": [
-              "**Remboursement intégral jusqu’à l’heure de début** : affichée aux participants comme **Annulation gratuite jusqu'au début de l'événement**.",
-              "**Remboursement intégral jusqu’à 24 h avant** : affichée comme **Annulation gratuite jusqu'à 24 heures avant le début**. C'est la politique par défaut.",
+              "**Remboursement intégral jusqu'à l'heure de début** : affichée aux participants comme **Annulation gratuite jusqu'au début de l'événement**.",
+              "**Remboursement intégral jusqu'à 24 h avant** : affichée comme **Annulation gratuite jusqu'à 24 heures avant le début**. C'est la politique par défaut.",
               "**Aucun remboursement** : affichée comme **Aucun remboursement en cas d'annulation**."
             ]
           },
@@ -1645,9 +1645,9 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez l'événement sur le web. Là où s'affiche **Vous êtes inscrit**, appuyez sur **Annuler l’inscription**.",
+              "Ouvrez l'événement sur le web. Là où s'affiche **Vous êtes inscrit**, appuyez sur **Annuler l'inscription**.",
               "Lisez la boîte de dialogue. Dans le délai de remboursement, elle indique que vous serez remboursé sur votre moyen de paiement d'origine et que votre place se libère pour une personne de la liste d'attente.",
-              "Appuyez sur **Annuler l’inscription** pour confirmer, ou sur **Garder ma place** pour renoncer."
+              "Appuyez sur **Annuler l'inscription** pour confirmer, ou sur **Garder ma place** pour renoncer."
             ]
           },
           {
@@ -1665,7 +1665,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Une fois le délai passé, ou pour un événement **Aucun remboursement**, l'app ne peut pas annuler votre inscription à votre place. La boîte de dialogue vous prévient avant que vous essayiez, vous gardez votre place, et si vous continuez vous verrez **Cette inscription a dépassé le délai de remboursement. Contactez l’organisateur pour annuler.**"
+            "text": "Une fois le délai passé, ou pour un événement **Aucun remboursement**, l'app ne peut pas annuler votre inscription à votre place. La boîte de dialogue vous prévient avant que vous essayiez, vous gardez votre place, et si vous continuez vous verrez **Cette inscription a dépassé le délai de remboursement. Contactez l'organisateur pour annuler.**"
           }
         ]
       },
@@ -1674,7 +1674,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Il arrive qu'une banque renvoie un remboursement. La page de l'événement affiche alors **Votre remboursement ne vous est pas parvenu** et une notification indique **Un remboursement n’a pas abouti — nous vous recontacterons**. Vous n'avez pas besoin de payer à nouveau : utilisez **Contacter la facturation** et la somme vous sera restituée par un autre moyen."
+            "text": "Il arrive qu'une banque renvoie un remboursement. La page de l'événement affiche alors **Votre remboursement ne vous est pas parvenu** et une notification indique **Un remboursement n'a pas abouti — nous vous recontacterons**. Vous n'avez pas besoin de payer à nouveau : utilisez **Contacter la facturation** et la somme vous sera restituée par un autre moyen."
           }
         ]
       }
@@ -1733,9 +1733,9 @@
           {
             "type": "steps",
             "items": [
-              "Pour un cours payant complet, la page affiche **Complet**. Tant que les ventes sont ouvertes, appuyez sur **Rejoindre la liste d’attente**. Vous verrez **Vous êtes sur la liste d’attente. Si une place se libère, nous vous la réservons et vous prévenons.**",
-              "Quand une place se libère et que vous êtes le premier de la file, vous recevez une notification : *Une place s’est libérée pour « Tuesday Reformer » et vous est réservée — payez pour l’obtenir*.",
-              "Ouvrez le cours sur le web. Il indique quand votre réservation prend fin, par exemple *Une place vous est réservée jusqu’à mardi 6 mai à 18:00. Payez pour l’obtenir, sinon elle revient à la personne suivante sur la liste d’attente.*",
+              "Pour un cours payant complet, la page affiche **Complet**. Tant que les ventes sont ouvertes, appuyez sur **Rejoindre la liste d'attente**. Vous verrez **Vous êtes sur la liste d'attente. Si une place se libère, nous vous la réservons et vous prévenons.**",
+              "Quand une place se libère et que vous êtes le premier de la file, vous recevez une notification : *Une place s'est libérée pour « Tuesday Reformer » et vous est réservée — payez pour l'obtenir*.",
+              "Ouvrez le cours sur le web. Il indique quand votre réservation prend fin, par exemple *Une place vous est réservée jusqu'à mardi 6 mai à 18:00. Payez pour l'obtenir, sinon elle revient à la personne suivante sur la liste d'attente.*",
               "Appuyez sur le bouton de réclamation (il affiche *Obtenir ma place* avec le prix) puis finalisez le paiement. Une fois le paiement effectué, vous êtes inscrit comme tout le monde."
             ]
           },
@@ -1770,11 +1770,11 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Quand la réservation expire, la place est proposée à la personne suivante sur la liste d'attente et vous quittez la liste d'attente. Si vous voulez toujours participer, appuyez de nouveau sur **Rejoindre la liste d’attente** ; vous passez en fin de file."
+            "text": "Quand la réservation expire, la place est proposée à la personne suivante sur la liste d'attente et vous quittez la liste d'attente. Si vous voulez toujours participer, appuyez de nouveau sur **Rejoindre la liste d'attente** ; vous passez en fin de file."
           },
           {
             "type": "p",
-            "text": "Vous avez changé d'avis pendant que vous attendez encore ? Appuyez sur **Quitter la liste d’attente**. L'app vous prévient que vous perdrez votre place dans la file ; si vous la rejoignez plus tard, vous passez en fin de file. Si une place vous est déjà réservée et que vous n'en voulez pas, laissez simplement la réservation expirer."
+            "text": "Vous avez changé d'avis pendant que vous attendez encore ? Appuyez sur **Quitter la liste d'attente**. L'app vous prévient que vous perdrez votre place dans la file ; si vous la rejoignez plus tard, vous passez en fin de file. Si une place vous est déjà réservée et que vous n'en voulez pas, laissez simplement la réservation expirer."
           }
         ]
       },
@@ -1833,7 +1833,7 @@
           },
           {
             "type": "p",
-            "text": "Faites votre choix sous **Comment la course démarre** dans l'éditeur d'événement sur le web, pour un événement de sortie en groupe ou de vélo. L'app mobile permet de gérer la course le jour J (l'armer plus tôt, la retarder, la prolonger ou la terminer), mais le mode de départ se choisit sur le web."
+            "text": "Faites votre choix sous **Comment la course démarre** dans l'éditeur d'événement sur le web, pour un événement de course en groupe ou de vélo. L'app mobile permet de gérer la course le jour J (l'armer plus tôt, la retarder, la prolonger ou la terminer), mais le mode de départ se choisit sur le web."
           }
         ]
       },
@@ -1926,7 +1926,7 @@
           },
           {
             "type": "p",
-            "text": "Les coureurs désactivent les deux avec **Course bientôt au départ** : sur le web dans [[route:/settings/notifications|Notifications]], dans l'app mobile sous **Préférences** dans l'onglet **Vous**."
+            "text": "Les coureurs désactivent les deux avec **Course bientôt au départ** : sur le web dans [[route:/settings/notifications|Notifications]], dans l'app mobile sous **Notifications** dans l'onglet **Vous**."
           }
         ]
       },
@@ -2424,7 +2424,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la sortie que vous avez enregistrée. Ouvrez la sortie sur le web : si elle appartient à une course, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé."
+            "text": "Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la course que vous avez enregistrée. Ouvrez-la sur le web : si elle appartient à une épreuve, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé."
           },
           {
             "type": "steps",
@@ -2500,7 +2500,7 @@
               "App iPhone : elle exécute le même code qu'Android, mais n'a pas encore été testée sur iPhone lors d'une vraie course.",
               "Montre Wear OS : prise en charge complète au poignet, y compris le chronométrage par les lignes. L'inscription et le choix du parcours se font toujours sur le web ou le téléphone.",
               "Apple Watch : prise en charge préliminaire seulement. Elle affiche le bandeau de course, envoie votre position et transmet votre temps via votre iPhone, mais elle ne détecte pas les lignes de départ et d'arrivée : elle n'a donc pas d'arrivée automatique, et elle n'a pas fait ses preuves lors d'une vraie course. Gardez votre téléphone sur vous en secours, ou rechronométrez ensuite votre résultat à partir de votre tracé sur le web.",
-              "Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir du tracé d'une sortie. Un navigateur ne peut pas enregistrer de course."
+              "Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir du tracé d'une course enregistrée. Un navigateur ne peut pas enregistrer de course."
             ]
           }
         ]
@@ -2512,7 +2512,7 @@
             "type": "steps",
             "items": [
               "Ouvrez l'événement de la course.",
-              "S'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.",
+              "S'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je participe**.",
               "Touchez **Je participe**. Seule une inscription **Je participe** reçoit les alertes de course sur votre appareil ; **Peut-être** ne les reçoit pas."
             ]
           },
@@ -2536,7 +2536,7 @@
           },
           {
             "type": "p",
-            "text": "L'app mobile recherche les courses auxquelles vous avez répondu **Je viens** et qui commencent dans la journée qui suit. Si le bandeau tarde à apparaître, gardez l'app ouverte sur l'onglet Courir pendant une minute."
+            "text": "L'app mobile recherche les courses auxquelles vous avez répondu **Je participe** et qui commencent dans la journée qui suit. Si le bandeau tarde à apparaître, gardez l'app ouverte sur l'onglet Courir pendant une minute."
           }
         ]
       },
@@ -2666,7 +2666,7 @@
     "id": "run-a-self-timed-race",
     "lang": "fr",
     "title": "Courir une course en chrono libre",
-    "summary": "Inscrivez-vous à une course ouverte pendant une fenêtre de temps, marquez votre sortie comme votre tentative et courez de la ligne de départ à la ligne d'arrivée quand cela vous convient.",
+    "summary": "Inscrivez-vous à une épreuve ouverte pendant une fenêtre de temps, marquez votre course comme votre tentative et courez de la ligne de départ à la ligne d'arrivée quand cela vous convient.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2692,7 +2692,7 @@
           },
           {
             "type": "p",
-            "text": "Vous enregistrez votre tentative avec l'app mobile ou une montre Wear OS. Le web sert à vous inscrire et à consulter les résultats ; un navigateur ne peut pas enregistrer une sortie."
+            "text": "Vous enregistrez votre tentative avec l'app mobile ou une montre Wear OS. Le web sert à vous inscrire et à consulter les résultats ; un navigateur ne peut pas enregistrer une course."
           }
         ]
       },
@@ -2728,7 +2728,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Une sortie que vous ne marquez pas comme votre tentative ne rejoint jamais la course : elle n'envoie aucune position en direct et n'obtient aucun résultat. Ainsi, une sortie que vous ne vouliez pas courir en compétition n'apparaît jamais au classement."
+            "text": "Une course que vous ne marquez pas comme votre tentative ne rejoint jamais l'épreuve : elle n'envoie aucune position en direct et n'obtient aucun résultat. Ainsi, une course que vous ne vouliez pas courir en compétition n'apparaît jamais au classement."
           }
         ]
       },
@@ -2761,7 +2761,7 @@
             "type": "list",
             "items": [
               "À l'arrivée, touchez Arrêter, puis **Terminer la course**. Une fois que vous avez couvert 90 % du parcours, cela envoie votre temps, et l'organisateur l'examine avant qu'il compte.",
-              "Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la sortie sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de la course, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
+              "Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la course sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de l'épreuve, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
               "Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre tracé est donc le moyen d'obtenir pour votre tentative un résultat chronométré par les lignes."
             ]
           },
@@ -2818,7 +2818,7 @@
             "type": "steps",
             "items": [
               "Ouvrez votre club et choisissez **Nouvel événement**.",
-              "Sous **Type d'événement**, choisissez **Sortie en groupe** (ou **Vélo**). Les cours et les événements sociaux n'ont ni itinéraire, ni distance, ni contrôle de course, ni résultats.",
+              "Sous **Type d'événement**, choisissez **Course en groupe** (ou **Vélo**). Les cours et les événements sociaux n'ont ni itinéraire, ni distance, ni contrôle de course, ni résultats.",
               "Donnez-lui un **Titre** et une **Date**. Ne définissez une répétition que si la course a vraiment lieu régulièrement ; chaque occurrence est courue séparément.",
               "Choisissez un **Parcours** et renseignez la **Distance**. Ensemble, ils forment votre *parcours principal*.",
               "Saisissez éventuellement un **Nom du parcours principal** sous **Parcours de la course** (par exemple « Semi-marathon »). Si vous le laissez vide, le nom de l'itinéraire est utilisé.",
@@ -2878,7 +2878,7 @@
             "type": "list",
             "items": [
               "Sur la page de l'événement, les coureurs voient les parcours. S'il y en a plusieurs, ils doivent en choisir un dans **Votre parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisissez d'abord votre parcours. »",
-              "Dans l'app mobile, toucher **Je viens** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.",
+              "Dans l'app mobile, toucher **Je participe** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.",
               "Avec un seul parcours, personne n'a rien à choisir.",
               "Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Votre parcours**."
             ]
@@ -3133,7 +3133,7 @@
             "type": "list",
             "items": [
               "Chaque demande utilise l'un de vos messages quotidiens du Coach IA, le même quota que le Coach.",
-              "Elle nécessite la dernière version de l'avis sur l'IA. Si on vous demande de l'accepter, sélectionnez **La consulter dans les Réglages** et acceptez-la là.",
+              "Elle nécessite la dernière version de l'information sur l'IA. Si on vous demande de l'accepter, sélectionnez **La consulter dans les Réglages** et acceptez-la là.",
               "Seules les séances à venir de votre plan et la modification que vous avez tapée sont envoyées à l'IA."
             ]
           },
@@ -3180,7 +3180,7 @@
           {
             "type": "list",
             "items": [
-              "Votre temps court du moment où votre sortie franchit la ligne de départ jusqu'à celui où elle franchit la ligne de fin.",
+              "Votre temps court du moment où votre course franchit la ligne de départ jusqu'à celui où elle franchit la ligne de fin.",
               "Chaque franchissement est calculé entre les deux points GPS situés de part et d'autre de la ligne, et non pris au point qui se trouvait être le plus proche : le temps est donc plus proche du temps réel.",
               "Les deux lignes doivent être franchies dans le sens du segment. En franchir une à l'envers ne compte pas.",
               "La distance parcourue entre les deux franchissements doit être à 25 % près de la longueur du segment, et sur un parcours de parc vous devez passer par chaque point de contrôle, dans l'ordre, entre les deux."
@@ -3193,12 +3193,12 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Une sortie sur un chemin qui longe le segment, à 20 m, passe près des deux extrémités sans jamais traverser les lignes : elle n'obtient donc pas de temps. L'aller d'un itinéraire en aller-retour qui ne fait que passer près de la fin n'en obtient pas non plus."
+            "text": "Une course sur un chemin qui longe le segment, à 20 m, passe près des deux extrémités sans jamais traverser les lignes : elle n'obtient donc pas de temps. L'aller d'un itinéraire en aller-retour qui ne fait que passer près de la fin n'en obtient pas non plus."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Lancez l'enregistrement un peu avant la ligne de départ. Une sortie dont l'enregistrement commence sur la ligne, ou après, ne la franchit jamais et n'obtient pas de temps sur ce segment."
+            "text": "Lancez l'enregistrement un peu avant la ligne de départ. Une course dont l'enregistrement commence sur la ligne, ou après, ne la franchit jamais et n'obtient pas de temps sur ce segment."
           }
         ]
       },
@@ -3208,9 +3208,9 @@
           {
             "type": "list",
             "items": [
-              "Si votre sortie passe plusieurs fois sur le segment, votre passage le plus rapide compte.",
+              "Si votre course passe plusieurs fois sur le segment, votre passage le plus rapide compte.",
               "Un échauffement qui repasse par la ligne de départ n'allonge pas votre temps : le chrono part de votre dernier franchissement de la ligne de départ avant la fin.",
-              "Sur une boucle, chaque tour complet est chronométré et ton tour le plus rapide compte. Quand le départ et la fin sont la même ligne, le franchissement qui termine un tour lance aussi le suivant."
+              "Sur une boucle, chaque tour complet est chronométré et votre tour le plus rapide compte. Quand le départ et la fin sont la même ligne, le franchissement qui termine un tour lance aussi le suivant."
             ]
           }
         ]
@@ -3220,7 +3220,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Un segment trop court à une extrémité pour y placer une ligne n'a pas de lignes. Il est toujours chronométré à l'ancienne : votre sortie doit passer à moins de 35 m de son départ, puis à moins de 35 m de sa fin."
+            "text": "Un segment trop court à une extrémité pour y placer une ligne n'a pas de lignes. Il est toujours chronométré à l'ancienne : votre course doit passer à moins de 35 m de son départ, puis à moins de 35 m de sa fin."
           }
         ]
       },
@@ -3229,7 +3229,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Les efforts enregistrés avant que les segments aient des lignes ont été mesurés à l'ancienne, en passant près du départ et de la fin. Chacun est remesuré avec les lignes la prochaine fois que son coureur ouvre la sortie sur le site web. Son temps peut changer, et il peut disparaître si la sortie n'a jamais franchi les lignes."
+            "text": "Les efforts enregistrés avant que les segments aient des lignes ont été mesurés à l'ancienne, en passant près du départ et de la fin. Chacun est remesuré avec les lignes la prochaine fois que son coureur ouvre la course sur le site web. Son temps peut changer, et il peut disparaître si la course n'a jamais franchi les lignes."
           },
           {
             "type": "p",
@@ -3269,7 +3269,7 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/integrations|Intégrations]] dans les Paramètres et sélectionnez **Connecter** sur la carte Strava ; dans l'app mobile, ouvrez **Intégrations** dans l'onglet **Vous** et touchez Strava.",
+              "Sur le web, ouvrez [[route:/settings/integrations|Intégrations]] dans les Réglages et sélectionnez **Connecter** sur la carte Strava ; dans l'app mobile, ouvrez **Intégrations** dans l'onglet **Vous** et touchez Strava.",
               "Connectez-vous à Strava et autorisez l'accès.",
               "Vos courses, marches et randonnées des 90 derniers jours sont copiées, et les nouvelles activités Strava suivent automatiquement."
             ]
@@ -3424,7 +3424,7 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/safety|Sécurité]] dans les Paramètres ; dans l'app mobile, ouvrez **Contacts de sécurité** dans l'onglet **Vous**.",
+              "Sur le web, ouvrez [[route:/settings/safety|Sécurité]] dans les Réglages ; dans l'app mobile, ouvrez **Contacts de sécurité** dans l'onglet **Vous**.",
               "Saisissez son adresse dans **E-mail du contact**. Vous pouvez aussi ajouter un **Téléphone pour SMS (facultatif)** au format international, par exemple +447700900123.",
               "Sélectionnez **Ajouter un contact**. La personne reçoit un e-mail lui demandant de confirmer.",
               "Son statut affiche **En attente — confirmation requise** jusqu'à ce qu'elle accepte, puis **Confirmé**. Seuls les contacts confirmés sont alertés."
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "La saisie depuis une photo fait partie de Pro. Saisir ses aliments à la main reste gratuit.",
-              "Elle utilise l'IA et nécessite donc la dernière version de l'avis sur l'IA. Si on vous demande de l'accepter, ouvrez Réglages → Compte et acceptez-la là.",
+              "Elle utilise l'IA et nécessite donc la dernière version de l'information sur l'IA. Si on vous demande de l'accepter, le message s'accompagne d'un lien vers la page de votre compte, où vous pouvez l'accepter.",
               "La photo sert uniquement à estimer ce qu'il y a dans l'assiette. Les données de lieu et d'appareil sont retirées avant l'envoi, et Threkir ne conserve pas la photo."
             ]
           },
@@ -3753,7 +3753,7 @@
     "id": "park-courses",
     "lang": "fr",
     "title": "Parcours des parcs : points de contrôle, saisons et classements",
-    "summary": "Comment un parcours de parc chronomètre votre sortie, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
+    "summary": "Comment un parcours de parc chronomètre votre course, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3776,7 +3776,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]."
+            "text": "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de compétition : courez-le quand le parc est ouvert, et toute course qui couvre l'ensemble du parcours est chronométrée. Retrouvez-les sous **À courir quand vous voulez** dans [[route:/races|Épreuves et parcours]], les plus proches d'abord dès que vous indiquez un lieu, ou parcourez-les tous dans [[route:/parks|Parcours des parcs]]. Sélectionnez **Parcours** en haut d'Épreuves et parcours pour afficher tous les parcours seuls, sans le calendrier des épreuves."
           },
           {
             "type": "list",
@@ -3790,7 +3790,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Un parcours fermé ne prend aucun nouveau temps : une sortie dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois."
+            "text": "Un parcours fermé ne prend aucun nouveau temps : une course dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois."
           }
         ]
       },
@@ -3799,7 +3799,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "En plus du départ et de l'arrivée, un parcours peut avoir des points de contrôle en chemin. Votre sortie n'est chronométrée que si elle passe par chaque point de contrôle, dans l'ordre, entre le départ et l'arrivée. Une sortie qui coupe un virage, saute un lacet ou traverse par le milieu manque un point de contrôle et n'obtient pas de temps."
+            "text": "En plus du départ et de l'arrivée, un parcours peut avoir des points de contrôle en chemin. Votre course n'est chronométrée que si elle passe par chaque point de contrôle, dans l'ordre, entre le départ et l'arrivée. Une course qui coupe un virage, saute un lacet ou traverse par le milieu manque un point de contrôle et n'obtient pas de temps."
           },
           {
             "type": "p",
@@ -3816,7 +3816,7 @@
           },
           {
             "type": "p",
-            "text": "Par exemple, une sortie qui démarre à 22 h le 31 décembre dans un parc de Virginie compte pour cette année-là, même si votre téléphone est réglé sur un fuseau où l'on est déjà le 1er janvier."
+            "text": "Par exemple, une course qui démarre à 22 h le 31 décembre dans un parc de Virginie compte pour cette année-là, même si votre téléphone est réglé sur un fuseau où l'on est déjà le 1er janvier."
           }
         ]
       },
@@ -3826,7 +3826,7 @@
           {
             "type": "list",
             "items": [
-              "**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure sortie.",
+              "**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure course.",
               "Il affiche cette année par défaut. Sélectionnez **Depuis toujours** pour les meilleurs temps de tous les temps.",
               "Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont accepté de partager leurs données de santé, il peut donc être plus court que le classement complet."
             ]
@@ -3849,14 +3849,14 @@
             "type": "list",
             "items": [
               "Vous devez être connecté pour voir les classements. Sans connexion, une page de parcours affiche quand même le parcours et un lien **Se connecter**.",
-              "Le temps d'une sortie que les autres ne peuvent pas voir ne leur est pas montré.",
+              "Le temps d'une course que les autres ne peuvent pas voir ne leur est pas montré.",
               "Vous ne voyez pas les personnes que vous avez bloquées, et elles ne vous voient pas."
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Une sortie est comparée aux parcours de parc sur nos serveurs peu après son enregistrement ou son import, quel que soit l'appareil. Un nouveau temps peut mettre quelques minutes à apparaître dans un classement."
+            "text": "Une course est comparée aux parcours de parc sur nos serveurs peu après son enregistrement ou son import, quel que soit l'appareil. Un nouveau temps peut mettre quelques minutes à apparaître dans un classement."
           }
         ]
       }
@@ -3914,7 +3914,7 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres.",
+              "Ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages.",
               "Sous **Zones de confidentialité**, sélectionnez **Ajouter une zone**.",
               "Cliquez sur la carte à l'endroit où la zone doit être centrée, ou sélectionnez **Utiliser ma position actuelle**, puis faites glisser le repère pour l'ajuster.",
               "Réglez le **Rayon**. Tout ce qui se trouve dans le cercle rouge est masqué des partages publics.",
@@ -3933,7 +3933,7 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez l'onglet **Vous**, puis **Préférences**, et sous **Confidentialité et partage**, touchez **Zones de confidentialité**.",
+              "Ouvrez l'onglet **Vous**, puis **Confidentialité et partage**, et touchez **Zones de confidentialité**.",
               "Touchez la carte pour placer une zone. Utilisez **Rechercher des lieux…** ou **Me localiser** pour déplacer d'abord la carte.",
               "Ajustez le curseur **Rayon**.",
               "Touchez **Enregistrer**. Rien ne change tant que vous n'avez pas enregistré."

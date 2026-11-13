@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../l10n/gen/app_localizations.dart';
 
@@ -24,52 +25,50 @@ class SafetyNudgeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    return Card(
+    return ListCard(
       color: scheme.inverseSurface,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.nightlight_round,
-                    color: scheme.onInverseSurface, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    l10n.runSafetyNudgeSolo,
-                    style: TextStyle(
-                        color: scheme.onInverseSurface,
-                        fontWeight: FontWeight.w600),
-                  ),
+      dense: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.nightlight_round,
+                  color: scheme.onInverseSurface, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.runSafetyNudgeSolo,
+                  style: TextStyle(
+                      color: scheme.onInverseSurface,
+                      fontWeight: FontWeight.w600),
                 ),
-              ],
-            ),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              spacing: 4,
-              children: [
-                TextButton(
-                  onPressed: onDismiss,
-                  child: Text(
-                    l10n.runNotNow,
-                    style: TextStyle(
-                        color:
-                            scheme.onInverseSurface.withValues(alpha: 0.75)),
-                  ),
+              ),
+            ],
+          ),
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            overflowAlignment: OverflowBarAlignment.end,
+            spacing: 4,
+            children: [
+              TextButton(
+                onPressed: onDismiss,
+                child: Text(
+                  l10n.runNotNow,
+                  style: TextStyle(
+                      color:
+                          scheme.onInverseSurface.withValues(alpha: 0.75)),
                 ),
-                FilledButton(
-                  onPressed: onShare,
-                  child: Text(l10n.runSafetyNudgeShareAction),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              FilledButton(
+                onPressed: onShare,
+                child: Text(l10n.runSafetyNudgeShareAction),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

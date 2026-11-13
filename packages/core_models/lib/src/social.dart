@@ -294,8 +294,8 @@ class NearbyRunner extends PublicProfile {
 }
 
 /// A discoverable public-club event returned by `search_public_events`
-/// (the cross-club activity Discover surface — web `/social?tab=discover`,
-/// mobile the Social Discover tab). Mirror of the web `PublicEventResult`
+/// (the cross-club activity Events surface — web `/social?tab=events`,
+/// mobile the Social Events tab). Mirror of the web `PublicEventResult`
 /// interface in `apps/web/src/lib/core/data.ts`: an event + its club's
 /// name/slug + the cheapest current price, if any. Distinct from the
 /// club-scoped event detail row — this is the discovery projection.

@@ -69,8 +69,8 @@ class _GymRecordsScreenState extends State<GymRecordsScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final records = exerciseRecords(gymSetHistory(widget.store.workouts));
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.gymRecordsTitle)),
+    return PushedPage(
+      title: l10n.gymRecordsTitle,
       body: records.isEmpty
           ? EmptyState(
               icon: Icons.emoji_events,
@@ -84,13 +84,10 @@ class _GymRecordsScreenState extends State<GymRecordsScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, i) {
                 if (i == 0) {
-                  return Padding(
+                  return PageHeader(
+                    title: l10n.gymRecordsTitle,
+                    subtitle: l10n.gymRecordsSubtitle,
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      l10n.gymRecordsSubtitle,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
                   );
                 }
                 return _card(records[i - 1], theme, l10n);
@@ -101,98 +98,72 @@ class _GymRecordsScreenState extends State<GymRecordsScreen> {
 
   Widget _card(ExerciseRecord r, ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
-    return Card(
+    return ListCard.row(
       margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () => _open(r),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      dense: true,
+      onTap: () => _open(r),
+      chevron: true,
+      title: r.exerciseName,
+      titleMaxLines: 1,
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (r.bestEst1RmKg != null)
+            _metric(
+              metricText(l10n, Metric.e1rm, variant: 'best'),
+              WeightFormat.format(r.bestEst1RmKg, activeWeightUnit),
+              theme,
+              primary: true,
+            ),
+          _metric(l10n.gymPrWeight, _heaviestLine(r), theme),
+          if (r.bestVolumeKg != null)
+            _metric(
+              l10n.gymPrVolume,
+              WeightFormat.format(r.bestVolumeKg, activeWeightUnit),
+              theme,
+            ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      r.exerciseName,
-                      style: theme.textTheme.titleSmall,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              if (r.lastPerformedAt.isNotEmpty)
+                Text(
+                  l10n.gymRecordsLastDone(
+                    _formatLast(r.lastPerformedAt, tag),
                   ),
-                  Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (r.bestEst1RmKg != null)
-                _metric(
-                  metricText(l10n, Metric.e1rm, variant: 'best'),
-                  WeightFormat.format(r.bestEst1RmKg, activeWeightUnit),
-                  theme,
-                  primary: true,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
-              _metric(l10n.gymPrWeight, _heaviestLine(r), theme),
-              if (r.bestVolumeKg != null)
-                _metric(
-                  l10n.gymPrVolume,
-                  WeightFormat.format(r.bestVolumeKg, activeWeightUnit),
-                  theme,
-                ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                children: [
-                  if (r.lastPerformedAt.isNotEmpty)
-                    Text(
-                      l10n.gymRecordsLastDone(
-                        _formatLast(r.lastPerformedAt, tag),
-                      ),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  Text(
-                    l10n.gymRecordsSessions(r.sessionCount),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
+              Text(
+                l10n.gymRecordsSessions(r.sessionCount),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
+  /// A record and its value, reflowing the value under the label when the
+  /// two do not fit one line (at 320 dp and 2x the label was cut to nothing).
   Widget _metric(String label, String value, ThemeData theme,
       {bool primary = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Expanded(
-            child: Text(
-              label.toUpperCase(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: primary
-                ? theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.primary)
-                : theme.textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ],
+      child: TermValueRow(
+        term: label.toUpperCase(),
+        termStyle: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          letterSpacing: 0.8,
+        ),
+        value: value,
+        valueStyle: primary
+            ? theme.textTheme.titleMedium
+                ?.copyWith(color: theme.colorScheme.primary)
+            : theme.textTheme.bodyMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }

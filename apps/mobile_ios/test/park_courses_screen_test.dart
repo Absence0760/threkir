@@ -15,6 +15,7 @@ import '../lib/screens/park_courses_screen.dart';
 import '../lib/widgets/elevation_chart.dart';
 import '../lib/widgets/park_course_map.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 ParkListing _park({
   required String id,
@@ -285,6 +286,60 @@ Finder _inCard(String courseId, Finder f) =>
 void main() {
   setUpAll(_ensureEnvironment);
 
+  group('ListCard surfaces at the worst case', () {
+    worstCaseTestWidgets('the park cards', (tester, locale) async {
+      final api = _ParksApi(
+        parks: [
+          _park(id: 'p1', name: 'Pocahontas State Park'),
+          _park(id: 'p2', name: 'Umstead State Park', region: 'US-NC'),
+        ],
+        courses: [
+          _course(id: 'a', distanceM: 5000),
+          _course(id: 'b', distanceM: 21100),
+        ],
+      );
+      await tester.pumpWidget(
+          worstCaseApp(locale: locale, home: ParksScreen(api: api)));
+      await _settle(tester);
+      expect(find.byType(Card), findsWidgets);
+      await walkScrollable(tester, primaryScrollable(), 'Parks');
+      await _unmount(tester);
+    }, layoutOnly: true);
+
+    worstCaseTestWidgets('the course cards', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: ParkScreen(
+          api: _ParksApi(courses: [
+            _course(id: 'beaver', name: 'Beaver Lake Trail', distanceM: 4000),
+            _course(id: 'k10', name: '10K', distanceM: 10000, laps: 2),
+            _course(id: 'shut', name: 'Closed loop', status: 'closed'),
+          ]),
+          listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+        ),
+      ));
+      await _settle(tester);
+      await walkScrollable(tester, primaryScrollable(), 'Park');
+      await _unmount(tester);
+    }, layoutOnly: true);
+
+    worstCaseTestWidgets('a closed course and its notices',
+        (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: ParkCourseScreen(
+          api: _ParksApi(),
+          listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+          course: _course(status: 'closed', distanceM: 50000),
+        ),
+      ));
+      await _settle(tester);
+      expect(find.byKey(const Key('park-course-closed')), findsOneWidget);
+      await walkScrollable(tester, primaryScrollable(), 'Park course');
+      await _unmount(tester);
+    }, layoutOnly: true);
+  });
+
   // Tall enough that the course page's boards, below the map, are built.
   void tallView(WidgetTester tester) {
     tester.view.physicalSize = const Size(800, 4000);
@@ -527,6 +582,59 @@ void main() {
   });
 
   group('ParkCourseScreen', () {
+    testWidgets('the park name is a link to the park screen', (tester) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Deep Run Park'),
+            course: _course(),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final link = find.byKey(const Key('park-course-park-link'));
+      expect(
+        tester.getSemantics(link),
+        matchesSemantics(
+          label: 'Deep Run Park · Virginia: park page',
+          isLink: true,
+          hasTapAction: true,
+        ),
+      );
+      await tester.tap(link);
+      await _settle(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(ParkScreen), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('opened from its park, the park link goes back to it', (
+      tester,
+    ) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Deep Run Park'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      await tester.tap(find.text('Lake Loop'));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ParkCourseScreen), findsOneWidget);
+      await tester.tap(find.byKey(const Key('park-course-park-link')));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ParkCourseScreen), findsNothing);
+      expect(find.byType(ParkScreen), findsOneWidget);
+      await _unmount(tester);
+    });
+
     testWidgets(
       'a course an organised group shares gets the give-way note, naming no one',
       (tester) async {

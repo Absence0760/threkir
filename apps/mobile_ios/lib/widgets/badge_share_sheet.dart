@@ -1,6 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppIconSize;
+import 'package:ui_kit/ui_kit.dart' show AppIconSize, SheetScaffold;
 
 import '../badges.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -112,9 +112,9 @@ class _BadgeShareSheetState extends State<_BadgeShareSheet> {
         : _badge.badgeKey;
     final desc = tier != null ? badgeText(l10n, tier.descKey) : null;
     final color = badgeTierColor(_badge.tier);
-    return SingleChildScrollView(
+    return SheetScaffold(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: Column(
+      body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

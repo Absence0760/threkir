@@ -8,7 +8,7 @@ import { readMaybeRow, readRow } from '../fixtures/db-read';
 /**
  * Personal-records / PB journey — a run that sets a new personal best
  * threads from the runs table, through the trigger-maintained
- * `personal_records` cache, onto the /dashboard PB card, and the
+ * `personal_records` cache, onto the /dashboard/progress PB card, and the
  * delete of the PB run recomputes the cache back to the previous best.
  * This is the derived-cache contract (docs/backend/derived_state.md §
  * personal_records) walked end to end via the UI rather than pinned in
@@ -25,7 +25,7 @@ import { readMaybeRow, readRow } from '../fixtures/db-read';
  *      beats the pre-existing best by 60 s. best-time-wins ranks it as
  *      the cache's 5k row. The runs insert trigger fires
  *      refresh_personal_records_for_user, so the cache updates without a
- *      manual rebuild, and the /dashboard PB card's 5k row reads it.
+ *      manual rebuild, and the /dashboard/progress PB card's 5k row reads it.
  *   2. Set a NEW PB: insert a 5000 m run 60 s faster again (120 s under
  *      the original best). The cache's 5k row flips to it (backend
  *      cross-check via the admin client) and the dashboard reflects it.
@@ -35,7 +35,7 @@ import { readMaybeRow, readRow } from '../fixtures/db-read';
  *      cache=authoritative-query contract: the row is not left stale at
  *      the deleted run's time. The dashboard reflects the baseline.
  *
- * Surfaces: the ONLY UI PB surface today is the /dashboard PB table
+ * Surfaces: the ONLY UI PB surface today is the /dashboard/progress PB table
  * (.pr-table, distance label '5k' → .pr-time = formatDuration). The
  * run-detail page carries no PR badge (it only reads is_dnf, which
  * EXCLUDES a run from PR scoring — confirmed in
@@ -132,7 +132,7 @@ test.describe('personal records journey', () => {
 
 				// The dashboard PB card shows the baseline. fetchPersonalRecords
 				// reads the same cache and labels the bracket '5k'.
-				await page.goto('/dashboard');
+				await page.goto('/dashboard/progress');
 				await expect(prFiveKTime).toHaveText(BASELINE_LABEL, { timeout: 15_000 });
 			});
 
@@ -161,7 +161,7 @@ test.describe('personal records journey', () => {
 
 				// The PB card reflects the improved time (a reload, not stale
 				// local state — the dashboard fetches on mount).
-				await page.goto('/dashboard');
+				await page.goto('/dashboard/progress');
 				await expect(prFiveKTime).toHaveText(NEW_PB_LABEL, { timeout: 15_000 });
 			});
 
@@ -189,7 +189,7 @@ test.describe('personal records journey', () => {
 				expect(afterRow.run_id).not.toBe(deletedPbId);
 
 				// Dashboard re-reads the recomputed cache and shows 25:00.
-				await page.goto('/dashboard');
+				await page.goto('/dashboard/progress');
 				await expect(prFiveKTime).toHaveText(BASELINE_LABEL, { timeout: 15_000 });
 			});
 		} finally {

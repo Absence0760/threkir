@@ -112,7 +112,7 @@
 				aria-describedby="race-entry-url-hint"
 			/>
 		</label>
-		<span class="field-hint" id="race-entry-url-hint">{m('races.fieldEntryUrlHint')}</span>
+		<span class="field-hint" id="race-entry-url-hint">{m('races.fieldEntryUrlHint', { button: m('races.register') })}</span>
 	</div>
 	<div class="field">
 		<label>

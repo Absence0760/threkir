@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, StatusPill;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, ListCard, StatusPill;
 
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
@@ -50,11 +51,8 @@ class WorkoutReviewSection extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: theme.dividerColor),
-              borderRadius: BorderRadius.circular(8),
-            ),
+          child: ListCard.flush(
+            margin: EdgeInsets.zero,
             child: Column(
               children: [
                 _headerRow(theme, l10n),

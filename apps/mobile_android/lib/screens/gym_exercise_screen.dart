@@ -1,6 +1,13 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ProgressBar;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppSemanticColors,
+        AppSpace,
+        ListCard,
+        PageHeader,
+        ProgressBar,
+        PushedPage;
 
 import '../exercise_history.dart';
 import '../l10n/date_format.dart';
@@ -68,10 +75,9 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
     final theme = Theme.of(context);
     final progress =
         exerciseProgress(gymSetHistory(widget.store.workouts), widget.exerciseName);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(progress?.exerciseName ?? widget.exerciseName),
-      ),
+    final title = progress?.exerciseName ?? widget.exerciseName;
+    return PushedPage(
+      title: title,
       body: progress == null
           ? Center(
               child: Padding(
@@ -84,17 +90,22 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
                 ),
               ),
             )
-          : _body(progress, theme, l10n),
+          : _body(progress, title, theme, l10n),
     );
   }
 
-  Widget _body(ExerciseProgress p, ThemeData theme, AppLocalizations l10n) {
+  Widget _body(ExerciseProgress p, String title, ThemeData theme,
+      AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     // Most-recent first (sessions come oldest-first).
     final reversed = p.sessions.reversed.toList();
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        PageHeader(
+          title: title,
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+        ),
         _headline(p, theme, l10n),
         const SizedBox(height: 16),
         for (final s in reversed) _sessionRow(s, p, tag, theme, l10n),
@@ -165,10 +176,14 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 2),
-        Text(
-          text,
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: color, fontWeight: FontWeight.w600),
+        // Flexible: at 320 dp and 2x the change since the first session ran
+        // past the header's edge.
+        Flexible(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: color, fontWeight: FontWeight.w600),
+          ),
         ),
       ],
     );
@@ -183,13 +198,10 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
   ) {
     final dt = DateTime.tryParse(s.startedAt);
     final dateText = dt == null ? s.startedAt : formatDateMed(dt.toLocal(), tag);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => _openWorkout(s.workoutId),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+      dense: true,
+      onTap: () => _openWorkout(s.workoutId),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -216,10 +228,15 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    _topSetLine(s),
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                  // Flexible: at 320 dp and 2x the top set beside the date
+                  // and badges ran past the card's edge.
+                  Flexible(
+                    child: Text(
+                      _topSetLine(s),
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
@@ -245,8 +262,6 @@ class _GymExerciseScreenState extends State<GymExerciseScreen> {
               ],
             ],
           ),
-        ),
-      ),
     );
   }
 

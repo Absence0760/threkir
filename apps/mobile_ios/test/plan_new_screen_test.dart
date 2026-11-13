@@ -16,7 +16,9 @@ import '../lib/social_service.dart';
 import '../lib/training.dart';
 import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
+import 'editor_layout.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(WidgetTester tester) {
   return tester.pumpWidget(
@@ -332,7 +334,7 @@ void main() {
     testWidgets('renders the New plan app-bar title', (tester) async {
       await _pump(tester);
       await tester.pump();
-      expect(find.text('New plan'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New plan'), findsOneWidget);
     });
 
     testWidgets('renders the Start date list tile', (tester) async {
@@ -343,21 +345,130 @@ void main() {
       expect(find.text('Start date'), findsOneWidget);
     });
 
-    testWidgets('renders the Cancel and Create plan buttons',
+    testWidgets('Create plan is the one action, pinned, with no Cancel',
         (tester) async {
-      // Reason: the wizard is committed only via "Create plan"; the
-      // Cancel pop must remain reachable so users can back out.
-      // The buttons live at the bottom of a lazy ListView — scroll to
-      // bring them into the viewport before asserting.
+      // Reason: the wizard is committed only via "Create plan", which stays
+      // on screen however long the form; the close button backs out.
       await _pump(tester);
       await tester.pump();
-      await tester.scrollUntilVisible(
-        find.text('Create plan'),
-        300,
-        scrollable: find.byType(Scrollable).first,
+      expect(find.byType(EditorPage), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Create plan').hitTestable(),
+          findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+    });
+
+    testWidgets(
+        'Create plan is reachable at 320 dp, 2x text and a 3-button bar, '
+        'with and without the keyboard', (tester) async {
+      await expectEditorSaveReachable(
+        tester,
+        page: () => PlanNewScreen(training: _HangingCreateTraining()),
+        save: find.widgetWithText(FilledButton, 'Create plan'),
       );
-      expect(find.text('Cancel'), findsOneWidget);
-      expect(find.text('Create plan'), findsOneWidget);
+    });
+  });
+
+  group('PlanNewScreen — unsaved changes (issue #1374 NS-6)', () {
+    Future<void> pushScreen(WidgetTester tester, TrainingService training,
+        {GoalEvent? initialGoal}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PlanNewScreen(
+                        training: training, initialGoal: initialGoal),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    Future<void> back(WidgetTester tester) async {
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets('an untouched form closes without asking', (tester) async {
+      await pushScreen(tester, _HangingCreateTraining());
+      await back(tester);
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.byType(PlanNewScreen), findsNothing);
+    });
+
+    testWidgets(
+        'a preset name and goal are not edits: it still closes without asking',
+        (tester) async {
+      await pushScreen(tester, _HangingCreateTraining(),
+          initialGoal: GoalEvent.distance10k);
+      expect(find.widgetWithText(TextField, 'Plan name'), findsOneWidget);
+      await back(tester);
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.byType(PlanNewScreen), findsNothing);
+    });
+
+    testWidgets('a typed name asks; Cancel keeps the form and the text',
+        (tester) async {
+      await pushScreen(tester, _HangingCreateTraining());
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      await back(tester);
+      expect(find.text('Discard changes?'), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Cancel')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(PlanNewScreen), findsOneWidget);
+      expect(find.text('Autumn half'), findsOneWidget);
+    });
+
+    testWidgets('the close button asks too, and Discard leaves',
+        (tester) async {
+      await pushScreen(tester, _HangingCreateTraining());
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      await tester.tap(find.byType(CloseButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('Discard changes?'), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Discard')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(PlanNewScreen), findsNothing);
+    });
+
+    testWidgets('Back while the plan is being created is refused, visibly',
+        (tester) async {
+      final training = _HangingCreateTraining();
+      await pushScreen(tester, training);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Autumn half');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Create plan'));
+      await tester.pump();
+      await pumpUntil(tester, () => training.createCalls == 1,
+          describe: 'the create to start');
+      await back(tester);
+      expect(find.byType(PlanNewScreen), findsOneWidget);
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.text('Still saving. You can leave when it finishes.'),
+          findsOneWidget);
+      // Let the create time out so no timer outlives the test.
+      await tester.pump(kBackendLoadTimeout);
+      await tester.pump(const Duration(seconds: 6));
     });
   });
 
@@ -1643,5 +1754,14 @@ void main() {
       await tester.pump();
       expect(find.byKey(const Key('plan-new-goal-ahead')), findsNothing);
     });
+  });
+
+  // Its starting-point, ready-made and preview cards are ListCards
+  // (issue #1374).
+  worstCaseTestWidgets('New plan', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+        locale: locale, home: PlanNewScreen(training: TrainingService())));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'New plan');
   });
 }

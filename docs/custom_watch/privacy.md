@@ -182,7 +182,8 @@ no account identity to match against, which is a property worth keeping.
 ## Why `privacy.rs` is dormant, and what would wire it
 
 `core/src/privacy.rs` is a faithful port of the web zone-clipping
-helper, with ten host tests. **It has zero callers.** That is correct, and it should stay
+helper, with twelve host tests, including the 100 m floor every platform reads
+a stored radius through (`effective_zone_radius`, decisions § 2505). **It has zero callers.** That is correct, and it should stay
 that way at tier 1.
 
 Clipping in this product is a **read-time, viewer-keyed** transform, not a

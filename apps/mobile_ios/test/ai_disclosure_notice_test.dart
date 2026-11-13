@@ -1,5 +1,5 @@
 // Widget tests for AiDisclosureNotice, the one copy of the AI-processing
-// disclosure every host shows (Coach gate, Settings → Account, route
+// disclosure every host shows (Coach gate, You → Account, route
 // fallback). It must name every lane the current disclosure version covers:
 // a bullet in the catalogue the notice leaves out is processing a runner
 // would accept without having been told about.
@@ -37,7 +37,31 @@ void main() {
     expect(find.text(_l10n.coachConsentProcessing), findsOneWidget);
     expect(_l10n.coachConsentIntro, contains('Anthropic'));
     expect(_l10n.coachConsentProcessing, contains('privacy policy'));
-    expect(_l10n.coachConsentProcessing, contains('Settings → Account'));
+    expect(
+      _l10n.coachConsentProcessing,
+      contains('under ${_l10n.settingsAccountTitle} in the ${_l10n.navYou} tab'),
+    );
+  });
+
+  // Where consent is withdrawn is part of the consent text, so in every
+  // locale it names the two labels a runner actually taps: the You tab and
+  // its Account row. The phone has no Settings screen (decisions § 2494).
+  test('every locale names the You tab and Account as where to withdraw', () {
+    final dir = Directory('lib/l10n');
+    final arbs = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.arb'))
+        .toList();
+    expect(arbs, isNotEmpty);
+    for (final f in arbs) {
+      final arb = jsonDecode(f.readAsStringSync()) as Map<String, dynamic>;
+      final text = arb['coachConsentProcessing'] as String;
+      expect(text, contains(arb['navYou'] as String), reason: f.path);
+      expect(text, contains(arb['settingsAccountTitle'] as String),
+          reason: f.path);
+      expect(text, isNot(contains('→')), reason: f.path);
+    }
   });
 
   testWidgets('shows every coachConsentBullet* the English catalogue holds',

@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
 /**
- * Open `/dashboard`'s "Training load" expander if this account is rendering
+ * Open `/dashboard/progress`'s "Training load" expander if this account is rendering
  * it (#905 workstream 1, decisions § 1658).
  *
  * At the `simple` disclosure level the VO₂ max / CTL / ATL / TSB snapshot and

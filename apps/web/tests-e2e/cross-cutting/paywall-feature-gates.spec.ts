@@ -86,6 +86,11 @@ test.describe('paywall — per-feature gates', () => {
 			await expect(page.locator('.limit-bar')).toBeVisible({ timeout: 10_000 });
 			await expect(page.locator('.limit-bar')).toContainText(/used all 2 messages/i);
 			await expect(page.locator('.limit-bar')).toContainText(/Upgrade to Pro/i);
+			// The upsell opens Pro rather than leaving the reader to find it.
+			await expect(page.locator('.limit-bar').getByRole('link', { name: 'See Pro' })).toHaveAttribute(
+				'href',
+				'/settings/upgrade',
+			);
 			await expect(page.locator('form.composer')).toHaveCount(0);
 			// A spent allowance is a warning, not an error: the bar takes the
 			// warning tint, read from the token so a theme change cannot break it.

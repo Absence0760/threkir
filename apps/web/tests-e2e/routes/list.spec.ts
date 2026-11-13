@@ -15,65 +15,46 @@ import { USER_A } from '../fixtures/users';
 test.describe('/routes', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('tab switch My routes ↔ Explore shows different result sets', async ({
+	test('view switch Mine ↔ Explore shows different result sets', async ({
 		page
 	}) => {
-		// The Routes page has two tabs — My routes (owned + cloned)
-		// and Explore (community-public discovery). The Explore tab
-		// fetches via searchPublicRoutes; the My tab fetches via
-		// fetchMyRoutes. Both can be empty independently. Asserts
-		// the active class flips and at least the My tab has the
-		// seeded routes.
+		// Routes is Mine · Explore (issue #1374, owner decision 1): Mine is the
+		// owned + saved list, Explore the community-public discovery. The
+		// views are links, so the URL carries the view.
 		await page.goto('/routes');
 		await expect(page.locator('.route-card').first()).toBeVisible({
 			timeout: 10_000
 		});
 		const myCount = await page.locator('.route-card').count();
+		const nav = page.getByTestId('routes-view-nav');
 
-		// My tab is the default; switch to Explore.
-		const exploreTab = page.getByRole('tab', { name: 'Explore', exact: true });
-		await exploreTab.click();
-		await expect(exploreTab).toHaveClass(/active/);
+		const explore = nav.getByRole('link', { name: 'Explore', exact: true });
+		await explore.click();
+		await expect(page).toHaveURL(/\/routes\?tab=explore$/);
+		await expect(explore).toHaveClass(/active/);
+		await expect(nav.getByRole('link', { name: 'Mine', exact: true })).not.toHaveClass(/active/);
 
-		// Explore renders different rows (or none, if no community
-		// routes exist). Either way, the My tab's count should
-		// differ from Explore's after pagination — assert tab class
-		// flipped, that's the load-bearing assertion. Explore
-		// sometimes empty in this seed; don't pin a count.
-		await expect(
-			page.getByRole('tab', { name: 'My routes', exact: true })
-		).not.toHaveClass(/active/);
-
-		// Switch back so subsequent tests see My-routes default.
-		await page.getByRole('tab', { name: 'My routes', exact: true }).click();
+		await nav.getByRole('link', { name: 'Mine', exact: true }).click();
+		await expect(page).toHaveURL(/\/routes$/);
 		await expect(page.locator('.route-card')).toHaveCount(myCount);
 	});
 
-	test('arrow keys navigate the tab strip and Tab is not trapped (WCAG 2.1.1)', async ({
+	test('the view links are reachable and followed from the keyboard (WCAG 2.1.1)', async ({
 		page
 	}) => {
-		// audit-findings 2026-05-30 High [accessibility]: the tablist had
-		// no arrow-key navigation. Focus the active tab, ArrowRight should
-		// move to + activate the next tab; ArrowLeft back. A non-nav key
-		// (Tab) must pass through (the handler's nav-key guard).
+		// The views were a role="tablist" with roving arrow keys; as links
+		// each is its own tab stop and Enter follows it.
 		await page.goto('/routes');
-		const mine = page.getByRole('tab', { name: 'My routes', exact: true });
-		const explore = page.getByRole('tab', { name: 'Explore', exact: true });
+		const nav = page.getByTestId('routes-view-nav');
+		const mine = nav.getByRole('link', { name: 'Mine', exact: true });
+		const explore = nav.getByRole('link', { name: 'Explore', exact: true });
 		await mine.focus();
 		await expect(mine).toBeFocused();
-
-		await page.keyboard.press('ArrowRight');
-		await expect(explore).toBeFocused();
-		await expect(explore).toHaveClass(/active/);
-
-		await page.keyboard.press('ArrowLeft');
-		await expect(mine).toBeFocused();
-		await expect(mine).toHaveClass(/active/);
-
-		// Tab must not be swallowed by the tablist handler — focus leaves
-		// the tab (moves to the next focusable element).
 		await page.keyboard.press('Tab');
-		await expect(mine).not.toBeFocused();
+		await expect(explore).toBeFocused();
+		await page.keyboard.press('Enter');
+		await expect(page).toHaveURL(/\/routes\?tab=explore$/);
+		await expect(page.getByTestId('routes-explore-kind')).toBeVisible();
 	});
 
 	test('Surface filter narrows by surface (road)', async ({ page }) => {
@@ -201,29 +182,29 @@ test.describe('/routes', () => {
 		await expect(page.locator('.route-card').first()).toBeVisible();
 	});
 
-	test('tab strip uses role="tab" with aria-selected (a11y contract)', async ({
+	test('the view row is links with aria-current, and no Heatmap tab (a11y contract)', async ({
 		page
 	}) => {
-		// The /routes tab strip used to render <button> elements with
-		// no ARIA role. Post-polish, they're proper role="tab" with
-		// aria-selected reflecting the active tab. Pin so a future
-		// regression that drops the role can't slip past — screen
-		// readers rely on this for navigation cue.
+		// The views are distinct URLs, so they are links marked with
+		// aria-current, as the run-surface strip is. The heatmap is Explore's
+		// map entry rather than a third view (issue #1374, owner decision 1).
 		await page.goto('/routes');
-		const tabs = page.getByRole('tab');
-		await expect(tabs).toHaveCount(3, { timeout: 10_000 });
+		const nav = page.getByTestId('routes-view-nav');
+		await expect(nav.getByRole('link')).toHaveText(['Mine', 'Explore'], { timeout: 10_000 });
+		await expect(page.getByRole('tab')).toHaveCount(0);
+		await expect(nav.getByRole('link', { name: 'Mine', exact: true })).toHaveAttribute(
+			'aria-current',
+			'page'
+		);
+		await expect(page.getByTestId('routes-explore-map')).toHaveCount(0);
 
-		const my = page.getByRole('tab', { name: 'My routes', exact: true });
-		const explore = page.getByRole('tab', { name: 'Explore', exact: true });
-		const heatmap = page.getByRole('tab', { name: 'Heatmap', exact: true });
-
-		await expect(my).toHaveAttribute('aria-selected', 'true');
-		await expect(explore).toHaveAttribute('aria-selected', 'false');
-		await expect(heatmap).toHaveAttribute('aria-selected', 'false');
-
-		await explore.click();
-		await expect(explore).toHaveAttribute('aria-selected', 'true');
-		await expect(my).toHaveAttribute('aria-selected', 'false');
+		await nav.getByRole('link', { name: 'Explore', exact: true }).click();
+		const kind = page.getByTestId('routes-explore-kind');
+		await expect(kind.getByRole('link', { name: 'Routes', exact: true })).toHaveAttribute(
+			'aria-current',
+			'page'
+		);
+		await expect(page.getByTestId('routes-explore-map')).toHaveAttribute('href', '/routes/heatmap');
 	});
 
 	test('filters-too-narrow empty state is a card with icon + h3 + Clear-filters CTA', async ({

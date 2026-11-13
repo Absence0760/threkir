@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import PersonalHeatmap from '#lib/components/PersonalHeatmap.svelte';
@@ -37,15 +38,13 @@
 </svelte:head>
 
 <div class="page">
-	<header class="page-head">
-		<div>
-			<h1>{m('runsHeatmap.heading')}</h1>
-			<p class="sub">{m('runsHeatmap.subtitle')}</p>
-		</div>
-		<a class="btn btn-outline" href="/runs" onclick={handleBack}
-			>{m('runsHeatmap.backToRuns')}</a
-		>
-	</header>
+	<PageHeader flush title={m('runsHeatmap.heading')} subtitle={m('runsHeatmap.subtitle')}>
+		{#snippet actions()}
+			<a class="btn btn-outline" href="/runs" onclick={handleBack}
+				>{m('runsHeatmap.backToRuns')}</a
+			>
+		{/snippet}
+	</PageHeader>
 
 	{#if !ready}
 		<div class="map-host" data-testid="heatmap-skeleton">
@@ -69,21 +68,6 @@
 		gap: var(--space-lg);
 		height: 100vh;
 		min-height: 32rem;
-	}
-	.page-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: var(--space-md);
-		flex: 0 0 auto;
-	}
-	.page-head h1 {
-		margin: 0;
-	}
-	.sub {
-		margin: 0.2rem 0 0;
-		color: var(--color-text-secondary);
 	}
 	.muted {
 		color: var(--color-text-secondary);

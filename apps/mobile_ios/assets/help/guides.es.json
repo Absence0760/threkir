@@ -51,7 +51,7 @@
           {
             "type": "steps",
             "items": [
-              "En la web, abre [[route:/settings/notifications|Notificaciones]] en Configuración. En la app móvil, abre **Preferencias** en la pestaña **Tú** y desplázate hasta **Notificaciones**.",
+              "En la web, abre [[route:/settings/notifications|Notificaciones]] en Ajustes. En la app móvil, abre **Notificaciones** en la pestaña **Tú**.",
               "Ajusta **Notificaciones por correo** y **Notificaciones push** por separado."
             ]
           },
@@ -136,8 +136,8 @@
           {
             "type": "steps",
             "items": [
-              "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y marca **Perfil privado** en **Que te encuentren**.",
-              "En la app móvil, abre **Preferencias** en la pestaña **Tú** y activa **Perfil privado** en **Privacidad y uso compartido**."
+              "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Ajustes y marca **Perfil privado** en **Que te encuentren**.",
+              "En la app móvil, abre **Privacidad y uso compartido** en la pestaña **Tú** y activa **Perfil privado**."
             ]
           },
           {
@@ -313,7 +313,7 @@
               "**Map-matching prioritario**: tus trazas GPS se ajustan a las calles antes que las de las cuentas gratuitas, así que están listas antes.",
               "**Exportaciones a la nube prioritarias**: hasta 8 exportaciones de paquetes GPX por hora en lugar de 2.",
               "**Generación de rutas en el servidor**: bucles trazados sobre la red de calles real cuando generas una ruta por distancia. Las cuentas gratuitas siguen teniendo generación de bucles, calculada en el navegador.",
-              "Descripciones de rutas más ricas: en la página de una ruta, **Mejorar con IA** convierte la descripción estándar en un párrafo más completo.",
+              "Descripciones de rutas más ricas: en la página de una ruta, **Describir esta ruta** escribe un párrafo más completo en lugar de la descripción estándar.",
               "**Registrar desde una foto**: haz una foto de una comida y tu registro de alimentos se rellena para que lo revises. Consulta [[guide:log-a-meal-from-a-photo|Registrar una comida desde una foto]]."
             ]
           },
@@ -335,7 +335,7 @@
             "type": "list",
             "items": [
               "En un iPhone, abre **Pro y apoyo** en la pestaña **Tú** y suscríbete a través del App Store.",
-              "En la web, abre [[route:/settings/upgrade|Pro y apoyo]] en Configuración. Si dice **La suscripción desde la web llegará pronto.**, suscríbete en la app de iPhone."
+              "En la web, abre [[route:/settings/upgrade|Pro y apoyo]] en Ajustes. Si dice **La suscripción desde la web llegará pronto.**, suscríbete en la app de iPhone."
             ]
           },
           {
@@ -416,7 +416,7 @@
           {
             "type": "steps",
             "items": [
-              "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Preferencias** de la pestaña **Tú**.",
+              "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Ajustes y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Privacidad y uso compartido** de la pestaña **Tú**.",
               "Para cambiar una sola carrera más tarde, ábrela y toca **Privado** o **Público** debajo de su título. Antes de hacer pública una carrera, te lo preguntamos y te mostramos lo que ocultarán tus zonas de privacidad."
             ]
           },
@@ -439,7 +439,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "En la web, abre **Cuenta** en Configuración. La app móvil tiene las mismas opciones en **Cuenta**, en la pestaña **Tú**."
+            "text": "En la web, abre **Cuenta** en Ajustes. La app móvil tiene las mismas opciones en **Cuenta**, en la pestaña **Tú**."
           },
           {
             "type": "list",
@@ -459,7 +459,7 @@
             "type": "steps",
             "items": [
               "Descarga primero todo lo que quieras conservar. La eliminación no se puede deshacer.",
-              "En la web, abre **Cuenta** en Configuración y selecciona **Eliminar cuenta** en **Zona de peligro**. En la app móvil, abre **Cuenta** en la pestaña **Tú** y toca **Eliminar cuenta**.",
+              "En la web, abre **Cuenta** en Ajustes y selecciona **Eliminar cuenta** en **Zona de peligro**. En la app móvil, abre **Cuenta** en la pestaña **Tú** y toca **Eliminar cuenta**.",
               "Escribe ELIMINAR para confirmar y luego selecciona **Eliminar mi cuenta** en la web o **Eliminar** en la app."
             ]
           },
@@ -582,7 +582,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Solo un administrador del club en Strava puede vincularlo, y solo a un club del que sea propietario o administrador aquí. Si no aparece la sección, conecta primero Strava en [[route:/settings/integrations|Integraciones]], dentro de Configuración."
+            "text": "Solo un administrador del club en Strava puede vincularlo, y solo a un club del que sea propietario o administrador aquí. Si no aparece la sección, conecta primero Strava en [[route:/settings/integrations|Integraciones]], dentro de Ajustes."
           }
         ]
       }
@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Abre [[route:/settings/payouts|Configuración, Pagos]] en la web.",
+              "Abre [[route:/settings/payouts|Pagos]] en la web.",
               "Pulsa **Configurar pagos**. Irás a Stripe para introducir tus datos y la cuenta bancaria en la que quieres cobrar.",
               "Completa los pasos de Stripe. Cuando vuelvas, la página mostrará tu estado.",
               "Si dice **Configuración incompleta: termínala para empezar a cobrar** o **Tu cuenta de pagos requiere atención antes de poder cobrar**, pulsa **Terminar de configurar los pagos** para volver a Stripe y seguir donde lo dejaste."
@@ -1926,7 +1926,7 @@
           },
           {
             "type": "p",
-            "text": "Los corredores desactivan ambos con **Carrera a punto de empezar**: en la web, en [[route:/settings/notifications|Notificaciones]]; en la app del móvil, en **Preferencias**, dentro de la pestaña **Tú**."
+            "text": "Los corredores desactivan ambos con **Carrera a punto de empezar**: en la web, en [[route:/settings/notifications|Notificaciones]]; en la app del móvil, en **Notificaciones**, dentro de la pestaña **Tú**."
           }
         ]
       },
@@ -1951,7 +1951,7 @@
   {
     "id": "drive-a-course",
     "lang": "es",
-    "title": "Recorrer en coche el recorrido de una carrera antes del día",
+    "title": "Conducir el recorrido de una prueba antes de que se celebre",
     "summary": "Abre un recorrido público en tu app de mapas, mira qué tramos no puede seguir y deja que la app del móvil te lea en voz alta las notas del recorrido mientras conduces.",
     "kind": "how-to",
     "category": "races",
@@ -1973,13 +1973,13 @@
         "blocks": [
           {
             "type": "p",
-            "text": "En una ruta pública o una carrera con recorrido público, **Conducir el recorrido** divide el recorrido en tramos que Google Maps, Mapas de Apple o Waze pueden seguir. Tu app de mapas se encarga de guiarte, también en CarPlay y Android Auto."
+            "text": "En una ruta pública o una prueba con recorrido público, **Conducir el recorrido** divide el recorrido en tramos que Google Maps, Mapas de Apple o Waze pueden seguir. Tu app de mapas se encarga de guiarte, también en CarPlay y Android Auto."
           },
           {
             "type": "list",
             "items": [
               "Google Maps admite varias paradas por tramo. Mapas de Apple y Waze admiten un solo destino cada vez, así que abres cada tramo por turnos.",
-              "Los recorridos de carrera usan caminos, puentes y calles cortadas. La lista bajo los tramos muestra los tramos que la app de mapas no puede seguir, para que sepas qué partes no verás.",
+              "Los recorridos de las pruebas usan caminos, puentes y calles cortadas. La lista bajo los tramos muestra las partes que la app de mapas no puede seguir, para que sepas qué no verás.",
               "La ruta de la app de mapas es solo orientativa. Las notas siguen el recorrido real."
             ]
           },
@@ -1996,7 +1996,7 @@
           {
             "type": "steps",
             "items": [
-              "Abre la ruta o la carrera y selecciona **Conducir el recorrido**.",
+              "Abre la ruta o la prueba y selecciona **Conducir el recorrido**.",
               "Elige tu app de mapas y selecciona **Ir a la salida**.",
               "En la salida, abre el tramo 1. Cuando termine un tramo, abre el siguiente."
             ]
@@ -2013,7 +2013,7 @@
           {
             "type": "steps",
             "items": [
-              "En la app del móvil, abre la ruta o la carrera y toca **Conducir el recorrido**.",
+              "En la app del móvil, abre la ruta o la prueba y toca **Conducir el recorrido**.",
               "Lee el aviso de seguridad y toca **Entendido**. Solo aparece una vez en cada móvil.",
               "Toca **Iniciar notas habladas**, cambia a tu app de mapas y bloquea el móvil."
             ]
@@ -2025,7 +2025,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Úsalo con un acompañante o con el móvil en un soporte, y no toques el móvil mientras conduces. Respeta las normas y señales de tráfico, y recuerda que las calles del recorrido pueden estar cortadas el día de la carrera."
+            "text": "Úsalo con un acompañante o con el móvil en un soporte, y no toques el móvil mientras conduces. Respeta las normas y señales de tráfico, y recuerda que las calles del recorrido pueden estar cortadas el día de la prueba."
           }
         ]
       }
@@ -2424,7 +2424,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Si tu móvil no detectó una línea, tu resultado es un DNF que no esperabas o competiste con un Apple Watch, puedes volver a cronometrar tu resultado con la carrera que grabaste. Abre la carrera en la web: si pertenece a una competición, muestra **Recalcular el tiempo con mi traza** con tu resultado actual junto al que da tu traza."
+            "text": "Si tu móvil no detectó una línea, tu resultado es un DNF que no esperabas o competiste con un Apple Watch, puedes volver a cronometrar tu resultado con la actividad que grabaste. Abre la actividad en la web: si pertenece a una carrera, muestra **Recalcular el tiempo con mi traza** con tu resultado actual junto al que da tu traza."
           },
           {
             "type": "steps",
@@ -2500,7 +2500,7 @@
               "App de iPhone: usa el mismo código que la de Android, pero todavía no se ha probado en un iPhone en una carrera real.",
               "Reloj Wear OS: compatibilidad completa en la muñeca, incluido el cronometraje por las líneas. Aun así, te apuntas y eliges tu recorrido en la web o en el móvil.",
               "Apple Watch: solo compatibilidad inicial. Muestra el aviso de carrera, envía tu posición y comunica tu tiempo a través de tu iPhone, pero no detecta las líneas de salida y de meta, así que no tiene llegada automática, y no se ha probado en una carrera real. Lleva el móvil como respaldo, o vuelve a cronometrar tu resultado con tu traza en la web después.",
-              "Web: úsala para apuntarte, elegir un recorrido, ver los resultados y volver a cronometrar un resultado con la traza de una carrera. Un navegador no puede grabar una carrera."
+              "Web: úsala para apuntarte, elegir un recorrido, ver los resultados y volver a cronometrar un resultado con la traza de una actividad. Un navegador no puede grabar una actividad."
             ]
           }
         ]
@@ -2649,7 +2649,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Si el organizador finaliza la carrera antes de que llegues, tu móvil te lo indica y tu reloj muestra «Carrera finalizada». Tu carrera sigue grabándose como una carrera normal, pero tu dispositivo no envía ningún resultado de competición. Si ya habías enviado una posición en directo, la carrera te marca como DNF."
+            "text": "Si el organizador finaliza la carrera antes de que llegues, tu móvil te lo indica y tu reloj muestra «Carrera finalizada». Tu actividad sigue grabándose como cualquier otra, pero tu dispositivo no envía ningún resultado a la carrera. Si ya habías enviado una posición en directo, la carrera te marca como DNF."
           }
         ]
       }
@@ -2666,7 +2666,7 @@
     "id": "run-a-self-timed-race",
     "lang": "es",
     "title": "Correr una carrera con cronometraje propio",
-    "summary": "Únete a una carrera abierta durante una ventana de tiempo, marca tu carrera como tu intento y corre de la línea de salida a la línea de meta cuando mejor te venga.",
+    "summary": "Únete a una carrera abierta durante una ventana de tiempo, marca tu actividad como tu intento y corre de la línea de salida a la línea de meta cuando mejor te venga.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2692,7 +2692,7 @@
           },
           {
             "type": "p",
-            "text": "Grabas tu intento con la app del móvil o con un reloj Wear OS. La web sirve para unirte y para ver los resultados; un navegador no puede grabar una carrera."
+            "text": "Grabas tu intento con la app del móvil o con un reloj Wear OS. La web sirve para unirte y para ver los resultados; un navegador no puede grabar una actividad."
           }
         ]
       },
@@ -2717,18 +2717,18 @@
             "type": "steps",
             "items": [
               "En la pestaña Correr de la app del móvil, el aviso de carrera muestra **Cronometraje propio** y cuándo se cierra la ventana.",
-              "Toca **Esta carrera es mi intento**. Cambia a **Intento listo: toca Iniciar**; vuelve a tocarlo si cambias de idea.",
+              "Toca **Esta actividad es mi intento**. Cambia a **Intento listo: toca Iniciar**; vuelve a tocarlo si cambias de idea.",
               "Pulsa Iniciar antes de llegar a la línea de salida y luego cruza la línea de salida en el sentido del recorrido."
             ]
           },
           {
             "type": "p",
-            "text": "En un reloj Wear OS, la pantalla previa a la salida muestra CRONO PROPIO. Toca **Esta carrera es mi intento** y luego Empezar."
+            "text": "En un reloj Wear OS, la pantalla previa a la salida muestra CRONO PROPIO. Toca **Esta actividad es mi intento** y luego Empezar."
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Una carrera que no marques como tu intento nunca se une a la competición: no envía posición en directo ni obtiene resultado. Así, una carrera con la que no pretendías competir nunca acaba en la clasificación."
+            "text": "Una actividad que no marques como tu intento nunca se une a la carrera: no envía posición en directo ni obtiene resultado. Así, una actividad con la que no pretendías competir nunca acaba en la clasificación."
           }
         ]
       },
@@ -2738,7 +2738,7 @@
           {
             "type": "list",
             "items": [
-              "Puedes hacer más de un intento mientras la ventana esté abierta. Toca **Esta carrera es mi intento** antes de cada uno.",
+              "Puedes hacer más de un intento mientras la ventana esté abierta. Toca **Esta actividad es mi intento** antes de cada uno.",
               "Cuenta tu mejor llegada cronometrada por las dos líneas. Un intento más lento no la sustituye.",
               "Puede que tu resultado tenga que esperar a que el organizador lo apruebe. Hasta entonces se muestra como pendiente y no tiene puesto.",
               "Un resultado sin cruce de la línea de salida, como uno enviado desde un Apple Watch o desde una versión antigua de la app, se conserva, pero el organizador lo revisa antes de que cuente."
@@ -2761,7 +2761,7 @@
             "type": "list",
             "items": [
               "En la meta, toca Detener y luego **Terminar carrera**. Si has cubierto el 90 % del recorrido, eso envía tu tiempo, y el organizador lo revisa antes de que cuente.",
-              "O vuelve a cronometrar tu intento con su traza después: abre la carrera en la web y elige **Recalcular el tiempo con mi traza**. Cronometra la traza por las líneas de la carrera y sustituye un resultado pendiente de revisión, o uno más lento. Puedes hacerlo hasta 24 horas después de que se cierre la ventana.",
+              "O vuelve a cronometrar tu intento con su traza después: abre la actividad en la web y elige **Recalcular el tiempo con mi traza**. Cronometra la traza por las líneas de la carrera y sustituye un resultado pendiente de revisión, o uno más lento. Puedes hacerlo hasta 24 horas después de que se cierre la ventana.",
               "¿Competiste con un Apple Watch? No detecta las líneas, así que volver a cronometrar con tu traza es la forma de que tu intento obtenga un resultado cronometrado por las líneas."
             ]
           },
@@ -3269,7 +3269,7 @@
           {
             "type": "steps",
             "items": [
-              "En la web, abre [[route:/settings/integrations|Integraciones]] en Configuración y selecciona **Conectar** en la tarjeta de Strava; en la app del móvil, abre **Integraciones** en la pestaña **Tú** y toca Strava.",
+              "En la web, abre [[route:/settings/integrations|Integraciones]] en Ajustes y selecciona **Conectar** en la tarjeta de Strava; en la app del móvil, abre **Integraciones** en la pestaña **Tú** y toca Strava.",
               "Inicia sesión en Strava y permite el acceso.",
               "Se copian tus carreras, caminatas y excursiones de los últimos 90 días, y las nuevas actividades de Strava llegan automáticamente."
             ]
@@ -3424,7 +3424,7 @@
           {
             "type": "steps",
             "items": [
-              "En la web, abre [[route:/settings/safety|Seguridad]] en Configuración; en la app del móvil, abre **Contactos de seguridad** en la pestaña **Tú**.",
+              "En la web, abre [[route:/settings/safety|Seguridad]] en Ajustes; en la app del móvil, abre **Contactos de seguridad** en la pestaña **Tú**.",
               "Introduce su **Correo del contacto**. También puedes añadir un **Teléfono para SMS (opcional)** en formato internacional, como +447700900123.",
               "Selecciona **Añadir contacto**. Recibirá un correo en el que se le pide que confirme.",
               "Su estado muestra **Pendiente: esperando su confirmación** hasta que acepte, y después **Confirmado**. Solo se avisa a los contactos confirmados."
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "Registrar desde una foto forma parte de Pro. Registrar alimentos a mano sigue siendo gratis.",
-              "Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, abre Ajustes → Cuenta y acéptalo allí.",
+              "Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, el mensaje incluye un enlace a la página de tu cuenta, donde puedes aceptarlo.",
               "La foto solo se usa para calcular qué hay en el plato. Los datos de ubicación y de la cámara se eliminan antes de enviarla, y Threkir no guarda la foto."
             ]
           },
@@ -3776,12 +3776,12 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Un recorrido de parque es un recorrido fijo de contrarreloj por un sendero de un parque estatal o nacional. No hay organizador ni día de carrera: córrelo cuando el parque esté abierto y una carrera que cubra todo el recorrido se cronometra. Los encontrarás en **Corre cuando quieras**, dentro de [[route:/races|Pruebas y recorridos]], con los más cercanos primero cuando indicas un lugar, o todos en [[route:/parks|Recorridos de parques]]."
+            "text": "Un recorrido de parque es un recorrido contrarreloj fijo por un sendero de un parque estatal o nacional. No hay organizador ni fecha de competición: córrelo cuando el parque esté abierto, y cualquier carrera que cubra todo el recorrido se cronometra en él. Los encontrarás en **Corre cuando quieras**, dentro de [[route:/races|Pruebas y recorridos]], con los más cercanos primero cuando indicas un lugar, o todos en [[route:/parks|Recorridos de parques]]. Elige **Recorridos** arriba en Pruebas y recorridos para ver todos los recorridos solos, sin el calendario de pruebas."
           },
           {
             "type": "list",
             "items": [
-              "Es una contrarreloj, no una carrera. El sendero sigue abierto para todos y nadie lo controla, así que respeta las normas del parque y cede el paso a los demás en el sendero.",
+              "Es una contrarreloj, no una prueba organizada. El sendero sigue abierto para todos y nadie lo controla, así que respeta las normas del parque y cede el paso a los demás en el sendero.",
               "Cada página de recorrido muestra la distancia, el desnivel positivo, la forma, la superficie y la dificultad, de dónde viene la línea del recorrido y si está abierto.",
               "Selecciona **Navegar este recorrido** para seguir el recorrido como una ruta. No se ofrece mientras el recorrido está cerrado.",
               "La **Guía del recorrido** de la página del recorrido indica dónde aparcar y cada giro en orden, con el nombre del sendero, además de los puentes, vados, cambios de superficie y subidas. Está redactada con datos del mapa; hasta que alguien la recorra en el parque, lo indica encima de la lista. La misma guía va en el archivo GPX del recorrido."
@@ -3914,7 +3914,7 @@
           {
             "type": "steps",
             "items": [
-              "Abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración.",
+              "Abre [[route:/settings/privacy|Privacidad y uso compartido]] en Ajustes.",
               "En **Zonas de privacidad**, selecciona **Añadir una zona**.",
               "Haz clic en el mapa donde quieras centrar la zona, o selecciona **Usar ubicación actual**, y luego arrastra el marcador para ajustarla.",
               "Fija el **Radio**. Todo lo que quede dentro del círculo rojo se oculta en lo que compartes públicamente.",
@@ -3933,7 +3933,7 @@
           {
             "type": "steps",
             "items": [
-              "Abre la pestaña **Tú**, luego **Preferencias**, y en **Privacidad y uso compartido** toca **Zonas de privacidad**.",
+              "Abre la pestaña **Tú**, luego **Privacidad y uso compartido**, y toca **Zonas de privacidad**.",
               "Toca el mapa para colocar una zona. Usa **Buscar lugares…** o **Ubicarme** para mover antes el mapa.",
               "Ajusta el control deslizante de **Radio**.",
               "Toca **Guardar**. No cambia nada hasta que guardes."

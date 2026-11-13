@@ -20,12 +20,12 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Der Veranstalter wählt beim Erstellen eines bezahlten Events eine **Rückerstattungsrichtlinie**. Sie bestimmt, was jemand zurückbekommt, wenn *er selbst* storniert, und sie wird auf der Eventseite angezeigt, bevor jemand bezahlt.',
+					text: 'Der Veranstalter wählt beim Erstellen eines bezahlten Events eine **Rückerstattungsrichtlinie**. Sie bestimmt, was jemand zurückbekommt, wenn *er selbst* storniert, und sie wird auf der Event-Seite angezeigt, bevor jemand bezahlt.',
 				},
 				{
 					type: 'list',
 					items: [
-						'**Volle Rückerstattung bis zur Startzeit**: Teilnehmende sehen **Kostenlose Stornierung bis zum Beginn der Veranstaltung**.',
+						'**Volle Rückerstattung bis zur Startzeit**: Teilnehmende sehen **Kostenlose Stornierung bis zum Beginn des Events**.',
 						'**Volle Rückerstattung bis 24 Std. vorher**: angezeigt als **Kostenlose Stornierung bis 24 Stunden vor Beginn**. Das ist die Voreinstellung.',
 						'**Keine Rückerstattung**: angezeigt als **Keine Erstattung bei Stornierung**.',
 					],
@@ -76,7 +76,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Gelegentlich schickt eine Bank eine Erstattung zurück. Die Eventseite zeigt dann **Deine Erstattung ist nicht angekommen**, und eine Benachrichtigung meldet **Eine Erstattung ist nicht durchgegangen – wir melden uns**. Du musst nicht erneut bezahlen; nutze **Abrechnung kontaktieren**, und du bekommst das Geld auf anderem Weg zurück.',
+					text: 'Gelegentlich schickt eine Bank eine Erstattung zurück. Die Event-Seite zeigt dann **Deine Erstattung ist nicht angekommen**, und eine Benachrichtigung meldet **Eine Erstattung ist nicht durchgegangen – wir melden uns**. Du musst nicht erneut bezahlen; nutze **Abrechnung kontaktieren**, und du bekommst das Geld auf anderem Weg zurück.',
 				},
 			],
 		},

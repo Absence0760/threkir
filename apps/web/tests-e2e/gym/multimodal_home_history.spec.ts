@@ -70,8 +70,8 @@ test.describe('multi-modal Home + History', () => {
 		await expect(nav.locator('.nav-label', { hasText: /^Nutrition$/ })).toBeVisible();
 	});
 
-	test('Home shows the Recent lifts card', async ({ page }) => {
-		await page.goto('/dashboard');
+	test('Progress shows the Recent lifts card', async ({ page }) => {
+		await page.goto('/dashboard/progress');
 		const card = page.locator('section.card-elevated', { hasText: 'Recent lifts' });
 		await expect(card).toBeVisible({ timeout: 15_000 });
 		await expect(card.getByText(liftTitle)).toBeVisible();

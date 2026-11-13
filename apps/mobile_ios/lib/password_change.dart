@@ -1,5 +1,5 @@
 /// Step-up rule for changing an existing account's password
-/// (Settings → Account → Change password). A live access token alone must
+/// (You → Account → Change password). A live access token alone must
 /// never be enough to rotate the password: a token copied off an unlocked
 /// device, taken by an XSS elsewhere in the authenticated app, or leaked
 /// from a debug tool would otherwise let the holder lock the owner out

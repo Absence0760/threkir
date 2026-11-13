@@ -315,7 +315,7 @@ void main() {
   Future<void> tapNav(WidgetTester tester, String label) async {
     await tester.tap(
       find.descendant(
-        of: find.byType(BottomAppBar),
+        of: find.byType(NavigationBar),
         matching: find.text(label),
       ),
     );
@@ -324,9 +324,10 @@ void main() {
     tester.takeException();
   }
 
-  /// START, the countdown, and a short track — a run in progress.
+  /// Start (the docked centre button, issue #1374), the countdown, and a
+  /// short track — a run in progress.
   Future<void> recordARun(WidgetTester tester) async {
-    await tester.tap(find.text('START'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     for (var i = 0; i < 3; i++) {

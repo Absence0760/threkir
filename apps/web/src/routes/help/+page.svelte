@@ -3,6 +3,7 @@
 	/// category, narrowed by who it is written for. Signed-in only and never
 	/// indexed — the public, crawlable guides are /learn, a different surface.
 	import { AUDIENCES, type Audience } from '#lib/help/index.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { AUDIENCE_LABEL, CATEGORY_LABEL, KIND_LABEL } from '#lib/help/labels.ts';
 	import HelpSearchForm from '#lib/components/help/HelpSearchForm.svelte';
@@ -34,10 +35,7 @@
 </svelte:head>
 
 <div class="help-page">
-	<header class="help-header">
-		<h1>{m('help.title')}</h1>
-		<p class="subtitle">{m('help.intro')}</p>
-	</header>
+	<PageHeader title={m('help.title')} subtitle={m('help.intro')} />
 
 	<HelpSearchForm />
 
@@ -92,14 +90,6 @@
 <style>
 	.help-page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-	.help-header h1 {
-		margin: 0 0 var(--space-xs);
-	}
-	.subtitle {
-		margin: 0;
-		max-width: var(--page-measure);
-		color: var(--color-text-secondary);
 	}
 	.audience-row {
 		display: flex;

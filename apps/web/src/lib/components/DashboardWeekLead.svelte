@@ -83,9 +83,7 @@
 			<p class="week-lead-value" data-testid="dash-week-lead-distance">
 				{formatDistance(lead.distanceM)}
 				<span class="week-lead-count">
-					{lead.count === 1
-						? m('dash.activityCountOne', { n: lead.count })
-						: m('dash.activityCountOther', { n: lead.count })}
+					{m('dash.activityCount', { n: lead.count })}
 				</span>
 			</p>
 		{/if}
@@ -117,18 +115,14 @@
 			</p>
 		{:else if lead.comparison?.kind === 'goalRuns'}
 			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
-				{lead.comparison.targetCount === 1
-					? m('dash.leadVsGoalRunsOne', { done: lead.count, target: lead.comparison.targetCount })
-					: m('dash.leadVsGoalRunsOther', { done: lead.count, target: lead.comparison.targetCount })}
+				{m('dash.leadVsGoalRuns', { done: lead.count, target: lead.comparison.targetCount })}
 			</p>
 		{:else if lead.comparison?.kind === 'average'}
 			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
-				{lead.comparison.weeks === 1
-					? m('dash.leadVsAverageOne', { avg: formatDistance(lead.comparison.averageM) })
-					: m('dash.leadVsAverageOther', {
-							weeks: lead.comparison.weeks,
-							avg: formatDistance(lead.comparison.averageM),
-						})}
+				{m('dash.leadVsAverage', {
+					weeks: lead.comparison.weeks,
+					avg: formatDistance(lead.comparison.averageM),
+				})}
 			</p>
 		{/if}
 	</div>

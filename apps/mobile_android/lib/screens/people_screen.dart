@@ -3,9 +3,20 @@ import 'dart:async';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppInsets,
+        AppSearchField,
+        AppSpace,
+        EmptyState,
+        FilterBar,
+        HubTabBody,
+        IdentityAvatar,
+        LoadingState,
+        SectionHeader;
 
 import '../auth_error.dart';
+import '../follow_state.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../nearby.dart';
 import '../nearby_flag.dart';
@@ -18,9 +29,10 @@ import 'profile_screen.dart';
 
 /// People discovery — name search + "suggested" people pulled from the
 /// viewer's clubs. Mirrors `apps/web/src/lib/components/SocialPeople.svelte`
-/// + the People tab on web's `/social` hub. Mounted as the **People**
-/// sub-tab of `social_screen.dart` (the Social bottom-nav destination); the
-/// standalone Scaffold path is kept for any direct caller.
+/// + the People tab on web's `/social` hub. The **People** tab of
+/// `social_screen.dart`, built as a ui_kit `HubTabBody`: its search is the
+/// tab's `FilterBar`, and pushed on its own (the Feed's "Find people" where
+/// no shell is listening) it gets a small titled app bar (issue #1374).
 ///
 /// Also hosts the opt-in coarse-location "runners nearby" list (issue #466),
 /// which renders only while the default-off `ENABLE_NEARBY_RUNNERS` deploy gate
@@ -28,12 +40,8 @@ import 'profile_screen.dart';
 /// state, and no `discoverable_runners_near` call.
 class PeopleScreen extends StatefulWidget {
   final ApiClient api;
-  /// Embedded mode skips the Scaffold/AppBar wrapping — the search
-  /// field that's normally hosted in the AppBar moves inline at the
-  /// top of the body. Used by SocialScreen for the People tab.
-  final bool embedded;
 
-  const PeopleScreen({super.key, required this.api, this.embedded = false});
+  const PeopleScreen({super.key, required this.api});
 
   @override
   State<PeopleScreen> createState() => _PeopleScreenState();
@@ -62,9 +70,36 @@ class _PeopleScreenState extends State<PeopleScreen> {
 
   final Set<String> _rowBusy = <String>{};
 
+  /// Follows changed elsewhere (a profile opened from this list) update the
+  /// rows here, so a row never offers the opposite of what is true (issue
+  /// #1374 NS-10).
+  final _follows = FollowState.instance;
+
+  void _onFollows() {
+    if (!mounted) return;
+    final viewer = widget.api.userId;
+    final changed = <String, bool>{
+      for (final p in [..._results, ..._suggestions])
+        if (_follows.of(viewer, p.id) case final f?
+            when f != p.viewerFollows && !_rowBusy.contains(p.id))
+          p.id: f,
+      for (final p in _nearby)
+        if (_follows.of(viewer, p.id) case final f?
+            when f != p.viewerFollows && !_rowBusy.contains(p.id))
+          p.id: f,
+    };
+    if (changed.isEmpty) return;
+    setState(() {
+      for (final MapEntry(key: id, value: f) in changed.entries) {
+        _flipFollow(id, f);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _follows.addListener(_onFollows);
     if (widget.api.userId != null) {
       _loadSuggestions();
       if (_nearbyGate) _loadNearby();
@@ -73,6 +108,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
 
   @override
   void dispose() {
+    _follows.removeListener(_onFollows);
     _debounce?.cancel();
     _searchCtl.dispose();
     super.dispose();
@@ -202,12 +238,15 @@ class _PeopleScreenState extends State<PeopleScreen> {
     try {
       if (wasFollowing) {
         await widget.api.unfollowUser(id);
+        _follows.put(widget.api.userId, id, following: false);
       } else if (await widget.api.followUser(id) == FollowOutcome.requested) {
         // A private profile: a request went out, nothing is followed yet.
         if (!mounted) return;
         setState(() => _flipFollow(id, false));
         showTopBanner(
             context, AppLocalizations.of(context).profileRequestSent);
+      } else {
+        _follows.put(widget.api.userId, id, following: true);
       }
     } catch (e) {
       debugPrint('[PeopleScreen] follow failed: $e');
@@ -283,135 +322,107 @@ class _PeopleScreenState extends State<PeopleScreen> {
     if (_query.isNotEmpty) _runSearch();
   }
 
+  Future<void> _refresh() => Future.wait([
+        _loadSuggestions(),
+        if (_nearbyGate) _loadNearby(),
+        if (_query.isNotEmpty) _runSearch(),
+      ]);
+
+  Widget _sectionHeader(String label, {String? subtitle}) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppInsets.gutter, AppSpace.md, AppInsets.gutter, AppSpace.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(label: label),
+          if (subtitle != null) ...[
+            const SizedBox(height: AppSpace.xs),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     // search_user_profiles is granted to authenticated only (privacy
     // opt-out lives in owner-only user_settings), so a signed-out search
     // can only fail — render the sign-in state instead of a search field
     // whose every query dead-ends in a retry loop (issue #224).
     if (widget.api.userId == null || _signedOut) {
-      final signedOutBody = SignInRequiredState(
-        api: widget.api,
-        message: l10n.peopleSignedOutMessage,
-        onSignedIn: _handleSignedIn,
-      );
-      if (widget.embedded) return signedOutBody;
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.socialTabPeople)),
-        body: signedOutBody,
+      return HubTabBody(
+        title: l10n.socialTabPeople,
+        body: SignInRequiredState(
+          api: widget.api,
+          message: l10n.peopleSignedOutMessage,
+          onSignedIn: _handleSignedIn,
+        ),
       );
     }
     final hasQuery = _query.isNotEmpty;
     final visible = hasQuery ? _results : _suggestions;
-    final searchField = Semantics(
-      textField: true,
-      label: l10n.peopleSearchHint,
-      child: TextField(
-      controller: _searchCtl,
-      autofocus: !widget.embedded,
-      textInputAction: TextInputAction.search,
-      style: theme.textTheme.titleMedium,
-      decoration: InputDecoration(
-        hintText: l10n.peopleSearchHint,
-        prefixIcon: widget.embedded
-            ? const Icon(Icons.search, size: 20)
-            : null,
-        border: widget.embedded
-            ? OutlineInputBorder(borderRadius: BorderRadius.circular(12))
-            : InputBorder.none,
-        isDense: widget.embedded,
-        suffixIcon: hasQuery
-            ? IconButton(
-                icon: const Icon(Icons.clear),
-                tooltip: l10n.peopleClearSearchTooltip,
-                onPressed: _clearSearch,
-              )
-            : null,
-      ),
-      onChanged: _onSearchChanged,
-    ),
-    );
-    final body = SafeArea(
-      top: false,
-      child: CustomScrollView(
-        slivers: [
-          if (widget.embedded)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: searchField,
-              ),
-            ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
-                hasQuery
-                    ? l10n.peopleSearchResultsHeader
-                    : l10n.peopleSuggestedHeader,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ),
+    Widget box(Widget child) => SliverToBoxAdapter(child: child);
+    final loading = box(LoadingState.section(
+      label: l10n.commonLoading,
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppInsets.gutter, vertical: AppSpace.sm),
+    ));
+    return HubTabBody(
+      title: l10n.socialTabPeople,
+      filters: FilterBar(
+        key: const ValueKey('people-filter-bar'),
+        search: AppSearchField(
+            controller: _searchCtl,
+            hint: l10n.peopleSearchHint,
+            clearTooltip: l10n.peopleClearSearchTooltip,
+            onChanged: _onSearchChanged,
           ),
+      ),
+      onRefresh: _refresh,
+      body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          box(_sectionHeader(hasQuery
+              ? l10n.peopleSearchResultsHeader
+              : l10n.peopleSuggestedHeader)),
           if (hasQuery && _searching)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
+            loading
           else if (hasQuery && _searchError)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: ErrorState(
-                  message: l10n.exploreRoutesSearchFailed,
-                  onRetry: _runSearch,
-                ),
-              ),
-            )
+            box(AppErrorState.inline(
+              message: l10n.exploreRoutesSearchFailed,
+              onRetry: _runSearch,
+            ))
           else if (hasQuery && _results.isEmpty)
-            SliverToBoxAdapter(
-              child: _Empty(
-                icon: Icons.search_off,
-                title: l10n.peopleEmptySearchTitle(_query),
-                body: l10n.peopleEmptySearchBody,
-              ),
-            )
+            box(EmptyState(
+              icon: Icons.search_off,
+              title: l10n.peopleEmptySearchTitle(_query),
+              body: l10n.peopleEmptySearchBody,
+              ctaLabel: l10n.peopleClearSearchTooltip,
+              ctaIcon: Icons.close,
+              onCta: _clearSearch,
+            ))
           else if (!hasQuery && _loadingSuggestions)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
+            loading
           else if (!hasQuery && _suggestionsError)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: ErrorState(
-                  message: l10n.peopleSuggestionsLoadFailed,
-                  onRetry: _retrySuggestions,
-                ),
-              ),
-            )
+            box(AppErrorState.inline(
+              message: l10n.peopleSuggestionsLoadFailed,
+              onRetry: _retrySuggestions,
+            ))
           else if (!hasQuery && _suggestions.isEmpty)
-            SliverToBoxAdapter(
-              child: _Empty(
-                icon: Icons.groups_outlined,
-                title: l10n.peopleEmptySuggestionsTitle,
-                body: l10n.peopleEmptySuggestionsBody,
-              ),
-            )
+            box(EmptyState(
+              icon: Icons.groups_outlined,
+              title: l10n.peopleEmptySuggestionsTitle,
+              body: l10n.peopleEmptySuggestionsBody,
+            ))
           else
             SliverList.separated(
               itemBuilder: (_, i) => _PersonRow(
@@ -419,86 +430,40 @@ class _PeopleScreenState extends State<PeopleScreen> {
                 busy: _rowBusy.contains(visible[i].id),
                 onToggleFollow: () =>
                     _toggleFollow(visible[i].id, visible[i].viewerFollows),
-                onOpenProfile: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ProfileScreen(
-                        api: widget.api,
-                        userId: visible[i].id,
-                      ),
-                    ),
-                  );
-                },
+                onOpenProfile: () => _openProfile(visible[i].id),
               ),
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemCount: visible.length,
             ),
           // Opt-in coarse-location discovery. Suppressed while a search is
           // active (mirrors SocialPeople.svelte) and entirely absent while the
           // deploy gate is off.
           if (_nearbyGate && !hasQuery) ...[
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.peopleNearbyHeader,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.peopleNearbySubtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            box(_sectionHeader(
+              l10n.peopleNearbyHeader,
+              subtitle: l10n.peopleNearbySubtitle,
+            )),
             if (_loadingNearby)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              )
+              loading
             else if (_nearbyError)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: ErrorState(
-                    message: l10n.peopleNearbyLoadFailed,
-                    onRetry: _loadNearby,
-                  ),
-                ),
-              )
+              box(AppErrorState.inline(
+                message: l10n.peopleNearbyLoadFailed,
+                onRetry: _loadNearby,
+              ))
             else if (_nearby.isEmpty)
-              SliverToBoxAdapter(
-                child: _Empty(
-                  icon: Icons.near_me,
-                  title: l10n.peopleNearbyEmptyTitle,
-                  body: l10n.peopleNearbyEmptyBody,
-                  // The opt-in and the area setter both live on the
-                  // Preferences screen, which needs a Preferences and a
-                  // SettingsSyncService this tab was never handed. Name the
-                  // destination and let the shell open it (decisions § 710) —
-                  // web's empty card links to /settings/preferences here.
-                  action: OutlinedButton.icon(
-                    onPressed: () =>
-                        openSettings(SettingsDestination.preferences),
-                    icon: const Icon(Icons.settings, size: 18),
-                    label: Text(l10n.peopleNearbyEmptyAction),
-                  ),
-                ),
-              )
+              box(EmptyState(
+                icon: Icons.near_me,
+                title: l10n.peopleNearbyEmptyTitle,
+                body: l10n.peopleNearbyEmptyBody,
+                // The opt-in and the area setter both live on the
+                // Privacy & sharing page, which needs a Preferences and a
+                // SettingsSyncService this tab was never handed. Name the
+                // destination and let the shell open it (decisions § 710) —
+                // web's empty card links to the privacy page here.
+                ctaLabel: l10n.peopleNearbyEmptyAction,
+                ctaIcon: Icons.settings,
+                onCta: () => openSettings(SettingsDestination.privacy),
+              ))
             else
               SliverList.separated(
                 itemBuilder: (_, i) => _NearbyRow(
@@ -507,42 +472,25 @@ class _PeopleScreenState extends State<PeopleScreen> {
                   busy: _rowBusy.contains(_nearby[i].id),
                   onToggleFollow: () => _toggleFollow(
                       _nearby[i].id, _nearby[i].viewerFollows),
-                  onOpenProfile: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => ProfileScreen(
-                          api: widget.api,
-                          userId: _nearby[i].id,
-                        ),
-                      ),
-                    );
-                  },
+                  onOpenProfile: () => _openProfile(_nearby[i].id),
                 ),
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemCount: _nearby.length,
               ),
           ],
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
+          ),
         ],
       ),
-    );
-    if (widget.embedded) {
-      return body;
-    }
-    return Scaffold(
-      appBar: AppBar(
-        title: searchField,
-        actions: [
-          if (hasQuery)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: l10n.peopleClearSearchTooltip,
-              onPressed: _clearSearch,
-            ),
-        ],
-      ),
-      body: body,
     );
   }
+
+  void _openProfile(String id) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ProfileScreen(api: widget.api, userId: id),
+        ),
+      );
 }
 
 class _PersonRow extends StatelessWidget {
@@ -647,50 +595,6 @@ class _NearbyRow extends StatelessWidget {
             : l10n.peopleFollowButton),
       ),
       onTap: onOpenProfile,
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String body;
-  final Widget? action;
-
-  const _Empty({
-    required this.icon,
-    required this.title,
-    required this.body,
-    this.action,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
-          const SizedBox(height: 12),
-          Text(title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Text(
-            body,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          if (action != null) ...[
-            const SizedBox(height: 12),
-            action!,
-          ],
-        ],
-      ),
     );
   }
 }

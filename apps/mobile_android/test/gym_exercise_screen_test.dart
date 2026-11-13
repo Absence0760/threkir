@@ -9,6 +9,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/screens/gym_detail_screen.dart';
 import '../lib/screens/gym_exercise_screen.dart';
+import 'worst_case_layout.dart';
 
 /// Seed a [LocalGymStore] on a fresh temp dir. Each session is one createLocal
 /// call so its `started_at` orders the progression series. Returns the store +
@@ -47,6 +48,29 @@ Widget _screen(LocalGymStore store, String exercise) => MaterialApp(
 void main() {
   // The session rows render a localised date via formatDateMed → DateFormat.
   setUpAll(() => initializeDateFormatting());
+
+  worstCaseTestWidgets('the session cards', (tester, locale) async {
+    final seeded = await _seed(tester, [
+      (
+        title: 'Push day',
+        at: DateTime.utc(2026, 6, 1, 8),
+        sets: [_set('Bench', reps: 5, weightKg: 100)],
+      ),
+      (
+        title: 'Push day',
+        at: DateTime.utc(2026, 6, 8, 8),
+        sets: [_set('Bench', reps: 3, weightKg: 112.5)],
+      ),
+    ]);
+    addTearDown(() => seeded.dir.deleteSync(recursive: true));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: GymExerciseScreen(
+          api: null, store: seeded.store, exerciseName: 'Bench'),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Exercise');
+  });
 
   testWidgets('empty / unknown exercise renders the no-history state',
       (tester) async {

@@ -181,7 +181,11 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     await sub.cancel();
 
-    final temps = created.where((n) => n != 'watched.json').toList();
+    // macOS's FSEvents also reports the watched directory itself as created;
+    // inotify (CI) does not. Neither is a file the writer made.
+    final self = dir.path.split('/').last;
+    final temps =
+        created.where((n) => n != 'watched.json' && n != self).toList();
     expect(temps, isNotEmpty,
         reason: 'no intermediate file was observed; the watch saw nothing and '
             'this case would pass over any naming');

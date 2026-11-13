@@ -53,7 +53,10 @@ void main() {
     );
   }
 
-  const five = ['Feed', 'People', 'Clubs', 'Discover', 'Challenges'];
+  // Today's strip (issue #1374: Discover renamed Events, People last).
+  const five = ['Feed', 'Clubs', 'Events', 'Challenges', 'People'];
+  // The strip before Challenges joined it, kept as the measurement § 533
+  // was made against.
   const four = ['Feed', 'People', 'Clubs', 'Discover'];
 
   testWidgets('the five Social labels do not fit a 360 dp phone',
@@ -63,8 +66,8 @@ void main() {
         reason: 'five labels overflow 360 dp, so AppTabBar derives a '
             'scrolling strip');
     expect(m.lastTabRight, greaterThan(m.width),
-        reason: 'Challenges therefore begins past the right edge on load — '
-            'measured, not assumed');
+        reason: 'the last tab (People) therefore begins past the right edge '
+            'on load — measured, not assumed');
   });
 
   testWidgets('the four that preceded Challenges did not fit either',

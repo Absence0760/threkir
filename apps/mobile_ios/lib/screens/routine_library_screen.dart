@@ -180,52 +180,65 @@ class _RoutineLibraryScreenState extends State<RoutineLibraryScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final routines = widget.store.routines;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.gymRoutineTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.gymRoutineNew,
-            icon: const Icon(Icons.add),
-            onPressed: _refreshing ? null : _create,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // The public routine library was an icon-only `Icons.public` glyph
-          // whose name lived in a tooltip; web renders it as a labelled link
-          // in the routines header (#666 I8).
-          SurfacePeerStrip(
-            label: l10n.gymRoutineTitle,
-            peers: [
-              SurfacePeer(label: l10n.gymRoutineTitle),
-              SurfacePeer(
-                label: l10n.gymLibraryLink,
-                onTap: _openPublicLibrary,
+    return PushedPage(
+      title: l10n.gymRoutineTitle,
+      actions: [
+        AppBarAction(
+          label: l10n.gymRoutineNew,
+          icon: const Icon(Icons.add),
+          onPressed: _refreshing ? null : _create,
+        ),
+      ],
+      // The heading, the peer strip and the sync banner scroll away with
+      // the routines, so at large text they never leave the list no room.
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PageHeader(title: l10n.gymRoutineTitle),
+                  // The public routine library was an icon-only
+                  // `Icons.public` glyph whose name lived in a tooltip; web
+                  // renders it as a labelled link in the routines header
+                  // (#666 I8).
+                  SurfacePeerStrip(
+                    label: l10n.gymRoutineTitle,
+                    peers: [
+                      SurfacePeer(label: l10n.gymRoutineTitle),
+                      SurfacePeer(
+                        label: l10n.gymLibraryLink,
+                        onTap: _openPublicLibrary,
+                      ),
+                    ],
+                  ),
+                  PendingSyncBanner(
+                    api: widget.api,
+                    isOnline: _isOnline,
+                    stores: [widget.store],
+                  ),
+                ],
               ),
-            ],
-          ),
-          PendingSyncBanner(
-            api: widget.api,
-            isOnline: _isOnline,
-            stores: [widget.store],
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refresh,
-              child: routines.isEmpty
-                  ? EmptyState(
-                      icon: Icons.list_alt,
-                      title: l10n.gymRoutineEmptyTitle,
-                      body: l10n.gymRoutineEmptyBody,
-                      ctaLabel: l10n.gymRoutineNew,
-                      onCta: _create,
-                    )
-                  : _list(routines, theme, l10n),
             ),
-          ),
-        ],
+            if (routines.isEmpty)
+              // EmptyState scrolls itself, so it fills what the heading
+              // leaves rather than being measured.
+              SliverFillRemaining(
+                child: EmptyState(
+                  icon: Icons.list_alt,
+                  title: l10n.gymRoutineEmptyTitle,
+                  body: l10n.gymRoutineEmptyBody,
+                  ctaLabel: l10n.gymRoutineNew,
+                  onCta: _create,
+                ),
+              )
+            else
+              _list(routines, theme, l10n),
+          ],
+        ),
       ),
     );
   }
@@ -233,52 +246,28 @@ class _RoutineLibraryScreenState extends State<RoutineLibraryScreen> {
   Widget _list(
       List<StoredRoutine> routines, ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
-    return ListView.separated(
+    return SliverPadding(
       padding: const EdgeInsets.all(16),
-      itemCount: routines.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final r = routines[i];
-        return Card(
-          margin: EdgeInsets.zero,
-          child: InkWell(
+      sliver: SliverList.separated(
+        itemCount: routines.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (_, i) {
+          final r = routines[i];
+          return ListCard.row(
+            margin: EdgeInsets.zero,
+            dense: true,
             onTap: () => _open(r.id),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          r.title.isEmpty ? l10n.gymUntitled : r.title,
-                          style: theme.textTheme.titleSmall,
-                        ),
-                        Text(
-                          formatDateMed(r.lastModifiedAt.toLocal(), tag),
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    l10n.gymRoutineExerciseCount(r.exerciseCount),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-                ],
-              ),
+            chevron: true,
+            title: r.title.isEmpty ? l10n.gymUntitled : r.title,
+            subtitle: formatDateMed(r.lastModifiedAt.toLocal(), tag),
+            meta: Text(
+              l10n.gymRoutineExerciseCount(r.exerciseCount),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
-
 }

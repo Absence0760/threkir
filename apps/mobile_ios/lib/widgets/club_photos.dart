@@ -4,12 +4,14 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard, OverlayIconButton, SectionHeader;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth_error.dart';
 import '../exif_strip.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../widgets/photo_lightbox.dart';
+import '../widgets/caption_editor.dart';
 import '../widgets/top_banner.dart';
 import 'confirm_destructive.dart';
 
@@ -39,7 +41,6 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
   bool _loading = true;
   bool _uploading = false;
   String? _editingId;
-  final _captionCtrl = TextEditingController();
   final _pendingCaptionCtrl = TextEditingController();
   XFile? _pending;
   List<ClubPhotoRow> _photos = const [];
@@ -65,7 +66,6 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _captionCtrl.dispose();
     _pendingCaptionCtrl.dispose();
     super.dispose();
   }
@@ -223,22 +223,14 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
     }
   }
 
-  void _startEdit(ClubPhotoRow p) {
-    setState(() {
-      _editingId = p.id;
-      _captionCtrl.text = p.caption ?? '';
-    });
-  }
+  void _startEdit(ClubPhotoRow p) => setState(() => _editingId = p.id);
 
-  Future<void> _saveCaption() async {
-    final id = _editingId;
-    if (id == null) return;
-    final next = _captionCtrl.text.trim();
-    final value = next.isEmpty ? null : next;
-    setState(() => _editingId = null);
+  /// Answers whether the caption was stored, so the editor closes only then
+  /// and a failed write keeps the typed text (issue #1374 FS-11).
+  Future<bool> _saveCaption(String id, String? value) async {
     try {
       await widget.api.updateClubPhotoCaption(photoId: id, caption: value);
-      if (!mounted) return;
+      if (!mounted) return true;
       setState(() {
         _photos = _photos
             .map((p) => p.id == id
@@ -255,11 +247,13 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
                 : p)
             .toList();
       });
+      return true;
     } catch (e) {
       debugPrint('club photos caption error: $e');
-      if (!mounted) return;
+      if (!mounted) return false;
       showTopBanner(
           context, AppLocalizations.of(context).clubPhotosCaptionError(friendlyError(AppLocalizations.of(context), e)));
+      return false;
     }
   }
 
@@ -292,36 +286,18 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 8),
-          child: Row(
-            children: [
-              Icon(Icons.photo_library_outlined,
-                  size: 18, color: cs.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(l10n.clubPhotosTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium),
-                    ),
-                    if (_photos.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Text('(${_photos.length})',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant)),
-                    ],
-                  ],
-                ),
-              ),
-              if (widget.canUpload)
-                TextButton.icon(
-                  onPressed: _pending == null ? _pickPhoto : null,
-                  icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-                  label: Text(l10n.clubPhotosAdd),
-                ),
-            ],
+          child: SectionHeader.title(
+            icon: Icons.photo_library_outlined,
+            label: _photos.isEmpty
+                ? l10n.clubPhotosTitle
+                : '${l10n.clubPhotosTitle} (${_photos.length})',
+            trailing: widget.canUpload
+                ? TextButton.icon(
+                    onPressed: _pending == null ? _pickPhoto : null,
+                    icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                    label: Text(l10n.clubPhotosAdd),
+                  )
+                : null,
           ),
         ),
         if (_photos.isEmpty && widget.canUpload && _pending == null)
@@ -332,15 +308,10 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
                     ?.copyWith(color: cs.onSurfaceVariant)),
           ),
         if (_pending != null && widget.canUpload)
-          Container(
+          ListCard(
             margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(
-                  color: cs.outlineVariant, style: BorderStyle.solid),
-              borderRadius: BorderRadius.circular(12),
-              color: cs.surfaceContainerHighest,
-            ),
+            dense: true,
+            color: cs.surfaceContainerHighest,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -430,6 +401,7 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
               // browsed or opened without sight. Web already ships this as a
               // <button aria-label> wrapping an <img alt>; this is mobile
               // catching up to it.
+              // semantics-children: the child draws no text, and keeps its own tap
               child: Semantics(
                 button: true,
                 image: true,
@@ -457,34 +429,16 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
             if (editing)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: _captionCtrl,
-                      maxLength: 280,
-                      decoration: InputDecoration(
-                        hintText: l10n.clubPhotosCaptionHint,
-                        isDense: true,
-                        counterText: '',
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    OverflowBar(
-                      alignment: MainAxisAlignment.end,
-                      overflowAlignment: OverflowBarAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => setState(() => _editingId = null),
-                          child: Text(l10n.clubPhotosCancel),
-                        ),
-                        FilledButton(
-                          onPressed: _saveCaption,
-                          child: Text(l10n.clubPhotosSave),
-                        ),
-                      ],
-                    ),
-                  ],
+                child: CaptionEditor(
+                  key: ValueKey(p.id),
+                  initial: p.caption,
+                  hint: l10n.clubPhotosCaptionHint,
+                  cancelLabel: l10n.clubPhotosCancel,
+                  saveLabel: l10n.clubPhotosSave,
+                  onSave: (value) => _saveCaption(p.id, value),
+                  onClose: () {
+                    if (mounted) setState(() => _editingId = null);
+                  },
                 ),
               )
             else if (p.caption != null && p.caption!.isNotEmpty)
@@ -498,21 +452,22 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
           ],
         ),
         if (!editing && (_isOwner(p) || _canDelete(p)))
+          // The 48 dp boxes inset each disc 6 dp, so the row sits at the
+          // corner and the discs keep the old 4 dp-ish margin.
           Positioned(
-            top: 4,
-            right: 4,
+            top: 0,
+            right: 0,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_isOwner(p))
-                  _circleBtn(
+                  OverlayIconButton(
                     icon: Icons.edit_outlined,
                     tooltip: l10n.clubPhotosEditCaption,
                     onPressed: () => _startEdit(p),
                   ),
-                if (_isOwner(p) && _canDelete(p)) const SizedBox(width: 4),
                 if (_canDelete(p))
-                  _circleBtn(
+                  OverlayIconButton(
                     icon: Icons.delete_outline,
                     tooltip: l10n.clubPhotosDeleteTooltip,
                     onPressed: () => _deletePhoto(p),
@@ -524,28 +479,6 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
     );
   }
 
-  Widget _circleBtn({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.black54,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: SizedBox(
-            width: 30,
-            height: 30,
-            child: Icon(icon, size: 16, color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _SignedEntry {

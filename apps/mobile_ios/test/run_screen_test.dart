@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show ActivityType;
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/audio_cues.dart';
@@ -15,7 +14,6 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
-import '../lib/screens/run_detail_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -272,25 +270,6 @@ void main() {
       // plan name (covered separately in plan_detail tests).
       expect(find.text('Training plans'), findsOneWidget);
     });
-
-    testWidgets(
-      'first-run prompt renders when no recent run + no event + no plan',
-      (tester) async {
-        // Empty-state path: no LocalRunStore rows, no upcoming RSVP,
-        // no plan workout today. The `_FirstRunPrompt` surfaces the
-        // canonical encouragement copy. A regression that broke the
-        // boolean trio (e.g. the `else if` on line 1922 dropped one
-        // of the null-checks) would leave the screen empty between
-        // the chips row and the START button.
-        final s = await _makeStores();
-        await _pump(tester, s);
-        expect(
-          find.text('Your first run is one tap away.'),
-          findsOneWidget,
-          reason: 'empty-state prompt must render with no signals planted',
-        );
-      },
-    );
   });
 
   group('RunScreen — treadmill live-mode toggle', () {
@@ -372,13 +351,11 @@ void main() {
     });
   });
 
-  group('RunScreen — last-run card', () {
-    testWidgets('is a real control that opens the run detail', (tester) async {
-      // Issue #249: the recent-run card looked tappable (same visual
-      // language as the runs-list rows) but was a plain Container — a
-      // dead-end surprise. It must navigate to RunDetailScreen like every
-      // other run row, and be announced as a button with a meaningful
-      // label, matching the START button's a11y treatment.
+  group('RunScreen — the start page leaves Home its cards', () {
+    testWidgets('a run on file draws no last-run card here', (tester) async {
+      // Issue #1374: the start page repeated Home's last run, today's
+      // workout and next club event under its own Start. Home has them; this
+      // page holds only what the next run carries (route, workout, race).
       final s = await _makeStores();
       await tester.runAsync(() async {
         await s.runStore.save(cm.Run(
@@ -389,55 +366,12 @@ void main() {
           source: cm.RunSource.app,
         ));
       });
-      final semantics = tester.ensureSemantics();
       await _pump(tester, s);
 
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      expect(find.text(l10n.runLastRun), findsOneWidget,
-          reason: 'the seeded run must surface the recent-run card');
-      final card = find.bySemanticsLabel(RegExp(l10n.runLastRunOpenA11yLabel));
-      expect(card, findsOneWidget,
-          reason: 'the card must be announced as a labelled button');
-      expect(
-        tester.getSemantics(card).hasFlag(SemanticsFlag.isButton),
-        isTrue,
-        reason: 'Semantics(button: true) is the a11y contract',
-      );
-
-      await tester.tap(find.text(l10n.runLastRun));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.byType(RunDetailScreen), findsOneWidget,
-          reason: 'tapping the card opens the run detail for that run');
-      semantics.dispose();
-    });
-
-    testWidgets('states its distance and pace in the runner\'s unit',
-        (tester) async {
-      // Both pills were built from private km-only formatters with the unit
-      // written into the string, so a mile-unit runner's own last run read as
-      // kilometres on the screen they see most.
-      final s = await _makeStores();
-      await tester.runAsync(() async {
-        await s.runStore.save(cm.Run(
-          id: 'last-run-mi',
-          startedAt: DateTime.now().subtract(const Duration(hours: 3)),
-          duration: const Duration(minutes: 40),
-          distanceMetres: 8046.72,
-          source: cm.RunSource.app,
-        ));
-      });
-      SharedPreferences.setMockInitialValues({'use_miles': true});
-      final milePrefs = Preferences();
-      await milePrefs.init();
-      registerActivePreferences(milePrefs);
-      addTearDown(resetActivePreferencesForTest);
-
-      await _pump(tester, s);
-
-      expect(find.text('5.00 mi'), findsOneWidget);
-      // 2400 s over 5 mi is 8:00 /mi.
-      expect(find.text('8:00 /mi'), findsOneWidget);
+      expect(find.text(l10n.runLastRun), findsNothing);
+      expect(find.text('START'), findsOneWidget,
+          reason: 'with nothing docked the page keeps its own Start');
     });
   });
 

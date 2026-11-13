@@ -21,7 +21,7 @@ const CTL_DEFINITION = /Fitness \(CTL\) — your rolling 42-day training load/;
 
 /// The snapshot card, not the training-load chart that shares its class.
 async function openDashboard(page: Page) {
-	await page.goto('/dashboard');
+	await page.goto('/dashboard/progress');
 	// This runner has three runs, so the page renders at `simple` and the
 	// snapshot is behind the named fold (§ 1658) — the definitions are what
 	// this spec is about, not their depth.

@@ -180,6 +180,59 @@ test.describe('/runs/[id] — RunPhotos upload + delete', () => {
 		expect((row as { caption: string }).caption).toBe(newCaption);
 	});
 
+	// Issue #1374 FS-11: the editor closed before the write, so a failed save
+	// lost the typed caption.
+	test('a failed caption save keeps the editor open with the typed text', async ({
+		page
+	}) => {
+		runId = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 4_500,
+			duration_s: 1_350,
+			is_public: false
+		});
+		const admin = getAdminClient();
+		const photoId = crypto.randomUUID();
+		const path = `${USER_A.id}/${photoId}.png`;
+		await admin.storage.from('run-photos').upload(path, ONE_PIXEL_PNG, {
+			contentType: 'image/png',
+			upsert: true
+		});
+		await admin.from('run_photos').insert({
+			id: photoId,
+			run_id: runId,
+			owner_id: USER_A.id,
+			storage_path: path,
+			caption: 'before',
+			position_idx: 0
+		});
+		await page.route('**/rest/v1/run_photos*', async (route) => {
+			if (route.request().method() !== 'PATCH') {
+				await route.continue();
+				return;
+			}
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated caption failure' })
+			});
+		});
+
+		await page.goto(`/runs/${runId}`);
+		const tile = page.locator('.tile').first();
+		await expect(tile).toBeVisible({ timeout: 10_000 });
+		await tile.getByRole('button', { name: 'Edit caption' }).click({ force: true });
+
+		const typed = `kept ${Date.now()}`;
+		const captionForm = tile.locator('form.caption-edit');
+		await captionForm.locator('input[type="text"]').fill(typed);
+		await captionForm.getByRole('button', { name: 'Save' }).click();
+
+		await expect(captionForm).toBeVisible();
+		await expect(captionForm.locator('input[type="text"]')).toHaveValue(typed, { timeout: 10_000 });
+		await expect(captionForm.getByRole('button', { name: 'Save' })).toBeEnabled();
+	});
+
 	test('owner deletes their photo → tile gone, DB row gone', async ({
 		page
 	}) => {

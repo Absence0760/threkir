@@ -1,7 +1,13 @@
 import 'dart:io';
 
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/recurrence.dart';
+
+String _describe(RecurrenceFreq? freq, List<Weekday>? byday) => describeRecurrence(
+    freq, byday, lookupAppLocalizations(const Locale('en')), 'en_GB');
 
 void main() {
   group('expandInstances — weekly recurrence', () {
@@ -585,15 +591,17 @@ void main() {
   // divergence would have shown a runner a different recurrence sentence on
   // the phone with nothing failing (decisions § 1444).
   group('describeRecurrence', () {
+    setUpAll(() => initializeDateFormatting());
+
     test('null freq is "One-off event"', () {
-      expect(describeRecurrence(null, const []), 'One-off event');
-      expect(describeRecurrence(null, null), 'One-off event');
+      expect(_describe(null, const []), 'One-off event');
+      expect(_describe(null, null), 'One-off event');
     });
 
     test('monthly is "Repeats monthly"', () {
-      expect(describeRecurrence(RecurrenceFreq.monthly, null), 'Repeats monthly');
+      expect(_describe(RecurrenceFreq.monthly, null), 'Repeats monthly');
       expect(
-        describeRecurrence(RecurrenceFreq.monthly, const [Weekday.mo]),
+        _describe(RecurrenceFreq.monthly, const [Weekday.mo]),
         'Repeats monthly',
       );
     });
@@ -601,14 +609,24 @@ void main() {
     test('weekly with byday lists days in ISO order', () {
       // Even when input order is shuffled, output order is MO,TU,...,SU.
       expect(
-        describeRecurrence(RecurrenceFreq.weekly, const [Weekday.we, Weekday.mo]),
+        _describe(RecurrenceFreq.weekly, const [Weekday.we, Weekday.mo]),
         'Every week · Mon, Wed',
       );
     });
 
     test('biweekly without byday is bare', () {
-      expect(describeRecurrence(RecurrenceFreq.biweekly, null), 'Every other week');
-      expect(describeRecurrence(RecurrenceFreq.biweekly, const []), 'Every other week');
+      expect(_describe(RecurrenceFreq.biweekly, null), 'Every other week');
+      expect(_describe(RecurrenceFreq.biweekly, const []), 'Every other week');
+    });
+
+    test("reads the reader's catalogue and weekday names", () {
+      final ja = lookupAppLocalizations(const Locale('ja'));
+      expect(
+        describeRecurrence(
+            RecurrenceFreq.weekly, const [Weekday.we, Weekday.mo], ja, 'ja'),
+        '${ja.eventRecurrenceWeekly} · 月、水',
+      );
+      expect(weekdayLabel(Weekday.su, 'en_GB'), 'Sun');
     });
   });
 }

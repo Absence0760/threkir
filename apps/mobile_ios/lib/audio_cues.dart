@@ -110,10 +110,7 @@ String formatSpokenDistance(double metres, DistanceUnit unit,
     final miles = metres / metresPerMile;
     if (miles >= 1) {
       if (miles == miles.roundToDouble()) {
-        final n = miles.round();
-        return n == 1
-            ? l10n.ttsDistanceMileSingular('$n')
-            : l10n.ttsDistanceMiles('$n');
+        return l10n.ttsDistanceWholeMiles(miles.round());
       }
       return l10n.ttsDistanceMiles(miles.toStringAsFixed(1));
     }
@@ -123,7 +120,7 @@ String formatSpokenDistance(double metres, DistanceUnit unit,
   }
   if (metres >= 1000) {
     final km = metres / 1000;
-    if (km == km.roundToDouble()) return l10n.ttsDistanceKm('${km.round()}');
+    if (km == km.roundToDouble()) return l10n.ttsDistanceWholeKm(km.round());
     return l10n.ttsDistanceKm(km.toStringAsFixed(1));
   }
   return l10n.ttsDistanceMetres(metres.round());

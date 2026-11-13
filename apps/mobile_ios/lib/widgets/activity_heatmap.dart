@@ -24,15 +24,21 @@ DateTime heatmapWeekAnchor({
 /// First day of the heatmap's leftmost column: the start of the week
 /// containing [now] on the runner's [weekStartDay], [weeks] - 1 weeks back.
 /// Each column is then one of the weeks a tap opens in the week summary.
-DateTime heatmapGridStart(DateTime now, int weeks,
-    {required String weekStartDay}) {
+DateTime heatmapGridStart(
+  DateTime now,
+  int weeks, {
+  required String weekStartDay,
+}) {
   final weekStart = weekStartLocal(now, weekStartDay: weekStartDay);
   // Calendar days, not 24-hour blocks: the grid reaches ~5 months back, so a
   // fixed-Duration step is guaranteed to cross a DST transition and land
   // `gridStart` at 23:00 the previous day — shifting every column of the
   // heatmap, and the week a tap resolves to, one day off the calendar.
   return DateTime(
-      weekStart.year, weekStart.month, weekStart.day - 7 * (weeks - 1));
+    weekStart.year,
+    weekStart.month,
+    weekStart.day - 7 * (weeks - 1),
+  );
 }
 
 /// GitHub-style activity heatmap — a 7×[weeks] grid of squares, intensity
@@ -47,13 +53,33 @@ class ActivityHeatmap extends StatelessWidget {
   /// Tapping a week column picks that week; the weekly summary moves to it.
   /// Null leaves the heatmap a static read-only grid.
   final void Function(DateTime weekAnchor)? onWeekTap;
+
+  /// The week the picker has selected, and how to name a week. With both and
+  /// [onWeekTap], a screen reader hears the selected week as the grid's
+  /// value and steps it with swipe up / down: TalkBack's double-tap lands a
+  /// tap at the node's origin, which always picked the oldest column.
+  final DateTime? selectedWeek;
+  final String Function(DateTime weekStart)? weekLabel;
+
   const ActivityHeatmap({
     super.key,
     required this.runs,
     required this.weekStartDay,
     this.weeks = 20,
     this.onWeekTap,
+    this.selectedWeek,
+    this.weekLabel,
   });
+
+  /// The grid column [week] falls in, clamped to the grid.
+  static int columnOf(DateTime week, DateTime gridStart, int weeks) {
+    final days = DateTime.utc(week.year, week.month, week.day)
+        .difference(
+          DateTime.utc(gridStart.year, gridStart.month, gridStart.day),
+        )
+        .inDays;
+    return (days ~/ 7).clamp(0, weeks - 1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,10 +87,18 @@ class ActivityHeatmap extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final gridStart =
-        heatmapGridStart(now, weeks, weekStartDay: weekStartDay);
+    final gridStart = heatmapGridStart(now, weeks, weekStartDay: weekStartDay);
 
     final counts = heatmapDayCounts(runs, gridStart);
+    final total = counts.values.fold<int>(0, (a, b) => a + b);
+    DateTime weekAt(int col) =>
+        DateTime(gridStart.year, gridStart.month, gridStart.day + 7 * col);
+    final pick = onWeekTap;
+    final label = weekLabel;
+    final selectedCol = selectedWeek == null
+        ? null
+        : columnOf(selectedWeek!, gridStart, weeks);
+    final canStep = pick != null && label != null && selectedCol != null;
 
     final ramp = ChartPalette.of(context).ramp;
     // The zero tile is a track, not a level: it carries "no run", and what a
@@ -78,96 +112,129 @@ class ActivityHeatmap extends StatelessWidget {
     final emptyFill = theme.colorScheme.surfaceContainerHighest;
     final emptyStroke = theme.dividerColor;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      const gap = 2.0;
-      final cellSize = ((constraints.maxWidth - gap * (weeks - 1)) / weeks)
-          .clamp(8.0, 16.0);
-      final gridWidth = cellSize * weeks + gap * (weeks - 1);
-      final gridHeight = cellSize * 7 + gap * 6;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 2.0;
+        final cellSize = ((constraints.maxWidth - gap * (weeks - 1)) / weeks)
+            .clamp(8.0, 16.0);
+        final gridWidth = cellSize * weeks + gap * (weeks - 1);
+        final gridHeight = cellSize * 7 + gap * 6;
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ChartCardHeader(
-            title: l10n.dashboardHeatmapTitle,
-            note: l10n.dashboardSectionLast20Weeks,
-          ),
-          const SizedBox(height: 10),
-          // Single CustomPaint replaces the previous 7×20=140 Container +
-          // Builder + EdgeInsets allocations per dashboard rebuild.
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: onWeekTap == null
-                ? null
-                : (details) => onWeekTap!(heatmapWeekAnchor(
-                      localDx: details.localPosition.dx,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ChartCardHeader(
+              title: l10n.dashboardHeatmapTitle,
+              note: l10n.dashboardSectionLast20Weeks,
+            ),
+            const SizedBox(height: 10),
+            // Single CustomPaint replaces the previous 7×20=140 Container +
+            // Builder + EdgeInsets allocations per dashboard rebuild.
+            // One node for the grid: the paint has nothing to read, and the
+            // gesture's own tap action would land at the origin (week 1).
+            Semantics(
+              container: true,
+              excludeSemantics: true,
+              label:
+                  '${l10n.dashboardHeatmapTitle}. '
+                  '${l10n.dashboardSectionLast20Weeks}. ${l10n.historyCount(total)}',
+              value: canStep ? label(weekAt(selectedCol)) : null,
+              increasedValue: canStep && selectedCol < weeks - 1
+                  ? label(weekAt(selectedCol + 1))
+                  : null,
+              decreasedValue: canStep && selectedCol > 0
+                  ? label(weekAt(selectedCol - 1))
+                  : null,
+              onIncrease: canStep && selectedCol < weeks - 1
+                  ? () => pick(weekAt(selectedCol + 1))
+                  : null,
+              onDecrease: canStep && selectedCol > 0
+                  ? () => pick(weekAt(selectedCol - 1))
+                  : null,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: onWeekTap == null
+                    ? null
+                    : (details) => onWeekTap!(
+                        heatmapWeekAnchor(
+                          localDx: details.localPosition.dx,
+                          cellSize: cellSize,
+                          gap: gap,
+                          weeks: weeks,
+                          gridStart: gridStart,
+                        ),
+                      ),
+                child: SizedBox(
+                  width: gridWidth,
+                  height: gridHeight,
+                  child: CustomPaint(
+                    key: const Key('dashboardHeatmapPainter'),
+                    painter: _HeatmapPainter(
+                      counts: counts,
+                      gridStart: gridStart,
+                      today: today,
+                      weeks: weeks,
                       cellSize: cellSize,
                       gap: gap,
-                      weeks: weeks,
-                      gridStart: gridStart,
-                    )),
-            child: SizedBox(
-              width: gridWidth,
-              height: gridHeight,
-              child: CustomPaint(
-                key: const Key('dashboardHeatmapPainter'),
-                painter: _HeatmapPainter(
-                  counts: counts,
-                  gridStart: gridStart,
-                  today: today,
-                  weeks: weeks,
-                  cellSize: cellSize,
-                  gap: gap,
-                  emptyFill: emptyFill,
-                  emptyStroke: emptyStroke,
-                  ramp: ramp,
+                      emptyFill: emptyFill,
+                      emptyStroke: emptyStroke,
+                      ramp: ramp,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Flexible(
-                child: Text(l10n.dashboardHeatmapLess,
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: Text(
+                    l10n.dashboardHeatmapLess,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant)),
-              ),
-              const SizedBox(width: 6),
-              for (final level in [-1, 0, 1, 2]) ...[
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: level < 0 ? emptyFill : ramp[level],
-                    border: level < 0
-                        ? Border.all(color: emptyStroke)
-                        : null,
-                    borderRadius: BorderRadius.circular(4),
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 6),
+                for (final level in [-1, 0, 1, 2]) ...[
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: level < 0 ? emptyFill : ramp[level],
+                      border: level < 0 ? Border.all(color: emptyStroke) : null,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                ],
                 const SizedBox(width: 3),
-              ],
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(l10n.dashboardHeatmapMore,
+                Flexible(
+                  child: Text(
+                    l10n.dashboardHeatmapMore,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant)),
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (onWeekTap != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                l10n.dashboardHeatmapTapHint,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
-          ),
-          if (onWeekTap != null) ...[
-            const SizedBox(height: 6),
-            Text(l10n.dashboardHeatmapTapHint,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
-        ],
-      );
-    });
+        );
+      },
+    );
   }
 }
 
@@ -233,8 +300,11 @@ class _HeatmapPainter extends CustomPainter {
 
     for (var w = 0; w < weeks; w++) {
       for (var d = 0; d < 7; d++) {
-        final day =
-            DateTime(gridStart.year, gridStart.month, gridStart.day + w * 7 + d);
+        final day = DateTime(
+          gridStart.year,
+          gridStart.month,
+          gridStart.day + w * 7 + d,
+        );
         // Don't paint future days — they're outside the scale and look
         // weird with an "empty" tile shown.
         if (day.isAfter(today)) continue;
@@ -251,7 +321,9 @@ class _HeatmapPainter extends CustomPainter {
         } else {
           canvas.drawRRect(
             rect,
-            levelPaints[count > levelPaints.length ? levelPaints.length - 1 : count - 1],
+            levelPaints[count > levelPaints.length
+                ? levelPaints.length - 1
+                : count - 1],
           );
         }
       }

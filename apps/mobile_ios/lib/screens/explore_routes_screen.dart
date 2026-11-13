@@ -4,20 +4,40 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' show MapController;
 import 'package:geolocator/geolocator.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, StatusPill, StatusPillSize;
+import 'package:latlong2/latlong.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ActiveFilter,
+        AppInsets,
+        AppSearchField,
+        AppSpace,
+        EmptyState,
+        FilterBar,
+        HubTabBody,
+        ListCard,
+        MapFirstPage,
+        MapFirstSheet,
+        StatusPill,
+        StatusPillSize,
+        showFilterSheet;
 
+import '../fab_clearance.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../official_distance.dart';
 import '../preferences.dart';
 import '../quiet_location.dart';
+import '../routes_views.dart';
 import '../route_surface_label.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
 import '../park_course_routes.dart';
+import '../widgets/explore_routes_map.dart';
 import '../widgets/route_track_preview.dart';
+import 'public_route_screen.dart';
 import 'route_detail_screen.dart';
 import '../widgets/top_banner.dart';
 
@@ -27,10 +47,25 @@ enum _DistanceFilter { any, short, medium, long, ultra }
 
 enum _SurfaceFilter { any, road, trail, mixed }
 
+/// Public routes: Routes → Explore on its Routes chip (issue #1374, owner
+/// decision 1), headed by the discovery maps the Routes tab hands it.
+///
+/// Map-first (issue #1374): the public routes in view are pins on a
+/// full-bleed map, and the search results are the list in its sheet, headed
+/// by the discovery maps. A search, with Near me as the quick chip (which also
+/// moves the map to the runner), and distance, surface, sort, Featured and
+/// tags in the Filters sheet. Mounted on its own (a test) it is a page titled
+/// Explore Routes.
 class ExploreRoutesScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final LocalRouteStore routeStore;
   final Preferences preferences;
+
+  /// The Routes tab's view row and Explore chips. Null on its own.
+  final RoutesExploreChrome? chrome;
+
+  /// The discovery maps, heading the list in the sheet.
+  final Widget? maps;
 
   /// Test seam for the "Near me" fix. Production callers leave it null and
   /// get [locateForBrowse].
@@ -41,6 +76,8 @@ class ExploreRoutesScreen extends StatefulWidget {
     this.apiClient,
     required this.routeStore,
     required this.preferences,
+    this.chrome,
+    this.maps,
     this.locateFn,
   });
 
@@ -50,7 +87,7 @@ class ExploreRoutesScreen extends StatefulWidget {
 
 class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   final _searchController = TextEditingController();
-  final _scrollController = ScrollController();
+  final _map = MapController();
 
   List<cm.Route> _results = [];
   late final ParkCourseRouteLookup _parkCourses = ParkCourseRouteLookup((
@@ -85,7 +122,6 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     // Defer the first search to after the first frame: the signed-out
     // early-return reads AppLocalizations.of(context), which isn't
     // available synchronously during initState.
@@ -123,7 +159,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _scrollController.dispose();
+    _map.dispose();
     _parkCourses.dispose();
     super.dispose();
   }
@@ -132,13 +168,35 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
     _parkCourses.check(_results.where((r) => r.official).map((r) => r.id)),
   );
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
+  /// The sheet's list asks for the next page as it nears its end.
+  bool _onScroll(ScrollNotification n) {
+    if (n.metrics.axis == Axis.vertical &&
+        n.metrics.pixels >= n.metrics.maxScrollExtent - 200 &&
         !_loading &&
         _hasMore) {
       _loadMore();
     }
+    return false;
+  }
+
+  /// Near me moves the map to the runner too, so the pins and the list
+  /// answer the same question. A map that has not laid out yet stays put.
+  void _moveMapTo(Position pos) {
+    try {
+      _map.move(LatLng(pos.latitude, pos.longitude), 12);
+    } catch (e) {
+      debugPrint('ExploreRoutesScreen: map not ready to move: $e');
+    }
+  }
+
+  void _openPin(cm.DiscoverableRoutePin pin) {
+    final api = widget.apiClient;
+    if (api == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PublicRouteScreen(api: api, routeId: pin.id),
+      ),
+    );
   }
 
   Future<void> _search() async {
@@ -282,6 +340,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         return;
       }
 
+      _moveMapTo(pos);
       final results = await api.nearbyPublicRoutes(
         lat: pos.latitude,
         lng: pos.longitude,
@@ -414,137 +473,20 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final unit = widget.preferences.unit;
-
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.exploreRoutesTitle)),
-      body: Column(
-        children: [
-          // Mode toggle
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: ChoiceChipRow<_ExploreMode>(
-              options: [
-                ChoiceChipOption(
-                  value: _ExploreMode.search,
-                  icon: Icons.search,
-                  label: l10n.exploreRoutesModeSearch,
-                ),
-                ChoiceChipOption(
-                  value: _ExploreMode.nearMe,
-                  icon: Icons.near_me,
-                  label: l10n.exploreRoutesModeNearMe,
-                ),
-              ],
-              selected: _mode,
-              onChanged: (v) {
-                setState(() => _mode = v);
-                if (_mode == _ExploreMode.nearMe) {
-                  _searchNearby();
-                } else {
-                  _search();
-                }
-              },
-            ),
-          ),
-
-          // Search bar (only in search mode)
-          if (_mode == _ExploreMode.search)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: l10n.exploreRoutesSearchHint,
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        tooltip: l10n.commonClearSearch,
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _search();
-                        },
-                      )
-                    : null,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _search(),
-            ),
-          ),
-
-          // Filter chips (search mode only)
-          if (_mode == _ExploreMode.search) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildDistanceChip(theme),
-                    const SizedBox(width: 8),
-                    _buildSurfaceChip(theme),
-                    const SizedBox(width: 8),
-                    _buildSortChip(theme),
-                    const SizedBox(width: 8),
-                    FilterChip(
-                      avatar: const Icon(Icons.star_border, size: 16),
-                      label: Text(l10n.exploreRoutesFeatured),
-                      selected: _featuredOnly,
-                      onSelected: (v) {
-                        setState(() => _featuredOnly = v);
-                        _search();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_popularTags.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (final t in _popularTags) ...[
-                        FilterChip(
-                          label: Text(t),
-                          selected: _selectedTags.contains(t),
-                          onSelected: (v) {
-                            setState(() {
-                              if (v) _selectedTags.add(t);
-                              else _selectedTags.remove(t);
-                            });
-                            _search();
-                          },
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-          ],
-
-          const Divider(height: 1),
-
-          // Results
-          Expanded(child: _buildBody(theme, unit)),
-        ],
-      ),
-    );
+  void _setNearMe(bool on) {
+    setState(() => _mode = on ? _ExploreMode.nearMe : _ExploreMode.search);
+    on ? _searchNearby() : _search();
   }
 
-  Widget _buildDistanceChip(ThemeData theme) {
-    final l10n = AppLocalizations.of(context);
+  /// Applies a filter change, which reruns the search.
+  void _apply(VoidCallback change) {
+    setState(change);
+    _search();
+  }
+
+  Map<_DistanceFilter, String> _distanceLabels(AppLocalizations l10n) {
     final mi = widget.preferences.useMiles;
-    final labels = {
+    return {
       _DistanceFilter.any: l10n.exploreRoutesDistanceAny,
       _DistanceFilter.short:
           mi ? l10n.exploreRoutesDistanceUnderMi : l10n.exploreRoutesDistanceUnderKm,
@@ -555,159 +497,269 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
       _DistanceFilter.ultra:
           mi ? l10n.exploreRoutesDistanceUltraMi : l10n.exploreRoutesDistanceUltraKm,
     };
-    return PopupMenuButton<_DistanceFilter>(
-      onSelected: (v) {
-        setState(() => _distanceFilter = v);
-        _search();
-      },
-      itemBuilder: (_) => _DistanceFilter.values
-          .map((f) => CheckedPopupMenuItem(
-                value: f,
-                checked: _distanceFilter == f,
-                child: Text(labels[f]!),
-              ))
-          .toList(),
-      child: Chip(
-        avatar: const Icon(Icons.straighten, size: 16),
-        label: Text(labels[_distanceFilter]!),
-        backgroundColor: _distanceFilter != _DistanceFilter.any
-            ? theme.colorScheme.primaryContainer
-            : null,
-      ),
-    );
   }
 
-  Widget _buildSortChip(ThemeData theme) {
-    final l10n = AppLocalizations.of(context);
-    final labels = {
-      'popular': l10n.exploreRoutesSortMostRun,
-      'newest': l10n.exploreRoutesSortNewest,
-      'featured': l10n.exploreRoutesSortFeatured,
-    };
-    return PopupMenuButton<String>(
-      onSelected: (v) {
-        setState(() => _sort = v);
-        _search();
-      },
-      itemBuilder: (_) => labels.entries
-          .map((e) => CheckedPopupMenuItem(
-                value: e.key,
-                checked: _sort == e.key,
-                child: Text(e.value),
-              ))
-          .toList(),
-      child: Chip(
-        avatar: const Icon(Icons.sort, size: 16),
-        label: Text(labels[_sort] ?? l10n.exploreRoutesSort),
-      ),
-    );
-  }
+  Map<_SurfaceFilter, String> _surfaceLabels(AppLocalizations l10n) => {
+        _SurfaceFilter.any: l10n.exploreRoutesSurfaceAny,
+        _SurfaceFilter.road: l10n.exploreRoutesSurfaceRoad,
+        _SurfaceFilter.trail: l10n.exploreRoutesSurfaceTrail,
+        _SurfaceFilter.mixed: l10n.exploreRoutesSurfaceMixed,
+      };
 
-  Widget _buildSurfaceChip(ThemeData theme) {
-    final l10n = AppLocalizations.of(context);
-    final labels = {
-      _SurfaceFilter.any: l10n.exploreRoutesSurfaceAny,
-      _SurfaceFilter.road: l10n.exploreRoutesSurfaceRoad,
-      _SurfaceFilter.trail: l10n.exploreRoutesSurfaceTrail,
-      _SurfaceFilter.mixed: l10n.exploreRoutesSurfaceMixed,
-    };
-    return PopupMenuButton<_SurfaceFilter>(
-      onSelected: (v) {
-        setState(() => _surfaceFilter = v);
-        _search();
-      },
-      itemBuilder: (_) => _SurfaceFilter.values
-          .map((f) => CheckedPopupMenuItem(
-                value: f,
-                checked: _surfaceFilter == f,
-                child: Text(labels[f]!),
-              ))
-          .toList(),
-      child: Chip(
-        avatar: const Icon(Icons.terrain, size: 16),
-        label: Text(labels[_surfaceFilter]!),
-        backgroundColor: _surfaceFilter != _SurfaceFilter.any
-            ? theme.colorScheme.primaryContainer
-            : null,
-      ),
-    );
-  }
+  Map<String, String> _sortLabels(AppLocalizations l10n) => {
+        'popular': l10n.exploreRoutesSortMostRun,
+        'newest': l10n.exploreRoutesSortNewest,
+        'featured': l10n.exploreRoutesSortFeatured,
+      };
 
-  Widget _buildBody(ThemeData theme, DistanceUnit unit) {
-    final l10n = AppLocalizations.of(context);
-    if (_error != null) {
-      return ErrorState(
-        message: _error!,
-        onRetry: _mode == _ExploreMode.nearMe ? _searchNearby : _search,
-      );
-    }
-
-    if (_results.isEmpty && !_loading) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.explore, size: 64, color: theme.colorScheme.outline),
-            const SizedBox(height: 16),
-            Text(
-              _searchController.text.isEmpty
-                  ? l10n.exploreRoutesEmptyNoPublic
-                  : l10n.exploreRoutesEmptyNoMatch,
-              style: theme.textTheme.bodyLarge,
+  /// Search and the Near me chip, after the Routes · Segments chips when the
+  /// Routes tab hosts this. Near me searches around a location fix rather
+  /// than by text and filters, so it hides both while it is on.
+  FilterBar _filterBar(AppLocalizations l10n) {
+    final nearMe = _mode == _ExploreMode.nearMe;
+    ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
+          label: label,
+          onRemove: onRemove,
+          removeTooltip: l10n.filterBarRemoveFilter(label),
+        );
+    final filters = nearMe
+        ? const <ActiveFilter>[]
+        : [
+            if (_distanceFilter != _DistanceFilter.any)
+              active(_distanceLabels(l10n)[_distanceFilter]!,
+                  () => _apply(() => _distanceFilter = _DistanceFilter.any)),
+            if (_surfaceFilter != _SurfaceFilter.any)
+              active(_surfaceLabels(l10n)[_surfaceFilter]!,
+                  () => _apply(() => _surfaceFilter = _SurfaceFilter.any)),
+            if (_sort != 'popular')
+              active(_sortLabels(l10n)[_sort] ?? l10n.exploreRoutesSort,
+                  () => _apply(() => _sort = 'popular')),
+            if (_featuredOnly)
+              active(l10n.exploreRoutesFeatured,
+                  () => _apply(() => _featuredOnly = false)),
+            for (final t in _selectedTags)
+              active(t, () => _apply(() => _selectedTags.remove(t))),
+          ];
+    return FilterBar(
+      key: const ValueKey('explore-routes-filter-bar'),
+      search: nearMe
+          ? null
+          : AppSearchField(
+              controller: _searchController,
+              hint: l10n.exploreRoutesSearchHint,
+              clearTooltip: l10n.commonClearSearch,
+              onChanged: (v) {
+                if (v.isEmpty) _search();
+              },
+              onSubmitted: (_) => _search(),
             ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.exploreRoutesEmptyBody,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+      chips: [
+        ...?widget.chrome?.chips,
+        FilterChip(
+          avatar: const Icon(Icons.near_me, size: 18),
+          label: Text(l10n.exploreRoutesModeNearMe),
+          selected: nearMe,
+          showCheckmark: false,
+          onSelected: _setNearMe,
         ),
-      );
-    }
+      ],
+      activeFilters: filters,
+      filtersLabel: nearMe ? null : l10n.filterBarFilters,
+      filtersSemanticLabel:
+          filters.isEmpty ? null : l10n.filterBarFiltersCount(filters.length),
+      activeFilterCount: filters.length,
+      onOpenFilters: nearMe ? null : () => _openFilters(l10n),
+    );
+  }
 
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      itemCount: _results.length + (_loading ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index >= _results.length) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        }
-
-        final route = _results[index];
-
-        return _RouteCard(
-          parkCourses: _parkCourses,
-          route: route,
-          unit: unit,
-          theme: theme,
-          saved: _bookmarkedIds.contains(route.id),
-          onTap: () async {
-            await Navigator.push<void>(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) => RouteDetailScreen(
-                  route: route,
-                  routeStore: widget.routeStore,
-                  preferences: widget.preferences,
-                  apiClient: widget.apiClient,
-                ),
+  Future<void> _openFilters(AppLocalizations l10n) {
+    return showFilterSheet(
+      context: context,
+      title: l10n.filterBarFilters,
+      doneLabel: l10n.filterBarDone,
+      builder: (sheetContext, setSheet) {
+        final theme = Theme.of(sheetContext);
+        Widget group(String heading, List<Widget> chips) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(heading, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: AppSpace.sm),
+                  // semantics-children: a group name, read once before the controls inside it
+                  Semantics(
+                    container: true,
+                    label: heading,
+                    child: Wrap(
+                      spacing: AppSpace.sm,
+                      runSpacing: AppSpace.xs,
+                      children: chips,
+                    ),
+                  ),
+                ],
               ),
             );
-            // The detail screen carries its own bookmark toggle.
-            _loadBookmarkedIds();
-          },
-          onToggleBookmark: () => _toggleBookmark(route),
+        Widget pick<T>(T value, T selected, String label, ValueChanged<T> on) =>
+            ChoiceChip(
+              label: Text(label),
+              selected: value == selected,
+              onSelected: (_) {
+                _apply(() => on(value));
+                setSheet(() {});
+              },
+            );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            group(l10n.filterBarDistance, [
+              for (final e in _distanceLabels(l10n).entries)
+                pick(e.key, _distanceFilter, e.value,
+                    (v) => _distanceFilter = v),
+            ]),
+            group(l10n.filterBarSurface, [
+              for (final e in _surfaceLabels(l10n).entries)
+                pick(e.key, _surfaceFilter, e.value,
+                    (v) => _surfaceFilter = v),
+            ]),
+            group(l10n.filterBarSort, [
+              for (final e in _sortLabels(l10n).entries)
+                pick(e.key, _sort, e.value, (v) => _sort = v),
+            ]),
+            group(l10n.exploreRoutesFeatured, [
+              FilterChip(
+                avatar: const Icon(Icons.star_border, size: 18),
+                label: Text(l10n.exploreRoutesFeatured),
+                selected: _featuredOnly,
+                onSelected: (v) {
+                  _apply(() => _featuredOnly = v);
+                  setSheet(() {});
+                },
+              ),
+              for (final t in _popularTags)
+                FilterChip(
+                  label: Text(t),
+                  selected: _selectedTags.contains(t),
+                  onSelected: (v) {
+                    _apply(() => v ? _selectedTags.add(t) : _selectedTags.remove(t));
+                    setSheet(() {});
+                  },
+                ),
+            ]),
+          ],
         );
       },
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final unit = widget.preferences.unit;
+    final bar = _filterBar(l10n);
+    return HubTabBody(
+      title: l10n.exploreRoutesTitle,
+      filters: widget.chrome?.above(bar) ?? bar,
+      onRefresh: _mode == _ExploreMode.nearMe ? _searchNearby : _search,
+      // The map keeps the drags that start on it and the Fitness hub swipes
+      // from the controls and the sheet, so Explore is a map inside the
+      // hub's pages rather than a pushed screen (conventions § Mobile
+      // map-first pages).
+      body: MapFirstPage(
+        map: ExploreRoutesMap(
+          api: widget.apiClient,
+          controller: _map,
+          onOpen: _openPin,
+        ),
+        attribution: ExploreRoutesMap.credit(context),
+        bottomClearance: DockedFabInset.of(context),
+        sheet: MapFirstSheet(
+          initialSize: 0.55,
+          minSize: 0.2,
+          maxSize: 0.85,
+          onScroll: _onScroll,
+          slivers: [
+            if (widget.maps case final maps?) SliverToBoxAdapter(child: maps),
+            ..._bodySlivers(theme, unit),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _bodySlivers(ThemeData theme, DistanceUnit unit) {
+    final l10n = AppLocalizations.of(context);
+    if (_error != null) {
+      return [
+        SliverToBoxAdapter(
+          child: AppErrorState(
+            message: _error!,
+            onRetry: _mode == _ExploreMode.nearMe ? _searchNearby : _search,
+          ),
+        ),
+      ];
+    }
+
+    if (_results.isEmpty && !_loading) {
+      return [
+        SliverToBoxAdapter(
+          child: EmptyState(
+            icon: Icons.explore,
+            title: _searchController.text.isEmpty
+                ? l10n.exploreRoutesEmptyNoPublic
+                : l10n.exploreRoutesEmptyNoMatch,
+            body: l10n.exploreRoutesEmptyBody,
+          ),
+        ),
+      ];
+    }
+
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(
+            AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
+        sliver: SliverList.builder(
+          itemCount: _results.length + (_loading ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index >= _results.length) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+
+            final route = _results[index];
+
+            return _RouteCard(
+              parkCourses: _parkCourses,
+              route: route,
+              unit: unit,
+              theme: theme,
+              saved: _bookmarkedIds.contains(route.id),
+              onTap: () async {
+                await Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => RouteDetailScreen(
+                      route: route,
+                      routeStore: widget.routeStore,
+                      preferences: widget.preferences,
+                      apiClient: widget.apiClient,
+                    ),
+                  ),
+                );
+                // The detail screen carries its own bookmark toggle.
+                _loadBookmarkedIds();
+              },
+              onToggleBookmark: () => _toggleBookmark(route),
+            );
+          },
+        ),
+      ),
+    ];
   }
 }
 
@@ -733,130 +785,102 @@ class _RouteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+    return ListCard.row(
+      dense: true,
+      onTap: onTap,
+      leadingWidth: 80,
+      leading: SizedBox(
+        height: 48,
+        // Explore is community-public routes — every row is by a non-owner.
+        // RouteTrackPreview's owner branch short-circuits to raw waypoints
+        // in the rare case of viewing your own published route.
+        child: route.waypoints.length >= 2
+            ? RouteTrackPreview(
+                routeId: route.id,
+                waypoints: route.waypoints,
+                ownerUserId: route.userId,
+                api: ApiClient(),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _surfaceIcon(route.surface),
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+      ),
+      title: route.name,
+      badge: route.official || route.featured
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (route.official)
+                  OfficialRouteBadge(routeId: route.id, lookup: parkCourses),
+                if (route.featured)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 6),
+                    child: Icon(
+                      Icons.star,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+              ],
+            )
+          : null,
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
             children: [
-              SizedBox(
-                width: 80,
-                height: 48,
-                // Explore is community-public routes — every row is by
-                // a non-owner. RouteTrackPreview's owner branch
-                // short-circuits to raw waypoints if the rare case of
-                // viewing your own published route arises.
-                child: route.waypoints.length >= 2
-                    ? RouteTrackPreview(
-                        routeId: route.id,
-                        waypoints: route.waypoints,
-                        ownerUserId: route.userId,
-                        api: ApiClient(),
-                      )
-                    : Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          _surfaceIcon(route.surface),
-                          color: theme.colorScheme.secondary,
-                        ),
-                      ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            route.name,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (route.official)
-                          OfficialRouteBadge(
-                            routeId: route.id,
-                            lookup: parkCourses,
-                          ),
-                        if (route.featured)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: Icon(
-                              Icons.star,
-                              size: 16,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      children: [
-                        _tag(
-                            Icons.straighten,
-                            UnitFormat.distance(
-                                routeDisplayDistanceM(route.distanceMetres,
-                                    route.officialDistanceMetres),
-                                unit)),
-                        if (route.elevationGainMetres > 0)
-                          _tag(Icons.trending_up,
-                              UnitFormat.elevation(
-                                  route.elevationGainMetres, unit)),
-                        if (route.surface != null)
-                          _tag(_surfaceIcon(route.surface),
-                              routeSurfaceLabel(l10n, route.surface!)),
-                        if (route.runCount > 0)
-                          _tag(Icons.directions_run, '${route.runCount}'),
-                      ],
-                    ),
-                    if (route.tags.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: [
-                          for (final t in route.tags.take(4))
-                            StatusPill(
-                              label: t,
-                              foreground: theme.colorScheme.onSurfaceVariant,
-                              fill:
-                                  theme.colorScheme.surfaceContainerHighest,
-                              size: StatusPillSize.compact,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  saved ? Icons.bookmark : Icons.bookmark_border,
-                  color: saved
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outline,
-                ),
-                tooltip: saved
-                    ? l10n.exploreRoutesRemoveFromLibrary
-                    : l10n.exploreRoutesSaveToLibrary,
-                onPressed: onToggleBookmark,
-              ),
+              _tag(
+                  Icons.straighten,
+                  UnitFormat.distance(
+                      routeDisplayDistanceM(
+                          route.distanceMetres, route.officialDistanceMetres),
+                      unit)),
+              if (route.elevationGainMetres > 0)
+                _tag(Icons.trending_up,
+                    UnitFormat.elevation(route.elevationGainMetres, unit)),
+              if (route.surface != null)
+                _tag(_surfaceIcon(route.surface),
+                    routeSurfaceLabel(l10n, route.surface!)),
+              if (route.runCount > 0)
+                _tag(Icons.directions_run, '${route.runCount}'),
             ],
           ),
+          if (route.tags.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final t in route.tags.take(4))
+                  StatusPill(
+                    label: t,
+                    foreground: theme.colorScheme.onSurfaceVariant,
+                    fill: theme.colorScheme.surfaceContainerHighest,
+                    size: StatusPillSize.compact,
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+      trailing: IconButton(
+        icon: Icon(
+          saved ? Icons.bookmark : Icons.bookmark_border,
+          color: saved ? theme.colorScheme.primary : theme.colorScheme.outline,
         ),
+        tooltip: saved
+            ? l10n.exploreRoutesRemoveFromLibrary
+            : l10n.exploreRoutesSaveToLibrary,
+        onPressed: onToggleBookmark,
       ),
     );
   }
@@ -867,10 +891,14 @@ class _RouteCard extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: theme.colorScheme.outline),
         const SizedBox(width: 3),
-        Text(
-          text,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        // Flexible: at 2x text on a 320 dp phone the card's text column is
+        // about 110 dp, and a distance on one line overflowed it.
+        Flexible(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],

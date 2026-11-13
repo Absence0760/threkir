@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 
 import '../lib/help_destination.dart';
 import '../lib/help_guides.dart';
@@ -11,6 +12,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/help_screen.dart';
 import '../lib/widgets/help_button.dart';
 import '../lib/widgets/info_tip.dart';
+import 'worst_case_layout.dart';
 
 HelpLibrary _fixture() => HelpLibrary.parse(
   File('test/fixtures/help_guides.json').readAsStringSync(),
@@ -99,7 +101,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, const HelpScreen());
-      expect(find.text('Help'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Help'), findsOneWidget);
       expect(find.text('RACES'), findsOneWidget);
       expect(find.text('PAID CLASSES'), findsOneWidget);
       expect(find.text('Racing an event'), findsOneWidget);
@@ -249,7 +251,8 @@ void main() {
     ) async {
       final handle = tester.ensureSemantics();
       await _pump(tester, const GuideScreen(guideId: 'racing-an-event'));
-      expect(find.text('Racing an event'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Racing an event'),
+          findsOneWidget);
       expect(find.text('Web'), findsOneWidget);
       expect(find.text('Android'), findsOneWidget);
       expect(find.text('iPhone'), findsOneWidget);
@@ -357,7 +360,8 @@ void main() {
       );
       await tester.tap(find.byTooltip('How this works'));
       await _settle(tester);
-      expect(find.text('Connecting Strava'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Connecting Strava'),
+          findsOneWidget);
       expect(find.text('Connecting'), findsOneWidget);
     });
   });
@@ -392,7 +396,23 @@ void main() {
       await _settle(tester);
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.byType(GuideScreen), findsOneWidget);
-      expect(find.text('Connecting Strava'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Connecting Strava'),
+          findsOneWidget);
     });
+  });
+
+  worstCaseTestWidgets('the guide list and a guide', (tester, locale) async {
+    _useLibrary(_fixture());
+    addTearDown(() => helpLibraryLoader = loadHelpLibraryCached);
+    await tester.pumpWidget(
+        worstCaseApp(locale: locale, home: const HelpScreen()));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Help');
+    await tester.pumpWidget(worstCaseApp(
+        locale: locale, home: const GuideScreen(guideId: 'racing-an-event')));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Guide');
   });
 }

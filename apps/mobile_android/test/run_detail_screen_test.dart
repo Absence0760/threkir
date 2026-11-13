@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
+import 'package:ui_kit/ui_kit.dart' show DetailHero;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -21,6 +22,7 @@ import '../lib/settings_sync.dart';
 import '../lib/widgets/live_run_map.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 late Directory _runsDir;
 
@@ -348,6 +350,35 @@ class _DeleteFailApi extends ApiClient {
   }
 }
 
+/// Signed-in fake whose `deleteRun` waits on [gate].
+class _DeleteGatedApi extends ApiClient {
+  final gate = Completer<void>();
+  int calls = 0;
+
+  @override
+  String? get userId => 'user-1';
+
+  @override
+  Future<RunMatchInfo?> fetchRunMatchedTrack(String runId) async => null;
+
+  @override
+  Future<void> deleteRun(Run run) async {
+    calls += 1;
+    await gate.future;
+  }
+}
+
+/// Make-private whose write waits on [gate].
+class _MakePrivateGatedApi extends _MakePrivateApi {
+  final gate = Completer<void>();
+
+  @override
+  Future<void> makeRunPrivate(String runId) async {
+    calls += 1;
+    await gate.future;
+  }
+}
+
 /// Signed-in fake whose `deleteRun` succeeds.
 class _DeleteOkApi extends ApiClient {
   int calls = 0;
@@ -422,6 +453,7 @@ Future<void> _pump(WidgetTester tester, Run run,
     bool showRawTrack = false,
     bool useMiles = false,
     double textScale = 1.0,
+    Locale locale = const Locale('en'),
     RunPushBlockReason? blocked}) async {
   SharedPreferences.setMockInitialValues({
     if (bodyWeightKg != null) 'body_weight_kg': bodyWeightKg,
@@ -443,6 +475,7 @@ Future<void> _pump(WidgetTester tester, Run run,
 
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
@@ -491,11 +524,14 @@ void main() {
       expect(find.textContaining('Apr'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('renders the metadata title in the app bar when set',
+    testWidgets('renders the metadata title as the page heading when set',
         (tester) async {
       final run = _run(title: 'Morning Tempo');
       await _pump(tester, run);
-      expect(find.text('Morning Tempo'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(DetailHero), matching: find.text('Morning Tempo')),
+          findsOneWidget);
     });
 
     testWidgets('renders Distance and Time primary stat labels', (tester) async {
@@ -846,6 +882,43 @@ void main() {
       expect(api.calls, 1);
       expect(find.text('Run is now private'), findsOneWidget);
 
+    });
+
+    // Issue #1374 FS-13: Make private checked its busy flag but never set it,
+    // so a second tap during the write opened a second confirm.
+    testWidgets('make-private holds its control while the write is in flight',
+        (tester) async {
+      final run = _run(title: 'Morning Tempo');
+      final api = _MakePrivateGatedApi();
+      await _pump(tester, run, apiClient: api);
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Make private'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Make private'),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(api.calls, 1);
+
+      // The write is still pending: the menu's Make private is disabled.
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Make private'), warnIfMissed: false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Make this run private?'), findsNothing);
+
+      api.gate.complete();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(api.calls, 1);
     });
 
     testWidgets('make-private cancel leaves the run untouched',
@@ -1974,6 +2047,55 @@ void main() {
       expect(find.text('open detail'), findsOneWidget);
     });
 
+    // Issue #1374 FS-13: the confirm closed and nothing showed the delete was
+    // running, so people confirmed it again.
+    testWidgets('an in-flight delete replaces the menu with a spinner',
+        (tester) async {
+      final run = _run(title: 'Morning Tempo');
+      final api = _DeleteGatedApi();
+      final runStore = await pumpForDelete(tester, run, apiClient: api);
+
+      // Inside runAsync so the delete's store I/O runs in the real zone, as
+      // deleteViaMenu does.
+      await tester.runAsync(() async {
+        await tester.tap(find.byTooltip('More'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.text('Delete run'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+        await tester.pump();
+        await pumpEventQueue();
+      });
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(api.calls, 1);
+      expect(
+          find.descendant(
+              of: find.byType(AppBar),
+              matching: find.byType(CircularProgressIndicator)),
+          findsOneWidget);
+      expect(find.byTooltip('More'), findsNothing);
+
+      await tester.runAsync(() async {
+        api.gate.complete();
+        await pumpEventQueue();
+      });
+      // The pop follows the store's file write, then animates.
+      await pumpUntil(
+        tester,
+        () => runStore.runs.isEmpty,
+        describe: 'the delete to reach the store',
+      );
+      await tester.runAsync(runStore.debugWritesSettled);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(RunDetailScreen), findsNothing);
+    });
+
     testWidgets('signed-out delete stays local-only and pops',
         (tester) async {
       final run = _run(title: 'Morning Tempo');
@@ -2225,6 +2347,24 @@ void main() {
       await gesture.up();
       await tester.pump();
     });
+  });
+
+  // Issue #1374 TO-6: run detail walked top to bottom at the worst case in
+  // every locale, with a titled run whose track has elevation and splits.
+  worstCaseTestWidgets('Run detail', (tester, locale) async {
+    await _pump(
+      tester,
+      _run(
+        title: 'Sunday long run along the river',
+        track: _straightTrack(3),
+      ),
+      bodyWeightKg: 70,
+      textScale: kWorstCaseTextScale,
+      locale: locale,
+    );
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Run detail');
+    await _pump(tester, _elevationRun(), textScale: kWorstCaseTextScale, locale: locale);
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Run detail with elevation');
   });
 
   group('splits bar at OS text scale (issue #666 V12)', () {

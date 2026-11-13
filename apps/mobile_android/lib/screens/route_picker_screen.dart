@@ -1,7 +1,8 @@
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SectionHeader;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, PageHeader, PushedPage, SectionHeader;
 
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
@@ -79,23 +80,39 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
     final l10n = AppLocalizations.of(context);
     final routes = _filteredAndSorted();
     final hasStarred = routes.any((r) => r.isStarred);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.routePickerTitle),
-        // "No route" lives as a leading-style trailing action so
-        // users running without a preselected route can dismiss
-        // back to the run screen without scrolling.
-        actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.pop<RoutePick>(context, const NoRoutePicked()),
-            child: Text(l10n.routePickerNoRoute),
+    return PushedPage(
+      title: l10n.routePickerTitle,
+      // The heading and "No route" scroll away with the list; the search
+      // stays pinned above it.
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PageHeader(title: l10n.routePickerTitle),
+                // "No route" opens the page, so users running without a
+                // preselected route can dismiss back to the run screen
+                // without scrolling. Not a toolbar action: "Pas
+                // d'itinéraire" at 2x was wider than a 320 dp bar.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      key: const ValueKey('route-picker-no-route'),
+                      onPressed: () => Navigator.pop<RoutePick>(
+                          context, const NoRoutePicked()),
+                      icon: const Icon(Icons.close),
+                      label: Text(l10n.routePickerNoRoute),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: Column(
+        body: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),

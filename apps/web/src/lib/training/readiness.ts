@@ -13,6 +13,8 @@
  * shared-library-syncer agent watches the pair.
  */
 
+import type { MessageKey } from '../i18n/messages';
+
 export interface ReadinessInputs {
 	/** Training Stress Balance (Form). Positive = fresh, negative = fatigued. Pass null if unknown. */
 	tsb: number | null;
@@ -34,12 +36,34 @@ export type ReadinessBand = 'low' | 'moderate' | 'high';
  */
 export type ReadinessContributorKind = 'form' | 'sleep' | 'resting_hr';
 
+/// Why an input moved the score. The words live in the reader's catalogue
+/// (`dash.readinessReason_<reason>`), read by `readinessAdviceText`.
+export type ReadinessReason =
+	| 'heavyFatigue'
+	| 'fatigued'
+	| 'slightFatigue'
+	| 'formNeutral'
+	| 'fresh'
+	| 'veryFresh'
+	| 'overTapered'
+	| 'veryLittleSleep'
+	| 'shortSleep'
+	| 'underSleep'
+	| 'wellRested'
+	| 'extendedSleep'
+	| 'hrWellAbove'
+	| 'hrAbove'
+	| 'hrSlightlyHigh'
+	| 'hrBaseline'
+	| 'hrBelow';
+
 export interface ReadinessContribution {
 	kind: ReadinessContributorKind;
 	/** Signed delta this input added to the score. */
 	delta: number;
-	/** One-line reason. */
-	note: string;
+	reason: ReadinessReason;
+	/** Resting HR above baseline, for the reasons that name it. */
+	diffBpm?: number;
 }
 
 export interface Readiness {
@@ -47,8 +71,8 @@ export interface Readiness {
 	score: number;
 	/** Bucket — drives card colour and tone of advice. */
 	band: ReadinessBand;
-	/** One-line guidance, picked from the dominant contributor. */
-	advice: string;
+	/** The contributor the advice line names; null when there are no inputs. */
+	dominant: ReadinessContribution | null;
 	/** Per-input breakdown so the UI can show "why". */
 	contributors: ReadinessContribution[];
 }
@@ -82,53 +106,53 @@ function scoreTsb(tsb: number | null): ReadinessContribution | null {
 	// final "over-tapered" branch and cost the score 3 points.
 	if (tsb == null || !Number.isFinite(tsb)) return null;
 	let delta = 0;
-	let note = '';
+	let reason: ReadinessReason;
 	if (tsb < -20) {
 		delta = -20;
-		note = 'Heavy fatigue — recent training stress is well above your fitness';
+		reason = 'heavyFatigue';
 	} else if (tsb < -10) {
 		delta = -12;
-		note = 'Fatigued from recent training';
+		reason = 'fatigued';
 	} else if (tsb < -5) {
 		delta = -6;
-		note = 'Slight fatigue';
+		reason = 'slightFatigue';
 	} else if (tsb <= 5) {
 		delta = 0;
-		note = 'Form is neutral';
+		reason = 'formNeutral';
 	} else if (tsb <= 15) {
 		delta = 8;
-		note = 'Fresh and well-recovered';
+		reason = 'fresh';
 	} else if (tsb <= 25) {
 		delta = 5;
-		note = 'Very fresh — borderline tapered';
+		reason = 'veryFresh';
 	} else {
 		delta = -3;
-		note = 'Over-tapered — edge may be blunted';
+		reason = 'overTapered';
 	}
-	return { kind: 'form', delta, note };
+	return { kind: 'form', delta, reason };
 }
 
 function scoreSleep(hours: number | null | undefined): ReadinessContribution | null {
 	if (hours == null || !Number.isFinite(hours)) return null;
 	let delta = 0;
-	let note = '';
+	let reason: ReadinessReason;
 	if (hours < 5) {
 		delta = -25;
-		note = 'Very little sleep — recovery is compromised';
+		reason = 'veryLittleSleep';
 	} else if (hours < 6.5) {
 		delta = -12;
-		note = 'Short on sleep';
+		reason = 'shortSleep';
 	} else if (hours < 7.5) {
 		delta = -3;
-		note = 'A little under target sleep';
+		reason = 'underSleep';
 	} else if (hours <= 9) {
 		delta = 5;
-		note = 'Well rested';
+		reason = 'wellRested';
 	} else {
 		delta = 0;
-		note = 'Extended sleep — recovery should be solid';
+		reason = 'extendedSleep';
 	}
-	return { kind: 'sleep', delta, note };
+	return { kind: 'sleep', delta, reason };
 }
 
 function scoreRestingHr(
@@ -138,47 +162,56 @@ function scoreRestingHr(
 	if (resting == null || baseline == null || !Number.isFinite(resting - baseline)) return null;
 	const diff = resting - baseline;
 	let delta = 0;
-	let note = '';
+	let reason: ReadinessReason;
 	if (diff > 10) {
 		delta = -18;
-		note = `Resting HR ${diff} bpm above baseline — strong sign of illness or under-recovery`;
+		reason = 'hrWellAbove';
 	} else if (diff > 5) {
 		delta = -10;
-		note = `Resting HR ${diff} bpm above baseline`;
+		reason = 'hrAbove';
 	} else if (diff > 2) {
 		delta = -4;
-		note = 'Resting HR slightly elevated';
+		reason = 'hrSlightlyHigh';
 	} else if (diff >= -2) {
 		delta = 0;
-		note = 'Resting HR at baseline';
+		reason = 'hrBaseline';
 	} else {
 		delta = 3;
-		note = 'Resting HR below baseline — well recovered';
+		reason = 'hrBelow';
 	}
-	return { kind: 'resting_hr', delta, note };
+	return reason === 'hrWellAbove' || reason === 'hrAbove'
+		? { kind: 'resting_hr', delta, reason, diffBpm: diff }
+		: { kind: 'resting_hr', delta, reason };
 }
 
 /** Pick the contributor that pushed the score the most (in absolute terms). */
-function dominantAdvice(contributors: ReadinessContribution[], band: ReadinessBand): string {
-	if (contributors.length === 0) {
-		// No signals at all. Fall back to a band-aware suggestion.
-		return band === 'high'
-			? 'Looks like a good day to push the pace.'
-			: 'Connect sleep + HR data for a real readiness picture.';
-	}
+function dominantContributor(contributors: ReadinessContribution[]): ReadinessContribution | null {
+	if (contributors.length === 0) return null;
 	// Ties in |delta| are common — a TSB of -12 and six hours of sleep both
 	// score -12, and the two carry DIFFERENT advice — so which one wins is a
 	// contract, not an accident. `Array.prototype.sort` is stable, so the
 	// first contributor added wins; the Dart twin's `List.sort` is NOT, and
 	// carries an explicit index tiebreak to match.
-	const dom = contributors.slice().sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0];
-	const tail =
-		band === 'low'
-			? 'Consider an easy day or a rest day.'
-			: band === 'moderate'
-				? 'A steady or moderate effort fits today.'
-				: 'You’re primed for a harder effort if planned.';
-	return `${dom.note}. ${tail}`;
+	return contributors.slice().sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0];
+}
+
+export type ReadinessTranslate = (key: MessageKey, params?: Record<string, string | number>) => string;
+
+const NEXT: Record<ReadinessBand, MessageKey> = {
+	low: 'dash.readinessNext_low',
+	moderate: 'dash.readinessNext_moderate',
+	high: 'dash.readinessNext_high',
+};
+
+/// The advice line in the reader's language: the dominant input's reason and
+/// what the band suggests, or, with no inputs, a band-aware suggestion.
+export function readinessAdviceText(r: Readiness, t: ReadinessTranslate): string {
+	const d = r.dominant;
+	if (!d) return t(r.band === 'high' ? 'dash.readinessAdvice_noSignalHigh' : 'dash.readinessAdvice_noSignal');
+	return t('dash.readinessAdviceLine', {
+		reason: t(`dash.readinessReason_${d.reason}`, d.diffBpm == null ? undefined : { bpm: d.diffBpm }),
+		next: t(NEXT[r.band]),
+	});
 }
 
 export function computeReadiness(inputs: ReadinessInputs): Readiness {
@@ -199,7 +232,7 @@ export function computeReadiness(inputs: ReadinessInputs): Readiness {
 	return {
 		score,
 		band,
-		advice: dominantAdvice(contributors, band),
+		dominant: dominantContributor(contributors),
 		contributors,
 	};
 }

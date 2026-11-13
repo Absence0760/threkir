@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show StatusPill;
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
@@ -29,6 +30,7 @@ import '../lib/watch_settings.dart';
 import 'pump_until.dart';
 import 'pre_run_dialogs.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// Drives the REAL RunScreen through the REAL guided-run affordance and the
 /// REAL recorder tick — not a replica of the screen's wiring beside it
@@ -268,6 +270,7 @@ void main() {
     bool throwOnCue = false,
     String backendUrl = _prodBackend,
     Future<void> Function(Preferences prefs)? configure,
+    Locale? locale,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
@@ -281,25 +284,28 @@ void main() {
     final cues = _SpyAudioCues(throwOnCue: throwOnCue);
     final watch = _FakeSettingsTransport();
 
+    final screen = RunScreen(
+      apiClient: null,
+      runStore: runStore,
+      routeStore: LocalRouteStore(),
+      preferences: prefs,
+      audioCues: cues,
+      social: social,
+      raceController: RaceController(social),
+      training: TrainingService(),
+      heartRate: BleHeartRate(),
+      treadmill: BleTreadmill(),
+      devBackendUrl: backendUrl,
+      watchTransportFactory: () => watch,
+    );
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: RunScreen(
-          apiClient: null,
-          runStore: runStore,
-          routeStore: LocalRouteStore(),
-          preferences: prefs,
-          audioCues: cues,
-          social: social,
-          raceController: RaceController(social),
-          training: TrainingService(),
-          heartRate: BleHeartRate(),
-          treadmill: BleTreadmill(),
-          devBackendUrl: backendUrl,
-          watchTransportFactory: () => watch,
-        ),
-      ),
+      locale != null
+          ? worstCaseApp(locale: locale, home: screen)
+          : MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: screen,
+            ),
     );
     await tester.pump();
     return (cues: cues, prefs: prefs, runStore: runStore, watch: watch);
@@ -315,7 +321,7 @@ void main() {
 
   /// START → countdown → recording, then [ticks] further recorder snapshots.
   Future<void> startRecording(WidgetTester tester, {int ticks = 4}) async {
-    await tester.tap(find.text('START'));
+    await tester.tap(find.byKey(const ValueKey('run-idle-start')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     for (var i = 0; i < 3; i++) {
@@ -678,4 +684,45 @@ void main() {
       expect(block.contains('_guidedCueSec = nowSec;'), isTrue);
     });
   });
+
+  // Issue #1374 TO-6: the recorder's live page at the worst case in every
+  // locale, recording with a fix. The map's tile fetches fail without a
+  // network here, so only a layout overflow fails the run.
+  group('RunScreen — the live page at the worst case', () {
+    worstCaseTestWidgets('The recorder live page', layoutOnly: true,
+        (tester, locale) async {
+      await pumpRunScreen(tester, locale: locale);
+      expectNoLayoutOverflow(tester, 'idle');
+      await startRecording(tester);
+      expectNoLayoutOverflow(tester, 'recording');
+    });
+  });
+
+  // #1374 A11Y-11: the 3-2-1 was never announced, and the "Tap to cancel"
+  // hint was white at 0.7 straight on the scrim, about 2.5:1 over a light map.
+  group('RunScreen — the start countdown', () {
+    testWidgets('announces once that the run is starting and how to cancel',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      final spoken = tester.takeAnnouncements().map((a) => a.message).toList();
+      expect(spoken, ['Starting in 3 seconds. Tap to cancel.']);
+      final hint = find.byKey(const Key('runCountdownCancelHint'));
+      expect(hint, findsOneWidget);
+      expect(tester.widget<StatusPill>(hint).foreground, Colors.white);
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      expect(
+        tester.takeAnnouncements().where((a) => a.message.startsWith('Starting in')),
+        isEmpty,
+        reason: 'the countdown is announced once, not every second',
+      );
+    });
+  });
 }
+

@@ -8,7 +8,8 @@ import { acceptCookieConsent } from '../fixtures/helpers';
 /**
  * Dashboard overview → period-summary drilldown journey.
  *
- * This walks the arc a runner takes from the /dashboard overview into a
+ * This walks the arc a runner takes from /dashboard (Today) through the
+ * progress summary card to the /dashboard/progress overview, then into a
  * PeriodSummary drilldown and asserts the COMPUTED stats — not just that
  * the modal mounts. It's the genuinely-uncovered slice the existing specs
  * leave open:
@@ -167,7 +168,11 @@ test.describe('dashboard drilldown journey', () => {
 		try {
 			// ── Phase 1: overview reflects the plant ───────────────────
 			await test.step('dashboard overview: week lead + all-time stats + Recent Runs', async () => {
+				// Today's progress summary card is the way into Progress, where
+				// the week lead and the stat grid live.
 				await page.goto('/dashboard');
+				await page.getByTestId('today-progress-summary').click();
+				await expect(page).toHaveURL(/\/dashboard\/progress$/);
 
 				// The week lead's value = sum of this week's run distances.
 				const lead = page.getByTestId('dash-week-lead-distance');
@@ -287,7 +292,7 @@ test.describe('dashboard drilldown journey', () => {
 
 				// Page mounts PeriodSummary in 'week' mode. The kicker confirms
 				// the route resolved type=week.
-				await expect(page.locator('.kicker')).toHaveText('Weekly summary', {
+				await expect(page.getByTestId('page-header-kicker')).toHaveText('Weekly summary', {
 					timeout: 10_000,
 				});
 				await expect(page.locator('.type-toggle .toggle-btn.active')).toHaveText(

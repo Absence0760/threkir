@@ -2,7 +2,12 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        SectionHeader;
 
 import '../auth_error.dart';
 import '../column_limits.dart';
@@ -405,8 +410,8 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final scaffold = Scaffold(
-      appBar: AppBar(title: Text(l10n.bodyMetricsTitle)),
+    final scaffold = PushedPage(
+      title: l10n.bodyMetricsTitle,
       body: _loading
           ? ListSkeleton(
               label: l10n.commonLoading,
@@ -415,10 +420,11 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
               hasLeading: false,
             )
           : _loadFailed
-          ? ErrorState(message: l10n.bodyMetricsLoadError, onRetry: _retryLoad)
+          ? AppErrorState(message: l10n.bodyMetricsLoadError, onRetry: _retryLoad)
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
+                PageHeader(title: l10n.bodyMetricsTitle),
                 SwitchListTile(
                   title: Text(l10n.bodyMetricsConsentTitle),
                   subtitle: Text(l10n.bodyMetricsConsentSubtitle),
@@ -506,14 +512,8 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
                 const Divider(height: 24),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      l10n.bodyMetricsNutritionHeading,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
+                  child: SectionHeader.title(
+                    label: l10n.bodyMetricsNutritionHeading,
                   ),
                 ),
                 Padding(

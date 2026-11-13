@@ -39,6 +39,7 @@ Future<String?> showEventFormSheet(
     context,
     title: AppLocalizations.of(context).eventFormTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (_) => _EventForm(
         key: formKey,
         social: social,
@@ -170,6 +171,9 @@ class _EventFormState extends State<_EventForm> {
         _salesClose.text,
         _refundPolicy,
       ].join('\u0000');
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _busy;
 
   bool get isDirty => _snapshot() != _initialSnapshot;
 
@@ -392,8 +396,12 @@ class _EventFormState extends State<_EventForm> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final athletic = isAthleticEventCategory(_category);
-    // Heading lives in the host AppBar (showFullScreenForm).
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.eventFormCreate,
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
             Text(l10n.eventEditorCategory, style: theme.textTheme.labelLarge),
             const SizedBox(height: 4),
@@ -704,28 +712,6 @@ class _EventFormState extends State<_EventForm> {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              spacing: 8,
-              children: [
-                TextButton(
-                  onPressed: _busy ? null : () => Navigator.maybePop(context),
-                  child: Text(l10n.eventFormCancel),
-                ),
-                FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.eventFormCreate),
-                ),
-              ],
-            ),
           ],
         );
   }

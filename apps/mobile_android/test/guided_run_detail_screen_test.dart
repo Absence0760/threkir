@@ -9,6 +9,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/l10n/gen/app_localizations_en.dart';
 import '../lib/main.dart' show pendingArmGuidedRun;
 import '../lib/screens/guided_runs_screen.dart';
+import 'worst_case_layout.dart';
 
 final AppLocalizations _l10n = AppLocalizationsEn();
 
@@ -42,6 +43,16 @@ class FakeAudioCues implements AudioCues {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  worstCaseTestWidgets('the cue cards', (tester, locale) async {
+    final run = guidedRunLibrary(lookupAppLocalizations(locale)).first;
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: GuidedRunDetailScreen(run: run, audioCues: FakeAudioCues()),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Guided run');
+  });
+
   testWidgets('GuidedRunDetailScreen renders the title + subtitle + description',
       (tester) async {
     final run = guidedRunLibrary(_l10n).first;
@@ -53,7 +64,7 @@ void main() {
     expect(find.text(run.description), findsOneWidget);
   });
 
-  testWidgets('GuidedRunDetailScreen renders one ListTile per cue', (tester) async {
+  testWidgets('GuidedRunDetailScreen renders one card per cue', (tester) async {
     // Use a small fixture so every cue fits in the viewport — the
     // library's first run has 8 cues which overflows the test surface.
     const fixture = GuidedRun(

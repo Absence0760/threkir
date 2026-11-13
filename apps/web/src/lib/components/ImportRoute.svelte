@@ -230,9 +230,7 @@
 						{saving
 							? m('importRoute.saving')
 							: m(
-									selected.filter(Boolean).length === 1
-										? 'importRoute.importCountOne'
-										: 'importRoute.importCountMany',
+									'importRoute.importCount',
 									{ n: selected.filter(Boolean).length },
 								)}
 					</button>

@@ -8,7 +8,7 @@ Live execution loop for running a `plan_workouts` row inside the existing `RunRe
 
 ## Product contract
 
-The user opens a planned workout (from `todays_workout_card` or `workout_detail_screen`) and taps **Start workout**. They get the familiar run screen plus:
+The user opens a planned workout (from `todays_workout_card` or `workout_detail_screen`) and taps **Start workout**. On mobile that starts the run: the recorder loads the workout, then runs its usual permission checks and the cancellable 3-2-1, so the runner is armed before the countdown ends (`start_planned_workout.dart`, issue #1374). They get the familiar run screen plus:
 
 - A **top band** on the map showing the current step: `Rep 3/6 · 400 m @ 4:00/km` with a thin progress bar for the step and a green / amber / red pace-adherence pip.
 - **Automatic step advance** when the step's target distance is hit. The band slides to the next step and the recorder keeps running — same GPS, same clock, same distance total.
@@ -244,8 +244,8 @@ Net new:
 Modified:
 - `packages/run_recorder/lib/run_recorder.dart` — re-export the runner + events
 - `apps/mobile_android/lib/screens/run_screen.dart` — preload / snapshot / save wiring, route-argument plumbing for the incoming `PlanWorkoutRow`
-- `apps/mobile_android/lib/screens/workout_detail_screen.dart` — primary **Start workout** button navigates to the run screen with the workout attached
-- `apps/mobile_android/lib/widgets/todays_workout_card.dart` — an explicit **Start workout** button loads the runner; tapping the rest of the card opens the workout detail (the Start / Details sheet it used to open was removed, decisions § 2077)
+- `apps/mobile_android/lib/screens/workout_detail_screen.dart` — primary **Start workout** button returns to the shell and starts the run with the workout attached (`startPlannedWorkout`), wherever the page was opened from
+- `apps/mobile_android/lib/widgets/todays_workout_card.dart` — an explicit **Start workout** button loads the runner and starts the countdown; tapping the rest of the card opens the workout detail (the Start / Details sheet it used to open was removed, decisions § 2077)
 - `apps/mobile_android/lib/audio_cues.dart` — new cue kinds
 - `apps/mobile_android/lib/screens/run_detail_screen.dart` — "Workout" section when `plan_workout_id` is set
 - `apps/web/src/routes/runs/[id]/+page.svelte` — same section on the web run detail

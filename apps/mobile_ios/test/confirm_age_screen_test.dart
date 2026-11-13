@@ -82,6 +82,20 @@ void main() {
     expect(find.byType(ConfirmAgeScreen), findsOneWidget);
   });
 
+  // Issue #1374 NS-15: Back on the gate gave no response at all.
+  testWidgets('Back on the gate says how to go on and offers Sign out',
+      (tester) async {
+    final api = _GateApi();
+    await _pumpGate(tester, api);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    expect(find.text(l10n.confirmAgeBackHint), findsOneWidget);
+    expect(find.text(l10n.settingsAccountSignOut), findsNWidgets(2),
+        reason: 'the page\'s own button and the banner\'s action');
+    await tester.pump(const Duration(seconds: 7));
+  });
+
   testWidgets('signing out leaves the gate without recording anything',
       (tester) async {
     final api = _GateApi();

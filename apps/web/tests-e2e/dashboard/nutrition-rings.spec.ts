@@ -41,10 +41,10 @@ test.describe('/dashboard — today nutrition rings', () => {
 		try {
 			// Absent: no food logged today → the rings card never renders.
 			await page.goto('/dashboard');
-			// Wait for the dashboard to finish loading (the source-filter row only
+			// Wait for Today to finish loading (the progress summary card only
 			// renders post-load) before asserting absence, so we don't pass on a
 			// still-loading skeleton. loadTodaysNutrition runs after that paint.
-			await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible({
+			await expect(page.getByTestId('today-progress-summary')).toBeVisible({
 				timeout: 15_000,
 			});
 			await expect(page.getByTestId('dash-nutrition-rings')).toHaveCount(0);

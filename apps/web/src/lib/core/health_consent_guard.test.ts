@@ -14,7 +14,7 @@ import { resolve } from 'node:path';
 // record itself, and gating the editor is what produced § 718's deadlock (a
 // runner whose consent lapsed could neither save nor clear their own date).
 const HEALTH_USE_SURFACES = [
-	'../../routes/dashboard/+page.svelte',
+	'../../routes/dashboard/DashboardView.svelte',
 	'../../routes/nutrition/+page.svelte',
 	'../../routes/nutrition/targets/+page.svelte',
 	'../training/plan_calibration.ts',

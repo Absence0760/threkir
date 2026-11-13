@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:core_models/core_models.dart' show parseIsoStrictValue;
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
+import 'package:ui_kit/ui_kit.dart' show AppSpace, PageHeader, PushedPage;
 
 import '../gate_crossing.dart';
 import '../line_calibration.dart';
@@ -226,12 +227,17 @@ class _LineCalibrationScreenState extends State<LineCalibrationScreen> {
     if (!widget.available) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final capture = _capture;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Line calibration (debug)')),
+    const title = 'Line calibration (debug)';
+    return PushedPage(
+      title: title,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            const PageHeader(
+              title: title,
+              padding: EdgeInsets.only(bottom: AppSpace.sm),
+            ),
             Text(
               'Start a capture, record a run on the Run tab through the line, '
               'then stop the capture here. Video-time each real crossing '

@@ -316,20 +316,27 @@ test.describe('every swept filter and preference control renders its explanation
 
 	test('/segments — the catalogue filters', async ({ page }) => {
 		await page.goto('/segments');
-		const filters = page.locator('.filters');
-		await expect(filters).toBeVisible({ timeout: 15_000 });
-		await assertEveryControlExplained(filters, '/segments');
+		// The search stays on the bar; the rest open in the Filters sheet with
+		// their explanation beside them (#1374).
+		const bar = page.locator('.catalogue-filter-bar');
+		await expect(bar).toBeVisible({ timeout: 15_000 });
+		await assertEveryControlExplained(bar, '/segments (bar)');
+		await page.getByTestId('segment-catalogue-filters-toggle').click();
+		const sheet = page.getByTestId('segment-catalogue-filters-panel');
+		await expect(sheet).toBeVisible();
+		await assertEveryControlExplained(sheet, '/segments (Filters sheet)');
 	});
 
 	test('/races — the calendar filters and the paste-a-result form', async ({ page }) => {
 		await page.goto('/races');
-		const filters = page.locator('.filters');
-		await expect(filters).toBeVisible({ timeout: 15_000 });
-		// Every hint but the search field's lives in the Filters panel; open it
-		// so the pass reads explanations a sighted reader can actually see.
-		await page.getByTestId('races-filters-toggle').click();
-		await expect(page.getByTestId('races-filters-panel')).toBeVisible();
-		await assertEveryControlExplained(filters, '/races (filters)');
+		// Every filter hint lives in the Filters sheet beside its control
+		// (#1374); open it so the pass reads explanations a sighted reader can
+		// actually see.
+		await page.getByTestId('races-filters-toggle').click({ timeout: 15_000 });
+		const sheet = page.getByTestId('races-filters-panel');
+		await expect(sheet).toBeVisible();
+		await assertEveryControlExplained(sheet, '/races (filters)');
+		await page.getByTestId('races-filters-done').click();
 
 		// The paste form lives in the per-race import modal, which only opens
 		// from a listing, so the filter pass above cannot reach it.

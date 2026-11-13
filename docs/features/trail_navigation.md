@@ -155,8 +155,10 @@ real translations, then `flutter gen-l10n` + mirror `lib/l10n/gen/`. Representat
 - **Privacy (must be fail-closed):** condition anchors can leak location, so the
   read path MUST go through `route_conditions_for_viewer` (SECURITY DEFINER,
   privacy-zone-redacting for non-owners) — the same §33 contract as
-  `route_markers_for_viewer` / `clip_track_for_user`. `fetchRouteConditions`
-  fails closed to `[]` on RPC error. This is a privacy-boundary surface; flag it
+  `route_markers_for_viewer` / `clip_track_for_user`. On an RPC error no row
+  reaches the panel: mobile's `fetchRouteConditions` throws and web reads
+  `fetchRouteConditionsWithError`, and both panels show an error with Retry,
+  never "No condition reports yet" (decisions § 2483). This is a privacy-boundary surface; flag it
   for the privacy reviewer at PR time (a `/audit/privacy-zones` run) — but write
   the whole code path now behind the fail-closed RPC; the review is a pre-deploy
   gate, not a reason to stub (CLAUDE.md "Compliance sign-offs gate prod, not code").

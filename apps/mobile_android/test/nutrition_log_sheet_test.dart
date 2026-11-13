@@ -10,6 +10,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_food_store.dart';
 import '../lib/widgets/nutrition_log_sheet.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 /// A temp-dir-backed store plus a `persisted` probe.
 ///
@@ -186,6 +187,34 @@ void main() {
       // An unfilled extended field stays null, never a phantom 0.
       expect(e['sugar_g'], isNull);
       expect(e['cholesterol_mg'], isNull);
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  // Issue #1374: a search result is a ListCard.row with its source tag.
+  worstCaseTestWidgets('Food search results', (tester, locale) async {
+    final f = await _store('search_worst_');
+    try {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: Scaffold(
+          body: NutritionLogSheet(
+            store: f.store,
+            fetcher: (u) async => jsonEncode(_sample),
+          ),
+        ),
+      ));
+      await tester.pump();
+      final search = find.widgetWithText(
+          TextField, l10nFor(locale).nutritionSearchHint);
+      await tester.ensureVisible(search);
+      await tester.enterText(search, 'oats');
+      await tester.pump(const Duration(milliseconds: 400));
+      await pumpUntil(tester, () => tester.any(find.text('Rolled Oats')),
+          describe: 'the Open Food Facts result to render');
+      await walkScrollable(
+          tester, find.byType(Scrollable).first, 'Food search results');
     } finally {
       f.dir.deleteSync(recursive: true);
     }

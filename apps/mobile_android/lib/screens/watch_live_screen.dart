@@ -3,7 +3,11 @@ import 'dart:async';
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppSemanticColors,
+        PageHeader,
+        PushedPage;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -365,12 +369,17 @@ class _WatchLiveScreenState extends State<WatchLiveScreen> {
     final theme = Theme.of(context);
     final state = _state;
     final runId = _forwarder?.runId;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.watchLiveTitle)),
+    return PushedPage(
+      title: l10n.watchLiveTitle,
       body: SafeArea(
+        top: false,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            PageHeader(
+              title: l10n.watchLiveTitle,
+              padding: const EdgeInsets.only(bottom: 12),
+            ),
             Text(l10n.watchLiveIntro, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 20),
             Row(

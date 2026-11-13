@@ -10,15 +10,18 @@
  * `racePlanHref` is web-only: the phone opens `PlanNewScreen` with the same
  * fields as constructor arguments.
  *
- * The description is English, and in the runner's own distance unit: it
+ * The description is in the reader's language and their own distance unit: it
  * prefills a box the runner reads and edits before it goes to the plan
- * extractor (`/api/coach/plan-request`), which reads either unit. It carries
+ * extractor (`/api/coach/plan-request`), which reads any language and either
+ * unit. The sentences come from the catalogue (`racePlan.describe*`); this
+ * module only chooses, orders and caps them. It carries
  * only what the AI plan consent bullet names — the goal race, a target time
  * and a recent time. Weekly volume and the longest recent run are
  * deliberately left out: the bullet does not cover them (decisions § 2154,
  * units amended by § 2292).
  */
 
+import type { MessageKey } from '../i18n/messages';
 import { racePlanPreset } from './race_plan_preset';
 import { seasonRecoveryDays } from './season_plan';
 
@@ -42,6 +45,7 @@ export interface RacePlanRace {
 export interface RacePlanCourse {
 	ascentM?: number | null;
 	descentM?: number | null;
+	/// The surface as the reader's catalogue names it (`routeSurfaceLabel`).
 	surface?: string | null;
 }
 
@@ -148,13 +152,22 @@ export function racePlanGoalTimeS(
 	return null;
 }
 
-/// A distance to one decimal, without a trailing `.0`.
-function distanceText(metres: number, unit: RacePlanUnit): string {
+/// A distance to one decimal, without a trailing zero, in the reader's decimal
+/// mark, with its unit.
+function distanceText(metres: number, unit: RacePlanUnit, decimal: string): string {
 	const tenths = Math.round(unit === 'mi' ? (metres * 10) / METRES_PER_MILE : metres / 100);
 	const whole = Math.trunc(tenths / 10);
 	const frac = tenths % 10;
-	return frac === 0 ? `${whole}` : `${whole}.${frac}`;
+	return `${frac === 0 ? `${whole}` : `${whole}${decimal}${frac}`} ${unit}`;
 }
+
+/// The locale's decimal mark ("." / ","), from `Intl` rather than a table.
+function decimalMark(locale: string): string {
+	return new Intl.NumberFormat(locale).formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.';
+}
+
+/// The catalogue the description's sentences come from.
+export type RacePlanTranslate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
 function clockText(totalS: number): string {
 	const s = Math.round(totalS);
@@ -190,31 +203,42 @@ export function racePlanDescribe(
 		course?: RacePlanCourse | null;
 		/// The runner's distance unit; elevation follows it (m / ft).
 		unit?: RacePlanUnit;
+		/// The reader's catalogue and locale tag.
+		t: RacePlanTranslate;
+		locale: string;
 	},
 	maxChars: number = RACE_PLAN_DESCRIBE_MAX,
 ): string {
+	const { t } = input;
 	const unit: RacePlanUnit = input.unit === 'mi' ? 'mi' : 'km';
+	const decimal = decimalMark(input.locale);
 	const climb = (m: number) => (unit === 'mi' ? `${Math.round(m * FEET_PER_METRE)} ft` : `${Math.round(m)} m`);
 	const name = collapse(input.race.name).slice(0, RACE_PLAN_DESCRIBE_NAME_MAX).trim();
-	const sentences: string[] = [`Race: ${name} on ${input.race.raceDateIso}.`];
-	if (positive(input.race.distanceM)) sentences.push(`Distance: ${distanceText(input.race.distanceM, unit)} ${unit}.`);
-	if (positive(input.goalTimeS)) sentences.push(`Goal time: ${clockText(input.goalTimeS)}.`);
+	const sentences: string[] = [t('racePlan.describeRace', { name, date: input.race.raceDateIso })];
+	if (positive(input.race.distanceM)) {
+		sentences.push(t('racePlan.describeDistance', { distance: distanceText(input.race.distanceM, unit, decimal) }));
+	}
+	if (positive(input.goalTimeS)) sentences.push(t('racePlan.describeGoal', { time: clockText(input.goalTimeS) }));
 	const e = input.recentEffort;
 	if (e && positive(e.distanceM) && positive(e.durationS) && Number.isFinite(e.ageDays)) {
-		const days = Math.max(0, Math.round(e.ageDays));
-		const when = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
 		sentences.push(
-			`Recent effort: ${distanceText(e.distanceM, unit)} ${unit} in ${clockText(e.durationS)}, ${when}.`,
+			t('racePlan.describeRecent', {
+				distance: distanceText(e.distanceM, unit, decimal),
+				time: clockText(e.durationS),
+				days: Math.max(0, Math.round(e.ageDays)),
+			}),
 		);
 	}
 	const c = input.course;
 	if (c) {
 		const parts: string[] = [];
-		if (positive(c.ascentM)) parts.push(`${climb(c.ascentM)} ascent`);
-		if (positive(c.descentM)) parts.push(`${climb(c.descentM)} descent`);
+		if (positive(c.ascentM)) parts.push(t('racePlan.describeAscent', { climb: climb(c.ascentM) }));
+		if (positive(c.descentM)) parts.push(t('racePlan.describeDescent', { climb: climb(c.descentM) }));
 		const surface = c.surface ? collapse(c.surface).slice(0, RACE_PLAN_SURFACE_MAX).trim() : '';
-		if (surface) parts.push(`${surface} surface`);
-		if (parts.length > 0) sentences.push(`Course: ${parts.join(', ')}.`);
+		if (surface) parts.push(t('racePlan.describeSurface', { surface }));
+		if (parts.length > 0) {
+			sentences.push(t('racePlan.describeCourse', { parts: parts.join(t('racePlan.describeListSeparator')) }));
+		}
 	}
 	let out = sentences[0].slice(0, maxChars);
 	for (const s of sentences.slice(1)) {

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
-	import { RECAP_SITE, recapActiveMonths } from '#lib/share/recap_card_text.ts';
+	import { RECAP_SITE, recapActiveMonths, recapBadgeText } from '#lib/share/recap_card_text.ts';
 	import { formatHoursMinutes } from '#lib/format/time.ts';
 	import type { RecapSlideFormat } from '#lib/share/recap_slideshow.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
@@ -78,6 +78,8 @@
 			monthName: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'long' }),
 			monthLetter: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'narrow' }),
 			count: (n) => n.toLocaleString(locale),
+			unit: getUnit(),
+			locale,
 			url: RECAP_SITE,
 		};
 	}
@@ -150,7 +152,7 @@
 	<p class="kicker">{kicker}</p>
 	<h1 class="bignum">{fmtKm(recap.totalDistanceM)}</h1>
 	<p class="subhead">
-		{t(recap.runCount === 1 ? 'recap.acrossRunsOne' : 'recap.acrossRunsMany', { n: recap.runCount })}
+		{t('recap.acrossRuns', { n: recap.runCount })}
 	</p>
 	<div class="hero-meta">
 		<span class="hero-meta-item">
@@ -167,9 +169,7 @@
 			<span class="hero-meta-item">
 				<span class="material-symbols">calendar_month</span>
 				{t(
-					recapActiveMonths(recap) === 1
-						? 'recap.activeInMonthsOne'
-						: 'recap.activeInMonthsMany',
+					'recap.activeInMonths',
 					{ n: recapActiveMonths(recap) }
 				)}
 			</span>
@@ -321,10 +321,11 @@
 		</header>
 		<div class="badge-grid">
 			{#each recap.badges as b (b.id)}
+				{@const text = recapBadgeText(b, t, getUnit(), activeFormatLocale())}
 				<div class="badge">
 					<span class="badge-icon material-symbols" aria-hidden="true">{b.icon}</span>
-					<span class="badge-label">{b.label}</span>
-					<span class="badge-detail">{b.detail}</span>
+					<span class="badge-label">{text.label}</span>
+					{#if text.detail}<span class="badge-detail">{text.detail}</span>{/if}
 				</div>
 			{/each}
 		</div>
@@ -345,7 +346,7 @@
 				{@const pct = (m.distanceM / max) * 100}
 				<div
 					class="bar-col"
-					title={t(m.runCount === 1 ? 'recap.barTitleOne' : 'recap.barTitleMany', {
+					title={t('recap.barTitle', {
 						distance: fmtKm(m.distanceM),
 						n: m.runCount
 					})}

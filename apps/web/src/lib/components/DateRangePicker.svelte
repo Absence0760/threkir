@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { formatISO } from '#lib/training/training.ts';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import Modal from './Modal.svelte';
 
 	interface Props {
@@ -180,16 +180,15 @@
 		onapply(toIso(pendingFrom), toIso(pendingTo));
 	}
 
+	// The reader's locale, not hard-coded English month and weekday names.
 	function formatChip(d: Date): string {
-		const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-		const months = [
-			'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-			'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-		];
-		// Date.getDay() returns 0=Sun..6=Sat; remap to 0=Mon..6=Sun.
-		const dowIdx = (d.getDay() + 6) % 7;
-		const base = `${dows[dowIdx]}, ${months[d.getMonth()]} ${d.getDate()}`;
-		return d.getFullYear() === today.getFullYear() ? base : `${base}, ${d.getFullYear()}`;
+		const sameYear = d.getFullYear() === today.getFullYear();
+		return new Intl.DateTimeFormat(currentLocale(), {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			...(sameYear ? {} : { year: 'numeric' }),
+		}).format(d);
 	}
 
 	let canApply = $derived(pendingFrom !== null && pendingTo !== null);
@@ -312,7 +311,13 @@
 						class:in-range={inRange}
 						class:today={isToday && !isStart && !isEnd}
 						data-day={day}
-						aria-label={formatChip(date)}
+						aria-label={isStart
+							? m('dateRange.startDay', { date: formatChip(date) })
+							: isEnd
+								? m('dateRange.endDay', { date: formatChip(date) })
+								: formatChip(date)}
+						aria-pressed={isStart || isEnd || inRange}
+						aria-current={isToday ? 'date' : undefined}
 					>
 						<span class="day">{day}</span>
 					</button>

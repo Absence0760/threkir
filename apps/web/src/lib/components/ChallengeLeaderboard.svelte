@@ -63,9 +63,7 @@
 			>
 			{#if standing.tiedWith > 0}
 				<span class="standing-gap">
-					{standing.tiedWith === 1
-						? m('challenges.standingTiedOne')
-						: m('challenges.standingTiedMany', { n: standing.tiedWith })}
+					{m('challenges.standingTied', { n: standing.tiedWith })}
 				</span>
 			{/if}
 			{#if standing.chasing}

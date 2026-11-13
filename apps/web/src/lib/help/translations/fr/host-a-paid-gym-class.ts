@@ -80,7 +80,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Les participants s\'inscrivent et paient sur le web, voient **Vous êtes inscrit** et peuvent annuler selon votre [[guide:refund-policies|politique de remboursement]].',
-						'Quand toutes les places sont prises, le cours affiche **Complet** et propose **Rejoindre la liste d’attente** : voir [[guide:waitlist-and-claim-window|Listes d\'attente et délai de 12 heures pour réclamer une place]].',
+						'Quand toutes les places sont prises, le cours affiche **Complet** et propose **Rejoindre la liste d\'attente** : voir [[guide:waitlist-and-claim-window|Listes d\'attente et délai de 12 heures pour réclamer une place]].',
 						'Notez qui est venu : [[guide:take-attendance|Faire l\'appel]].',
 						'Annuler une séance rembourse tous ceux qui ont payé : [[guide:cancel-a-class|Annuler un cours]].',
 					],

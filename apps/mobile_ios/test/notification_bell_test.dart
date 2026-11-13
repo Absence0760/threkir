@@ -2,8 +2,8 @@
 // dashboard action toolbar. The actual notification inbox lives on
 // the ProfileScreen Notifications tab; this bell is the entry point.
 //
-// The full chain — fetchUnreadNotificationCount → setState → red-dot
-// render — is exercised here against a fake ApiClient that lets each
+// The full chain — fetchUnreadNotificationCount → setState → count
+// badge render — is exercised here against a fake ApiClient that lets each
 // test plant a specific unread count.
 
 import 'package:api_client/api_client.dart';
@@ -111,58 +111,41 @@ void main() {
       expect(api.fetchCalls, 1);
     });
 
-    testWidgets('badge is a colour-only dot, never a numeric count',
-        (tester) async {
-      // The dashboard surface stays a glance — the actual number lives
-      // on the Notifications tab. A regression that rendered "12" in the
-      // toolbar would clutter it.
-      final api = _FakeApiClient()..unread = 12;
+    // #1374 A11Y-5. The unread state was a 10 dp red dot with the static
+    // "Notifications" tooltip: invisible to a screen reader and a dark speck
+    // to a colour-blind reader. It is a count badge now, and the button's
+    // name says how many, as web's bell does.
+    Finder badge() => find.byType(Badge);
+
+    testWidgets('unread notifications show their count and name it', (tester) async {
+      final api = _FakeApiClient()..unread = 3;
       await _pump(tester, api);
-      expect(find.text('12'), findsNothing);
+      expect(tester.widget<Badge>(badge()).isLabelVisible, isTrue);
+      expect(find.text('3'), findsOneWidget);
+      expect(find.byTooltip('Notifications, 3 unread'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_active), findsOneWidget,
+          reason: 'the glyph changes too, so the state is not colour alone');
     });
 
-    testWidgets('renders the red dot when unread > 0', (tester) async {
-      // The bell uses a colour-only dot (not a count text) so it
-      // stays minimal in the action toolbar. The full count surfaces
-      // on the Notifications tab itself.
-      final api = _FakeApiClient()..unread = 5;
-      await _pump(tester, api);
-      // The dot is the only Container with shape: BoxShape.circle
-      // mounted inside the bell.
-      final dot = find.byWidgetPredicate((w) {
-        if (w is! Container) return false;
-        final dec = w.decoration;
-        return dec is BoxDecoration && dec.shape == BoxShape.circle;
-      });
-      expect(dot, findsOneWidget);
-    });
-
-    testWidgets('renders the dot at the boundary unread == 1', (tester) async {
-      // Boundary pin — `_unread > 0` must include exactly-one, not just
-      // "many". An off-by-one (`>= 1` vs a stray `> 1`) would hide the
-      // dot for a single unread notification.
+    testWidgets('one unread is singular and still counted', (tester) async {
       final api = _FakeApiClient()..unread = 1;
       await _pump(tester, api);
-      final dot = find.byWidgetPredicate((w) {
-        if (w is! Container) return false;
-        final dec = w.decoration;
-        return dec is BoxDecoration && dec.shape == BoxShape.circle;
-      });
-      expect(dot, findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.byTooltip('Notifications, 1 unread'), findsOneWidget);
     });
 
-    testWidgets('does NOT render the dot when unread == 0', (tester) async {
-      // Negative-shape pin — a regression that always rendered the
-      // dot would mislead users into thinking they have unread
-      // notifications.
+    testWidgets('more than nine reads 9+, as web does', (tester) async {
+      final api = _FakeApiClient()..unread = 12;
+      await _pump(tester, api);
+      expect(find.text('9+'), findsOneWidget);
+      expect(find.byTooltip('Notifications, 12 unread'), findsOneWidget);
+    });
+
+    testWidgets('no unread shows no badge and the plain name', (tester) async {
       final api = _FakeApiClient()..unread = 0;
       await _pump(tester, api);
-      final dot = find.byWidgetPredicate((w) {
-        if (w is! Container) return false;
-        final dec = w.decoration;
-        return dec is BoxDecoration && dec.shape == BoxShape.circle;
-      });
-      expect(dot, findsNothing);
+      expect(tester.widget<Badge>(badge()).isLabelVisible, isFalse);
+      expect(find.byTooltip('Notifications'), findsOneWidget);
     });
 
     testWidgets('swallows fetch errors — does not crash the dashboard',
@@ -174,15 +157,9 @@ void main() {
       final api = _FakeApiClient()
         ..errorToThrow = Exception('Network down');
       await _pump(tester, api);
-      // Bell still renders.
+      // Bell still renders, with no badge when the fetch failed.
       expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
-      // No badge dot when fetch failed.
-      final dot = find.byWidgetPredicate((w) {
-        if (w is! Container) return false;
-        final dec = w.decoration;
-        return dec is BoxDecoration && dec.shape == BoxShape.circle;
-      });
-      expect(dot, findsNothing);
+      expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
     });
 
     testWidgets('tapping the bell lands on the Notifications tab',

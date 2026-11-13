@@ -4,45 +4,45 @@ import { loadSupabaseEnv } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 
 /**
- * /routes — Heatmap tab (popular-route discovery overlay).
+ * /routes/heatmap — the popular-route discovery map, Routes → Explore's
+ * map entry (it was a third /routes tab until issue #1374 made Routes
+ * Mine · Explore).
  *
  * Backed by the `heatmap_points_in_bbox` PostGIS RPC (migration
  * 20260828_001) which returns lat/lng of densified points from every
  * intersecting public route. The web mounts a MapLibre canvas with a
- * `heatmap` paint layer in `RouteHeatmap.svelte`; the tab is wired
- * into the `tab = 'heatmap'` branch of /routes.
+ * `heatmap` paint layer in `RouteHeatmap.svelte`.
  *
  * Real MapTiler tile rendering needs a key; these tests pin the
  * *control surface* + the underlying RPC plumbing without driving
  * the canvas:
  *
- *   - Tab is reachable and switches state.
- *   - URL query `?tab=heatmap` deep-links onto the tab.
+ *   - Explore's map link reaches it.
+ *   - URL query `?tab=heatmap` still deep-links onto it.
  *   - The PostGIS RPC returns a non-error response (the migration
  *     fix from earlier this session — search_path = public,
  *     extensions — is the load-bearing precondition).
  *   - The component mounts the map container.
  */
 
-test.describe('/routes — Heatmap tab', () => {
+test.describe('/routes — heatmap', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('Heatmap tab button is reachable from /routes', async ({ page }) => {
+	test('the heatmap leads Explore, not Mine', async ({ page }) => {
 		await page.goto('/routes');
-		const heatmapTab = page.getByRole('tab', { name: 'Heatmap', exact: true });
-		await expect(heatmapTab).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('routes-view-nav')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('routes-explore-map')).toHaveCount(0);
+		await page.goto('/routes?tab=explore');
+		await expect(page.getByTestId('routes-explore-map')).toBeVisible({ timeout: 10_000 });
 	});
 
-	test('clicking Heatmap navigates to the standalone /routes/heatmap page',
+	test('Explore\'s Heatmap link opens the standalone /routes/heatmap page',
 		async ({ page }) => {
-			// May 2026 layout fix: Heatmap moved to its own route so
-			// the MapLibre canvas can own the layout column without
-			// fighting the routes-page flex chain. Tab click now
-			// navigates (it used to flip in-place).
-			await page.goto('/routes');
-			const mineTab = page.getByRole('tab', { name: 'My routes', exact: true });
-			await expect(mineTab).toHaveClass(/active/);
-			await page.getByRole('tab', { name: 'Heatmap', exact: true }).click();
+			// May 2026 layout fix: the heatmap has its own route so the
+			// MapLibre canvas can own the layout column without fighting the
+			// routes-page flex chain.
+			await page.goto('/routes?tab=explore');
+			await page.getByTestId('routes-explore-map').click();
 			await page.waitForURL(/\/routes\/heatmap$/, { timeout: 10_000 });
 			await expect(page.locator('.maplibregl-map')).toBeVisible({
 				timeout: 15_000,
@@ -172,17 +172,22 @@ test.describe('/routes — Heatmap tab', () => {
 		expect(res.status).toBeLessThan(500);
 	});
 
-	test('My routes ↔ Explore tabs are mutually exclusive', async ({ page }) => {
-		// Tab state machine: My routes / Explore (Heatmap moved to
-		// its own route in the May 2026 layout fix). The .active CSS
-		// class drives the underline + colour. A regression in setTab
-		// that left two active simultaneously would visually confuse
-		// the page but not error — pin the count.
+	test('Mine ↔ Explore marks exactly one view as current', async ({ page }) => {
+		// The views are links (issue #1374) marked with aria-current: Mine
+		// with "page", Explore with "true" (its own Routes · Segments row
+		// carries "page"). A regression that marked both current would
+		// visually confuse the page but not error — pin the count both ways.
 		await page.goto('/routes');
-		await page.getByRole('tab', { name: 'Explore', exact: true }).click();
-		await expect(page.locator('button.tab.active')).toHaveCount(1);
-		await page.getByRole('tab', { name: 'My routes', exact: true }).click();
-		await expect(page.locator('button.tab.active')).toHaveCount(1);
+		const nav = page.getByTestId('routes-view-nav');
+		const current = nav.locator('[aria-current]');
+		await nav.getByRole('link', { name: 'Explore', exact: true }).click();
+		await expect(page).toHaveURL(/\/routes\?tab=explore$/);
+		await expect(current).toHaveCount(1);
+		await expect(current).toHaveText('Explore');
+		await nav.getByRole('link', { name: 'Mine', exact: true }).click();
+		await expect(page).toHaveURL(/\/routes$/);
+		await expect(current).toHaveCount(1);
+		await expect(current).toHaveText('Mine');
 	});
 });
 

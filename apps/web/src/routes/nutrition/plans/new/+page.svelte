@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { goto } from '$app/navigation';
 	import { fetchMyNutritionAssignmentsWithError, followNutritionPlan } from '#lib/core/data.ts';
 	import { isoDateOf } from '#lib/nutrition/diary_day.ts';
@@ -29,13 +30,7 @@
 <svelte:head><title>{m('nutrition.plan.newTitle')} — Threkir</title></svelte:head>
 
 <div class="page">
-	<header class="page-header">
-		<a class="back-link" href="/nutrition">
-			<span class="material-symbols" aria-hidden="true">arrow_back</span>
-			{m('nutrition.plan.back')}
-		</a>
-		<h1>{m('nutrition.plan.newTitle')}</h1>
-	</header>
+	<PageHeader back={{ href: '/nutrition', label: m('nutrition.plan.back') }} title={m('nutrition.plan.newTitle')} />
 
 	<div class="editor-wrap">
 		<MealPlanEditor offerFollow onsaved={(p, f) => void onSaved(p, f)} oncancel={() => goto('/nutrition')} />
@@ -46,13 +41,6 @@
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 48rem;
-	}
-	.back-link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		color: var(--color-text-tertiary);
-		font-size: 0.9rem;
 	}
 	.editor-wrap {
 		margin-top: var(--space-md);

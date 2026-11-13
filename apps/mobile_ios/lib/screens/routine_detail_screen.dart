@@ -1,6 +1,10 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show AppBarAction, DetailHero, DetailMeta, DetailPage;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, ListCard, StatusPill, StatusPillSize;
 
 import '../fab_clearance.dart';
 import '../gym_prs.dart';
@@ -242,11 +246,15 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     }
   }
 
-  Future<void> _maybeSync() async {
+  /// Pushes the local change and answers whether row [id] reached the
+  /// server, waiting only briefly (issue #1374 FS-15).
+  Future<bool> _maybeSync(String id) async {
     final api = widget.api;
-    if (api == null || !_isOnline) return;
-    await widget.store.syncWithServer(api);
+    if (api == null) return true;
+    if (!_isOnline) return false;
+    final synced = await widget.store.syncRowBriefly(api, id);
     if (mounted && widget.store.hasPending) setState(() {});
+    return synced;
   }
 
   Future<void> _delete(StoredRoutine r) async {
@@ -273,9 +281,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         false;
     if (!ok) return;
     await widget.store.deleteLocal(r.id);
-    await _maybeSync();
+    final synced = await _maybeSync(r.id);
     if (mounted) {
-      showTopBanner(context, l10n.gymRoutineDeleted);
+      showTopBanner(context,
+          synced ? l10n.gymRoutineDeleted : l10n.commonDeletedOnPhone);
       Navigator.pop(context);
     }
   }
@@ -287,21 +296,18 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     final r = widget.store.byId(widget.routineId);
     final title = r?.title.trim();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          title == null || title.isEmpty ? l10n.gymRoutineTitle : title,
-        ),
-        actions: r == null
-            ? null
-            : [
-                IconButton(
-                  tooltip: l10n.gymRoutineDelete,
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _delete(r),
-                ),
-              ],
-      ),
+    return DetailPage(
+      title: title == null || title.isEmpty ? l10n.gymRoutineTitle : title,
+      moreTooltip: l10n.commonMore,
+      actions: [
+        if (r != null)
+          AppBarAction(
+            icon: const Icon(Icons.delete_outline),
+            label: l10n.gymRoutineDelete,
+            destructive: true,
+            onPressed: () => _delete(r),
+          ),
+      ],
       body: Column(
         children: [
           PendingSyncBanner(
@@ -353,15 +359,19 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
       padding: EdgeInsets.fromLTRB(
           16, 16, 16, fabScrollClearance(context)),
       children: [
-        Text(
-          l10n.gymRoutineExerciseCount(r.exerciseCount),
-          style: theme.textTheme.bodyMedium
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        DetailHero(
+          title: r.title.trim().isEmpty ? l10n.gymRoutineTitle : r.title.trim(),
+          padding: EdgeInsets.zero,
+          meta: [
+            DetailMeta(
+              icon: Icons.fitness_center,
+              text: l10n.gymRoutineExerciseCount(r.exerciseCount),
+            ),
+          ],
+          description: notes != null && notes.isNotEmpty
+              ? Text(notes, style: theme.textTheme.bodyMedium)
+              : null,
         ),
-        if (notes != null && notes.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(notes, style: theme.textTheme.bodyMedium),
-        ],
         if (r.clubId != null) ...[
           const SizedBox(height: 12),
           _clubTemplateBadge(theme, l10n),
@@ -383,11 +393,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     );
   }
 
-  Widget _historyErrorCard(ThemeData theme, AppLocalizations l10n) => Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Column(
+  Widget _historyErrorCard(ThemeData theme, AppLocalizations l10n) => ListCard(
+        margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+        dense: true,
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.gymRoutineHistoryLoadError,
@@ -402,29 +411,27 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               ),
             ],
           ),
-        ),
       );
 
   Widget _historyCard(
       RoutineHistory h, ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     final lastDone = l10n.gymRoutineHistoryLastDone(h.daysSinceLast ?? 0);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+            // Title and count share a line while they fit; the count drops
+            // under the title in a long translation at large text.
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
               children: [
-                Expanded(
-                  child: Text(l10n.gymRoutineHistoryTitle,
-                      style: theme.textTheme.titleSmall),
-                ),
-                const SizedBox(width: 8),
+                Text(l10n.gymRoutineHistoryTitle,
+                    style: theme.textTheme.titleSmall),
                 Text(
                   l10n.gymRecordsSessions(h.sessionCount),
                   style: theme.textTheme.bodySmall
@@ -454,30 +461,34 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     children: [
-                      Text(
-                        formatDateMed(DateTime.parse(s.startedAt), tag),
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          (s.title ?? '').trim().isEmpty
-                              ? l10n.gymUntitled
-                              : s.title!,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              formatDateMed(DateTime.parse(s.startedAt), tag),
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                            Text(
+                              (s.title ?? '').trim().isEmpty
+                                  ? l10n.gymUntitled
+                                  : s.title!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 8),
-                      _verdictChip(s.verdict, theme, l10n),
+                      Flexible(child: _verdictChip(s.verdict, theme, l10n)),
                     ],
                   ),
                 ),
               ),
           ],
         ),
-      ),
     );
   }
 
@@ -505,20 +516,14 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
           Colors.transparent,
         ),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-        border: v == RoutineSessionVerdict.ungraded
-            ? Border.all(color: theme.colorScheme.outlineVariant)
-            : null,
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall
-            ?.copyWith(color: fg, fontWeight: FontWeight.w700),
-      ),
+    return StatusPill(
+      label: label,
+      foreground: fg,
+      fill: bg,
+      outline: v == RoutineSessionVerdict.ungraded
+          ? theme.colorScheme.outlineVariant
+          : null,
+      size: StatusPillSize.compact,
     );
   }
 
@@ -624,11 +629,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
 
   Widget _exerciseCard(
       StoredRoutineExercise ex, ThemeData theme, AppLocalizations l10n) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Wrap(
@@ -711,30 +715,17 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               ),
           ],
         ),
-      ),
     );
   }
 
   Widget _chip(IconData icon, String label, Color fg, Color bg,
           ThemeData theme) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: fg),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: fg, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
+      StatusPill(
+        icon: icon,
+        label: label,
+        foreground: fg,
+        fill: bg,
+        size: StatusPillSize.compact,
       );
 
   String _repLabel(StoredRoutineSet s) {

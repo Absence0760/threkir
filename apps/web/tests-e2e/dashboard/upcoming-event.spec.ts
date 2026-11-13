@@ -70,7 +70,7 @@ test.describe('/dashboard — next club event within the week', () => {
 		if (error) throw new Error(`event_attendees insert failed: ${error.message}`);
 	}
 
-	test('an event nine days out is not on Home yet', async ({ browser }) => {
+	test('an event nine days out is not on Today yet', async ({ browser }) => {
 		const title = `e2e-upcoming-far ${Date.now()}`;
 		await goingTo(title, 9 * DAY_MS);
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
@@ -78,14 +78,14 @@ test.describe('/dashboard — next club event within the week', () => {
 		const page = await ctx.newPage();
 		try {
 			await page.goto('/dashboard');
-			await expect(page.getByTestId('dash-week-lead')).toBeVisible({ timeout: 15_000 });
+			await expect(page.getByTestId('today-progress-summary')).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByTestId('dash-upcoming-event')).toHaveCount(0);
 		} finally {
 			await ctx.close();
 		}
 	});
 
-	test('an event four days out is in the Today block, above Trends', async ({ browser }) => {
+	test('an event four days out is on Today, above the progress summary', async ({ browser }) => {
 		// Past the old 48-hour window, inside the week.
 		const title = `e2e-upcoming-near ${Date.now()}`;
 		await goingTo(title, 4 * DAY_MS);
@@ -98,8 +98,8 @@ test.describe('/dashboard — next club event within the week', () => {
 			await expect(card).toBeVisible({ timeout: 15_000 });
 			await expect(card).toContainText(title);
 			const cardBox = await card.boundingBox();
-			const dividerBox = await page.getByTestId('dash-trends-divider').boundingBox();
-			expect(cardBox && dividerBox && cardBox.y < dividerBox.y).toBe(true);
+			const summaryBox = await page.getByTestId('today-progress-summary').boundingBox();
+			expect(cardBox && summaryBox && cardBox.y < summaryBox.y).toBe(true);
 		} finally {
 			await ctx.close();
 		}

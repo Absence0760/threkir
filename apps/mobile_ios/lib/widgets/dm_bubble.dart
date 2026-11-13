@@ -178,6 +178,7 @@ class DmBubble extends StatelessWidget {
     );
     final Widget content;
     if (sending) {
+      // semantics-children: the sending status, then the message it qualifies
       content = Semantics(
         label: sendingLabel,
         child: Opacity(opacity: 0.6, child: bubble),

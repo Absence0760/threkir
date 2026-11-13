@@ -28,6 +28,7 @@ import {
 	REPO_ROOT,
 	SUBSET_FONT,
 	UPSTREAM_FONT,
+	UPSTREAM_PACKAGE,
 	VOCABULARY_FILE,
 	WEB_SRC,
 	collectSources,
@@ -198,7 +199,7 @@ test('the upstream font the subset was cut from is the one installed', {
 			'the vocabulary moves with the font, and a stale one cannot see a new icon.',
 	);
 	const version = JSON.parse(
-		readFileSync(join(REPO_ROOT, 'node_modules', 'material-symbols', 'package.json'), 'utf8'),
+		readFileSync(join(UPSTREAM_PACKAGE, 'package.json'), 'utf8'),
 	).version;
 	assert.equal(manifest.upstream.package, `material-symbols@${version}`);
 });

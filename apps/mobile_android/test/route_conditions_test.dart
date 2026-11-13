@@ -30,10 +30,13 @@ class _ConditionsApi extends ApiClient {
     this.viewer = 'viewer-1',
     List<RouteConditionRow>? seed,
     this.throwOnAdd = false,
+    this.failReads = 0,
   }) : _rows = List.of(seed ?? const []);
 
   final String? viewer;
   final bool throwOnAdd;
+  int failReads;
+  int reads = 0;
   final List<RouteConditionRow> _rows;
   int addCalls = 0;
   int deleteCalls = 0;
@@ -42,8 +45,14 @@ class _ConditionsApi extends ApiClient {
   String? get userId => viewer;
 
   @override
-  Future<List<RouteConditionRow>> fetchRouteConditions(String routeId) async =>
-      List.of(_rows);
+  Future<List<RouteConditionRow>> fetchRouteConditions(String routeId) async {
+    reads++;
+    if (failReads > 0) {
+      failReads--;
+      throw Exception('network down');
+    }
+    return List.of(_rows);
+  }
 
   @override
   Future<RouteConditionRow> addRouteCondition({
@@ -131,6 +140,30 @@ void main() {
       await _drain(tester);
       expect(api.deleteCalls, 0);
     });
+  });
+
+  // Issue #1374 FS-2: a failed read said "No condition reports yet", so a
+  // route someone had reported closed read as clear.
+  testWidgets('a failed read shows an error with Retry, never the empty copy',
+      (tester) async {
+    final api = _ConditionsApi(
+        seed: [_row(note: 'Bridge washed out')], failReads: 1);
+    await tester.pumpWidget(_host(RouteConditions(
+      api: api,
+      routeId: 'route-1',
+      routeOwnerId: 'owner-9',
+    )));
+    await tester.pumpAndSettle();
+    final l10n = AppLocalizations.of(tester.element(find.byType(RouteConditions)));
+
+    expect(find.text(l10n.routeConditionsLoadFailed), findsOneWidget);
+    expect(find.text(l10n.routeConditionsEmpty), findsNothing);
+
+    await tester.tap(find.text(l10n.errorStateRetry));
+    await tester.pumpAndSettle();
+    expect(api.reads, 2);
+    expect(find.text(l10n.routeConditionsLoadFailed), findsNothing);
+    expect(find.text('Bridge washed out'), findsOneWidget);
   });
 
   testWidgets('empty state renders with a Report affordance for a signed-in viewer',

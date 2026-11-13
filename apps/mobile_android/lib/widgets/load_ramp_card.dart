@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, ChartCardHeader, StatTile, StatusPill, StatusPillSize;
+    show AppSemanticColors, ChartCardHeader, ListCard, StatTile, StatusPill, StatusPillSize;
 
 import '../coach_load.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -72,71 +72,68 @@ class LoadRampCard extends StatelessWidget {
       LoadTrend.tapering => l10n.loadRampTrendTapering,
     };
 
-    return Card(
+    return ListCard(
       key: const Key('dashboardLoadRampCard'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(child: ChartCardHeader(title: l10n.loadRampTitle)),
-                const SizedBox(width: 8),
-                StatusPill(
-                  key: const Key('dashboardLoadRampBand'),
-                  label: bandLabel,
-                  foreground: fg,
-                  fill: fill,
-                  size: StatusPillSize.compact,
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              // The decimal separator is locale-dependent (1,60 in de), so the
-              // ratio goes through intl rather than toStringAsFixed.
-              '${formatFixed(load.ratio, 2, activeLocaleTag)}×',
-              key: const Key('dashboardLoadRampRatio'),
-              style: theme.textTheme.headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            Text(
-              l10n.loadRampRatioCaption,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(child: ChartCardHeader(title: l10n.loadRampTitle)),
+              const SizedBox(width: 8),
+              StatusPill(
+                key: const Key('dashboardLoadRampBand'),
+                label: bandLabel,
+                foreground: fg,
+                fill: fill,
+                size: StatusPillSize.compact,
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            // The decimal separator is locale-dependent (1,60 in de), so the
+            // ratio goes through intl rather than toStringAsFixed.
+            '${formatFixed(load.ratio, 2, activeLocaleTag)}×',
+            key: const Key('dashboardLoadRampRatio'),
+            style: theme.textTheme.headlineMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          Text(
+            l10n.loadRampRatioCaption,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 12),
-            Text(meaning, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile.small(
-                    icon: Icons.calendar_view_week,
-                    label: l10n.loadRampAcuteLabel,
-                    value: formatDistanceForPref(load.acuteM),
-                  ),
+          ),
+          const SizedBox(height: 12),
+          Text(meaning, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: StatTile.small(
+                  icon: Icons.calendar_view_week,
+                  label: l10n.loadRampAcuteLabel,
+                  value: formatDistanceForPref(load.acuteM),
                 ),
-                Expanded(
-                  child: StatTile.small(
-                    icon: Icons.timeline,
-                    label: l10n.loadRampChronicLabel,
-                    value: formatDistanceForPref(load.chronicWeeklyM),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              trend,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
               ),
+              Expanded(
+                child: StatTile.small(
+                  icon: Icons.timeline,
+                  label: l10n.loadRampChronicLabel,
+                  value: formatDistanceForPref(load.chronicWeeklyM),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            trend,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

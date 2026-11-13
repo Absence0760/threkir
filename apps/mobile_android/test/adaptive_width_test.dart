@@ -100,7 +100,7 @@ void main() {
       expect(
         adopters,
         containsAll(<String>[
-          'dashboard_screen.dart',
+          'today_screen.dart',
           'event_detail_screen.dart',
           'feed_screen.dart',
           'gym_screen.dart',

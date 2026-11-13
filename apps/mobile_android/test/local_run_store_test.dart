@@ -1377,6 +1377,27 @@ void main() {
       expect(store.summaryRuns.single.id, 'r-idx');
     });
 
+    test('an index written before titles were carried is rebuilt once, and '
+        'then every run\'s title is in the summaries', () async {
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+      await store.save(makeRun(
+          id: 'r-titled', metadata: {MetadataKeys.title: 'Richmond Half'}));
+      // Rewrite the index the way an older build wrote it: no title key.
+      final indexFile = File('${tempDir.path}/index.json');
+      final data = jsonDecode(indexFile.readAsStringSync()) as Map<String, dynamic>;
+      for (final row in data['summaries'] as List) {
+        (row as Map<String, dynamic>).remove('title');
+      }
+      indexFile.writeAsStringSync(jsonEncode(data));
+
+      final reloaded = LocalRunStore();
+      await reloaded.init(overrideDirectory: tempDir);
+      expect(reloaded.summaries.single.title, 'Richmond Half');
+      expect(reloaded.summaryRuns.single.metadata?[MetadataKeys.title],
+          'Richmond Half');
+    });
+
     test('index.json is excluded from the run-file glob', () async {
       final store = LocalRunStore();
       await store.init(overrideDirectory: tempDir);

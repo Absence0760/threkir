@@ -33,7 +33,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres.',
+						'Ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages.',
 						'Sous **Zones de confidentialité**, sélectionnez **Ajouter une zone**.',
 						'Cliquez sur la carte à l\'endroit où la zone doit être centrée, ou sélectionnez **Utiliser ma position actuelle**, puis faites glisser le repère pour l\'ajuster.',
 						'Réglez le **Rayon**. Tout ce qui se trouve dans le cercle rouge est masqué des partages publics.',
@@ -52,7 +52,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Ouvrez l\'onglet **Vous**, puis **Préférences**, et sous **Confidentialité et partage**, touchez **Zones de confidentialité**.',
+						'Ouvrez l\'onglet **Vous**, puis **Confidentialité et partage**, et touchez **Zones de confidentialité**.',
 						'Touchez la carte pour placer une zone. Utilisez **Rechercher des lieux…** ou **Me localiser** pour déplacer d\'abord la carte.',
 						'Ajustez le curseur **Rayon**.',
 						'Touchez **Enregistrer**. Rien ne change tant que vous n\'avez pas enregistré.',
@@ -100,7 +100,7 @@ export const translation: GuideTranslation = {
 		's1.b0.i4': '150b03da903ccf27',
 		's1.b1': 'b395019ec1836f1e',
 		's2.heading': 'd50fe7d487cde78b',
-		's2.b0.i0': '0f37a464ec66cdc7',
+		's2.b0.i0': '012a8f29f3d8755b',
 		's2.b0.i1': 'e3478863d167e8fe',
 		's2.b0.i2': 'ca9cc061ff309425',
 		's2.b0.i3': '2f1655078cb4ae12',

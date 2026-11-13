@@ -4,6 +4,7 @@
 	// nobody has claimed, which a verified club's admin claims here and then
 	// reviews in place. The RPCs are the gate; RaceCourseTools does the work.
 	import { onMount } from 'svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import RaceCourseTools from '#lib/components/RaceCourseTools.svelte';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import {
@@ -64,11 +65,12 @@
 
 <div class="queue-page">
 	<RunSurfaceTabs active="races" />
-	<header>
-		<a class="back" href="/races">{m('raceCourse.queueBack')}</a>
-		<h1>{m('raceCourse.queueTitle')}</h1>
-		<p class="subtitle">{m('raceCourse.queueSubtitle')}</p>
-	</header>
+	<PageHeader
+		flush
+		back={{ href: '/races', label: m('raceCourse.queueBack') }}
+		title={m('raceCourse.queueTitle')}
+		subtitle={m('raceCourse.queueSubtitle')}
+	/>
 
 	{#if loading}
 		<p class="state-msg">{m('raceCourse.queueLoading')}</p>
@@ -116,16 +118,6 @@
 		flex-direction: column;
 		gap: var(--space-lg);
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-	header h1 {
-		margin: var(--space-xs) 0 0;
-	}
-	.back {
-		font-size: 0.9rem;
-	}
-	.subtitle {
-		color: var(--color-text-secondary);
-		margin: 0.25rem 0 0;
 	}
 	.state-msg {
 		color: var(--color-text-secondary);

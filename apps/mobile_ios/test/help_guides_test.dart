@@ -10,6 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/help_guides.dart';
 import '../lib/help_loader.dart';
 import '../lib/l10n/locale_support.dart';
+import '../lib/preferences_page.dart';
+import '../lib/settings_destination.dart';
 
 /// An asset bundle holding exactly [files].
 class _MapBundle extends CachingAssetBundle {
@@ -318,6 +320,26 @@ void main() {
       );
       expect(helpRouteToScreen['/runs/[id]'], HelpDestination.runs);
       expect(helpRouteToScreen['/no/such/route'], isNull);
+    });
+
+    test('each web Preferences page opens the mobile page of that name', () {
+      // Preferences is five pages on both platforms (issue #1374), so a
+      // guide's link to one opens that page, not a single long one.
+      expect(helpRouteToScreen['/settings/privacy']?.settings,
+          SettingsDestination.privacy);
+      expect(helpRouteToScreen['/settings/notifications']?.settings,
+          SettingsDestination.notifications);
+      for (final page in PreferencesPage.values) {
+        final route = '/settings/${switch (page) {
+          PreferencesPage.display => 'display',
+          PreferencesPage.recording => 'recording',
+          PreferencesPage.training => 'training',
+          PreferencesPage.privacy => 'privacy',
+          PreferencesPage.notifications => 'notifications',
+        }}';
+        expect(helpRouteToScreen[route]?.settings?.preferencesPage, page,
+            reason: route);
+      }
     });
 
     test('every mapped route id exists under apps/web/src/routes', () {

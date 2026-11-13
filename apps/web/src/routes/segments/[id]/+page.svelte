@@ -7,7 +7,7 @@
 	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
 	import {
 		fetchGlobalSegment,
-		fetchParkCourseCredit,
+		fetchParkCourseForSegment,
 		fetchGlobalSegmentLeaderboard,
 		SEGMENT_AGE_BANDS,
 		type GlobalSegment,
@@ -16,6 +16,7 @@
 		type SegmentAgeBand,
 	} from '#lib/core/data.ts';
 	import { crownLabel } from '#lib/segments/segments.ts';
+	import { regionSlug } from '#lib/parks/park_courses.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import RunMap from '#lib/components/RunMap.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
@@ -33,10 +34,12 @@
 	let genderFilter = $state<SegmentGenderFilter | null>(null);
 	let ageFilter = $state<SegmentAgeBand | null>(null);
 	let showHeadToHead = $state(false);
-	// A park course's segment carries its source credit in its own column, not
-	// in the description (decisions § 2438). A failed read shows none; the
-	// credit is auxiliary to the page.
-	let courseCredit = $state<string | null>(null);
+	// The park course built on this segment, if any: the page links to its
+	// course page and shows its source credit, which lives in the course's own
+	// column rather than the description (decisions § 2438). A failed read
+	// shows neither; both are auxiliary to the page.
+	let parkCourse = $state<Awaited<ReturnType<typeof fetchParkCourseForSegment>>>(null);
+	const courseCredit = $derived(parkCourse?.course.attribution?.trim() || null);
 
 	// The catalogue geometry is public curated data (world-readable table),
 	// NOT any athlete's GPS track — safe to render directly. The leaderboard
@@ -78,9 +81,9 @@
 		try {
 			segment = await fetchGlobalSegment(data.id);
 			if (segment) {
-				fetchParkCourseCredit({ segmentId: segment.id })
-					.then((credit) => (courseCredit = credit))
-					.catch((e) => console.warn('fetchParkCourseCredit failed', e));
+				fetchParkCourseForSegment(segment.id)
+					.then((found) => (parkCourse = found))
+					.catch((e) => console.warn('fetchParkCourseForSegment failed', e));
 			}
 		} catch (e) {
 			console.error('fetchGlobalSegment failed', e);
@@ -175,6 +178,16 @@
 			</div>
 			{#if segment.description}
 				<p class="description">{segment.description}</p>
+			{/if}
+			{#if parkCourse}
+				<a
+					class="park-course-link"
+					href="/parks/{regionSlug(parkCourse.park.region_code)}/{parkCourse.park.slug}/{parkCourse.course.slug}"
+					data-testid="segment-park-course-link"
+				>
+					<span class="material-symbols" aria-hidden="true">park</span>
+					{m('segmentDetail.parkCourseLink', { park: parkCourse.park.name })}
+				</a>
 			{/if}
 			{#if courseCredit}
 				<p class="course-credit" data-testid="segment-course-credit">{courseCredit}</p>
@@ -400,6 +413,14 @@
 		max-width: 48rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
+	}
+	.park-course-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		align-self: flex-start;
+		min-height: var(--tap-target-min);
+		font-weight: 600;
 	}
 	.course-credit {
 		margin: var(--space-sm) 0 0;

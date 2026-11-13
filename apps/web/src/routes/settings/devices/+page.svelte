@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -410,13 +411,7 @@
 </script>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{m('shell.settings')}</p>
-		<h1>{m('settingsDevices.title')}</h1>
-		<p class="tagline">
-			{m('settingsDevices.tagline')}
-		</p>
-	</header>
+	<PageHeader kicker={m('shell.settings')} title={m('settingsDevices.title')} subtitle={m('settingsDevices.tagline')} />
 
 	{#if loading}
 		<div class="skeleton-stack" aria-hidden="true">
@@ -470,9 +465,7 @@
 								class="override-link"
 								onclick={() => toggleExpand(d.device_id)}
 							>
-								{overrideCount(d.prefs) === 1
-									? m('settingsDevices.overrideCountOne', { count: overrideCount(d.prefs) })
-									: m('settingsDevices.overrideCountOther', { count: overrideCount(d.prefs) })}
+								{m('settingsDevices.overrideCount', { count: overrideCount(d.prefs) })}
 								<span class="material-symbols chev" aria-hidden="true">
 									{expanded === d.device_id ? 'expand_less' : 'expand_more'}
 								</span>
@@ -636,23 +629,6 @@
 
 <style>
 	.page { padding: var(--page-padding-y) var(--page-padding-x); max-width: 64rem; }
-	.page-head { margin-bottom: var(--space-xl); }
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 var(--space-xs); }
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
-	}
 	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); }
 
 	.skeleton-stack { display: flex; flex-direction: column; gap: 0.5rem; }

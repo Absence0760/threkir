@@ -52,6 +52,8 @@ import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
 import '../widgets/race_preflight_dialog.dart';
+import '../training_service.dart' show TrainingService;
+import 'club_detail_screen.dart' show ClubDetailScreen;
 
 /// Host-only attendance marking is offered iff the viewer organises the
 /// event's club AND the event is a `class` (instructor_business.md M6).
@@ -535,68 +537,66 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    return Card(
+    return ListCard(
       key: const Key('session-sequence'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.clubEventSessionPlanTitle,
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                if (isOrganiser)
-                  TextButton(
-                    key: const Key('session-sequence-attach'),
-                    onPressed: _contentBusy ? null : () => _editSessionPlan(e),
-                    child: Text(l10n.clubEventSessionPlanAttach),
-                  ),
-              ],
-            ),
-            if (expansion != null && planId != null) ...[
-              InkWell(
-                onTap: () => _openSessionPlan(planId),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  _sessionPlanTitle ?? '',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
+                  l10n.clubEventSessionPlanTitle,
+                  style: theme.textTheme.titleSmall,
                 ),
               ),
-              const SizedBox(height: 4),
-              for (final (i, step) in expansion.steps.indexed)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, right: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              sessionStepLabel(l10n, step),
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                            if (step.cue != null && step.cue!.isNotEmpty)
-                              Text(step.cue!, style: muted),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+              if (isOrganiser)
+                TextButton(
+                  key: const Key('session-sequence-attach'),
+                  onPressed: _contentBusy ? null : () => _editSessionPlan(e),
+                  child: Text(l10n.clubEventSessionPlanAttach),
                 ),
-            ] else
-              Text(l10n.eventFormSessionPlanNone, style: muted),
-          ],
-        ),
+            ],
+          ),
+          if (expansion != null && planId != null) ...[
+            InkWell(
+              onTap: () => _openSessionPlan(planId),
+              child: Text(
+                _sessionPlanTitle ?? '',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            for (final (i, step) in expansion.steps.indexed)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            sessionStepLabel(l10n, step),
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          if (step.cue != null && step.cue!.isNotEmpty)
+                            Text(step.cue!, style: muted),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ] else
+            Text(l10n.eventFormSessionPlanNone, style: muted),
+        ],
       ),
     );
   }
@@ -633,58 +633,56 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    return Card(
+    return ListCard(
       key: const Key('class-routine'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.clubEventGymRoutineTitle,
-                    style: theme.textTheme.titleSmall,
-                  ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.clubEventGymRoutineTitle,
+                  style: theme.textTheme.titleSmall,
                 ),
-                if (isOrganiser)
-                  TextButton(
-                    key: const Key('class-routine-attach'),
-                    onPressed: _contentBusy ? null : () => _editGymRoutine(e),
-                    child: Text(l10n.clubEventGymRoutineAttach),
-                  ),
-              ],
-            ),
-            if (routine != null) ...[
-              Text(routine.title, style: theme.textTheme.bodyLarge),
-              const SizedBox(height: 4),
-              for (final (i, ex) in routine.exercises.indexed)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, right: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
-                      Expanded(
-                        child: Text(
-                          ex.exerciseName,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.clubEventGymRoutineSets(ex.sets.length),
-                        style: muted,
-                      ),
-                    ],
-                  ),
+              ),
+              if (isOrganiser)
+                TextButton(
+                  key: const Key('class-routine-attach'),
+                  onPressed: _contentBusy ? null : () => _editGymRoutine(e),
+                  child: Text(l10n.clubEventGymRoutineAttach),
                 ),
-            ] else
-              Text(l10n.clubEventGymRoutineNone, style: muted),
-          ],
-        ),
+            ],
+          ),
+          if (routine != null) ...[
+            Text(routine.title, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: 4),
+            for (final (i, ex) in routine.exercises.indexed)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
+                    Expanded(
+                      child: Text(
+                        ex.exerciseName,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.clubEventGymRoutineSets(ex.sets.length),
+                      style: muted,
+                    ),
+                  ],
+                ),
+              ),
+          ] else
+            Text(l10n.clubEventGymRoutineNone, style: muted),
+        ],
       ),
     );
   }
@@ -1011,17 +1009,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return [
       const SizedBox(height: 10),
       if (mapUrl != null)
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: () => _navigateToMeetPoint(mp.lat, mp.lng, label),
-            child: Image.network(
-              mapUrl,
-              height: 160,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              // L4: a tile-fetch failure must not break the card.
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        // The map is a second, unnamed way to the Directions button below
+        // it: a tap for the eye, hidden from a screen reader so the reading
+        // order reaches the named button rather than a bare "button" first
+        // (#1374 A11Y-12).
+        ExcludeSemantics(
+          key: const Key('eventMeetPointMap'),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: () => _navigateToMeetPoint(mp.lat, mp.lng, label),
+              child: Image.network(
+                mapUrl,
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                // L4: a tile-fetch failure must not break the card.
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
             ),
           ),
         ),
@@ -1317,14 +1322,31 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         await widget.social
             .rsvpEvent(e.row.id, status, inst, courseId: courseId);
       }
-      await _load();
     } catch (err) {
-      // RSVP is the primary action — surface a failure (network / RLS /
-      // event-full race) instead of letting it vanish as an uncaught
-      // async error with the chip just silently reverting.
+      // RSVP is the primary action, so its failure says why (offline, signed
+      // out, refused) and offers Retry only where a retry can succeed — not a
+      // blanket "Please try again" (issue #1374 FS-9).
+      debugPrint('EventDetail._rsvp failed: $err');
       if (mounted) {
-        showTopBanner(context, AppLocalizations.of(context).eventRsvpFailed);
+        setState(() => _busy = false);
+        final l10n = AppLocalizations.of(context);
+        final retryable = switch (classifyAuthError(err)) {
+          AuthErrorKind.offline || AuthErrorKind.generic => true,
+          _ => false,
+        };
+        showTopBanner(
+          context,
+          l10n.eventRsvpFailed(friendlyError(l10n, err)),
+          duration: const Duration(seconds: 6),
+          actionLabel: retryable ? l10n.errorStateRetry : null,
+          onAction: retryable ? () => _rsvp(status) : null,
+        );
       }
+      return;
+    }
+    // The RSVP landed; a failed reload after it is not a failed RSVP.
+    try {
+      await _load();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1375,9 +1397,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     if (_loading) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: contentColumn(
+      return DetailPage.placeholder(
+        child: contentColumn(
           context,
           SectionedDetailSkeleton(
             label: l10n.commonLoading,
@@ -1388,9 +1409,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       );
     }
     if (_loadError != null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: ErrorState(
+      return DetailPage.placeholder(
+        child: AppErrorState(
           message: _loadError == _EventLoadError.timeout
               ? l10n.eventTimeoutError
               : l10n.eventLoadError,
@@ -1400,15 +1420,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
     final e = _event;
     if (e == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: EmptyState(
+      return DetailPage.placeholder(
+        child: EmptyState(
           icon: Icons.event_busy,
           title: l10n.eventNotFound,
         ),
       );
     }
-    final desc = describeRecurrence(e.freq, e.byday);
+    final desc = describeRecurrence(e.freq, e.byday, l10n, activeLocaleTag);
     final active = _activeInstance!;
     final isMember = _club?.isMember == true;
     // Slice E: class / social events are attendance-only — no course, no race,
@@ -1418,90 +1437,53 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     // of a `class` event records who showed up. Non-hosts see it read-only.
     final canMarkAttendance = canMarkEventAttendance(_club, e.row.category);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(e.row.title),
-        actions: const [
-          HelpButton(routes: ['/clubs/[slug]/events/[id]']),
-        ],
-      ),
+    final clubName = _club?.row.name;
+    final locale = localeToTag(Localizations.localeOf(context));
+    return DetailPage(
+      title: e.row.title,
+      pinned: const [
+        HelpButton(routes: ['/clubs/[slug]/events/[id]']),
+      ],
       body: contentColumn(
         context,
         ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
           children: [
-            if (e.freq != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.autorenew, size: 14,
-                        color: theme.colorScheme.primary),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        desc.toUpperCase(),
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
+            DetailHero(
+              key: const Key('event-hero'),
+              title: e.row.title,
+              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              parent: clubName == null
+                  ? null
+                  : DetailParentChip(
+                      key: const Key('event-club-link'),
+                      icon: Icons.groups_outlined,
+                      label: clubName,
+                      onPressed: _openClub,
                     ),
-                  ],
-                ),
-              ),
-            if (e.row.isPublic == false)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: StatusPill(
+              badges: [
+                if (e.row.isPublic == false)
+                  StatusPill(
                     label: l10n.clubEventMembersOnly,
                     foreground: theme.colorScheme.onSurfaceVariant,
                     fill: theme.colorScheme.surfaceContainerHighest,
                     icon: Icons.lock,
                   ),
+              ],
+              meta: [
+                if (e.freq != null)
+                  DetailMeta(icon: Icons.autorenew, text: desc),
+                DetailMeta(
+                  icon: Icons.calendar_today,
+                  text: e.row.durationMin == null
+                      ? fmtEventDate(active, locale)
+                      : '${fmtEventDate(active, locale)} · '
+                          '${l10n.eventDurationMin(e.row.durationMin!)}',
                 ),
-              ),
-            Row(
-              children: [
-                Icon(Icons.calendar_today, size: 16,
-                    color: theme.colorScheme.outline),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    fmtEventDate(active, localeToTag(Localizations.localeOf(context))),
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                if (e.row.durationMin != null) ...[
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      l10n.eventDurationMin(e.row.durationMin!),
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
+                if (e.row.meetLabel != null)
+                  DetailMeta(icon: Icons.place, text: e.row.meetLabel!),
               ],
             ),
-            if (e.row.meetLabel != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(Icons.place, size: 16,
-                      color: theme.colorScheme.outline),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(e.row.meetLabel!)),
-                ],
-              ),
-            ],
             if (_meetPoint != null) ..._buildMeetPoint(theme, e),
             if (!athletic &&
                 e.row.category == 'class' &&
@@ -1714,14 +1696,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               size: 18,
                               fontSize: 10),
                           const SizedBox(width: 6),
-                          Text(_shownName(l10n, a.displayName, a.userId),
-                              style: theme.textTheme.bodySmall),
+                          // Flexible, so a long name ellipsizes inside the
+                          // chip rather than running past the wrap's edge.
+                          Flexible(
+                            child: Text(
+                                _shownName(l10n, a.displayName, a.userId),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall),
+                          ),
                           if (a.status != 'going') ...[
                             const SizedBox(width: 4),
-                            Text(
-                              l10n.eventAttendeeStatus(a.status),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                            Flexible(
+                              child: Text(
+                                l10n.eventAttendeeStatus(a.status),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ],
@@ -2193,6 +2186,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  /// The event's club, from the hero's parent chip.
+  void _openClub() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ClubDetailScreen(
+        social: widget.social,
+        training: TrainingService(),
+        apiClient: widget.api,
+        slug: _club?.row.slug ?? widget.clubSlug,
+      ),
+    ));
+  }
+
   Widget _buildRsvpRow(ThemeData theme, EventView e) {
     final active = _activeInstance!;
     final isNext = active == e.nextInstanceStart;
@@ -2269,13 +2274,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       key: const Key('event-courses'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.eventCoursesTitle.toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            letterSpacing: 0.8,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
+        SectionHeader(label: l10n.eventCoursesTitle),
         const SizedBox(height: 6),
         for (final c in _courses) ...[
           Padding(
@@ -2499,35 +2498,33 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// the attempt itself is the run screen's "This run is my attempt".
   Widget _buildSelfTimedParticipant(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
-    return Card(
+    return ListCard(
       key: const ValueKey('self-timed-participant'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.eventRaceSelfTimedParticipant(
-                  _clock(_raceSession?.windowClosesAt)),
-              style: theme.textTheme.bodyMedium,
-            ),
-            if (!_viewerGoing) ...[
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                key: const ValueKey('self-timed-join'),
-                onPressed: _busy ? null : () => _rsvp('going'),
-                icon: const Icon(Icons.flag_outlined),
-                label: Text(l10n.eventRaceJoinAttempt),
-              ),
-            ],
-            TextButton(
-              key: const ValueKey('self-timed-guide'),
-              onPressed: () => openGuide(context, 'run-a-self-timed-race'),
-              child: Text(l10n.infoTipReadGuide),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.eventRaceSelfTimedParticipant(
+                _clock(_raceSession?.windowClosesAt)),
+            style: theme.textTheme.bodyMedium,
+          ),
+          if (!_viewerGoing) ...[
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const ValueKey('self-timed-join'),
+              onPressed: _busy ? null : () => _rsvp('going'),
+              icon: const Icon(Icons.flag_outlined),
+              label: Text(l10n.eventRaceJoinAttempt),
             ),
           ],
-        ),
+          TextButton(
+            key: const ValueKey('self-timed-guide'),
+            onPressed: () => openGuide(context, 'run-a-self-timed-race'),
+            child: Text(l10n.infoTipReadGuide),
+          ),
+        ],
       ),
     );
   }
@@ -2555,105 +2552,105 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       _ => theme.colorScheme.onSurfaceVariant,
     };
 
-    return Card(
+    return ListCard(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.sports_score, size: 18, color: bannerColour),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    l10n.eventRaceControlLabel,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      letterSpacing: 0.8,
-                    ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.sports_score, size: 18, color: bannerColour),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  l10n.eventRaceControlLabel,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.8,
                   ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            banner,
+            style: theme.textTheme.titleMedium?.copyWith(color: bannerColour),
+          ),
+          const SizedBox(height: 8),
+          if (status == 'idle' || status == 'finished' || status == 'cancelled') ...[
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(
+                l10n.eventRaceAutoApprove,
+                style: theme.textTheme.bodySmall,
+              ),
+              value: _autoApproveOnArm,
+              onChanged: (v) => setState(() => _autoApproveOnArm = v ?? true),
+            ),
+            FilledButton.icon(
+              onPressed: _raceBusy ? null : _armWithPreflight,
+              icon: const Icon(Icons.bolt),
+              label: Text(l10n.eventRaceArm),
+            ),
+          ] else if (status == 'armed') ...[
+            Text(
+              l10n.eventRaceArmedHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            OverflowBar(
+              alignment: MainAxisAlignment.start,
+              overflowAlignment: OverflowBarAlignment.start,
+              spacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _raceMutation(_RaceAction.go),
+                  icon: const Icon(Icons.flag_outlined),
+                  label: Text(l10n.eventRaceFireGo),
+                ),
+                TextButton(
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _confirmRaceAction(_RaceAction.cancel),
+                  child: Text(l10n.eventRaceCancel),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              banner,
-              style: theme.textTheme.titleMedium?.copyWith(color: bannerColour),
-            ),
-            const SizedBox(height: 8),
-            if (status == 'idle' || status == 'finished' || status == 'cancelled') ...[
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(
-                  l10n.eventRaceAutoApprove,
-                  style: theme.textTheme.bodySmall,
-                ),
-                value: _autoApproveOnArm,
-                onChanged: (v) => setState(() => _autoApproveOnArm = v ?? true),
-              ),
-              FilledButton.icon(
-                onPressed: _raceBusy ? null : _armWithPreflight,
-                icon: const Icon(Icons.bolt),
-                label: Text(l10n.eventRaceArm),
-              ),
-            ] else if (status == 'armed') ...[
+          ] else if (status == 'running') ...[
+            if (race?.startedAt != null)
               Text(
-                l10n.eventRaceArmedHint,
+                l10n.eventRaceStartedAt(fmtEventDate(
+                    race!.startedAt!.toLocal(),
+                    localeToTag(Localizations.localeOf(context)))),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  FilledButton.icon(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _raceMutation(_RaceAction.go),
-                    icon: const Icon(Icons.flag_outlined),
-                    label: Text(l10n.eventRaceFireGo),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.cancel),
-                    child: Text(l10n.eventRaceCancel),
-                  ),
-                ],
-              ),
-            ] else if (status == 'running') ...[
-              if (race?.startedAt != null)
-                Text(
-                  l10n.eventRaceStartedAt(fmtEventDate(
-                      race!.startedAt!.toLocal(),
-                      localeToTag(Localizations.localeOf(context)))),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                // No Cancel once running: the server refuses running ->
+                // cancelled, and web offers only End here.
+                FilledButton.icon(
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _confirmRaceAction(_RaceAction.end),
+                  icon: const Icon(Icons.stop_circle),
+                  label: Text(l10n.eventRaceEnd),
                 ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  // No Cancel once running: the server refuses running ->
-                  // cancelled, and web offers only End here.
-                  FilledButton.icon(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.end),
-                    icon: const Icon(Icons.stop_circle),
-                    label: Text(l10n.eventRaceEnd),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -2669,116 +2666,114 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final selfTimed = mode == SessionStartMode.selfTimed;
     final muted = theme.textTheme.bodySmall
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    return Card(
+    return ListCard(
       key: const ValueKey('race-mode-control'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.eventRaceControlLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      letterSpacing: 0.8,
-                    ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.eventRaceControlLabel,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.8,
                   ),
                 ),
+              ),
+              TextButton(
+                key: const ValueKey('race-mode-guide'),
+                onPressed: () =>
+                    openGuide(context, 'choose-how-your-race-starts'),
+                child: Text(l10n.infoTipReadGuide),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (race == null || status == 'idle') ...[
+            Text(
+              selfTimed ? l10n.eventRaceSelfTimedNotYet : l10n.eventRaceScheduledNotYet,
+              style: muted,
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const ValueKey('race-arm-early'),
+              onPressed: _raceBusy ? null : _armWithPreflight,
+              icon: const Icon(Icons.bolt),
+              label: Text(l10n.eventRaceArmEarly),
+            ),
+          ] else if (status == 'armed') ...[
+            Text(
+              selfTimed
+                  ? l10n.eventRaceOpensAt(_clock(race.windowOpensAt))
+                  : l10n.eventRaceGoAt(_clock(race.scheduledStartAt)),
+              key: const ValueKey('race-mode-start'),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(color: theme.colorScheme.tertiary),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  key: const ValueKey('race-delay'),
+                  onPressed: _raceBusy ? null : _delayRace,
+                  icon: const Icon(Icons.schedule),
+                  label: Text(l10n.eventRaceDelay),
+                ),
                 TextButton(
-                  key: const ValueKey('race-mode-guide'),
-                  onPressed: () =>
-                      openGuide(context, 'choose-how-your-race-starts'),
-                  child: Text(l10n.infoTipReadGuide),
+                  key: const ValueKey('race-cancel'),
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _confirmRaceAction(_RaceAction.cancel),
+                  child: Text(l10n.eventRaceCancel),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            if (race == null || status == 'idle') ...[
-              Text(
-                selfTimed ? l10n.eventRaceSelfTimedNotYet : l10n.eventRaceScheduledNotYet,
-                style: muted,
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                key: const ValueKey('race-arm-early'),
-                onPressed: _raceBusy ? null : _armWithPreflight,
-                icon: const Icon(Icons.bolt),
-                label: Text(l10n.eventRaceArmEarly),
-              ),
-            ] else if (status == 'armed') ...[
-              Text(
-                selfTimed
-                    ? l10n.eventRaceOpensAt(_clock(race.windowOpensAt))
-                    : l10n.eventRaceGoAt(_clock(race.scheduledStartAt)),
-                key: const ValueKey('race-mode-start'),
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.tertiary),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
+          ] else if (status == 'running') ...[
+            Text(
+              selfTimed
+                  ? l10n.eventRaceOpenUntil(_clock(race.windowClosesAt))
+                  : l10n.eventRaceRunning,
+              key: const ValueKey('race-mode-live'),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(color: theme.colorScheme.primary),
+            ),
+            if (!selfTimed)
+              Text(l10n.eventRaceAutoEnds(_clock(race.windowClosesAt)),
+                  style: muted),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (selfTimed)
                   OutlinedButton.icon(
-                    key: const ValueKey('race-delay'),
-                    onPressed: _raceBusy ? null : _delayRace,
-                    icon: const Icon(Icons.schedule),
-                    label: Text(l10n.eventRaceDelay),
+                    key: const ValueKey('race-extend'),
+                    onPressed: _raceBusy ? null : _extendRace,
+                    icon: const Icon(Icons.more_time),
+                    label: Text(l10n.eventRaceExtend),
                   ),
-                  TextButton(
-                    key: const ValueKey('race-cancel'),
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.cancel),
-                    child: Text(l10n.eventRaceCancel),
-                  ),
-                ],
-              ),
-            ] else if (status == 'running') ...[
-              Text(
-                selfTimed
-                    ? l10n.eventRaceOpenUntil(_clock(race.windowClosesAt))
-                    : l10n.eventRaceRunning,
-                key: const ValueKey('race-mode-live'),
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.primary),
-              ),
-              if (!selfTimed)
-                Text(l10n.eventRaceAutoEnds(_clock(race.windowClosesAt)),
-                    style: muted),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (selfTimed)
-                    OutlinedButton.icon(
-                      key: const ValueKey('race-extend'),
-                      onPressed: _raceBusy ? null : _extendRace,
-                      icon: const Icon(Icons.more_time),
-                      label: Text(l10n.eventRaceExtend),
-                    ),
-                  FilledButton.icon(
-                    key: const ValueKey('race-end'),
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.end),
-                    icon: const Icon(Icons.stop_circle),
-                    label: Text(selfTimed ? l10n.eventRaceEndEarly : l10n.eventRaceEnd),
-                  ),
-                ],
-              ),
-            ] else
-              Text(
-                status == 'cancelled' ? l10n.eventRaceCancelled : l10n.eventRaceFinished,
-                style: muted,
-              ),
-          ],
-        ),
+                FilledButton.icon(
+                  key: const ValueKey('race-end'),
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _confirmRaceAction(_RaceAction.end),
+                  icon: const Icon(Icons.stop_circle),
+                  label: Text(selfTimed ? l10n.eventRaceEndEarly : l10n.eventRaceEnd),
+                ),
+              ],
+            ),
+          ] else
+            Text(
+              status == 'cancelled' ? l10n.eventRaceCancelled : l10n.eventRaceFinished,
+              style: muted,
+            ),
+        ],
       ),
     );
   }
@@ -2832,13 +2827,10 @@ class _AdminUpdateComposerState extends State<_AdminUpdateComposer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor),
-      ),
+    return ListCard(
+      margin: EdgeInsets.zero,
+      dense: true,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3008,31 +3000,23 @@ class EventResultsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.emoji_events,
-                size: 18, color: theme.colorScheme.primary),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(l10n.eventResultsTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall),
-            ),
-            if (hasMine)
-              TextButton(
-                onPressed: submitting ? null : () => _confirmRemove(context),
-                child: Text(l10n.eventRemoveMine),
-              )
-            else
-              FilledButton.tonalIcon(
-                onPressed: submitting ? null : onSubmit,
-                icon: const Icon(Icons.timer, size: 16),
-                label: Text(submitting
-                    ? l10n.eventSubmitting
-                    : l10n.eventSubmitMyTime),
-              ),
-          ],
+        SectionHeader.title(
+          label: l10n.eventResultsTitle,
+          icon: Icons.emoji_events,
+          iconColor: theme.colorScheme.primary,
+          trailing: hasMine
+              ? TextButton(
+                  onPressed:
+                      submitting ? null : () => _confirmRemove(context),
+                  child: Text(l10n.eventRemoveMine),
+                )
+              : FilledButton.tonalIcon(
+                  onPressed: submitting ? null : onSubmit,
+                  icon: const Icon(Icons.timer, size: 16),
+                  label: Text(submitting
+                      ? l10n.eventSubmitting
+                      : l10n.eventSubmitMyTime),
+                ),
         ),
         const SizedBox(height: 8),
         if (results.isEmpty)
@@ -3334,12 +3318,14 @@ class _ResultRow extends StatelessWidget {
                 ],
                 if (row.finisherStatus != 'finished') ...[
                   const SizedBox(width: 6),
-                  Text(
-                    row.finisherStatus.toUpperCase(),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.error,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  // The catalogue's label, not the stored value uppercased.
+                  StatusPill(
+                    label: row.finisherStatus == 'dns'
+                        ? l10n.eventResultStatusDns
+                        : l10n.eventResultStatusDnf,
+                    foreground: theme.colorScheme.error,
+                    outline: theme.colorScheme.error,
+                    size: StatusPillSize.compact,
                   ),
                 ],
               ],
@@ -3468,12 +3454,23 @@ class _SubmitTimeSheetState extends State<_SubmitTimeSheet> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = false; });
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
     try {
       final runs = await widget.social.fetchRecentRuns(limit: 20);
-      if (mounted) setState(() { _runs = runs; _loading = false; });
+      if (mounted)
+        setState(() {
+          _runs = runs;
+          _loading = false;
+        });
     } catch (_) {
-      if (mounted) setState(() { _loading = false; _error = true; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = true;
+        });
     }
   }
 
@@ -3481,123 +3478,104 @@ class _SubmitTimeSheetState extends State<_SubmitTimeSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.eventSubmitTimeTitle, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(
-              l10n.eventSubmitTimeSubtitle,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (_loading)
-              const Center(child: Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              ))
-            else if (_error)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.eventSubmitRunsLoadError,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton.icon(
-                      onPressed: _load,
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: Text(l10n.errorStateRetry),
-                    ),
-                  ],
-                ),
-              )
-            else if (_runs.isEmpty)
-              Text(
-                l10n.eventNoRecentRuns,
-                style: theme.textTheme.bodySmall,
-              )
-            else
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 340),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: _runs.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final r = _runs[i];
-                    return ListTile(
-                      dense: true,
-                      title: Text(
-                        '${_dateLabel(r.startedAt, localeToTag(Localizations.localeOf(context)))} · ${formatDistanceForPref(r.distanceM)}',
-                      ),
-                      subtitle: Text(
-                        '${_ResultRow._formatDuration(r.durationS)} · ${r.activityType}',
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                      onTap: () => Navigator.of(context).pop(
-                        _SubmitResultChoice(
-                          runId: r.id,
-                          durationS: r.durationS,
-                          distanceM: r.distanceM,
-                          finisherStatus: 'finished',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            const SizedBox(height: 8),
-            Row(
+    return SheetScaffold(
+      title: Text(l10n.eventSubmitTimeTitle),
+      actions: Row(
+        children: [
+          Expanded(
+            child: Wrap(
+              spacing: 4,
               children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 4,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(
-                          const _SubmitResultChoice(
-                            runId: null,
-                            durationS: 0,
-                            distanceM: 0,
-                            finisherStatus: 'dnf',
-                          ),
-                        ),
-                        child: Text(l10n.eventRecordDnf),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(
-                          const _SubmitResultChoice(
-                            runId: null,
-                            durationS: 0,
-                            distanceM: 0,
-                            finisherStatus: 'dns',
-                          ),
-                        ),
-                        child: Text(l10n.eventRecordDns),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.eventSubmitCancel),
+                  onPressed: () => Navigator.of(context).pop(
+                    const _SubmitResultChoice(
+                      runId: null,
+                      durationS: 0,
+                      distanceM: 0,
+                      finisherStatus: 'dnf',
+                    ),
+                  ),
+                  child: Text(l10n.eventRecordDnf),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(
+                    const _SubmitResultChoice(
+                      runId: null,
+                      durationS: 0,
+                      distanceM: 0,
+                      finisherStatus: 'dns',
+                    ),
+                  ),
+                  child: Text(l10n.eventRecordDns),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.eventSubmitCancel),
+          ),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.eventSubmitTimeSubtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_loading)
+            ListSkeleton.section(label: l10n.commonLoading, rows: 3)
+          else if (_error)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.eventSubmitRunsLoadError,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: Text(l10n.errorStateRetry),
+                  ),
+                ],
+              ),
+            )
+          else if (_runs.isEmpty)
+            Text(l10n.eventNoRecentRuns, style: theme.textTheme.bodySmall)
+          else
+            for (final (i, r) in _runs.indexed) ...[
+              if (i > 0) const Divider(height: 1),
+              ListTile(
+                dense: true,
+                title: Text(
+                  '${_dateLabel(r.startedAt, localeToTag(Localizations.localeOf(context)))} · ${formatDistanceForPref(r.distanceM)}',
+                ),
+                subtitle: Text(
+                  '${_ResultRow._formatDuration(r.durationS)} · ${r.activityType}',
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                onTap: () => Navigator.of(context).pop(
+                  _SubmitResultChoice(
+                    runId: r.id,
+                    durationS: r.durationS,
+                    distanceM: r.distanceM,
+                    finisherStatus: 'finished',
+                  ),
+                ),
+              ),
+            ],
+        ],
       ),
     );
   }
@@ -3632,56 +3610,45 @@ class _GymRoutineAttachSheetState extends State<_GymRoutineAttachSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.clubEventGymRoutineAttach,
-                style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            GymRoutinePicker(
-              fieldKey: const Key('class-routine-picker'),
-              value: _choice,
-              routines: widget.routines,
-              onChanged: (v) => setState(() => _choice = v),
-            ),
-            if (widget.hasSessionPlan && _choice != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                l10n.clubEventGymRoutineReplacesPlan,
-                key: const Key('class-routine-replaces-plan'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+    return SheetScaffold(
+      title: Text(l10n.clubEventGymRoutineAttach),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            key: const Key('class-routine-save'),
+            onPressed: () => Navigator.of(context).pop((id: _choice)),
+            child: Text(l10n.clubEventGymRoutineSave),
+          ),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GymRoutinePicker(
+            fieldKey: const Key('class-routine-picker'),
+            value: _choice,
+            routines: widget.routines,
+            onChanged: (v) => setState(() => _choice = v),
+          ),
+          if (widget.hasSessionPlan && _choice != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.clubEventGymRoutineReplacesPlan,
+              key: const Key('class-routine-replaces-plan'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.commonCancel),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  key: const Key('class-routine-save'),
-                  onPressed: () =>
-                      Navigator.of(context).pop((id: _choice)),
-                  child: Text(l10n.clubEventGymRoutineSave),
-                ),
-              ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -3706,62 +3673,53 @@ class _SessionPlanAttachSheet extends StatefulWidget {
 }
 
 class _SessionPlanAttachSheetState extends State<_SessionPlanAttachSheet> {
-  late String? _choice =
-      widget.plans.any((p) => p.id == widget.initial) ? widget.initial : null;
+  late String? _choice = widget.plans.any((p) => p.id == widget.initial)
+      ? widget.initial
+      : null;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.clubEventSessionPlanAttach,
-                style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            SessionPlanPicker(
-              fieldKey: const Key('session-sequence-picker'),
-              value: _choice,
-              plans: widget.plans,
-              onChanged: (v) => setState(() => _choice = v),
-            ),
-            if (widget.hasGymRoutine && _choice != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                l10n.clubEventSessionPlanReplacesRoutine,
-                key: const Key('session-sequence-replaces-routine'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+    return SheetScaffold(
+      title: Text(l10n.clubEventSessionPlanAttach),
+      actions: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            key: const Key('session-sequence-save'),
+            onPressed: () => Navigator.of(context).pop((id: _choice)),
+            child: Text(l10n.clubEventSessionPlanSave),
+          ),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SessionPlanPicker(
+            fieldKey: const Key('session-sequence-picker'),
+            value: _choice,
+            plans: widget.plans,
+            onChanged: (v) => setState(() => _choice = v),
+          ),
+          if (widget.hasGymRoutine && _choice != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.clubEventSessionPlanReplacesRoutine,
+              key: const Key('session-sequence-replaces-routine'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.commonCancel),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  key: const Key('session-sequence-save'),
-                  onPressed: () => Navigator.of(context).pop((id: _choice)),
-                  child: Text(l10n.clubEventSessionPlanSave),
-                ),
-              ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }

@@ -274,7 +274,7 @@ test.describe('session plan journey', () => {
 					// by the plan discipline (workoutDraftFromSession), most-recent first.
 					await followerPage.goto('/gym');
 					await expect(
-						followerPage.locator('.workout-row .row-title', { hasText: discipline }).first()
+						followerPage.locator('.workout-row .list-card-title', { hasText: discipline }).first()
 					).toBeVisible({ timeout: 10_000 });
 				} finally {
 					await ctx.close();

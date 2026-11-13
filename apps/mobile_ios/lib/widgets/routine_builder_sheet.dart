@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard, SectionHeader;
 
 import '../gym_prs.dart' show namesAnExercise, normaliseExerciseName;
 import '../l10n/gen/app_localizations.dart';
@@ -33,6 +34,7 @@ Future<String?> showRoutineBuilderSheet({
     context,
     title: l10n.gymRoutineEditorNewTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) => RoutineBuilderSheet(
       key: formKey,
       store: store,
@@ -170,6 +172,9 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     }
     return b.toString();
   }
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
 
   bool get isDirty => _snapshot() != _initialSnapshot;
 
@@ -331,8 +336,13 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     final l10n = AppLocalizations.of(context);
 
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.gymRoutineEditorSave,
+        busy: _saving,
+        onPressed: _save,
+      ),
       children: [
-        FormSectionLabel(l10n.gymRoutineEditorTitleLabel),
+        SectionHeader(label: l10n.gymRoutineEditorTitleLabel),
         const SizedBox(height: 8),
         TextField(
           controller: _titleCtl,
@@ -361,8 +371,9 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           ),
         ),
         const SizedBox(height: 12),
-        FormSectionLabel(l10n.gymRoutineEditorNotesLabel),
+        SectionHeader(label: l10n.gymRoutineEditorNotesLabel),
         const SizedBox(height: 8),
+        // semantics-children: names a field that shows no label or hint of its own
         Semantics(
           label: l10n.gymRoutineEditorNotesLabel,
           child: TextField(
@@ -382,21 +393,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                 ?.copyWith(color: theme.colorScheme.error),
           ),
         ],
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const Spacer(),
-            TextButton(
-              onPressed: _saving ? null : () => Navigator.maybePop(context),
-              child: Text(l10n.gymRoutineEditorCancel),
-            ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(l10n.gymRoutineEditorSave),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -455,11 +451,10 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       _EditExercise ex, int i, ThemeData theme, AppLocalizations l10n) {
     final isRep =
         ex.modality == 'weight_reps' || ex.modality == 'bodyweight_reps';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -477,6 +472,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: ex.modality,
                 isDense: true,
                 decoration: InputDecoration(
@@ -520,80 +516,95 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             ),
           ],
         ),
-      ),
     );
   }
 
   Widget _setRow(_EditExercise ex, _EditSet s, int si, bool isRep,
       ThemeData theme, AppLocalizations l10n) {
+    // Type, the targets, rest, RPE and remove need about 440 dp side by
+    // side; on a phone rest and RPE take a second line so the targets keep
+    // a usable width and nothing runs off the edge (issue #1374 TO-7).
+    final targets = <Widget>[
+      SizedBox(
+        width: 96,
+        child: DropdownButtonFormField<String>(
+          initialValue: s.setType,
+          isDense: true,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          ),
+          items: [
+            for (final t in _setTypes)
+              DropdownMenuItem(
+                value: t,
+                child: Text(_setTypeLabel(t, l10n),
+                    overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: (v) => setState(() => s.setType = v ?? s.setType),
+        ),
+      ),
+      const SizedBox(width: 6),
+      if (isRep) ...[
+        Expanded(
+          child: _numField(s.reps, l10n.gymRoutineTargetReps, false),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: _numField(s.repsMax, l10n.gymRoutineTargetRepsMax, false),
+        ),
+      ] else if (ex.modality == 'time')
+        Expanded(
+          child: _numField(s.duration, l10n.gymRoutineTargetDuration, false),
+        )
+      else
+        Expanded(
+          child: _numField(s.distance, l10n.gymRoutineTargetDistance, true),
+        ),
+      if (ex.modality == 'weight_reps') ...[
+        const SizedBox(width: 4),
+        Expanded(
+          child: _numField(
+              s.weight, WeightFormat.label(activeWeightUnit), true),
+        ),
+      ],
+    ];
+    final extras = <Widget>[
+      const SizedBox(width: 4),
+      SizedBox(
+        width: 60,
+        child: _numField(s.rest, l10n.gymRoutineRestLabel, false),
+      ),
+      const SizedBox(width: 4),
+      SizedBox(
+        width: 56,
+        child: _numField(s.rpe, metricText(l10n, Metric.rpe), true),
+      ),
+    ];
+    final remove = IconButton(
+      tooltip: l10n.gymEditorRemoveSet,
+      icon: const Icon(Icons.close, size: 18),
+      color: theme.colorScheme.outline,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      onPressed: () => _removeSet(ex, si),
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 96,
-            child: DropdownButtonFormField<String>(
-              initialValue: s.setType,
-              isDense: true,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              ),
-              items: [
-                for (final t in _setTypes)
-                  DropdownMenuItem(
-                    value: t,
-                    child: Text(_setTypeLabel(t, l10n),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-              ],
-              onChanged: (v) => setState(() => s.setType = v ?? s.setType),
-            ),
-          ),
-          const SizedBox(width: 6),
-          if (isRep) ...[
-            Expanded(
-              child: _numField(s.reps, l10n.gymRoutineTargetReps, false),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: _numField(s.repsMax, l10n.gymRoutineTargetRepsMax, false),
-            ),
-          ] else if (ex.modality == 'time')
-            Expanded(
-              child: _numField(s.duration, l10n.gymRoutineTargetDuration, false),
-            )
-          else
-            Expanded(
-              child: _numField(s.distance, l10n.gymRoutineTargetDistance, true),
-            ),
-          if (ex.modality == 'weight_reps') ...[
-            const SizedBox(width: 4),
-            Expanded(
-              child: _numField(
-                  s.weight, WeightFormat.label(activeWeightUnit), true),
-            ),
-          ],
-          const SizedBox(width: 4),
-          SizedBox(
-            width: 60,
-            child: _numField(s.rest, l10n.gymRoutineRestLabel, false),
-          ),
-          const SizedBox(width: 4),
-          SizedBox(
-            width: 56,
-            child: _numField(s.rpe, metricText(l10n, Metric.rpe), true),
-          ),
-          IconButton(
-            tooltip: l10n.gymEditorRemoveSet,
-            icon: const Icon(Icons.close, size: 18),
-            color: theme.colorScheme.outline,
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            onPressed: () => _removeSet(ex, si),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 440) {
+            return Row(children: [...targets, ...extras, remove]);
+          }
+          return Column(
+            children: [
+              Row(children: [...targets, remove]),
+              const SizedBox(height: 4),
+              Row(children: [...extras.skip(1)]),
+            ],
+          );
+        },
       ),
     );
   }
@@ -606,6 +617,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: scheme,
           isDense: true,
           decoration: InputDecoration(
@@ -679,16 +691,13 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     }
 
     if (widget.suggestions.isEmpty) {
-      return Semantics(
-        label: l10n.gymEditorExercisePlaceholder,
-        child: TextField(
+      return TextField(
           controller: ex.name,
           focusNode: ex.nameFocus,
           textCapitalization: TextCapitalization.words,
           decoration: deco(),
           onChanged: clearNeedExercise,
-        ),
-      );
+        );
     }
     return RawAutocomplete<String>(
       textEditingController: ex.name,
@@ -700,9 +709,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             .where((s) => normaliseExerciseName(s).contains(q))
             .take(6);
       },
-      fieldViewBuilder: (context, controller, focusNode, onSubmit) => Semantics(
-        label: l10n.gymEditorExercisePlaceholder,
-        child: TextField(
+      fieldViewBuilder: (context, controller, focusNode, onSubmit) => TextField(
           controller: controller,
           focusNode: focusNode,
           textCapitalization: TextCapitalization.words,
@@ -710,7 +717,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           onChanged: clearNeedExercise,
           onSubmitted: (_) => onSubmit(),
         ),
-      ),
       optionsViewBuilder: (context, onSelected, options) => Align(
         alignment: Alignment.topLeft,
         child: Material(

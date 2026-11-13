@@ -2568,6 +2568,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonar';
 
   @override
+  String get workoutPaceOnPace => 'No ritmo';
+
+  @override
+  String get workoutPaceAhead => 'À frente do ritmo';
+
+  @override
+  String get workoutPaceBehind => 'Atrás do ritmo';
+
+  @override
+  String get workoutPaceWayAhead => 'Bem à frente do ritmo';
+
+  @override
+  String get workoutPaceWayBehind => 'Bem atrás do ritmo';
+
+  @override
   String get runWorkoutMoreActions => 'Mais ações do treino';
 
   @override
@@ -25220,6 +25235,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runWorkoutAbandon => 'Abandonar';
+
+  @override
+  String get workoutPaceOnPace => 'No ritmo';
+
+  @override
+  String get workoutPaceAhead => 'À frente do ritmo';
+
+  @override
+  String get workoutPaceBehind => 'Atrás do ritmo';
+
+  @override
+  String get workoutPaceWayAhead => 'Bem à frente do ritmo';
+
+  @override
+  String get workoutPaceWayBehind => 'Bem atrás do ritmo';
 
   @override
   String get runWorkoutMoreActions => 'Mais ações do treino';

@@ -4331,6 +4331,36 @@ abstract class AppLocalizations {
   /// **'Abandon'**
   String get runWorkoutAbandon;
 
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'On pace'**
+  String get workoutPaceOnPace;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Ahead of pace'**
+  String get workoutPaceAhead;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Behind pace'**
+  String get workoutPaceBehind;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Well ahead of pace'**
+  String get workoutPaceWayAhead;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Well behind pace'**
+  String get workoutPaceWayBehind;
+
   /// Tooltip and accessibility label of the workout band overflow menu that holds Abandon
   ///
   /// In en, this message translates to:

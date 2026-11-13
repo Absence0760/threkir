@@ -2574,6 +2574,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonner';
 
   @override
+  String get workoutPaceOnPace => 'Dans l\'allure';
+
+  @override
+  String get workoutPaceAhead => 'En avance sur l\'allure';
+
+  @override
+  String get workoutPaceBehind => 'En retard sur l\'allure';
+
+  @override
+  String get workoutPaceWayAhead => 'Nettement en avance sur l\'allure';
+
+  @override
+  String get workoutPaceWayBehind => 'Nettement en retard sur l\'allure';
+
+  @override
   String get runWorkoutMoreActions => 'Autres actions de la séance';
 
   @override

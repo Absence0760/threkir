@@ -2570,6 +2570,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runWorkoutAbandon => 'Abbrechen';
 
   @override
+  String get workoutPaceOnPace => 'Im Tempo';
+
+  @override
+  String get workoutPaceAhead => 'Schneller als das Zieltempo';
+
+  @override
+  String get workoutPaceBehind => 'Langsamer als das Zieltempo';
+
+  @override
+  String get workoutPaceWayAhead => 'Deutlich schneller als das Zieltempo';
+
+  @override
+  String get workoutPaceWayBehind => 'Deutlich langsamer als das Zieltempo';
+
+  @override
   String get runWorkoutMoreActions => 'Weitere Workout-Aktionen';
 
   @override

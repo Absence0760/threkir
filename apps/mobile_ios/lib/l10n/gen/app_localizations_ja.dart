@@ -2456,6 +2456,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runWorkoutAbandon => '中止';
 
   @override
+  String get workoutPaceOnPace => 'ペース通り';
+
+  @override
+  String get workoutPaceAhead => '目標ペースより速い';
+
+  @override
+  String get workoutPaceBehind => '目標ペースより遅い';
+
+  @override
+  String get workoutPaceWayAhead => '目標ペースよりかなり速い';
+
+  @override
+  String get workoutPaceWayBehind => '目標ペースよりかなり遅い';
+
+  @override
   String get runWorkoutMoreActions => 'ワークアウトのその他の操作';
 
   @override

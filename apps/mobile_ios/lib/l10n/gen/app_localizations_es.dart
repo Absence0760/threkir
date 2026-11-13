@@ -2568,6 +2568,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonar';
 
   @override
+  String get workoutPaceOnPace => 'En ritmo';
+
+  @override
+  String get workoutPaceAhead => 'Por delante del ritmo';
+
+  @override
+  String get workoutPaceBehind => 'Por detrás del ritmo';
+
+  @override
+  String get workoutPaceWayAhead => 'Muy por delante del ritmo';
+
+  @override
+  String get workoutPaceWayBehind => 'Muy por detrás del ritmo';
+
+  @override
   String get runWorkoutMoreActions => 'Más acciones del entrenamiento';
 
   @override

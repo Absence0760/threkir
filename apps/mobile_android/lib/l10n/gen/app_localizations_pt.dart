@@ -4319,7 +4319,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'Descrições com IA são um recurso Pro. Faça upgrade para aprimorar.';
+      'As descrições com IA são uma funcionalidade Pro.';
 
   @override
   String get routeDetailDescShapeLoop => 'em circuito';
@@ -8138,7 +8138,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachLimitReachedFree =>
-      'Limite diário atingido. O Pro tem um teto maior — atualize nas Definições.';
+      'Limite diário atingido. O Pro tem um teto maior.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -9106,6 +9106,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro e apoio';
+
+  @override
+  String get proUpsellAction => 'Ver o Pro';
 
   @override
   String proCouldNotOpen(Object error) {
@@ -26870,7 +26873,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'Descrições com IA são um recurso Pro. Faça upgrade para aprimorar.';
+      'Descrições com IA são um recurso Pro.';
 
   @override
   String get routeDetailDescShapeLoop => 'em circuito';
@@ -30687,7 +30690,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachLimitReachedFree =>
-      'Limite diário atingido. O Pro tem um teto maior — atualize nas Configurações.';
+      'Limite diário atingido. O Pro tem um teto maior.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -31649,6 +31652,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get proTitle => 'Pro e apoio';
+
+  @override
+  String get proUpsellAction => 'Ver o Pro';
 
   @override
   String proCouldNotOpen(Object error) {

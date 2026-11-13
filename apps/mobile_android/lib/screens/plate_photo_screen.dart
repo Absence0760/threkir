@@ -10,6 +10,7 @@ import '../nutrition_totals.dart' show mealSlots;
 import '../plate_photo_client.dart';
 import '../typed_decimal.dart';
 import '../widgets/full_screen_form.dart';
+import '../widgets/pro_upsell_link.dart';
 
 /// Picks a picture. Returns null when the runner backs out.
 typedef PlatePhotoPicker = Future<Uint8List?> Function(ImageSource source);
@@ -360,11 +361,19 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
         ],
         if (_error != null) ...[
           const SizedBox(height: 12),
-          Text(
-            _errorText(l10n, _error!),
-            key: const ValueKey('plate-photo-error'),
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
-          ),
+          if (_error == PlatePhotoErrorKind.proRequired)
+            ProUpsellLink(
+              key: const ValueKey('plate-photo-error'),
+              message: _errorText(l10n, _error!),
+              color: theme.colorScheme.error,
+              style: theme.textTheme.bodyMedium,
+            )
+          else
+            Text(
+              _errorText(l10n, _error!),
+              key: const ValueKey('plate-photo-error'),
+              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+            ),
         ],
         if (_saveError != null) ...[
           const SizedBox(height: 12),

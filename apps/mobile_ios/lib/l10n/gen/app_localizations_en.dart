@@ -4276,7 +4276,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'AI descriptions are a Pro feature. Upgrade to enhance.';
+      'AI descriptions are a Pro feature.';
 
   @override
   String get routeDetailDescShapeLoop => 'loop';
@@ -8056,7 +8056,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachLimitReachedFree =>
-      'Daily limit reached. Pro gets a higher cap — upgrade in Settings.';
+      'Daily limit reached. Pro gets a higher cap.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -9010,6 +9010,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro & support';
+
+  @override
+  String get proUpsellAction => 'See Pro';
 
   @override
   String proCouldNotOpen(Object error) {

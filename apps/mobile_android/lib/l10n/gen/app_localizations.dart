@@ -7078,7 +7078,7 @@ abstract class AppLocalizations {
   /// Upsell shown to free users; the templated description still shows
   ///
   /// In en, this message translates to:
-  /// **'AI descriptions are a Pro feature. Upgrade to enhance.'**
+  /// **'AI descriptions are a Pro feature.'**
   String get routeDetailEnhanceUpgradeHint;
 
   /// Route shape word: a route that returns to its start
@@ -12928,10 +12928,10 @@ abstract class AppLocalizations {
   /// **'Daily limit reached. Come back tomorrow.'**
   String get coachLimitReachedPro;
 
-  /// Daily-cap banner for free tier
+  /// Daily-cap banner for free tier; followed by the See Pro link, so it gives no directions
   ///
   /// In en, this message translates to:
-  /// **'Daily limit reached. Pro gets a higher cap — upgrade in Settings.'**
+  /// **'Daily limit reached. Pro gets a higher cap.'**
   String get coachLimitReachedFree;
 
   /// Daily-cap banner: messages remaining today
@@ -14433,6 +14433,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pro & support'**
   String get proTitle;
+
+  /// Link after every upsell message (coach limit, AI route descriptions, plate photo) that opens the Pro & support screen
+  ///
+  /// In en, this message translates to:
+  /// **'See Pro'**
+  String get proUpsellAction;
 
   /// Banner shown when an external URL can't be opened
   ///

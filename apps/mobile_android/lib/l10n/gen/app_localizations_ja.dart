@@ -4076,8 +4076,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routeDetailReviewDisclosure => '説明を確認';
 
   @override
-  String get routeDetailEnhanceUpgradeHint =>
-      'AIによる説明はPro機能です。アップグレードして強化しましょう。';
+  String get routeDetailEnhanceUpgradeHint => 'AIによる説明はPro機能です。';
 
   @override
   String get routeDetailDescShapeLoop => '周回';
@@ -7684,8 +7683,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachLimitReachedPro => '1日の上限に達しました。明日また来てください。';
 
   @override
-  String get coachLimitReachedFree =>
-      '1日の上限に達しました。Pro ならより高い上限になります。設定からアップグレードしてください。';
+  String get coachLimitReachedFree => '1日の上限に達しました。Pro ならより高い上限になります。';
 
   @override
   String coachMessagesLeft(int count) {
@@ -8604,6 +8602,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro とサポート';
+
+  @override
+  String get proUpsellAction => 'Proを見る';
 
   @override
   String proCouldNotOpen(Object error) {

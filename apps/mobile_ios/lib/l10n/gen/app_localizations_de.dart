@@ -4330,7 +4330,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'KI-Beschreibungen sind eine Pro-Funktion. Upgrade zum Verbessern.';
+      'KI-Beschreibungen sind eine Pro-Funktion.';
 
   @override
   String get routeDetailDescShapeLoop => 'Rundkurs';
@@ -8155,7 +8155,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachLimitReachedFree =>
-      'Tageslimit erreicht. Pro hat ein höheres Limit — upgrade in den Einstellungen.';
+      'Tageslimit erreicht. Pro hat ein höheres Limit.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -9121,6 +9121,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro & Support';
+
+  @override
+  String get proUpsellAction => 'Pro ansehen';
 
   @override
   String proCouldNotOpen(Object error) {

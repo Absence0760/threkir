@@ -38,6 +38,7 @@ import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/ai_tag.dart';
 import '../widgets/chat_stick_to_bottom.dart';
 import '../widgets/coach_share_sheet.dart';
+import '../widgets/pro_upsell_link.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/surface_peer_strip.dart';
@@ -1720,6 +1721,7 @@ class _CoachScreenState extends State<CoachScreen> {
 
   Widget _buildLimitBanner(
       ThemeData theme, AppLocalizations l10n, ColorScheme cs) {
+    final upsell = _limitReached && _tier != 'pro';
     final String text;
     if (_limitReached) {
       text = _tier == 'pro'
@@ -1739,10 +1741,12 @@ class _CoachScreenState extends State<CoachScreen> {
       width: double.infinity,
       color: background,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(color: foreground),
-      ),
+      child: upsell
+          ? ProUpsellLink(message: text, color: foreground)
+          : Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(color: foreground),
+            ),
     );
   }
 

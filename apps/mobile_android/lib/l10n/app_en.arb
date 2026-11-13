@@ -5727,7 +5727,7 @@
   "@routeDetailReviewDisclosure": {
     "description": "Button that opens the AI disclosure from the route-description fallback notice"
   },
-  "routeDetailEnhanceUpgradeHint": "AI descriptions are a Pro feature. Upgrade to enhance.",
+  "routeDetailEnhanceUpgradeHint": "AI descriptions are a Pro feature.",
   "@routeDetailEnhanceUpgradeHint": {
     "description": "Upsell shown to free users; the templated description still shows"
   },
@@ -10929,9 +10929,9 @@
   "@coachLimitReachedPro": {
     "description": "Daily-cap banner for Pro tier"
   },
-  "coachLimitReachedFree": "Daily limit reached. Pro gets a higher cap — upgrade in Settings.",
+  "coachLimitReachedFree": "Daily limit reached. Pro gets a higher cap.",
   "@coachLimitReachedFree": {
-    "description": "Daily-cap banner for free tier"
+    "description": "Daily-cap banner for free tier; followed by the See Pro link, so it gives no directions"
   },
   "coachMessagesLeft": "{count, plural, one{{count} message left today} other{{count} messages left today}}",
   "@coachMessagesLeft": {
@@ -12229,6 +12229,10 @@
   "proTitle": "Pro & support",
   "@proTitle": {
     "description": "AppBar title for the Settings > Pro & support screen"
+  },
+  "proUpsellAction": "See Pro",
+  "@proUpsellAction": {
+    "description": "Link after every upsell message (coach limit, AI route descriptions, plate photo) that opens the Pro & support screen"
   },
   "proCouldNotOpen": "Could not open: {error}",
   "@proCouldNotOpen": {

@@ -66,6 +66,7 @@ import '../widgets/route_share_card.dart';
 import '../widgets/scrolled_away_title.dart';
 import '../widgets/segments_panel.dart';
 import '../widgets/send_route_sheet.dart';
+import '../widgets/pro_upsell_link.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
@@ -618,12 +619,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
         if (_showUpgradeHint)
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              l10n.routeDetailEnhanceUpgradeHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.primary,
-              ),
-            ),
+            child: ProUpsellLink(message: l10n.routeDetailEnhanceUpgradeHint),
           ),
         if (_describeFailed)
           Padding(

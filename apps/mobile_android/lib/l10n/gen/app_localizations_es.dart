@@ -4319,7 +4319,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'Las descripciones con IA son una función Pro. Mejora tu plan para usarla.';
+      'Las descripciones con IA son una función Pro.';
 
   @override
   String get routeDetailDescShapeLoop => 'circular';
@@ -8131,7 +8131,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachLimitReachedFree =>
-      'Límite diario alcanzado. Pro ofrece un tope mayor: mejora en Ajustes.';
+      'Límite diario alcanzado. Pro ofrece un tope mayor.';
 
   @override
   String coachMessagesLeft(int count) {
@@ -9101,6 +9101,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get proTitle => 'Pro y apoyo';
+
+  @override
+  String get proUpsellAction => 'Ver Pro';
 
   @override
   String proCouldNotOpen(Object error) {

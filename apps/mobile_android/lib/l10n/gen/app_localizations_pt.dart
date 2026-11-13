@@ -6886,6 +6886,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get plansFilterGroupLabel => 'Filtrar planos por estado';
 
   @override
+  String plansCountMeta(int visible, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$visible de $total planos',
+      one: '$visible de $total plano',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get plansFilterAll => 'Todos';
 
   @override
@@ -30394,6 +30405,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get plansFilterGroupLabel => 'Filtrar planos por status';
+
+  @override
+  String plansCountMeta(int visible, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$visible de $total planos',
+      one: '$visible de $total plano',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get plansFilterAll => 'Todos';

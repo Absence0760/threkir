@@ -6504,6 +6504,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get plansFilterGroupLabel => 'ステータスでプランを絞り込む';
 
   @override
+  String plansCountMeta(int visible, int total) {
+    return '$total 件中 $visible 件のプラン';
+  }
+
+  @override
   String get plansFilterAll => 'すべて';
 
   @override

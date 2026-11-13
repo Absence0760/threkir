@@ -6897,6 +6897,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get plansFilterGroupLabel => 'Filtrer les plans par statut';
 
   @override
+  String plansCountMeta(int visible, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$visible sur $total plans',
+      one: '$visible sur $total plan',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get plansFilterAll => 'Tous';
 
   @override

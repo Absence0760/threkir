@@ -1855,6 +1855,7 @@
   "plansStatusCompleted": "terminé",
   "plansStatusAbandoned": "abandonné",
   "plansFilterGroupLabel": "Filtrer les plans par statut",
+  "plansCountMeta": "{total, plural, one{{visible} sur {total} plan} other{{visible} sur {total} plans}}",
   "plansFilterAll": "Tous",
   "plansFilterActive": "Actifs",
   "plansFilterPaused": "En pause",

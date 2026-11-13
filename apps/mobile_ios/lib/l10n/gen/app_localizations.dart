@@ -11006,6 +11006,12 @@ abstract class AppLocalizations {
   /// **'Filter plans by status'**
   String get plansFilterGroupLabel;
 
+  /// One line at the head of the plans list: how many plans the status filter shows out of all of them. The count lives here, not on the status chips. Same shape as routesCountMeta
+  ///
+  /// In en, this message translates to:
+  /// **'{total, plural, one{{visible} of {total} plan} other{{visible} of {total} plans}}'**
+  String plansCountMeta(int visible, int total);
+
   /// Status filter chip on the plans list: every plan
   ///
   /// In en, this message translates to:

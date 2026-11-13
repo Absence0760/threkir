@@ -1855,6 +1855,7 @@
   "plansStatusCompleted": "完了",
   "plansStatusAbandoned": "中止",
   "plansFilterGroupLabel": "ステータスでプランを絞り込む",
+  "plansCountMeta": "{total} 件中 {visible} 件のプラン",
   "plansFilterAll": "すべて",
   "plansFilterActive": "アクティブ",
   "plansFilterPaused": "一時停止中",

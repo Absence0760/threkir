@@ -1855,6 +1855,7 @@
   "plansStatusCompleted": "abgeschlossen",
   "plansStatusAbandoned": "abgebrochen",
   "plansFilterGroupLabel": "Pläne nach Status filtern",
+  "plansCountMeta": "{total, plural, one{{visible} von {total} Plan} other{{visible} von {total} Plänen}}",
   "plansFilterAll": "Alle",
   "plansFilterActive": "Aktiv",
   "plansFilterPaused": "Pausiert",

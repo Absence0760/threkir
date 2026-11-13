@@ -9171,6 +9171,18 @@
   "@plansFilterGroupLabel": {
     "description": "Screen-reader label of the status filter chips above the plans list"
   },
+  "plansCountMeta": "{total, plural, one{{visible} of {total} plan} other{{visible} of {total} plans}}",
+  "@plansCountMeta": {
+    "description": "One line at the head of the plans list: how many plans the status filter shows out of all of them. The count lives here, not on the status chips. Same shape as routesCountMeta",
+    "placeholders": {
+      "visible": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "plansFilterAll": "All",
   "@plansFilterAll": {
     "description": "Status filter chip on the plans list: every plan"

@@ -117,18 +117,14 @@
 			</p>
 		{:else if lead.comparison?.kind === 'goalRuns'}
 			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
-				{lead.comparison.targetCount === 1
-					? m('dash.leadVsGoalRunsOne', { done: lead.count, target: lead.comparison.targetCount })
-					: m('dash.leadVsGoalRunsOther', { done: lead.count, target: lead.comparison.targetCount })}
+				{m('dash.leadVsGoalRuns', { done: lead.count, target: lead.comparison.targetCount })}
 			</p>
 		{:else if lead.comparison?.kind === 'average'}
 			<p class="week-lead-vs" data-testid="dash-week-lead-vs">
-				{lead.comparison.weeks === 1
-					? m('dash.leadVsAverageOne', { avg: formatDistance(lead.comparison.averageM) })
-					: m('dash.leadVsAverageOther', {
-							weeks: lead.comparison.weeks,
-							avg: formatDistance(lead.comparison.averageM),
-						})}
+				{m('dash.leadVsAverage', {
+					weeks: lead.comparison.weeks,
+					avg: formatDistance(lead.comparison.averageM),
+				})}
 			</p>
 		{/if}
 	</div>

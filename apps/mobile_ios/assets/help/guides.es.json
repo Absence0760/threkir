@@ -313,7 +313,7 @@
               "**Map-matching prioritario**: tus trazas GPS se ajustan a las calles antes que las de las cuentas gratuitas, así que están listas antes.",
               "**Exportaciones a la nube prioritarias**: hasta 8 exportaciones de paquetes GPX por hora en lugar de 2.",
               "**Generación de rutas en el servidor**: bucles trazados sobre la red de calles real cuando generas una ruta por distancia. Las cuentas gratuitas siguen teniendo generación de bucles, calculada en el navegador.",
-              "Descripciones de rutas más ricas: en la página de una ruta, **Mejorar con IA** convierte la descripción estándar en un párrafo más completo.",
+              "Descripciones de rutas más ricas: en la página de una ruta, **Describir esta ruta** escribe un párrafo más completo en lugar de la descripción estándar.",
               "**Registrar desde una foto**: haz una foto de una comida y tu registro de alimentos se rellena para que lo revises. Consulta [[guide:log-a-meal-from-a-photo|Registrar una comida desde una foto]]."
             ]
           },

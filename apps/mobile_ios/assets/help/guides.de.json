@@ -313,7 +313,7 @@
               "**Vorrangiges Map-Matching**: Deine GPS-Aufzeichnungen werden vor denen kostenloser Konten an Straßen ausgerichtet und sind dadurch früher fertig.",
               "**Vorrangige Cloud-Exporte**: bis zu 8 GPX-Paket-Exporte pro Stunde statt 2.",
               "**Server-Routengenerierung**: Rundkurse, die auf dem echten Straßennetz berechnet werden, wenn du eine Route nach Distanz generierst. Kostenlose Konten bekommen weiterhin Rundkurs-Generierung, berechnet im Browser.",
-              "Ausführlichere Routenbeschreibungen: Auf der Seite einer Route macht **Mit KI verbessern** aus der Standardbeschreibung einen ausführlicheren Absatz.",
+              "Ausführlichere Routenbeschreibungen: Auf der Seite einer Route schreibt **Diese Route beschreiben** anstelle der Standardbeschreibung einen ausführlicheren Absatz.",
               "**Aus einem Foto eintragen**: Fotografiere eine Mahlzeit, und dein Ernährungstagebuch wird zum Prüfen für dich ausgefüllt. Siehe [[guide:log-a-meal-from-a-photo|Eine Mahlzeit per Foto eintragen]]."
             ]
           },

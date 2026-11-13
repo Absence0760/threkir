@@ -99,6 +99,11 @@ are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
 | training plan | Plan d'entraînement; short Plan(s) | |
 | race | Course; "Course officielle" for a run's race source | collides with *run* — inconsistency 1 |
 | race page (a race's public page, its photo gallery) | **page de l'épreuve** — « Afficher sur la page de l'épreuve » | settled 2026-11-13 (#1374 round 3.5), both surfaces; the run beside it is « course », so the race is « épreuve » (inconsistency 1) |
+| streaming app | « app de streaming » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « application de streaming » |
+| cue (guided run) | **repère** / repères everywhere | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « indication » for a cue |
+| fluid (fuel plan, roadbook) | **liquides** — « Liquides au total », « Liquides selon le poids », « Liquides par heure (ml) » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « fluide » (a calque) |
+| form (TSB) | **Fraîcheur**; fitness (CTL) « Forme », fatigue (ATL) « Fatigue » | settled 2026-11-13 (#1374 round 3.5), both surfaces; « État de forme » is Readiness only |
+| race countdown on the plan card | « Épreuve demain », « Épreuve dans N jours » | settled 2026-11-13 (#1374 round 3.5), both surfaces; a race beside the runs on that card is « épreuve » |
 | finish | Arrivée (finish line); Terminé (status); Terminer (action) | |
 | DNF | DNF | web also "ABD" (`liveEvent.statusDnf`) and "Abandon" (`checkpoint.statusDnf`) — inconsistency 6 |
 | route | Itinéraire / Itinéraires | dominant; "Parcours" also used (41 / 48 strings), mostly for a race course |
@@ -121,7 +126,7 @@ are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
 | workout / session | Séance; training = entraînement | |
 | skip a workout / skipped | **Ignorer** / **ignorée** (séance) — un-skip **Ne plus ignorer** | settled 2026-10-21; never "sautée" for the status, never "l'ignorance". Skipping a step or setup is a different action: **Passer**. "Ne sautez pas" stays in coaching advice |
 | warm-up / cool-down / recovery | Échauffement / **Retour au calme** / Récupération | cool-down is also "Récupération" in places, colliding with recovery — inconsistency 7 |
-| save / settings / feed / followers | Enregistrer / **Réglages** (mobile) – **Paramètres** (web) / Fil / Abonnés | settings split — inconsistency 4 |
+| save / settings / feed / followers | Enregistrer / **Réglages** (both surfaces) / Fil / Abonnés | settings settled 2026-11-13: « Réglages » for the app's settings on web and mobile, help guides included; « paramètres » stays for a browser's or another app's settings and for parameters (« paramètres du plan ») |
 | arm / armed (race control) | **Armer** (vous: "Armez la course"), state **armé(e)** — "Armer la course", "Course armée", "Armer plus tôt", "Armer quand même" | settled 2026-11-10; never the tu-form "Arme" |
 | self-timed (race) | **en chrono libre** ("course en chrono libre", "Fenêtre en chrono libre") | settled 2026-11-10; never "chronométrée en autonomie" / "chronométrée par chacun" |
 | GO (the start signal) | **GO** — the button on the web and in the phone app, "GO par l'organisateur", "GO programmé"; prose "donner le GO", "le GO", "après le GO", "en attente du GO" | settled 2026-11-10; never "Lancer le Go" for the button. *Départ* stays for the start line and the time fields ("ligne de départ", "Heure de départ", "Départ à {when}"); the Wear armed banner is "COURSE ARMÉE" |
@@ -140,8 +145,7 @@ are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
    `prefsCueSplits` "Intermédiaires"; web `landing.previewSplits` "Temps
    au km".
 3. *(resolved 2026-10-15)* tu / vous — both catalogues are `vous`; see Register.
-4. **settings**: "Réglages" (mobile `navSettings`) vs "Paramètres" (web
-   `shell.settings`).
+4. **settings**: resolved 2026-11-13 — « Réglages » on both surfaces.
 5. **elevation gain**: Dénivelé positif / Montée / Dénivelé + / Dénivelé.
 6. **DNF**: DNF / ABD / Abandon on web.
 7. **cool-down**: Retour au calme vs Récupération.

@@ -4183,7 +4183,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routeDetailDescribeConsentRequired =>
-      'AIによる説明には、更新されたAIの説明への同意が必要です。';
+      'AIによる説明には、更新されたAIに関する説明への同意が必要です。';
 
   @override
   String get routeDetailReviewDisclosure => '説明を確認';
@@ -4777,7 +4777,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get runHeatmapEmptyTitle => 'まだマップ化されたランがありません';
+  String get runHeatmapEmptyTitle => '地図に表示できるランはまだありません';
 
   @override
   String get runHeatmapEmptyBody => 'GPSトラック付きのランを記録またはインポートすると、ここに表示されます。';
@@ -4806,7 +4806,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'マップ化されたラン$n件 — よく走る場所ほど明るく表示されます。',
+      other: '地図に$n件のラン — よく走る場所ほど明るく表示されます。',
     );
     return '$_temp0';
   }
@@ -6056,7 +6056,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventOccurrenceCancelled => 'この回はキャンセルされました。';
 
   @override
-  String get eventRsvpWaitlisted => '補欠';
+  String get eventRsvpWaitlisted => 'キャンセル待ち';
 
   @override
   String get eventRsvpDeclined => '行けない';
@@ -8116,7 +8116,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsAccountBackupPreparing => 'バックアップを準備しています…';
 
   @override
-  String get settingsAccountBackupShareText => 'Run app バックアップ';
+  String get settingsAccountBackupShareText => 'Threkir バックアップ';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8330,7 +8330,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count 件のランがまだ同期されていません。アカウントのエクスポートはサーバーで作成されるため、それらは含まれません — 残すには完全バックアップを使ってください。';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count 件のランがまだ同期されていません。アカウントのエクスポートはサーバーで作成されるため、それらは含まれません — 残すには完全バックアップを使ってください。',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -9295,7 +9301,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count 件のゾーンが $meters m 未満だったため、ゾーンの最小サイズの $meters m に広げました。',
+      other: '$count件のゾーンは$meters m未満だったため、ゾーンの最小サイズである$meters mの範囲として扱われます。',
     );
     return '$_temp0';
   }
@@ -10962,7 +10968,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String gearBackfillBody(int count, String activity) {
-    return '購入後に $activity のアクティビティが $count 件見つかりました。着用していないものはチェックを外してください。';
+    return '購入後に $activity のアクティビティが $count 件見つかりました。使用していないものはチェックを外してください。';
   }
 
   @override
@@ -14481,7 +14487,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '同順位: $n',
+      other: 'ほか$n人と同順位',
     );
     return '$_temp0';
   }
@@ -17168,10 +17174,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventCancelOccurrenceBody =>
-      'この回だけが中止になります。シリーズの残りには影響しません。参加表明した全員(参加・未定・補欠)に通知されます。';
+      'この回だけが中止になります。シリーズの残りには影響しません。参加表明した全員(参加・未定・キャンセル待ち)に通知されます。';
 
   @override
-  String get eventCancelEventBody => 'イベントが中止になります。参加表明した全員(参加・未定・補欠)に通知されます。';
+  String get eventCancelEventBody =>
+      'イベントが中止になります。参加表明した全員(参加・未定・キャンセル待ち)に通知されます。';
 
   @override
   String get eventCancelSeriesBody =>

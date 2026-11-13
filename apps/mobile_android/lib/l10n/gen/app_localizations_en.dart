@@ -8487,7 +8487,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAccountBackupPreparing => 'Preparing backup…';
 
   @override
-  String get settingsAccountBackupShareText => 'Run app backup';
+  String get settingsAccountBackupShareText => 'Threkir backup';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8706,7 +8706,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.',
+      one:
+          '$count run hasn\'t synced yet. The account export is built on the server, so it won\'t include it — use Full backup to keep it.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -11420,7 +11428,7 @@ class AppLocalizationsEn extends AppLocalizations {
       other: '$count $activity activities',
       one: '$count $activity activity',
     );
-    return 'We found $_temp0 after you bought them. Uncheck any you weren\'t wearing them for.';
+    return 'We found $_temp0 since you bought this gear. Uncheck any it wasn\'t used for.';
   }
 
   @override
@@ -12612,7 +12620,7 @@ class AppLocalizationsEn extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count sessions',
-      one: '1 session',
+      one: '$count session',
     );
     return '$_temp0';
   }

@@ -30,7 +30,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l\'app mobile, il s\'agit de **Confidentialité par défaut des courses** sous **Confidentialité et partage** dans l\'onglet **Vous**.',
+						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l\'app mobile, il s\'agit de **Confidentialité par défaut des courses** sous **Confidentialité et partage** dans l\'onglet **Vous**.',
 						'Pour modifier une seule course plus tard, ouvrez-la et touchez **Privé** ou **Public** sous son titre. Avant qu\'une course devienne publique, l\'app vous demande confirmation et vous montre ce que vos zones de confidentialité masqueront.',
 					],
 				},
@@ -53,7 +53,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Sur le web, ouvrez **Compte** dans les Paramètres. L\'app mobile propose les mêmes options sous **Compte** dans l\'onglet **Vous**.',
+					text: 'Sur le web, ouvrez **Compte** dans les Réglages. L\'app mobile propose les mêmes options sous **Compte** dans l\'onglet **Vous**.',
 				},
 				{
 					type: 'list',
@@ -73,7 +73,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Téléchargez d\'abord tout ce que vous voulez garder. La suppression est irréversible.',
-						'Sur le web, ouvrez **Compte** dans les Paramètres et sélectionnez **Supprimer le compte** sous **Zone de danger**. Dans l\'app mobile, ouvrez **Compte** dans l\'onglet **Vous** et touchez **Supprimer le compte**.',
+						'Sur le web, ouvrez **Compte** dans les Réglages et sélectionnez **Supprimer le compte** sous **Zone de danger**. Dans l\'app mobile, ouvrez **Compte** dans l\'onglet **Vous** et touchez **Supprimer le compte**.',
 						'Saisissez SUPPRIMER pour confirmer, puis sélectionnez **Supprimer mon compte** sur le web ou **Supprimer** dans l\'app.',
 					],
 				},

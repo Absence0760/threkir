@@ -47,7 +47,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Sur un iPhone, ouvrez **Pro et soutien** dans l\'onglet **Vous** et abonnez-vous via l\'App Store.',
-						'Sur le web, ouvrez [[route:/settings/upgrade|Pro et soutien]] dans les Paramètres. S\'il est indiqué **L\'abonnement sur le web arrive bientôt.**, abonnez-vous plutôt dans l\'app iPhone.',
+						'Sur le web, ouvrez [[route:/settings/upgrade|Pro et soutien]] dans les Réglages. S\'il est indiqué **L\'abonnement sur le web arrive bientôt.**, abonnez-vous plutôt dans l\'app iPhone.',
 					],
 				},
 				{

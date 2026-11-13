@@ -85,6 +85,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | cadence (steps/min) | Schrittfrequenz | `runStatCadence`. "Rhythmus" in `discover.cadenceLabel` means *recurrence* — a different sense |
 | training plan | Trainingsplan / Trainingspläne; short Plan / Pläne | |
 | race | Rennen (nav, tabs, calendar `Rennkalender`); Wettkampf (workout kind, run source) | |
+| mapped run (personal heatmap) | **Lauf auf der Karte** — „Noch keine Läufe auf der Karte“ | settled 2026-11-13 (#1374 round 3.5), both surfaces; never „erfasst“, which is *logged* |
 | club (every surface, including plan templates and race claims) | **Club** / Clubs; compounds hyphenated as the catalogue already writes them (Club-Vorlage, Club-Admins) or closed where already closed (Clubmitglieder, Clubkopie, Clubbeitrag) | settled 2026-11-13 (#1374 round 3.5), both surfaces; never Verein — this closes inconsistency 5 |
 | finish | Ziel (finish line); Beendet (status); Beenden (action) | "Ziel" also means *goal* — disambiguate by context |
 | DNF | DNF | kept as-is on both surfaces |

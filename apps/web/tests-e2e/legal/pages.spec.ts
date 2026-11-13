@@ -247,7 +247,7 @@ test.describe('Legal pages', () => {
 		expect(body).toMatch(/backups[^\n]*28 days/i);
 		expect(body).toContain('permanent and cannot be undone');
 		// The app has no Settings screen; deletion is under the You tab.
-		expect(body).toContain('open the You tab, then Account → Delete account');
+		expect(body).toContain('open Account in the You tab and choose Delete account');
 	});
 
 	test('/delete-account reads in the browser language, not only in English', async ({

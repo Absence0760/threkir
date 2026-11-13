@@ -1124,8 +1124,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       days,
       locale: localeName,
-      other: 'Comienza en $days días',
-      one: 'Comienza mañana',
+      other: 'Empieza en $days días',
+      one: 'Empieza mañana',
     );
     return '$_temp0';
   }
@@ -5051,7 +5051,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get runHeatmapEmptyTitle => 'Aún no hay carreras mapeadas';
+  String get runHeatmapEmptyTitle => 'Aún no hay carreras en el mapa';
 
   @override
   String get runHeatmapEmptyBody =>
@@ -5083,8 +5083,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '$n carreras mapeadas: más brillante donde más corres.',
-      one: '$n carrera mapeada: más brillante donde más corres.',
+      other: '$n carreras en el mapa: más brillante donde más corres.',
+      one: '$n carrera en el mapa: más brillante donde más corres.',
     );
     return '$_temp0';
   }
@@ -8572,7 +8572,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Preparando la copia de seguridad…';
 
   @override
-  String get settingsAccountBackupShareText => 'Copia de seguridad de Run app';
+  String get settingsAccountBackupShareText => 'Copia de seguridad de Threkir';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8794,7 +8794,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count carreras aún no se han sincronizado. La exportación de la cuenta se crea en el servidor, así que no las incluirá: usa la copia de seguridad completa para conservarlas.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count carreras aún no se han sincronizado. La exportación de la cuenta se crea en el servidor, así que no las incluirá: usa la copia de seguridad completa para conservarlas.',
+      one:
+          '$count carrera aún no se ha sincronizado. La exportación de la cuenta se crea en el servidor, así que no la incluirá: usa la copia de seguridad completa para conservarla.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -9147,7 +9155,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsHrScanHint =>
-      'Activa tu banda de FC. Suele tardar de 3 a 8 segundos.';
+      'Activa tu banda de FC. La búsqueda suele tardar de 3 a 8 segundos.';
 
   @override
   String get integrationsHrScanEmpty =>
@@ -9422,11 +9430,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get devicesRemoveBodyCurrent =>
-      'Este es el dispositivo que estás usando. Al eliminarlo se borran las anulaciones de preferencias por dispositivo; el dispositivo sigue con la sesión iniciada.';
+      'Este es el dispositivo que estás usando. Al eliminarlo se borran las personalizaciones de preferencias por dispositivo; el dispositivo sigue con la sesión iniciada.';
 
   @override
   String get devicesRemoveBodyOther =>
-      'Elimina la entrada del dispositivo y cualquier anulación de preferencias por dispositivo. El dispositivo permanece con la sesión iniciada hasta que abra la app de nuevo.';
+      'Elimina la entrada del dispositivo y cualquier personalización de preferencias por dispositivo. El dispositivo permanece con la sesión iniciada hasta que abra la app de nuevo.';
 
   @override
   String get devicesRemove => 'Eliminar';
@@ -9461,8 +9469,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count anulaciones',
-      one: '$count anulación',
+      other: '$count personalizaciones',
+      one: '$count personalización',
     );
     return '$_temp0';
   }
@@ -9489,24 +9497,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get devicesRename => 'Renombrar';
 
   @override
-  String get devicesEditOverrides => 'Editar anulaciones…';
+  String get devicesEditOverrides => 'Editar personalizaciones…';
 
   @override
   String get devicesEveryKeySet =>
-      'Todas las claves anulables ya están establecidas; elimina una antes de añadir otra.';
+      'Todas las claves que se pueden personalizar ya están establecidas; elimina una antes de añadir otra.';
 
   @override
   String get devicesOverridesSheetTitle => 'Anulaciones por dispositivo';
 
   @override
   String get devicesOverridesSheetDesc =>
-      'Estas claves anulan los ajustes universales solo en este dispositivo.';
+      'Estas claves sustituyen los ajustes universales solo en este dispositivo.';
 
   @override
-  String get devicesNoOverrides => 'No hay anulaciones en este dispositivo.';
+  String get devicesNoOverrides =>
+      'No hay personalizaciones en este dispositivo.';
 
   @override
-  String get devicesAddOverride => 'Añadir anulación';
+  String get devicesAddOverride => 'Añadir personalización';
 
   @override
   String get devicesPickKey => 'Elegir una clave';
@@ -11534,7 +11543,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$count actividades de $activity',
       one: '$count actividad de $activity',
     );
-    return 'Encontramos $_temp0 después de comprarlos. Desmarca aquellas en las que no los usaste.';
+    return 'Encontramos $_temp0 desde la compra. Desmarca las que no correspondan.';
   }
 
   @override
@@ -12567,7 +12576,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsTabDevicesSubtitle =>
-      'Dónde tienes sesión iniciada y las anulaciones por dispositivo: vincula la banda o la cinta en Integraciones';
+      'Dónde tienes sesión iniciada y las personalizaciones por dispositivo: vincula la banda de FC o la cinta de correr en Integraciones';
 
   @override
   String get settingsTabGearSubtitle =>
@@ -12738,7 +12747,7 @@ class AppLocalizationsEs extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count sesiones',
-      one: '1 sesión',
+      one: '$count sesión',
     );
     return '$_temp0';
   }
@@ -15185,7 +15194,7 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'Empatado con $n más',
+      other: 'Empate con $n más',
     );
     return '$_temp0';
   }

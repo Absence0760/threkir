@@ -119,6 +119,10 @@ twin the same way so the two surfaces read alike. Both rules are guards
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
 | race | **Prova** everywhere: workout kind, nav and tabs ("Provas"), `races.title` "Calendário de provas", race control ("Preparar prova", "Encerrar prova") | settled 2026-10-13; *corrida* is only ever a run, so the Runs and Races tabs no longer collide |
+| sign in (in a sentence) | « Inicie sessão » — « Inicie sessão primeiro para … » | settled 2026-11-13 (#1374 round 3.5), both surfaces; a bare « Entre » is only a button label |
+| @username help | « nome de utilizador/usuário público (@…) », never « @nome de … » | settled 2026-11-13 (#1374 round 3.5), both surfaces |
+| Threkir's gender | **o Threkir** for the app (« no Threkir », « do Threkir »); **a Threkir** only for the company in legal and consent text (« em nome da Threkir ») | settled 2026-11-13 (#1374 round 3.5), both surfaces |
+| cue (guided run) | **dica** / dicas — « Ouvir dica », « # dicas na corrida » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « alerta », « sinal » or « indicação » for a guided-run cue (a session plan's breath / alignment cue stays « Indicação ») |
 | backup (the full archive you download and restore) | **cópia de segurança** (feminine: « a cópia de segurança completa », « nesta cópia de segurança ») | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « backup » |
 | build (the plan's build phase) | **construção** — « semanas de construção », « Encurtar a construção » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « desenvolvimento » |
 | gun time / chip time | **Tempo oficial** / **Tempo de chip**; short forms "oficial {gun} · chip {chip}" | settled 2026-10-13; not "bruto"/"líquido" (Brazilian race-results usage) nor "tempo real" (collides with *em tempo real*) |
@@ -143,7 +147,7 @@ twin the same way so the two surfaces read alike. Both rules are guards
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
-| Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab, page title, and in paths ("Definições → Preferências de treino") | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
+| Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab, page title, ; a string names the page, never a path to it (decisions § 2496) | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar**; status = **estado** | settled 2026-10-21; never "saltado" for the status. Skipping a step or setup is **Saltar**; "não salte" stays in coaching advice |
 | readiness | **Prontidão** — "Prontidão {score}", "da sua prontidão para correr", "reduzem a sua prontidão", "Deixar a carga do ginásio fora da prontidão para correr" | settled 2026-11-13; never "preparo" (Brazilian colloquial, and a second word for one score) |
 | taper (the plan phase and the act) | **Polimento** — phase "Polimento", "Polimento em torno das provas B/C", "está no polimento", "antes do polimento", "o polimento fica como está", "Em polimento — …" | settled 2026-11-13; never "afinamento", "afunilamento" or "redução de carga" for the taper. "Redução de carga" stays for a *deload* (`planDetail.replanDeload`) |

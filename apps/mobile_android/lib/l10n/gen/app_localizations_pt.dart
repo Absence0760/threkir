@@ -303,8 +303,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Esta cópia de segurança foi criada por uma versão mais recente da app. Atualize a app e depois restaure-a.';
 
   @override
-  String get importStatusRestoringBackup =>
-      'A restaurar a cópia de segurança...';
+  String get importStatusRestoringBackup => 'A restaurar a cópia de segurança…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
@@ -1147,7 +1146,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get editProfileUsernameHelp =>
-      'O seu @nome de utilizador público — 3 a 30 letras minúsculas, números ou sublinhados. Outros podem encontrar o seu perfil por ele.';
+      'O seu nome de utilizador público (@…) — 3 a 30 letras minúsculas, números ou sublinhados. Outros podem encontrar o seu perfil por ele.';
 
   @override
   String get editProfileUsernameTaken =>
@@ -3927,9 +3926,9 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count segmentos não puderam se ajustar a uma via. Arraste os pinos afetados para ajustar.',
+          'Não foi possível ajustar $count segmentos a uma via. Arraste os pinos afetados para ajustar.',
       one:
-          '$count segmento não pôde se ajustar a uma via. Arraste o pino afetado para ajustar.',
+          'Não foi possível ajustar $count segmento a uma via. Arraste o pino afetado para ajustar.',
     );
     return '$_temp0';
   }
@@ -4406,7 +4405,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailDescribeConsentRequired =>
-      'As descrições por IA precisam do seu consentimento às informações de IA atualizadas.';
+      'As descrições com IA precisam do aviso de IA atualizado.';
 
   @override
   String get routeDetailReviewDisclosure => 'Ver as informações';
@@ -8513,7 +8512,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountDeleteSignInFirst =>
-      'Entre primeiro para eliminar a sua conta.';
+      'Inicie sessão primeiro para eliminar a sua conta.';
 
   @override
   String get settingsAccountDeleted => 'Conta eliminada';
@@ -8537,14 +8536,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountAiConsentUpdateTitle =>
-      'Aceitar as informações de IA atualizadas';
+      'Aceitar o aviso de IA atualizado';
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
       'As informações passaram a abranger mais funcionalidades. Leia-as e aceite-as para utilizar todas as funcionalidades de IA que descrevem.';
 
   @override
-  String get settingsAccountAiConsentGrantTitle => 'Ver as informações de IA';
+  String get settingsAccountAiConsentGrantTitle => 'Ver o aviso de IA';
 
   @override
   String get settingsAccountAiConsentGrantSubtitle =>
@@ -8571,14 +8570,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountBackupSignInFirst =>
-      'Entre primeiro para fazer uma cópia de segurança das suas corridas.';
+      'Inicie sessão primeiro para fazer uma cópia de segurança das suas corridas.';
 
   @override
   String get settingsAccountBackupPreparing =>
       'A preparar a cópia de segurança…';
 
   @override
-  String get settingsAccountBackupShareText => 'Cópia de segurança do Run app';
+  String get settingsAccountBackupShareText => 'Cópia de segurança do Threkir';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8615,7 +8614,8 @@ class AppLocalizationsPt extends AppLocalizations {
       'Serviço de cópias de segurança indisponível.';
 
   @override
-  String get settingsAccountRestoreTitle => 'Restaurar da cópia de segurança?';
+  String get settingsAccountRestoreTitle =>
+      'Restaurar de uma cópia de segurança?';
 
   @override
   String get settingsAccountRestoreBodyOffline =>
@@ -8800,7 +8800,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, por isso não as inclui — use a cópia de segurança completa para as guardar.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, por isso não as inclui — use a cópia de segurança completa para as guardar.',
+      one:
+          '$count corrida ainda não foi sincronizada. A exportação da conta é criada no servidor, por isso não a inclui — use a cópia de segurança completa para a guardar.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -8842,7 +8850,8 @@ class AppLocalizationsPt extends AppLocalizations {
       'Data, distância, duração, ritmo, origem — uma linha por corrida. Mesmo formato da exportação RGPD da web.';
 
   @override
-  String get settingsAccountRestoreTile => 'Restaurar da cópia de segurança';
+  String get settingsAccountRestoreTile =>
+      'Restaurar de uma cópia de segurança';
 
   @override
   String get settingsAccountRestoreTileSubtitle =>
@@ -11540,7 +11549,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$count atividades de $activity',
       one: '$count atividade de $activity',
     );
-    return 'Encontramos $_temp0 após a compra. Desmarque aquelas em que não os usou.';
+    return 'Encontrámos $_temp0 após a compra. Desmarque aquelas em que não usou este equipamento.';
   }
 
   @override
@@ -12435,8 +12444,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count indicações na corrida',
-      one: '$count indicação na corrida',
+      other: '$count dicas na corrida',
+      one: '$count dica na corrida',
     );
     return '$_temp0';
   }
@@ -12445,7 +12454,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get guidedRunFullScript => 'O ROTEIRO COMPLETO';
 
   @override
-  String get guidedRunPreviewCue => 'Ouvir indicação';
+  String get guidedRunPreviewCue => 'Ouvir dica';
 
   @override
   String guidedRunPreviewError(String error) {
@@ -12567,7 +12576,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsTabAccountSubtitle =>
-      'Sessão, perfil, importação e cópia de segurança, eliminar conta';
+      'Início de sessão, perfil, importação e cópia de segurança, eliminar conta';
 
   @override
   String get settingsTabIntegrationsSubtitle =>
@@ -14819,7 +14828,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get roadbookWeightUnavailable =>
-      'Para basear o líquido no seu peso corporal, adicione o seu peso em Dados corporais e dê aí o consentimento para dados de saúde.';
+      'Para calcular os líquidos com base no seu peso corporal, adicione o seu peso em Dados corporais e dê aí o consentimento de dados de saúde.';
 
   @override
   String get roadbookColTarget => 'Meta';
@@ -15193,7 +15202,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'Empatado com mais $n',
+      other: 'Empate com mais $n pessoas',
+      one: 'Empate com mais $n pessoa',
     );
     return '$_temp0';
   }
@@ -16585,7 +16595,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsCueGuidedRunInfo =>
-      'Só fica ativo quando escolhe uma corrida guiada no ecrã de gravação antes de começar. Anuncia cada indicação do guião ao chegar à sua marca. Exemplo: “Cinco minutos. Estabilize num ritmo que aguentaria o dia todo.”';
+      'Só fica ativo quando escolhe uma corrida guiada no ecrã de gravação antes de começar. Anuncia cada dica do guião ao chegar à sua marca. Exemplo: “Cinco minutos. Estabilize num ritmo que aguentaria o dia todo.”';
 
   @override
   String get runGuidedRun => 'Corrida guiada';
@@ -20553,7 +20563,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planNewExtraRecoveryHint =>
-      'Espaça mais as sessões duras e alivia a cada três semanas. Fica guardado nas suas definições de treino, por isso todos os planos novos o usam.';
+      'Espaça mais as sessões duras e alivia a cada três semanas. Fica guardado nas suas Preferências de treino, por isso todos os planos novos o usam.';
 
   @override
   String get planNewExtraRecoverySaveFailed =>
@@ -20904,7 +20914,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get streamerOverlayLinkChanged =>
-      'Guardado. A ligação mudou: copie-a de novo para a sua aplicação de streaming.';
+      'Guardado. A ligação mudou: copie-a de novo para a sua app de streaming.';
 
   @override
   String get streamerOverlaySaveFailed =>
@@ -24025,7 +24035,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get editProfileUsernameHelp =>
-      'Seu @nome de usuário público — 3 a 30 letras minúsculas, números ou sublinhados. Outros podem te encontrar por ele.';
+      'Seu nome de usuário público (@…) — 3 a 30 letras minúsculas, números ou sublinhados. Outros podem te encontrar por ele.';
 
   @override
   String get editProfileUsernameTaken => 'Esse nome de usuário já está em uso.';
@@ -26803,9 +26813,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other:
-          '$count segmentos não puderam se ajustar a uma via. Arraste os pinos afetados para ajustar.',
+          'Não foi possível ajustar $count segmentos a uma via. Arraste os pinos afetados para ajustar.',
       one:
-          '$count segmento não pôde se ajustar a uma via. Arraste o pino afetado para ajustar.',
+          'Não foi possível ajustar $count segmento a uma via. Arraste o pino afetado para ajustar.',
     );
     return '$_temp0';
   }
@@ -27282,7 +27292,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailDescribeConsentRequired =>
-      'As descrições por IA precisam do seu consentimento às informações de IA atualizadas.';
+      'As descrições por IA precisam do aviso de IA atualizado.';
 
   @override
   String get routeDetailReviewDisclosure => 'Ver as informações';
@@ -31409,14 +31419,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsAccountAiConsentUpdateTitle =>
-      'Aceitar as informações de IA atualizadas';
+      'Aceitar o aviso de IA atualizado';
 
   @override
   String get settingsAccountAiConsentUpdateSubtitle =>
       'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar todos os recursos de IA que elas descrevem.';
 
   @override
-  String get settingsAccountAiConsentGrantTitle => 'Ver as informações de IA';
+  String get settingsAccountAiConsentGrantTitle => 'Ver o aviso de IA';
 
   @override
   String get settingsAccountAiConsentGrantSubtitle =>
@@ -31449,7 +31459,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get settingsAccountBackupPreparing => 'Preparando backup…';
 
   @override
-  String get settingsAccountBackupShareText => 'Backup do Run app';
+  String get settingsAccountBackupShareText => 'Backup do Threkir';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -31670,7 +31680,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, então não vai incluí-las — use o backup completo para guardá-las.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, então não vai incluí-las — use o backup completo para guardá-las.',
+      one:
+          '$count corrida ainda não foi sincronizada. A exportação da conta é criada no servidor, então não vai incluí-la — use o backup completo para guardá-la.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -33196,7 +33214,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get dashboardFirstRunGymHint => 'Prefere musculação?';
 
   @override
-  String get dashboardFirstRunGymAction => 'Registre um treino de academia';
+  String get dashboardFirstRunGymAction => 'Registrar treino de academia';
 
   @override
   String get dashboardPeriodMonth => 'Mês';
@@ -33513,7 +33531,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadIncludesLifts =>
-      'Inclui treinos de academia — musculação também soma fadiga.';
+      'Inclui treinos de academia — a musculação também aumenta a fadiga.';
 
   @override
   String get trainingLoadLowConfidenceMedication =>
@@ -34406,7 +34424,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       other: '$count atividades de $activity',
       one: '$count atividade de $activity',
     );
-    return 'Encontramos $_temp0 após a compra. Desmarque aquelas em que você não os usou.';
+    return 'Encontramos $_temp0 após a compra. Desmarque aquelas em que você não usou este equipamento.';
   }
 
   @override
@@ -35302,8 +35320,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count indicações na corrida',
-      one: '$count indicação na corrida',
+      other: '$count dicas na corrida',
+      one: '$count dica na corrida',
     );
     return '$_temp0';
   }
@@ -35312,7 +35330,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get guidedRunFullScript => 'O ROTEIRO COMPLETO';
 
   @override
-  String get guidedRunPreviewCue => 'Ouvir indicação';
+  String get guidedRunPreviewCue => 'Ouvir dica';
 
   @override
   String guidedRunPreviewError(String error) {
@@ -37685,7 +37703,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get roadbookWeightUnavailable =>
-      'Para basear o líquido no seu peso corporal, adicione seu peso em Dados corporais e dê ali o consentimento para dados de saúde.';
+      'Para basear o líquido no seu peso corporal, adicione seu peso em Dados corporais e dê ali o seu consentimento de dados de saúde.';
 
   @override
   String get roadbookColTarget => 'Meta';
@@ -39450,7 +39468,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsCueGuidedRunInfo =>
-      'Só fica ativo quando você escolhe uma corrida guiada na tela de gravação antes de começar. Anuncia cada indicação do roteiro ao chegar à sua marca. Exemplo: “Cinco minutos. Estabilize num ritmo que aguentaria o dia todo.”';
+      'Só fica ativo quando você escolhe uma corrida guiada na tela de gravação antes de começar. Anuncia cada dica do roteiro ao chegar à sua marca. Exemplo: “Cinco minutos. Estabilize num ritmo que aguentaria o dia todo.”';
 
   @override
   String get runGuidedRun => 'Corrida guiada';
@@ -43414,7 +43432,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewExtraRecoveryHint =>
-      'Espaça mais as sessões fortes e alivia a cada três semanas. Fica salvo nas suas configurações de treino, então todo plano novo usa.';
+      'Espaça mais as sessões fortes e alivia a cada três semanas. Fica salvo nas suas Preferências de treino, então todo plano novo usa.';
 
   @override
   String get planNewExtraRecoverySaveFailed =>
@@ -43764,7 +43782,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get streamerOverlayLinkChanged =>
-      'Salvo. O link mudou: copie-o de novo no seu app de streaming.';
+      'Salvo. O link mudou: copie-o de novo para o seu app de transmissão.';
 
   @override
   String get streamerOverlaySaveFailed =>

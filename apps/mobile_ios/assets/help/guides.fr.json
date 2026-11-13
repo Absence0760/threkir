@@ -51,7 +51,7 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/notifications|Notifications]] dans les Paramètres. Dans l'app mobile, ouvrez **Notifications** dans l'onglet **Vous**.",
+              "Sur le web, ouvrez [[route:/settings/notifications|Notifications]] dans les Réglages. Dans l'app mobile, ouvrez **Notifications** dans l'onglet **Vous**.",
               "Réglez séparément **Notifications par e-mail** et **Notifications push**."
             ]
           },
@@ -136,7 +136,7 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et cochez **Profil privé** sous **Être trouvé**.",
+              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages et cochez **Profil privé** sous **Être trouvé**.",
               "Dans l'app mobile, ouvrez **Confidentialité et partage** dans l'onglet **Vous** et activez **Profil privé**."
             ]
           },
@@ -335,7 +335,7 @@
             "type": "list",
             "items": [
               "Sur un iPhone, ouvrez **Pro et soutien** dans l'onglet **Vous** et abonnez-vous via l'App Store.",
-              "Sur le web, ouvrez [[route:/settings/upgrade|Pro et soutien]] dans les Paramètres. S'il est indiqué **L'abonnement sur le web arrive bientôt.**, abonnez-vous plutôt dans l'app iPhone."
+              "Sur le web, ouvrez [[route:/settings/upgrade|Pro et soutien]] dans les Réglages. S'il est indiqué **L'abonnement sur le web arrive bientôt.**, abonnez-vous plutôt dans l'app iPhone."
             ]
           },
           {
@@ -416,7 +416,7 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l'app mobile, il s'agit de **Confidentialité par défaut des courses** sous **Confidentialité et partage** dans l'onglet **Vous**.",
+              "Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages et choisissez une **Visibilité par défaut des nouvelles courses**. Dans l'app mobile, il s'agit de **Confidentialité par défaut des courses** sous **Confidentialité et partage** dans l'onglet **Vous**.",
               "Pour modifier une seule course plus tard, ouvrez-la et touchez **Privé** ou **Public** sous son titre. Avant qu'une course devienne publique, l'app vous demande confirmation et vous montre ce que vos zones de confidentialité masqueront."
             ]
           },
@@ -439,7 +439,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Sur le web, ouvrez **Compte** dans les Paramètres. L'app mobile propose les mêmes options sous **Compte** dans l'onglet **Vous**."
+            "text": "Sur le web, ouvrez **Compte** dans les Réglages. L'app mobile propose les mêmes options sous **Compte** dans l'onglet **Vous**."
           },
           {
             "type": "list",
@@ -459,7 +459,7 @@
             "type": "steps",
             "items": [
               "Téléchargez d'abord tout ce que vous voulez garder. La suppression est irréversible.",
-              "Sur le web, ouvrez **Compte** dans les Paramètres et sélectionnez **Supprimer le compte** sous **Zone de danger**. Dans l'app mobile, ouvrez **Compte** dans l'onglet **Vous** et touchez **Supprimer le compte**.",
+              "Sur le web, ouvrez **Compte** dans les Réglages et sélectionnez **Supprimer le compte** sous **Zone de danger**. Dans l'app mobile, ouvrez **Compte** dans l'onglet **Vous** et touchez **Supprimer le compte**.",
               "Saisissez SUPPRIMER pour confirmer, puis sélectionnez **Supprimer mon compte** sur le web ou **Supprimer** dans l'app."
             ]
           },
@@ -582,7 +582,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Seul un administrateur du club sur Strava peut le lier, et seulement à un club dont il est propriétaire ou administrateur ici. Si la section n'apparaît pas, connectez d'abord Strava dans [[route:/settings/integrations|Intégrations]] dans les Paramètres."
+            "text": "Seul un administrateur du club sur Strava peut le lier, et seulement à un club dont il est propriétaire ou administrateur ici. Si la section n'apparaît pas, connectez d'abord Strava dans [[route:/settings/integrations|Intégrations]] dans les Réglages."
           }
         ]
       }
@@ -3269,7 +3269,7 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/integrations|Intégrations]] dans les Paramètres et sélectionnez **Connecter** sur la carte Strava ; dans l'app mobile, ouvrez **Intégrations** dans l'onglet **Vous** et touchez Strava.",
+              "Sur le web, ouvrez [[route:/settings/integrations|Intégrations]] dans les Réglages et sélectionnez **Connecter** sur la carte Strava ; dans l'app mobile, ouvrez **Intégrations** dans l'onglet **Vous** et touchez Strava.",
               "Connectez-vous à Strava et autorisez l'accès.",
               "Vos courses, marches et randonnées des 90 derniers jours sont copiées, et les nouvelles activités Strava suivent automatiquement."
             ]
@@ -3424,7 +3424,7 @@
           {
             "type": "steps",
             "items": [
-              "Sur le web, ouvrez [[route:/settings/safety|Sécurité]] dans les Paramètres ; dans l'app mobile, ouvrez **Contacts de sécurité** dans l'onglet **Vous**.",
+              "Sur le web, ouvrez [[route:/settings/safety|Sécurité]] dans les Réglages ; dans l'app mobile, ouvrez **Contacts de sécurité** dans l'onglet **Vous**.",
               "Saisissez son adresse dans **E-mail du contact**. Vous pouvez aussi ajouter un **Téléphone pour SMS (facultatif)** au format international, par exemple +447700900123.",
               "Sélectionnez **Ajouter un contact**. La personne reçoit un e-mail lui demandant de confirmer.",
               "Son statut affiche **En attente — confirmation requise** jusqu'à ce qu'elle accepte, puis **Confirmé**. Seuls les contacts confirmés sont alertés."
@@ -3914,7 +3914,7 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres.",
+              "Ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages.",
               "Sous **Zones de confidentialité**, sélectionnez **Ajouter une zone**.",
               "Cliquez sur la carte à l'endroit où la zone doit être centrée, ou sélectionnez **Utiliser ma position actuelle**, puis faites glisser le repère pour l'ajuster.",
               "Réglez le **Rayon**. Tout ce qui se trouve dans le cercle rouge est masqué des partages publics.",

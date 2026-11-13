@@ -1106,8 +1106,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       days,
       locale: localeName,
-      other: 'Course dans $days jours',
-      one: 'Course demain',
+      other: 'Épreuve dans $days jours',
+      one: 'Épreuve demain',
     );
     return '$_temp0';
   }
@@ -8597,7 +8597,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsAccountBackupPreparing => 'Préparation de la sauvegarde…';
 
   @override
-  String get settingsAccountBackupShareText => 'Sauvegarde Run app';
+  String get settingsAccountBackupShareText => 'Sauvegarde Threkir';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8820,7 +8820,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count courses ne sont pas encore synchronisées. L\'export du compte est créé sur le serveur, il ne les inclura donc pas — utilisez la sauvegarde complète pour les conserver.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count courses ne sont pas encore synchronisées. L\'export du compte est créé sur le serveur, il ne les inclura donc pas — utilisez la sauvegarde complète pour les conserver.',
+      one:
+          '$count course n\'est pas encore synchronisée. L\'export du compte est créé sur le serveur, il ne l\'inclura donc pas — utilisez la sauvegarde complète pour la conserver.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -9828,9 +9836,9 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count zones faisaient moins de $meters m et couvrent désormais $meters m, la taille minimale d’une zone.',
+          '$count zones faisaient moins de $meters m et couvrent désormais $meters m, la taille minimale d\'une zone.',
       one:
-          '$count zone faisait moins de $meters m et couvre désormais $meters m, la taille minimale d’une zone.',
+          '$count zone faisait moins de $meters m et couvre désormais $meters m, la taille minimale d\'une zone.',
     );
     return '$_temp0';
   }
@@ -10510,7 +10518,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$count jours',
       one: '$count jour',
     );
-    return 'meilleure $_temp0';
+    return 'record $_temp0';
   }
 
   @override
@@ -11565,7 +11573,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$count activités de $activity',
       one: '$count activité de $activity',
     );
-    return 'Nous avons trouvé $_temp0 après votre achat. Décochez celles où vous ne les portiez pas.';
+    return 'Nous avons trouvé $_temp0 après votre achat. Décochez celles où vous ne l\'utilisiez pas.';
   }
 
   @override
@@ -14833,20 +14841,20 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get roadbookWeightToggle => 'Fluide selon le poids';
+  String get roadbookWeightToggle => 'Liquides selon le poids';
 
   @override
   String get roadbookWeightHint =>
-      'Ajuste la quantité de fluide à votre poids, dans la fourchette de 400 à 800 ml par heure que la médecine du sport indique pour la course. Une base de planification, pas un test de sudation.';
+      'Ajuste la quantité de liquides à votre poids, dans la fourchette de 400 à 800 ml par heure que la médecine du sport indique pour la course. Une base de planification, pas un test de sudation.';
 
   @override
   String roadbookWeightUsing(String ml) {
-    return 'Fluide : $ml ml par heure d\'après votre poids.';
+    return 'Liquides : $ml ml par heure d\'après votre poids.';
   }
 
   @override
   String get roadbookWeightUnavailable =>
-      'Pour baser le fluide sur votre poids, ajoutez votre poids dans Données corporelles et donnez votre consentement aux données de santé à cet endroit.';
+      'Pour calculer les liquides selon votre poids, ajoutez votre poids dans Données corporelles et donnez-y votre consentement aux données de santé.';
 
   @override
   String get roadbookColTarget => 'Objectif';
@@ -18782,11 +18790,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runPhotosRaceGalleryHint =>
-      'Touchez la médaille d\'une photo pour l\'afficher sur la page publique de cette course. Tout le monde peut voir cette page, et vous pouvez retirer une photo à tout moment.';
+      'Touchez la médaille d\'une photo pour l\'afficher sur la page publique de cette épreuve. Tout le monde peut voir cette page, et vous pouvez retirer une photo à tout moment.';
 
   @override
   String get runPhotosRaceGalleryPrivate =>
-      'Rendez cette activité publique pour partager ses photos sur la page de l\'épreuve.';
+      'Rendez cette course publique pour partager ses photos sur la page de l\'épreuve.';
 
   @override
   String runPhotosRaceGalleryError(String error) {
@@ -20945,7 +20953,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get streamerOverlayLinkChanged =>
-      'Enregistré. Le lien a changé : copiez-le à nouveau dans votre application de streaming.';
+      'Enregistré. Le lien a changé : copiez-le à nouveau dans votre app de streaming.';
 
   @override
   String get streamerOverlaySaveFailed =>

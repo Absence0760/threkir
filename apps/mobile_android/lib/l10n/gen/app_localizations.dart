@@ -1823,7 +1823,7 @@ abstract class AppLocalizations {
   /// **'Training plan'**
   String get homeTrainingPlanLabel;
 
-  /// Countdown on the Home plan card: whole days until the plan's race day (always 2 or more; 1 is homeRaceTomorrow)
+  /// Countdown on the Home plan card: whole days until the plan's race day, "tomorrow" at 1
   ///
   /// In en, this message translates to:
   /// **'{days, plural, =1{Race tomorrow} other{Race in {days} days}}'**
@@ -13644,7 +13644,7 @@ abstract class AppLocalizations {
   /// Share-sheet caption for the full backup archive
   ///
   /// In en, this message translates to:
-  /// **'Run app backup'**
+  /// **'Threkir backup'**
   String get settingsAccountBackupShareText;
 
   /// Banner shown when the backup fails
@@ -13985,7 +13985,7 @@ abstract class AppLocalizations {
   /// Persistent notice under the account-export tile when the device holds undrained runs
   ///
   /// In en, this message translates to:
-  /// **'{count} runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.'**
+  /// **'{count, plural, one{{count} run hasn\'t synced yet. The account export is built on the server, so it won\'t include it — use Full backup to keep it.} other{{count} runs haven\'t synced yet. The account export is built on the server, so it won\'t include them — use Full backup to keep those.}}'**
   String settingsAccountExportUnsyncedWarning(int count);
 
   /// Persistent notice after a locally-built archive naming which archive the runner got
@@ -18488,7 +18488,7 @@ abstract class AppLocalizations {
   /// Body explaining the matched activities found
   ///
   /// In en, this message translates to:
-  /// **'We found {count, plural, one{{count} {activity} activity} other{{count} {activity} activities}} after you bought them. Uncheck any you weren\'t wearing them for.'**
+  /// **'We found {count, plural, one{{count} {activity} activity} other{{count} {activity} activities}} since you bought this gear. Uncheck any it wasn\'t used for.'**
   String gearBackfillBody(int count, String activity);
 
   /// Activity word for bikes in the backfill body
@@ -20414,7 +20414,7 @@ abstract class AppLocalizations {
   /// Records card: distinct session count for an exercise
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one{1 session} other{{count} sessions}}'**
+  /// **'{count, plural, one{{count} session} other{{count} sessions}}'**
   String gymRecordsSessions(int count);
 
   /// No description provided for @gymExerciseBack.

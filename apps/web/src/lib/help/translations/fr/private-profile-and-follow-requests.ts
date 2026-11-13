@@ -29,7 +29,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et cochez **Profil privé** sous **Être trouvé**.',
+						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages et cochez **Profil privé** sous **Être trouvé**.',
 						'Dans l\'app mobile, ouvrez **Confidentialité et partage** dans l\'onglet **Vous** et activez **Profil privé**.',
 					],
 				},

@@ -5068,7 +5068,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get runHeatmapEmptyTitle => 'Noch keine erfassten Läufe';
+  String get runHeatmapEmptyTitle => 'Noch keine Läufe auf der Karte';
 
   @override
   String get runHeatmapEmptyBody =>
@@ -5101,8 +5101,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '$n erfasste Läufe – heller, wo du am häufigsten läufst.',
-      one: '$n erfasster Lauf – heller, wo du am häufigsten läufst.',
+      other: '$n Läufe auf der Karte – heller, wo du am häufigsten läufst.',
+      one: '$n Lauf auf der Karte – heller, wo du am häufigsten läufst.',
     );
     return '$_temp0';
   }
@@ -8595,7 +8595,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsAccountBackupPreparing => 'Backup wird vorbereitet…';
 
   @override
-  String get settingsAccountBackupShareText => 'Run-App-Backup';
+  String get settingsAccountBackupShareText => 'Threkir-Backup';
 
   @override
   String settingsAccountBackupFailed(Object error) {
@@ -8815,7 +8815,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count Läufe sind noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält sie daher nicht — nutze das vollständige Backup, um sie zu sichern.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Läufe sind noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält sie daher nicht — nutze das vollständige Backup, um sie zu sichern.',
+      one:
+          '$count Lauf ist noch nicht synchronisiert. Der Kontoexport wird auf dem Server erstellt und enthält ihn daher nicht — nutze das vollständige Backup, um ihn zu sichern.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -10734,8 +10742,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       days,
       locale: localeName,
-      other: 'Nächste harte Einheit in ~$days Tagen lockerem Laufen.',
-      one: 'Nächste harte Einheit in ~$days Tag lockerem Laufen.',
+      other: 'Nächste harte Einheit nach ~$days Tagen lockeren Laufens.',
+      one: 'Nächste harte Einheit nach ~$days Tag lockeren Laufens.',
     );
     return '$_temp0';
   }
@@ -11551,7 +11559,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: '$count $activity-Aktivitäten',
       one: '$count $activity-Aktivität',
     );
-    return 'Wir haben $_temp0 nach dem Kauf gefunden. Entferne das Häkchen bei allen, bei denen du sie nicht getragen hast.';
+    return 'Wir haben $_temp0 nach dem Kauf gefunden. Entferne das Häkchen bei allen, bei denen du die Ausrüstung nicht benutzt hast.';
   }
 
   @override
@@ -12755,7 +12763,7 @@ class AppLocalizationsDe extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count Einheiten',
-      one: '1 Einheit',
+      one: '$count Einheit',
     );
     return '$_temp0';
   }
@@ -15205,6 +15213,7 @@ class AppLocalizationsDe extends AppLocalizations {
       n,
       locale: localeName,
       other: 'Gleichauf mit $n weiteren',
+      one: 'Gleichauf mit $n weiteren',
     );
     return '$_temp0';
   }

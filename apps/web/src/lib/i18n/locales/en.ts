@@ -7651,7 +7651,7 @@ export const en = {
 	"deleteAccount.s1WebAction": "Delete account",
 	"deleteAccount.s1WebSuffix": ". You will be asked to type your account email to confirm. (Opening that link while signed out takes you through sign-in and back.)",
 	"deleteAccount.s1MobileLabel": "In the mobile app",
-	"deleteAccount.s1MobileBody": ": open the You tab, then Account → Delete account, with the same typed confirmation.",
+	"deleteAccount.s1MobileBody": ": open Account in the You tab and choose Delete account, with the same typed confirmation.",
 	"deleteAccount.s1PermanentPrefix": "Deletion is ",
 	"deleteAccount.s1PermanentEmphasis": "permanent and cannot be undone",
 	"deleteAccount.s1PermanentSuffix": ". When it completes we send a one-time confirmation email to the account address as a receipt.",

@@ -403,7 +403,7 @@ test.describe('/social — discover a class by cadence + weekday', () => {
 	test('cadence=weekly keeps the weekly class; cadence=one_off + weekday=TU hide it', async ({
 		page
 	}) => {
-		await page.goto('/social?tab=discover');
+		await page.goto('/social?tab=events');
 
 		// Narrow to the seeded class by its unique discipline so other public
 		// events near the fix can't interfere with the visibility assertions.

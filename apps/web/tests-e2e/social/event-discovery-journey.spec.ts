@@ -175,9 +175,9 @@ test.describe('social journey — non-member discovers a public-club event + RSV
 		const page = await ctx.newPage();
 
 		try {
-			// ── 1. Land on the Discover tab ──────────────────────────────
-			await test.step('discoverer opens the Discover tab', async () => {
-				await page.goto('/social?tab=discover');
+			// ── 1. Land on the Events tab ────────────────────────────────
+			await test.step('discoverer opens the Events tab', async () => {
+				await page.goto('/social?tab=events');
 				await expect(page.getByRole('heading', { level: 1, name: 'Social' })).toBeVisible({
 					timeout: 10_000
 				});

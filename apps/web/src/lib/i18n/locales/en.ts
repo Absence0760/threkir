@@ -4634,7 +4634,7 @@ export const en = {
 	"socialHub.tabFeed": "Feed",
 	"socialHub.tabPeople": "People",
 	"socialHub.tabClubs": "Clubs",
-	"socialHub.tabDiscover": "Discover",
+	"socialHub.tabEvents": "Events",
 	"discover.searchPlaceholder": "Search yoga, pilates, HIIT, run clubs…",
 	"discover.activityAll": "All activities",
 	"discover.cadenceLabel": "Cadence",

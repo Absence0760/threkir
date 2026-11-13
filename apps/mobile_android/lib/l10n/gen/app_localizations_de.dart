@@ -9759,7 +9759,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsPageDisplaySummary =>
-      'Sprache, Design, Distanz- und Gewichtseinheiten, Tempoformat, Karten und das Widerruf-Zeitfenster.';
+      'Sprache, Design, Distanz- und Gewichtseinheiten, Tempoformat, Karten und das Zeitfenster für Rückgängig.';
 
   @override
   String get prefsPageRecording => 'Aufzeichnung & Ansagen';
@@ -16836,19 +16836,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get commonMore => 'Mehr';
 
   @override
-  String get undoAction => 'Widerrufen';
+  String get undoAction => 'Rückgängig';
 
   @override
   String get undoDismiss => 'Schließen';
 
   @override
-  String get undoHint => 'Widerrufen ist kurze Zeit möglich.';
+  String get undoHint => 'Rückgängig machen ist kurze Zeit möglich.';
 
   @override
   String get undoRestored => 'Wiederhergestellt';
 
   @override
-  String get prefsUndoWindow => 'Widerruf-Zeitfenster';
+  String get prefsUndoWindow => 'Zeitfenster für Rückgängig';
 
   @override
   String get prefsUndoWindow8s => '8 Sekunden';

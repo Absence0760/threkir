@@ -227,7 +227,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importStatusNoGpsNote(Object base, Object label) {
-    return '$base. $label não tem dados de rota, então essas corridas não têm mapa.';
+    return '$base. $label não tem dados de rota, por isso essas corridas não têm mapa.';
   }
 
   @override
@@ -683,7 +683,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Ative «Mostrar-me em Corredores por perto» e defina a sua área. Só os corredores que fizeram o mesmo o podem encontrar.';
+      'Ative “Mostrar-me em Corredores por perto” e defina a sua área. Só os corredores que fizeram o mesmo o podem encontrar.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir definições de privacidade';
@@ -3627,11 +3627,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailMakePublicBodyZone =>
-      'Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Esta corrida começa ou termina dentro de uma das suas zonas de privacidade, então quem visualizar verá um trajeto recortado com os trechos dentro da zona ocultos.';
+      'Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Esta corrida começa ou termina dentro de uma das suas zonas de privacidade, por isso quem a vir verá um trajeto recortado, com os trechos dentro da zona ocultos.';
 
   @override
   String get runDetailMakePublicBodyHasZones =>
-      'Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Nenhuma das suas zonas de privacidade cruza este trajeto, então o trajeto completo ficará visível.';
+      'Partilhar torna esta corrida pública, para que qualquer pessoa com o link possa vê-la. Nenhuma das suas zonas de privacidade cruza este trajeto, por isso o trajeto completo ficará visível.';
 
   @override
   String get runDetailMakePublicBodyNoZones =>
@@ -7714,7 +7714,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveFitnessHeld =>
-      'Pausado — está a acumular fadiga agora, então aumentar o volume não é recomendado.';
+      'Pausado — está a acumular fadiga agora, por isso não é recomendado aumentar o volume.';
 
   @override
   String get planDetailAdaptiveReasonUnder =>
@@ -9939,7 +9939,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get privacyZonesRemoveBody =>
-      'Esta zona oculta os seus trajetos por perto nos partilhas públicos. Removê-la reexpõe esta área.';
+      'Esta zona oculta os seus trajetos por perto nas partilhas públicas. Removê-la reexpõe esta área.';
 
   @override
   String get privacyZonesRemoveSemantics => 'Remover zona de privacidade';
@@ -16245,12 +16245,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String badgesDistanceLifetime100Label(String distance) {
-    return 'Clube dos $distance';
+    return 'Clube $distance';
   }
 
   @override
   String badgesDistanceLifetime100Desc(String distance) {
-    return '$distance registados no total';
+    return 'Registou $distance no total';
   }
 
   @override
@@ -16260,17 +16260,17 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String badgesDistanceLifetime500Desc(String distance) {
-    return '$distance registados no total';
+    return 'Registou $distance no total';
   }
 
   @override
   String badgesDistanceLifetime1000Label(String distance) {
-    return 'Clube dos $distance';
+    return 'Clube $distance';
   }
 
   @override
   String badgesDistanceLifetime1000Desc(String distance) {
-    return '$distance registados no total';
+    return 'Registou $distance no total';
   }
 
   @override
@@ -16280,7 +16280,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String badgesDistanceLifetime5000Desc(String distance) {
-    return '$distance registados no total';
+    return 'Registou $distance no total';
   }
 
   @override
@@ -17396,7 +17396,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get comebackMeaningSteep =>
-      'Esta semana já passa da metade do que corria antes da pausa. O seu corpo perdeu a base que tornava aquelas semanas rotineiras, então uma semana mais curta agora custa muito menos do que uma recaída depois.';
+      'Esta semana já passa de metade do que corria antes da pausa. O seu corpo perdeu a base que tornava aquelas semanas rotineiras, por isso uma semana mais curta agora custa muito menos do que uma recaída depois.';
 
   @override
   String get comebackThisWeekLabel => 'Últimos 7 dias';
@@ -20134,7 +20134,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailCycleAdjustConfirmPregnancy =>
-      'Os próximos treinos serão ajustados à gravidez: sessões duras e provas passam a ser corridas leves e o volume diminui por trimestre. Isto não é aconselhamento médico — siga o seu profissional de saúde. Treinos passados não mudam.';
+      'Os próximos treinos serão ajustados à gravidez: sessões duras e provas passam a ser corridas leves e o volume diminui por trimestre. Isto não é aconselhamento médico — siga as orientações do seu profissional de saúde. Treinos passados não mudam.';
 
   @override
   String get planDetailCycleAdjustDone => 'Próximas semanas ajustadas.';
@@ -23791,7 +23791,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Ative “Mostrar-me em Corredores por perto” e defina sua área. Só os corredores que fizeram o mesmo podem te encontrar.';
+      'Ative “Mostrar-me em Corredores por perto” e defina sua área. Só os corredores que fizeram o mesmo podem encontrar você.';
 
   @override
   String get peopleNearbyEmptyAction => 'Abrir configurações de privacidade';
@@ -39336,12 +39336,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String badgesDistanceLifetime100Label(String distance) {
-    return 'Clube dos $distance';
+    return 'Clube $distance';
   }
 
   @override
   String badgesDistanceLifetime100Desc(String distance) {
-    return '$distance registrados no total';
+    return 'Total registrado: $distance';
   }
 
   @override
@@ -39351,17 +39351,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String badgesDistanceLifetime500Desc(String distance) {
-    return '$distance registrados no total';
+    return 'Total registrado: $distance';
   }
 
   @override
   String badgesDistanceLifetime1000Label(String distance) {
-    return 'Clube dos $distance';
+    return 'Clube $distance';
   }
 
   @override
   String badgesDistanceLifetime1000Desc(String distance) {
-    return '$distance registrados no total';
+    return 'Total registrado: $distance';
   }
 
   @override
@@ -39371,7 +39371,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String badgesDistanceLifetime5000Desc(String distance) {
-    return '$distance registrados no total';
+    return 'Total registrado: $distance';
   }
 
   @override

@@ -8187,7 +8187,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Tus unidades de distancia, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del entrenador que has elegido.';
+      'Tus unidades de distancia, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del Entrenador IA que has elegido.';
 
   @override
   String get coachConsentBulletLifts =>
@@ -9983,7 +9983,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsPageTrainingSummary =>
-      'Tu objetivo de distancia semanal, la frecuencia cardíaca y sus zonas, el avituallamiento en carrera y el tono del entrenador.';
+      'Tu objetivo de distancia semanal, la frecuencia cardíaca y sus zonas, el avituallamiento en carrera y el tono del Entrenador IA.';
 
   @override
   String get prefsPagePrivacy => 'Privacidad y uso compartido';
@@ -10396,7 +10396,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Si está desactivado, tu cuenta no aparecerá cuando otros corredores busquen por nombre visible. Tus carreras públicas y tu perfil siguen siendo accesibles para cualquiera que tenga la URL.';
 
   @override
-  String get dashboardCoachTooltip => 'Entrenador';
+  String get dashboardCoachTooltip => 'Entrenador IA';
 
   @override
   String get dashboardRecapTooltip => 'Año en carrera';
@@ -16230,12 +16230,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String badgesDistanceLifetime100Label(String distance) {
-    return 'Club de los $distance';
+    return 'Club $distance';
   }
 
   @override
   String badgesDistanceLifetime100Desc(String distance) {
-    return '$distance registrados en total';
+    return 'Registraste $distance en total';
   }
 
   @override
@@ -16245,17 +16245,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String badgesDistanceLifetime500Desc(String distance) {
-    return '$distance registrados en total';
+    return 'Registraste $distance en total';
   }
 
   @override
   String badgesDistanceLifetime1000Label(String distance) {
-    return 'Club de los $distance';
+    return 'Club $distance';
   }
 
   @override
   String badgesDistanceLifetime1000Desc(String distance) {
-    return '$distance registrados en total';
+    return 'Registraste $distance en total';
   }
 
   @override
@@ -16265,7 +16265,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String badgesDistanceLifetime5000Desc(String distance) {
-    return '$distance registrados en total';
+    return 'Registraste $distance en total';
   }
 
   @override

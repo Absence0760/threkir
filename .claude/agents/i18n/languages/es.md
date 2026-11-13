@@ -32,6 +32,8 @@ Third-person `su` for *someone else's* account (`profile.notFoundText`
 say "entre ustedes". Prefer a construction that avoids plural address;
 where it can't, use `vosotros` and flag it.
 
+- **A string around `{distance}` agrees with both units.** « kilómetros » is masculine and « millas » feminine, so no adjective or article agrees with the distance: « Registraste {distance} en total », « Club {distance} », never « {distance} registrados » / « Club de los {distance} ». Settled 2026-11-13 (#1374 round 3.8).
+
 ## Spelling and style authority
 
 **RAE / ASALE** (*Diccionario de la lengua española*, *Ortografía* 2010):

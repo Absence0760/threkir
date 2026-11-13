@@ -57,7 +57,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Cada petición gasta uno de tus mensajes diarios del Entrenador IA, el mismo cupo que usa su chat.',
+						'Cada petición gasta uno de tus mensajes diarios del Entrenador IA, el mismo cupo que usas al chatear con él.',
 						'Necesita el aviso de IA más reciente. Si se te pide aceptarlo, selecciona **Revísala en Ajustes** y acéptalo allí.',
 						'A la IA solo se envían los próximos entrenamientos de tu plan y el cambio que has escrito.',
 					],

@@ -37,6 +37,8 @@ names the reader on its own — `navYou` "Tu", web `clubEvent.youTag`
 "(tu)", `messages.youPrefix` "Tu: " (§ 760; the register guard does not
 list bare `tu` for this reason). Don't extend it to running prose.
 
+- **A string around `{distance}` agrees with both units.** *quilómetros* is masculine and *milhas* feminine, so nothing agrees with the distance: "Registou {distance} no total", "Clube {distance}", never "{distance} registados" / "Clube dos {distance}". Settled 2026-11-13 (#1374 round 3.8).
+
 ## The guards that enforce this (a pt-PT string that breaks them fails the PR)
 
 `apps/web/src/lib/i18n/locale_reach.test.ts` and the "locale reach" group

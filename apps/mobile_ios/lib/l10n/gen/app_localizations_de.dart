@@ -675,14 +675,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get peopleNearbySubtitle =>
-      'Läufer, die sich in der Nähe des von dir gesetzten Gebiets angemeldet haben. Nur ungefähre Entfernung — niemals ein Live-Standort.';
+      'Läufer in der Nähe der von dir festgelegten Gegend, die sich für die Entdeckung entschieden haben. Nur ungefähre Entfernung — niemals ein Live-Standort.';
 
   @override
   String get peopleNearbyEmptyTitle => 'Noch niemand in der Nähe';
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Aktiviere „Mich unter ‚Läufer in der Nähe‘ anzeigen“ und setze dein Gebiet. Nur Läufer, die dasselbe getan haben, können dich finden.';
+      'Aktiviere „Mich unter ‚Läufer in der Nähe‘ anzeigen“ und lege deine Gegend fest. Nur Läufer, die dasselbe getan haben, können dich finden.';
 
   @override
   String get peopleNearbyEmptyAction => 'Datenschutzeinstellungen öffnen';
@@ -707,21 +707,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
-      'Standardmäßig aus. Wenn aktiviert, sehen andere Läufer, die sich ebenfalls angemeldet haben, dass du ungefähr in der Nähe bist — eine ungefähre Entfernung zu dem von dir gesetzten Gebiet, niemals dein Standort.';
+      'Standardmäßig aus. Wenn aktiviert, sehen andere teilnehmende Läufer, dass du ungefähr in der Nähe bist — eine ungefähre Entfernung zu der von dir festgelegten Gegend, niemals dein Standort.';
 
   @override
-  String get nearbyAreaTitle => 'Dein Gebiet';
+  String get nearbyAreaTitle => 'Deine Gegend';
 
   @override
   String get nearbyAreaExplainer =>
       'Wähle die Stadt oder das Viertel, in dem du läufst. Es wird auf etwa einen Kilometer gerundet gespeichert und ist niemals dein Live-Standort. Andere Läufer sehen nur eine ungefähre Entfernung, niemals das Gebiet selbst.';
 
   @override
-  String get nearbyAreaNone => 'Kein Gebiet gesetzt';
+  String get nearbyAreaNone => 'Keine Gegend festgelegt';
 
   @override
   String nearbyAreaCurrent(String label) {
-    return 'Aktuelles Gebiet: $label';
+    return 'Aktuelle Gegend: $label';
   }
 
   @override
@@ -735,31 +735,32 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nearbyAreaNoResults => 'Keine Orte für diese Suche gefunden.';
 
   @override
-  String get nearbyAreaSaved => 'Gebiet gespeichert';
+  String get nearbyAreaSaved => 'Gegend gespeichert';
 
   @override
   String get nearbyAreaSaveFailed =>
-      'Dein Gebiet konnte nicht gespeichert werden.';
+      'Deine Gegend konnte nicht gespeichert werden.';
 
   @override
-  String get nearbyAreaLoadFailed => 'Dein Gebiet konnte nicht geladen werden.';
+  String get nearbyAreaLoadFailed =>
+      'Deine Gegend konnte nicht geladen werden.';
 
   @override
-  String get nearbyAreaForget => 'Mein Gebiet vergessen';
+  String get nearbyAreaForget => 'Meine Gegend vergessen';
 
   @override
-  String get nearbyAreaForgetConfirmTitle => 'Dein Gebiet vergessen?';
+  String get nearbyAreaForgetConfirmTitle => 'Deine Gegend vergessen?';
 
   @override
   String get nearbyAreaForgetConfirmBody =>
-      'Du erscheinst Läufern in der Nähe nicht mehr, bis du wieder ein Gebiet setzt.';
+      'Du erscheinst Läufern in der Nähe nicht mehr, bis du wieder eine Gegend festlegst.';
 
   @override
-  String get nearbyAreaForgotten => 'Gebiet vergessen';
+  String get nearbyAreaForgotten => 'Gegend vergessen';
 
   @override
   String get nearbyAreaForgetFailed =>
-      'Dein Gebiet konnte nicht vergessen werden.';
+      'Deine Gegend konnte nicht vergessen werden.';
 
   @override
   String get peopleFallbackDisplayName => 'Läufer';
@@ -10003,7 +10004,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsPageTrainingSummary =>
-      'Dein wöchentliches Distanzziel, Herzfrequenz und Herzfrequenzzonen, Verpflegung im Wettkampf und der Ton des Coachs.';
+      'Dein wöchentliches Distanzziel, Herzfrequenz und Herzfrequenzzonen, Wettkampfverpflegung und der Ton des Coachs.';
 
   @override
   String get prefsPagePrivacy => 'Datenschutz & Teilen';

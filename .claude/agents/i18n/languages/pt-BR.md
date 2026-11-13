@@ -28,6 +28,8 @@ with `você` is tolerated in colloquial strings (5 web strings such as
 "Outros podem te encontrar por ele"); prefer `você`/`o`/`a`/`lhe` in new
 copy. `navYou` is "Você".
 
+- **A string around `{distance}` agrees with both units.** *quilômetros* is masculine and *milhas* feminine, so nothing agrees with the distance: "Total registrado: {distance}", "Clube {distance}", never "{distance} registrados" / "Clube dos {distance}". Settled 2026-11-13 (#1374 round 3.8).
+
 ## The guards that enforce this
 
 `apps/web/src/lib/i18n/locale_reach.test.ts` and the "locale reach" group

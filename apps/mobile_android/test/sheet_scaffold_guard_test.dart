@@ -24,7 +24,6 @@ const _unmigrated = <String, int>{
   'lib/screens/period_summary_screen.dart': 1,
   'lib/screens/plan_detail_screen.dart': 1,
   'lib/screens/plan_new_screen.dart': 1,
-  'lib/screens/route_builder_screen.dart': 1,
   'lib/screens/route_detail_screen.dart': 1,
   'lib/screens/run_screen.dart': 2,
   'lib/screens/runs_screen.dart': 1,

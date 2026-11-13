@@ -9,6 +9,7 @@ import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
         ListSkeleton,
+        MapFirstPage,
         ProgressBar,
         SkeletonBlock,
         StatusPill;
@@ -589,236 +590,243 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
     // live claim about a runner who has already stopped.
     final cutoff = terminal ? null : _cutoffEta(stale, fresh?.ageMs, raceClock);
     final motion = terminal ? null : _motion(stale);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.liveSpectatorTitle),
-        actions: [
-          const HelpButton(
-            routes: ['/live/[id]', '/live/event/[id]/[instance]'],
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Center(
-              child: _StatusBadge(
-                status: _status,
-                stale: stale,
-                coarse: coarse,
-              ),
-            ),
-          ),
-        ],
+    final appBar = AppBar(
+      title: Text(l10n.liveSpectatorTitle),
+      actions: [
+        const HelpButton(
+          routes: ['/live/[id]', '/live/event/[id]/[instance]'],
+        ),
+      ],
+    );
+    // The status rides the map rather than the app bar: beside the title
+    // and Help at 2x text on a 320 dp phone it overflowed the bar.
+    final status = Padding(
+      padding: const EdgeInsets.all(12),
+      child: Align(
+        alignment: AlignmentDirectional.topStart,
+        child: _StatusBadge(status: _status, stale: stale, coarse: coarse),
       ),
-      body: _loading
-          ? Column(
-              children: [
-                const Expanded(
-                  child: SkeletonBlock(height: double.infinity, radius: 0),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SkeletonStatStrip(cells: 3),
-                      ListSkeleton.section(
-                        label: l10n.commonLoading,
-                        rows: 1,
-                        hasLeading: false,
-                      ),
-                    ],
+    );
+    if (_loading) {
+      return MapFirstPage(
+        appBar: appBar,
+        map: const SkeletonBlock(height: double.infinity, radius: 0),
+        overlays: [status],
+        panel: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SkeletonStatStrip(cells: 3),
+              ListSkeleton.section(
+                label: l10n.commonLoading,
+                rows: 1,
+                hasLeading: false,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: appBar,
+        body: Column(
+          children: [
+            status,
+            Expanded(
+              child: AppErrorState(
+                  message: l10n.liveSpectatorConnectError,
+                  onRetry: _hydrate),
+            ),
+          ],
+        ),
+      );
+    }
+    // The stats are the panel under the map, so the template keeps them off
+    // the system nav bar: on a 3-button bar the course progress and the
+    // metrics row drew under it (issue #1374 IK-5).
+    return MapFirstPage(
+      appBar: appBar,
+      overlays: [status],
+      map: _newestPoint == null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  l10n.liveSpectatorWaitingGps,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-              ],
+              ),
             )
-          : _loadError != null
-              ? AppErrorState(
-                  message: l10n.liveSpectatorConnectError, onRetry: _hydrate)
-              : Column(
-                  children: [
-                    Expanded(
-                      child: _newestPoint == null
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32),
-                                child: Text(
-                                  l10n.liveSpectatorWaitingGps,
-                                  textAlign: TextAlign.center,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : LiveRunMap(
-                              track: _line,
-                              plannedRoute: const [],
-                              followRunner: true,
-                              currentPosition: _newestPoint,
-                              coarsePosition: coarse,
-                              weakPosition: weak,
-                            ),
+          : LiveRunMap(
+              track: _line,
+              plannedRoute: const [],
+              followRunner: true,
+              currentPosition: _newestPoint,
+              coarsePosition: coarse,
+              weakPosition: weak,
+            ),
+      panel: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_status == 'finished') ...[
+              _ConclusionCard(onViewFullRun: _openFullRun),
+              const SizedBox(height: 16),
+            ],
+            if (coarse) ...[
+              Text(
+                l10n.liveSpectatorApproximateSub,
+                key: const Key('coarse-sub'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: semantic.warning,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (weak) ...[
+              Text(
+                l10n.liveSpectatorWeakGpsSub,
+                key: const Key('weak-gps-sub'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (fresh != null) ...[
+              Text(
+                _freshnessLabel(l10n, fresh),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: stale
+                      ? semantic.warning
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight:
+                      stale ? FontWeight.w700 : FontWeight.w500,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (cutoff != null) ...[
+              CutoffCard(eta: cutoff, stale: stale),
+              const SizedBox(height: 16),
+            ],
+            // Expanded, not spaceAround: an intrinsically-sized
+            // cell has no bound for its FittedBox to scale
+            // against, so a long value overflowed the row
+            // instead of shrinking.
+            Row(
+              children: [
+                Expanded(
+                  child: _Metric(
+                    label: l10n.runStatDistance,
+                    value: formatDistanceForPref(_distanceM),
+                  ),
+                ),
+                if (raceClock != null)
+                  Expanded(
+                    child: _Metric(
+                      key: const Key('race-clock'),
+                      label: l10n.liveSpectatorStatRaceTime,
+                      value: formatLiveDuration(
+                          Duration(seconds: raceClock)),
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_status == 'finished') ...[
-                            _ConclusionCard(onViewFullRun: _openFullRun),
-                            const SizedBox(height: 16),
-                          ],
-                          if (coarse) ...[
-                            Text(
-                              l10n.liveSpectatorApproximateSub,
-                              key: const Key('coarse-sub'),
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: semantic.warning,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (weak) ...[
-                            Text(
-                              l10n.liveSpectatorWeakGpsSub,
-                              key: const Key('weak-gps-sub'),
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (fresh != null) ...[
-                            Text(
-                              _freshnessLabel(l10n, fresh),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: stale
-                                    ? semantic.warning
-                                    : theme.colorScheme.onSurfaceVariant,
-                                fontWeight:
-                                    stale ? FontWeight.w700 : FontWeight.w500,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (cutoff != null) ...[
-                            CutoffCard(eta: cutoff, stale: stale),
-                            const SizedBox(height: 16),
-                          ],
-                          // Expanded, not spaceAround: an intrinsically-sized
-                          // cell has no bound for its FittedBox to scale
-                          // against, so a long value overflowed the row
-                          // instead of shrinking.
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _Metric(
-                                  label: l10n.runStatDistance,
-                                  value: formatDistanceForPref(_distanceM),
-                                ),
-                              ),
-                              if (raceClock != null)
-                                Expanded(
-                                  child: _Metric(
-                                    key: const Key('race-clock'),
-                                    label: l10n.liveSpectatorStatRaceTime,
-                                    value: formatLiveDuration(
-                                        Duration(seconds: raceClock)),
-                                  ),
-                                ),
-                              Expanded(
-                                child: _Metric(
-                                  key: const Key('runner-timer'),
-                                  label: stale
-                                      ? l10n.liveSpectatorStatTimerStale
-                                      : l10n.liveSpectatorStatTimer,
-                                  value: formatLiveDuration(
-                                      Duration(seconds: _elapsedS)),
-                                  // The runner's timer stopped at the last
-                                  // fix. Recede it so the ticking race clock
-                                  // beside it is unmistakably the live one.
-                                  muted: stale,
-                                ),
-                              ),
-                              Expanded(
-                                child: _Metric(
-                                  label: l10n.runStatPace,
-                                  value: _distanceM > 0 && _elapsedS > 0
-                                      ? formatLivePace(
-                                          _elapsedS / (_distanceM / 1000))
-                                      : '—',
-                                ),
-                              ),
-                              if (_bpm != null)
-                                Expanded(
-                                  child: _Metric(
-                                    key: const Key('heart-rate'),
-                                    label: l10n.liveSpectatorHeartRate,
-                                    value: l10n.prefsHrBpm(_bpm!),
-                                  ),
-                                ),
-                              if (_status == 'live' &&
-                                  _recentPaceSecPerKm != null)
-                                Expanded(
-                                  child: _Metric(
-                                    key: const Key('recent-pace'),
-                                    label: l10n.liveSpectatorRecentPace,
-                                    value: formatLivePace(_recentPaceSecPerKm!),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          if (motion?.state == MotionState.stopped &&
-                              motion?.stoppedForMs != null) ...[
-                            const SizedBox(height: 12),
-                            Row(
-                              key: const Key('motion-stopped'),
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.pause_circle_outline,
-                                    size: 18,
-                                    color: theme.colorScheme.onSurfaceVariant),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    motion!.atLeast
-                                        ? l10n.liveSpectatorMotionStoppedAtLeast(
-                                            motion.stoppedForMs! ~/ 60000)
-                                        : l10n.liveSpectatorMotionStopped(
-                                            motion.stoppedForMs! ~/ 60000),
-                                    textAlign: TextAlign.center,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color:
-                                          theme.colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (_status == 'live' &&
-                              _courseProgressPct != null) ...[
-                            const SizedBox(height: 16),
-                            _CourseProgress(
-                              fraction: _courseProgressPct!,
-                              label: l10n.liveSpectatorCourseProgress(
-                                  (_courseProgressPct! * 100).round()),
-                            ),
-                          ],
-                        ],
+                  ),
+                Expanded(
+                  child: _Metric(
+                    key: const Key('runner-timer'),
+                    label: stale
+                        ? l10n.liveSpectatorStatTimerStale
+                        : l10n.liveSpectatorStatTimer,
+                    value: formatLiveDuration(
+                        Duration(seconds: _elapsedS)),
+                    // The runner's timer stopped at the last
+                    // fix. Recede it so the ticking race clock
+                    // beside it is unmistakably the live one.
+                    muted: stale,
+                  ),
+                ),
+                Expanded(
+                  child: _Metric(
+                    label: l10n.runStatPace,
+                    value: _distanceM > 0 && _elapsedS > 0
+                        ? formatLivePace(
+                            _elapsedS / (_distanceM / 1000))
+                        : '—',
+                  ),
+                ),
+                if (_bpm != null)
+                  Expanded(
+                    child: _Metric(
+                      key: const Key('heart-rate'),
+                      label: l10n.liveSpectatorHeartRate,
+                      value: l10n.prefsHrBpm(_bpm!),
+                    ),
+                  ),
+                if (_status == 'live' &&
+                    _recentPaceSecPerKm != null)
+                  Expanded(
+                    child: _Metric(
+                      key: const Key('recent-pace'),
+                      label: l10n.liveSpectatorRecentPace,
+                      value: formatLivePace(_recentPaceSecPerKm!),
+                    ),
+                  ),
+              ],
+            ),
+            if (motion?.state == MotionState.stopped &&
+                motion?.stoppedForMs != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                key: const Key('motion-stopped'),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.pause_circle_outline,
+                      size: 18,
+                      color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      motion!.atLeast
+                          ? l10n.liveSpectatorMotionStoppedAtLeast(
+                              motion.stoppedForMs! ~/ 60000)
+                          : l10n.liveSpectatorMotionStopped(
+                              motion.stoppedForMs! ~/ 60000),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color:
+                            theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+            ],
+            if (_status == 'live' &&
+                _courseProgressPct != null) ...[
+              const SizedBox(height: 16),
+              _CourseProgress(
+                fraction: _courseProgressPct!,
+                label: l10n.liveSpectatorCourseProgress(
+                    (_courseProgressPct! * 100).round()),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

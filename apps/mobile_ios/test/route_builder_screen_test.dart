@@ -29,6 +29,7 @@ import '../lib/widgets/live_run_map.dart'
 import '../lib/widgets/map_attribution.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
+import 'three_button_nav_bar.dart';
 
 class _FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
   final Directory _tmp;
@@ -403,12 +404,14 @@ void main() {
     const navBar = 48.0;
     const screen = Size(360, 780);
 
-    Future<void> pumpPhone(WidgetTester tester, double textScale) async {
-      tester.view.physicalSize = screen;
+    Future<void> pumpPhone(WidgetTester tester, double textScale,
+        {Size size = screen,
+        FakeViewPadding inset =
+            const FakeViewPadding(top: 24, bottom: navBar)}) async {
+      tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
-      tester.view.padding = const FakeViewPadding(top: 24, bottom: navBar);
-      tester.view.viewPadding =
-          const FakeViewPadding(top: 24, bottom: navBar);
+      tester.view.padding = inset;
+      tester.view.viewPadding = inset;
       tester.platformDispatcher.textScaleFactorTestValue = textScale;
       addTearDown(tester.view.reset);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -527,6 +530,37 @@ void main() {
           .map((t) => (t.title! as Text).data)
           .toList();
       expect(items, ['Generate loop', 'Route points', 'Clear']);
+    });
+
+    // MapFirstPage stands the footer and the credit on the bar, and keeps
+    // them off a side bar in landscape (issue #1374, IK-10).
+    testWidgets('320 dp, 2x text: the footer and the credit clear the bar',
+        (tester) async {
+      await pumpPhone(tester, 2, size: const Size(320, 640));
+      expect(tester.takeException(), isNull);
+      final fab = tester.getRect(find.byType(FloatingActionButton));
+      expect(fab.bottom, lessThanOrEqualTo(640 - navBar));
+      expect(fab.right, lessThanOrEqualTo(320));
+      final strip = tester.getRect(find.byType(MapAttribution));
+      expect(strip.top, greaterThanOrEqualTo(fab.bottom));
+      expect(strip.bottom, lessThanOrEqualTo(640 - navBar));
+    });
+
+    testWidgets('landscape: the footer and the status pill clear a side bar',
+        (tester) async {
+      await pumpPhone(tester, 1,
+          size: const Size(780, 360),
+          inset: const FakeViewPadding(right: navBar));
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(find.byType(FloatingActionButton)).right,
+          lessThanOrEqualTo(780 - navBar));
+      expect(
+          tester
+              .getRect(find.byKey(const Key('route-builder-draw-toggle')))
+              .right,
+          lessThanOrEqualTo(780 - navBar));
+      expect(tester.getRect(find.textContaining('Tap the map to place waypoints')).right,
+          lessThanOrEqualTo(780 - navBar));
     });
 
     testWidgets('a focused search field folds Undo too', (tester) async {
@@ -1639,6 +1673,23 @@ void _registerOfflineSaveTests() {
         ),
       );
     }
+
+    testWidgets('over a 3-button nav bar the last row clears the bar',
+        (tester) async {
+      await openSheetOverNavBar(
+        tester,
+        (context) => showModalBottomSheet<void>(
+          context: context,
+          builder: (_) => WaypointListSheet(
+            waypoints: wps,
+            onApply: (_) {},
+            announce: (_) {},
+          ),
+        ),
+      );
+      expectAboveNavBar(
+          tester, find.byTooltip('Delete point 3', skipOffstage: false));
+    });
 
     testWidgets('renders one numbered row per waypoint with start/end tags',
         (tester) async {

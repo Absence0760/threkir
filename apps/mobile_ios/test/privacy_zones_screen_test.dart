@@ -259,4 +259,65 @@ void main() {
       expect(find.byType(PrivacyZonesScreen), findsNothing);
     });
   });
+
+  // Locate me is MapFirstPage's map control, above the zone footer: as a
+  // Scaffold FAB it sat on Clear all (issue #1374 IK-3).
+  group('PrivacyZonesScreen — insets', () {
+    Future<void> pumpOn(WidgetTester tester, Size size, FakeViewPadding bar,
+        {double textScale = 1}) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = bar;
+      tester.view.viewPadding = bar;
+      addTearDown(tester.view.reset);
+      final s = await _makeSync();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MediaQuery.withClampedTextScaling(
+            minScaleFactor: textScale,
+            maxScaleFactor: textScale,
+            child: PrivacyZonesScreen(settingsSync: s.sync),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      // Draw a zone so the count + Clear all footer shows.
+      await tester.tapAt(tester.getTopLeft(find.byType(FlutterMap)) +
+          const Offset(24, 24));
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    Future<void> expectClearAllReachable(WidgetTester tester, Size size,
+        {double bottomBar = 0, double sideBar = 0}) async {
+      expect(tester.takeException(), isNull);
+      final clear = find.text('Clear all');
+      await tester.ensureVisible(clear);
+      await tester.pump();
+      expect(clear.hitTestable(), findsOneWidget);
+      final rect = tester.getRect(clear);
+      final locate = tester.getRect(find.byType(FloatingActionButton));
+      expect(locate.overlaps(rect), isFalse,
+          reason: 'Locate me $locate covers Clear all $rect');
+      expect(rect.bottom, lessThanOrEqualTo(size.height - bottomBar));
+      expect(rect.right, lessThanOrEqualTo(size.width - sideBar));
+      expect(locate.right, lessThanOrEqualTo(size.width - sideBar));
+    }
+
+    testWidgets('320 dp, 2x text, 3-button bar: Locate me sits above Clear all',
+        (tester) async {
+      const size = Size(320, 640);
+      await pumpOn(tester, size, const FakeViewPadding(bottom: 48),
+          textScale: 2);
+      await expectClearAllReachable(tester, size, bottomBar: 48);
+    });
+
+    testWidgets('landscape: the controls and the footer clear a side bar',
+        (tester) async {
+      const size = Size(780, 360);
+      await pumpOn(tester, size, const FakeViewPadding(right: 48));
+      await expectClearAllReachable(tester, size, sideBar: 48);
+    });
+  });
 }

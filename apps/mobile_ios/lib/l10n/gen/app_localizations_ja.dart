@@ -1241,7 +1241,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyMetricsConsentTitle => '健康データを保存';
 
   @override
-  String get bodyMetricsConsentSubtitle => '身長と体重は特別な健康データです。オフにして保存すると削除されます。';
+  String get bodyMetricsConsentSubtitle =>
+      '身長と体重は、特別な種類の個人データにあたる健康データです。オフにして保存すると、これらのデータが削除されます。';
 
   @override
   String get bodyMetricsHeight => '身長';

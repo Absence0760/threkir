@@ -5912,7 +5912,7 @@ export const en = {
 	"prefs.dobFuture": "A date of birth can't be in the future.",
 	"prefs.heightCm": "Height (cm)",
 	"prefs.weight": "Weight",
-	"prefs.consentRecordedOn": "Consent recorded on {date}. Unticking the checkbox above and saving withdraws consent and erases your gender, height and weight history, per Art 7(3). Your date of birth stays as your age record.",
+	"prefs.consentRecordedOn": "Consent recorded on {date}. Unticking the checkbox above and saving withdraws consent (GDPR Art 7(3)) and erases your gender, height, weight history and any cycle or pregnancy details. Your date of birth stays as your age record.",
 	"prefs.demographicsSavedBtn": "Saved!",
 	"prefs.saveDemographics": "Save demographics",
 	"prefs.demographicsUnsaved": "Unsaved changes",

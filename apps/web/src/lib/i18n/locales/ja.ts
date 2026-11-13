@@ -5892,7 +5892,7 @@ export const messages = {
 	"prefs.dobFuture": "生年月日に未来の日付は指定できません。",
 	"prefs.heightCm": "身長（cm）",
 	"prefs.weight": "体重",
-	"prefs.consentRecordedOn": "{date} に同意を記録しました。上のチェックボックスのチェックを外して保存すると、同意を撤回し、第7条3項に従って性別、身長、体重の履歴が消去されます。生年月日は年齢の記録として残ります。",
+	"prefs.consentRecordedOn": "{date} に同意を記録しました。上のチェックボックスのチェックを外して保存すると、GDPR第7条3項に基づき同意が撤回され、性別、身長、体重の履歴と、月経周期や妊娠に関する情報（ある場合）が削除されます。生年月日は年齢の記録として残ります。",
 	"prefs.demographicsSavedBtn": "保存しました！",
 	"prefs.saveDemographics": "属性情報を保存",
 	"prefs.demographicsUnsaved": "未保存の変更があります",

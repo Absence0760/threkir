@@ -337,7 +337,7 @@
   "bodyMetricsTitle": "Datos corporales",
   "bodyMetricsTileSubtitle": "Altura, peso y objetivos de nutrición",
   "bodyMetricsConsentTitle": "Almacenar datos de salud",
-  "bodyMetricsConsentSubtitle": "La altura y el peso son datos de salud sensibles. Desactiva y guarda para borrarlos.",
+  "bodyMetricsConsentSubtitle": "La altura y el peso son datos de salud de categoría especial. Desactívalo y guarda para borrarlos.",
   "bodyMetricsHeight": "Altura",
   "bodyMetricsWeight": "Peso",
   "bodyMetricsActivityLevel": "Nivel de actividad",

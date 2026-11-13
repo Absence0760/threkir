@@ -5897,7 +5897,7 @@ export const messages = {
 	"prefs.dobFuture": "Una fecha de nacimiento no puede estar en el futuro.",
 	"prefs.heightCm": "Altura (cm)",
 	"prefs.weight": "Peso",
-	"prefs.consentRecordedOn": "Consentimiento registrado el {date}. Si desmarcas la casilla anterior y guardas, retirarás el consentimiento y se borrarán tu género, tu altura y tu historial de peso conforme al art. 7, apdo. 3. Tu fecha de nacimiento se conserva como registro de tu edad.",
+	"prefs.consentRecordedOn": "Consentimiento registrado el {date}. Si desmarcas la casilla anterior y guardas, retirarás el consentimiento (art. 7.3 del RGPD) y se borrarán tu género, tu altura, tu historial de peso y cualquier dato de ciclo o embarazo. Tu fecha de nacimiento se conserva como registro de tu edad.",
 	"prefs.demographicsSavedBtn": "¡Guardado!",
 	"prefs.saveDemographics": "Guardar datos demográficos",
 	"prefs.demographicsUnsaved": "Cambios sin guardar",

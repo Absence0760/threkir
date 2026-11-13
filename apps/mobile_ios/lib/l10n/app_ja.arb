@@ -337,7 +337,7 @@
   "bodyMetricsTitle": "身体データ",
   "bodyMetricsTileSubtitle": "身長・体重・栄養目標",
   "bodyMetricsConsentTitle": "健康データを保存",
-  "bodyMetricsConsentSubtitle": "身長と体重は特別な健康データです。オフにして保存すると削除されます。",
+  "bodyMetricsConsentSubtitle": "身長と体重は、特別な種類の個人データにあたる健康データです。オフにして保存すると、これらのデータが削除されます。",
   "bodyMetricsHeight": "身長",
   "bodyMetricsWeight": "体重",
   "bodyMetricsActivityLevel": "活動レベル",

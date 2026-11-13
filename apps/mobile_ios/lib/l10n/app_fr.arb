@@ -337,7 +337,7 @@
   "bodyMetricsTitle": "Données corporelles",
   "bodyMetricsTileSubtitle": "Taille, poids et objectifs nutritionnels",
   "bodyMetricsConsentTitle": "Stocker les données de santé",
-  "bodyMetricsConsentSubtitle": "La taille et le poids sont des données de santé sensibles. Désactivez puis enregistrez pour les effacer.",
+  "bodyMetricsConsentSubtitle": "La taille et le poids sont des données de santé sensibles. Désactivez cette option puis enregistrez pour les effacer.",
   "bodyMetricsHeight": "Taille",
   "bodyMetricsWeight": "Poids",
   "bodyMetricsActivityLevel": "Niveau d'activité",

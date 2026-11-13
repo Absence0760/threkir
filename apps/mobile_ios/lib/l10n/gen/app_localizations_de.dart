@@ -1303,7 +1303,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Größe und Gewicht sind besondere Gesundheitsdaten. Zum Löschen ausschalten und speichern.';
+      'Größe und Gewicht sind Gesundheitsdaten und gehören zu den besonderen Kategorien personenbezogener Daten. Schalte die Option aus und speichere, um sie zu löschen.';
 
   @override
   String get bodyMetricsHeight => 'Größe';

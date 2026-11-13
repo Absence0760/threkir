@@ -337,7 +337,7 @@
   "bodyMetricsTitle": "Körperdaten",
   "bodyMetricsTileSubtitle": "Größe, Gewicht & Nährwertziele",
   "bodyMetricsConsentTitle": "Gesundheitsdaten speichern",
-  "bodyMetricsConsentSubtitle": "Größe und Gewicht sind besondere Gesundheitsdaten. Zum Löschen ausschalten und speichern.",
+  "bodyMetricsConsentSubtitle": "Größe und Gewicht sind Gesundheitsdaten und gehören zu den besonderen Kategorien personenbezogener Daten. Schalte die Option aus und speichere, um sie zu löschen.",
   "bodyMetricsHeight": "Größe",
   "bodyMetricsWeight": "Gewicht",
   "bodyMetricsActivityLevel": "Aktivitätsniveau",

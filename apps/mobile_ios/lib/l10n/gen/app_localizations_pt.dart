@@ -1305,7 +1305,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Altura e peso são dados de saúde sensíveis. Desative e guarde para os apagar.';
+      'Altura e peso são dados de saúde de categoria especial. Desative e guarde para os apagar.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -24391,7 +24391,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Altura e peso são dados de saúde sensíveis. Desative e salve para apagá-los.';
+      'Altura e peso são dados de saúde de categoria especial. Desative esta opção e salve para apagá-los.';
 
   @override
   String get bodyMetricsHeight => 'Altura';

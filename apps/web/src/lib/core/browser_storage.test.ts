@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { localStore, sessionStore } from './browser_storage.js';
 import { browserReturnStore } from './pending_return.js';
@@ -86,12 +86,14 @@ test('no module outside browser_storage.ts touches Web Storage directly', () => 
 		/\btypeof\s+(local|session)Storage\b|\b(window\.|globalThis\.)?(local|session)Storage\s*\.\s*(getItem|setItem|removeItem|clear|key|length)\b/;
 	const offenders: string[] = [];
 	const walk = (dir: string) => {
-		for (const name of readdirSync(dir)) {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const name = entry.name;
 			const path = join(dir, name);
-			if (statSync(path).isDirectory()) {
+			if (entry.isDirectory()) {
 				walk(path);
 				continue;
 			}
+			if (!entry.isFile()) continue;
 			if (!/\.(ts|svelte)$/.test(name) || /\.test\.ts$/.test(name)) continue;
 			if (name === 'browser_storage.ts') continue;
 			readFileSync(path, 'utf8')

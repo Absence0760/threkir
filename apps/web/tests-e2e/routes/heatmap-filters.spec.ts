@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
-import { jumpAndSettle, settleOnFeature } from '../fixtures/heatmap';
+import { jumpAndSettle, settleOnFeature, waitForHeatmapSettled } from '../fixtures/heatmap';
 
 /**
  * Route-discovery filter facet on the heatmap (`p_filter` on
@@ -772,6 +772,12 @@ test.describe('Heatmap results sidebar — a failed routes read', () => {
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
 		const list = page.getByTestId('discover-list');
 		await expect(list.getByText('Stale-list loop')).toBeVisible({ timeout: 10_000 });
+		// The page frames itself on the route data once (a fetch, a 600 ms
+		// fitBounds, then a debounced pin refresh). Flipping `fail` while that
+		// refresh is still owed lets it land on the wrong side of the flip: a
+		// success after `fail = false` clears the error before Retry is
+		// pressed, and the click waits on a button that is gone.
+		await waitForHeatmapSettled(page);
 
 		fail = true;
 		await page.getByTestId('filters-button').click();
@@ -779,9 +785,14 @@ test.describe('Heatmap results sidebar — a failed routes read', () => {
 		const stale = page.getByTestId('discover-stale-error');
 		await expect(stale).toBeVisible({ timeout: 10_000 });
 		await expect(list.getByText('Stale-list loop')).toBeVisible();
+		await waitForHeatmapSettled(page);
 
 		fail = false;
+		const retried = page.waitForRequest((req) =>
+			req.url().includes('/rest/v1/rpc/discoverable_routes_in_bbox'),
+		);
 		await stale.getByRole('button', { name: 'Retry' }).click();
+		await retried;
 		await expect(stale).toHaveCount(0, { timeout: 10_000 });
 	});
 });

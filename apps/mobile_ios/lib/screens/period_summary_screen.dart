@@ -6,7 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show EmptyState, SheetScaffold, StatGrid, StatTile;
+    show
+        AppBarAction,
+        EmptyState,
+        PageHeader,
+        PushedPage,
+        SheetScaffold,
+        StatGrid,
+        StatTile;
 
 import '../goals.dart';
 import '../l10n/date_format.dart';
@@ -378,25 +385,28 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
     final unit = widget.preferences.unit;
     final stats = computePeriodStats(_periodRuns);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(switch (_period) {
-          PeriodType.week => l10n.periodWeeklySummary,
-          PeriodType.month => l10n.periodMonthlySummary,
-          PeriodType.all => l10n.periodAllTimeSummary,
-        }),
-        actions: [
-          if (_periodRuns.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.share_outlined),
-              tooltip: l10n.periodShareTooltip,
-              onPressed: _showShareSheet,
-            ),
-        ],
-      ),
+    final title = switch (_period) {
+      PeriodType.week => l10n.periodWeeklySummary,
+      PeriodType.month => l10n.periodMonthlySummary,
+      PeriodType.all => l10n.periodAllTimeSummary,
+    };
+    return PushedPage(
+      title: title,
+      actions: [
+        if (_periodRuns.isNotEmpty)
+          AppBarAction(
+            icon: const Icon(Icons.share_outlined),
+            label: l10n.periodShareTooltip,
+            onPressed: _showShareSheet,
+          ),
+      ],
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          PageHeader(
+            title: title,
+            padding: const EdgeInsets.only(bottom: 12),
+          ),
           _buildPeriodNav(theme),
           const SizedBox(height: 16),
           _buildStatsCard(theme, unit, stats),

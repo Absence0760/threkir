@@ -60,6 +60,12 @@ void main() {
       expect(effectiveZoneRadius(z(50)), 100);
       expect(effectiveZoneRadius(z(double.nan)), 100);
     });
+
+    test('a zone stored without a radius reads as the floor', () {
+      final zone = PrivacyZone.fromJson({'lat': 1.0, 'lng': 2.0});
+      expect(zone.radiusM, privacyZoneMinRadiusM);
+      expect(effectiveZoneRadius(zone), 100);
+    });
   });
 
   group('isFixInAnyZone', () {

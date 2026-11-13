@@ -203,6 +203,20 @@ test(
 	},
 );
 
+test('accessibility: Today and Progress render their h1 through PageHeader (WCAG 1.3.1 + 2.4.6)', () => {
+	// The dashboard's visually-hidden h1 became a visible PageHeader when it
+	// split into Today and Progress (decisions § 2506); PageHeader renders the
+	// <h1>, so the pin is that each view passes its own heading key.
+	const view = read('src/routes/dashboard/DashboardView.svelte');
+	const header = read('src/lib/components/PageHeader.svelte');
+	assert.match(header, /<h1\b/, 'PageHeader must render the page h1');
+	assert.match(view, /<PageHeader title=\{m\('dash\.pageTitle'\)\}/, 'Today must title itself with dash.pageTitle');
+	assert.match(view, /<PageHeader\s+title=\{m\('dash\.progressTitle'\)\}/, 'Progress must title itself with dash.progressTitle');
+	const en = read('src/lib/i18n/locales/en.ts');
+	assert.match(en, /"dash\.pageTitle":\s*"Today"/);
+	assert.match(en, /"dash\.progressTitle":\s*"Progress"/);
+});
+
 test('accessibility: every top-level page renders an h1 (WCAG 1.3.1 + 2.4.6)', () => {
 	// Reason: audit/accessibility High — Dashboard / Runs / Coach
 	// had no h1, so a screen-reader user navigating by headings

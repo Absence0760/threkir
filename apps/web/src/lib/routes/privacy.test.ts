@@ -49,6 +49,11 @@ test('effectiveZoneRadius — keeps a stored radius above the floor and floors t
 	assert.equal(effectiveZoneRadius({ radius_m: Number.NaN }), 100);
 });
 
+test('effectiveZoneRadius — a zone stored without a radius reads as the floor', () => {
+	const stored = JSON.parse('{"lat": 1, "lng": 2}') as PrivacyZone;
+	assert.equal(effectiveZoneRadius(stored), 100);
+});
+
 test('clipPointsToZones — empty zones returns input', () => {
 	const pts: LatLng[] = [{ lat: 1, lng: 1 }, { lat: 2, lng: 2 }];
 	assert.deepEqual(clipPointsToZones(pts, []), pts);

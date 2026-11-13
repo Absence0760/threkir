@@ -484,7 +484,7 @@ Dart mirror of `apps/web/src/lib/training_load.test.ts`. The Dart engine (`lib/t
 
 Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-effort walker in `lib/segments.dart#computeEffortFromTrack`. Same `straightTrack` synthetic helper (meridian-aligned, constant pace) so haversine cumulative distance is predictable. Covers a clean segment, run shorter than segment end, sub-2-point tracks, zero / negative segment windows, sparse-sampling guard (median step > segLen / 5), missing timestamps in the interpolation bracket, mid-segment interpolation, and sample-aligned endpoints. Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone.
 
-### `apps/mobile_android/test/privacy_test.dart` — 20 tests
+### `apps/mobile_android/test/privacy_test.dart` — 21 tests
  Three more pin that a coordinate-less (NaN) fix at either end is dropped without ending the trim, that a fix placed only by its smoothed pair ends it when out, and that an all-coordinate-less track returns empty.
 Dart mirror of `apps/web/src/lib/privacy.test.ts`. Pure tests for `lib/privacy.dart`. Covers `isInAnyZone` (empty zones, centre, far point) and `clipPointsToZones` (empty zones returns input, drops leading + trailing in-zone, keeps interior, every-point-in-zone returns empty, multi-zone union).
 
@@ -832,7 +832,7 @@ Every control on a swept surface carries a one-line explanation (#905 workstream
 
 The browser half of the guard above: walks the rendered DOM of every swept surface it can reach signed in — the plan-and-run path, the five creator editors, the five gym / session editors, the race and segment filters, `/nutrition/targets` and each step of `/onboarding` — resolves each control's `aria-describedby` (or a checkbox's in-label hint) and fails when it reads back as empty. The source scan can only see that the id exists; a hint behind an `{#if}` that never opens, or a catalogue key resolving to empty, passes it. Several surfaces are read in more than one state, because neither state renders the other's fields: the event editor as a group run and as a class, the routine editor under both progression schemes that carry their own fields, the workout editor as repeats and as one steady effort. The control list comes from the DOM, not a list in the spec.
 
-### `apps/web/src/lib/routes/privacy.test.ts` — 22 tests
+### `apps/web/src/lib/routes/privacy.test.ts` — 23 tests
 
 TypeScript unit tests for the pure privacy-zone clipper (`lib/privacy.ts`, decisions §33). Run with `npx tsx --test src/lib/privacy.test.ts` from `apps/web`.
 

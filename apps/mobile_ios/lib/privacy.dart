@@ -21,7 +21,9 @@ class PrivacyZone {
   factory PrivacyZone.fromJson(Map<String, dynamic> json) => PrivacyZone(
         lat: (json['lat'] as num).toDouble(),
         lng: (json['lng'] as num).toDouble(),
-        radiusM: (json['radius_m'] as num).toDouble(),
+        // A zone stored without a radius reads as the floor, as on every other
+        // platform (decisions § 2505).
+        radiusM: (json['radius_m'] as num?)?.toDouble() ?? privacyZoneMinRadiusM,
       );
 
   Map<String, dynamic> toJson() => {

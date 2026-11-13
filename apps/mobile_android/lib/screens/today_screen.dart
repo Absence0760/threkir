@@ -13,6 +13,7 @@ import 'package:ui_kit/ui_kit.dart'
         ListCard,
         PageHeader,
         ProgressBar,
+        RootPage,
         SectionHeader,
         SkeletonBlock,
         StatGrid,
@@ -1105,11 +1106,11 @@ class _TodayScreenState extends State<TodayScreen>
 
     final api = widget.apiClient;
 
-    // Inline action toolbar — replaces the previous AppBar so the
-    // dashboard's content can sit flush with the top inset. It is the title
-    // and the overflow only (issue #1374): the Feed, bell and Profile glyphs
-    // duplicated the Social and You tabs a thumb away, and the notifications
-    // and messages they reached live in Social's top bar now.
+    // The root page's actions: the overflow only (issue #1374). The Feed,
+    // bell and Profile glyphs duplicated the Social and You tabs a thumb
+    // away, and the notifications and messages they reached live in Social's
+    // top bar now. They sit in the RootPage bar, so they stay reachable once
+    // the title has scrolled away.
     final actions = <Widget>[
       // Logging a run after the fact and importing history are occasional
       // jobs, so they sit in the overflow rather than on the week lead, where
@@ -1139,13 +1140,11 @@ class _TodayScreenState extends State<TodayScreen>
     ];
     // Home opened on four glyphs and no title at all — nothing on the screen
     // said which surface it was, and the bottom-nav label is 700 dp away at
-    // the other end of the phone. The title is the row's first child so the
-    // actions read as belonging to it. The row sits inside the page's own
+    // the other end of the phone. The heading sits inside the page's own
     // gutter, so the title starts where the cards do (it used to add 16 of
     // its own and start at 32).
     final actionToolbar = PageHeader(
       title: l10n.todayTitle,
-      actions: actions,
       padding: const EdgeInsets.only(top: AppSpace.sm),
     );
 
@@ -1437,14 +1436,13 @@ class _TodayScreenState extends State<TodayScreen>
       );
     }
 
-    return Scaffold(
-      // No AppBar — the title row (Today and the overflow) is the first row
-      // of the body. SafeArea keeps it clear of the system status bar (the
-      // AppBar was providing that inset implicitly before).
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(onRefresh: _refreshAll, child: content),
-      ),
+    // A root page (ui_kit RootPage): the large title is the body's first
+    // row, and the slim bar above it holds the overflow and says the title
+    // once the heading has scrolled under it.
+    return RootPage(
+      title: l10n.todayTitle,
+      actions: actions,
+      body: RefreshIndicator(onRefresh: _refreshAll, child: content),
     );
   }
 

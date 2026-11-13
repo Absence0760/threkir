@@ -6923,10 +6923,16 @@ void main() {
           File('lib/screens/fitness_hub_screen.dart').readAsStringSync();
       final labelled = RegExp(r'label:\s*(?:Text\(\s*)?l(?:10n)?\.(\w+)');
       final tabArm = RegExp(r'FitnessTab\.\w+\s*=>\s*l(?:10n)?\.(\w+)');
+      // The hub's own name (its nav label and its title) is
+      // `fitnessHubTitle`, which the shell's `label:` calls.
+      final hubTitle = hub.substring(hub.indexOf('String fitnessHubTitle('),
+          hub.indexOf(';', hub.indexOf('String fitnessHubTitle(')));
       final keys = <String>{
         for (final src in [home, hub])
           for (final m in labelled.allMatches(src)) m.group(1)!,
         for (final m in tabArm.allMatches(hub)) m.group(1)!,
+        for (final m in RegExp(r'l10n\.(\w+)').allMatches(hubTitle))
+          m.group(1)!,
       };
       final arb = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
           as Map<String, dynamic>;

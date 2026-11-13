@@ -394,14 +394,19 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _buildBadgeStrip(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
+      padding: const EdgeInsets.only(top: AppSpace.sm),
       // A scrolling Row rather than a horizontal ListView in a fixed-height
       // box: the strip is capped at six awards, and a literal lane height
       // squeezed the chips out of their 48 dp tap target at 1.0x and cropped
-      // their labels outright at 2x OS text scale.
+      // their labels outright at 2x OS text scale. The strip runs edge to
+      // edge and the gutter is the scroll's own padding, at both ends: a
+      // gutter outside the scroll view clipped the chips 16 dp short of the
+      // screen edge, so the next chip looked cut off rather than scrollable,
+      // and the last one could never scroll clear of that edge.
       child: SingleChildScrollView(
+        key: const ValueKey('feed-badge-strip'),
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppInsets.gutter),
         child: Row(
           children: [
             for (final (i, a) in _badgeAwards.indexed) ...[

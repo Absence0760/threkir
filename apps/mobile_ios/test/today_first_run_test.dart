@@ -5,7 +5,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show SkeletonBlock;
+import 'package:ui_kit/ui_kit.dart' show PageHeader, SkeletonBlock;
 
 import '../lib/goals.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -235,7 +235,10 @@ void main() {
         (tester) async {
       final s = await _stores();
       await _pump(tester, s);
-      expect(find.text('Today'), findsOneWidget,
+      expect(
+          find.descendant(
+              of: find.byType(PageHeader), matching: find.text('Today')),
+          findsOneWidget,
           reason: 'the surface opened on four unlabelled glyphs and no title');
       // `_coachEntry()` is a labelled card 8 dp below the toolbar, so the
       // toolbar glyph was a duplicate route with a tooltip for a label.

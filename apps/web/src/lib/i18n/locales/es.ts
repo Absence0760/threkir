@@ -1770,8 +1770,6 @@ export const messages = {
 	"history.emptyTimeline": "Aún no hay nada registrado en esta vista.",
 	"history.loadFailed": "No se pudo cargar tu historial de actividad.",
 	"history.retry": "Reintentar",
-	"history.heading": "Historial de carreras",
-	"history.timelineHeading": "Historial",
 	"history.timelineTitle": "Historial — Threkir",
 	"history.viewAll": "Ver todo",
 	"runs.activityTypeGroup": "Tipo de actividad",

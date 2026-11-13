@@ -43,8 +43,10 @@ import 'runs_screen.dart';
 ///     the segment catalogue is Explore's Segments chip rather than a tab of
 ///     its own (issue #1374, owner decision 1).
 ///
-/// The hub owns the only app bar (the strip, no title) and the one FAB, as
-/// the Social hub does: every tab body is a ui_kit `HubTabBody`, which inside
+/// The hub is a ui_kit `RootPage.tabbed`, as the Social hub is: the hub's
+/// name ([fitnessHubTitle], the label the bottom nav shows) in a large title
+/// over the strip, which collapses into the one app bar as a tab scrolls, and
+/// the one FAB: every tab body is a ui_kit `HubTabBody`, which inside
 /// the hub's [HubTabScope] draws no app bar or title of its own, puts its
 /// secondary actions in its control row and hands its primary action to the
 /// hub, which shows the active tab's as its FAB (issue #1374). One strip in
@@ -107,6 +109,17 @@ List<FitnessTab> fitnessHubTabs({
       FitnessTab.races,
       FitnessTab.routes,
     ];
+
+/// The hub's name: its bottom-nav label and the title it says over its strip,
+/// from one place so the two never disagree. "Fitness" while gym or
+/// nutrition is shown, "Training" for a runner with neither (decisions
+/// § 139): the hub then holds runs, plans, races and routes.
+String fitnessHubTitle(
+  AppLocalizations l10n, {
+  required bool gymShown,
+  required bool nutritionShown,
+}) =>
+    gymShown || nutritionShown ? l10n.navFitness : l10n.navTraining;
 
 class FitnessHubScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -303,23 +316,20 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 0,
-        bottom: AppTabBar(
-          controller: _controller,
-          labels: [
-            for (final t in _tabs) t.label(l10n),
-          ],
-        ),
+    return RootPage.tabbed(
+      title: fitnessHubTitle(
+        l10n,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
       ),
-      body: TabBarView(
-        controller: _controller,
-        children: [
-          for (final t in _tabs)
-            HubTabScope(tab: t, actions: _actions, child: _body(t, l10n)),
-        ],
-      ),
+      controller: _controller,
+      labels: [
+        for (final t in _tabs) t.label(l10n),
+      ],
+      children: [
+        for (final t in _tabs)
+          HubTabScope(tab: t, actions: _actions, child: _body(t, l10n)),
+      ],
       floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: ValueListenableBuilder<FitnessTab>(
         valueListenable: _tab,

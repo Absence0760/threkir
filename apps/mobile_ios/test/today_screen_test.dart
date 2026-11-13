@@ -5,7 +5,8 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show ChartCardHeader;
+import 'package:ui_kit/ui_kit.dart'
+    show ChartCardHeader, PageBarTitle, PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/age_grade.dart';
 import '../lib/goals.dart';
@@ -446,20 +447,32 @@ void main() {
   });
 
   group('TodayScreen', () {
-    testWidgets('Dashboard renders no AppBar (actions hoist into the body)',
-        (tester) async {
-      // The bottom-nav labels this tab "Home"; a duplicate title
-      // there would be redundant chrome. The AppBar was removed
-      // entirely (not just its title) because the empty left half
-      // left a visible blank band where the title used to sit. The
-      // Coach / Feed / Profile action buttons now live as an inline
-      // toolbar Row at the top of the body. SafeArea keeps the
-      // first content row clear of the system status bar.
+    testWidgets('Today says its title in the body, under a slim bar that '
+        'holds the overflow', (tester) async {
+      // A root page (ui_kit RootPage, issue #1374 owner finding 11): the
+      // large title is the body's first row, and the bar above it is silent
+      // until that title scrolls under it. The overflow lives in the bar, so
+      // it stays in reach at every scroll position.
       final s = await _makeStores();
       await _pump(tester,
           runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
-      expect(find.byType(AppBar), findsNothing);
-      expect(find.byType(SafeArea), findsAtLeastNWidgets(1));
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(PageHeader), matching: find.text('Today')),
+          findsOneWidget);
+      expect(
+          tester
+              .widget<AnimatedOpacity>(find.descendant(
+                  of: find.byType(PageBarTitle),
+                  matching: find.byType(AnimatedOpacity)))
+              .opacity,
+          0);
+      expect(
+          find.descendant(
+              of: find.byType(AppBar),
+              matching: find.byKey(const Key('dashboardMoreMenu'))),
+          findsOneWidget);
     });
 
     testWidgets('shows welcome empty state when runs and goals are both empty',

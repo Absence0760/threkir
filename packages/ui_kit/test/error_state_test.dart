@@ -44,4 +44,32 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('the inline form puts Retry under a message that fills the row',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+        child: Scaffold(
+          body: ListView(children: [
+            ErrorState.inline(
+              message: 'Impossible de charger les signalements',
+              retryLabel: 'Réessayer',
+              onRetry: () {},
+            ),
+          ]),
+        ),
+      ),
+    ));
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getTopLeft(find.text('Réessayer')).dy,
+      greaterThan(tester.getTopLeft(find.text(
+              'Impossible de charger les signalements'))
+          .dy),
+    );
+  });
 }

@@ -43,15 +43,33 @@ class ErrorState extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 20, color: theme.colorScheme.outline),
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Icon(icon, size: 20, color: theme.colorScheme.outline),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: Text(message, style: theme.textTheme.bodyMedium)),
-            const SizedBox(width: 8),
-            TextButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 18),
-              label: Text(retryLabel),
+            // Message and Retry share a line while they fit; a long message
+            // or large text puts Retry under it rather than pushing it off a
+            // narrow row (issue #1374: 240 dp over in fr at 2x on 320 dp).
+            Expanded(
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(message, style: theme.textTheme.bodyMedium),
+                  ),
+                  TextButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: Text(retryLabel),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -9749,7 +9749,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsPageRecordingSummary =>
-      'Womit eine neue Aufzeichnung beginnt und was dein Handy oder deine Uhr beim Laufen ansagt.';
+      'Die Aktivität, mit der eine neue Aufzeichnung startet, und was dein Handy oder deine Uhr beim Laufen ansagt.';
 
   @override
   String get prefsPageTraining => 'Training';
@@ -9770,7 +9770,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsPageNotificationsSummary =>
-      'Welche E-Mails und Push-Mitteilungen du bekommst und welche optionalen E-Mails du abonnieren kannst.';
+      'Welche E-Mails und Push-Benachrichtigungen du bekommst und welche optionalen E-Mails du abonnieren kannst.';
 
   @override
   String get prefsOfflineNotice =>
@@ -15641,7 +15641,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeConditionsLoadFailed =>
-      'Meldungen konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+      'Zustandsmeldungen konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get routeConditionsLoading => 'Wird geladen…';

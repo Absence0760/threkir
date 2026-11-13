@@ -1458,7 +1458,7 @@
   },
   "homeRaceInDays": "{days, plural, =1{Race tomorrow} other{Race in {days} days}}",
   "@homeRaceInDays": {
-    "description": "Countdown on the Home plan card: whole days until the plan's race day (always 2 or more; 1 is homeRaceTomorrow)",
+    "description": "Countdown on the Home plan card: whole days until the plan's race day, \"tomorrow\" at 1",
     "placeholders": {
       "days": {
         "type": "int"

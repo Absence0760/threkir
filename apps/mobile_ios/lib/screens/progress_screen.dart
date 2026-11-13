@@ -10,7 +10,9 @@ import 'package:ui_kit/ui_kit.dart'
         AppSemanticColors,
         AppSpace,
         ChartCardHeader,
+        PageHeader,
         ProgressBar,
+        PushedPage,
         SectionHeader;
 
 import '../adaptive_width.dart';
@@ -938,6 +940,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
     ];
 
     final lead = <Widget>[
+      PageHeader(
+        title: l10n.progressTitle,
+        padding: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      ),
       if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
       if (goalsSection != null) ...[goalsSection, _kSectionGap],
       periodRow,
@@ -990,12 +996,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.progressTitle)),
-      body: SafeArea(
-        top: false,
-        child: RefreshIndicator(onRefresh: _refreshAll, child: content),
-      ),
+    return PushedPage(
+      title: l10n.progressTitle,
+      body: RefreshIndicator(onRefresh: _refreshAll, child: content),
     );
   }
 }

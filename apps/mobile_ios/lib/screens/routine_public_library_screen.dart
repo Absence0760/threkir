@@ -131,12 +131,14 @@ class _RoutinePublicLibraryScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.gymLibraryTitle)),
+    return PushedPage(
+      title: l10n.gymLibraryTitle,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          PageHeader(title: l10n.gymLibraryTitle),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
@@ -398,8 +400,8 @@ class _RoutinePublicPreviewScreenState
     final theme = Theme.of(context);
     final r = widget.entry.routine;
     final author = widget.entry.authorHandle ?? l10n.gymLibraryAnonymous;
-    return Scaffold(
-      appBar: AppBar(title: Text(r.title)),
+    return DetailPage(
+      title: r.title,
       floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: _loading
           ? null
@@ -427,25 +429,26 @@ class _RoutinePublicPreviewScreenState
               padding: EdgeInsets.fromLTRB(
                   16, 16, 16, fabScrollClearance(context)),
               children: [
-                if (widget.entry.isOfficial) ...[
-                  const Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: OfficialBadge(size: 16),
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                Text(l10n.gymLibraryByAuthor(author),
-                    style: theme.textTheme.bodyMedium),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.gymRoutineExerciseCount(r.exerciseCount),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                DetailHero(
+                  title: r.title,
+                  padding: EdgeInsets.zero,
+                  badges: [
+                    if (widget.entry.isOfficial) const OfficialBadge(size: 16),
+                  ],
+                  meta: [
+                    DetailMeta(
+                      icon: Icons.person_outline,
+                      text: l10n.gymLibraryByAuthor(author),
+                    ),
+                    DetailMeta(
+                      icon: Icons.fitness_center,
+                      text: l10n.gymRoutineExerciseCount(r.exerciseCount),
+                    ),
+                  ],
+                  description: (r.notes ?? '').trim().isNotEmpty
+                      ? Text(r.notes!.trim(), style: theme.textTheme.bodyMedium)
+                      : null,
                 ),
-                if ((r.notes ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(r.notes!.trim(), style: theme.textTheme.bodyMedium),
-                ],
                 const SizedBox(height: 16),
                 for (final ex in _exercises)
                   Card(

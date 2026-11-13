@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
+import 'package:ui_kit/ui_kit.dart' show DetailHero;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -523,11 +524,14 @@ void main() {
       expect(find.textContaining('Apr'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('renders the metadata title in the app bar when set',
+    testWidgets('renders the metadata title as the page heading when set',
         (tester) async {
       final run = _run(title: 'Morning Tempo');
       await _pump(tester, run);
-      expect(find.text('Morning Tempo'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(DetailHero), matching: find.text('Morning Tempo')),
+          findsOneWidget);
     });
 
     testWidgets('renders Distance and Time primary stat labels', (tester) async {
@@ -2068,7 +2072,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(api.calls, 1);
-      expect(find.byKey(const Key('run-detail-deleting')), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(AppBar),
+              matching: find.byType(CircularProgressIndicator)),
+          findsOneWidget);
       expect(find.byTooltip('More'), findsNothing);
 
       await tester.runAsync(() async {

@@ -6,12 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        AppBarAction,
         AppSemanticColors,
         ChoiceChipOption,
         ChoiceChipRow,
         EmptyState,
         IdentityAvatar,
+        DetailHero,
+        DetailPage,
+        DetailParentChip,
         ListSkeleton,
+        SectionHeader,
         StatGrid,
         StatTile,
         StatusPill,
@@ -167,12 +172,8 @@ class _ParksScreenState extends State<ParksScreen> {
                       for (final group in groups) ...[
                         Padding(
                           padding: const EdgeInsets.only(top: 20, bottom: 8),
-                          child: Semantics(
-                            header: true,
-                            child: Text(
-                              regionName(group.regionCode),
-                              style: theme.textTheme.titleMedium,
-                            ),
+                          child: SectionHeader.title(
+                            label: regionName(group.regionCode),
                           ),
                         ),
                         if (wide)
@@ -599,8 +600,8 @@ class _ParkScreenState extends State<ParkScreen> {
     );
     final signedIn = widget.api?.userId != null;
     final darkBasemap = currentBasemapIsDark(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(park.name)),
+    return DetailPage(
+      title: park.name,
       body: _loading
           ? ListView(
               physics: const NeverScrollableScrollPhysics(),
@@ -620,33 +621,38 @@ class _ParkScreenState extends State<ParkScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Wrap(
-                        key: const Key('park-header-meta'),
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        children: [
-                          Text(
-                            '${regionName(park.regionCode)} · '
-                            '${agencyLabel(l10n, park.agency)}',
-                            style: muted,
+                      DetailHero(
+                        title: park.name,
+                        padding: const EdgeInsets.only(bottom: 16),
+                        description: park.description != null &&
+                                park.description!.trim().isNotEmpty
+                            ? Text(park.description!)
+                            : null,
+                        meta: [
+                          Wrap(
+                            key: const Key('park-header-meta'),
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            children: [
+                              Text(
+                                '${regionName(park.regionCode)} · '
+                                '${agencyLabel(l10n, park.agency)}',
+                                style: muted,
+                              ),
+                              if (website != null &&
+                                  website.startsWith('https://'))
+                                TextButton.icon(
+                                  key: const Key('park-website'),
+                                  onPressed: () =>
+                                      _openParkWebsite(context, website),
+                                  icon:
+                                      const Icon(Icons.open_in_new, size: 18),
+                                  label: Text(l10n.parksWebsite),
+                                ),
+                            ],
                           ),
-                          if (website != null &&
-                              website.startsWith('https://'))
-                            TextButton.icon(
-                              key: const Key('park-website'),
-                              onPressed: () =>
-                                  _openParkWebsite(context, website),
-                              icon: const Icon(Icons.open_in_new, size: 18),
-                              label: Text(l10n.parksWebsite),
-                            ),
                         ],
                       ),
-                      if (park.description != null &&
-                          park.description!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(park.description!),
-                      ],
-                      const SizedBox(height: 16),
                       if (_courses.isEmpty)
                         Text(l10n.parksNoCourses)
                       else ...[
@@ -659,12 +665,8 @@ class _ParkScreenState extends State<ParkScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 20, bottom: 8),
-                          child: Semantics(
-                            header: true,
-                            child: Text(
-                              l10n.parksCourseCount(_courses.length),
-                              style: theme.textTheme.titleMedium,
-                            ),
+                          child: SectionHeader.title(
+                            label: l10n.parksCourseCount(_courses.length),
                           ),
                         ),
                         if (_recordsFailed)
@@ -1042,18 +1044,16 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final wayfinding = courseOffersWayfinding(course.status);
     final canNavigate = api != null && routeId != null && wayfinding;
     final canShare = geometry.length >= 2 && wayfinding;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(segment.name),
-        actions: [
-          IconButton(
-            key: const Key('park-course-help'),
-            icon: const Icon(Icons.help_outline),
-            tooltip: l10n.infoTipReadGuide,
-            onPressed: () => openGuide(context, 'park-courses'),
-          ),
-        ],
-      ),
+    return DetailPage(
+      title: segment.name,
+      actions: [
+        AppBarAction(
+          key: const Key('park-course-help'),
+          icon: const Icon(Icons.help_outline),
+          label: l10n.infoTipReadGuide,
+          onPressed: () => openGuide(context, 'park-courses'),
+        ),
+      ],
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
@@ -1062,18 +1062,19 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: ParkNameLink(
+                DetailHero(
+                  title: segment.name,
+                  padding: EdgeInsets.zero,
+                  parent: DetailParentChip(
                     key: const Key('park-course-park-link'),
-                    label: '${park.name} · ${regionName(park.regionCode)}',
-                    onTap: _openPark,
+                    icon: Icons.park_outlined,
+                    label: park.name,
+                    semanticsLabel: l10n.racesAnyTimeParkLink(
+                        '${park.name} · ${regionName(park.regionCode)}'),
+                    onPressed: _openPark,
                   ),
+                  badges: pills,
                 ),
-                if (pills.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 6, runSpacing: 4, children: pills),
-                ],
                 if (course.status == 'closed') ...[
                   const SizedBox(height: 12),
                   Card(
@@ -1146,13 +1147,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                 ],
                 if (elevationSeries(geometry) != null) ...[
                   const SizedBox(height: 20),
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      l10n.parksElevationProfile,
-                      style: theme.textTheme.titleMedium,
-                    ),
-                  ),
+                  SectionHeader.title(label: l10n.parksElevationProfile),
                   const SizedBox(height: 8),
                   ElevationChart(
                     key: const Key('park-course-elevation'),
@@ -1464,10 +1459,7 @@ class _CourseRouteGuide extends StatelessWidget {
       key: const Key('park-course-guide'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Semantics(
-          header: true,
-          child: Text(l10n.parkGuideTitle, style: theme.textTheme.titleMedium),
-        ),
+        SectionHeader.title(label: l10n.parkGuideTitle),
         const SizedBox(height: 8),
         if (checked != null)
           Text(

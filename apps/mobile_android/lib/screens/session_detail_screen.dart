@@ -193,18 +193,17 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_title ?? l10n.sessionTitle),
-        actions: [
-          if (_isOwner && !_loading)
-            IconButton(
-              tooltip: _isPublic ? l10n.sessionMakePrivate : l10n.sessionMakePublic,
-              icon: Icon(_isPublic ? Icons.public : Icons.lock_outline),
-              onPressed: _visibilityBusy ? null : _toggleVisibility,
-            ),
-        ],
-      ),
+    return DetailPage(
+      title: _title ?? l10n.sessionTitle,
+      actions: [
+        if (_isOwner && !_loading)
+          AppBarAction(
+            icon: Icon(_isPublic ? Icons.public : Icons.lock_outline),
+            label:
+                _isPublic ? l10n.sessionMakePrivate : l10n.sessionMakePublic,
+            onPressed: _visibilityBusy ? null : _toggleVisibility,
+          ),
+      ],
       body: _loading
           ? ListSkeleton(
               label: l10n.commonLoading,
@@ -223,15 +222,14 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   padding: EdgeInsets.fromLTRB(
                       16, 16, 16, fabScrollClearance(context)),
                   children: [
-                    if (_isOfficial) ...[
-                      const Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: OfficialBadge(size: 16),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    Text(l10n.sessionSteps,
-                        style: Theme.of(context).textTheme.titleMedium),
+                    DetailHero(
+                      title: _title ?? l10n.sessionTitle,
+                      padding: const EdgeInsets.only(bottom: 16),
+                      badges: [
+                        if (_isOfficial) const OfficialBadge(size: 16),
+                      ],
+                    ),
+                    SectionHeader.title(label: l10n.sessionSteps),
                     const SizedBox(height: 8),
                     for (final s in _steps)
                       ListTile(

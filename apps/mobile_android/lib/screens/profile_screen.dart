@@ -59,9 +59,6 @@ enum ProfileTab { runs, badges, followers, following, notifications }
 /// total it is not.
 const int _kProfileRunsLimit = 30;
 
-/// The overflow menu's entries on another runner's profile.
-enum _ProfileMenuAction { report, block }
-
 const Set<String> _kRunNotificationKinds = {
   'kudos',
   'comment',
@@ -719,53 +716,34 @@ class _ProfileScreenState extends State<ProfileScreen>
     final l10n = AppLocalizations.of(context);
     final order = _tabOrder;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_summary?.displayName ?? l10n.profileTitle),
-        actions: [
-          // Report and Block are rare and one is destructive, so they share
-          // an overflow menu rather than sitting as two bare icons beside the
-          // title (web keeps them as header buttons; there is room there).
-          if (!_isSelf)
-            PopupMenuButton<_ProfileMenuAction>(
-              key: const ValueKey('profile-more'),
-              tooltip: l10n.commonMore,
-              onSelected: (action) => switch (action) {
-                _ProfileMenuAction.report => showReportSheet(
-                  context,
-                  api: widget.api,
-                  targetKind: 'user',
-                  targetId: widget.userId,
-                ),
-                _ProfileMenuAction.block => _toggleBlock(),
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: _ProfileMenuAction.report,
-                  child: ListTile(
-                    leading: const Icon(Icons.flag_outlined),
-                    title: Text(l10n.profileReportUser),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                PopupMenuItem(
-                  value: _ProfileMenuAction.block,
-                  enabled: !_blockBusy,
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.block,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    title: Text(
-                      _blocked ? l10n.profileUnblock : l10n.profileBlock,
-                    ),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
+    return DetailPage(
+      title: _summary?.displayName ?? l10n.profileTitle,
+      moreTooltip: l10n.commonMore,
+      // Report and Block are rare and one is destructive, so both sit in the
+      // overflow (web keeps them as header buttons; there is room there).
+      actions: [
+        if (!_isSelf) ...[
+          AppBarAction(
+            key: const ValueKey('profile-report'),
+            icon: const Icon(Icons.flag_outlined),
+            label: l10n.profileReportUser,
+            destructive: true,
+            onPressed: () => showReportSheet(
+              context,
+              api: widget.api,
+              targetKind: 'user',
+              targetId: widget.userId,
             ),
+          ),
+          AppBarAction(
+            key: const ValueKey('profile-block'),
+            icon: const Icon(Icons.block),
+            label: _blocked ? l10n.profileUnblock : l10n.profileBlock,
+            destructive: !_blocked,
+            onPressed: _blockBusy ? null : _toggleBlock,
+          ),
         ],
-      ),
+      ],
       // One shape in every state, so the tab strip a user reached for is not
       // withdrawn by a slow or failed fetch — the header band and the current
       // tab's body are what swap. Before § 545 the strip sat in
@@ -833,11 +811,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             : _runs.length >= _kProfileRunsLimit
                 ? '$_kProfileRunsLimit+'
                 : '${_runs.length}';
-    return Padding(
+    return DetailHero(
+      title: s.displayName ?? l10n.profileTitle,
+      // A display name has no length limit; three lines keep a very long one
+      // from pushing the tabs off the page.
+      titleMaxLines: 3,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      children: [
+          const SizedBox(height: 12),
           // The counts sit beside the avatar while every label fits whole;
           // otherwise they move under it, and wrap if even the full width
           // cannot hold them. A fixed share beside the avatar cut "Followers"
@@ -966,8 +947,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ],
             ),
           ],
-        ],
-      ),
+      ],
     );
   }
 

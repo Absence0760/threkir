@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/goals.dart';
@@ -356,7 +357,10 @@ void main() {
       () => find.byType(PeriodSummaryScreen).evaluate().isNotEmpty,
       describe: 'the weekly summary to open',
     );
-    expect(find.text('Weekly Summary'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(PageHeader), matching: find.text('Weekly Summary')),
+        findsOneWidget);
   });
 
   testWidgets('the runless first-run state carries no week lead',

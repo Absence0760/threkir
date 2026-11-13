@@ -118,6 +118,10 @@ void main() {
   testWidgets(
     'the hand-off lists the legs, the stretch Maps cannot follow and the notes, and opens the chosen app',
     (tester) async {
+      // Tall enough that the whole hand-off list is built under the title.
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       final h = _Harness(
         stretches: const [CourseStretch(startM: 1500, endM: 2500)],
       );

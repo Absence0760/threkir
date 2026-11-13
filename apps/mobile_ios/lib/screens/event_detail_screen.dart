@@ -52,6 +52,8 @@ import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
 import '../widgets/race_preflight_dialog.dart';
+import '../training_service.dart' show TrainingService;
+import 'club_detail_screen.dart' show ClubDetailScreen;
 
 /// Host-only attendance marking is offered iff the viewer organises the
 /// event's club AND the event is a `class` (instructor_business.md M6).
@@ -1399,9 +1401,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     if (_loading) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: contentColumn(
+      return DetailPage.placeholder(
+        child: contentColumn(
           context,
           SectionedDetailSkeleton(
             label: l10n.commonLoading,
@@ -1412,9 +1413,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       );
     }
     if (_loadError != null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: AppErrorState(
+      return DetailPage.placeholder(
+        child: AppErrorState(
           message: _loadError == _EventLoadError.timeout
               ? l10n.eventTimeoutError
               : l10n.eventLoadError,
@@ -1424,9 +1424,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
     final e = _event;
     if (e == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: EmptyState(
+      return DetailPage.placeholder(
+        child: EmptyState(
           icon: Icons.event_busy,
           title: l10n.eventNotFound,
         ),
@@ -1442,90 +1441,53 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     // of a `class` event records who showed up. Non-hosts see it read-only.
     final canMarkAttendance = canMarkEventAttendance(_club, e.row.category);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(e.row.title),
-        actions: const [
-          HelpButton(routes: ['/clubs/[slug]/events/[id]']),
-        ],
-      ),
+    final clubName = _club?.row.name;
+    final locale = localeToTag(Localizations.localeOf(context));
+    return DetailPage(
+      title: e.row.title,
+      pinned: const [
+        HelpButton(routes: ['/clubs/[slug]/events/[id]']),
+      ],
       body: contentColumn(
         context,
         ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
           children: [
-            if (e.freq != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.autorenew, size: 14,
-                        color: theme.colorScheme.primary),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        desc.toUpperCase(),
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
+            DetailHero(
+              key: const Key('event-hero'),
+              title: e.row.title,
+              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              parent: clubName == null
+                  ? null
+                  : DetailParentChip(
+                      key: const Key('event-club-link'),
+                      icon: Icons.groups_outlined,
+                      label: clubName,
+                      onPressed: _openClub,
                     ),
-                  ],
-                ),
-              ),
-            if (e.row.isPublic == false)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: StatusPill(
+              badges: [
+                if (e.row.isPublic == false)
+                  StatusPill(
                     label: l10n.clubEventMembersOnly,
                     foreground: theme.colorScheme.onSurfaceVariant,
                     fill: theme.colorScheme.surfaceContainerHighest,
                     icon: Icons.lock,
                   ),
+              ],
+              meta: [
+                if (e.freq != null)
+                  DetailMeta(icon: Icons.autorenew, text: desc),
+                DetailMeta(
+                  icon: Icons.calendar_today,
+                  text: e.row.durationMin == null
+                      ? fmtEventDate(active, locale)
+                      : '${fmtEventDate(active, locale)} · '
+                          '${l10n.eventDurationMin(e.row.durationMin!)}',
                 ),
-              ),
-            Row(
-              children: [
-                Icon(Icons.calendar_today, size: 16,
-                    color: theme.colorScheme.outline),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    fmtEventDate(active, localeToTag(Localizations.localeOf(context))),
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                if (e.row.durationMin != null) ...[
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      l10n.eventDurationMin(e.row.durationMin!),
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
+                if (e.row.meetLabel != null)
+                  DetailMeta(icon: Icons.place, text: e.row.meetLabel!),
               ],
             ),
-            if (e.row.meetLabel != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(Icons.place, size: 16,
-                      color: theme.colorScheme.outline),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(e.row.meetLabel!)),
-                ],
-              ),
-            ],
             if (_meetPoint != null) ..._buildMeetPoint(theme, e),
             if (!athletic &&
                 e.row.category == 'class' &&
@@ -2215,6 +2177,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       default:
         return l10n.eventCancelFailed;
     }
+  }
+
+  /// The event's club, from the hero's parent chip.
+  void _openClub() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ClubDetailScreen(
+        social: widget.social,
+        training: TrainingService(),
+        apiClient: widget.api,
+        slug: _club?.row.slug ?? widget.clubSlug,
+      ),
+    ));
   }
 
   Widget _buildRsvpRow(ThemeData theme, EventView e) {
@@ -3032,31 +3006,23 @@ class EventResultsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.emoji_events,
-                size: 18, color: theme.colorScheme.primary),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(l10n.eventResultsTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall),
-            ),
-            if (hasMine)
-              TextButton(
-                onPressed: submitting ? null : () => _confirmRemove(context),
-                child: Text(l10n.eventRemoveMine),
-              )
-            else
-              FilledButton.tonalIcon(
-                onPressed: submitting ? null : onSubmit,
-                icon: const Icon(Icons.timer, size: 16),
-                label: Text(submitting
-                    ? l10n.eventSubmitting
-                    : l10n.eventSubmitMyTime),
-              ),
-          ],
+        SectionHeader.title(
+          label: l10n.eventResultsTitle,
+          icon: Icons.emoji_events,
+          iconColor: theme.colorScheme.primary,
+          trailing: hasMine
+              ? TextButton(
+                  onPressed:
+                      submitting ? null : () => _confirmRemove(context),
+                  child: Text(l10n.eventRemoveMine),
+                )
+              : FilledButton.tonalIcon(
+                  onPressed: submitting ? null : onSubmit,
+                  icon: const Icon(Icons.timer, size: 16),
+                  label: Text(submitting
+                      ? l10n.eventSubmitting
+                      : l10n.eventSubmitMyTime),
+                ),
         ),
         const SizedBox(height: 8),
         if (results.isEmpty)

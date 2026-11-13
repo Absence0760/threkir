@@ -2,7 +2,14 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show ListSkeleton, SheetScaffold, SkeletonBlock;
+    show
+        AppBarAction,
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        SectionHeader,
+        SheetScaffold,
+        SkeletonBlock;
 
 import '../auth_error.dart';
 import '../column_limits.dart';
@@ -183,29 +190,28 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.checkpointCheckinTitle),
-        actions: [
-          if (_store.hasPending)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Center(
-                child: Text(
-                  l10n.checkpointPending,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ),
-            ),
-          IconButton(
-            tooltip: l10n.checkpointSyncNow,
-            icon: const Icon(Icons.sync),
-            onPressed: _busy ? null : _refresh,
+    return PushedPage(
+      title: l10n.checkpointCheckinTitle,
+      actions: [
+        AppBarAction(
+          icon: const Icon(Icons.sync),
+          label: l10n.checkpointSyncNow,
+          onPressed: _busy ? null : _refresh,
+        ),
+      ],
+      // The title stays above every state (loading, failed, empty) so the
+      // bar never has to carry it, cut, on a narrow phone (TO-12); the
+      // unsynced count rides under it rather than squeezing the toolbar.
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PageHeader(
+            title: l10n.checkpointCheckinTitle,
+            subtitle: _store.hasPending ? l10n.checkpointPending : null,
           ),
+          Expanded(child: _buildBody(l10n, theme)),
         ],
       ),
-      body: _buildBody(l10n, theme),
     );
   }
 
@@ -276,13 +282,7 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            l10n.checkpointPickLabel,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.8,
-            ),
-          ),
+          SectionHeader(label: l10n.checkpointPickLabel),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             initialValue: selected?.id,

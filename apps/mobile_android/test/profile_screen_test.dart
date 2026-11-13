@@ -5,7 +5,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton, PageHeading;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/help_destination.dart';
@@ -444,10 +444,10 @@ void main() {
   });
 
   group('profile header (issue #666 C12)', () {
-    // `user_profiles.display_name` has no DB length constraint. The name is
-    // the AppBar title only, so its length must not move the header/tabs
-    // split at all — asserted as a derivation, not an absolute (decisions
-    // § 500).
+    // `user_profiles.display_name` has no DB length constraint. The hero
+    // caps the name at three lines, so past that its length must not move
+    // the header/tabs split at all — asserted as a derivation, not an
+    // absolute (decisions § 500).
     testWidgets('display-name length does not move the header/tabs split',
         (tester) async {
       await _ensureSupabase();
@@ -472,10 +472,11 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
         expect(find.byType(IdentityAvatar), findsOneWidget);
-        // Printed once, in the AppBar; the header no longer repeats it.
-        expect(find.text(name), findsOneWidget);
+        // The hero says the name, at most three lines of it; the bar
+        // repeats it only once the hero has scrolled away.
         expect(
-          find.descendant(of: find.byType(AppBar), matching: find.text(name)),
+          find.descendant(
+              of: find.byType(PageHeading), matching: find.text(name)),
           findsOneWidget,
         );
         return tester.getSize(find.byType(TabBarView)).height;
@@ -614,7 +615,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      await tester.tap(find.byKey(const ValueKey('profile-more')));
+      await tester.tap(find.byTooltip('More'));
       await tester.pumpAndSettle();
       expect(find.text('Report user'), findsOneWidget);
       expect(find.text('Block this profile'), findsOneWidget);
@@ -678,7 +679,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       expect(find.byKey(const ValueKey('profile-follow')), findsNothing);
       expect(find.byKey(const ValueKey('profile-message')), findsNothing);
-      expect(find.byKey(const ValueKey('profile-more')), findsNothing);
+      expect(find.byTooltip('More'), findsNothing);
     });
   });
 }

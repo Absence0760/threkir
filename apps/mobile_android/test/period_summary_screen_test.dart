@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState;
+import 'package:ui_kit/ui_kit.dart' show EmptyState, PageHeader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
@@ -71,7 +71,8 @@ void main() {
         prefs: s.prefs,
       );
       await tester.pump();
-      expect(find.text('Weekly Summary'), findsOneWidget);
+      expect(find.descendant(of: find.byType(PageHeader), matching: find.text('Weekly Summary')),
+          findsOneWidget);
     });
 
     testWidgets('app-bar title is "Monthly Summary" when initialPeriod is month',
@@ -88,7 +89,8 @@ void main() {
         prefs: s.prefs,
       );
       await tester.pump();
-      expect(find.text('Monthly Summary'), findsOneWidget);
+      expect(find.descendant(of: find.byType(PageHeader), matching: find.text('Monthly Summary')),
+          findsOneWidget);
     });
 
     testWidgets('renders prev/next chevrons in the app bar',
@@ -251,7 +253,8 @@ void main() {
         prefs: s.prefs,
       );
       await tester.pump();
-      expect(find.text('Weekly Summary'), findsOneWidget);
+      expect(find.descendant(of: find.byType(PageHeader), matching: find.text('Weekly Summary')),
+          findsOneWidget);
       expect(find.byType(ThisWeekStrip), findsNothing);
       expect(find.byKey(const Key('periodSummaryVert')), findsNothing,
           reason: 'no climb tile without any climb');

@@ -15,6 +15,7 @@ import '../lib/screens/nutrition_targets_screen.dart';
 import '../lib/screens/settings_body_metrics_screen.dart';
 import '../lib/settings_sync.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 /// 70 kg / 175 cm / 30 y / male with a 10 km run logged today, which pins
 /// every term of the derivation:
@@ -168,6 +169,15 @@ Future<({LocalFoodStore store, Directory dir})> _foodStore(String tag) async {
 }
 
 void main() {
+  worstCaseTestWidgets('Nutrition targets', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: NutritionTargetsScreen(api: _MetricsApi(), settingsSync: null),
+    ));
+    await _settle(tester);
+    await walkScrollable(tester, primaryScrollable(), 'Nutrition targets');
+  });
+
   setUpAll(() => initializeDateFormatting());
   setUp(() => SharedPreferences.setMockInitialValues({}));
   tearDown(resetActivePreferencesForTest);
@@ -218,6 +228,7 @@ void main() {
         settingsSync: sync,
       )));
       await _settle(tester);
+      await _scrollTo(tester, find.text('Maintain weight'));
       expect(find.text('Maintain weight'), findsOneWidget);
 
       // "Goal" also names the derivation's goal-delta row, so scope the tap

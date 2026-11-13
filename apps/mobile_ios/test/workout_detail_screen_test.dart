@@ -359,7 +359,7 @@ void main() {
               raceWorkout(name: 'Two Oceans Ultra', priority: 'B'), const []));
       await tester.pumpAndSettle();
       expect(
-          tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
+          tester.widget<Text>(find.descendant(of: find.byKey(const Key('workoutDetailHeading')), matching: find.byType(Text))).data,
           'Two Oceans Ultra');
       expect(find.text('RACE PRIORITY'), findsOneWidget);
       expect(find.text('B — important race'), findsOneWidget);
@@ -372,7 +372,7 @@ void main() {
       await _pumpWith(tester, _FakeTraining(raceWorkout(), const []));
       await tester.pumpAndSettle();
       expect(
-          tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
+          tester.widget<Text>(find.descendant(of: find.byKey(const Key('workoutDetailHeading')), matching: find.byType(Text))).data,
           'Race');
       expect(find.text('RACE PRIORITY'), findsNothing);
     });
@@ -523,15 +523,27 @@ void main() {
           manuallyCompleted: false,
         );
 
-    testWidgets('the date is localized, not ISO, and the kind is not repeated '
-        'in the AppBar', (tester) async {
+    testWidgets('the date is localized, not ISO, and the kind is the heading '
+        'the AppBar keeps hidden until it scrolls away', (tester) async {
       await _pumpWith(tester, _FakeTraining(row(), const []));
       await tester.pumpAndSettle();
       expect(
           tester.widget<Text>(find.byKey(const Key('workoutDetailDate'))).data,
           'Apr 5, 2026');
       expect(find.text('2026-04-05'), findsNothing);
-      expect(find.text('Tempo'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('workoutDetailHeading')),
+              matching: find.text('Tempo')),
+          findsOneWidget);
+      expect(
+          tester
+              .widget<AnimatedOpacity>(find.ancestor(
+                  of: find.descendant(
+                      of: find.byType(AppBar), matching: find.text('Tempo')),
+                  matching: find.byType(AnimatedOpacity)))
+              .opacity,
+          0);
     });
 
     testWidgets('a Daniels zone code is explained, free text is kept',

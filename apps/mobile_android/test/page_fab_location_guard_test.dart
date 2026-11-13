@@ -86,7 +86,10 @@ void main() {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
       final path = entity.path.replaceAll(r'\', '/');
       final source = _codeOnly(entity.readAsStringSync());
-      for (final m in RegExp(r'\bScaffold\(').allMatches(source)) {
+      // PushedPage and DetailPage (ui_kit) pass their FAB through to a
+      // Scaffold, so the caller places it the same way.
+      for (final m in RegExp(r'\b(?:Scaffold|PushedPage|DetailPage)\(')
+          .allMatches(source)) {
         final args = _topLevelArgs(source, m.end - 1);
         if (!RegExp(r'\bfloatingActionButton\s*:').hasMatch(args)) continue;
         scaffoldsWithFab++;

@@ -494,18 +494,16 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: TabbedDetailSkeleton(
+      return DetailPage.placeholder(
+        child: TabbedDetailSkeleton(
           label: AppLocalizations.of(context).commonLoading,
         ),
       );
     }
     final c = _club;
     if (c == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: AppErrorState(
+      return DetailPage.placeholder(
+        child: AppErrorState(
           icon: Icons.help_outline,
           message: _timedOut
               ? AppLocalizations.of(context).clubDetailTimeoutError
@@ -515,52 +513,39 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       );
     }
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        // Verified-official badge inline with the title for owner-
-        // authenticated clubs. Disambiguates the authentic operator
-        // from squatter / fan clubs holding the same name.
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                c.row.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (c.row.isVerified)
-              const VerifiedBadge(size: 18),
-          ],
-        ),
-        actions: [
-          if (c.isAdmin)
-            ClubInviteButton(social: widget.social, club: c)
-          else if (canShareClub(c))
-            ClubShareButton(club: c),
-          if (c.isAdmin)
-            IconButton(
-              tooltip: AppLocalizations.of(context).clubDetailEditClub,
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () => _openEdit(c),
-            ),
-          IconButton(
-            tooltip: AppLocalizations.of(context).clubDetailReportClub,
-            icon: const Icon(Icons.flag_outlined),
-            onPressed: () => showReportSheet(
-              context,
-              api: ApiClient(),
-              targetKind: 'club',
-              targetId: c.row.id,
-              organiserClubs: (c.row.isPublic ?? true)
-                  ? () => RaceService().fetchMyOrganiserClubs()
-                  : null,
-              targetClubId: c.row.id,
-            ),
+    final l10n = AppLocalizations.of(context);
+    return DetailPage(
+      title: c.row.name,
+      moreTooltip: l10n.commonMore,
+      pinned: [
+        if (c.isAdmin)
+          ClubInviteButton(social: widget.social, club: c)
+        else if (canShareClub(c))
+          ClubShareButton(club: c),
+      ],
+      actions: [
+        if (c.isAdmin)
+          AppBarAction(
+            icon: const Icon(Icons.edit_outlined),
+            label: l10n.clubDetailEditClub,
+            onPressed: () => _openEdit(c),
           ),
-        ],
-      ),
+        AppBarAction(
+          icon: const Icon(Icons.flag_outlined),
+          label: l10n.clubDetailReportClub,
+          destructive: true,
+          onPressed: () => showReportSheet(
+            context,
+            api: ApiClient(),
+            targetKind: 'club',
+            targetId: c.row.id,
+            organiserClubs: (c.row.isPublic ?? true)
+                ? () => RaceService().fetchMyOrganiserClubs()
+                : null,
+            targetClubId: c.row.id,
+          ),
+        ),
+      ],
       body: CollapsingTabHost(
         controller: _tabs,
         labels: [
@@ -603,61 +588,72 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   }
 
   Widget _buildHero(ThemeData theme, ClubView c) {
-    final cta = _ctaFor(context, c);
-    return Padding(
+    final l10n = AppLocalizations.of(context);
+    final description = c.row.description;
+    final location = c.row.locationLabel;
+    return DetailHero(
+      title: c.row.name,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          IdentityAvatar(seed: c.row.id, name: c.row.name, size: 56, fontSize: 24),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (c.row.locationLabel != null &&
-                    c.row.locationLabel!.isNotEmpty)
-                  Row(
-                    children: [
-                      Icon(Icons.place, size: 14,
-                          color: theme.colorScheme.outline),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          c.row.locationLabel!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                Text(
-                  AppLocalizations.of(context)
-                      .clubsMemberCount(c.memberCount),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (c.row.description != null && c.row.description!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: _ClubDescription(
-                      description: c.row.description!,
-                      clubName: c.row.name,
-                    ),
-                  ),
-                _clubLinks(context, c),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          cta,
-        ],
-      ),
+      leading: IdentityAvatar(
+          seed: c.row.id, name: c.row.name, size: 56, fontSize: 24),
+      // The verified-official badge disambiguates the authentic operator
+      // from squatter or fan clubs holding the same name.
+      badges: [if (c.row.isVerified) const VerifiedBadge(size: 18)],
+      meta: [
+        if (location != null && location.isNotEmpty)
+          DetailMeta(icon: Icons.place, text: location),
+        DetailMeta(
+          icon: Icons.groups_outlined,
+          text: l10n.clubsMemberCount(c.memberCount),
+        ),
+      ],
+      description: description != null && description.isNotEmpty
+          ? _ClubDescription(description: description, clubName: c.row.name)
+          : null,
+      children: [_clubLinks(context, c)],
+      status: _statusFor(theme, l10n, c),
+      cta: _ctaFor(l10n, c),
+    );
+  }
+
+  /// Where the viewer stands when there is nothing for them to press: a
+  /// request awaiting approval, an invite-only club, or their own club.
+  Widget? _statusFor(ThemeData theme, AppLocalizations l10n, ClubView c) {
+    final label = c.viewerStatus == 'pending'
+        ? l10n.clubDetailRequestPending
+        : !c.isMember && c.joinPolicy == 'invite'
+            ? l10n.clubDetailInviteOnly
+            : c.isMember && c.viewerRole == 'owner'
+                ? l10n.clubDetailOwner
+                : null;
+    if (label == null) return null;
+    return StatusPill(
+      key: const Key('club-detail-status'),
+      label: label,
+      foreground: theme.colorScheme.onSurfaceVariant,
+      fill: theme.colorScheme.surfaceContainerHighest,
+    );
+  }
+
+  /// The viewer's one action on the club: Join or Request, else Leave.
+  HeroCta? _ctaFor(AppLocalizations l10n, ClubView c) {
+    if (c.viewerStatus == 'pending') return null;
+    if (!c.isMember) {
+      if (c.joinPolicy == 'invite') return null;
+      return HeroCta(
+        label: c.joinPolicy == 'request'
+            ? l10n.clubDetailRequest
+            : l10n.clubDetailJoin,
+        onPressed: _join,
+        busy: _busy,
+      );
+    }
+    if (c.viewerRole == 'owner') return null;
+    return HeroCta(
+      label: l10n.clubDetailLeave,
+      outlined: true,
+      onPressed: _leave,
+      busy: _busy,
     );
   }
 
@@ -699,40 +695,6 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Wrap(spacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: links),
-    );
-  }
-
-  Widget _ctaFor(BuildContext context, ClubView c) {
-    final l10n = AppLocalizations.of(context);
-    if (c.viewerStatus == 'pending') {
-      return OutlinedButton(
-        onPressed: null,
-        child: Text(l10n.clubDetailRequestPending),
-      );
-    }
-    if (!c.isMember && c.joinPolicy == 'invite') {
-      return OutlinedButton(
-        onPressed: null,
-        child: Text(l10n.clubDetailInviteOnly),
-      );
-    }
-    if (!c.isMember) {
-      return FilledButton(
-        onPressed: _busy ? null : _join,
-        child: Text(c.joinPolicy == 'request'
-            ? l10n.clubDetailRequest
-            : l10n.clubDetailJoin),
-      );
-    }
-    if (c.viewerRole == 'owner') {
-      return OutlinedButton(
-        onPressed: () {},
-        child: Text(l10n.clubDetailOwner),
-      );
-    }
-    return OutlinedButton(
-      onPressed: _busy ? null : _leave,
-      child: Text(l10n.clubDetailLeave),
     );
   }
 

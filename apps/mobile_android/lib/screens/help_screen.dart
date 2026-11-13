@@ -392,10 +392,7 @@ class GuideView extends StatelessWidget {
     return ListView(
       padding: _pagePadding,
       children: [
-        Semantics(
-          header: true,
-          child: Text(guide.title, style: theme.textTheme.headlineSmall),
-        ),
+        PageHeading(guide.title),
         if (guide.summary.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(

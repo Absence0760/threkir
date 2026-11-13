@@ -10,6 +10,7 @@ import 'package:ui_kit/ui_kit.dart'
         AppSemanticColors,
         AppSpace,
         ChartCardHeader,
+        PageHeader,
         ProgressBar,
         SectionHeader,
         SkeletonBlock,
@@ -1144,20 +1145,10 @@ class _TodayScreenState extends State<TodayScreen>
     // actions read as belonging to it. The row sits inside the page's own
     // gutter, so the title starts where the cards do (it used to add 16 of
     // its own and start at 32).
-    final actionToolbar = Padding(
+    final actionToolbar = PageHeader(
+      title: l10n.todayTitle,
+      actions: actions,
       padding: const EdgeInsets.only(top: AppSpace.sm),
-      child: Row(
-        children: [
-          Expanded(
-            child: Semantics(
-              header: true,
-              child: Text(l10n.todayTitle,
-                  style: theme.textTheme.headlineSmall),
-            ),
-          ),
-          ...actions,
-        ],
-      ),
     );
 
     // Active-plan hero + the goals block: both outlive the welcome state,

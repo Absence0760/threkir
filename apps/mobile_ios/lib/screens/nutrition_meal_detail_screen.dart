@@ -127,28 +127,25 @@ class _NutritionMealDetailScreenState extends State<NutritionMealDetailScreen> {
     final maxCal = trend.fold<double>(
         1, (m, t) => t.calories > m ? t.calories : m);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_slotLabel(l10n)),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(20),
-          child: Padding(
-            padding: const EdgeInsets.only(left: 16, bottom: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(formatDateMed(_dayStart, tag),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )),
-            ),
-          ),
+    final hero = DetailHero(
+      title: _slotLabel(l10n),
+      padding: EdgeInsets.zero,
+      meta: [
+        DetailMeta(
+          icon: Icons.event,
+          text: formatDateMed(_dayStart, tag),
         ),
-      ),
+      ],
+    );
+    return DetailPage(
+      title: _slotLabel(l10n),
       body: _loading
           ? ListView(
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
+                hero,
+                const SizedBox(height: 12),
                 const SkeletonBlock(height: 88),
                 const SizedBox(height: 12),
                 ListSkeleton.section(
@@ -163,6 +160,8 @@ class _NutritionMealDetailScreenState extends State<NutritionMealDetailScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
+                hero,
+                const SizedBox(height: 12),
                 _macroCard(theme, l10n, macros),
                 const SizedBox(height: 12),
                 _itemsCard(theme, l10n, entries),

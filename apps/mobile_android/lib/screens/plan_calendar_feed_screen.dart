@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ListSkeleton,
+        PageHeader,
+        PushedPage;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
@@ -245,12 +249,17 @@ class _PlanCalendarFeedScreenState extends State<PlanCalendarFeedScreen> {
       ];
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.planCalendarFeedTitle)),
+    return PushedPage(
+      title: l10n.planCalendarFeedTitle,
       body: SafeArea(
+        top: false,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            PageHeader(
+              title: l10n.planCalendarFeedTitle,
+              padding: const EdgeInsets.only(bottom: 12),
+            ),
             Text(l10n.planCalendarFeedDescription),
             const SizedBox(height: 16),
             ...body,

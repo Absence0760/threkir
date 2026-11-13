@@ -716,8 +716,23 @@ test.describe('Heatmap results sidebar — a failed routes read', () => {
 		await expect(error).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByTestId('discover-list').locator('.results-empty:not(.results-error)')).toHaveCount(0);
 
-		fail = false;
+		// Retry issues a fresh read, and a read that fails again is reported
+		// again. The map's own settle refetches fail too while `fail` holds,
+		// so nothing can clear the error under the click.
+		const retried = page.waitForRequest(
+			(req) => req.url().includes('/rest/v1/rpc/discoverable_routes_in_bbox')
+		);
 		await error.getByRole('button', { name: 'Retry' }).click();
+		await retried;
+		await expect(error).toBeVisible();
+
+		// Once reads succeed the error goes. A settle refetch may land first and
+		// unmount the button, so the click is dispatched in the page rather than
+		// through a locator that would wait for a button already gone.
+		fail = false;
+		await page.evaluate(() =>
+			(document.querySelector('[data-testid="discover-load-error"] button') as HTMLButtonElement | null)?.click()
+		);
 		await expect(error).toHaveCount(0, { timeout: 10_000 });
 	});
 

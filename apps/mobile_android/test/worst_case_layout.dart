@@ -133,3 +133,11 @@ Future<void> walkScrollable(
     expectNoOverflow(tester, '$where, scroll step $step');
   }
 }
+
+/// The screen's main vertical scroll view: the first downward [Scrollable]
+/// in the tree, so a horizontal strip or a text field's own scrollable
+/// above it is never picked.
+Finder primaryScrollable() => find
+    .byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down)
+    .first;

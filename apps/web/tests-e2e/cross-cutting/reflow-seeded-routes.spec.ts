@@ -291,6 +291,23 @@ test.describe('no horizontal document scroll on the seeded dynamic routes', () =
 			// it; flipping session_replication_role would also skip the
 			// derivation triggers elsewhere. Local stack only — prod charges
 			// stay gated on live keys plus owner + CISO + counsel sign-off.
+			// USER_A is shared, so whatever account it had is put back after:
+			// a ready account left behind turns /settings/payouts into
+			// "Ready to take payment" for every later spec in the process.
+			const { data: priorAcct, error: priorErr } = await admin
+				.from('instructor_payout_accounts')
+				.select('*')
+				.eq('user_id', USER_A.id)
+				.maybeSingle();
+			if (priorErr) throw new Error(`payout account read failed: ${priorErr.message}`);
+			const restoreAcct = async () => {
+				const { error } = priorAcct
+					? await admin
+							.from('instructor_payout_accounts')
+							.upsert(priorAcct, { onConflict: 'user_id' })
+					: await admin.from('instructor_payout_accounts').delete().eq('user_id', USER_A.id);
+				if (error) throw new Error(`payout account restore failed: ${error.message}`);
+			};
 			const { error: acctErr } = await admin.from('instructor_payout_accounts').upsert(
 				{
 					user_id: USER_A.id,
@@ -305,90 +322,94 @@ test.describe('no horizontal document scroll on the seeded dynamic routes', () =
 			);
 			if (acctErr) throw new Error(`payout account upsert failed: ${acctErr.message}`);
 
-			// `fundraisers_anchor_check` is `(run_id IS NOT NULL) <> (event_id IS
-			// NOT NULL)` — exactly one anchor, never neither. The first draft set
-			// neither and the insert was rejected deterministically.
-			const anchorRunId = await insertRun({
-				user_id: USER_A.id,
-				started_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
-				duration_s: 3600,
-				distance_m: 10_000,
-				is_public: true
-			});
-			const { data: fr, error: frErr } = await admin
-				.from('fundraisers')
-				.insert({
-					owner_user_id: USER_A.id,
-					run_id: anchorRunId,
-					charity_name: 'Girls on the Run',
-					charity_url: 'https://www.girlsontherun.org',
-					title: 'Running my next marathon for Girls on the Run',
-					story:
-						'Every donation funds a season of coaching for one girl. A deliberately ' +
-						'long story field, because an unwrapped paragraph is one of the ways ' +
-						'this page has overflowed before.',
-					goal_cents: 500_000,
-					currency: 'usd',
-					status: 'open'
-				})
-				.select('id')
-				.single();
-			if (frErr || !fr) {
-				throw new Error(`fundraiser insert failed: ${frErr?.message ?? 'no row'}`);
-			}
-			const fundraiserId = fr.id as string;
 			try {
-				// Both the feed and the totals filter status='paid', so a pending
-				// row would render an empty feed under a non-zero thermometer.
-				const { error } = await admin.from('donations').insert([
-					{
-						fundraiser_id: fundraiserId,
-						donor_user_id: USER_B.id,
-						owner_user_id: USER_A.id,
-						display_name: 'Alex Chen',
-						message: 'Go get it. See you at the finish.',
-						amount_cents: 5000,
-						currency: 'usd',
-						status: 'paid',
-						is_anonymous: false,
-						paid_at: new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString()
-					},
-					{
-						fundraiser_id: fundraiserId,
-						donor_user_id: USER_C_PRO.id,
-						owner_user_id: USER_A.id,
-						display_name: 'Morgan Lee',
-						message: 'For the girls on the run.',
-						amount_cents: 12_500,
-						currency: 'usd',
-						status: 'paid',
-						is_anonymous: false,
-						paid_at: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString()
-					},
-					{
-						fundraiser_id: fundraiserId,
-						donor_user_id: null,
-						owner_user_id: USER_A.id,
-						display_name: null,
-						message: 'Anonymous but enthusiastic.',
-						amount_cents: 2500,
-						currency: 'usd',
-						status: 'paid',
-						is_anonymous: true,
-						paid_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString()
-					}
-				]);
-				if (error) throw new Error(`donation insert failed: ${error.message}`);
-
-				await expectReflows(page, `/fundraisers/${fundraiserId}`, {
-					locator: '.donation-feed .row',
-					min: 3
+				// `fundraisers_anchor_check` is `(run_id IS NOT NULL) <> (event_id IS
+				// NOT NULL)` — exactly one anchor, never neither. The first draft set
+				// neither and the insert was rejected deterministically.
+				const anchorRunId = await insertRun({
+					user_id: USER_A.id,
+					started_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+					duration_s: 3600,
+					distance_m: 10_000,
+					is_public: true
 				});
+				const { data: fr, error: frErr } = await admin
+					.from('fundraisers')
+					.insert({
+						owner_user_id: USER_A.id,
+						run_id: anchorRunId,
+						charity_name: 'Girls on the Run',
+						charity_url: 'https://www.girlsontherun.org',
+						title: 'Running my next marathon for Girls on the Run',
+						story:
+							'Every donation funds a season of coaching for one girl. A deliberately ' +
+							'long story field, because an unwrapped paragraph is one of the ways ' +
+							'this page has overflowed before.',
+						goal_cents: 500_000,
+						currency: 'usd',
+						status: 'open'
+					})
+					.select('id')
+					.single();
+				if (frErr || !fr) {
+					throw new Error(`fundraiser insert failed: ${frErr?.message ?? 'no row'}`);
+				}
+				const fundraiserId = fr.id as string;
+				try {
+					// Both the feed and the totals filter status='paid', so a pending
+					// row would render an empty feed under a non-zero thermometer.
+					const { error } = await admin.from('donations').insert([
+						{
+							fundraiser_id: fundraiserId,
+							donor_user_id: USER_B.id,
+							owner_user_id: USER_A.id,
+							display_name: 'Alex Chen',
+							message: 'Go get it. See you at the finish.',
+							amount_cents: 5000,
+							currency: 'usd',
+							status: 'paid',
+							is_anonymous: false,
+							paid_at: new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString()
+						},
+						{
+							fundraiser_id: fundraiserId,
+							donor_user_id: USER_C_PRO.id,
+							owner_user_id: USER_A.id,
+							display_name: 'Morgan Lee',
+							message: 'For the girls on the run.',
+							amount_cents: 12_500,
+							currency: 'usd',
+							status: 'paid',
+							is_anonymous: false,
+							paid_at: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString()
+						},
+						{
+							fundraiser_id: fundraiserId,
+							donor_user_id: null,
+							owner_user_id: USER_A.id,
+							display_name: null,
+							message: 'Anonymous but enthusiastic.',
+							amount_cents: 2500,
+							currency: 'usd',
+							status: 'paid',
+							is_anonymous: true,
+							paid_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString()
+						}
+					]);
+					if (error) throw new Error(`donation insert failed: ${error.message}`);
+
+					await expectReflows(page, `/fundraisers/${fundraiserId}`, {
+						locator: '.donation-feed .row',
+						min: 3
+					});
+				} finally {
+					await admin.from('donations').delete().eq('fundraiser_id', fundraiserId);
+					await admin.from('fundraisers').delete().eq('id', fundraiserId);
+					// After the fundraiser: the anchor is an FK, so the run cannot go first.
+					await deleteRun(anchorRunId);
+				}
 			} finally {
-				await admin.from('donations').delete().eq('fundraiser_id', fundraiserId);
-				await admin.from('fundraisers').delete().eq('id', fundraiserId);
-				// After the fundraiser: the anchor is an FK, so the run cannot go first.
-				await deleteRun(anchorRunId);
+				await restoreAcct();
 			}
 		});
 	});

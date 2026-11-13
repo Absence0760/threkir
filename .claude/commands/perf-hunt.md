@@ -43,7 +43,7 @@ The bar a fix is held to is the same as those guards: make it faster **and** add
 
 ### 1. Pick the surface (if `$ARGUMENTS` is empty or vague)
 
-Choose one bounded surface with real cost potential and say which + why. Good surfaces this repo rewards: the recording hot path (`run_screen.dart` / `packages/run_recorder/`), data-heavy screens (`dashboard_screen.dart`, history/timeline, feed), the Supabase query layer (`core/data.ts` + the RPCs), the offline stores (`LocalRunStore` / `LocalGymStore` / `LocalFoodStore`), the web bundle, the Go worker's per-job allocation. Don't re-sweep a surface you just cleaned.
+Choose one bounded surface with real cost potential and say which + why. Good surfaces this repo rewards: the recording hot path (`run_screen.dart` / `packages/run_recorder/`), data-heavy screens (`today_screen.dart`, history/timeline, feed), the Supabase query layer (`core/data.ts` + the RPCs), the offline stores (`LocalRunStore` / `LocalGymStore` / `LocalFoodStore`), the web bundle, the Go worker's per-job allocation. Don't re-sweep a surface you just cleaned.
 
 ### 2. Fan out read-only hunters (in parallel)
 

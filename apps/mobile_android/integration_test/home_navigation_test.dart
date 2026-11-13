@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/fitness_hub_screen.dart';
 import '../lib/screens/home_screen.dart';
 import '../lib/screens/you_screen.dart';

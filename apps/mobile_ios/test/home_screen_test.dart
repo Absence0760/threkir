@@ -31,7 +31,7 @@ import '../lib/widgets/gym_summary_card.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/confirm_age_screen.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/gym_screen.dart';
 import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';

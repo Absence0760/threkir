@@ -481,7 +481,7 @@ testWidgets('renders all seven days across a fall-back', (tester) async {
 
 `group()` in `flutter_test` takes no `tags:`, so tag each test, or put `@Tags(['tz'])` above a `library;` directive to tag a whole file. The `test-timezones` job in `ci.yml` finds every test file under `apps/mobile_android/test` and `packages/*/test` that carries the tag and runs `flutter test --tags tz` on them under `America/New_York` (US transitions, negative offset), `Europe/London` (EU transitions, the +0/+1 flip) and `Asia/Kolkata` (+5:30, no DST), on top of the normal UTC run. There is no file list to edit: the tag is the opt-in. The job fails if no file carries the tag, so renaming it cannot quietly empty the run.
 
-Write the assertion so it holds in **every** zone (the same invariant, not a zone-specific expected value) — the tagged test runs in four. To reproduce locally: `TZ=Europe/London flutter test --tags tz test/dashboard_screen_test.dart`. The Dart VM reads the zone through the C library's `localtime_r`, which honours `TZ` from the environment, and `flutter test` passes its environment on to `flutter_tester`.
+Write the assertion so it holds in **every** zone (the same invariant, not a zone-specific expected value) — the tagged test runs in four. To reproduce locally: `TZ=Europe/London flutter test --tags tz test/today_screen_test.dart`. The Dart VM reads the zone through the C library's `localtime_r`, which honours `TZ` from the environment, and `flutter test` passes its environment on to `flutter_tester`.
 
 ### Run the new test
 

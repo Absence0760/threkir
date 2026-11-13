@@ -358,7 +358,7 @@
 	// one-line heading, remembered per account on this device. Every default
 	// is open: a runner who reads these cards today must not find them gone on
 	// the first visit after this shipped (decisions § 2080). The memory is what
-	// makes a collapse stick, not the default. Mobile twin: dashboard_screen.dart.
+	// makes a collapse stick, not the default. Mobile twin: today_screen.dart.
 	const TREND_SCOPE = 'dashboard_trends';
 	const TREND_DEFAULTS: DisclosureState = {
 		volume: true,

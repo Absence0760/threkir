@@ -16,7 +16,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/pro_sellable.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/progress_screen.dart';
 import '../lib/adaptive_width.dart' show kContentMaxWidth;
 import '../lib/screens/plan_detail_screen.dart';
@@ -323,7 +323,7 @@ Future<({LocalRunStore runStore, LocalRouteStore routeStore, Preferences prefs})
   final prefs = Preferences();
   await prefs.init();
 
-  _runsDir = Directory.systemTemp.createTempSync('dashboard_screen_test_');
+  _runsDir = Directory.systemTemp.createTempSync('today_screen_test_');
   final runStore = LocalRunStore();
   await runStore.init(overrideDirectory: _runsDir!);
 
@@ -1869,7 +1869,7 @@ void main() {
   });
 }
 
-// Mirror of dashboard_screen's private _epochDay for assertions.
+// Mirror of today_screen's private _epochDay for assertions.
 int _epochDayForTest(DateTime d) =>
     DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/
     Duration.millisecondsPerDay;

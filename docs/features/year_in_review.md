@@ -44,7 +44,7 @@ parity pair into the house lockstep registry so it stops drifting.
 - **Mobile twin:** `apps/mobile_android/lib/recap.dart` (239 lines) +
   `apps/mobile_android/lib/screens/recap_screen.dart`, test
   `apps/mobile_android/test/recap_test.dart` (344 lines), entry from
-  `apps/mobile_android/lib/screens/dashboard_screen.dart`. iOS twin
+  `apps/mobile_android/lib/screens/today_screen.dart`. iOS twin
   byte-identical under `apps/mobile_ios/`.
 - **Aggregates available:** `personal_records` table + the
   `gym_exercise_records`-style server roll-up pattern, and the `run_photos`

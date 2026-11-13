@@ -15,7 +15,7 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/progress_screen.dart';
 import '../lib/screens/run_detail_screen.dart';
 import '../lib/screens/runs_screen.dart';

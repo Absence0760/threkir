@@ -14,7 +14,7 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/pending_sync_banner.dart';
 import 'pump_until.dart';

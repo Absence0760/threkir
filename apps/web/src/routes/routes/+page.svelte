@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
@@ -54,7 +55,7 @@
 	$effect(() => {
 		if (!filtersHydrated) return;
 		try {
-			localStorage.setItem(
+			localStore()?.setItem(
 				FILTERS_KEY,
 				JSON.stringify({ search, surfaceFilter, distanceFilter, sortKey, starredOnly }),
 			);
@@ -98,7 +99,7 @@
 		// read in that case — the snapshot is authoritative for this paint.
 		if (!filtersHydrated) {
 			try {
-				const raw = localStorage.getItem(FILTERS_KEY);
+				const raw = localStore()?.getItem(FILTERS_KEY) ?? null;
 				if (raw) {
 					const saved = JSON.parse(raw);
 					if (typeof saved.search === 'string') search = saved.search;

@@ -232,9 +232,9 @@ runCacheContract('InMemoryPrefsCache', () => new InMemoryPrefsCache());
 
 // LocalStoragePrefsCache contract — driven through a minimal Storage
 // stub. We can't import the global localStorage in node, but the
-// LocalStoragePrefsCache only reaches for `localStorage` via a typeof
-// guard. Re-declaring it as a global stub before instantiating the
-// cache is enough to exercise the full path.
+// LocalStoragePrefsCache only reaches for `localStorage` through
+// `localStore()`. Re-declaring it as a global stub before instantiating
+// the cache is enough to exercise the full path.
 function makeStorageStub(): Storage {
 	const map = new Map<string, string>();
 	const stub: Storage = {

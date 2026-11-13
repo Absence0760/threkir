@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -28,7 +29,7 @@
 	onMount(() => {
 		let initial: number | null = null;
 		try {
-			const v = localStorage.getItem(storageKey);
+			const v = localStore()?.getItem(storageKey) ?? null;
 			if (v) {
 				const n = parseInt(v, 10);
 				if (Number.isFinite(n) && n > 0) initial = n;
@@ -52,7 +53,7 @@
 
 	function persist() {
 		try {
-			if (leftPx != null) localStorage.setItem(storageKey, String(leftPx));
+			if (leftPx != null) localStore()?.setItem(storageKey, String(leftPx));
 		} catch (_) {
 			/* silent */
 		}

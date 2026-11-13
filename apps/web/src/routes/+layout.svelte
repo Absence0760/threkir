@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import '../app.css';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -542,7 +543,7 @@
 
 	onMount(() => {
 		try {
-			sidebarCollapsed = localStorage.getItem('sidebar_collapsed') === '1';
+			sidebarCollapsed = localStore()?.getItem('sidebar_collapsed') === '1';
 		} catch (_) {
 			/* localStorage may be unavailable — leave default */
 		}
@@ -551,7 +552,7 @@
 	function toggleSidebar() {
 		sidebarCollapsed = !sidebarCollapsed;
 		try {
-			localStorage.setItem('sidebar_collapsed', sidebarCollapsed ? '1' : '0');
+			localStore()?.setItem('sidebar_collapsed', sidebarCollapsed ? '1' : '0');
 		} catch (_) {
 			/* silent */
 		}

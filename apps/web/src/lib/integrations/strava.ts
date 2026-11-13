@@ -8,6 +8,7 @@
 /// days of activities in the same call. A subsequent "Sync now" click
 /// posts `{ action: 'sync' }` to the same function.
 
+import { sessionStore } from '../core/browser_storage';
 import { PUBLIC_STRAVA_CLIENT_ID as PUBLIC_STRAVA_CLIENT_ID_ENV } from '$app/env/public';
 import { supabase } from '../core/supabase';
 import { edgeFunctionErrorCode, edgeFunctionErrorMessage } from '../core/edge_function_error';
@@ -80,7 +81,7 @@ export function stravaAuthUrl(origin: string, state: string): string {
 /// "tab reload mid-flow" and reprompts.
 export function storeStravaOAuthState(state: string): void {
 	try {
-		sessionStorage.setItem(STRAVA_OAUTH_STATE_KEY, state);
+		sessionStore()?.setItem(STRAVA_OAUTH_STATE_KEY, state);
 	} catch (_) {
 		/* private mode — verify step will reject */
 	}
@@ -92,8 +93,8 @@ export function storeStravaOAuthState(state: string): void {
 /// regardless of match — replay is also a CSRF condition.
 export function consumeStravaOAuthState(): string | null {
 	try {
-		const v = sessionStorage.getItem(STRAVA_OAUTH_STATE_KEY);
-		sessionStorage.removeItem(STRAVA_OAUTH_STATE_KEY);
+		const v = sessionStore()?.getItem(STRAVA_OAUTH_STATE_KEY) ?? null;
+		sessionStore()?.removeItem(STRAVA_OAUTH_STATE_KEY);
 		return v;
 	} catch (_) {
 		return null;

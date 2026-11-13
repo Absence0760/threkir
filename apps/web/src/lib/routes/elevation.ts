@@ -1,3 +1,5 @@
+import { localStore } from '../core/browser_storage';
+
 // The localStorage key `consent.svelte.ts` persists the cookie-banner
 // choice under. Duplicated here (not imported) because `consent.svelte.ts`
 // uses Svelte runes ($state) and so can't be loaded by the tsx unit runner
@@ -16,9 +18,8 @@ const CONSENT_STORAGE_KEY = 'cookie_consent';
  * banner choice. Fail-closed: no browser / no accepted record → no lookup.
  */
 function elevationConsentGiven(): boolean {
-	if (typeof localStorage === 'undefined') return false;
 	try {
-		const raw = localStorage.getItem(CONSENT_STORAGE_KEY);
+		const raw = localStore()?.getItem(CONSENT_STORAGE_KEY);
 		if (!raw) return false;
 		const parsed = JSON.parse(raw) as { choice?: string };
 		return parsed?.choice === 'accepted';

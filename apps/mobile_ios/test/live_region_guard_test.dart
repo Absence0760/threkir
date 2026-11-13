@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// that goes away fails until its entry is removed.
 const _registered = <String, (int, String)>{
   'lib/screens/global_segments_screen.dart': (1, 'the result count after a search or filter change'),
+  'lib/screens/park_courses_screen.dart': (1, 'the board month after a previous / next month tap'),
   'lib/screens/plan_new_screen.dart': (6, 'validation errors and the computed preview after an input change'),
   'lib/screens/run_screen.dart': (1, 'the stopped chip, set once when recording stops'),
   'lib/screens/season_plan_screen.dart': (4, 'the preview and its refusal after an input change'),

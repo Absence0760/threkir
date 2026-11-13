@@ -1219,13 +1219,24 @@ class _CoachScreenState extends State<CoachScreen> {
     if (widget.api.userId == null) {
       return PushedPage(
         title: l10n.coachTitle,
-        body: Column(
-          children: [
-            PageHeader(title: l10n.coachTitle),
-            // Guided runs are local scripts with no API behind them, so the
-            // library stays reachable from here signed out.
-            _peerStrip(l10n),
-            Expanded(
+        // The heading and the peers scroll with the sign-in prompt, so at
+        // large text they never push it off the screen.
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PageHeader(title: l10n.coachTitle),
+                  // Guided runs are local scripts with no API behind them,
+                  // so the library stays reachable from here signed out.
+                  _peerStrip(l10n),
+                ],
+              ),
+            ),
+            // The prompt scrolls itself (it is a pull-to-refresh surface
+            // elsewhere), so it fills what the heading leaves.
+            SliverFillRemaining(
               child: SignInRequiredState(
                   api: widget.api, onSignedIn: _bootstrap),
             ),
@@ -1374,22 +1385,21 @@ class _CoachScreenState extends State<CoachScreen> {
     final cs = theme.colorScheme;
     return PushedPage(
       title: l10n.coachTitle,
-      body: SafeArea(
-        child: Column(
-          children: [
-            PageHeader(title: l10n.coachTitle),
-            // The disclosure gates the AI chat only; the peers it sits
-            // beside need no consent.
-            _peerStrip(l10n),
-            Expanded(child: _consentBody(theme, l10n, cs)),
-          ],
-        ),
+      // One scroll: the heading and the peers move with the disclosure.
+      body: ListView(
+        children: [
+          PageHeader(title: l10n.coachTitle),
+          // The disclosure gates the AI chat only; the peers it sits beside
+          // need no consent.
+          _peerStrip(l10n),
+          _consentBody(theme, l10n, cs),
+        ],
       ),
     );
   }
 
   Widget _consentBody(ThemeData theme, AppLocalizations l10n, ColorScheme cs) {
-    return SingleChildScrollView(
+    return Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -265,121 +265,128 @@ class _ExerciseCataloguePickerScreenState
 
     return PushedPage(
       title: l10n.gymCatalogueTitle,
-      body: Column(
-        children: [
-          PageHeader(title: l10n.gymCatalogueTitle),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _search,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: l10n.gymCatalogueSearchPlaceholder,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      l10n.gymCatalogueCategoryLabel,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: _category,
-                        onChanged: (v) =>
-                            setState(() => _category = v ?? 'all'),
-                        items: [
-                          DropdownMenuItem(
-                            value: 'all',
-                            child: Text(categoryLabel(l10n, 'all')),
-                          ),
-                          for (final c in _kCategories)
-                            DropdownMenuItem(
-                              value: c,
-                              child: Text(categoryLabel(l10n, c)),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (widget.unavailable)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  l10n.gymCatalogueUnavailable,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ),
-            ),
-          if (_canCreate)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: _creating ? null : _create,
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.gymCatalogueCreate(_query)),
-                ),
-              ),
-            ),
-          Expanded(
-            child: filtered.isEmpty
-                // "No exercises match" is a claim about the catalogue, so while
-                // it is unavailable the notice above is the only honest thing
-                // to say and the centre stays blank.
-                ? (hiddenExact == null && widget.unavailable
-                    ? const SizedBox.shrink()
-                    : Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        hiddenExact == null
-                            ? l10n.gymCatalogueEmpty
-                            : l10n.gymCatalogueOtherCategory(
-                                hiddenExact.name,
-                                categoryLabel(l10n, hiddenExact.category),
-                              ),
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                      ),
-                    ),
-                  ))
-                : ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (ctx, i) {
-                      final e = filtered[i];
-                      return ListTile(
-                        title: Text(e.name),
-                        subtitle: Text(categoryLabel(l10n, e.category)),
-                        trailing: e.authorId != null
-                            ? Chip(
-                                label: Text(l10n.gymCatalogueCustomBadge),
-                                visualDensity: VisualDensity.compact,
-                              )
-                            : null,
-                        onTap: () => Navigator.of(context).pop(e),
-                      );
-                    },
-                  ),
-          ),
+      // The heading scrolls away with the catalogue; the search and the
+      // category filter stay pinned above the list, where a picker's
+      // controls belong.
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(child: PageHeader(title: l10n.gymCatalogueTitle)),
         ],
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _search,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: l10n.gymCatalogueSearchPlaceholder,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        l10n.gymCatalogueCategoryLabel,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _category,
+                          onChanged: (v) =>
+                              setState(() => _category = v ?? 'all'),
+                          items: [
+                            DropdownMenuItem(
+                              value: 'all',
+                              child: Text(categoryLabel(l10n, 'all')),
+                            ),
+                            for (final c in _kCategories)
+                              DropdownMenuItem(
+                                value: c,
+                                child: Text(categoryLabel(l10n, c)),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (widget.unavailable)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    l10n.gymCatalogueUnavailable,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              ),
+            if (_canCreate)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _creating ? null : _create,
+                    icon: const Icon(Icons.add),
+                    label: Text(l10n.gymCatalogueCreate(_query)),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: filtered.isEmpty
+                  // "No exercises match" is a claim about the catalogue, so while
+                  // it is unavailable the notice above is the only honest thing
+                  // to say and the centre stays blank.
+                  ? (hiddenExact == null && widget.unavailable
+                      ? const SizedBox.shrink()
+                      : Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          hiddenExact == null
+                              ? l10n.gymCatalogueEmpty
+                              : l10n.gymCatalogueOtherCategory(
+                                  hiddenExact.name,
+                                  categoryLabel(l10n, hiddenExact.category),
+                                ),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                    ))
+                  : ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (ctx, i) {
+                        final e = filtered[i];
+                        return ListTile(
+                          title: Text(e.name),
+                          subtitle: Text(categoryLabel(l10n, e.category)),
+                          trailing: e.authorId != null
+                              ? Chip(
+                                  label: Text(l10n.gymCatalogueCustomBadge),
+                                  visualDensity: VisualDensity.compact,
+                                )
+                              : null,
+                          onTap: () => Navigator.of(context).pop(e),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

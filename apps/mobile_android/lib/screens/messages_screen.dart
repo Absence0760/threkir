@@ -762,13 +762,13 @@ class _MessagesScreenState extends State<MessagesScreen>
             onPressed: _createGroup,
           ),
       ],
-      // The heading stays above the search field and the list: the inbox
-      // scrolls under it, and Messages is short enough never to crowd them.
-      body: Column(
-        children: [
-          PageHeader(title: l10n.messagesTitle),
-          Expanded(child: _body(l10n)),
+      // The heading scrolls away with the inbox, as a pushed hub tab's does
+      // (HubTabBody); the search field stays pinned above the list.
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(child: PageHeader(title: l10n.messagesTitle)),
         ],
+        body: _body(l10n),
       ),
       floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: widget.api.userId == null

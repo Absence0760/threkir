@@ -678,7 +678,9 @@ test.describe('/coach', () => {
 		await expect(composer).toHaveValue('line one\nline two');
 
 		await page.keyboard.press('Enter');
-		await expect(page.getByText(/stub/)).toBeVisible({ timeout: 5_000 });
+		// The send went out: the mocked 500 comes back as the catalogue's
+		// unavailable copy, never the server's own `error` text.
+		await expect(page.getByText('Coach is unavailable right now. Try again in a moment.')).toBeVisible({ timeout: 5_000 });
 	});
 
 	test('picking a real plan via mouse-click switches the chat-host (planId key remount)', async ({

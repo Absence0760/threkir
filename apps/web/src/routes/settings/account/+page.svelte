@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { sessionStore } from '#lib/core/browser_storage.ts';
 	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
@@ -1096,8 +1097,8 @@
 	async function showLinkRefusal() {
 		let raw: string | null = null;
 		try {
-			raw = sessionStorage.getItem(LINK_REFUSAL_STASH_KEY);
-			sessionStorage.removeItem(LINK_REFUSAL_STASH_KEY);
+			raw = sessionStore()?.getItem(LINK_REFUSAL_STASH_KEY) ?? null;
+			sessionStore()?.removeItem(LINK_REFUSAL_STASH_KEY);
 		} catch (_) {
 			return;
 		}
@@ -1110,8 +1111,8 @@
 
 	function setLinkMarker(provider: LinkableProvider | null) {
 		try {
-			if (provider) sessionStorage.setItem(OAUTH_LINK_STASH_KEY, provider);
-			else sessionStorage.removeItem(OAUTH_LINK_STASH_KEY);
+			if (provider) sessionStore()?.setItem(OAUTH_LINK_STASH_KEY, provider);
+			else sessionStore()?.removeItem(OAUTH_LINK_STASH_KEY);
 		} catch (e) {
 			console.error('settings/account: could not stash the link marker:', e);
 		}

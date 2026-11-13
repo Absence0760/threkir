@@ -1756,15 +1756,20 @@ class LocalRunStore extends ChangeNotifier {
       if (sidecarIds == null && _syncedIds.isNotEmpty) {
         await _persistSyncedIds();
       }
+      _noteColdLoad(rebuilt: false, files: fileById.length);
       notifyListeners();
       return;
     }
 
-    // Slow path (self-heal / migration): read every run file in parallel,
-    // rebuild `_summaries`, and persist the index so the next cold-start takes
-    // the fast path. `_runs` holds the full set for this one session (the read
-    // is already paid); the next launch windows it. `Future.wait` keeps the
-    // cold-start parallel rather than O(n) sequential.
+    // Slow path (self-heal / migration): read every run file, rebuild
+    // `_summaries`, and persist the index so the next cold-start takes the fast
+    // path. Read [_kColdLoadBatch] files at a time and keep only the resident
+    // set the fast path would (newest [residentWindow] ∪ unsynced), so the
+    // rebuild's peak is one batch over the window instead of every track in
+    // the library. Holding the whole set "because the read was paid" kept it
+    // for the session: about 2 MB per two-hour run measured, so a 1,000-run
+    // import was ~2 GB on a phone, which iOS ends as a watchdog termination
+    // (Sentry THREKIR-CLIENT-B is the kind of kill that leaves).
     // Authority order once the sidecar is unusable: the index's `synced` flag
     // (a cache of the same set, rewritten from `_syncedIds` on every mutation,
     // so it can only lag toward "unsynced"), then the legacy per-run flag.
@@ -1778,26 +1783,35 @@ class LocalRunStore extends ChangeNotifier {
     final indexSynced =
         index == null ? null : {for (final s in index) if (s.synced) s.id};
 
-    final loaded = await Future.wait(files.map(_readRunFile), eagerError: false);
-    for (final entry in loaded) {
-      if (entry == null) continue;
-      _runs.add(entry.run);
-      if (sidecarIds != null) {
-        if (sidecarIds.contains(entry.run.id)) _syncedIds.add(entry.run.id);
-      } else if (indexSynced != null) {
-        if (indexSynced.contains(entry.run.id)) _syncedIds.add(entry.run.id);
-      } else if (!_syncedIdsSidecarDamaged && entry.synced) {
-        // Migration path: no sidecar was ever written, so the legacy per-file
-        // flag is the only record of sync state — and a real one.
-        _syncedIds.add(entry.run.id);
+    final summaries = <RunSummary>[];
+    final resident = <Run>[];
+    for (var i = 0; i < files.length; i += _kColdLoadBatch) {
+      final batch = files.sublist(
+          i, i + _kColdLoadBatch > files.length ? files.length : i + _kColdLoadBatch);
+      final loaded =
+          await Future.wait(batch.map(_readRunFile), eagerError: false);
+      for (final entry in loaded) {
+        if (entry == null) continue;
+        final id = entry.run.id;
+        if (sidecarIds != null) {
+          if (sidecarIds.contains(id)) _syncedIds.add(id);
+        } else if (indexSynced != null) {
+          if (indexSynced.contains(id)) _syncedIds.add(id);
+        } else if (!_syncedIdsSidecarDamaged && entry.synced) {
+          // Migration path: no sidecar was ever written, so the legacy
+          // per-file flag is the only record of sync state — and a real one.
+          _syncedIds.add(id);
+        }
+        summaries.add(
+            RunSummary.fromRun(entry.run, synced: _syncedIds.contains(id)));
+        resident.add(entry.run);
       }
+      _keepResident(resident);
     }
 
-    _runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
-    _summaries = [
-      for (final r in _runs)
-        RunSummary.fromRun(r, synced: _syncedIds.contains(r.id)),
-    ];
+    _runs = resident;
+    _summaries = summaries;
+    _sortSummaries();
     // Repair the sidecar from whatever record we recovered — AFTER `_summaries`
     // exists. `_persistSyncedIds` prunes the set against `_summaries`, so
     // writing here while it was still empty cleared every recovered id and
@@ -1810,7 +1824,46 @@ class LocalRunStore extends ChangeNotifier {
     if (_runs.isNotEmpty || _indexFile.existsSync()) {
       await _persistIndex();
     }
+    _noteColdLoad(rebuilt: true, files: files.length);
     notifyListeners();
+  }
+
+  /// What the last cold load did: whether it rebuilt the index from every run
+  /// file, how many run files there were, and how many runs and track points
+  /// it left in memory. Read by the launch trace (`launch_trace.dart`) so an
+  /// iOS watchdog termination arrives with the size of the library it held.
+  ({bool rebuilt, int files, int resident, int residentPoints})? coldLoad;
+
+  void _noteColdLoad({required bool rebuilt, required int files}) {
+    var points = 0;
+    for (final r in _runs) {
+      points += r.track.length;
+    }
+    coldLoad = (
+      rebuilt: rebuilt,
+      files: files,
+      resident: _runs.length,
+      residentPoints: points,
+    );
+  }
+
+  /// Run files decoded at once by the cold-load rebuild. Bounds its peak
+  /// memory to this many tracks over the resident set.
+  static const int _kColdLoadBatch = 32;
+
+  /// Prunes [runs] to the resident set, newest-first: the newest
+  /// [residentWindow] by start ∪ every unsynced run not parked in [_blocked]
+  /// — the fast path's rule, so both paths hold the same runs.
+  void _keepResident(List<Run> runs) {
+    runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    var newest = 0;
+    runs.retainWhere((r) {
+      if (newest < residentWindow) {
+        newest++;
+        return true;
+      }
+      return !_syncedIds.contains(r.id) && !_blocked.containsKey(r.id);
+    });
   }
 
   /// Extract a run id from its `<id>.json` file path. Run files are named for

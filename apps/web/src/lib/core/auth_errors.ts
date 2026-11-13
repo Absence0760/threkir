@@ -99,7 +99,21 @@ export function classifyAuthError(error: unknown): AuthErrorKind {
 
 	// An emailed magic / confirmation / reset link opened after it expired
 	// or a second time. The fix is a fresh link, which no other kind says.
-	if (code === 'otp_expired' || says('link is invalid or has expired')) {
+	// The PKCE shape of the same dead link fails at the code exchange
+	// instead: a code already spent ("code challenge does not exist",
+	// Sentry THREKIR-CLIENT-6), or opened in a browser that never held its
+	// verifier.
+	if (
+		code === 'otp_expired' ||
+		code === 'flow_state_not_found' ||
+		code === 'flow_state_expired' ||
+		code === 'bad_code_verifier' ||
+		says('link is invalid or has expired') ||
+		says('code challenge does not exist') ||
+		says('code verifier could not be found') ||
+		says('code verifier not found') ||
+		says('invalid flow state')
+	) {
 		return 'linkExpired';
 	}
 

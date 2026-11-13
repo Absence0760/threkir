@@ -8,6 +8,7 @@
 
 import type { RunShareStatKind } from './run_share_stats';
 import { RUN_SHARE_STAT_KINDS } from './run_share_stats';
+import { localStore } from '../core/browser_storage';
 import {
 	DEFAULT_SHARE_PLACEMENT,
 	sharePlacementEquals,
@@ -274,7 +275,7 @@ export const SHARE_LOOK_STORAGE_KEY = 'share_look';
 type LookStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
 function browserStorage(): LookStorage | null {
-	return typeof localStorage === 'undefined' ? null : localStorage;
+	return localStore();
 }
 
 /// The look saved in this browser, or the default when none is saved or the

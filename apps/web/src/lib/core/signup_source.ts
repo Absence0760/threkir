@@ -8,6 +8,8 @@
 /// "threkir.com", so for those the referrer is the only signal, and in-app
 /// browsers that send none arrive as `direct`.
 
+import { sessionStore } from './browser_storage';
+
 export const SIGNUP_SOURCE_KEY = 'threkir.signup_source';
 
 export type SignupSourceStore = Pick<Storage, 'getItem' | 'setItem'>;
@@ -176,9 +178,5 @@ export function readFirstTouch(store: SignupSourceStore | null): SignupSource | 
 /// sessionStorage, or null where reading it throws (sandboxed frames, blocked
 /// site data).
 export function browserSessionStore(): SignupSourceStore | null {
-	try {
-		return typeof sessionStorage === 'undefined' ? null : sessionStorage;
-	} catch {
-		return null;
-	}
+	return sessionStore();
 }

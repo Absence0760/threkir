@@ -2,6 +2,7 @@ import { PUBLIC_BYPASS_PAYWALL, PUBLIC_SUPABASE_URL } from '$app/env/public';
 
 import { auth } from '../stores/auth.svelte';
 import { TIER_LIMITS } from '../coach/types';
+import { localStore } from '../core/browser_storage';
 import { m } from '../i18n/store.svelte';
 import type { MessageKey } from '../i18n/messages';
 
@@ -89,8 +90,7 @@ function bypassEnabled(): boolean {
 	if (!envBypass) return false;
 	if (
 		import.meta.env.DEV &&
-		typeof localStorage !== 'undefined' &&
-		localStorage.getItem('paywall_force_locked') === '1'
+		localStore()?.getItem('paywall_force_locked') === '1'
 	) {
 		return false;
 	}

@@ -20,6 +20,7 @@
 /// adding a new key to the registry doesn't need a cache migration.
 
 import type { PrefsBag } from './settings_overlay';
+import { localStore } from '../core/browser_storage';
 
 export interface PendingChange {
 	isDevice: boolean;
@@ -92,12 +93,7 @@ function decodeQueue(raw: string | null): PendingChange[] {
 /// write just means the next read won't hit cache.
 export class LocalStoragePrefsCache implements PrefsCache {
 	private get store(): Storage | null {
-		try {
-			if (typeof localStorage === 'undefined') return null;
-			return localStorage;
-		} catch {
-			return null;
-		}
+		return localStore();
 	}
 
 	readUniversal(userId: string): PrefsBag | null {

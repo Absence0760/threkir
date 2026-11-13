@@ -47,7 +47,7 @@ test.describe('/social — activity discovery', () => {
 	test('discipline search + category + weekday filters surface a public class', async ({
 		page,
 	}) => {
-		await page.goto('/social?tab=discover');
+		await page.goto('/social?tab=events');
 
 		// Search by discipline → the seeded class surfaces, linking to its event.
 		await page.getByTestId('discover-search').fill(discipline);
@@ -146,7 +146,7 @@ test.describe('/social — proximity discovery', () => {
 		page,
 		context,
 	}) => {
-		await page.goto('/social?tab=discover');
+		await page.goto('/social?tab=events');
 
 		// Narrow to the seeded event by discipline so other public events near
 		// the fix don't interfere with the visibility assertions.
@@ -196,7 +196,7 @@ test.describe('/social — discovery failure', () => {
 			}
 		});
 
-		await page.goto('/social?tab=discover');
+		await page.goto('/social?tab=events');
 
 		// Distinct error state, not the empty state.
 		await expect(page.getByTestId('discover-error')).toBeVisible({ timeout: 10_000 });

@@ -4788,6 +4788,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get feedEveryoneYouFollow => 'フォロー中の全員';
 
   @override
+  String get feedFilterAuthor => '表示する人';
+
+  @override
   String get feedRunnerFallback => 'ランナー';
 
   @override
@@ -5348,7 +5351,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get socialTabRoutes => 'ルート';
 
   @override
-  String get socialTabDiscover => '見つける';
+  String get socialTabEvents => 'イベント';
 
   @override
   String get discoverSearchPlaceholder => 'クラス、クラブを検索…';
@@ -17310,6 +17313,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get messagesEmptyBody => 'ランナーのプロフィールを開いて「メッセージ」をタップすると、会話を始められます。';
+
+  @override
+  String get messagesNewMessage => '新しいメッセージ';
+
+  @override
+  String get messagesNewMessageNobody =>
+      'まだメッセージを送れる人がいません。フォローしている人やフォロワーにメッセージを送れます。';
+
+  @override
+  String get messagesNewMessageLoadFailed => 'メッセージを送れる人を読み込めませんでした。';
 
   @override
   String get messagesLoadError => '会話を読み込めませんでした。';

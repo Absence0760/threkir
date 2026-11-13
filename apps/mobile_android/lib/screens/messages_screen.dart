@@ -11,6 +11,7 @@ import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../dm_pending_hides.dart';
 import '../dm_search.dart';
+import '../fab_clearance.dart';
 import '../group_errors.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -20,9 +21,11 @@ import '../monotonic_clock.dart';
 import '../pro_sellable.dart';
 import '../settings_sync.dart';
 import '../training_service.dart';
+import '../unread_messages.dart';
 import '../widgets/ai_tag.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
+import '../widgets/new_message_sheet.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
@@ -321,6 +324,29 @@ class _MessagesScreenState extends State<MessagesScreen>
     }
   }
 
+  /// Picks a person and opens the conversation with them: the one they
+  /// already have when there is one, so a second thread is never started
+  /// beside it, otherwise a new one (issue #1374).
+  Future<void> _newMessage() async {
+    final r = await showNewMessageSheet(context, api: widget.api);
+    if (r == null || !mounted) return;
+    for (final t in _threads) {
+      if (!t.isGroup && t.partnerId == r.id) return _open(t);
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => MessageThreadScreen(
+          api: widget.api,
+          partnerId: r.id,
+          partnerName: r.displayName,
+          partnerAvatarUrl: r.avatarUrl,
+          pollInterval: widget.threadPollInterval,
+        ),
+      ),
+    );
+    if (mounted) _refresh();
+  }
+
   Future<void> _createGroup() async {
     final id = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => GroupCreateScreen(api: widget.api)),
@@ -551,6 +577,9 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   @override
   void dispose() {
+    // Whatever was read here, the badges that point at the inbox read again
+    // as it closes, however it was reached (Social, a notification, a link).
+    unawaited(UnreadMessages.instance.refresh());
     _searchTimer?.cancel();
     _search.dispose();
     _poll?.cancel();
@@ -736,6 +765,15 @@ class _MessagesScreenState extends State<MessagesScreen>
         ],
       ),
       body: _body(l10n),
+      floatingActionButtonLocation: pageFabLocation(context),
+      floatingActionButton: widget.api.userId == null
+          ? null
+          : PrimaryAction(
+              label: l10n.messagesNewMessage,
+              icon: Icons.edit_outlined,
+              onPressed: _newMessage,
+              fabKey: const ValueKey('inbox-new-message'),
+            ).toFab(),
     );
   }
 
@@ -897,6 +935,9 @@ class _MessagesScreenState extends State<MessagesScreen>
         icon: Icons.chat_bubble_outline,
         title: l10n.messagesEmptyTitle,
         body: l10n.messagesEmptyBody,
+        ctaLabel: l10n.messagesNewMessage,
+        ctaIcon: Icons.edit_outlined,
+        onCta: _newMessage,
       );
     }
     final tag = localeToTag(Localizations.localeOf(context));
@@ -955,6 +996,8 @@ class _MessagesScreenState extends State<MessagesScreen>
       },
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
+        // The last row clears the New message button floating over it.
+        padding: EdgeInsets.only(bottom: fabScrollClearance(context)),
         itemCount: (header == null ? 0 : 1) +
             inviteRows.length +
             entries.length +

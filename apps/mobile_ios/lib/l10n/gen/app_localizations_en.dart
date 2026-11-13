@@ -5039,6 +5039,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedEveryoneYouFollow => 'Everyone you follow';
 
   @override
+  String get feedFilterAuthor => 'Whose activity';
+
+  @override
   String get feedRunnerFallback => 'Runner';
 
   @override
@@ -5618,7 +5621,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get socialTabRoutes => 'Routes';
 
   @override
-  String get socialTabDiscover => 'Discover';
+  String get socialTabEvents => 'Events';
 
   @override
   String get discoverSearchPlaceholder => 'Search classes, clubs…';
@@ -17988,6 +17991,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get messagesEmptyBody =>
       'Open a runner\'s profile and tap Message to start a conversation.';
+
+  @override
+  String get messagesNewMessage => 'New message';
+
+  @override
+  String get messagesNewMessageNobody =>
+      'Nobody to message yet. You can message people you follow or who follow you.';
+
+  @override
+  String get messagesNewMessageLoadFailed =>
+      'Couldn\'t load the people you can message.';
 
   @override
   String get messagesLoadError => 'Couldn\'t load your conversations.';

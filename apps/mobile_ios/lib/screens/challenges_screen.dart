@@ -1,4 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppInsets,
+        AppSpace,
+        AsyncView,
+        EmptyState,
+        HubTabBody,
+        LoadingState,
+        PrimaryAction,
+        SectionHeader;
 
 import '../challenge_list.dart';
 import '../fab_clearance.dart';
@@ -8,23 +18,22 @@ import '../widgets/challenge_form_sheet.dart';
 import '../widgets/challenge_progress_bar.dart';
 import '../widgets/error_state.dart';
 import '../widgets/official_badge.dart';
+import '../widgets/top_banner.dart';
 import 'challenge_detail_screen.dart';
 
-/// The Social hub's Challenges sub-tab. Browse public challenges + the user's
-/// joined ones, and author a new one. `embedded: true` returns the body only
-/// (no Scaffold) so the SocialScreen host owns the chrome — including the
-/// create FAB, which it hoists off [ChallengesScreenState] the same way it
-/// hoists Clubs'.
+/// The Social hub's Challenges tab: the challenges the runner joined, with
+/// their progress, and the public ones to join. A ui_kit `HubTabBody`, so in
+/// the hub "Create challenge" is the hub's FAB and pushed on its own it gets
+/// a small titled app bar and the FAB itself (issue #1374).
 class ChallengesScreen extends StatefulWidget {
   final SocialService social;
-  final bool embedded;
-  const ChallengesScreen({super.key, required this.social, this.embedded = false});
+  const ChallengesScreen({super.key, required this.social});
 
   @override
-  State<ChallengesScreen> createState() => ChallengesScreenState();
+  State<ChallengesScreen> createState() => _ChallengesScreenState();
 }
 
-class ChallengesScreenState extends State<ChallengesScreen> {
+class _ChallengesScreenState extends State<ChallengesScreen> {
   List<ChallengeView>? _all;
   bool _failed = false;
 
@@ -49,10 +58,17 @@ class ChallengesScreenState extends State<ChallengesScreen> {
       });
     } catch (_) {
       if (!mounted) return;
+      // A failed reload keeps the list on screen and says so; only a list
+      // that never loaded is replaced by the error state.
+      final hadRows = _all?.isNotEmpty ?? false;
       setState(() {
-        _all = const [];
+        _all ??= const [];
         _failed = true;
       });
+      if (hadRows) {
+        showTopBanner(
+            context, AppLocalizations.of(context).challengesLoadFailed);
+      }
     }
   }
 
@@ -66,78 +82,84 @@ class ChallengesScreenState extends State<ChallengesScreen> {
     _load();
   }
 
-  /// The create FAB. Public so the embedded host (SocialScreen) can hoist it
-  /// onto its own Scaffold, matching `ClubsScreenState.buildCreateClubFab`.
-  Widget buildCreateChallengeFab(BuildContext context) {
-    return FloatingActionButton.extended(
-      heroTag: 'challenges_create_fab',
-      onPressed: () async {
-        final id = await showChallengeFormSheet(context, social: widget.social);
-        if (id == null || !mounted) return;
-        await _openById(id);
-      },
-      icon: const Icon(Icons.add),
-      label: Text(AppLocalizations.of(context).challengesCreate),
-    );
+  Future<void> _create() async {
+    final id = await showChallengeFormSheet(context, social: widget.social);
+    if (id == null || !mounted) return;
+    await _openById(id);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final all = _all;
-    final Widget body;
-    if (all == null) {
-      body = const Center(
-          child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()));
-    } else if (_failed) {
-      body = AppErrorState(message: l10n.challengesLoadFailed, onRetry: _load);
-    } else {
-      body = RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                  16, 16, 16, fabScrollClearance(context)),
-              children: [
-                _section(
-                  context,
-                  l10n.challengesMyChallenges,
-                  all.where((c) => c.joined).toList(),
-                  l10n.challengesEmpty,
-                  showProgress: true,
-                ),
-                const SizedBox(height: 20),
-                _section(
-                  context,
-                  l10n.challengesBrowse,
-                  all.where((c) => !c.joined && c.isPublic).toList(),
-                  l10n.challengesBrowseEmpty,
-                ),
-              ],
+    final create = PrimaryAction(
+      label: l10n.challengesCreate,
+      icon: Icons.add,
+      onPressed: _create,
+    );
+    return HubTabBody(
+      title: l10n.challengesTitle,
+      primary: create,
+      onRefresh: _load,
+      body: AsyncView<List<ChallengeView>>(
+        loading: _all == null,
+        error: _failed ? l10n.challengesLoadFailed : null,
+        data: _all,
+        isEmpty: (all) => !all.any((c) => c.joined || c.isPublic),
+        loadingState: LoadingState.list(label: l10n.commonLoading),
+        errorBuilder: (_, _) =>
+            AppErrorState(message: l10n.challengesLoadFailed, onRetry: _load),
+        empty: EmptyState(
+          icon: Icons.emoji_events_outlined,
+          title: l10n.challengesEmpty,
+          body: l10n.challengesBrowseEmpty,
+          ctaLabel: create.label,
+          onCta: _create,
+        ),
+        builder: (context, all) => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.smPlus,
+              AppInsets.gutter, fabScrollClearance(context)),
+          children: [
+            _section(
+              context,
+              l10n.challengesMyChallenges,
+              all.where((c) => c.joined).toList(),
+              l10n.challengesEmpty,
+              showProgress: true,
             ),
-          );
-    }
-    if (widget.embedded) return body;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.challengesTitle)),
-      body: body,
-      floatingActionButtonLocation: pageFabLocation(context),
-      floatingActionButton: buildCreateChallengeFab(context),
+            const SizedBox(height: AppInsets.sectionGap),
+            _section(
+              context,
+              l10n.challengesBrowse,
+              all.where((c) => !c.joined && c.isPublic).toList(),
+              l10n.challengesBrowseEmpty,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _section(BuildContext context, String title, List<ChallengeView> rows, String emptyMsg,
       {bool showProgress = false}) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
+        SectionHeader(label: title),
+        const SizedBox(height: AppSpace.sm),
         if (rows.isEmpty)
-          Text(emptyMsg, style: TextStyle(color: Theme.of(context).hintColor))
+          // One section of two is empty while the other has rows, so this
+          // is a line under its heading, not a whole-surface empty state.
+          Text(
+            emptyMsg,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          )
         else
           ...rows.map((c) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: const EdgeInsets.only(bottom: AppInsets.itemGap),
                 child: showProgress
                     ? _progressRow(context, c)
                     : ListTile(

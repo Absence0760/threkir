@@ -4621,7 +4621,7 @@ export const messages = {
 	"socialHub.tabFeed": "Feed",
 	"socialHub.tabPeople": "Pessoas",
 	"socialHub.tabClubs": "Clubes",
-	"socialHub.tabDiscover": "Descobrir",
+	"socialHub.tabEvents": "Eventos",
 	"discover.searchPlaceholder": "Busque ioga, pilates, HIIT, clubes de corrida…",
 	"discover.activityAll": "Todas as atividades",
 	"discover.cadenceLabel": "Frequência",

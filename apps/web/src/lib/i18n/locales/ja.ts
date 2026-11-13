@@ -4617,7 +4617,7 @@ export const messages = {
 	"socialHub.tabFeed": "フィード",
 	"socialHub.tabPeople": "ユーザー",
 	"socialHub.tabClubs": "クラブ",
-	"socialHub.tabDiscover": "見つける",
+	"socialHub.tabEvents": "イベント",
 	"discover.searchPlaceholder": "ヨガ、ピラティス、HIIT、ランクラブを検索…",
 	"discover.activityAll": "すべてのアクティビティ",
 	"discover.cadenceLabel": "頻度",

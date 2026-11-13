@@ -5104,6 +5104,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get feedEveryoneYouFollow => 'Alle, denen du folgst';
 
   @override
+  String get feedFilterAuthor => 'Aktivitäten von';
+
+  @override
   String get feedRunnerFallback => 'Läufer';
 
   @override
@@ -5691,7 +5694,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get socialTabRoutes => 'Routen';
 
   @override
-  String get socialTabDiscover => 'Entdecken';
+  String get socialTabEvents => 'Events';
 
   @override
   String get discoverSearchPlaceholder => 'Kurse, Clubs suchen…';
@@ -18198,6 +18201,17 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get messagesEmptyBody =>
       'Öffne das Profil eines Läufers und tippe auf Nachricht, um eine Unterhaltung zu beginnen.';
+
+  @override
+  String get messagesNewMessage => 'Neue Nachricht';
+
+  @override
+  String get messagesNewMessageNobody =>
+      'Noch niemand, dem du schreiben kannst. Du kannst Personen schreiben, denen du folgst oder die dir folgen.';
+
+  @override
+  String get messagesNewMessageLoadFailed =>
+      'Die Personen, denen du schreiben kannst, konnten nicht geladen werden.';
 
   @override
   String get messagesLoadError =>

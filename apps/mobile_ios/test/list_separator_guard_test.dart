@@ -17,9 +17,15 @@ const _roots = ['lib'];
 const _gap = 8;
 
 final _sizedBoxSeparator = RegExp(
-  r'separatorBuilder:\s*\([^)]*\)\s*=>\s*(?:const\s+)?SizedBox\(\s*height:\s*(\d+)',
+  r'separatorBuilder:\s*\([^)]*\)\s*=>\s*(?:const\s+)?SizedBox\(\s*height:\s*(\d+|AppInsets\.\w+|AppSpace\.\w+)',
   dotAll: true,
 );
+
+/// A separator written with a spacing token (issue #1374) is measured as the
+/// value the token names, so moving a list onto the tokens keeps it counted.
+const _tokens = {'AppInsets.itemGap': 8, 'AppSpace.sm': 8};
+
+int? _height(String raw) => int.tryParse(raw) ?? _tokens[raw];
 
 void main() {
   test('every list separator is the same gap', () {
@@ -31,7 +37,7 @@ void main() {
         final src = blankNonCode(file.readAsStringSync());
         for (final m in _sizedBoxSeparator.allMatches(src)) {
           measured++;
-          if (int.parse(m.group(1)!) == _gap) continue;
+          if (_height(m.group(1)!) == _gap) continue;
           final line = '\n'.allMatches(src.substring(0, m.start)).length + 1;
           offenders.add('${file.path}:$line height: ${m.group(1)}');
         }

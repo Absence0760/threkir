@@ -75,7 +75,7 @@ Web:
 - Create-flow modal pattern + `.modal` / `.editor-form` / `.btn-*` / `.card-elevated` global classes (`app.css`).
 
 Mobile:
-- `apps/mobile_android/lib/screens/social_screen.dart` — the Social tab host with sub-tabs (Feed / People / Clubs / Discover), each child `embedded: true`. `apps/mobile_android/lib/screens/clubs_screen.dart`, `club_detail_screen.dart`.
+- `apps/mobile_android/lib/screens/social_screen.dart` — the Social tab host with sub-tabs (Feed / Clubs / Events / Challenges / People), each a ui_kit `HubTabBody` whose primary action the hub shows as its FAB (issue #1374). `apps/mobile_android/lib/screens/clubs_screen.dart`, `club_detail_screen.dart`.
 - `apps/mobile_android/lib/social_service.dart` — `SocialService` ChangeNotifier singleton, the mobile mirror of web `data.ts` social calls (`fetchMyClubs`, `createClub`, realtime `subscribeToEvent`).
 - `apps/mobile_android/lib/local_activities.dart#buildLocalActivities` — offline cross-modal timeline from `LocalRunStore` + `LocalGymStore` + `LocalFoodStore`. Useful for an **offline-optimistic** local progress estimate.
 - `packages/api_client` typed methods; `packages/core_models` generated row DTOs (`lib/src/generated/db_rows.dart`).
@@ -244,13 +244,13 @@ export type ChallengeWithMeta = Challenge & { participant_count: number; my_valu
 Mirror after web lands. The mobile nav is at its 5-slot ceiling (`Home / Fitness / Log / Social / You`) — **do not add a 6th tab.** Mount challenges as a **sub-tab inside the Social hub** (`social_screen.dart`), matching how web puts it in `/social`, plus a self-hiding card on the Home dashboard.
 
 Files (under `apps/mobile_android/lib/`, then mirror byte-identical to `apps/mobile_ios/lib/` in the **same commit**):
-- `screens/challenges_screen.dart` — Social hub's new Challenges sub-tab (`embedded: true` mode, body-only). Browse + My challenges. The joined rows carry the caller's own value, bar, rank and earned badge, folded in from `my_active_challenges` by `mergeMyProgress` and gated by `myProgressView`: a challenge outside that RPC's live-plus-7-day window renders "Progress unavailable" rather than a 0 % bar (ADR §694).
+- `screens/challenges_screen.dart` — Social hub's Challenges tab (a `HubTabBody`; Create challenge is its `PrimaryAction`). Browse + My challenges. The joined rows carry the caller's own value, bar, rank and earned badge, folded in from `my_active_challenges` by `mergeMyProgress` and gated by `myProgressView`: a challenge outside that RPC's live-plus-7-day window renders "Progress unavailable" rather than a 0 % bar (ADR §694).
 - `screens/challenge_detail_screen.dart` — hero + progress bar + leaderboard + Join/Leave; admin/creator edit + delete behind `AlertDialog` (destructive-confirm idiom). The caller's value comes off the board the page already holds — `fetchChallengeById` carries none — and the club-vs-club team column resolves through `teamLabel`, never printing a raw club uuid.
 - `widgets/challenge_progress_bar.dart` — the shared bar (value/goal label, complete chip, `ProgressBar`, on-pace hint) plus `challengeValueLabel`, rendered by both screens exactly as web shares `ChallengeProgressBar.svelte`.
 - `widgets/challenge_form_sheet.dart` — create/edit bottom sheet (mirror `club_form_sheet.dart` / `event_form_sheet.dart`).
 - `widgets/challenge_progress_card.dart` — the self-hiding Home dashboard card; renders nothing when `myActiveChallenges` is empty (data-presence self-hide, matching the gym/nutrition cards).
 - `social_service.dart` — add `fetchChallenges`, `fetchChallengeById`, `createChallenge`, `joinChallenge`, `leaveChallenge`, `fetchChallengeLeaderboard`, `myActiveChallenges`, `recomputeChallengeCompletion` (route through `packages/api_client`, not direct `.from`).
-- `social_screen.dart` — register the Challenges sub-tab + its FAB (Create challenge, admin/eligible only) in the hoisted-FAB slot.
+- `social_screen.dart` — register the Challenges tab; its Create challenge `PrimaryAction` becomes the hub's FAB.
 - `dashboard_screen.dart` — mount `challenge_progress_card.dart` (best-effort hydrate on mount like the gym/nutrition cards).
 
 Add the leaderboard/challenge DTOs to `packages/core_models` only if the RPC return shape isn't 1:1 with a generated row (the leaderboard rows aren't a table, so a hand model `ChallengeLeaderboardEntry` in core_models is expected).

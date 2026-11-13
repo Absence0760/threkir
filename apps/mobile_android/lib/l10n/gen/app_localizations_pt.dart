@@ -5089,6 +5089,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get feedEveryoneYouFollow => 'Todos que segue';
 
   @override
+  String get feedFilterAuthor => 'Atividade de';
+
+  @override
   String get feedRunnerFallback => 'Corredor';
 
   @override
@@ -5673,7 +5676,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get socialTabRoutes => 'Rotas';
 
   @override
-  String get socialTabDiscover => 'Descobrir';
+  String get socialTabEvents => 'Eventos';
 
   @override
   String get discoverSearchPlaceholder => 'Procurar aulas, clubes…';
@@ -18180,6 +18183,17 @@ class AppLocalizationsPt extends AppLocalizations {
       'Abra o perfil de um corredor e toque em Mensagem para iniciar uma conversa.';
 
   @override
+  String get messagesNewMessage => 'Nova mensagem';
+
+  @override
+  String get messagesNewMessageNobody =>
+      'Ainda não há ninguém a quem enviar mensagem. Pode enviar mensagem a quem segue ou a quem o segue.';
+
+  @override
+  String get messagesNewMessageLoadFailed =>
+      'Não foi possível carregar as pessoas a quem pode enviar mensagem.';
+
+  @override
   String get messagesLoadError =>
       'Não foi possível carregar as suas conversas.';
 
@@ -27646,6 +27660,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get feedEveryoneYouFollow => 'Todos que você segue';
 
   @override
+  String get feedFilterAuthor => 'Atividade de';
+
+  @override
   String get feedRunnerFallback => 'Corredor';
 
   @override
@@ -28229,7 +28246,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get socialTabRoutes => 'Rotas';
 
   @override
-  String get socialTabDiscover => 'Descobrir';
+  String get socialTabEvents => 'Eventos';
 
   @override
   String get discoverSearchPlaceholder => 'Buscar aulas, clubes…';
@@ -40723,6 +40740,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get messagesEmptyBody =>
       'Abra o perfil de um corredor e toque em Mensagem para começar uma conversa.';
+
+  @override
+  String get messagesNewMessage => 'Nova mensagem';
+
+  @override
+  String get messagesNewMessageNobody =>
+      'Ainda não há ninguém para quem enviar mensagem. Você pode enviar mensagem para quem você segue ou quem segue você.';
+
+  @override
+  String get messagesNewMessageLoadFailed =>
+      'Não foi possível carregar as pessoas para quem você pode enviar mensagem.';
 
   @override
   String get messagesLoadError => 'Não foi possível carregar suas conversas.';

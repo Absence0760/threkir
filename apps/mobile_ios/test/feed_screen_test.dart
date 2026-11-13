@@ -4,7 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show AppInsets, ListSkeleton;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/adaptive_width.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -506,9 +506,9 @@ void main() {
         ),
       );
       await _settle(tester);
-      // 1280dp surface, 720dp column, minus the list's 12dp side padding.
+      // 1280dp surface, 720dp column, minus the list's 16dp page gutter.
       expect(tester.getSize(find.byType(Card).first).width,
-          kContentMaxWidth - 24);
+          kContentMaxWidth - 2 * AppInsets.gutter);
     });
 
     testWidgets('compact surface keeps the feed card full width',
@@ -524,8 +524,9 @@ void main() {
         ),
       );
       await _settle(tester);
-      // 400dp surface minus the list's 12dp side padding.
-      expect(tester.getSize(find.byType(Card).first).width, 400 - 24);
+      // 400dp surface minus the list's 16dp page gutter.
+      expect(tester.getSize(find.byType(Card).first).width,
+          400 - 2 * AppInsets.gutter);
     });
   });
 }

@@ -396,15 +396,24 @@ class _FakeApi extends ApiClient {
           {int limit = 50}) async =>
       const [];
 
+  /// The follow graph the inbox's New message offers.
+  List<UserProfileRow> followers = const [];
+  List<UserProfileRow> following = const [];
+  Object? followsError;
+
   @override
   Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
-          {int limit = 20, List<Object?>? after}) async =>
-      const KeysetPage(<UserProfileRow>[], null);
+      {int limit = 20, List<Object?>? after}) async {
+    if (followsError != null) throw followsError!;
+    return KeysetPage(followers, null);
+  }
 
   @override
   Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 20, List<Object?>? after}) async =>
-      const KeysetPage(<UserProfileRow>[], null);
+      {int limit = 20, List<Object?>? after}) async {
+    if (followsError != null) throw followsError!;
+    return KeysetPage(following, null);
+  }
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async =>
@@ -2916,6 +2925,97 @@ void main() {
       await pumpInbox(tester, api);
       expect(find.text(l10n.messagesPhotoPreview), findsOneWidget);
       expect(find.text(l10n.messagesUnsentPlaceholder), findsNothing);
+    });
+  });
+
+  group('New message (issue #1374)', () {
+    UserProfileRow person(String id, String name) => UserProfileRow(
+        profilePrivate: false, shadowHidden: false, id: id, displayName: name);
+
+    Future<void> openSheet(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('inbox-new-message')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('the inbox offers New message, and so does an empty inbox',
+        (tester) async {
+      final api = _FakeApi();
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('inbox-new-message')), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, l10n.messagesNewMessage),
+          findsOneWidget);
+    });
+
+    testWidgets('a signed-out inbox offers none', (tester) async {
+      final api = _FakeApi(signedIn: false);
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('inbox-new-message')), findsNothing);
+    });
+
+    testWidgets('it lists the follow graph and starts a thread with the one '
+        'picked', (tester) async {
+      final api = _FakeApi()
+        ..following = [person('p-9', 'Ada Lovelace')]
+        ..followers = [person('p-8', 'Grace Hopper')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      await openSheet(tester);
+
+      expect(find.text(l10n.messagesNewMessage), findsWidgets);
+      expect(find.text('Grace Hopper'), findsOneWidget);
+      await tester.tap(find.text('Ada Lovelace'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final thread =
+          tester.widget<MessageThreadScreen>(find.byType(MessageThreadScreen));
+      expect(thread.partnerId, 'p-9');
+    });
+
+    testWidgets('picking someone already in a conversation opens that one',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Bo')]
+        ..following = [person('p-1', 'Bo')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      await openSheet(tester);
+      await tester.tap(find.byKey(const ValueKey('new-message-p-1')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final thread =
+          tester.widget<MessageThreadScreen>(find.byType(MessageThreadScreen));
+      expect(thread.conversationId, 'c-p-1');
+    });
+
+    testWidgets('a failed follow read says so with Retry, never "nobody"',
+        (tester) async {
+      final api = _FakeApi()..followsError = Exception('offline');
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      await openSheet(tester);
+
+      expect(find.text(l10n.messagesNewMessageLoadFailed), findsOneWidget);
+      expect(find.text(l10n.messagesNewMessageNobody), findsNothing);
+
+      api.followsError = null;
+      api.following = [person('p-9', 'Ada Lovelace')];
+      await tester.tap(find.text(l10n.errorStateRetry));
+      await tester.pump();
+      expect(find.text('Ada Lovelace'), findsOneWidget);
+    });
+
+    testWidgets('nobody to message says how to get someone', (tester) async {
+      final api = _FakeApi();
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      await openSheet(tester);
+      expect(find.text(l10n.messagesNewMessageNobody), findsOneWidget);
     });
   });
 }

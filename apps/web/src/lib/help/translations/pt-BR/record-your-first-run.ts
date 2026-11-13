@@ -48,7 +48,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Para terminar, pressione e segure o botão de parar. A dica diz **Segure para parar**, para que um toque acidental no bolso não encerre a corrida.',
 						'O resumo **Corrida concluída** mostra sua distância, o **Tempo**, o tempo **Em movimento**, o ritmo e as outras estatísticas que o seu celular mediu.',
-						'Toque em **Concluído** para voltar à tela inicial.',
+						'Toque em **Pronto** para voltar à tela inicial.',
 					],
 				},
 			],

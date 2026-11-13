@@ -813,11 +813,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardTrendGroupVolumeHint => 'Quanto correu, semana a semana';
 
   @override
-  String get dashboardTrendGroupFitness => 'Condição física e forma';
+  String get dashboardTrendGroupFitness => 'Condicionamento e forma';
 
   @override
   String get dashboardTrendGroupFitnessHint =>
-      'Prontidão, condição física e carga de treino';
+      'Prontidão, condicionamento e carga de treino';
 
   @override
   String get dashboardTrendGroupPerformance => 'Desempenho';
@@ -6840,7 +6840,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planNewAiAppliedRecent5k =>
-      'O seu tempo de 5 km foi adicionado, mas não confirmado. Marque a caixa apenas se refletir a sua forma atual.';
+      'O seu tempo de 5 km foi adicionado, mas não confirmado. Marque a caixa apenas se refletir o seu condicionamento atual.';
 
   @override
   String planNewAiRaceApplied(String date) {
@@ -7988,7 +7988,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlan =>
-      'O plano ou os planos de treino que selecionou: para cada plano, o nome, o estado, a prova-alvo e o tempo-alvo, o tempo recente de 5K e a pontuação de forma física a partir dos quais foi criado, as datas, os dias de treino, as regras e as notas; a fase, a distância-alvo e as notas de cada semana; e a data, o tipo, as metas, a estrutura, as notas, o nome da prova e a prioridade de cada treino, e se o concluiu ou ignorou, além das metas de frequência cardíaca (apenas se tiver dado o consentimento de dados de saúde).';
+      'O plano ou os planos de treino que selecionou: para cada plano, o nome, o estado, a prova-alvo e o tempo-alvo, o tempo recente de 5K e a pontuação de condicionamento a partir dos quais foi criado, as datas, os dias de treino, as regras e as notas; a fase, a distância-alvo e as notas de cada semana; e a data, o tipo, as metas, a estrutura, as notas, o nome da prova e a prioridade de cada treino, e se o concluiu ou ignorou, além das metas de frequência cardíaca (apenas se tiver dado o consentimento de dados de saúde).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -10449,7 +10449,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get periodShareStatAvgPace => 'RITMO MÉDIO';
 
   @override
-  String get trainingLoadTitle => 'Forma, Fadiga e Frescor';
+  String get trainingLoadTitle => 'Condicionamento, fadiga e forma';
 
   @override
   String trainingLoadSubtitleHr(int days) {
@@ -10465,16 +10465,16 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get trainingLoadEmpty =>
-      'Grave algumas corridas para ver a sua tendência de forma.';
+      'Grave algumas corridas para ver a tendência do seu condicionamento.';
 
   @override
-  String get trainingLoadLegendFitness => 'Forma';
+  String get trainingLoadLegendFitness => 'Condicionamento';
 
   @override
   String get trainingLoadLegendFatigue => 'Fadiga';
 
   @override
-  String get trainingLoadLegendForm => 'Frescor';
+  String get trainingLoadLegendForm => 'Forma';
 
   @override
   String trainingLoadLegendEntry(String label, int value) {
@@ -10542,31 +10542,31 @@ class AppLocalizationsPt extends AppLocalizations {
   String get mileageThisYear => 'este ano';
 
   @override
-  String get fitnessTitle => 'Forma';
+  String get fitnessTitle => 'Condicionamento';
 
   @override
   String get fitnessStatVo2Max => 'VO₂ máx';
 
   @override
   String get fitnessStatVo2MaxTooltip =>
-      'O seu motor aeróbico: quanto oxigénio o seu corpo consegue utilizar por minuto. Quanto maior, melhor a forma.';
+      'O seu motor aeróbico: quanto oxigénio o seu corpo consegue utilizar por minuto. Quanto maior, melhor o condicionamento.';
 
   @override
   String get fitnessStatVdot => 'VDOT';
 
   @override
   String get fitnessStatVdotTooltip =>
-      'A pontuação de forma de Daniels com base no seu melhor esforço recente. Define os seus ritmos de treino.';
+      'A pontuação de condicionamento de Daniels com base no seu melhor esforço recente. Define os seus ritmos de treino.';
 
   @override
   String get fitnessStatRuns => 'Corridas';
 
   @override
   String get fitnessStatRunsTooltip =>
-      'Corridas recentes longas o suficiente para contar na sua estimativa de forma.';
+      'Corridas recentes longas o suficiente para contar na sua estimativa de condicionamento.';
 
   @override
-  String get fitnessStatCtl => 'Forma (CTL)';
+  String get fitnessStatCtl => 'Condicionamento (CTL)';
 
   @override
   String get fitnessStatCtlTooltip =>
@@ -10580,11 +10580,11 @@ class AppLocalizationsPt extends AppLocalizations {
       'A sua carga dos últimos 7 dias. Sobe rápido após sessões difíceis e cai com o descanso.';
 
   @override
-  String get fitnessStatTsb => 'Frescor (TSB)';
+  String get fitnessStatTsb => 'Forma (TSB)';
 
   @override
   String get fitnessStatTsbTooltip =>
-      'Forma menos fadiga. Positivo = descansado e pronto para competir; negativo = com fadiga acumulada.';
+      'Condicionamento menos fadiga. Positivo = descansado e pronto para competir; negativo = com fadiga acumulada.';
 
   @override
   String get runSocialActivity => 'Atividade';
@@ -17460,6 +17460,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'A sua média semanal nas últimas $weeks semanas: $avg',
       one: 'Semana passada: $avg',
+      zero: 'A sua média semanal: $avg',
     );
     return '$_temp0';
   }
@@ -19967,6 +19968,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'As últimas $n semanas repetem-se a partir da próxima semana.',
       one: 'Esta semana repete-se na próxima semana.',
+      zero: 'Nenhuma semana se repete.',
     );
     return '$_temp0';
   }
@@ -20427,7 +20429,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser.';
+      'Os seus números de condicionamento, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser.';
 
   @override
   String get dashboardTrainingLoadSectionAction => 'Alterar o nível de detalhe';
@@ -21379,6 +21381,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other: 'Mapa dos $n percursos do parque',
       one: 'Mapa do percurso do parque',
+      zero: 'Mapa do parque, sem percursos',
     );
     return '$_temp0';
   }
@@ -22502,7 +22505,7 @@ class AppLocalizationsPt extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count convites enviados',
-      one: 'Convite enviado',
+      one: '$count convite enviado',
     );
     return '$_temp0';
   }
@@ -24837,7 +24840,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runSyncing => 'Sincronizando…';
 
   @override
-  String get runDone => 'Concluído';
+  String get runDone => 'Pronto';
 
   @override
   String get runDiscardA11yLabel => 'Descartar corrida';
@@ -30458,7 +30461,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutMarkDone => 'Marcar como concluído';
 
   @override
-  String get workoutMarkNotDone => 'Marcar como não feito';
+  String get workoutMarkNotDone => 'Marcar como não concluído';
 
   @override
   String get workoutUpdateError =>
@@ -32241,7 +32244,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get gearRotationDone => 'Concluído';
+  String get gearRotationDone => 'Pronto';
 
   @override
   String gearRotationNextUp(String name) {
@@ -33064,7 +33067,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get periodShareStatAvgPace => 'RITMO MÉDIO';
 
   @override
-  String get trainingLoadTitle => 'Forma, Fadiga e Frescor';
+  String get trainingLoadTitle => 'Condicionamento, fadiga e forma';
 
   @override
   String trainingLoadSubtitleHr(int days) {
@@ -33080,16 +33083,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadEmpty =>
-      'Grave algumas corridas para ver sua tendência de forma.';
+      'Grave algumas corridas para ver a tendência do seu condicionamento.';
 
   @override
-  String get trainingLoadLegendFitness => 'Forma';
+  String get trainingLoadLegendFitness => 'Condicionamento';
 
   @override
   String get trainingLoadLegendFatigue => 'Fadiga';
 
   @override
-  String get trainingLoadLegendForm => 'Frescor';
+  String get trainingLoadLegendForm => 'Forma';
 
   @override
   String trainingLoadLegendEntry(String label, int value) {
@@ -33157,31 +33160,31 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get mileageThisYear => 'este ano';
 
   @override
-  String get fitnessTitle => 'Forma';
+  String get fitnessTitle => 'Condicionamento';
 
   @override
   String get fitnessStatVo2Max => 'VO₂ máx';
 
   @override
   String get fitnessStatVo2MaxTooltip =>
-      'Seu motor aeróbico: quanto oxigênio seu corpo consegue usar por minuto. Quanto maior, melhor a forma.';
+      'Seu motor aeróbico: quanto oxigênio seu corpo consegue usar por minuto. Quanto maior, melhor o condicionamento.';
 
   @override
   String get fitnessStatVdot => 'VDOT';
 
   @override
   String get fitnessStatVdotTooltip =>
-      'A pontuação de forma de Daniels com base no seu melhor esforço recente. Define seus ritmos de treino.';
+      'A pontuação de condicionamento de Daniels com base no seu melhor esforço recente. Define seus ritmos de treino.';
 
   @override
   String get fitnessStatRuns => 'Corridas';
 
   @override
   String get fitnessStatRunsTooltip =>
-      'Corridas recentes longas o suficiente para contar na sua estimativa de forma.';
+      'Corridas recentes longas o suficiente para contar na sua estimativa de condicionamento.';
 
   @override
-  String get fitnessStatCtl => 'Forma (CTL)';
+  String get fitnessStatCtl => 'Condicionamento (CTL)';
 
   @override
   String get fitnessStatCtlTooltip =>
@@ -33195,11 +33198,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Sua carga dos últimos 7 dias. Sobe rápido após sessões difíceis e cai com o descanso.';
 
   @override
-  String get fitnessStatTsb => 'Frescor (TSB)';
+  String get fitnessStatTsb => 'Forma (TSB)';
 
   @override
   String get fitnessStatTsbTooltip =>
-      'Forma menos fadiga. Positivo = descansado e pronto para competir; negativo = com fadiga acumulada.';
+      'Condicionamento menos fadiga. Positivo = descansado e pronto para competir; negativo = com fadiga acumulada.';
 
   @override
   String get runSocialActivity => 'Atividade';
@@ -34169,7 +34172,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get todaysWorkoutDone => 'FEITO HOJE';
+  String get todaysWorkoutDone => 'CONCLUÍDO HOJE';
 
   @override
   String get todaysWorkoutToday => 'TREINO DE HOJE';
@@ -36558,7 +36561,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get gymReviewVerdictCompleted => 'Concluída';
 
   @override
-  String get gymReviewVerdictPartial => 'Parcialmente feita';
+  String get gymReviewVerdictPartial => 'Parcialmente concluída';
 
   @override
   String get gymReviewVerdictAbandoned => 'Abandonada';
@@ -36584,7 +36587,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get sessionRunDone => 'Feito';
+  String get sessionRunDone => 'Concluído';
 
   @override
   String get sessionRunSkip => 'Pular';
@@ -36629,7 +36632,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get sessionRunVerdictCompleted => 'Concluída';
 
   @override
-  String get sessionRunVerdictPartial => 'Parcialmente feita';
+  String get sessionRunVerdictPartial => 'Parcialmente concluída';
 
   @override
   String get sessionRunVerdictAbandoned => 'Abandonada';
@@ -36931,7 +36934,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String coachingAthleteDoneCount(int done, int total) {
-    return '$done de $total feitos';
+    return '$done de $total concluídos';
   }
 
   @override
@@ -36940,7 +36943,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get coachingAthleteStatusDone => 'Feito';
+  String get coachingAthleteStatusDone => 'Concluído';
 
   @override
   String get coachingAthleteStatusMissed => 'Perdido';
@@ -39524,7 +39527,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get loadRampMeaningLow =>
-      'Você está correndo abaixo da sua base recente. Ok para um polimento ou semana de recuperação; se durar, é perda de forma.';
+      'Você está correndo abaixo da sua base recente. Ok para um polimento ou semana de recuperação; se durar, é perda de condicionamento.';
 
   @override
   String get loadRampMeaningOptimal =>
@@ -40072,6 +40075,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other: 'Sua média semanal nas últimas $weeks semanas: $avg',
       one: 'Semana passada: $avg',
+      zero: 'Sua média semanal: $avg',
     );
     return '$_temp0';
   }
@@ -41137,7 +41141,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get routeDetailSendDmOpenThread => 'Abrir conversa';
 
   @override
-  String get routeDetailSendDmDone => 'Concluído';
+  String get routeDetailSendDmDone => 'Pronto';
 
   @override
   String get runPhotosRaceGalleryShow => 'Mostrar na página da prova';
@@ -41862,7 +41866,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String planDetailWeekDoneCount(int done, int total) {
-    return '$done / $total feitos';
+    return '$done / $total concluídos';
   }
 
   @override
@@ -42244,7 +42248,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailGoalTimeRepaceHint =>
-      'Alterar recalcula os ritmos-alvo dos treinos que ainda faltam. Os passados, feitos e ignorados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
+      'Alterar recalcula os ritmos-alvo dos treinos que ainda faltam. Os passados, concluídos e ignorados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
 
   @override
   String get planDetailNotesLabel => 'Notas';
@@ -42490,7 +42494,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get phoneSurfaceWidgetRestDay => 'Dia de descanso';
 
   @override
-  String get phoneSurfaceWidgetDone => 'Feito';
+  String get phoneSurfaceWidgetDone => 'Concluído';
 
   @override
   String get phoneSurfaceWidgetSkipped => 'Ignorado';
@@ -42576,6 +42580,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other: 'As últimas $n semanas se repetem a partir da próxima semana.',
       one: 'Esta semana se repete na próxima semana.',
+      zero: 'Nenhuma semana se repete.',
     );
     return '$_temp0';
   }
@@ -42684,7 +42689,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailRepeatWeekOfferBody =>
-      'Repita esta semana na próxima. O que você já fez continua feito, e o resto do plano é adiado em uma semana.';
+      'Repita esta semana na próxima. O que você já concluiu continua concluído, e o resto do plano é adiado em uma semana.';
 
   @override
   String planDetailRepeatWeekConfirmTitle(int n) {
@@ -42725,7 +42730,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailRepeatWeekInTheWay =>
-      'Uma semana que seria adiada tem uma prova ou um treino já feito, então esta semana não pode ser repetida.';
+      'Uma semana que seria adiada tem uma prova ou um treino já concluído, então esta semana não pode ser repetida.';
 
   @override
   String get planDetailRepeatWeekLastWeek =>
@@ -42798,7 +42803,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String planRecapSessionsPct(int pct) {
-    return '$pct% feito';
+    return '$pct% concluído';
   }
 
   @override
@@ -42864,7 +42869,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get planRecapRaceDnf => 'Não terminou';
 
   @override
-  String get planRecapRaceNoRun => 'Marcada como feita, sem corrida vinculada';
+  String get planRecapRaceNoRun =>
+      'Marcada como concluída, sem corrida vinculada';
 
   @override
   String get planRecapRaceNotRun => 'Nenhuma corrida no dia da prova';
@@ -43989,6 +43995,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other: 'Mapa dos $n percursos do parque',
       one: 'Mapa do percurso do parque',
+      zero: 'Mapa do parque, sem percursos',
     );
     return '$_temp0';
   }
@@ -45108,7 +45115,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other: '$count convites enviados',
-      one: 'Convite enviado',
+      one: '$count convite enviado',
     );
     return '$_temp0';
   }
@@ -45216,7 +45223,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get filterBarDone => 'Concluído';
+  String get filterBarDone => 'Pronto';
 
   @override
   String get filterBarSurface => 'Superfície';

@@ -61,9 +61,12 @@ House vocabulary (verified in both catalogues): `salvar`, `registrar` /
 ## Plurals
 
 `one` covers **0 and 1** (CLDR `pt`, on both platforms). Never write a
-literal `1` in a `one` branch — 11 mobile strings already do (e.g.
-`importFailuresHeading`), rendering "1 …" for 0. Use `{count}` (ARB) /
-`#` (web).
+literal `1` in a `one` branch (it renders "1 …" for 0). Use `{count}` (ARB)
+/ `#` (web). And when the plural is the **whole message**, its `one` branch
+must name the count ("{count} convite enviado") or the plural must carry an
+`=0{…}` branch: a count-free "Convite enviado" is what 0 renders. A plural
+inside a longer sentence is agreement and stays as it is. Both rules are
+guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 
 ## Running glossary (what the catalogues already use)
 
@@ -81,10 +84,12 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | elevation gain | **Ganho de elevação** (web); "Subida" (mobile) | `runStatElevation` "Elevação" |
 | heart rate / HR | Frequência cardíaca / FC | |
 | heart rate zone | Zonas de frequência cardíaca | |
+| fitness / fatigue / form (training load: CTL / ATL / TSB) | **Condicionamento** / **Fadiga** / **Forma** — "Condicionamento, fadiga e forma", "Condicionamento (CTL)", "Forma (TSB)", "condicionamento − fadiga". *Fitness* in its everyday sense ("reflete seu condicionamento atual", VDOT "pontuação de condicionamento") takes the same word, as the English does; same terms as pt-PT | settled 2026-11-12; never "forma" / "forma física" for fitness ("Quanto maior, melhor o condicionamento"), never "Frescor" for form. The idiom "Manter a forma" (*stay fit*, `setupGoalGeneralFitness`) is not the noun and stays. The *Fitness* destination (`navFitness`) stays "Fitness" |
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
 | race | **Prova** (workout kind, run source); "Corridas" in nav, tabs and `races.title` | collides with *run* — inconsistency 1 |
 | finish | Chegada (finish line); Concluído (status); Concluir (mobile) / Finalizar (web) action | |
+| Done | By what it does. A button that **closes** a sheet, a dialog, a selection mode or a finished screen is **Pronto** (`filterBarDone`, `runDone`, `coachShare.done`, `runs.done`). A **status** — a workout, a step or a goal that is done — is **Concluído / concluída / concluídos** (`dash.doneBadge`, `coachingAthleteStatusDone`, the widget's done state, the onboarding rail's last step), and so is a button that records a step as done (`session.run.done`); "Mark as done / not done" is "Marcar como concluído / não concluído", "{done} de {total} concluídos", "{pct}% concluído" | settled 2026-11-12; never "Feito" / "feitos" for the status, never "Concluído" for a button that only closes. Not a status, so kept: `gymRoutineHistoryLastDone` "Feita hoje / ontem" (the routine was *performed* then) |
 | DNF | DNF; "Não concluiu" (web `checkpoint.statusDnf`) | |
 | route | Rota / Rotas; percurso for a course | |
 | segment | Segmento / Segmentos | |

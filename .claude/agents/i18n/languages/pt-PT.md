@@ -87,8 +87,13 @@ House vocabulary (verified in both catalogues): `registar` / `registo`
 Web `pt-PT` uses `Intl.PluralRules('pt-PT')`: `one` = exactly 1. The
 phone resolves `app_pt.arb` through intl's **`pt`** rule (its localeName
 is `pt`), where `one` = **0 and 1**. So in mobile strings never write a
-literal `1` in a `one` branch — 11 already do (e.g. `importFailuresHeading`),
-rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
+literal `1` in a `one` branch (it renders "1 …" for 0). Use `{count}` (ARB)
+/ `#` (web). And when the plural is the **whole message**, its `one` branch
+must name the count ("{count} convite enviado") or the plural must carry an
+`=0{…}` branch: a count-free "Convite enviado" is what 0 renders. A plural
+inside a longer sentence is agreement and stays as it is. Write the web
+twin the same way so the two surfaces read alike. Both rules are guards
+(`l10n_parity_test.dart`, `messages_parity.test.ts`).
 
 ## Running glossary (what the catalogues already use)
 
@@ -106,6 +111,7 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | elevation gain | **Ganho de elevação** (web); "Subida" (mobile) | `runStatElevation` "Elevação" |
 | heart rate / HR | Frequência cardíaca / FC | |
 | heart rate zone | Zonas de frequência cardíaca | |
+| fitness / fatigue / form (training load: CTL / ATL / TSB) | **Condicionamento** / **Fadiga** / **Forma** — "Condicionamento, fadiga e forma", "Condicionamento (CTL)", "Forma (TSB)", "condicionamento − fadiga". *Fitness* in its everyday sense ("reflete o seu condicionamento atual", VDOT "pontuação de condicionamento") takes the same word, as the English does; same terms as pt-BR | settled 2026-11-12; never "forma física" / "condição física" / bare "Forma" for fitness, never "Frescor" / "frescura" for form. The idiom "Manter a forma" (*stay fit*, `setupGoalGeneralFitness`) is not the noun and stays. The *Fitness* destination (`navFitness`) stays "Fitness" |
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
 | race | **Prova** everywhere: workout kind, nav and tabs ("Provas"), `races.title` "Calendário de provas", race control ("Preparar prova", "Encerrar prova") | settled 2026-10-13; *corrida* is only ever a run, so the Runs and Races tabs no longer collide |

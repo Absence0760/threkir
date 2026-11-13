@@ -83,9 +83,7 @@
 		return d > 0 ? 'up' : 'down';
 	}
 	function sessionsText(n: number): string {
-		return n === 1
-			? t('gym.records.sessionsOne')
-			: t('gym.records.sessionsMany', { count: n });
+		return t('gym.records.sessions', { count: n });
 	}
 </script>
 

@@ -83,9 +83,7 @@
 			<p class="week-lead-value" data-testid="dash-week-lead-distance">
 				{formatDistance(lead.distanceM)}
 				<span class="week-lead-count">
-					{lead.count === 1
-						? m('dash.activityCountOne', { n: lead.count })
-						: m('dash.activityCountOther', { n: lead.count })}
+					{m('dash.activityCount', { n: lead.count })}
 				</span>
 			</p>
 		{/if}

@@ -851,7 +851,7 @@
 				<div class="lap-info">
 					<div class="lap-badge">
 						<span class="material-symbols">loop</span>
-						{laps.count === 1 ? m('routeNew.lapCountOne', { count: laps.count }) : m('routeNew.lapCountOther', { count: laps.count })}
+						{m('routeNew.lapCount', { count: laps.count })}
 					</div>
 					<span class="lap-detail">{m('routeNew.perLap', { distance: `${lapDisp.value.toFixed(2)} ${lapDisp.unit}` })}</span>
 				</div>

@@ -414,9 +414,7 @@
 
 			<div class="filter-meta">
 				<span>
-					{routes.length === 1
-						? m('routesPage.routeCountSingular', { shown: filteredRoutes.length, total: routes.length })
-						: m('routesPage.routeCountPlural', { shown: filteredRoutes.length, total: routes.length })}
+					{m('routesPage.routeCount', { shown: filteredRoutes.length, total: routes.length })}
 					{#if filtersActive}<span class="meta-sep"> · </span>{m('routesPage.filtered')}{/if}
 				</span>
 				{#if filtersActive}

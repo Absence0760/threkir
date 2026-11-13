@@ -351,7 +351,7 @@
 	{:else}
 		<aside class="heat-legend" data-testid="personal-heatmap-legend">
 			<strong>{m('personalHeatmap.legendTitle')}</strong>
-			<p>{trackCount === 1 ? m('personalHeatmap.legendSummaryOne', { n: trackCount }) : m('personalHeatmap.legendSummaryMany', { n: trackCount })}</p>
+			<p>{m('personalHeatmap.legendSummary', { n: trackCount })}</p>
 			<p class="visually-hidden">{m('personalHeatmap.srAltData')}</p>
 			<span
 				class="legend-scale"

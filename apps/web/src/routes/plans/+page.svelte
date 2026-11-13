@@ -179,7 +179,7 @@
 		const dayMs = 86_400_000;
 		if (today < start) {
 			const d = Math.round((start.getTime() - today.getTime()) / dayMs);
-			return d === 1 ? m('plansPage.startsTomorrow') : m('plansPage.startsInDays', { d });
+			return m('plansPage.startsIn', { d });
 		}
 		if (today.getTime() === end.getTime()) return m('plansPage.raceDay');
 		if (today > end) return m('plansPage.ended');

@@ -302,8 +302,8 @@ Representative web keys (`src/lib/i18n/locales/en.ts` template + de/fr/es/ja/pt-
 - `challenges.create`, `challenges.join`, `challenges.leave`, `challenges.joined`
 - `challenges.metricDistance`, `challenges.metricDuration`, `challenges.metricVert`, `challenges.metricActivityCount`, `challenges.metricStreak`
 - `challenges.scopeIndividual`, `challenges.scopeClubVsClub`, `challenges.scopeGroupGoal`
-- `challenges.goalProgress` (`"{value} of {goal}"`), `challenges.progressComplete`, `challenges.endsIn` (`"ends in {n} days"`), `challenges.leaderboardRank` (`"#{rank}"`)
-- `challenges.standingTitle` / `challenges.standingTitleTeam`, `challenges.standingRank` (`"#{rank} of {total}"`), `challenges.standingTiedOne` / `challenges.standingTiedMany`, `challenges.standingBehind` / `challenges.standingAhead` (`"{gap} behind|ahead of {name}"`), `challenges.standingLeading`
+- `challenges.goalProgress` (`"{value} of {goal}"`), `challenges.progressComplete`, `challenges.endsIn` (`{n, plural, =1 {Ends today} other {Ends in # days}}`), `challenges.leaderboardRank` (`"#{rank}"`)
+- `challenges.standingTitle` / `challenges.standingTitleTeam`, `challenges.standingRank` (`"#{rank} of {total}"`), `challenges.standingTied` (one ICU plural), `challenges.standingBehind` / `challenges.standingAhead` (`"{gap} behind|ahead of {name}"`), `challenges.standingLeading`
 - `challenges.completeNotification` (`"You completed {title}!"`), `challenges.badgeEarned`
 - `challenges.deleteConfirm`, `challenges.leaveConfirm`
 

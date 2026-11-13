@@ -132,7 +132,7 @@
 								{#if location}<span>{location}</span>{/if}
 								{#if club.memberCount !== null}
 									<span>
-										{m(club.memberCount === 1 ? 'socialClubs.memberCountOne' : 'socialClubs.memberCountMany', { n: club.memberCount })}
+										{m('socialClubs.memberCount', { n: club.memberCount })}
 									</span>
 								{/if}
 							</span>

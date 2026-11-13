@@ -79,7 +79,7 @@
 		<section class="script" aria-label={t('guidedDetail.cueScript')}>
 			<header class="script-head">
 				<h2>{t('guidedDetail.fullScript')}</h2>
-				<span class="cue-count">{t(run.cues.length === 1 ? 'guidedDetail.cueCountOne' : 'guidedDetail.cueCountMany', { n: run.cues.length })}</span>
+				<span class="cue-count">{t('guidedDetail.cueCount', { n: run.cues.length })}</span>
 			</header>
 			<ol class="timeline">
 				{#each run.cues as cue, i (cue.at_sec)}

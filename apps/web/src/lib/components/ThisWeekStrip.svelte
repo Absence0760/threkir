@@ -42,9 +42,7 @@
 		<span class="week-strip-total">
 			{fmtKm(week.totalDistanceM)}
 			<em>
-				· {week.totalCount === 1
-					? m('dash.activityCountOne', { n: week.totalCount })
-					: m('dash.activityCountOther', { n: week.totalCount })}
+				· {m('dash.activityCount', { n: week.totalCount })}
 			</em>
 		</span>
 	</div>

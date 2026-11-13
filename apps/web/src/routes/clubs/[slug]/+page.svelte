@@ -1031,7 +1031,7 @@
 				{/if}
 				<p class="members-line">
 					<span class="material-symbols" aria-hidden="true">group</span>
-					{tr(club.member_count === 1 ? 'clubHome.memberCountOne' : 'clubHome.memberCountMany', { n: club.member_count })}
+					{tr('clubHome.memberCount', { n: club.member_count })}
 				</p>
 				{#if club.viewer_role === 'owner'}
 					<p class="role-line">
@@ -1423,9 +1423,9 @@
 										{#if post.reply_count === 0}
 											{tr('clubHome.reply')}
 										{:else if expandedThreads[post.id]}
-											{tr(post.reply_count === 1 ? 'clubHome.hideRepliesOne' : 'clubHome.hideRepliesMany', { n: post.reply_count })}
+											{tr('clubHome.hideReplies', { n: post.reply_count })}
 										{:else}
-											{tr(post.reply_count === 1 ? 'clubHome.repliesCountOne' : 'clubHome.repliesCountMany', { n: post.reply_count })}
+											{tr('clubHome.repliesCount', { n: post.reply_count })}
 										{/if}
 									</button>
 								</div>

@@ -150,7 +150,7 @@
 	<p class="kicker">{kicker}</p>
 	<h1 class="bignum">{fmtKm(recap.totalDistanceM)}</h1>
 	<p class="subhead">
-		{t(recap.runCount === 1 ? 'recap.acrossRunsOne' : 'recap.acrossRunsMany', { n: recap.runCount })}
+		{t('recap.acrossRuns', { n: recap.runCount })}
 	</p>
 	<div class="hero-meta">
 		<span class="hero-meta-item">
@@ -167,9 +167,7 @@
 			<span class="hero-meta-item">
 				<span class="material-symbols">calendar_month</span>
 				{t(
-					recapActiveMonths(recap) === 1
-						? 'recap.activeInMonthsOne'
-						: 'recap.activeInMonthsMany',
+					'recap.activeInMonths',
 					{ n: recapActiveMonths(recap) }
 				)}
 			</span>
@@ -345,7 +343,7 @@
 				{@const pct = (m.distanceM / max) * 100}
 				<div
 					class="bar-col"
-					title={t(m.runCount === 1 ? 'recap.barTitleOne' : 'recap.barTitleMany', {
+					title={t('recap.barTitle', {
 						distance: fmtKm(m.distanceM),
 						n: m.runCount
 					})}

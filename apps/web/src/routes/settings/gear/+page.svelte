@@ -435,7 +435,7 @@
 		backfill = null;
 		if (count <= 0) return;
 		showToast(
-			t(count === 1 ? 'settingsGear.backfillAttachedOne' : 'settingsGear.backfillAttached', {
+			t('settingsGear.backfillAttached', {
 				name,
 				n: count,
 			}),
@@ -646,7 +646,7 @@
 							{/if}
 							<div class="gear-meta">
 								<span>{prog.label}</span>
-								<span class="muted">{t(g.run_count === 1 ? 'settingsGear.runCountOne' : 'settingsGear.runCountMany', { n: g.run_count })}</span>
+								<span class="muted">{t('settingsGear.runCount', { n: g.run_count })}</span>
 							</div>
 						</button>
 						<div class="gear-actions">
@@ -749,7 +749,7 @@
 							<div class="rotation-info">
 								<strong>{r.name}</strong>
 								<span class="muted">
-									{t(r.gear_ids.length === 1 ? 'settingsGear.rotationMemberCount' : 'settingsGear.rotationMemberCountMany', { n: r.gear_ids.length })}
+									{t('settingsGear.rotationMemberCount', { n: r.gear_ids.length })}
 								</span>
 								{#if next}
 									<div class="rotation-next" data-testid="rotation-next">

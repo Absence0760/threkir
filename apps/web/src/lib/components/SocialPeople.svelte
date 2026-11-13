@@ -214,10 +214,10 @@
 							<span class="person-handle">@{person.handle}</span>
 						{/if}
 						<span class="person-meta">
-							{m(person.public_runs_count === 1 ? 'socialPeople.publicRunsOne' : 'socialPeople.publicRunsMany', { n: person.public_runs_count })}
+							{m('socialPeople.publicRuns', { n: person.public_runs_count })}
 							{#if person.shared_clubs > 0}
 								<span class="dot">·</span>
-								{m(person.shared_clubs === 1 ? 'socialPeople.sharedClubsOne' : 'socialPeople.sharedClubsMany', { n: person.shared_clubs })}
+								{m('socialPeople.sharedClubs', { n: person.shared_clubs })}
 							{/if}
 						</span>
 					</div>

@@ -171,9 +171,7 @@
 	<PageHeader
 		title={t('gym.title')}
 		subtitle={!loading && workouts.length > 0
-			? workouts.length === 1
-				? t('gym.workoutsOne')
-				: t('gym.workoutsMany', { count: workouts.length })
+			? t('gym.workouts', { count: workouts.length })
 			: undefined}
 	>
 		{#snippet actions()}

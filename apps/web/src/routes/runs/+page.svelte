@@ -297,7 +297,7 @@
 		deleting = false;
 		if (failed.length === 0) {
 			showToast(
-				m(ids.length === 1 ? 'runs.deletedToastOne' : 'runs.deletedToastMany', { count: ids.length }),
+				m('runs.deletedToast', { count: ids.length }),
 				'success',
 			);
 			exitSelectMode();
@@ -1071,7 +1071,7 @@
 
 		<ConfirmDialog
 			open={showBulkConfirm}
-			title={m(selected.size === 1 ? 'runs.bulkConfirmTitleOne' : 'runs.bulkConfirmTitleMany', { count: selected.size })}
+			title={m('runs.bulkConfirmTitle', { count: selected.size })}
 			message={m('runs.bulkConfirmMessage')}
 			confirmLabel={m('runs.delete')}
 			danger

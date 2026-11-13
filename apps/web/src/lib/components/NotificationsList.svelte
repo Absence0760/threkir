@@ -140,9 +140,7 @@
 		const rows = [group.lead, ...group.others];
 		dismiss(
 			rows,
-			rows.length > 1
-				? m('notificationsList.dismissedMany', { count: rows.length })
-				: m('notificationsList.dismissed'),
+			m('notificationsList.dismissed', { count: rows.length }),
 		);
 	}
 

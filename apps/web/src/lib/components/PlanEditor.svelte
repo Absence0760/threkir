@@ -1385,7 +1385,7 @@
 								<span class="week-phase">{planPhaseLabel(w.phase)}</span>
 								<span class="week-km">{fmtKm(w.target_volume_m, 0)}</span>
 								<span class="week-workouts">
-									{t(sessionCount === 1 ? 'planEditor.nSessionsOne' : 'planEditor.nSessionsMany', { n: sessionCount })}
+									{t('planEditor.nSessions', { n: sessionCount })}
 								</span>
 								<span class="caret material-symbols" aria-hidden="true">
 									{expandedWeek === weekIdx ? 'expand_less' : 'expand_more'}

@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../l10n/date_format.dart';
 import '../activity_type_labels.dart';
@@ -51,9 +52,9 @@ class RunListTile extends StatelessWidget {
     this.isBlocked = false,
     this.selecting = false,
     this.selected = false,
-  })  : _run = run,
-        _row = null,
-        ownerUserId = null;
+  }) : _run = run,
+       _row = null,
+       ownerUserId = null;
 
   /// A run read from someone's profile — possibly not the viewer's. [ownerUserId]
   /// routes the thumbnail through the clipping Edge Function when it differs
@@ -65,13 +66,13 @@ class RunListTile extends StatelessWidget {
     required this.unit,
     required this.api,
     required this.onTap,
-  })  : _row = row,
-        _run = null,
-        onLongPress = null,
-        isUnsynced = false,
-        isBlocked = false,
-        selecting = false,
-        selected = false;
+  }) : _row = row,
+       _run = null,
+       onLongPress = null,
+       isUnsynced = false,
+       isBlocked = false,
+       selecting = false,
+       selected = false;
 
   final Run? _run;
   final RunRow? _row;
@@ -111,8 +112,7 @@ class RunListTile extends StatelessWidget {
   String? get _activityName =>
       _row?.activityType ?? _metadata?['activity_type'] as String?;
 
-  String? get _trackUrl =>
-      _row?.trackUrl ?? _metadata?['track_url'] as String?;
+  String? get _trackUrl => _row?.trackUrl ?? _metadata?['track_url'] as String?;
 
   List<Waypoint> get _inlineTrack => trackLine(_run?.track ?? const []);
 
@@ -159,19 +159,18 @@ class RunListTile extends StatelessWidget {
                     : theme.colorScheme.outline,
               )
             : hasInlineTrack
-                ? TrackPreview(points: _inlineTrack)
-                : (trackUrl != null && api != null)
-                    ? RunTrackPreview(
-                        runId: _id,
-                        trackUrl: trackUrl,
-                        api: api!,
-                        ownerUserId: ownerUserId,
-                      )
-                    : CircleAvatar(
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        child: Icon(activity.icon,
-                            color: theme.colorScheme.primary),
-                      ),
+            ? TrackPreview(points: _inlineTrack)
+            : (trackUrl != null && api != null)
+            ? RunTrackPreview(
+                runId: _id,
+                trackUrl: trackUrl,
+                api: api!,
+                ownerUserId: ownerUserId,
+              )
+            : CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Icon(activity.icon, color: theme.colorScheme.primary),
+              ),
       ),
     );
 
@@ -191,10 +190,12 @@ class RunListTile extends StatelessWidget {
     // The trailing metric is "{value} {unit}" — pivot on the last space so the
     // numeric reads as the hero and the unit as supporting metadata.
     final lastSpace = trailingMetric.lastIndexOf(' ');
-    final trailingValue =
-        lastSpace > 0 ? trailingMetric.substring(0, lastSpace) : trailingMetric;
-    final trailingUnit =
-        lastSpace > 0 ? trailingMetric.substring(lastSpace + 1) : '';
+    final trailingValue = lastSpace > 0
+        ? trailingMetric.substring(0, lastSpace)
+        : trailingMetric;
+    final trailingUnit = lastSpace > 0
+        ? trailingMetric.substring(lastSpace + 1)
+        : '';
 
     final syncMark = isBlocked
         ? Tooltip(
@@ -216,120 +217,106 @@ class RunListTile extends StatelessWidget {
           )
         : null;
 
-    // One node carrying the whole row: without excludeSemantics the texts
-    // and the sync tooltip below merged in after this label and TalkBack read
-    // the row twice (#1374 A11Y-9). The node keeps the row's actions.
-    return Semantics(
-      label: semanticsLabel,
-      button: true,
+    // One node carrying the whole row: without its own label the texts and
+    // the sync tooltip below were read after it and TalkBack read the row
+    // twice (#1374 A11Y-9). ListCard keeps the row's taps on that node.
+    return ListCard(
+      dense: true,
+      semanticLabel: semanticsLabel,
       selected: selected,
-      excludeSemantics: true,
       onTap: onTap,
       onLongPress: onLongPress,
-      child: Card(
-        color: selected
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
-            : null,
-        clipBehavior: Clip.antiAlias,
-        // Laid out by hand rather than as a ListTile: ListTile caps its
-        // trailing slot at 56 px whatever the text scale, so the stacked
-        // metric overflowed at 2x. This row grows with its content instead.
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 56),
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
+      // Its own anatomy rather than ListCard.row: the stacked trailing metric
+      // is capped and scaled down past the cap, so at 320 dp and 2x the
+      // distance beside it keeps its room (issue #1374).
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              leading,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    leading,
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                activity.icon,
-                                size: 18,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  dist,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              '$date  ·  $dur  ·  ${activityTypeLabel(l10n, activity).toLowerCase()}$vertLabel',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                    Row(
+                      children: [
+                        Icon(
+                          activity.icon,
+                          size: 18,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            dist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    // Capped, and scaled down past the cap: at 320 dp and 2x
-                    // the metric took all but 17 dp of the row and the
-                    // distance line beside it overflowed (issue #1374).
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: constraints.maxWidth * 0.3,
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  trailingValue,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                if (syncMark != null) ...[
-                                  const SizedBox(width: 6),
-                                  syncMark,
-                                ],
-                              ],
-                            ),
-                            if (trailingUnit.isNotEmpty)
-                              Text(
-                                trailingUnit,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                          ],
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '$date  ·  $dur  ·  ${activityTypeLabel(l10n, activity).toLowerCase()}$vertLabel',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(width: 16),
+              // Capped, and scaled down past the cap: at 320 dp and 2x
+              // the metric took all but 17 dp of the row and the
+              // distance line beside it overflowed (issue #1374).
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.3,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            trailingValue,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (syncMark != null) ...[
+                            const SizedBox(width: 6),
+                            syncMark,
+                          ],
+                        ],
+                      ),
+                      if (trailingUnit.isNotEmpty)
+                        Text(
+                          trailingUnit,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

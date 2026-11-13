@@ -209,7 +209,9 @@ class ListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tappable = onTap != null || onLongPress != null;
+    // A disabled card is still a button, one that cannot be pressed now.
+    final isButton = onTap != null || !enabled;
+    final tappable = isButton || onLongPress != null;
     final padding = _padding;
     final hasActions = actions.isNotEmpty;
 
@@ -241,8 +243,8 @@ class ListCard extends StatelessWidget {
       );
     }
     tapArea = Semantics(
-      button: onTap != null ? true : null,
-      enabled: onTap != null ? enabled : null,
+      button: isButton ? true : null,
+      enabled: isButton ? enabled : null,
       selected: selected ? true : null,
       label: semanticLabel,
       hint: semanticHint,

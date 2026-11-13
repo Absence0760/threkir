@@ -47,7 +47,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'iPhoneでは、**あなた**タブで**Pro とサポート**を開き、App Storeで登録します。',
-						'Webでは、設定で[[route:/settings/upgrade|Proとサポート]]を開きます。**ウェブでの登録は近日公開予定です。**と表示されている場合は、代わりにiPhoneアプリで登録してください。',
+						'Webでは、設定で[[route:/settings/upgrade|Proとサポート]]を開きます。**Webでの登録は近日公開予定です。**と表示されている場合は、代わりにiPhoneアプリで登録してください。',
 					],
 				},
 				{

@@ -119,6 +119,8 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | set up (a race created automatically before its start) | **設定される** (「レースはスタートの前日に設定されます」) | settled 2026-11-10; never 準備, which is *arm* |
 | self-timed (race) | **セルフタイム**; a self-timed race is 「セルフタイム方式のレース」, the window 「セルフタイム期間」 | settled 2026-11-10; never 「セルフ計測」 |
 | GO (the start signal) | **GO** — the host's button on the web and in the phone app, 「主催者のGO」「予約GO」; prose 「GOを出す」「GO待ち」「GOから」「GOの時点で」 | settled 2026-11-10; never スタート for the host's button or the signal. スタート stays for a runner's own record Start button and the time fields (「スタート時刻」「スタート：{when}」) |
+| park course / park | **公園コース** / **公園** everywhere, the share sticker and the badge names too (「公園コースのタイム」「走った公園」「公園パスポート」「公園の常連」); a proper name keeps its katakana (「セントラルパーク」) | settled 2026-11-13 (#1374 round 3 tail), web, mobile and help; never パークコース / パーク |
+| web (the platform) | **Web** (「Webで」「Webアプリ」「Webのイベントページ」「Webプッシュ」), and a web browser is just **ブラウザ** | settled 2026-11-13 (#1374 round 3 tail), web, mobile and help; never ウェブ for the platform. A website or web address (a URL) stays **ウェブサイト** / **ウェブアドレス** |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

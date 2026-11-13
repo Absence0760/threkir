@@ -180,6 +180,7 @@ twin the same way so the two surfaces read alike. Both rules are guards
 | self-timed (race) | **de tempo próprio** ("prova de tempo próprio", "Janela de tempo próprio") | settled 2026-11-10; never "com cronometragem própria" / "cronometrada por cada um" |
 | GO (the start signal) | **GO** — the button on the web and in the phone app, "GO do organizador", "GO agendado"; prose "dar o GO", "o GO", "depois do GO", "a aguardar o GO" | settled 2026-11-10; never "JÁ" / "Disparar o Go" for the button or "dar a partida" for the signal. *Partida* stays for the start line and the time fields ("linha de partida", "Hora da partida", "Partida às {when}") |
 | race on the Wear watch | "PROVA PREPARADA", "Prova encerrada", "Terminar prova", "Prova {clock}", "Prova DNF" | settled 2026-11-10; *corrida* only where the watch means a run ("Esta corrida é a minha tentativa") |
+| link (a URL: invite, share, calendar-feed, overlay, sign-in email) | **link** (masculine: "o link", "este link", "links partilhados") | settled 2026-11-13 (#1374 round 3 tail), web, mobile and help. **ligação** stays only for a connection: network ("Verifique a sua ligação"), a connected account ("a sua ligação ao Strava"), HTTPS, and an association between items (a workout linked to a run) |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

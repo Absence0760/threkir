@@ -43,7 +43,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"**Schnellste** ordnet jede Person nach ihrer besten Zeit auf der Strecke. Du erscheinst einmal, mit deinem besten Lauf.",
 						"Standardmäßig zeigt sie dieses Jahr. Wähle **Dieser Monat** für den bisherigen Monat oder **Gesamt** für die besten Zeiten aller Zeiten.",
-						"Filtere nach Geschlecht oder Altersklasse. Der Altersfilter enthält nur Personen, die dem Teilen von Gesundheitsdaten zugestimmt haben, daher kann er kürzer sein als die ganze Liste.",
+						"Filtere nach Geschlecht oder Altersklasse. Der Altersfilter enthält nur Personen, die ihre Einwilligung zu Gesundheitsdaten gegeben haben, daher kann er kürzer sein als die ganze Liste.",
 					],
 				},
 			],

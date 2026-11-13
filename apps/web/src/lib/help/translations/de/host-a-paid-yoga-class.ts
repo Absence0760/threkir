@@ -91,7 +91,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Plan beim Erstellen vergessen? Auf der Kursseite können Organisatoren über **An ein Kurs-Event anhängen** in der Karte **Session-Abfolge** später einen auswählen.',
+					text: 'Plan beim Erstellen vergessen? Auf der Kursseite können Veranstalter über **An ein Kurs-Event anhängen** in der Karte **Session-Abfolge** später einen auswählen.',
 				},
 			],
 		},

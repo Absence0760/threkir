@@ -126,7 +126,8 @@ void main() {
       if (label.startsWith('Routes →')) {
         final chip = find.widgetWithText(ChoiceChip, label.split(' → ').last);
         if (label.endsWith('→ Routes')) {
-          final explore = find.widgetWithText(ChoiceChip, 'Explore');
+          final explore = find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Explore'));
           await tester.ensureVisible(explore);
           await tester.tap(explore);
           await tester.pump();
@@ -234,7 +235,8 @@ void main() {
     await openTab(tester, 'Routes');
     expect(find.byKey(const ValueKey('routes-view-bar')), findsOneWidget);
     expect(find.byType(FilterBar), findsNWidgets(2));
-    final explore = find.widgetWithText(ChoiceChip, 'Explore');
+    final explore = find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Explore'));
     await tester.ensureVisible(explore);
     await tester.tap(explore);
     await tester.pump();

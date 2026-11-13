@@ -286,7 +286,8 @@ void main() {
 
     // Explore has no primary action, and its Segments chip keeps the Park
     // courses link in its control row.
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+    await tester.tap(find.descendant(
+          of: find.byKey(const Key('view-switch')), matching: find.text('Explore')));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(FloatingActionButton), findsNothing);

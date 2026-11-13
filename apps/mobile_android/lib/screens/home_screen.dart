@@ -40,6 +40,7 @@ import '../return_to_shell.dart';
 import '../run_stop_dock.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
+import '../shell_back.dart';
 import '../shell_page_controller.dart';
 import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
@@ -290,6 +291,9 @@ class _HomeScreenState extends State<HomeScreen>
   /// same widget instances instead of recreating them and relying on
   /// Flutter's reconciliation step.
   late List<Widget> _pages;
+
+  /// The pages' own Back handlers, asked before the shell navigates.
+  final _shellBack = ShellBack();
 
   @override
   void initState() {
@@ -1025,6 +1029,10 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     ];
+    _pages = [
+      for (var i = 0; i < _pages.length; i++)
+        ShellBackScope(back: _shellBack, page: i, child: _pages[i]),
+    ];
   }
 
   @override
@@ -1111,6 +1119,9 @@ class _HomeScreenState extends State<HomeScreen>
   /// mid-run (issue #490), which makes back the one gesture still available
   /// there, and it would have taken the session with it.
   Future<void> _onSystemBack(int index, bool recording) async {
+    // The page showing gets Back first: a Runs or Routes selection closes
+    // and the runner stays where they are (issue #1374 NS-2, NS-3).
+    if (_shellBack.consume(index)) return;
     if (index != _pageHome) {
       _goToPage(_pageHome);
       return;

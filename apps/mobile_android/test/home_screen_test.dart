@@ -32,6 +32,7 @@ import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/unread_messages.dart';
 import '../lib/widgets/gym_summary_card.dart';
+import '../lib/widgets/run_list_tile.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/confirm_age_screen.dart';
@@ -1795,6 +1796,83 @@ void main() {
 
       expect(shellPage(tester), 0, reason: 'back moves toward Home');
       expect(exits, isEmpty, reason: 'back from a tab must not close the app');
+    });
+
+    // Issue #1374 NS-2: Runs' own PopScope cleared the selection while the
+    // shell's moved to Home in the same press, and a selection left on a
+    // hidden tab ate Back on Home.
+    testWidgets('back in Runs select mode closes the selection and stays',
+        (tester) async {
+      final s = await _makeStores();
+      await tester.runAsync(() async {
+        await s.runStore.save(cm.Run(
+          id: 'run-select',
+          // Today, so the list's default this-week range shows it.
+          startedAt: DateTime.now(),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          track: const [],
+          source: cm.RunSource.app,
+        ));
+      });
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await goToFitness(tester);
+      final selectable = find.byType(RunListTile);
+      await pumpUntil(tester, () => selectable.evaluate().isNotEmpty,
+          describe: 'the run row');
+      await tester.longPress(selectable.first);
+      await tester.pump();
+      final selection = find.textContaining('selected');
+      expect(selection, findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(selection, findsNothing, reason: 'Back closes the selection');
+      expect(shellPage(tester), 1, reason: 'and the runner stays on the tab');
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(shellPage(tester), 0);
+      expect(exits, isEmpty);
+      tester.takeException();
+    });
+
+    testWidgets('a selection on a hidden tab does not swallow Back on Home',
+        (tester) async {
+      final s = await _makeStores();
+      await tester.runAsync(() async {
+        await s.runStore.save(cm.Run(
+          id: 'run-hidden',
+          // Today, so the list's default this-week range shows it.
+          startedAt: DateTime.now(),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          track: const [],
+          source: cm.RunSource.app,
+        ));
+      });
+      await _pump(tester, s);
+      final exits = watchAppExit(tester);
+      await goToFitness(tester);
+      final selectable = find.byType(RunListTile);
+      await pumpUntil(tester, () => selectable.evaluate().isNotEmpty,
+          describe: 'the run row');
+      await tester.longPress(selectable.first);
+      await tester.pump();
+      expect(find.textContaining('selected'), findsOneWidget);
+
+      // Leave the selection standing on the kept-alive Runs tab.
+      await tester.tap(find.text('Home').last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(shellPage(tester), 0);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(exits, ['SystemNavigator.pop'],
+          reason: 'Back on Home is Home\'s, whatever a hidden tab holds');
+      tester.takeException();
     });
 
     testWidgets('back from Home exits the app', (tester) async {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../fab_clearance.dart';
+import '../shell_back.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../social_service.dart';
@@ -112,9 +113,13 @@ class SocialScreen extends StatefulWidget {
 }
 
 class _SocialScreenState extends State<SocialScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, ShellBackHandler {
   late final TabController _controller;
   final _actions = HubPrimaryActions();
+
+  /// Back goes to the showing tab first.
+  @override
+  bool handleShellBack() => _actions.consumeBack(_tab.value);
 
   late final ValueNotifier<SocialTab> _tab =
       widget.selectedTab ?? ValueNotifier(widget.initialTab);

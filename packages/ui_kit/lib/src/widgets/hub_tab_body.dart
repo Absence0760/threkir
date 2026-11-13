@@ -65,6 +65,33 @@ class HubPrimaryActions extends ChangeNotifier {
 
   PrimaryAction? of(Object tab) => _actions[tab];
 
+  /// Back handlers by tab, each keyed by the body that registered it, so a
+  /// tab with several bodies (Routes' views) never has one clear another's.
+  final Map<Object, Map<Object, VoidCallback>> _back = {};
+
+  /// Registers (or with null, withdraws) [owner]'s Back handler for [tab]. A
+  /// body registers one while it has something Back should undo first, such
+  /// as a selection.
+  void registerBack(Object tab, Object owner, VoidCallback? onBack) {
+    if (onBack == null) {
+      final forTab = _back[tab];
+      forTab?.remove(owner);
+      if (forTab != null && forTab.isEmpty) _back.remove(tab);
+      return;
+    }
+    (_back[tab] ??= {})[owner] = onBack;
+  }
+
+  /// Gives Back to [tab]'s body, if it has something to undo. True when it
+  /// was used, so the hub's host must not also navigate (issue #1374 NS-2,
+  /// NS-3: Back in select mode cleared the selection AND left the tab).
+  bool consumeBack(Object tab) {
+    final handlers = _back[tab];
+    if (handlers == null || handlers.isEmpty) return false;
+    handlers.values.last();
+    return true;
+  }
+
   /// Stores [action] for [tab]. Notifies only when the button would look
   /// different, so a body that rebuilds with a fresh closure every frame does
   /// not rebuild the hub every frame; the stored action is still the latest,
@@ -210,21 +237,41 @@ class _HubTabBodyState extends State<HubTabBody> {
         _scope != null &&
         (scope?.tab != _scope!.tab || scope?.actions != _scope!.actions)) {
       _withdraw(_scope!);
+      _scope!.actions.registerBack(_scope!.tab, this, null);
     }
     _scope = scope;
+    if (scope != null) _registerBack(scope);
     _publish();
   }
 
   @override
   void didUpdateWidget(HubTabBody oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_scope case final scope?) _registerBack(scope);
     _publish();
   }
 
   @override
   void dispose() {
-    if (_scope case final scope?) _withdraw(scope);
+    if (_scope case final scope?) {
+      _withdraw(scope);
+      scope.actions.registerBack(scope.tab, this, null);
+    }
     super.dispose();
+  }
+
+  /// While rows are selected, Back closes the selection (or, while a delete
+  /// on it is in flight and close is off, does nothing) instead of leaving
+  /// the tab. The hub's host asks through [HubPrimaryActions.consumeBack], so
+  /// a body never needs a `PopScope` of its own, and a hidden tab's selection
+  /// never answers a Back pressed somewhere else.
+  void _registerBack(HubTabScope scope) {
+    final selection = widget.selection;
+    scope.actions.registerBack(
+      scope.tab,
+      this,
+      selection == null ? null : () => widget.selection?.onClose?.call(),
+    );
   }
 
   void _withdraw(HubTabScope scope) {
@@ -333,29 +380,35 @@ class _HubTabBodyState extends State<HubTabBody> {
     }
     // On its own: the same column under a small titled app bar, so a tab
     // reads the same pushed as hosted. While selecting, the app bar becomes
-    // the selection bar, as a pushed list's does.
-    return Scaffold(
-      appBar: selection != null
-          ? AppBar(
-              leading: IconButton(
-                icon: const Icon(Icons.close),
-                tooltip: selection.closeTooltip,
-                onPressed: selection.onClose,
-              ),
-              title: Text(selection.title),
-              actions: selection.actions,
-            )
-          : AppBar(title: Text(widget.title)),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (selection == null) ?_controls(),
-          ?widget.banner,
-          Expanded(child: _content()),
-        ],
+    // the selection bar, as a pushed list's does, and Back closes it first.
+    return PopScope(
+      canPop: selection == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.selection?.onClose?.call();
+      },
+      child: Scaffold(
+        appBar: selection != null
+            ? AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: selection.closeTooltip,
+                  onPressed: selection.onClose,
+                ),
+                title: Text(selection.title),
+                actions: selection.actions,
+              )
+            : AppBar(title: Text(widget.title)),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (selection == null) ?_controls(),
+            ?widget.banner,
+            Expanded(child: _content()),
+          ],
+        ),
+        floatingActionButton:
+            selection == null ? widget.primary?.toFab() : null,
       ),
-      floatingActionButton:
-          selection == null ? widget.primary?.toFab() : null,
     );
   }
 }

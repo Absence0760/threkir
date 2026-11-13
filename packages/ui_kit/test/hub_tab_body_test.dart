@@ -19,6 +19,9 @@ class _HubState extends State<_Hub> with SingleTickerProviderStateMixin {
         ..addListener(() => setState(() {}));
   final _actions = HubPrimaryActions();
 
+  /// What a hub's host does on Back: the active tab's body first.
+  bool consumeBack() => _actions.consumeBack(_tabs.index);
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
@@ -162,6 +165,78 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
     expect(refreshed, 1);
+  });
+
+  // Issue #1374 NS-2 / NS-3: Back in select mode cleared the selection and
+  // also left the tab, and Routes' selection ignored Back altogether.
+  group('Back', () {
+    Widget selecting(String title, VoidCallback onClose) => HubTabBody(
+          title: title,
+          body: ListView(children: [Text('$title row')]),
+          selection: HubSelection(
+            title: '1 selected',
+            closeTooltip: 'Close',
+            onClose: onClose,
+          ),
+        );
+
+    testWidgets('in a hub, Back goes to the active tab\'s selection only',
+        (tester) async {
+      var closed0 = 0;
+      var closed1 = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: _Hub(bodies: [
+          selecting('zero', () => closed0++),
+          selecting('one', () => closed1++),
+        ]),
+      ));
+      final hub = tester.state<_HubState>(find.byType(_Hub));
+      expect(hub.consumeBack(), isTrue);
+      expect((closed0, closed1), (1, 0));
+    });
+
+    testWidgets('a tab with nothing selected leaves Back to the host',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: _Hub(bodies: [
+          const HubTabBody(title: 'zero', body: SizedBox()),
+        ]),
+      ));
+      expect(tester.state<_HubState>(find.byType(_Hub)).consumeBack(), isFalse);
+    });
+
+    testWidgets('a selection that ends withdraws its handler', (tester) async {
+      Widget hub(bool selected) => MaterialApp(
+            home: _Hub(bodies: [
+              selected
+                  ? selecting('zero', () {})
+                  : const HubTabBody(title: 'zero', body: SizedBox()),
+            ]),
+          );
+      await tester.pumpWidget(hub(true));
+      await tester.pumpWidget(hub(false));
+      expect(tester.state<_HubState>(find.byType(_Hub)).consumeBack(), isFalse);
+    });
+
+    testWidgets('pushed on its own, Back closes the selection, not the page',
+        (tester) async {
+      var closed = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => selecting('pushed', () => closed++))),
+            child: const Text('open'),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(closed, 1);
+      expect(find.text('pushed row'), findsOneWidget);
+    });
   });
 }
 

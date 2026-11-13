@@ -1036,19 +1036,15 @@ class _RunsScreenState extends State<RunsScreen>
     final unit = widget.preferences.unit;
     final totalCount = widget.runStore.summaries.length;
 
-    return PopScope(
-      canPop: !_selecting,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _selecting) _clearSelection();
-      },
-      child: HubTabBody(
-        title: _timelineMode ? l10n.navHistory : l10n.fitnessTabRuns,
-        filters: _timelineMode || totalCount == 0 ? null : _searchBar(l10n),
-        actions: _runActions(l10n),
-        primary: widget.showAddFab ? _addAction(l10n) : null,
-        selection: _selecting ? _selection(l10n) : null,
-        body: _buildBody(theme, l10n, unit, totalCount),
-      ),
+    // Back while selecting closes the selection through HubTabBody, which
+    // the hub asks only while this tab is showing (issue #1374 NS-2).
+    return HubTabBody(
+      title: _timelineMode ? l10n.navHistory : l10n.fitnessTabRuns,
+      filters: _timelineMode || totalCount == 0 ? null : _searchBar(l10n),
+      actions: _runActions(l10n),
+      primary: widget.showAddFab ? _addAction(l10n) : null,
+      selection: _selecting ? _selection(l10n) : null,
+      body: _buildBody(theme, l10n, unit, totalCount),
     );
   }
 

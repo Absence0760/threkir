@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../fab_clearance.dart';
+import '../shell_back.dart';
 import '../fitness_surface_requests.dart' show FitnessHubViews;
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
@@ -156,12 +157,16 @@ class FitnessHubScreen extends StatefulWidget {
 }
 
 class _FitnessHubScreenState extends State<FitnessHubScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, ShellBackHandler {
   late TabController _controller;
   late List<FitnessTab> _tabs;
   late bool _centreOpensRecorder;
   late final RaceService _raceService = RaceService();
   final _actions = HubPrimaryActions();
+
+  /// Back goes to the showing tab first (a Runs or Routes selection).
+  @override
+  bool handleShellBack() => _actions.consumeBack(_tab.value);
 
   late final ValueNotifier<FitnessTab> _tab = widget.selectedTab ??
       ValueNotifier(_storedTab() ?? FitnessTab.history);

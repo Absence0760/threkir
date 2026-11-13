@@ -136,12 +136,26 @@ void main() {
         expect(hub, contains('floatingActionButtonLocation: pageFabLocation('));
       });
 
+      // Issue #1374 NS-2 / NS-3: the shell's pages share one route, so a tab
+      // body's own PopScope ran on every Back beside the shell's, and a hidden
+      // tab's selection vetoed Back elsewhere. The hub answers Back for its
+      // showing tab through the shell's registry instead.
+      test('the hub answers the shell\'s Back for its showing tab', () {
+        expect(hub, contains('ShellBackHandler'));
+        expect(hub, contains('consumeBack('));
+      });
+
       for (final name in bodies) {
         test('$name is a HubTabBody with no app bar or Scaffold of its own', () {
           expect(classes[name], isNotNull, reason: 'no class $name in lib/');
           final source = _withState(classes, name);
           expect(source, contains('HubTabBody('),
               reason: '$name should build its tab through ui_kit\'s HubTabBody');
+          expect(RegExp(r'\bPopScope\b').hasMatch(source), isFalse,
+              reason: '$name has a PopScope of its own. A tab body shares the '
+                  'shell\'s route, so its scope runs on every Back, hidden or '
+                  'not (issue #1374 NS-2). Pass the selection to HubTabBody, '
+                  'which hands Back to the hub only while the tab is showing.');
           for (final banned in ['AppBar(', 'Scaffold(', 'FloatingActionButton']) {
             expect(RegExp('\\b${RegExp.escape(banned)}').hasMatch(source), isFalse,
                 reason: '$name builds its own $banned: in the hub the strip is '

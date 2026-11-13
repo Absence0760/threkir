@@ -51,7 +51,7 @@
           {
             "type": "steps",
             "items": [
-              "Öffne im Web in den Einstellungen [[route:/settings/notifications|Benachrichtigungen]]. Öffne in der Handy-App **Voreinstellungen** im Tab **Du** und scrolle zu **Benachrichtigungen**.",
+              "Öffne im Web in den Einstellungen [[route:/settings/notifications|Benachrichtigungen]]. Öffne in der Handy-App **Benachrichtigungen** im Tab **Du**.",
               "Stelle **E-Mail-Benachrichtigungen** und **Push-Benachrichtigungen** getrennt ein."
             ]
           },
@@ -137,7 +137,7 @@
             "type": "steps",
             "items": [
               "Öffne im Web in den Einstellungen [[route:/settings/privacy|Datenschutz & Teilen]] und hake unter **Gefunden werden** die Option **Privates Profil** an.",
-              "Öffne in der Handy-App **Voreinstellungen** im Tab **Du** und schalte unter **Datenschutz & Teilen** die Option **Privates Profil** ein."
+              "Öffne in der Handy-App **Datenschutz & Teilen** im Tab **Du** und schalte **Privates Profil** ein."
             ]
           },
           {
@@ -416,7 +416,7 @@
           {
             "type": "steps",
             "items": [
-              "Öffne im Web in den Einstellungen [[route:/settings/privacy|Datenschutz & Teilen]] und wähle eine **Standardsichtbarkeit für neue Läufe**. In der Handy-App ist es **Standard-Datenschutz für Läufe** unter **Voreinstellungen** im Tab **Du**.",
+              "Öffne im Web in den Einstellungen [[route:/settings/privacy|Datenschutz & Teilen]] und wähle eine **Standardsichtbarkeit für neue Läufe**. In der Handy-App ist es **Standard-Datenschutz für Läufe** unter **Datenschutz & Teilen** im Tab **Du**.",
               "Um einen einzelnen Lauf später zu ändern, öffne ihn und tippe unter seinem Titel auf **Privat** oder **Öffentlich**. Bevor ein Lauf öffentlich wird, fragen wir nach und zeigen dir, was deine Datenschutzzonen verbergen."
             ]
           },
@@ -1926,7 +1926,7 @@
           },
           {
             "type": "p",
-            "text": "Teilnehmende schalten beide mit **Rennen startet bald** aus: im Web unter [[route:/settings/notifications|Benachrichtigungen]], in der Handy-App unter **Voreinstellungen** im Tab **Du**."
+            "text": "Teilnehmende schalten beide mit **Rennen startet bald** aus: im Web unter [[route:/settings/notifications|Benachrichtigungen]], in der Handy-App unter **Benachrichtigungen** im Tab **Du**."
           }
         ]
       },
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "Das Eintragen per Foto gehört zu Pro. Essen von Hand einzutragen bleibt kostenlos.",
-              "Es nutzt KI und setzt deshalb den aktuellen KI-Hinweis voraus. Wirst du gebeten, ihn zu akzeptieren, öffne Einstellungen → Konto und akzeptiere ihn dort.",
+              "Es nutzt KI und setzt deshalb den aktuellen KI-Hinweis voraus. Wirst du gebeten, ihn zu akzeptieren, führt dich ein Link bei der Meldung zu deiner Kontoseite, wo du ihn akzeptieren kannst.",
               "Das Foto wird nur genutzt, um zu schätzen, was auf dem Teller ist. Standort- und Kameradaten werden vor dem Senden entfernt, und Threkir behält das Foto nicht."
             ]
           },
@@ -3933,7 +3933,7 @@
           {
             "type": "steps",
             "items": [
-              "Öffne den Tab **Du**, dann **Voreinstellungen**, und tippe unter **Datenschutz & Teilen** auf **Datenschutzzonen**.",
+              "Öffne den Tab **Du**, dann **Datenschutz & Teilen**, und tippe auf **Datenschutzzonen**.",
               "Tippe auf die Karte, um eine Zone zu setzen. Mit **Orte suchen…** oder **Mich orten** verschiebst du die Karte vorher.",
               "Stell den Schieberegler **Radius** ein.",
               "Tippe auf **Speichern**. Bis du speicherst, ändert sich nichts."

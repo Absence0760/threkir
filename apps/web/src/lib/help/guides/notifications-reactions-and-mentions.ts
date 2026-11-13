@@ -42,7 +42,7 @@ export const guide: Guide = {
 				{
 					type: 'steps',
 					items: [
-						'On the web, open [[route:/settings/notifications|Notifications]] in Settings. In the phone app, open **Preferences** in the **You** tab and scroll to **Notifications**.',
+						'On the web, open [[route:/settings/notifications|Notifications]] in Settings. In the phone app, open **Notifications** in the **You** tab.',
 						'Set **Email notifications** and **Push notifications** separately.',
 					],
 				},

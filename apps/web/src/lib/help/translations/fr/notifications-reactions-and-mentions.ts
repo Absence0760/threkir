@@ -37,7 +37,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Sur le web, ouvrez [[route:/settings/notifications|Notifications]] dans les Paramètres. Dans l\'app mobile, ouvrez **Préférences** dans l\'onglet **Vous** et faites défiler jusqu\'à **Notifications**.',
+						'Sur le web, ouvrez [[route:/settings/notifications|Notifications]] dans les Paramètres. Dans l\'app mobile, ouvrez **Notifications** dans l\'onglet **Vous**.',
 						'Réglez séparément **Notifications par e-mail** et **Notifications push**.',
 					],
 				},
@@ -82,7 +82,7 @@ export const translation: GuideTranslation = {
 		's1.heading': '074e9ceb824efc1f',
 		's1.b0': '93884f29ad0c80fc',
 		's2.heading': 'effb878df9e1a9ea',
-		's2.b0.i0': '1c0dfd20d4a186e9',
+		's2.b0.i0': 'cb34200fcb6ec620',
 		's2.b0.i1': '5a887c760fb14d6f',
 		's2.b1.i0': '3adf3c1bbb3ad28d',
 		's2.b1.i1': '20670a8e203c8f76',

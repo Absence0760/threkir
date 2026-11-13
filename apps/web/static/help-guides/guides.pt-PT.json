@@ -51,7 +51,7 @@
           {
             "type": "steps",
             "items": [
-              "Na web, abra [[route:/settings/notifications|Notificações]] nas Definições. Na app do telemóvel, abra **Preferências** no separador **Tu** e desloque-se até **Notificações**.",
+              "Na web, abra [[route:/settings/notifications|Notificações]] nas Definições. Na app do telemóvel, abra **Notificações** no separador **Tu**.",
               "Defina **Notificações por e-mail** e **Notificações push** em separado."
             ]
           },
@@ -137,7 +137,7 @@
             "type": "steps",
             "items": [
               "Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e marque **Perfil privado** em **Ser encontrado**.",
-              "Na app do telemóvel, abra **Preferências** no separador **Tu** e ative **Perfil privado** em **Privacidade e partilha**."
+              "Na app do telemóvel, abra **Privacidade e partilha** no separador **Tu** e ative **Perfil privado**."
             ]
           },
           {
@@ -416,7 +416,7 @@
           {
             "type": "steps",
             "items": [
-              "Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Preferências**, no separador **Tu**.",
+              "Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Privacidade e partilha**, no separador **Tu**.",
               "Para alterar uma única corrida mais tarde, abra-a e toque em **Privado** ou **Público** por baixo do título. Antes de tornar uma corrida pública, pedimos confirmação e mostramos o que as suas zonas de privacidade vão esconder."
             ]
           },
@@ -1926,7 +1926,7 @@
           },
           {
             "type": "p",
-            "text": "Os corredores desligam ambos com **Prova prestes a começar**: na web, em [[route:/settings/notifications|Notificações]]; na app do telemóvel, em **Preferências**, no separador **Tu**."
+            "text": "Os corredores desligam ambos com **Prova prestes a começar**: na web, em [[route:/settings/notifications|Notificações]]; na app do telemóvel, em **Notificações**, no separador **Tu**."
           }
         ]
       },
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "Registar a partir de uma fotografia faz parte do Pro. Registar alimentos à mão continua gratuito.",
-              "Usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, abra Definições → Conta e aceite-o aí.",
+              "Usa IA, por isso precisa do aviso de IA mais recente. Se lhe pedirem para o aceitar, a mensagem inclui uma ligação para a página da sua conta, onde o pode aceitar.",
               "A fotografia só é usada para estimar o que está no prato. Os dados de localização e da câmara são removidos antes do envio, e o Threkir não guarda a fotografia."
             ]
           },
@@ -3933,7 +3933,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra o separador **Tu**, depois **Preferências** e, em **Privacidade e partilha**, toque em **Zonas de privacidade**.",
+              "Abra o separador **Tu**, depois **Privacidade e partilha**, e toque em **Zonas de privacidade**.",
               "Toque no mapa para colocar uma zona. Use **Procurar lugares…** ou **Localizar-me** para mover o mapa primeiro.",
               "Ajuste o controlo deslizante **Raio**.",
               "Toque em **Guardar**. Nada muda até guardar."

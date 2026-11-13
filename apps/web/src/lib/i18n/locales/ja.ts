@@ -1417,7 +1417,7 @@ export const messages = {
 	"routeNew.saveFailedError": "ルートの保存に失敗しました",
 	"routesPage.pageTitle": "ルート",
 	"routesPage.sectionLabel": "ルートセクション",
-	"routesPage.tabMine": "自分の",
+	"routesPage.tabMine": "マイルート",
 	"routesPage.tabExplore": "探索",
 	"routesPage.tabHeatmap": "ヒートマップ",
 	"routesPage.loadingRoutes": "ルートを読み込み中…",

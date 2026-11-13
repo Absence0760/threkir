@@ -237,7 +237,7 @@ test.describe('Legal pages', () => {
 		// deletion, and a fallback for users who can no longer sign in.
 		await page.goto('/delete-account');
 		await expect(
-			page.getByRole('link', { name: 'Settings → Account' })
+			page.getByRole('link', { name: 'your Account settings' })
 		).toHaveAttribute('href', '/settings/account');
 		await expect(
 			page.getByRole('link', { name: /privacy@threkir\.com/ }).first()
@@ -259,7 +259,7 @@ test.describe('Legal pages', () => {
 		const page = await context.newPage();
 		await page.goto('/delete-account');
 		await expect(page.getByRole('heading', { level: 1, name: 'Konto löschen' })).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Einstellungen → Konto' })).toHaveAttribute(
+		await expect(page.getByRole('link', { name: 'deine Kontoeinstellungen' })).toHaveAttribute(
 			'href',
 			'/settings/account'
 		);

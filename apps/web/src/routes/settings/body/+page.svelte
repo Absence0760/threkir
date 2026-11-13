@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -251,7 +252,7 @@
 	}
 </script>
 
-<PrefsPage heading={m('prefs.demographicsHeading')} tagline={m('prefs.bodyTagline')} page={prefs}>
+<PrefsPage heading={m('prefs.demographicsHeading')} headingId={settingRowId('prefs.demographicsHeading')} tagline={m('prefs.bodyTagline')} page={prefs}>
 	<!-- Gender, height and weight are special-category data under GDPR Art 9,
 	     so the explicit-consent checkbox is the precondition for saving any of
 	     them. The DOB field is deliberately NOT disabled with them: the column
@@ -269,7 +270,7 @@
 			<span>{m('prefs.demographicsConsent')}</span>
 		</label>
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.gender')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.gender')}</span>
 					<select bind:value={gender} disabled={!healthDataConsent} aria-describedby="gender-hint">
@@ -280,11 +281,11 @@
 				</label>
 				<p class="hint" id="gender-hint">{m('prefs.genderHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.dateOfBirth')} class="field">
 				<DateOfBirthInput bind:value={dateOfBirth} label={m('prefs.dateOfBirth')} describedby="dob-purpose" />
 				<p class="hint" id="dob-purpose">{m('prefs.dateOfBirthPurpose')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.heightCm')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.heightCm')}</span>
 					<input
@@ -306,7 +307,7 @@
 				</label>
 				<p class="hint" id="height-hint">{m('prefs.heightHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.weight')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.weight')} ({weightUnit})</span>
 					<input
@@ -363,7 +364,7 @@
 	     /nutrition. Effort labels, not body measurements, so they auto-save
 	     and aren't consent-gated. -->
 	<section class="card">
-		<SectionHeader label={m('prefs.nutritionTargetsHeading')} class="prefs-section-head">
+		<SectionHeader id={settingRowId('prefs.nutritionTargetsHeading')} label={m('prefs.nutritionTargetsHeading')} class="prefs-section-head">
 			{#snippet trailing()}
 				<p class="autosave-note" role="status" aria-live="polite" data-testid="nutrition-save-status">
 					{#if prefs.status === 'saving'}
@@ -377,7 +378,7 @@
 			{/snippet}
 		</SectionHeader>
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.activityLevel')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.activityLevel')}</span>
 					<select
@@ -393,7 +394,7 @@
 				</label>
 				<p class="hint" id="activity-level-hint">{m('prefs.activityLevelHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.weightGoal')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.weightGoal')}</span>
 					<select

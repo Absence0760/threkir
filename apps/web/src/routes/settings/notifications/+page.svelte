@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import ListRow from '#lib/components/ListRow.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -88,9 +89,9 @@
 
 <PrefsPage heading={m('prefs.notificationsHeading')} tagline={m('prefs.notificationsTagline')} page={prefs}>
 	<section class="card">
-		<SectionHeader label={m('prefs.emailPushHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.emailPushHeading')} label={m('prefs.emailPushHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.emailNotifications')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.emailNotifications')}</span>
 					<select bind:value={emailNotifications} onchange={() => prefs.save({ email_notifications: emailNotifications })} aria-describedby="email-notifications-hint">
@@ -101,7 +102,7 @@
 				</label>
 				<p class="hint" id="email-notifications-hint">{m('prefs.emailNotifHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.pushNotifications')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.pushNotifications')}</span>
 					<select bind:value={pushNotifications} onchange={() => prefs.save({ push_notifications: pushNotifications })} aria-describedby="push-notifications-hint">
@@ -115,6 +116,7 @@
 		</div>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyDataExportReady')}
 			title={m('prefs.notifyDataExportReady')}
 			subtitle={m('prefs.notifyDataExportReadyHint')}
 			bind:checked={notifyDataExportReady}
@@ -123,6 +125,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyMention')}
 			title={m('prefs.notifyMention')}
 			subtitle={m('prefs.notifyMentionHint')}
 			bind:checked={notifyMention}
@@ -131,6 +134,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyReaction')}
 			title={m('prefs.notifyReaction')}
 			subtitle={m('prefs.notifyReactionHint')}
 			bind:checked={notifyReaction}
@@ -139,6 +143,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyCommentLike')}
 			title={m('prefs.notifyCommentLike')}
 			subtitle={m('prefs.notifyCommentLikeHint')}
 			bind:checked={notifyCommentLike}
@@ -147,6 +152,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyFollowRequest')}
 			title={m('prefs.notifyFollowRequest')}
 			subtitle={m('prefs.notifyFollowRequestHint')}
 			bind:checked={notifyFollowRequest}
@@ -155,6 +161,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyEventRsvp')}
 			title={m('prefs.notifyEventRsvp')}
 			subtitle={m('prefs.notifyEventRsvpHint')}
 			bind:checked={notifyEventRsvp}
@@ -163,6 +170,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyClubJoinRequest')}
 			title={m('prefs.notifyClubJoinRequest')}
 			subtitle={m('prefs.notifyClubJoinRequestHint')}
 			bind:checked={notifyClubJoinRequest}
@@ -171,6 +179,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyClubJoinApproved')}
 			title={m('prefs.notifyClubJoinApproved')}
 			subtitle={m('prefs.notifyClubJoinApprovedHint')}
 			bind:checked={notifyClubJoinApproved}
@@ -179,6 +188,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyEventUpdated')}
 			title={m('prefs.notifyEventUpdated')}
 			subtitle={m('prefs.notifyEventUpdatedHint')}
 			bind:checked={notifyEventUpdated}
@@ -187,6 +197,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyCourseAlert')}
 			title={m('prefs.notifyCourseAlert')}
 			subtitle={m('prefs.notifyCourseAlertHint')}
 			bind:checked={notifyCourseAlert}
@@ -195,6 +206,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyRaceStartingSoon')}
 			title={m('prefs.notifyRaceStartingSoon')}
 			subtitle={m('prefs.notifyRaceStartingSoonHint')}
 			bind:checked={notifyRaceStartingSoon}
@@ -203,6 +215,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.notifyWorkoutReminder')}
 			title={m('prefs.notifyWorkoutReminder')}
 			subtitle={m('prefs.notifyWorkoutReminderHint')}
 			bind:checked={notifyWorkoutReminder}
@@ -211,6 +224,7 @@
 		/>
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.emailNewDeviceAlerts')}
 			title={m('prefs.emailNewDeviceAlerts')}
 			subtitle={m('prefs.emailNewDeviceAlertsHint')}
 			bind:checked={emailNewDeviceAlerts}
@@ -220,10 +234,11 @@
 	</section>
 
 	<section class="card">
-		<SectionHeader label={m('prefs.optionalEmailsHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.optionalEmailsHeading')} label={m('prefs.optionalEmailsHeading')} class="prefs-section-head" />
 		<div class="form-stack">
 			<ListRow
 				kind="toggle"
+				id={settingRowId('prefs.emailWeeklyDigest')}
 				title={m('prefs.emailWeeklyDigest')}
 				subtitle={m('prefs.emailWeeklyDigestHint')}
 				bind:checked={emailWeeklyDigest}
@@ -232,6 +247,7 @@
 			/>
 			<ListRow
 				kind="toggle"
+				id={settingRowId('prefs.emailLifecycleDrip')}
 				title={m('prefs.emailLifecycleDrip')}
 				subtitle={m('prefs.emailLifecycleDripHint')}
 				bind:checked={emailLifecycleDrip}

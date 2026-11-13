@@ -3,10 +3,14 @@ import { fold } from '../segments/catalogue_browse';
 
 /// The settings search (issue #1374, decisions § 2494; the web twin of the
 /// You tab's search on mobile). Each settings page and the titles of the rows
-/// and sections it shows. The pages render their own markup, so this index is
-/// kept beside them by hand: `settings_search_index.test.ts` fails when a
-/// listed title is no longer read by its page, when a page heading is missing
-/// from it, or when a settings nav entry has no index entry.
+/// and sections it shows. A row result lands on the row itself, not the top of
+/// its page: its href carries `#` + [settingRowId], the id the page puts on
+/// that row, and `setting_focus.ts` scrolls it into view, focuses it and
+/// highlights it. The pages render their own markup, so this index is kept
+/// beside them by hand: `settings_search_index.test.ts` fails when a listed
+/// title is no longer read by its page, when a listed row has no anchor on its
+/// page, when a page heading is missing from it, or when a settings nav entry
+/// has no index entry.
 export interface SettingsSearchPage {
 	href: string;
 	/// The page's name in the settings nav; a result says which page it is on.
@@ -187,17 +191,25 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchPage[] = [
 	{ href: '/settings/licenses', label: 'settingsLayout.tabAbout', rows: [] },
 ];
 
+/// The element id a page gives the row or section titled [key], and the
+/// fragment a search result for it links to.
+export function settingRowId(key: MessageKey): string {
+	return `setting-${key.replace(/[^A-Za-z0-9_-]/g, '-')}`;
+}
+
 export interface SettingsSearchHit {
 	title: string;
 	/// The page the setting is on, by its nav name.
 	where: string;
+	/// The page, plus `#` and the row's [settingRowId] for a row result.
 	href: string;
 }
 
 /// Titles that contain the query, accent- and case-folded: each page's own
-/// name first, then its rows, in index order. A title on one page is listed
-/// once. Only pages in `available` are searched, so a page the nav hides is
-/// never offered. A blank query matches nothing.
+/// name first (linking to the page), then its rows (linking to the row), in
+/// index order. A title on one page is listed once. Only pages in `available`
+/// are searched, so a page the nav hides is never offered. A blank query
+/// matches nothing.
 export function searchSettings(
 	query: string,
 	t: (key: MessageKey) => string,
@@ -210,10 +222,14 @@ export function searchSettings(
 		if (!available.has(page.href)) continue;
 		const where = t(page.label);
 		const seen = new Set<string>();
-		for (const title of [where, ...page.rows.map((k) => t(k))]) {
+		const entries = [
+			{ title: where, href: page.href },
+			...page.rows.map((k) => ({ title: t(k), href: `${page.href}#${settingRowId(k)}` })),
+		];
+		for (const { title, href } of entries) {
 			if (seen.has(title) || !fold(title).includes(q)) continue;
 			seen.add(title);
-			hits.push({ title, where, href: page.href });
+			hits.push({ title, where, href });
 		}
 	}
 	return hits;

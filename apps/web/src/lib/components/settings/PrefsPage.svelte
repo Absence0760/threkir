@@ -7,11 +7,15 @@
 
 	let {
 		heading,
+		headingId,
 		tagline,
 		page,
 		children,
 	}: {
 		heading: string;
+		/// The page heading's id, when the heading is itself a settings-search
+		/// result (`settingRowId`, settings_search.ts).
+		headingId?: string;
 		tagline: string;
 		page: {
 			readonly phase: PrefsLoadPhase;
@@ -26,7 +30,7 @@
 <div class="page prefs-page">
 	<header class="page-head">
 		<p class="kicker">{m('prefs.kicker')}</p>
-		<h1>{heading}</h1>
+		<h1 id={headingId}>{heading}</h1>
 		<p class="tagline">{tagline}</p>
 		<p class="save-status" role="status" aria-live="polite" data-testid="save-status">
 			{#if page.status === 'saving'}

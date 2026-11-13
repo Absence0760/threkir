@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import ListRow from '#lib/components/ListRow.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { effective } from '#lib/settings/settings.ts';
@@ -164,9 +165,9 @@
 
 <PrefsPage heading={m('prefs.trainingHeading')} tagline={m('prefs.trainingTagline')} page={prefs}>
 	<section class="card" id="weekly-distance-goal">
-		<SectionHeader label={m('prefs.weeklyGoalHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.weeklyGoalHeading')} label={m('prefs.weeklyGoalHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<label>
+			<label id={settingRowId('prefs.weeklyDistanceGoal')}>
 				<span class="label-text">{m('prefs.weeklyDistanceGoal', { unit: preferredUnit })}</span>
 				<input
 					type="number"
@@ -198,9 +199,10 @@
 	</section>
 
 	<section class="card" id="plan-recovery">
-		<SectionHeader label={m('prefs.planRecoveryHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.planRecoveryHeading')} label={m('prefs.planRecoveryHeading')} class="prefs-section-head" />
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.extraRecovery')}
 			title={m('prefs.extraRecovery')}
 			bind:checked={extraRecovery}
 			describedby="extra-recovery-hint"
@@ -211,10 +213,10 @@
 	</section>
 
 	<section class="card" id="heart-rate-zones">
-		<SectionHeader label={m('prefs.heartRateZonesHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.heartRateZonesHeading')} label={m('prefs.heartRateZonesHeading')} class="prefs-section-head" />
 		<p class="section-desc">{m('prefs.heartRateZonesDesc')}</p>
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.restingHr')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.restingHr')}</span>
 					<input type="number" bind:value={restingHr} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} placeholder={m('prefs.restingHrPlaceholder')} aria-invalid={restingHrOutOfRange} aria-describedby="resting-hr-hint" data-testid="resting-hr" onblur={saveRestingHr} />
@@ -224,7 +226,7 @@
 				</label>
 				<p class="hint" id="resting-hr-hint">{m('prefs.restingHrHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.maxHr')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.maxHr')}</span>
 					<input type="number" bind:value={maxHr} min={MAX_HR_BPM_MIN} max={MAX_HR_BPM_MAX} placeholder={m('prefs.maxHrPlaceholder')} aria-invalid={maxHrOutOfRange} aria-describedby="max-hr-hint" data-testid="max-hr" onblur={saveMaxHr} />
@@ -247,6 +249,7 @@
 			<div class="field" data-testid="hr-medication">
 				<ListRow
 					kind="toggle"
+					id={settingRowId('prefs.hrMedicationAffected')}
 					title={m('prefs.hrMedicationAffected')}
 					bind:checked={hrMedicationAffected}
 					disabled={!healthConsentGranted && !hrMedicationAffected}
@@ -273,6 +276,7 @@
 		{/if}
 		<ListRow
 			kind="toggle"
+			id={settingRowId('prefs.excludeGymFromReadiness')}
 			title={m('prefs.excludeGymFromReadiness')}
 			subtitle={m('prefs.excludeGymFromReadinessHint')}
 			bind:checked={excludeGymFromReadiness}
@@ -281,9 +285,9 @@
 	</section>
 
 	<section class="card">
-		<SectionHeader label={m('prefs.raceFuelingHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.raceFuelingHeading')} label={m('prefs.raceFuelingHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.carbsPerHour')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.carbsPerHour')}</span>
 					<input
@@ -299,7 +303,7 @@
 				</label>
 				<p class="hint" id="carbs-per-hour-hint">{m('prefs.carbsPerHourHint')}</p>
 			</div>
-			<div class="field">
+			<div id={settingRowId('prefs.fluidPerHour')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.fluidPerHour')}</span>
 					<input
@@ -319,9 +323,9 @@
 	</section>
 
 	<section class="card">
-		<SectionHeader label={m('prefs.aiCoachHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.aiCoachHeading')} label={m('prefs.aiCoachHeading')} class="prefs-section-head" />
 		<div class="form-grid">
-			<div class="field">
+			<div id={settingRowId('prefs.coachPersonality')} class="field">
 				<label>
 					<span class="label-text">{m('prefs.coachPersonality')}</span>
 					<select bind:value={coachPersonality} onchange={() => prefs.save({ coach_personality: coachPersonality })} aria-describedby="coach-personality-hint">

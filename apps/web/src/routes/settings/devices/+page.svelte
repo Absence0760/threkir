@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
@@ -429,7 +430,7 @@
 	{:else if devices.length === 0}
 		<EmptyState icon="devices_other" title={m('settingsDevices.emptyTitle')} text={m('settingsDevices.emptyText')} />
 	{:else}
-		<div class="device-list">
+		<div id={settingRowId('settingsDevices.addOverride')} class="device-list">
 			{#each devices as d (d.device_id)}
 				<div
 					class="device"

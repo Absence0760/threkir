@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
@@ -542,6 +543,7 @@
 
 	<div class="tabs">
 		<button
+			id={settingRowId('settingsGear.tabShoes')}
 			class="tab"
 			class:active={activeTab === 'shoe'}
 			onclick={() => (activeTab = 'shoe')}
@@ -549,6 +551,7 @@
 			<span class="material-symbols" aria-hidden="true">directions_run</span> {t('settingsGear.tabShoes')}
 		</button>
 		<button
+			id={settingRowId('settingsGear.tabBikes')}
 			class="tab"
 			class:active={activeTab === 'bike'}
 			onclick={() => (activeTab = 'bike')}
@@ -678,7 +681,7 @@
 		{/if}
 
 		{#if retired.length > 0}
-			<SectionHeader label={t('settingsGear.retiredSection')} class="gear-section-head" />
+			<SectionHeader id={settingRowId('settingsGear.retiredSection')} label={t('settingsGear.retiredSection')} class="gear-section-head" />
 			<ul class="gear-list retired-list">
 				{#each retired as g (g.id)}
 					{@const prog = progressFor(g)}
@@ -711,7 +714,7 @@
 
 	{#if !loading}
 		<section class="rotations">
-			<SectionHeader label={t('settingsGear.rotationsHeading')} class="gear-section-head" />
+			<SectionHeader id={settingRowId('settingsGear.rotationsHeading')} label={t('settingsGear.rotationsHeading')} class="gear-section-head" />
 			<p class="rotations-hint">{t('settingsGear.rotationsHint')}</p>
 
 			<form

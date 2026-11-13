@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import ListRow from '#lib/components/ListRow.svelte';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -196,10 +197,10 @@
 
 <PrefsPage heading={m('prefs.privacySharingHeading')} tagline={m('prefs.privacyTagline')} page={prefs}>
 	<section class="card">
-		<SectionHeader label={m('prefs.yourRunsHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.yourRunsHeading')} label={m('prefs.yourRunsHeading')} class="prefs-section-head" />
 		<div class="form-stack">
 			<div class="field">
-				<label class="field">
+				<label id={settingRowId('prefs.defaultVisibility')} class="field">
 					<span class="label-text">{m('prefs.defaultVisibility')}</span>
 					<select bind:value={privacyDefault} onchange={() => prefs.save({ privacy_default: privacyDefault })} aria-describedby="default-visibility-hint">
 						<option value="public">{m('prefs.visibilityPublic')}</option>
@@ -211,6 +212,7 @@
 			</div>
 			<ListRow
 				kind="toggle"
+				id={settingRowId('prefs.autoPushStrava')}
 				title={m('prefs.autoPushStrava')}
 				subtitle={m('prefs.autoPushStravaHint')}
 				bind:checked={stravaAutoShare}
@@ -220,10 +222,11 @@
 	</section>
 
 	<section class="card">
-		<SectionHeader label={m('prefs.beingFoundHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.beingFoundHeading')} label={m('prefs.beingFoundHeading')} class="prefs-section-head" />
 		<div class="form-stack">
 			<ListRow
 				kind="toggle"
+				id={settingRowId('prefs.privateProfile')}
 				title={m('prefs.privateProfile')}
 				subtitle={m('prefs.privateProfileHint')}
 				testid="private-profile-toggle"
@@ -232,10 +235,11 @@
 				onchange={saveProfilePrivate}
 			/>
 			{#if profilePrivate}
-				<a class="link-row" href="/follow-requests">{m('prefs.followRequestsLink')}</a>
+				<a id={settingRowId('prefs.followRequestsLink')} class="link-row" href="/follow-requests">{m('prefs.followRequestsLink')}</a>
 			{/if}
 			<ListRow
 				kind="toggle"
+				id={settingRowId('prefs.showInSearch')}
 				title={m('prefs.showInSearch')}
 				subtitle={m('prefs.showInSearchHint')}
 				bind:checked={discoverableInSearch}
@@ -244,12 +248,13 @@
 			{#if NEARBY_RUNNERS_ENABLED}
 				<ListRow
 					kind="toggle"
+					id={settingRowId('prefs.discoverableNearby')}
 					title={m('prefs.discoverableNearby')}
 					subtitle={m('prefs.discoverableNearbyHint')}
 					bind:checked={discoverableNearby}
 					onchange={() => prefs.save({ discoverable_nearby: discoverableNearby })}
 				/>
-				<div class="nearby-area">
+				<div id={settingRowId('prefs.nearbyAreaLabel')} class="nearby-area">
 					<span class="label-text">{m('prefs.nearbyAreaLabel')}</span>
 					<p class="hint" id="nearby-area-status" data-testid="nearby-area-status">
 						{nearbyAreaLabel
@@ -289,10 +294,11 @@
 	</section>
 
 	<section class="card">
-		<SectionHeader label={m('prefs.messagesHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.messagesHeading')} label={m('prefs.messagesHeading')} class="prefs-section-head" />
 		<div class="form-stack">
 			<ListRow
 				kind="toggle"
+				id={settingRowId('prefs.readReceipts')}
 				title={m('prefs.readReceipts')}
 				subtitle={m('prefs.readReceiptsHint')}
 				testid="read-receipts-toggle"
@@ -302,6 +308,7 @@
 			/>
 			<ListRow
 				kind="toggle"
+				id={settingRowId('prefs.messageRequests')}
 				title={m('prefs.messageRequests')}
 				subtitle={m('prefs.messageRequestsHint')}
 				testid="message-requests-toggle"
@@ -314,7 +321,7 @@
 
 	<!-- Privacy zones — clipped from the start and end of public tracks. -->
 	<section class="card" id="privacy-zones">
-		<SectionHeader label={m('prefs.privacyZonesHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.privacyZonesHeading')} label={m('prefs.privacyZonesHeading')} class="prefs-section-head" />
 		<p class="section-hint">{m('prefs.privacyZonesDesc')}</p>
 
 		{#if privacyZones.length === 0}
@@ -355,9 +362,9 @@
 	     GDPR Art 7(3) / Art 21. hooks.server.ts + hooks.client.ts gate Sentry
 	     on this state. -->
 	<section class="card">
-		<SectionHeader label={m('prefs.telemetryHeading')} class="prefs-section-head" />
+		<SectionHeader id={settingRowId('prefs.telemetryHeading')} label={m('prefs.telemetryHeading')} class="prefs-section-head" />
 		<p class="section-desc" id="telemetry-desc">{m('prefs.telemetryDesc')}</p>
-		<label class="consent-checkbox">
+		<label id={settingRowId('prefs.telemetryConsent')} class="consent-checkbox">
 			<input
 				type="checkbox"
 				checked={consent.choice === 'accepted'}

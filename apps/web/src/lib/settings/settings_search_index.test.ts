@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { en } from '../i18n/locales/en';
 import type { MessageKey } from '../i18n/messages';
 import { BODY_METRICS_PAGE, PREFERENCES_PAGES } from './preferences_ia';
-import { SETTINGS_SEARCH_INDEX, searchSettings } from './settings_search';
+import { SETTINGS_SEARCH_INDEX, searchSettings, settingRowId } from './settings_search';
 
 // The settings search index is hand-kept beside pages that render their own
 // markup (settings_search.ts). These keep the two from drifting apart.
@@ -38,6 +38,24 @@ test('every indexed title is a live string its page still reads', () => {
 	assert.deepEqual(stale, [], 'Drop or fix the index entry: its page no longer shows that title.');
 });
 
+test('every indexed row has exactly one anchor on its page, so a result lands on it', () => {
+	const problems: string[] = [];
+	for (const page of SETTINGS_SEARCH_INDEX) {
+		const src = pageSource(page.href);
+		const ids = new Map<string, string>();
+		for (const key of page.rows) {
+			const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			const n = [...src.matchAll(new RegExp(`\\b(?:id|headingId)=\\{settingRowId\\('${escaped}'\\)\\}`, 'g'))].length;
+			if (n !== 1) problems.push(`${page.href}: ${key} has ${n} anchors; put id={settingRowId('${key}')} on its row`);
+			const id = settingRowId(key);
+			const other = ids.get(id);
+			if (other !== undefined) problems.push(`${page.href}: ${key} and ${other} share the id ${id}`);
+			ids.set(id, key);
+		}
+	}
+	assert.deepEqual(problems, []);
+});
+
 test("every section heading a page draws is in that page's index entry", () => {
 	const missing: string[] = [];
 	for (const page of SETTINGS_SEARCH_INDEX) {
@@ -51,9 +69,16 @@ test("every section heading a page draws is in that page's index entry", () => {
 
 test('search folds case and accents, names the page, and lists the page itself', () => {
 	const hits = searchSettings('HEART', t, all);
-	assert.ok(hits.some((h) => h.href === '/settings/training' && h.title === english['prefs.heartRateZonesHeading']));
+	assert.ok(
+		hits.some(
+			(h) =>
+				h.href === `/settings/training#${settingRowId('prefs.heartRateZonesHeading')}` &&
+				h.title === english['prefs.heartRateZonesHeading'],
+		),
+	);
 	assert.ok(hits.every((h) => h.where.length > 0));
 	const self = searchSettings(english['settingsLayout.tabGear'], t, all);
+	// The page's own name opens the page; a row on it lands on the row.
 	assert.equal(self[0].href, '/settings/gear');
 	assert.equal(self[0].title, self[0].where);
 });
@@ -69,4 +94,14 @@ test('a title on one page is listed once', () => {
 	const hits = searchSettings(english['prefs.messagesHeading'], t, all);
 	const keys = hits.map((h) => `${h.href}|${h.title}`);
 	assert.equal(new Set(keys).size, keys.length);
+});
+
+test("a row result links to the row's anchor on its page", () => {
+	const hits = searchSettings('nutr', t, all);
+	const row = hits.find((h) => h.title === english['prefs.showNutrition']);
+	assert.ok(row);
+	assert.equal(row.href, '/settings/display#setting-prefs-showNutrition');
+	for (const h of hits) {
+		if (h.title !== h.where) assert.match(h.href, /^\/settings\/[a-z-]+#setting-[A-Za-z0-9_-]+$/);
+	}
 });

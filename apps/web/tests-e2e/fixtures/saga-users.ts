@@ -50,6 +50,10 @@ export async function createSagaUsers(
 		/// The lane's own base URL, for a secondary lane that boots its dev
 		/// server elsewhere (the configured lane); the sharded lane's otherwise.
 		baseURL?: string;
+		/// Stamp health-data consent, as a runner who ticked the box would
+		/// have. Off by default, as for a real signup: without it the database
+		/// keeps no heart rate and no food log (decisions § 2513).
+		healthConsent?: boolean;
 	}
 ): Promise<SagaUser[]> {
 	if (count < 1) throw new Error('createSagaUsers: count must be >= 1');
@@ -99,7 +103,8 @@ export async function createSagaUsers(
 					// (migration 20270424000004) rejects this user's first
 					// run / route / gym / food / body-metrics insert.
 					age_confirmed_at: new Date().toISOString(),
-					terms_accepted_at: new Date().toISOString()
+					terms_accepted_at: new Date().toISOString(),
+					...(opts?.healthConsent ? { health_data_consent_at: new Date().toISOString() } : {})
 				});
 			if (profileError) {
 				throw new Error(

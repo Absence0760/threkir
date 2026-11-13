@@ -86,7 +86,7 @@ test.describe('single-run enrichment journey', () => {
 		let photoStoragePath = '';
 
 		try {
-			[owner] = await createSagaUsers(1, { displayNames: ['Enrichment Owner'] });
+			[owner] = await createSagaUsers(1, { healthConsent: true, displayNames: ['Enrichment Owner'] });
 
 			// ── Fixture: a climbing track with per-point ele + ts + bpm ──
 			// 12 points along a south-east Melbourne suburban line, clear of

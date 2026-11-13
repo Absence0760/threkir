@@ -128,12 +128,16 @@ INSERT INTO auth.identities (
 -- `height_cm`, `date_of_birth`, `gender` feed the Mifflin-St Jeor BMR on
 -- /nutrition (get_my_profile() returns the whole row). Without them the macro
 -- rings render in their untargeted "set your body metrics" state.
+-- health_data_consent_at is stamped here, before any run is inserted: the
+-- runs and food_log gates keep heart rate and food only with consent
+-- (decisions § 2513), so a stamp added after the runs (section 3a) would
+-- leave every seeded run without its heart rate.
 INSERT INTO user_profiles (id, display_name, parkrun_number, preferred_unit, subscription_tier,
                            age_confirmed_at, terms_accepted_at, onboarded_at,
-                           height_cm, date_of_birth, gender)
+                           height_cm, date_of_birth, gender, health_data_consent_at)
 VALUES ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Jared Howard', 'A123456', 'km', 'free',
         now(), now(), now(),
-        178.0, '1992-09-12', 'male')
+        178.0, '1992-09-12', 'male', now())
 ON CONFLICT (id) DO NOTHING;
 
 -- Make the seed user an admin so /admin/reports is testable locally.
@@ -709,10 +713,12 @@ INSERT INTO auth.identities (
 ) ON CONFLICT DO NOTHING;
 
 -- onboarded_at: same reason as the runner profile above.
+-- health_data_consent_at before the runs below, as for the runner (§ 2513).
 INSERT INTO user_profiles (id, display_name, preferred_unit, subscription_tier,
-                           age_confirmed_at, terms_accepted_at, onboarded_at)
+                           age_confirmed_at, terms_accepted_at, onboarded_at,
+                           health_data_consent_at)
 VALUES ('b2c3d4e5-f6a7-8901-bcde-f23456789012', 'Alex Chen', 'km', 'free',
-        now(), now(), now())
+        now(), now(), now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- Alex joins Sydney Run Club as an active member + requests Tempo Tuesday.
@@ -1104,10 +1110,12 @@ INSERT INTO auth.identities (
 ) ON CONFLICT DO NOTHING;
 
 -- onboarded_at: same reason as the runner profile above.
+-- health_data_consent_at before the runs below, as for the runner (§ 2513).
 INSERT INTO user_profiles (id, display_name, preferred_unit, subscription_tier,
-                           age_confirmed_at, terms_accepted_at, onboarded_at)
+                           age_confirmed_at, terms_accepted_at, onboarded_at,
+                           health_data_consent_at)
 VALUES ('c3d4e5f6-a7b8-9012-cdef-345678901234', 'Morgan Lee', 'km', 'free',
-        now(), now(), now())
+        now(), now(), now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- Recent public runs for Alex — 12 entries spread across the last

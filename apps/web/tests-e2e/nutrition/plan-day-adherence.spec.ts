@@ -22,7 +22,7 @@ test.describe('/nutrition — plan day adherence', () => {
 	let user: SagaUser;
 
 	test.beforeAll(async () => {
-		[user] = await createSagaUsers(1, { displayNames: ['Plan Follower'] });
+		[user] = await createSagaUsers(1, { healthConsent: true, displayNames: ['Plan Follower'] });
 		const admin = getAdminClient();
 		const { data: plan, error } = await admin
 			.from('nutrition_plans')

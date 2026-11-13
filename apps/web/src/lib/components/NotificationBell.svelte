@@ -17,6 +17,7 @@
 	import { eventCancelMessage } from '#lib/social/event_cancel_copy.ts';
 	import { waitlistSlotMessage } from '#lib/social/event_waitlist_offer.ts';
 	import { notificationLinkFor } from '#lib/social/notification_link.ts';
+	import { parkMonthNoticeMessage } from '#lib/social/park_month_notice_copy.ts';
 
 	let open = $state(false);
 	let loading = $state(false);
@@ -165,6 +166,10 @@
 					: m('notificationBell.organiserDispute');
 			case 'park_course_report':
 				return m('notificationBell.parkCourseReport');
+			case 'park_course_month_closed': {
+				const msg = parkMonthNoticeMessage('notificationBell', item.row, item.park_course_name, activeFormatLocale());
+				return m(msg.key, msg.params);
+			}
 			case 'race_starting_soon':
 				return item.event_title
 					? m('notificationBell.raceStartingSoonTitled', { title: item.event_title })

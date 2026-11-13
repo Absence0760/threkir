@@ -159,6 +159,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchPage[] = [
 			'prefs.notifyClubJoinApproved',
 			'prefs.notifyEventUpdated',
 			'prefs.notifyCourseAlert',
+			'prefs.notifyParkCourseMonth',
 			'prefs.notifyDataExportReady',
 			'prefs.optionalEmailsHeading',
 			'prefs.emailNewDeviceAlerts',

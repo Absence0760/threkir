@@ -5,9 +5,10 @@ import { USER_A, USER_B } from '../fixtures/users';
 import type { TrackPoint } from '../../src/lib/types';
 
 /**
- * Run detail's park course chips (issue #1313): the owner sees a chip per
- * park course the run completed, with the time and its place on that season's
- * fastest board, linking to the course page. A failed read is a quiet line
+ * Run detail's park course chips (issue #1313, months #1343): the owner sees a
+ * chip per park course the run completed, with the time and its places on
+ * that month's and that season's fastest boards, linking to the course page
+ * on the effort's month. A failed read is a quiet line
  * with Retry, never a broken page, and nobody else sees the chips.
  */
 
@@ -87,7 +88,7 @@ test.describe('run detail park course chips', () => {
 	test.describe('as the owner', () => {
 		test.use({ storageState: USER_A.storageStatePath });
 
-		test('a completed course shows its time and season place, linking to the course', async ({ page }) => {
+		test('a completed course shows its time and its month and season places, linking to the month board', async ({ page }) => {
 			await page.goto(`/runs/${runId}`);
 			const chips = page.getByTestId('run-park-courses');
 			await expect(chips).toBeVisible({ timeout: 20_000 });
@@ -96,8 +97,9 @@ test.describe('run detail park course chips', () => {
 			await expect(chip).toHaveCount(1);
 			await expect(chip).toContainText('E2E Chip Loop');
 			await expect(chip).toContainText('6:00');
-			await expect(chip).toContainText('#1 in 2026');
-			await expect(chip).toHaveAttribute('href', `/parks/us-va/${parkSlug}/chip-loop`);
+			// 12 May 2026 08:00 UTC is May in New York too.
+			await expect(chip).toContainText('#1 in May, #1 in 2026');
+			await expect(chip).toHaveAttribute('href', `/parks/us-va/${parkSlug}/chip-loop?period=2026-05`);
 		});
 
 		test('a failed read is a quiet line with Retry, and the page stands', async ({ page, mockRoute }) => {

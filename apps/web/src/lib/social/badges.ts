@@ -79,6 +79,8 @@ export interface BadgeInput {
 	completeParkCount: number;
 	/** Regions (with three or more parks) where a course is completed in every park. */
 	passportRegionCount: number;
+	/** Distinct calendar months, each read where its park is, with a park course completed. */
+	parkMonthCount: number;
 }
 
 /**
@@ -163,6 +165,16 @@ export const BADGE_CATALOGUE: Badge[] = [
 			{ tier: 'gold', threshold: 10, icon: 'public', labelKey: 'badges.parkPassport10.label', descKey: 'badges.parkPassport10.desc' },
 		],
 	},
+	{
+		id: 'park_months',
+		sourceKind: 'segment',
+		tiers: [
+			{ tier: 'bronze', threshold: 3, icon: 'calendar_month', labelKey: 'badges.parkMonths3.label', descKey: 'badges.parkMonths3.desc' },
+			{ tier: 'silver', threshold: 6, icon: 'event_repeat', labelKey: 'badges.parkMonths6.label', descKey: 'badges.parkMonths6.desc' },
+			{ tier: 'gold', threshold: 12, icon: 'event_available', labelKey: 'badges.parkMonths12.label', descKey: 'badges.parkMonths12.desc' },
+			{ tier: 'platinum', threshold: 24, icon: 'date_range', labelKey: 'badges.parkMonths24.label', descKey: 'badges.parkMonths24.desc' },
+		],
+	},
 ];
 
 /** Map a catalogue family to the input value it evaluates against. */
@@ -184,6 +196,8 @@ function valueForBadge(badge: Badge, input: BadgeInput): number {
 			return input.completeParkCount;
 		case 'park_passport':
 			return input.passportRegionCount;
+		case 'park_months':
+			return input.parkMonthCount;
 		default:
 			return 0;
 	}

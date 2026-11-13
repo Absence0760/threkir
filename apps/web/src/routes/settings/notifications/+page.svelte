@@ -42,6 +42,10 @@
 	// enqueue_workout_reminders raises nothing for a runner who turned it off,
 	// because a clock raises it every morning rather than someone's action.
 	let notifyWorkoutReminder = $state(true);
+	// The park course month-close notice (#1343) is raised by a clock too, so
+	// like the workout reminder its mute also withholds the inbox row. It is
+	// in neither default set: email and push carry it only under "all".
+	let notifyParkCourseMonth = $state(true);
 	// Opt-OUT alert for a sign-in from a device class the account has not used
 	// before (security_email new_device_sign_in). The password-changed notice
 	// has no control on purpose: it is the one mail a takeover must not mute.
@@ -67,6 +71,7 @@
 		notifyCourseAlert = effective<string>(settings, 'notify_course_alert', 'on') !== 'off';
 		notifyRaceStartingSoon = effective<string>(settings, 'notify_race_starting_soon', 'on') !== 'off';
 		notifyWorkoutReminder = effective<string>(settings, 'notify_workout_reminder', 'on') !== 'off';
+		notifyParkCourseMonth = effective<string>(settings, 'notify_park_course_month', 'on') !== 'off';
 		emailNewDeviceAlerts = effective<string>(settings, 'email_new_device_alerts', 'on') !== 'off';
 	});
 
@@ -253,6 +258,18 @@
 			<span>
 				{m('prefs.notifyWorkoutReminder')}
 				<span class="hint">{m('prefs.notifyWorkoutReminderHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyParkCourseMonth}
+				onchange={() => prefs.save({ notify_park_course_month: notifyParkCourseMonth ? 'on' : 'off' })}
+				data-testid="notify-park-course-month"
+			/>
+			<span>
+				{m('prefs.notifyParkCourseMonth')}
+				<span class="hint">{m('prefs.notifyParkCourseMonthHint')}</span>
 			</span>
 		</label>
 		<label class="checkbox-row">

@@ -108,6 +108,10 @@ function targetKeyFor(n: GroupableNotification): string {
 			// One notice per recipient per alert, and two alerts are two
 			// different course changes: never collapse them.
 			return solo;
+		case 'park_course_month_closed':
+			// One per course and month, each with its own best time: "and 1
+			// other" would hide a course's month.
+			return solo;
 		case 'park_course_report':
 			// An admin notice with no target: each points at a course in the
 			// queue, and "and 1 other" would hide a land-manager deadline.

@@ -379,8 +379,19 @@ test.describe('run share-image editor', () => {
 		}
 	});
 
-	test('a run that completed a park course offers the course sticker', async ({ page }) => {
+	test('a run that completed a park course offers the course sticker, with its month place', async ({ page }) => {
 		const admin = getAdminClient();
+		// The sticker is drawn on a canvas, so its words are read where they are
+		// drawn rather than from the PNG.
+		await page.addInitScript(() => {
+			const drawn: string[] = [];
+			(window as unknown as { __stickerText: string[] }).__stickerText = drawn;
+			const fill = CanvasRenderingContext2D.prototype.fillText;
+			CanvasRenderingContext2D.prototype.fillText = function (text: string, x: number, y: number, maxWidth?: number) {
+				drawn.push(String(text));
+				return maxWidth === undefined ? fill.call(this, text, x, y) : fill.call(this, text, x, y, maxWidth);
+			};
+		});
 		const tag = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 		// The course runs north through the midpoints of the track's chords, so
 		// its derived start and end lines sit mid-chord and the run crosses both
@@ -443,6 +454,12 @@ test.describe('run share-image editor', () => {
 			await dialog.getByTestId('share-kind-course').click();
 			await expect(dialog.getByTestId('share-kind-course')).toHaveAttribute('aria-checked', 'true');
 			await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+			// 10 May 2026 08:00 UTC is May in New York. The only time on the
+			// course is first that month and that year, and a year place in
+			// the top 10 is printed beside the month's (issue #1343).
+			await expect
+				.poll(() => page.evaluate(() => (window as unknown as { __stickerText: string[] }).__stickerText))
+				.toContain('#1 in May · #1 in 2026');
 			const png = await readPng(await download(page));
 			expect(png.width).toBe(1080);
 			expect(await cornerAlpha(page, png)).toBe(0);

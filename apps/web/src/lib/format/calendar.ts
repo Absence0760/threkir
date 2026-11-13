@@ -37,6 +37,15 @@ export function monthName(index: number, locale?: string): string {
 	return monthNames(locale)[((index % 12) + 12) % 12];
 }
 
+/// A calendar month with its year, `November 2026` (en), `November 2026` (de),
+/// `2026年11月` (ja), for a 1-based month. The month is a calendar label, not
+/// an instant, so it is formatted in UTC and never shifts with the reader.
+export function monthYearLabel(year: number, month: number, locale?: string): string {
+	return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+		new Date(Date.UTC(year, month - 1, 15)),
+	);
+}
+
 function weekdaysMonFirst(locale?: string): string[] {
 	const key = locale ?? '';
 	let v = dowCache.get(key);

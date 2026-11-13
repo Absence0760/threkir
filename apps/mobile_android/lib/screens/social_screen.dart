@@ -222,7 +222,7 @@ class _SocialScreenState extends State<SocialScreen>
             HubTabScope(
               tab: t,
               actions: _actions,
-              child: KeepAliveTab(child: _body(t, api)),
+              child: KeepAliveChild(child: _body(t, api)),
             ),
         ],
       ),

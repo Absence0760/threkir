@@ -364,7 +364,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
         // These three keep no state alive of their own, and a TabBarView page
         // is disposed once it scrolls out of view: without the wrapper a tab
         // switch would re-run each one's arrival fetch and drop its filters.
-        FitnessTab.plans => KeepAliveTab(
+        FitnessTab.plans => KeepAliveChild(
             child: PlansScreen(
               key: const PageStorageKey('fitness-plans'),
               training: widget.training,
@@ -372,7 +372,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               runStore: widget.runStore,
             ),
           ),
-        FitnessTab.races => KeepAliveTab(
+        FitnessTab.races => KeepAliveChild(
             child: RacesScreen(
               key: const PageStorageKey('fitness-races'),
               service: _raceService,
@@ -381,7 +381,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               show: widget.views?.races,
             ),
           ),
-        FitnessTab.routes => KeepAliveTab(
+        FitnessTab.routes => KeepAliveChild(
             child: RoutesScreen(
               key: const PageStorageKey('fitness-routes'),
               apiClient: widget.apiClient,

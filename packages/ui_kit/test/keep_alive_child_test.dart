@@ -37,7 +37,7 @@ void main() {
     final tabs = TabController(length: 3, vsync: const TestVSync());
     addTearDown(tabs.dispose);
     await tester.pumpWidget(_hub(tabs, [
-      KeepAliveTab(child: _Page(created)),
+      KeepAliveChild(child: _Page(created)),
       const SizedBox(),
       const SizedBox(),
     ]));
@@ -67,6 +67,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(created, hasLength(2));
+    expect(find.text('page'), findsOneWidget);
+  });
+
+  // The detail screens' maps are ListView children: past the cache extent a
+  // bare child is disposed, and the map reloads every tile on the way back.
+  testWidgets('a wrapped ListView child keeps its State when scrolled far out of view', (tester) async {
+    final created = <int>[];
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: ListView(
+          cacheExtent: 0,
+          children: [
+            KeepAliveChild(child: SizedBox(height: 100, child: _Page(created))),
+            const SizedBox(height: 5000),
+          ],
+        ),
+      ),
+    ));
+
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+    expect(find.text('page', skipOffstage: false), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, 3000));
+    await tester.pumpAndSettle();
+
+    expect(created, hasLength(1));
     expect(find.text('page'), findsOneWidget);
   });
 }

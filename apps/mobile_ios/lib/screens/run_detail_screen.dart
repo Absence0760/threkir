@@ -13,7 +13,13 @@ import 'package:flutter/material.dart' hide Route;
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppRadius, AppSemanticColors, ChartPalette, StatGrid, StatTile;
+    show
+        AppRadius,
+        AppSemanticColors,
+        ChartPalette,
+        KeepAliveChild,
+        StatGrid,
+        StatTile;
 import 'package:uuid/uuid.dart';
 
 import '../adaptive_width.dart';
@@ -1334,7 +1340,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           // FlutterMap + MapController; scrolling back rebuilt it from
           // scratch — a visible tile reload plus a jank spike. Keeping it
           // alive also pauses its pulse ticker while off-screen.
-          _KeepAliveMap(
+          KeepAliveChild(
             child: SizedBox(
               height: detailMapHeight(viewportHeight),
               child: _buildMapStack(l10n),
@@ -3902,32 +3908,6 @@ void applyDnfFlag(Map<String, dynamic> metadata, bool dnf) {
     metadata[MetadataKeys.isDnf] = true;
   } else {
     metadata.remove(MetadataKeys.isDnf);
-  }
-}
-
-
-/// Preserves its child's State when it scrolls out of the enclosing
-/// ListView's cache extent. Wraps the run-detail map so the FlutterMap +
-/// MapController aren't disposed and rebuilt (with a full tile reload) on
-/// every scroll past it. Same `AutomaticKeepAliveClientMixin` idiom as
-/// `_LazyKeepAliveTab` on the home shell.
-class _KeepAliveMap extends StatefulWidget {
-  final Widget child;
-  const _KeepAliveMap({required this.child});
-
-  @override
-  State<_KeepAliveMap> createState() => _KeepAliveMapState();
-}
-
-class _KeepAliveMapState extends State<_KeepAliveMap>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
   }
 }
 

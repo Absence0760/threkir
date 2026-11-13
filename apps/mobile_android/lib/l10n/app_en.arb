@@ -1700,7 +1700,7 @@
   "@bodyMetricsConsentTitle": {
     "description": "Toggle title for the GDPR Art 9 health-data consent gate"
   },
-  "bodyMetricsConsentSubtitle": "Height and weight are special-category health data. Turn this off to erase them.",
+  "bodyMetricsConsentSubtitle": "Height and weight are special-category health data. Turn this off and save to erase them.",
   "@bodyMetricsConsentSubtitle": {
     "description": "Explanation under the health-data consent toggle"
   },

@@ -296,7 +296,7 @@ test.describe('Legal pages', () => {
 		await expect(page.locator('.legal-page')).toContainText(
 			'endgültig und kann nicht rückgängig gemacht werden'
 		);
-		await expect(page.locator('.legal-page')).toContainText('das Wort LÖSCHEN');
+		await expect(page.locator('.legal-page')).toContainText('das Wort „LÖSCHEN“');
 		await context.close();
 	});
 

@@ -1284,7 +1284,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Height and weight are special-category health data. Turn this off to erase them.';
+      'Height and weight are special-category health data. Turn this off and save to erase them.';
 
   @override
   String get bodyMetricsHeight => 'Height';

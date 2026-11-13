@@ -1305,7 +1305,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Altura e peso são dados de saúde sensíveis. Desative para apagá-los.';
+      'Altura e peso são dados de saúde sensíveis. Desative e guarde para os apagar.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -1351,7 +1351,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isto apaga permanentemente a sua altura guardada, o seu género, todo o seu histórico de peso e quaisquer dados de ciclo ou gravidez, e a sua data de nascimento deixa de ser usada para personalizar o seu treino. Não pode ser desfeito.';
+      'Isto apaga permanentemente a sua altura guardada, o seu género, todo o seu histórico de peso e quaisquer dados do ciclo menstrual ou de gravidez, e a sua data de nascimento deixa de ser usada para personalizar o seu treino. Isto não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
@@ -7121,7 +7121,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planNewAiErrorConsent =>
-      'O assistente de planos precisa do aviso de IA atualizado.';
+      'O assistente de planos precisa que aceite o aviso de IA atualizado.';
 
   @override
   String get planNewAiReviewDisclosure => 'Ver as informações';
@@ -18985,7 +18985,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Siga $name para ver as corridas e quem essa pessoa segue. Cada pedido tem de ser aprovado por essa pessoa.';
+    return 'Siga $name para ver as corridas dessa pessoa e quem ela segue. É ela que aprova cada pedido.';
   }
 
   @override
@@ -19172,7 +19172,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get seasonPlanErrorConsent =>
-      'O assistente de época precisa do aviso de IA atualizado. Pode adicionar as suas provas abaixo na mesma.';
+      'O assistente de época precisa que aceite o aviso de IA atualizado. Pode adicionar as suas provas abaixo na mesma.';
 
   @override
   String get seasonPlanErrorDailyLimit =>
@@ -24391,7 +24391,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Altura e peso são dados de saúde sensíveis. Desative para apagá-los.';
+      'Altura e peso são dados de saúde sensíveis. Desative e salve para apagá-los.';
 
   @override
   String get bodyMetricsHeight => 'Altura';

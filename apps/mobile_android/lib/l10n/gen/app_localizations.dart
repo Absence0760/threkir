@@ -2138,7 +2138,7 @@ abstract class AppLocalizations {
   /// Explanation under the health-data consent toggle
   ///
   /// In en, this message translates to:
-  /// **'Height and weight are special-category health data. Turn this off to erase them.'**
+  /// **'Height and weight are special-category health data. Turn this off and save to erase them.'**
   String get bodyMetricsConsentSubtitle;
 
   /// Label for the height input (centimetres)

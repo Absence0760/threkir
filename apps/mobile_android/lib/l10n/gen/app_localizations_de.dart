@@ -1303,7 +1303,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Größe und Gewicht sind besondere Gesundheitsdaten. Zum Löschen ausschalten.';
+      'Größe und Gewicht sind besondere Gesundheitsdaten. Zum Löschen ausschalten und speichern.';
 
   @override
   String get bodyMetricsHeight => 'Größe';
@@ -1349,7 +1349,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Dadurch werden deine gespeicherte Größe, dein Geschlecht, dein gesamter Gewichtsverlauf und alle Angaben zu Zyklus oder Schwangerschaft dauerhaft gelöscht, und dein Geburtsdatum wird nicht mehr zur Anpassung deines Trainings verwendet. Das kann nicht rückgängig gemacht werden.';
+      'Dadurch werden deine gespeicherte Größe, dein Geschlecht, dein Gewichtsverlauf und alle Angaben zu Zyklus oder Schwangerschaft dauerhaft gelöscht, und dein Geburtsdatum wird nicht mehr verwendet, um dein Training zu personalisieren. Das kann nicht rückgängig gemacht werden.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Widerrufen & löschen';

@@ -1302,7 +1302,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'La taille et le poids sont des données de santé sensibles. Désactivez pour les effacer.';
+      'La taille et le poids sont des données de santé sensibles. Désactivez puis enregistrez pour les effacer.';
 
   @override
   String get bodyMetricsHeight => 'Taille';

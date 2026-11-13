@@ -4,6 +4,7 @@
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -1478,7 +1479,7 @@
 			{/if}
 		{:else if tab === 'events'}
 			{#if upcoming.length > 0}
-				<h2 class="section-title">{tr('clubHome.upcoming')}</h2>
+				<SectionHeader label={tr('clubHome.upcoming')} class="club-events-head" />
 				<div class="event-list">
 					{#each upcoming as evt (evt.id)}
 						<a href="/clubs/{club.slug}/events/{evt.id}" class="event-row">
@@ -1546,7 +1547,7 @@
 			{/if}
 
 			{#if past.length > 0}
-				<h2 class="section-title muted-title">{tr('clubHome.past')}</h2>
+				<SectionHeader label={tr('clubHome.past')} class="club-events-head club-past-head" />
 				<div class="event-list">
 					{#each past as evt (evt.id)}
 						<a href="/clubs/{club.slug}/events/{evt.id}" class="event-row past">
@@ -2494,15 +2495,11 @@
 		background: var(--color-danger-light);
 	}
 
-	.section-title {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: var(--space-lg) 0 var(--space-sm) 0;
+	:global(.club-events-head) {
+		margin-top: var(--space-lg);
 	}
 
-	.muted-title {
+	:global(.club-events-head.club-past-head) {
 		margin-top: var(--space-xl);
 	}
 

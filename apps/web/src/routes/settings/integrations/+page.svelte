@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
@@ -379,7 +380,7 @@
 		{/if}
 		{#if visibleConnect.length > 0}
 		<section class="provider-section">
-			<h2>{m('settingsIntegrations.availableHeading')}</h2>
+			<SectionHeader label={m('settingsIntegrations.availableHeading')} class="integrations-section-head" />
 			<div class="integration-list">
 			{#each visibleConnect as gated (gated.spec.provider)}
 				{@const integration = uiFor(gated.spec.provider)}
@@ -680,13 +681,8 @@
 	}
 
 	.provider-section { margin-bottom: var(--space-xl); }
-	.provider-section > h2 {
-		font-size: 0.9rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin: 0 0 var(--space-md);
+	:global(.integrations-section-head) {
+		margin-bottom: var(--space-md);
 	}
 
 	/* Empty-state card — matches /u/[id]'s shape. */

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -139,10 +140,11 @@
 		{:else}
 			<div class="park-layout" class:with-map={hasLines}>
 				<section class="courses" aria-labelledby="park-courses-title">
-					<h2 id="park-courses-title" class="section-title">
-						{m('parks.coursesTitle')}
-						<span class="count">{m('parks.courseCount', { n: courses.length })}</span>
-					</h2>
+					<SectionHeader title label={m('parks.coursesTitle')} id="park-courses-title">
+						{#snippet badge()}
+							<span class="count">{m('parks.courseCount', { n: courses.length })}</span>
+						{/snippet}
+					</SectionHeader>
 					{#if recordsFailed}
 						<p class="records-failed" role="status" data-testid="park-records-failed">
 							{m('races.anyTimeFastestFailed')}
@@ -316,14 +318,6 @@
 		.map-frame {
 			height: min(32rem, 70vh);
 		}
-	}
-	.section-title {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: var(--space-sm);
-		margin: 0 0 var(--space-sm);
-		font-size: var(--font-size-section-title);
 	}
 	.count {
 		font-size: 0.85rem;

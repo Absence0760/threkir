@@ -12,6 +12,7 @@
 </script>
 
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { formatDate } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
@@ -70,7 +71,7 @@
 		{#each groups as g (g.key)}
 			<section class="timeline-group" data-testid="timeline-day-group">
 				{#if headings}
-					<h2 class="timeline-day">{dayLabel(g)}</h2>
+					<SectionHeader label={dayLabel(g)} class="timeline-day" flush />
 				{/if}
 				<ul class="timeline-list card-elevated">
 					{#each g.rows as a (a.id)}
@@ -152,13 +153,7 @@
 		flex-direction: column;
 		gap: var(--space-sm);
 	}
-	.timeline-day {
-		font-size: 0.75rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
-		margin: 0;
+	.timeline-group > :global(.timeline-day) {
 		padding-inline-start: var(--space-2xs);
 	}
 	/* One elevated panel per day; rows are separated by hairline

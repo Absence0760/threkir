@@ -3,6 +3,7 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import {
@@ -152,7 +153,7 @@
 	</div>
 
 	{#if hasQuery}
-		<h2 class="section-title">{m('socialPeople.searchResults')}</h2>
+		<SectionHeader label={m('socialPeople.searchResults')} flush />
 		{#if searching}
 			<p class="muted" role="status">{m('socialPeople.searching')}</p>
 		{:else if results.length === 0}
@@ -164,7 +165,7 @@
 			/>
 		{/if}
 	{:else}
-		<h2 class="section-title">{m('socialPeople.suggestedForYou')}</h2>
+		<SectionHeader label={m('socialPeople.suggestedForYou')} flush />
 		{#if loadingSuggestions}
 			<div class="grid" aria-hidden="true">
 				{#each Array(4) as _, i (i)}
@@ -247,7 +248,7 @@
 
 	{#if NEARBY_RUNNERS_ENABLED && !hasQuery}
 		<section class="nearby" aria-labelledby="nearby-heading">
-			<h2 class="section-title" id="nearby-heading">{m('socialNearby.heading')}</h2>
+			<SectionHeader label={m('socialNearby.heading')} id="nearby-heading" flush />
 			<p class="muted nearby-subtitle">{m('socialNearby.subtitle')}</p>
 			{#if loadingNearby}
 				<p class="muted" role="status">{m('socialNearby.loading')}</p>
@@ -327,14 +328,6 @@
 	.search-wrap {
 		display: flex;
 		max-width: 32rem;
-	}
-	.section-title {
-		font-size: 0.95rem;
-		font-weight: 700;
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		margin: var(--space-sm) 0 0;
 	}
 	.muted {
 		color: var(--color-text-tertiary);

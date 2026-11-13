@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -363,7 +364,7 @@
 	     and aren't consent-gated. -->
 	<section class="card">
 		<div class="card-head">
-			<h2>{m('prefs.nutritionTargetsHeading')}</h2>
+			<SectionHeader label={m('prefs.nutritionTargetsHeading')} class="prefs-section-head" />
 			<p class="autosave-note" role="status" aria-live="polite" data-testid="nutrition-save-status">
 				{#if prefs.status === 'saving'}
 					<span class="material-symbols spin" aria-hidden="true">progress_activity</span> {m('prefs.saving')}

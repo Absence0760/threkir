@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
@@ -172,7 +173,7 @@
 			{/if}
 			{#if mounted && elevations}
 				<div class="elevation" data-testid="share-course-elevation">
-					<h2 class="section-title">{m('parks.elevationTitle')}</h2>
+					<SectionHeader title label={m('parks.elevationTitle')} />
 					<ElevationProfile
 						{elevations}
 						totalGain={course.segment.elevation_m}
@@ -322,10 +323,6 @@
 	}
 	.elevation {
 		margin-top: var(--space-lg);
-	}
-	.section-title {
-		margin: 0 0 var(--space-sm);
-		font-size: var(--font-size-section-title);
 	}
 	.notices-slot,
 	.guide-slot {

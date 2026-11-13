@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -205,7 +206,7 @@
 
 <PrefsPage heading={m('prefs.unitsDisplayHeading')} tagline={m('prefs.displayTagline')} page={prefs}>
 	<section class="card">
-		<h2>{m('prefs.languageThemeHeading')}</h2>
+		<SectionHeader label={m('prefs.languageThemeHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<label>
@@ -236,7 +237,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.unitsHeading')}</h2>
+		<SectionHeader label={m('prefs.unitsHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<span class="label-text">{m('prefs.distanceUnit')}</span>
@@ -280,7 +281,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.mapsPagesHeading')}</h2>
+		<SectionHeader label={m('prefs.mapsPagesHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<label>
@@ -361,7 +362,7 @@
 
 	{#if coachOn}
 		<section class="card" id="messages-coach">
-			<h2>{m('prefs.messagesHeading')}</h2>
+			<SectionHeader label={m('prefs.messagesHeading')} class="prefs-section-head" />
 			<div class="form-grid">
 				<div class="field">
 					<label>
@@ -384,7 +385,7 @@
 	{/if}
 
 	<section class="card" id="gym-nutrition">
-		<h2>{m('prefs.modalitiesHeading')}</h2>
+		<SectionHeader label={m('prefs.modalitiesHeading')} class="prefs-section-head" />
 		<label class="checkbox-row">
 			<input
 				type="checkbox"
@@ -410,7 +411,7 @@
 	</section>
 
 	<section class="card" id="home-cards">
-		<h2>{m('prefs.homeCardsHeading')}</h2>
+		<SectionHeader label={m('prefs.homeCardsHeading')} class="prefs-section-head" />
 		<p class="hint" id="home-cards-hint">{m('prefs.homeCardsHint')}</p>
 		{#each HIDEABLE_DASHBOARD_CARDS as id (id)}
 			<label class="checkbox-row">

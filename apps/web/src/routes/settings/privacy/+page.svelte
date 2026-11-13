@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -194,7 +195,7 @@
 
 <PrefsPage heading={m('prefs.privacySharingHeading')} tagline={m('prefs.privacyTagline')} page={prefs}>
 	<section class="card">
-		<h2>{m('prefs.yourRunsHeading')}</h2>
+		<SectionHeader label={m('prefs.yourRunsHeading')} class="prefs-section-head" />
 		<div class="form-stack">
 			<div class="field">
 				<label class="field">
@@ -218,7 +219,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.beingFoundHeading')}</h2>
+		<SectionHeader label={m('prefs.beingFoundHeading')} class="prefs-section-head" />
 		<div class="form-stack">
 			<label class="checkbox-row">
 				<input
@@ -295,7 +296,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.messagesHeading')}</h2>
+		<SectionHeader label={m('prefs.messagesHeading')} class="prefs-section-head" />
 		<div class="form-stack">
 			<label class="checkbox-row">
 				<input
@@ -328,7 +329,7 @@
 
 	<!-- Privacy zones — clipped from the start and end of public tracks. -->
 	<section class="card" id="privacy-zones">
-		<h2>{m('prefs.privacyZonesHeading')}</h2>
+		<SectionHeader label={m('prefs.privacyZonesHeading')} class="prefs-section-head" />
 		<p class="section-hint">{m('prefs.privacyZonesDesc')}</p>
 
 		{#if privacyZones.length === 0}
@@ -369,7 +370,7 @@
 	     GDPR Art 7(3) / Art 21. hooks.server.ts + hooks.client.ts gate Sentry
 	     on this state. -->
 	<section class="card">
-		<h2>{m('prefs.telemetryHeading')}</h2>
+		<SectionHeader label={m('prefs.telemetryHeading')} class="prefs-section-head" />
 		<p class="section-desc" id="telemetry-desc">{m('prefs.telemetryDesc')}</p>
 		<label class="consent-checkbox">
 			<input

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
@@ -203,20 +204,21 @@
 		{/if}
 
 		<section class="section">
-			<div class="board-head">
-				<h2>{m('segmentDetail.leaderboard')}</h2>
-				{#if auth.loggedIn}
-					<button
-						type="button"
-						class="btn btn-outline btn-sm h2h-open"
-						onclick={() => (showHeadToHead = true)}
-						data-testid="segment-head-to-head-open"
-					>
-						<span class="material-symbols" aria-hidden="true">group</span>
-						{m('headToHead.compare')}
-					</button>
-				{/if}
-			</div>
+			<SectionHeader label={m('segmentDetail.leaderboard')}>
+				{#snippet trailing()}
+					{#if auth.loggedIn}
+						<button
+							type="button"
+							class="btn btn-outline btn-sm h2h-open"
+							onclick={() => (showHeadToHead = true)}
+							data-testid="segment-head-to-head-open"
+						>
+							<span class="material-symbols" aria-hidden="true">group</span>
+							{m('headToHead.compare')}
+						</button>
+					{/if}
+				{/snippet}
+			</SectionHeader>
 			<div class="tier-filters">
 				<label>
 					{m('segments.gender')}
@@ -430,29 +432,10 @@
 	.section {
 		margin-top: var(--space-lg);
 	}
-	.board-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-sm);
-		margin-bottom: var(--space-sm);
-	}
-	.board-head h2 {
-		margin: 0;
-	}
 	.h2h-open {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
-	}
-	.section h2 {
-		margin: 0 0 var(--space-sm);
-		font-size: 0.85rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
 	}
 	.map-wrap {
 		height: 300px;

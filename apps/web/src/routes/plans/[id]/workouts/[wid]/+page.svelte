@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -451,14 +452,14 @@
 
 		{#if workout.notes}
 			<section class="card">
-				<h3>{t('workoutDetail.notes')}</h3>
+				<SectionHeader label={t('workoutDetail.notes')} />
 				<p>{workout.notes}</p>
 			</section>
 		{/if}
 
 		{#if structure}
 			<section class="card structure-card">
-				<h3>{t('workoutDetail.structure')}</h3>
+				<SectionHeader label={t('workoutDetail.structure')} />
 				<div class="timeline" role="img" aria-label={t('workoutDetail.segmentTimeline')}>
 					{#each structureSegments(structure) as seg, i (i)}
 						<span
@@ -531,7 +532,7 @@
 			</section>
 		{:else if workout.kind !== 'rest'}
 			<section class="card structure-empty">
-				<h3>{t('workoutDetail.planIt')}</h3>
+				<SectionHeader label={t('workoutDetail.planIt')} />
 				<div class="structure-empty-body">
 					<span class="material-symbols" aria-hidden="true">timeline</span>
 					<div>
@@ -545,7 +546,7 @@
 		{/if}
 
 		<section class="card advice">
-			<h3>{t('workoutDetail.howToRunIt')}</h3>
+			<SectionHeader label={t('workoutDetail.howToRunIt')} />
 			<p data-testid="workout-advice">{t(WORKOUT_ADVICE_KEY[workoutAdviceKind(workout)])}</p>
 		</section>
 	</div>
@@ -856,13 +857,6 @@
 		border-radius: var(--radius-lg);
 		padding: var(--space-md) var(--space-lg);
 		margin-bottom: var(--space-md);
-	}
-	.card h3 {
-		font-size: 0.78rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-sm) 0;
 	}
 	.card p { line-height: 1.55; margin: 0; }
 

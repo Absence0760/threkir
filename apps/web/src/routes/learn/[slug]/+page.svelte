@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { m, structureLocale } from '#lib/i18n/store.svelte.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import {
@@ -136,7 +137,7 @@
 
 		{#if related.length}
 			<section class="related" aria-labelledby="related-heading">
-				<h2 id="related-heading">{m('learn.keepReading')}</h2>
+				<SectionHeader label={m('learn.keepReading')} id="related-heading" class="learn-related-head" />
 				<div class="related-grid">
 					{#each related as next (next.slug)}
 						<GuideCard guide={next} />
@@ -249,13 +250,8 @@
 		border-block-start: 1px solid var(--color-border);
 	}
 
-	.related h2 {
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-md);
+	:global(.learn-related-head) {
+		margin-bottom: var(--space-md);
 	}
 
 	/* The article column is a reading measure, so three cards across it would

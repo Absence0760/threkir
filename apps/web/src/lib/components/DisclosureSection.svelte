@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 
 	interface Props {
 		/// Stable key: the persistence key for this section and the prefix of
@@ -71,7 +72,7 @@
 			}}
 		>
 			<span class="material-symbols disclosure-chevron" aria-hidden="true">expand_more</span>
-			<h2 class="section-title" id="{id}-title">{title}</h2>
+			<SectionHeader label={title} id="{id}-title" flush />
 			{#if hint}
 				<span class="disclosure-hint">{hint}</span>
 			{/if}
@@ -128,7 +129,7 @@
 	.disclosure-summary::-webkit-details-marker {
 		display: none;
 	}
-	.disclosure-summary:hover .section-title {
+	.disclosure-summary:hover :global(.section-header-heading) {
 		color: var(--color-primary);
 	}
 	.disclosure-summary:focus-visible {
@@ -143,13 +144,6 @@
 	}
 	details[open] .disclosure-chevron {
 		transform: rotate(180deg);
-	}
-	.section-title {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: 0;
 	}
 	.disclosure-hint {
 		font-size: var(--font-size-section-label);

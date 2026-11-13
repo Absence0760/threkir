@@ -8,6 +8,7 @@
 	import { shareAttributionEnabled } from '#lib/share/share_attribution.ts';
 	import { searchSettings } from '#lib/settings/settings_search.ts';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 
 	type Tab = { href: string; label: string; icon: string };
 	type Section = { label: string; tabs: Tab[] };
@@ -95,7 +96,7 @@
 
 <div class="settings-shell">
 	<nav class="settings-nav">
-		<h2>{m('shell.settings')}</h2>
+		<SectionHeader label={m('shell.settings')} class="settings-nav-title" />
 		<div class="settings-search">
 			<AppSearchField bind:value={query} label={m('settingsLayout.searchLabel')} testid="settings-search" />
 		</div>
@@ -115,7 +116,7 @@
 			</p>
 		{:else}
 			{#each sections as section}
-				<div class="nav-section-label">{section.label}</div>
+				<SectionHeader label={section.label} level={3} class="nav-section-label" flush />
 				{#each section.tabs as tab}
 					<a
 						href={tab.href}
@@ -189,12 +190,7 @@
 		height: 100vh;
 		overflow-y: auto;
 	}
-	.settings-nav h2 {
-		font-size: 0.75rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-tertiary);
+	.settings-nav :global(.settings-nav-title) {
 		margin-bottom: var(--space-md);
 	}
 	.settings-search {
@@ -226,15 +222,10 @@
 	.search-empty:empty {
 		display: none;
 	}
-	.nav-section-label {
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
+	.settings-nav :global(.nav-section-label) {
 		padding: var(--space-md) 0.75rem var(--space-2xs);
 	}
-	.nav-section-label:first-of-type {
+	.settings-nav :global(.nav-section-label:first-of-type) {
 		padding-top: 0;
 	}
 	.nav-item {
@@ -334,8 +325,8 @@
 			height: auto;
 			overflow-y: visible;
 		}
-		.settings-nav h2,
-		.nav-section-label,
+		.settings-nav :global(.settings-nav-title),
+		.settings-nav :global(.nav-section-label),
 		.legal-links {
 			flex: 0 0 100%;
 			margin: 0;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { effective } from '#lib/settings/settings.ts';
@@ -86,7 +87,7 @@
 
 <PrefsPage heading={m('prefs.notificationsHeading')} tagline={m('prefs.notificationsTagline')} page={prefs}>
 	<section class="card">
-		<h2>{m('prefs.emailPushHeading')}</h2>
+		<SectionHeader label={m('prefs.emailPushHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<label>
@@ -270,7 +271,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.optionalEmailsHeading')}</h2>
+		<SectionHeader label={m('prefs.optionalEmailsHeading')} class="prefs-section-head" />
 		<div class="form-stack">
 			<label class="checkbox-row">
 				<input

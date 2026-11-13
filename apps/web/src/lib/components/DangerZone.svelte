@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 
 	interface Props {
 		heading: string;
@@ -12,7 +13,7 @@
 </script>
 
 <section class="danger-zone" aria-labelledby={headingId}>
-	<h2 class="danger-zone-heading" id={headingId}>{heading}</h2>
+	<SectionHeader label={heading} id={headingId} tone="danger" />
 	<p class="danger-zone-desc">{description}</p>
 	<div class="danger-zone-actions">
 		{@render children()}
@@ -26,14 +27,6 @@
 		background: var(--color-surface);
 		border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
 		border-radius: var(--radius-lg);
-	}
-	.danger-zone-heading {
-		margin: 0 0 var(--space-sm);
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-danger-text);
 	}
 	.danger-zone-desc {
 		margin: 0 0 var(--space-md);

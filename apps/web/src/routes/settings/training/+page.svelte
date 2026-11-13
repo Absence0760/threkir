@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { effective } from '#lib/settings/settings.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { dbError } from '#lib/core/supabase_error.ts';
@@ -162,7 +163,7 @@
 
 <PrefsPage heading={m('prefs.trainingHeading')} tagline={m('prefs.trainingTagline')} page={prefs}>
 	<section class="card" id="weekly-distance-goal">
-		<h2>{m('prefs.weeklyGoalHeading')}</h2>
+		<SectionHeader label={m('prefs.weeklyGoalHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<label>
 				<span class="label-text">{m('prefs.weeklyDistanceGoal', { unit: preferredUnit })}</span>
@@ -196,7 +197,7 @@
 	</section>
 
 	<section class="card" id="plan-recovery">
-		<h2>{m('prefs.planRecoveryHeading')}</h2>
+		<SectionHeader label={m('prefs.planRecoveryHeading')} class="prefs-section-head" />
 		<label class="checkbox-row">
 			<input
 				type="checkbox"
@@ -211,7 +212,7 @@
 	</section>
 
 	<section class="card" id="heart-rate-zones">
-		<h2>{m('prefs.heartRateZonesHeading')}</h2>
+		<SectionHeader label={m('prefs.heartRateZonesHeading')} class="prefs-section-head" />
 		<p class="section-desc">{m('prefs.heartRateZonesDesc')}</p>
 		<div class="form-grid">
 			<div class="field">
@@ -283,7 +284,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.raceFuelingHeading')}</h2>
+		<SectionHeader label={m('prefs.raceFuelingHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<label>
@@ -321,7 +322,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.aiCoachHeading')}</h2>
+		<SectionHeader label={m('prefs.aiCoachHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<label>

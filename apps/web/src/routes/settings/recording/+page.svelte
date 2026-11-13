@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { effective } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
@@ -78,7 +79,7 @@
 
 <PrefsPage heading={m('prefs.activityRecordingHeading')} tagline={m('prefs.recordingTagline')} page={prefs}>
 	<section class="card">
-		<h2>{m('prefs.startingRunHeading')}</h2>
+		<SectionHeader label={m('prefs.startingRunHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<label>
@@ -95,7 +96,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.voiceFeedbackHeading')}</h2>
+		<SectionHeader label={m('prefs.voiceFeedbackHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<label class="checkbox-row master-toggle">
 				<input type="checkbox" bind:checked={voiceFeedbackEnabled} onchange={() => prefs.save({ voice_feedback_enabled: voiceFeedbackEnabled })} />

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount, untrack } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
@@ -222,18 +223,19 @@
 </script>
 
 <div class="segments-panel">
-	<header class="hd">
-		<h2>{t('segments.heading')}</h2>
-		{#if canCreate}
-			<button
-				class="btn btn-outline btn-sm"
-				type="button"
-				onclick={() => (showCreate = !showCreate)}
-			>
-				{showCreate ? t('segments.cancel') : t('segments.newSegment')}
-			</button>
-		{/if}
-	</header>
+	<SectionHeader label={t('segments.heading')} flush>
+		{#snippet trailing()}
+			{#if canCreate}
+				<button
+					class="btn btn-outline btn-sm"
+					type="button"
+					onclick={() => (showCreate = !showCreate)}
+				>
+					{showCreate ? t('segments.cancel') : t('segments.newSegment')}
+				</button>
+			{/if}
+		{/snippet}
+	</SectionHeader>
 
 	{#if showCreate}
 		<form
@@ -476,19 +478,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-md);
-	}
-	.hd {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-	.hd h2 {
-		margin: 0;
-		font-size: 0.85rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
 	}
 	.muted {
 		color: var(--color-text-tertiary);

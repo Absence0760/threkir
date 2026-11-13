@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { AppError } from '#lib/core/app_error.ts';
@@ -1227,7 +1228,7 @@
 
 	<!-- Profile -->
 	<section class="card">
-		<h2>{m('settingsAccount.profileHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.profileHeading')} class="account-section-head" />
 		{#if profileLoad === 'failed'}
 			<div class="load-error-banner" role="alert" data-testid="profile-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -1461,7 +1462,7 @@
 
 	<!-- Sign-in methods -->
 	<section class="card" id="sign-in-methods">
-		<h2>{m('settingsAccount.signinMethodsHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.signinMethodsHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.signinMethodsDesc')}
 		</p>
@@ -1551,7 +1552,7 @@
 
 	<!-- Password -->
 	<section class="card">
-		<h2>{m('settingsAccount.passwordHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.passwordHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.passwordDesc')}
 		</p>
@@ -1586,7 +1587,7 @@
 	     that nothing ever read (persona-woman CRITICAL: two conflated
 	     Safety surfaces, one inert) — replaced per docs/features/safety.md. -->
 	<section class="card" data-testid="account-safety-pointer">
-		<h2>{m('settingsAccount.safetyHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.safetyHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.safetyPointerDesc')}
 		</p>
@@ -1598,7 +1599,7 @@
 
 	<!-- Notifications -->
 	<section class="card">
-		<h2>{m('settingsAccount.notificationsHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.notificationsHeading')} class="account-section-head" />
 		{#if !pushSupported}
 			<p class="section-desc">
 				{m('settingsAccount.pushUnsupported')}
@@ -1629,7 +1630,7 @@
 
 	<!-- Backup & Restore -->
 	<section class="card">
-		<h2>{m('settingsAccount.backupHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.backupHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.backupDesc')}
 		</p>
@@ -1687,7 +1688,7 @@
 
 	<!-- Data Export -->
 	<section class="card">
-		<h2>{m('settingsAccount.dataExportHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.dataExportHeading')} class="account-section-head" />
 		<p class="section-desc">
 			{m('settingsAccount.dataExportDescPrefix')}<code>runs.json</code>{m('settingsAccount.dataExportDescBetween')}<code>runs.json</code>{m('settingsAccount.dataExportDescSuffix')}
 		</p>
@@ -1774,7 +1775,7 @@
 	</section>
 
 	<section class="card" id="ai-consent" data-testid="ai-consent">
-		<h2>{m('settingsAccount.coachConsentHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.coachConsentHeading')} class="account-section-head" />
 		{#if aiConsentGranted}
 			<p class="section-desc">{m('settingsAccount.coachConsentActive')}</p>
 			{#if aiConsentStale}
@@ -1826,7 +1827,7 @@
 
 	<!-- Sign out everywhere -->
 	<section class="card" data-testid="signout-everywhere">
-		<h2>{m('settingsAccount.signoutEverywhereHeading')}</h2>
+		<SectionHeader label={m('settingsAccount.signoutEverywhereHeading')} class="account-section-head" />
 		<p class="section-desc">{m('settingsAccount.signoutEverywhereDesc')}</p>
 		<button
 			class="btn btn-outline"
@@ -1913,7 +1914,7 @@
 
 <style>
 	.page { padding: var(--page-padding-y) var(--page-padding-x); max-width: 64rem; }
-	h2 { font-size: 0.9rem; font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-lg); }
+	:global(.account-section-head) { margin-bottom: var(--space-lg); }
 	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-xl); }
 	.profile-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
 	.load-error-banner {

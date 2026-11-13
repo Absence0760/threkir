@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
@@ -381,7 +382,7 @@
 					{/if}
 					{#if elevations}
 						<div class="elevation" data-testid="park-course-elevation">
-							<h2 class="section-title">{m('parks.elevationTitle')}</h2>
+							<SectionHeader title label={m('parks.elevationTitle')} />
 							<ElevationProfile
 								{elevations}
 								totalGain={course.segment.elevation_m == null ? null : Number(course.segment.elevation_m)}
@@ -430,7 +431,7 @@
 			</div>
 
 			<section class="board" aria-labelledby="park-board-title">
-				<h2 id="park-board-title" class="section-title">{m('parks.boardTitle')}</h2>
+				<SectionHeader title label={m('parks.boardTitle')} id="park-board-title" />
 				{#if !auth.loggedIn}
 					<p class="muted" data-testid="park-course-sign-in">
 						{m('parks.signInForBoards')}
@@ -782,10 +783,6 @@
 	}
 	.elevation {
 		margin-top: var(--space-lg);
-	}
-	.section-title {
-		margin: 0 0 var(--space-sm);
-		font-size: var(--font-size-section-title);
 	}
 	.attribution {
 		margin: var(--space-sm) 0 0;

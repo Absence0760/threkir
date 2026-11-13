@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import type { DayAdherence, MacroVerdict } from '#lib/nutrition/nutrition_adherence.ts';
 	import type { MacroKind } from '#lib/nutrition/nutrition_budget.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -26,21 +27,22 @@
 </script>
 
 <section class="card-elevated adherence-card" data-testid="plan-adherence">
-	<div class="card-head">
-		<span class="section-label">{m('nutrition.adherence.heading')}</span>
-		<span
-			class="verdict-pill verdict-{adherence.verdict}"
-			data-testid="plan-adherence-verdict"
-			data-verdict={adherence.verdict}
-		>
-			<span class="material-symbols" aria-hidden="true">{adherence.verdict === 'on_target'
-					? 'check'
-					: adherence.verdict === 'partial'
-						? 'hourglass_empty'
-						: 'error'}</span>
-			{m(`nutrition.adherence.verdict_${adherence.verdict}`)}
-		</span>
-	</div>
+	<SectionHeader label={m('nutrition.adherence.heading')} flush>
+		{#snippet trailing()}
+			<span
+				class="verdict-pill verdict-{adherence.verdict}"
+				data-testid="plan-adherence-verdict"
+				data-verdict={adherence.verdict}
+			>
+				<span class="material-symbols" aria-hidden="true">{adherence.verdict === 'on_target'
+						? 'check'
+						: adherence.verdict === 'partial'
+							? 'hourglass_empty'
+							: 'error'}</span>
+				{m(`nutrition.adherence.verdict_${adherence.verdict}`)}
+			</span>
+		{/snippet}
+	</SectionHeader>
 	{#if adherence.verdict === 'partial'}
 		<p class="section-hint" data-testid="plan-adherence-partial">
 			{m(isToday ? 'nutrition.adherence.partialToday' : 'nutrition.adherence.partialPast')}
@@ -64,13 +66,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
-	}
-	.card-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-sm);
-		flex-wrap: wrap;
 	}
 	.verdict-pill {
 		display: inline-flex;

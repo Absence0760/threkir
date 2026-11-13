@@ -2590,10 +2590,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 241 migrations write a function-level `from public, anon` revoke
-today (218 as `revoke execute`, 33 as `revoke all`); it is the house form for
+trigger calls). 245 migrations write a function-level `from public, anon` revoke
+today (222 as `revoke execute`, 33 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 783 migrations in version order and fails the PR on
+keeps it — it replays all 790 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

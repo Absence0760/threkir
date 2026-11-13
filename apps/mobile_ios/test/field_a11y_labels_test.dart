@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -21,17 +22,28 @@ void main() {
       ));
       await tester.pump();
 
-      final labels = tester
-          .widgetList<Semantics>(find.byType(Semantics))
-          .map((s) => s.properties.label)
-          .whereType<String>()
-          .toSet();
+      // What a screen reader reads for each edit box: the label of every
+      // text-field node in the semantics tree, after any enclosing Semantics
+      // label has merged in. Reading the tree rather than the Semantics
+      // widgets is what lets a field name itself through its decoration.
+      final handle = tester.ensureSemantics();
+      final named = <String>[];
+      void visit(SemanticsNode node) {
+        if (node.flagsCollection.isTextField) named.add(node.label);
+        node.visitChildren((child) {
+          visit(child);
+          return true;
+        });
+      }
 
-      // The exercise-name field reuses its placeholder key as the field label
-      // so a screen reader announces a named edit box, not "edit box".
-      expect(labels, contains('Exercise name'));
-      // The notes field reuses its section-label key.
-      expect(labels, contains('Notes (optional)'));
+      visit(tester.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!);
+      handle.dispose();
+
+      // The exercise-name field names itself through its hint, so a screen
+      // reader announces a named edit box, not "edit box".
+      expect(named, contains('Exercise name'));
+      // The notes field shows no label or hint, so its section label names it.
+      expect(named, contains('Notes (optional)'));
     } finally {
       dir.deleteSync(recursive: true);
     }

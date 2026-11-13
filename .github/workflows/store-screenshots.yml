@@ -102,6 +102,34 @@ jobs:
             exit 1
           fi
           echo "anon_key=$ANON_KEY" >> "$GITHUB_OUTPUT"
+      # The record panel's map shows a "Snapping to roads" pill until the
+      # run's map_match job has run, and nothing drains the jobs queue but the
+      # Go worker. Without OSRM_URL it matches by passthrough (the matched
+      # track is the recorded one), which settles the row as `matched` without
+      # an OSRM graph. The capture waits for that row before opening the run.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/job_worker/go.mod
+          cache-dependency-path: apps/job_worker/go.sum
+      - name: Start the job worker
+        working-directory: apps/job_worker
+        run: |
+          STATUS=$(cd ../backend && supabase status -o env)
+          API_URL=$(printf '%s\n' "$STATUS" | grep '^API_URL=' | cut -d= -f2- | tr -d '"')
+          SERVICE_KEY=$(printf '%s\n' "$STATUS" | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"')
+          go build -o "$RUNNER_TEMP/job_worker" .
+          SUPABASE_URL="$API_URL" SUPABASE_SECRET_KEY="$SERVICE_KEY" OSRM_URL='' \
+            HEALTH_PORT=8088 WORKER_ID=store-screenshots \
+            nohup "$RUNNER_TEMP/job_worker" > "$RUNNER_TEMP/job_worker.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8088/health > /dev/null; then
+              echo "job worker is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::The job worker did not answer on :8088/health within 30 s, so no map_match job would run and the capture would time out waiting for the hero run's match. Its log is in the job-worker-log artifact."
+          exit 1
 
       - name: Enable KVM
         run: |
@@ -173,6 +201,13 @@ jobs:
           name: store-screenshots-raw
           path: build/store-captures/
           if-no-files-found: error
+      - name: Upload the job worker log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: job-worker-log
+          path: ${{ runner.temp }}/job_worker.log
+          if-no-files-found: ignore
 
   compose:
     needs: capture

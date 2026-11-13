@@ -599,7 +599,7 @@ void main() async {
         const ParkrunBarcodeCache().clear();
       }
     }, onError: (Object e) {
-      debugPrint('Auth state stream error: $e');
+      debugPrint('Auth state stream error: ${safeErrorLabel(e)}');
       showAuthStreamError(e);
     });
     WearAuthBridge().attach(url: supabaseUrl, anonKey: anonKey);

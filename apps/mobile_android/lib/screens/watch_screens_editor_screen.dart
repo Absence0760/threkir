@@ -16,7 +16,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, EmptyState, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, EmptyState, ListSkeleton, ListCard, AppSpace;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -528,88 +528,86 @@ class _ScreenCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.watchScreensHeading(index + 1),
-                    style: Theme.of(context).textTheme.titleMedium,
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.watchScreensHeading(index + 1),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              IconButton(
+                tooltip: l10n.watchScreensRemove,
+                icon: const Icon(Icons.delete_outline),
+                onPressed: onRemove,
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChipRow<WatchLayout>(
+              options: [
+                for (final layout in WatchLayout.values)
+                  ChoiceChipOption(
+                    value: layout,
+                    label: watchLayoutLabel(l10n, layout),
                   ),
-                ),
-                IconButton(
-                  tooltip: l10n.watchScreensRemove,
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: onRemove,
-                ),
               ],
+              selected: draft.layout,
+              onChanged: onLayout,
             ),
+          ),
+          const SizedBox(height: 8),
+          for (var slot = 0; slot < draft.metrics.length; slot++)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChipRow<WatchLayout>(
-                options: [
-                  for (final layout in WatchLayout.values)
-                    ChoiceChipOption(
-                      value: layout,
-                      label: watchLayoutLabel(l10n, layout),
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<WatchMetric>(
+                      initialValue: draft.metrics[slot],
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: l10n.watchScreensSlot(slot + 1),
+                        isDense: true,
+                      ),
+                      items: [
+                        for (final m in WatchMetric.values)
+                          DropdownMenuItem(
+                            value: m,
+                            child: Text(
+                              watchMetricLabel(l10n, m),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (m) {
+                        if (m != null) onMetric(slot, m);
+                      },
                     ),
+                  ),
+                  IconButton(
+                    tooltip: l10n.watchScreensMoveUp,
+                    icon: const Icon(Icons.arrow_upward),
+                    onPressed: slot == 0 ? null : () => onMove(slot, -1),
+                  ),
+                  IconButton(
+                    tooltip: l10n.watchScreensMoveDown,
+                    icon: const Icon(Icons.arrow_downward),
+                    onPressed: slot == draft.metrics.length - 1
+                        ? null
+                        : () => onMove(slot, 1),
+                  ),
                 ],
-                selected: draft.layout,
-                onChanged: onLayout,
               ),
             ),
-            const SizedBox(height: 8),
-            for (var slot = 0; slot < draft.metrics.length; slot++)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<WatchMetric>(
-                        initialValue: draft.metrics[slot],
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: l10n.watchScreensSlot(slot + 1),
-                          isDense: true,
-                        ),
-                        items: [
-                          for (final m in WatchMetric.values)
-                            DropdownMenuItem(
-                              value: m,
-                              child: Text(
-                                watchMetricLabel(l10n, m),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                        onChanged: (m) {
-                          if (m != null) onMetric(slot, m);
-                        },
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: l10n.watchScreensMoveUp,
-                      icon: const Icon(Icons.arrow_upward),
-                      onPressed: slot == 0 ? null : () => onMove(slot, -1),
-                    ),
-                    IconButton(
-                      tooltip: l10n.watchScreensMoveDown,
-                      icon: const Icon(Icons.arrow_downward),
-                      onPressed: slot == draft.metrics.length - 1
-                          ? null
-                          : () => onMove(slot, 1),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }

@@ -10,6 +10,7 @@ import '../lib/local_gear_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/gear_screen.dart';
 import '../lib/widgets/gear_form_sheet.dart';
+import 'worst_case_layout.dart';
 
 /// Widget tests for [GearScreen] covering the offline + signed-out
 /// flows added in the "Backend not configured" fix + the
@@ -143,6 +144,37 @@ void main() {
       }
     });
 
+    // Issue #1374: the gear rows are ListCards; a long name, a brand, the
+    // wear badge and the run count still fit at the worst case.
+    worstCaseTestWidgets('Gear list', (tester, locale) async {
+      final f = await _makeFixtures();
+      try {
+        await tester.runAsync(() => f.store.replaceFromServer([
+              {
+                ...gearRow(
+                    id: 'a',
+                    name: 'Ultraboost Light Trail Waterproof Edition',
+                    totalM: 850000,
+                    targetM: 800000),
+                'brand': 'Adidas',
+                'model': 'Ultraboost Light',
+              },
+              gearRow(id: 'b', name: 'Daily', totalM: 700000, targetM: 800000),
+            ]));
+        await tester.pumpWidget(worstCaseApp(
+          locale: locale,
+          home: GearScreen(api: null, preferences: f.prefs, store: f.store),
+        ));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(find.text('Ultraboost Light Trail Waterproof Edition'),
+            findsOneWidget);
+        await walkScrollable(tester, find.byType(Scrollable).first, 'Gear');
+      } finally {
+        f.dir.deleteSync(recursive: true);
+      }
+    });
+
     testWidgets('a due shoe shows the replace-soon badge', (tester) async {
       final f = await _makeFixtures();
       try {
@@ -227,19 +259,16 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
 
-        // The gear card carries a sub-pixel (0.0000076 px) rounding
-        // overflow that reproduces on an unmodified tree, so a blanket
-        // take-exception-is-null assert cannot isolate the name. Drain it
-        // and assert the name's own geometry instead: Wrap re-flows rather
-        // than throwing, so an unconstrained name silently paints past the
-        // card at its full intrinsic width.
-        tester.takeException();
-
+        // The row is a ListCard: the name is held to the card's text column
+        // and ellipsized there, rather than to a fixed 220 dp cap.
+        expect(tester.takeException(), isNull);
         final textWidget = tester.widget<Text>(find.text(longName));
         expect(textWidget.maxLines, 1);
         expect(textWidget.overflow, TextOverflow.ellipsis);
-        expect(tester.getRect(find.text(longName)).width,
-            lessThanOrEqualTo(220.0));
+        final card = tester.getRect(find.ancestor(
+            of: find.text(longName), matching: find.byType(Card)));
+        expect(tester.getRect(find.text(longName)).right,
+            lessThanOrEqualTo(card.right));
       } finally {
         f.dir.deleteSync(recursive: true);
       }

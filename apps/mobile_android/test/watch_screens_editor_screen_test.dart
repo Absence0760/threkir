@@ -11,6 +11,7 @@ import '../lib/screens/watch_screens_editor_screen.dart';
 import '../lib/sim_watch_sync.dart';
 import '../lib/watch_screens.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 class _FakeTransport implements WatchBleTransport {
   final _chunks = StreamController<List<int>>.broadcast();
@@ -212,6 +213,27 @@ void main() {
         ),
         findsNothing,
       );
+    });
+
+    // Issue #1374: a screen is a ListCard with its layout chips, slot
+    // pickers and move buttons.
+    worstCaseTestWidgets('Watch screens editor', (tester, locale) async {
+      SharedPreferences.setMockInitialValues({
+        kWatchScreensPrefsKey: _draftJson([
+          {
+            'layout': 'trio',
+            'metrics': ['elapsed', 'heart_rate', 'altitude'],
+          },
+        ]),
+      });
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: WatchScreensEditorScreen(transportFactory: () => _FakeTransport()),
+      ));
+      await pumpUntil(tester, () => !tester.any(find.byType(ListSkeleton)),
+          describe: 'the stored screen set to load');
+      await walkScrollable(
+          tester, find.byType(Scrollable).first, 'Watch screens editor');
     });
 
     testWidgets('adding a screen seeds a single-slot draft', (tester) async {

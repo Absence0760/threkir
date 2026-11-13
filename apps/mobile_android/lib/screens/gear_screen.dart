@@ -9,7 +9,8 @@ import 'package:ui_kit/ui_kit.dart' show
         EmptyState,
         ProgressBar,
         StatusPill,
-        StatusPillSize;
+        StatusPillSize,
+        ListCard, AppSpace;
 
 import '../gear_backfill.dart';
 import '../gear_wear.dart';
@@ -440,94 +441,61 @@ class _GearScreenState extends State<GearScreen> {
     final wearBadge = _wearBadge(wear, theme, l10n);
     final brandModel =
         [brand, model].where((s) => s != null && s.isNotEmpty).join(' ');
-    return Card(
-      child: InkWell(
-        onTap: () => _edit(row),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-          child: Row(
+    return ListCard.row(
+      onTap: () => _edit(row),
+      dense: true,
+      title: name,
+      titleMaxLines: 1,
+      badge: wearBadge,
+      subtitle: brandModel.isEmpty ? null : brandModel,
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasTarget)
+            ProgressBar(
+              value: prog.pct,
+              // Not colorScheme.error: it is 2.991:1 against the bar's
+              // track in light. danger is the token that clears it.
+              fill: switch (wear.status) {
+                GearWearStatus.due => AppSemanticColors.ofTheme(theme).warning,
+                GearWearStatus.worn => AppSemanticColors.ofTheme(theme).danger,
+                _ => null,
+              },
+            ),
+          const SizedBox(height: AppSpace.xs),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        // Cap the name + ellipsize so a long gear name can't
-                        // blow past the card width (RenderFlex overflow) —
-                        // Wrap doesn't width-constrain its children the way
-                        // Row/Column do. Mirrors run_gear_chips.dart.
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 220),
-                          child: Text(
-                            name,
-                            style: theme.textTheme.titleSmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        ?wearBadge,
-                      ],
-                    ),
-                    if (brandModel.isNotEmpty)
-                      Text(brandModel,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant)),
-                    const SizedBox(height: 6),
-                    if (hasTarget)
-                      ProgressBar(
-                        value: prog.pct,
-                        // Not colorScheme.error: it is 2.991:1 against the
-                        // bar's track in light. danger is the token that
-                        // clears it.
-                        fill: switch (wear.status) {
-                          GearWearStatus.due =>
-                            AppSemanticColors.ofTheme(theme).warning,
-                          GearWearStatus.worn =>
-                            AppSemanticColors.ofTheme(theme).danger,
-                          _ => null,
-                        },
-                      ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(prog.label, style: theme.textTheme.bodySmall),
-                        Flexible(
-                          child: Text(
-                            l10n.gearRunCount(runCount),
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              Flexible(
+                child: Text(prog.label, style: theme.textTheme.bodySmall),
               ),
-              PopupMenuButton<String>(
-                onSelected: (v) {
-                  if (v == 'retire') _retire(row);
-                  if (v == 'delete') _delete(row);
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'retire',
-                    child: Text(row['retired_at'] == null
-                        ? l10n.gearRetire
-                        : l10n.gearRestore),
-                  ),
-                  PopupMenuItem(value: 'delete', child: Text(l10n.gearDelete)),
-                ],
+              const SizedBox(width: AppSpace.sm),
+              Flexible(
+                child: Text(
+                  l10n.gearRunCount(runCount),
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant),
+                ),
               ),
             ],
           ),
-        ),
+        ],
+      ),
+      trailing: PopupMenuButton<String>(
+        onSelected: (v) {
+          if (v == 'retire') _retire(row);
+          if (v == 'delete') _delete(row);
+        },
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            value: 'retire',
+            child: Text(row['retired_at'] == null
+                ? l10n.gearRetire
+                : l10n.gearRestore),
+          ),
+          PopupMenuItem(value: 'delete', child: Text(l10n.gearDelete)),
+        ],
       ),
     );
   }

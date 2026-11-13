@@ -4492,7 +4492,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailAiAttribution =>
-      'Von KI aus den Streckendaten verfasst';
+      'Von KI aus den Daten dieser Route verfasst';
 
   @override
   String get routeDetailDescribeFailed =>
@@ -11554,7 +11554,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventEditorCategoryHint =>
-      'Wähle die Art des Events – ein Kurs oder Treffen lässt Strecke, Distanz, Tempo und Rennergebnisse weg.';
+      'Wähle die Art des Events – ein Kurs oder Treffen lässt Route, Distanz, Tempo und Rennergebnisse weg.';
 
   @override
   String get eventEditorMembersOnlyToggle => 'Nur für Mitglieder';
@@ -21337,7 +21337,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeDetailLineLoadFailed =>
-      'Die Streckenlinie konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+      'Die Linie der Route konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get routeDetailLineEmpty =>

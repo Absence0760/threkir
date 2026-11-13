@@ -35975,8 +35975,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count sessões',
-      one: '$count sessão',
+      other: '$count treinos',
+      one: '$count treino',
     );
     return '$_temp0';
   }
@@ -35989,16 +35989,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String gymSinceFirstUp(String delta) {
-    return '+$delta desde a primeira sessão';
+    return '+$delta desde o primeiro treino';
   }
 
   @override
   String gymSinceFirstDown(String delta) {
-    return '−$delta desde a primeira sessão';
+    return '−$delta desde o primeiro treino';
   }
 
   @override
-  String get gymSinceFirstFlat => 'sem mudança desde a primeira sessão';
+  String get gymSinceFirstFlat => 'sem mudança desde o primeiro treino';
 
   @override
   String gymDetailLastTime(String date) {
@@ -36907,7 +36907,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashGymReadinessIncluded =>
-      'Suas sessões recentes de musculação entram na sua fadiga.';
+      'Seus treinos de academia recentes entram na sua fadiga.';
 
   @override
   String get dashGymReadinessExcluded =>

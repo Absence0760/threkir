@@ -2793,7 +2793,7 @@ export const messages = {
 	"coaching.roster.riskHigh": "Alto",
 	"coaching.roster.loadRamping": "A subir",
 	"coaching.roster.loadSteady": "Estável",
-	"coaching.roster.loadTapering": "A reduzir",
+	"coaching.roster.loadTapering": "A diminuir",
 	"coaching.roster.runsCount": "{count} corridas",
 	"coaching.roster.noPlan": "Sem plano",
 	"coaching.roster.empty": "Ainda não há atletas na sua lista.",

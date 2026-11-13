@@ -25,8 +25,8 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Remboursement intégral jusqu’à l’heure de début** : affichée aux participants comme **Annulation gratuite jusqu\'au début de l\'événement**.',
-						'**Remboursement intégral jusqu’à 24 h avant** : affichée comme **Annulation gratuite jusqu\'à 24 heures avant le début**. C\'est la politique par défaut.',
+						'**Remboursement intégral jusqu\'à l\'heure de début** : affichée aux participants comme **Annulation gratuite jusqu\'au début de l\'événement**.',
+						'**Remboursement intégral jusqu\'à 24 h avant** : affichée comme **Annulation gratuite jusqu\'à 24 heures avant le début**. C\'est la politique par défaut.',
 						'**Aucun remboursement** : affichée comme **Aucun remboursement en cas d\'annulation**.',
 					],
 				},
@@ -47,9 +47,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Ouvrez l\'événement sur le web. Là où s\'affiche **Vous êtes inscrit**, appuyez sur **Annuler l’inscription**.',
+						'Ouvrez l\'événement sur le web. Là où s\'affiche **Vous êtes inscrit**, appuyez sur **Annuler l\'inscription**.',
 						'Lisez la boîte de dialogue. Dans le délai de remboursement, elle indique que vous serez remboursé sur votre moyen de paiement d\'origine et que votre place se libère pour une personne de la liste d\'attente.',
-						'Appuyez sur **Annuler l’inscription** pour confirmer, ou sur **Garder ma place** pour renoncer.',
+						'Appuyez sur **Annuler l\'inscription** pour confirmer, ou sur **Garder ma place** pour renoncer.',
 					],
 				},
 				{
@@ -67,7 +67,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Une fois le délai passé, ou pour un événement **Aucun remboursement**, l\'app ne peut pas annuler votre inscription à votre place. La boîte de dialogue vous prévient avant que vous essayiez, vous gardez votre place, et si vous continuez vous verrez **Cette inscription a dépassé le délai de remboursement. Contactez l’organisateur pour annuler.**',
+					text: 'Une fois le délai passé, ou pour un événement **Aucun remboursement**, l\'app ne peut pas annuler votre inscription à votre place. La boîte de dialogue vous prévient avant que vous essayiez, vous gardez votre place, et si vous continuez vous verrez **Cette inscription a dépassé le délai de remboursement. Contactez l\'organisateur pour annuler.**',
 				},
 			],
 		},
@@ -76,7 +76,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Il arrive qu\'une banque renvoie un remboursement. La page de l\'événement affiche alors **Votre remboursement ne vous est pas parvenu** et une notification indique **Un remboursement n’a pas abouti — nous vous recontacterons**. Vous n\'avez pas besoin de payer à nouveau : utilisez **Contacter la facturation** et la somme vous sera restituée par un autre moyen.',
+					text: 'Il arrive qu\'une banque renvoie un remboursement. La page de l\'événement affiche alors **Votre remboursement ne vous est pas parvenu** et une notification indique **Un remboursement n\'a pas abouti — nous vous recontacterons**. Vous n\'avez pas besoin de payer à nouveau : utilisez **Contacter la facturation** et la somme vous sera restituée par un autre moyen.',
 				},
 			],
 		},

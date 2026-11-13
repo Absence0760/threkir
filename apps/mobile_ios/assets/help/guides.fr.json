@@ -1139,7 +1139,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Les cours payants ne sont pas encore actifs : il faut que le compte Stripe de l'organisateur soit connecté et que la plateforme ait activé les paiements. Si les paiements ne sont pas disponibles quand vous essayez d'annuler une occurrence qui a des inscriptions payées, vous verrez **Cette occurrence a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : elle ne peut donc pas encore être annulée. Rien n’a été modifié.** Le cours est maintenu, pour que personne ne se retrouve avec un paiement pour un cours qui n'a pas lieu."
+            "text": "Les cours payants ne sont pas encore actifs : il faut que le compte Stripe de l'organisateur soit connecté et que la plateforme ait activé les paiements. Si les paiements ne sont pas disponibles quand vous essayez d'annuler une occurrence qui a des inscriptions payées, vous verrez **Cette occurrence a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : elle ne peut donc pas encore être annulée. Rien n'a été modifié.** Le cours est maintenu, pour que personne ne se retrouve avec un paiement pour un cours qui n'a pas lieu."
           },
           {
             "type": "p",
@@ -1322,7 +1322,7 @@
           },
           {
             "type": "p",
-            "text": "Avant que quiconque ait payé, elle affiche **Aucune inscription payée pour l’instant. Dès que quelqu’un paie l’un de vos cours, il apparaît ici.** Les revenus ne sont visibles que sur le web pour le moment."
+            "text": "Avant que quiconque ait payé, elle affiche **Aucune inscription payée pour l'instant. Dès que quelqu'un paie l'un de vos cours, il apparaît ici.** Les revenus ne sont visibles que sur le web pour le moment."
           }
         ]
       }
@@ -1436,7 +1436,7 @@
             "type": "list",
             "items": [
               "Les participants s'inscrivent et paient sur le web, voient **Vous êtes inscrit** et peuvent annuler selon votre [[guide:refund-policies|politique de remboursement]].",
-              "Quand toutes les places sont prises, le cours affiche **Complet** et propose **Rejoindre la liste d’attente** : voir [[guide:waitlist-and-claim-window|Listes d'attente et délai de 12 heures pour réclamer une place]].",
+              "Quand toutes les places sont prises, le cours affiche **Complet** et propose **Rejoindre la liste d'attente** : voir [[guide:waitlist-and-claim-window|Listes d'attente et délai de 12 heures pour réclamer une place]].",
               "Notez qui est venu : [[guide:take-attendance|Faire l'appel]].",
               "Annuler une séance rembourse tous ceux qui ont payé : [[guide:cancel-a-class|Annuler un cours]]."
             ]
@@ -1523,7 +1523,7 @@
               "Réglez la **Capacité** sur le nombre de tapis. Une fois ce nombre d'inscrits atteint, la personne suivante rejoint une liste d'attente.",
               "Activez **Faire payer cet événement** et saisissez le **Prix** et la **Devise**. Les deux sont figés une fois l'événement créé : vérifiez-les maintenant.",
               "Réglez **Clôturer les ventes (minutes avant le début)**. Zéro laisse les inscriptions ouvertes jusqu'au début.",
-              "Choisissez une **Politique de remboursement** : **Remboursement intégral jusqu’à l’heure de début**, **Remboursement intégral jusqu’à 24 h avant** ou **Aucun remboursement**. Voir [[guide:refund-policies|Politiques de remboursement]].",
+              "Choisissez une **Politique de remboursement** : **Remboursement intégral jusqu'à l'heure de début**, **Remboursement intégral jusqu'à 24 h avant** ou **Aucun remboursement**. Voir [[guide:refund-policies|Politiques de remboursement]].",
               "Appuyez sur **Créer l'événement**."
             ]
           },
@@ -1541,8 +1541,8 @@
             "type": "list",
             "items": [
               "La discipline, l'heure, le lieu, le **Prix** et une ligne sur l'annulation, comme **Annulation gratuite jusqu'à 24 heures avant le début**.",
-              "Un bouton *S’inscrire · 22,00 $US* (avec votre prix) qui les mène au paiement. À leur retour, il indique **Paiement confirmé — vous êtes inscrit.**",
-              "**Complet** quand tous les tapis sont pris, avec **Rejoindre la liste d’attente** tant que les ventes sont ouvertes ([[guide:waitlist-and-claim-window|fonctionnement de la liste d'attente]]), et **Inscriptions closes** une fois les ventes arrêtées.",
+              "Un bouton *S'inscrire · 22,00 $US* (avec votre prix) qui les mène au paiement. À leur retour, il indique **Paiement confirmé — vous êtes inscrit.**",
+              "**Complet** quand tous les tapis sont pris, avec **Rejoindre la liste d'attente** tant que les ventes sont ouvertes ([[guide:waitlist-and-claim-window|fonctionnement de la liste d'attente]]), et **Inscriptions closes** une fois les ventes arrêtées.",
               "Votre séquence sous **Séquence de la séance**. Ils peuvent l'ouvrir et appuyer sur **Démarrer la séance** pour la suivre chez eux."
             ]
           },
@@ -1623,8 +1623,8 @@
           {
             "type": "list",
             "items": [
-              "**Remboursement intégral jusqu’à l’heure de début** : affichée aux participants comme **Annulation gratuite jusqu'au début de l'événement**.",
-              "**Remboursement intégral jusqu’à 24 h avant** : affichée comme **Annulation gratuite jusqu'à 24 heures avant le début**. C'est la politique par défaut.",
+              "**Remboursement intégral jusqu'à l'heure de début** : affichée aux participants comme **Annulation gratuite jusqu'au début de l'événement**.",
+              "**Remboursement intégral jusqu'à 24 h avant** : affichée comme **Annulation gratuite jusqu'à 24 heures avant le début**. C'est la politique par défaut.",
               "**Aucun remboursement** : affichée comme **Aucun remboursement en cas d'annulation**."
             ]
           },
@@ -1645,9 +1645,9 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez l'événement sur le web. Là où s'affiche **Vous êtes inscrit**, appuyez sur **Annuler l’inscription**.",
+              "Ouvrez l'événement sur le web. Là où s'affiche **Vous êtes inscrit**, appuyez sur **Annuler l'inscription**.",
               "Lisez la boîte de dialogue. Dans le délai de remboursement, elle indique que vous serez remboursé sur votre moyen de paiement d'origine et que votre place se libère pour une personne de la liste d'attente.",
-              "Appuyez sur **Annuler l’inscription** pour confirmer, ou sur **Garder ma place** pour renoncer."
+              "Appuyez sur **Annuler l'inscription** pour confirmer, ou sur **Garder ma place** pour renoncer."
             ]
           },
           {
@@ -1665,7 +1665,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Une fois le délai passé, ou pour un événement **Aucun remboursement**, l'app ne peut pas annuler votre inscription à votre place. La boîte de dialogue vous prévient avant que vous essayiez, vous gardez votre place, et si vous continuez vous verrez **Cette inscription a dépassé le délai de remboursement. Contactez l’organisateur pour annuler.**"
+            "text": "Une fois le délai passé, ou pour un événement **Aucun remboursement**, l'app ne peut pas annuler votre inscription à votre place. La boîte de dialogue vous prévient avant que vous essayiez, vous gardez votre place, et si vous continuez vous verrez **Cette inscription a dépassé le délai de remboursement. Contactez l'organisateur pour annuler.**"
           }
         ]
       },
@@ -1674,7 +1674,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Il arrive qu'une banque renvoie un remboursement. La page de l'événement affiche alors **Votre remboursement ne vous est pas parvenu** et une notification indique **Un remboursement n’a pas abouti — nous vous recontacterons**. Vous n'avez pas besoin de payer à nouveau : utilisez **Contacter la facturation** et la somme vous sera restituée par un autre moyen."
+            "text": "Il arrive qu'une banque renvoie un remboursement. La page de l'événement affiche alors **Votre remboursement ne vous est pas parvenu** et une notification indique **Un remboursement n'a pas abouti — nous vous recontacterons**. Vous n'avez pas besoin de payer à nouveau : utilisez **Contacter la facturation** et la somme vous sera restituée par un autre moyen."
           }
         ]
       }
@@ -1733,9 +1733,9 @@
           {
             "type": "steps",
             "items": [
-              "Pour un cours payant complet, la page affiche **Complet**. Tant que les ventes sont ouvertes, appuyez sur **Rejoindre la liste d’attente**. Vous verrez **Vous êtes sur la liste d’attente. Si une place se libère, nous vous la réservons et vous prévenons.**",
-              "Quand une place se libère et que vous êtes le premier de la file, vous recevez une notification : *Une place s’est libérée pour « Tuesday Reformer » et vous est réservée — payez pour l’obtenir*.",
-              "Ouvrez le cours sur le web. Il indique quand votre réservation prend fin, par exemple *Une place vous est réservée jusqu’à mardi 6 mai à 18:00. Payez pour l’obtenir, sinon elle revient à la personne suivante sur la liste d’attente.*",
+              "Pour un cours payant complet, la page affiche **Complet**. Tant que les ventes sont ouvertes, appuyez sur **Rejoindre la liste d'attente**. Vous verrez **Vous êtes sur la liste d'attente. Si une place se libère, nous vous la réservons et vous prévenons.**",
+              "Quand une place se libère et que vous êtes le premier de la file, vous recevez une notification : *Une place s'est libérée pour « Tuesday Reformer » et vous est réservée — payez pour l'obtenir*.",
+              "Ouvrez le cours sur le web. Il indique quand votre réservation prend fin, par exemple *Une place vous est réservée jusqu'à mardi 6 mai à 18:00. Payez pour l'obtenir, sinon elle revient à la personne suivante sur la liste d'attente.*",
               "Appuyez sur le bouton de réclamation (il affiche *Obtenir ma place* avec le prix) puis finalisez le paiement. Une fois le paiement effectué, vous êtes inscrit comme tout le monde."
             ]
           },
@@ -1770,11 +1770,11 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Quand la réservation expire, la place est proposée à la personne suivante sur la liste d'attente et vous quittez la liste d'attente. Si vous voulez toujours participer, appuyez de nouveau sur **Rejoindre la liste d’attente** ; vous passez en fin de file."
+            "text": "Quand la réservation expire, la place est proposée à la personne suivante sur la liste d'attente et vous quittez la liste d'attente. Si vous voulez toujours participer, appuyez de nouveau sur **Rejoindre la liste d'attente** ; vous passez en fin de file."
           },
           {
             "type": "p",
-            "text": "Vous avez changé d'avis pendant que vous attendez encore ? Appuyez sur **Quitter la liste d’attente**. L'app vous prévient que vous perdrez votre place dans la file ; si vous la rejoignez plus tard, vous passez en fin de file. Si une place vous est déjà réservée et que vous n'en voulez pas, laissez simplement la réservation expirer."
+            "text": "Vous avez changé d'avis pendant que vous attendez encore ? Appuyez sur **Quitter la liste d'attente**. L'app vous prévient que vous perdrez votre place dans la file ; si vous la rejoignez plus tard, vous passez en fin de file. Si une place vous est déjà réservée et que vous n'en voulez pas, laissez simplement la réservation expirer."
           }
         ]
       },
@@ -2512,7 +2512,7 @@
             "type": "steps",
             "items": [
               "Ouvrez l'événement de la course.",
-              "S'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.",
+              "S'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je participe**.",
               "Touchez **Je participe**. Seule une inscription **Je participe** reçoit les alertes de course sur votre appareil ; **Peut-être** ne les reçoit pas."
             ]
           },
@@ -2536,7 +2536,7 @@
           },
           {
             "type": "p",
-            "text": "L'app mobile recherche les courses auxquelles vous avez répondu **Je viens** et qui commencent dans la journée qui suit. Si le bandeau tarde à apparaître, gardez l'app ouverte sur l'onglet Courir pendant une minute."
+            "text": "L'app mobile recherche les courses auxquelles vous avez répondu **Je participe** et qui commencent dans la journée qui suit. Si le bandeau tarde à apparaître, gardez l'app ouverte sur l'onglet Courir pendant une minute."
           }
         ]
       },
@@ -2878,7 +2878,7 @@
             "type": "list",
             "items": [
               "Sur la page de l'événement, les coureurs voient les parcours. S'il y en a plusieurs, ils doivent en choisir un dans **Votre parcours** pour que **Je participe** fonctionne ; sinon, ils voient « Choisissez d'abord votre parcours. »",
-              "Dans l'app mobile, toucher **Je viens** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.",
+              "Dans l'app mobile, toucher **Je participe** sur une course à plusieurs parcours leur demande **Choisissez votre parcours**, et ils peuvent utiliser **Changer de parcours** plus tard.",
               "Avec un seul parcours, personne n'a rien à choisir.",
               "Les inscriptions payantes ne demandent pas encore de parcours. Un coureur qui a payé en choisit un ensuite depuis le même menu **Votre parcours**."
             ]

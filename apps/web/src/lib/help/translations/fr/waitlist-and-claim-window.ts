@@ -29,9 +29,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Pour un cours payant complet, la page affiche **Complet**. Tant que les ventes sont ouvertes, appuyez sur **Rejoindre la liste d’attente**. Vous verrez **Vous êtes sur la liste d’attente. Si une place se libère, nous vous la réservons et vous prévenons.**',
-						'Quand une place se libère et que vous êtes le premier de la file, vous recevez une notification : *Une place s’est libérée pour « Tuesday Reformer » et vous est réservée — payez pour l’obtenir*.',
-						'Ouvrez le cours sur le web. Il indique quand votre réservation prend fin, par exemple *Une place vous est réservée jusqu’à mardi 6 mai à 18:00. Payez pour l’obtenir, sinon elle revient à la personne suivante sur la liste d’attente.*',
+						'Pour un cours payant complet, la page affiche **Complet**. Tant que les ventes sont ouvertes, appuyez sur **Rejoindre la liste d\'attente**. Vous verrez **Vous êtes sur la liste d\'attente. Si une place se libère, nous vous la réservons et vous prévenons.**',
+						'Quand une place se libère et que vous êtes le premier de la file, vous recevez une notification : *Une place s\'est libérée pour « Tuesday Reformer » et vous est réservée — payez pour l\'obtenir*.',
+						'Ouvrez le cours sur le web. Il indique quand votre réservation prend fin, par exemple *Une place vous est réservée jusqu\'à mardi 6 mai à 18:00. Payez pour l\'obtenir, sinon elle revient à la personne suivante sur la liste d\'attente.*',
 						'Appuyez sur le bouton de réclamation (il affiche *Obtenir ma place* avec le prix) puis finalisez le paiement. Une fois le paiement effectué, vous êtes inscrit comme tout le monde.',
 					],
 				},
@@ -66,11 +66,11 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Quand la réservation expire, la place est proposée à la personne suivante sur la liste d\'attente et vous quittez la liste d\'attente. Si vous voulez toujours participer, appuyez de nouveau sur **Rejoindre la liste d’attente** ; vous passez en fin de file.',
+					text: 'Quand la réservation expire, la place est proposée à la personne suivante sur la liste d\'attente et vous quittez la liste d\'attente. Si vous voulez toujours participer, appuyez de nouveau sur **Rejoindre la liste d\'attente** ; vous passez en fin de file.',
 				},
 				{
 					type: 'p',
-					text: 'Vous avez changé d\'avis pendant que vous attendez encore ? Appuyez sur **Quitter la liste d’attente**. L\'app vous prévient que vous perdrez votre place dans la file ; si vous la rejoignez plus tard, vous passez en fin de file. Si une place vous est déjà réservée et que vous n\'en voulez pas, laissez simplement la réservation expirer.',
+					text: 'Vous avez changé d\'avis pendant que vous attendez encore ? Appuyez sur **Quitter la liste d\'attente**. L\'app vous prévient que vous perdrez votre place dans la file ; si vous la rejoignez plus tard, vous passez en fin de file. Si une place vous est déjà réservée et que vous n\'en voulez pas, laissez simplement la réservation expirer.',
 				},
 			],
 		},

@@ -60,8 +60,9 @@ vocabulary is a good tiebreaker. `e-mail` (30 / 38; `courriel` is unused),
   space** (333 / 413 strings) and a non-breaking one only in 10 / 4. Follow
   the majority; a narrow no-break space (U+202F) is better typography and
   is a recorded finding, not something to change piecemeal.
-- Apostrophe: straight `'` (602 / 939) is the norm; curly `’` appears in
-  69 / 80. Use `'`.
+- Apostrophe: straight `'`, always. The last curly `’` (213 mobile, 225
+  web, 26 in six help guides, the season planner's among them) moved to
+  `'` on 2026-11-13.
 - Ellipsis **…**; spaced em dash ` — ` as in English.
 - Literal number samples use the decimal comma ("5,0 km · 5:00 /km").
 
@@ -109,6 +110,9 @@ are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
 | streak | Série | |
 | log a session (action) | **Enregistrer une séance** (de musculation) — the action label on both surfaces | 2026-11-12: never "Noter" |
 | tap / press / long-press | **Touchez** (tap: "Touchez Réessayer", "Touchez la carte", "Touchez pour modifier" — *toucher* is transitive, no « sur ») · **Appuyez sur** only where the English says *press* (a button on the web, a key, a watch's physical button: "appuyez sur GO sur la ligne", "Appuyez sur Annuler pour le restaurer") · long-press **appuyez longuement** / « un appui long » | settled 2026-11-12: 25 mobile / 7 web strings and one help guide moved from « Appuyez sur » to « Touchez » where the English says *tap*; the help guides already said « touchez » (55) |
+| RSVP "I'm in" | **Je participe** (`clubEvent.imIn`, `eventRsvpGoing`, every help guide); the going status is "Participe" | settled 2026-11-13, phone aligned to web; never "Je viens" |
+| AI disclosure | **l'information sur l'IA** ("nécessite l'information sur l'IA mise à jour", "Consulter l'information sur l'IA", "Information sur l'IA acceptée.") | settled 2026-11-13; never "notice IA". Consent wording: CISO/counsel review the change |
+| tapping as a noun ("the alternative to tapping the map") | **un toucher** ("à la place d'un toucher sur la carte") | settled 2026-11-13; never the anglicism "au tap" |
 | goal | Objectif / Objectifs | |
 | coach | Coach; AI Coach = **Coach IA** | |
 | auto-pause | — | no catalogue string yet; build from "pause" ("Course en pause", "Mettre en pause") → "Pause automatique", and flag it as a new term |

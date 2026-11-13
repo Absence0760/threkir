@@ -485,13 +485,15 @@ class _EventPhotosState extends State<EventPhotos> {
           ),
         const SizedBox(height: 8),
         if (_loadFailed)
-          Row(
+          // A Wrap, so Retry drops under the message at large text rather
+          // than pushing off the edge.
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
-              Expanded(
-                child: Text(
-                  l10n.eventPhotosLoadFailed,
-                  style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
-                ),
+              Text(
+                l10n.eventPhotosLoadFailed,
+                style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
               ),
               TextButton(onPressed: _load, child: Text(l10n.eventPhotosRetry)),
             ],

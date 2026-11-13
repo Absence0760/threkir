@@ -347,12 +347,12 @@
   "@importStatusSavingLocally": {
     "description": "Status while saving imported runs to the local store"
   },
-  "importStatusSkippedDuplicates": "Skipped {count} duplicate(s) already imported from another source",
+  "importStatusSkippedDuplicates": "Skipped {count, plural, one{{count} duplicate} other{{count} duplicates}} already imported from another source",
   "@importStatusSkippedDuplicates": {
     "description": "Status when cross-source duplicate runs are skipped during import",
     "placeholders": {
       "count": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -11721,7 +11721,7 @@
       }
     }
   },
-  "settingsAccountRestoreIncompleteArchive": "That archive said it was incomplete. {runs, plural, one{{runs} run was} other{{runs} runs were}} restored and nothing was overwritten - restore from a complete backup to fill the gaps.",
+  "settingsAccountRestoreIncompleteArchive": "That archive said it was incomplete. {runs, plural, one{{runs} run was} other{{runs} runs were}} restored and nothing was overwritten — restore from a complete backup to fill the gaps.",
   "@settingsAccountRestoreIncompleteArchive": {
     "description": "Persistent notice under the restore tile shown when the restored archive declared itself incomplete",
     "placeholders": {
@@ -22114,7 +22114,7 @@
       }
     }
   },
-  "simWatchResult": "Synced {synced} of {total} run(s) from the watch",
+  "simWatchResult": "Synced {synced} of {total, plural, one{{total} run} other{{total} runs}} from the watch",
   "@simWatchResult": {
     "placeholders": {
       "synced": {
@@ -22722,7 +22722,7 @@
       }
     }
   },
-  "watchScreensRemoveBody": "Its {count} metric(s) go with it.",
+  "watchScreensRemoveBody": "Its {count, plural, one{{count} metric goes} other{{count} metrics go}} with it.",
   "@watchScreensRemoveBody": {
     "placeholders": {
       "count": {
@@ -22732,7 +22732,7 @@
   },
   "watchScreensRemoveConfirm": "Remove",
   "watchScreensCancel": "Cancel",
-  "watchScreensShrinkTitle": "Drop {count} metric(s)?",
+  "watchScreensShrinkTitle": "Drop {count, plural, one{{count} metric} other{{count} metrics}}?",
   "@watchScreensShrinkTitle": {
     "placeholders": {
       "count": {
@@ -22740,7 +22740,7 @@
       }
     }
   },
-  "watchScreensShrinkBody": "A {layout} screen draws {slots} slot(s), so {dropped} would no longer be shown.",
+  "watchScreensShrinkBody": "A {layout} screen draws {slots, plural, one{{slots} slot} other{{slots} slots}}, so {dropped} would no longer be shown.",
   "@watchScreensShrinkBody": {
     "description": "Warning naming the metrics a narrower layout would drop",
     "placeholders": {
@@ -22760,7 +22760,7 @@
   "@watchScreensPushAction": {
     "description": "Button that pushes the composed screen set to the watch over BLE"
   },
-  "watchScreensPushed": "Pushed {count} screen(s) to the watch",
+  "watchScreensPushed": "Pushed {count, plural, one{{count} screen} other{{count} screens}} to the watch",
   "@watchScreensPushed": {
     "placeholders": {
       "count": {

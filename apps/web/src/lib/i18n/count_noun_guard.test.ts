@@ -126,7 +126,7 @@ function blocks(s: string): { arg: string; start: number; end: number }[] {
 function countsBeforeNouns(key: string, message: string): string[] {
 	const spans = blocks(message);
 	const hits: string[] = [];
-	const re = /\{(\w+)\}\s+([a-z]+s)\b/g;
+	const re = /\{(\w+)\}\s+([a-z]+(?:s\b|\(s\)))/g;
 	for (let m = re.exec(message); m; m = re.exec(message)) {
 		const [, arg, word] = m;
 		if (NOT_A_COUNT.test(arg)) continue;
@@ -140,6 +140,7 @@ function countsBeforeNouns(key: string, message: string): string[] {
 
 test('the scan reads a count before a plural noun, outside plurals only', () => {
 	assert.deepEqual(countsBeforeNouns('k', 'Restored {runs} runs'), ['k runs']);
+	assert.deepEqual(countsBeforeNouns('k', 'Pushed {count} screen(s)'), ['k count']);
 	assert.deepEqual(countsBeforeNouns('k', '{total, plural, one {# week · {days} days/week} other {# weeks · {days} days/week}}'), ['k days', 'k days']);
 	for (const ok of [
 		'{n, plural, one {# day} other {# days}}',

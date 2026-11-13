@@ -156,20 +156,20 @@ class AppLocalizationsJa extends AppLocalizations {
   String get recapLatestStartLabel => '最も遅いスタート';
 
   @override
-  String get recapParkCoursesLabel => 'パークコース';
+  String get recapParkCoursesLabel => '公園コース';
 
   @override
   String recapParkCoursesSub(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '$nか所のパーク',
+      other: '$nか所の公園',
     );
     return '$_temp0';
   }
 
   @override
-  String get recapParksHeading => '走ったパーク';
+  String get recapParksHeading => '走った公園';
 
   @override
   String recapParkCourseCount(int n) {
@@ -244,8 +244,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get importStatusSavingLocally => 'ローカルに保存中...';
 
   @override
-  String importStatusSkippedDuplicates(Object count) {
-    return '他のソースからすでにインポート済みの重複$count件をスキップしました';
+  String importStatusSkippedDuplicates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count件',
+    );
+    return '他のソースからすでにインポート済みの重複$_temp0をスキップしました';
   }
 
   @override
@@ -1663,7 +1668,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get signInHeadline => 'ランを複数のデバイスで同期';
 
   @override
-  String get signInSubtitle => 'サインインしてランをバックアップし、ウェブアプリで表示できます。';
+  String get signInSubtitle => 'サインインしてランをバックアップし、Webアプリで表示できます。';
 
   @override
   String get signInButton => 'サインイン';
@@ -1709,7 +1714,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get signUpHeadline => 'ランの記録を始めよう';
 
   @override
-  String get signUpSubtitle => 'アカウントを作成してランをバックアップし、ウェブアプリで表示できます。';
+  String get signUpSubtitle => 'アカウントを作成してランをバックアップし、Webアプリで表示できます。';
 
   @override
   String get signUpButton => 'アカウントを作成';
@@ -1772,7 +1777,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get onboardingRoutesBody =>
-      'GPXまたはKMLファイルをインポートするか、ウェブアプリからルートを同期できます。走行中にコース外アラートを受け取れます。';
+      'GPXまたはKMLファイルをインポートするか、Webアプリからルートを同期できます。走行中にコース外アラートを受け取れます。';
 
   @override
   String get onboardingLocationTitle => '位置情報へのアクセス';
@@ -1810,7 +1815,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'アカウントがあると、ランがウェブアプリや他のデバイスと同期され、このデバイスをなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」タブで作成できます。';
+      'アカウントがあると、ランがWebアプリや他のデバイスと同期され、このデバイスをなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」タブで作成できます。';
 
   @override
   String get onboardingAccountCreate => '無料アカウントを作成';
@@ -4730,7 +4735,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exploreRoutesEmptyNoMatch => '検索に一致するルートはありません';
 
   @override
-  String get exploreRoutesEmptyBody => 'ウェブアプリから共有されたルートがここに表示されます';
+  String get exploreRoutesEmptyBody => 'Webアプリから共有されたルートがここに表示されます';
 
   @override
   String get exploreRoutesDistanceAny => 'すべての距離';
@@ -7061,7 +7066,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planImportIntro =>
-      'ウェブアプリからエクスポートしたプラン、またはWeek、Date、Typeの列がある表を貼り付けてください。読み込むと、作成する前に各週を確認できます。';
+      'Webアプリからエクスポートしたプラン、またはWeek、Date、Typeの列がある表を貼り付けてください。読み込むと、作成する前に各週を確認できます。';
 
   @override
   String get planImportPasteLabel => 'プランの表またはJSON';
@@ -8537,14 +8542,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountFullBackupSubtitle =>
-      'GPSトラック付きの全ラン、ルート、プロフィール、設定。ウェブまたはAndroidで復元できます。';
+      'GPSトラック付きの全ラン、ルート、プロフィール、設定。WebまたはAndroidで復元できます。';
 
   @override
   String get settingsAccountExportCsv => 'ランをCSVでエクスポート';
 
   @override
   String get settingsAccountExportCsvSubtitle =>
-      '日付、距離、時間、ペース、ソース — 1ランにつき1行。ウェブのGDPRエクスポートと同じ形式です。';
+      '日付、距離、時間、ペース、ソース — 1ランにつき1行。WebのGDPRエクスポートと同じ形式です。';
 
   @override
   String get settingsAccountRestoreTile => 'バックアップから復元';
@@ -8917,7 +8922,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get proRestoreNeedsSignIn =>
-      '復元するには、RevenueCatが設定された状態でサインインしている必要があります。代わりにウェブのアップグレードページでサブスクリプションを管理してください。';
+      '復元するには、RevenueCatが設定された状態でサインインしている必要があります。代わりにWebのアップグレードページでサブスクリプションを管理してください。';
 
   @override
   String get proRestored => 'Proサブスクリプションを復元しました。';
@@ -13529,7 +13534,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get sessionEmpty => 'セッションプランはまだありません。';
 
   @override
-  String get sessionEmptyHint => '再利用できるヨガ・ピラティス・クラスのシーケンスをウェブで作成しましょう。';
+  String get sessionEmptyHint => '再利用できるヨガ・ピラティス・クラスのシーケンスをWebで作成しましょう。';
 
   @override
   String get sessionUntitled => '無題のセッション';
@@ -14391,7 +14396,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get checkpointNone =>
-      'このレースにはまだチェックポイントがありません。クルーがランナーを受付する前に、ウェブで追加してください。';
+      'このレースにはまだチェックポイントがありません。クルーがランナーを受付する前に、Webで追加してください。';
 
   @override
   String get checkpointPickLabel => 'チェックポイント';
@@ -14750,7 +14755,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get challengesMetricParkCourses => 'パークコース';
+  String get challengesMetricParkCourses => '公園コース';
 
   @override
   String challengesUnitParkCourses(int n) {
@@ -14767,7 +14772,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String challengesParkRegion(String region) {
-    return '$regionのパークコースが対象';
+    return '$regionの公園コースが対象';
   }
 
   @override
@@ -14832,7 +14837,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get fundraiserAnonymous => '匿名';
 
   @override
-  String get fundraiserDonateOnWeb => 'ウェブで寄付する';
+  String get fundraiserDonateOnWeb => 'Webで寄付する';
 
   @override
   String get racesTitle => 'レースカレンダー';
@@ -15676,88 +15681,88 @@ class AppLocalizationsJa extends AppLocalizations {
   String get badgesPlan10Desc => '10のトレーニングプランを完了';
 
   @override
-  String get badgesParkCourses1Label => '初めてのパークコース';
+  String get badgesParkCourses1Label => '初めての公園コース';
 
   @override
-  String get badgesParkCourses1Desc => 'パークコースを1つ完走';
+  String get badgesParkCourses1Desc => '公園コースを1つ完走';
 
   @override
-  String get badgesParkCourses5Label => 'パークの常連';
+  String get badgesParkCourses5Label => '公園の常連';
 
   @override
-  String get badgesParkCourses5Desc => '5つのパークコースを完走';
+  String get badgesParkCourses5Desc => '5つの公園コースを完走';
 
   @override
   String get badgesParkCourses10Label => 'トレイルコレクター';
 
   @override
-  String get badgesParkCourses10Desc => '10のパークコースを完走';
+  String get badgesParkCourses10Desc => '10の公園コースを完走';
 
   @override
-  String get badgesParkCourses25Label => 'パークエクスプローラー';
+  String get badgesParkCourses25Label => '公園エクスプローラー';
 
   @override
-  String get badgesParkCourses25Desc => '25のパークコースを完走';
+  String get badgesParkCourses25Desc => '25の公園コースを完走';
 
   @override
-  String get badgesParkComplete1Label => 'パーク制覇';
+  String get badgesParkComplete1Label => '公園制覇';
 
   @override
-  String get badgesParkComplete1Desc => '1つのパークの全コースを完走';
+  String get badgesParkComplete1Desc => '1つの公園の全コースを完走';
 
   @override
-  String get badgesParkComplete3Label => '3つのパークを制覇';
+  String get badgesParkComplete3Label => '3つの公園を制覇';
 
   @override
-  String get badgesParkComplete3Desc => '3つのパークの全コースを完走';
+  String get badgesParkComplete3Desc => '3つの公園の全コースを完走';
 
   @override
-  String get badgesParkComplete10Label => 'パークコンプリート';
+  String get badgesParkComplete10Label => '公園コンプリート';
 
   @override
-  String get badgesParkComplete10Desc => '10のパークの全コースを完走';
+  String get badgesParkComplete10Desc => '10の公園の全コースを完走';
 
   @override
-  String get badgesParkPassport1Label => 'パークパスポート';
+  String get badgesParkPassport1Label => '公園パスポート';
 
   @override
-  String get badgesParkPassport1Desc => '1つの州のすべてのパークでコースを完走';
+  String get badgesParkPassport1Desc => '1つの州のすべての公園でコースを完走';
 
   @override
   String get badgesParkPassport3Label => 'スタンプ獲得';
 
   @override
-  String get badgesParkPassport3Desc => '3つの州でパークパスポートを達成';
+  String get badgesParkPassport3Desc => '3つの州で公園パスポートを達成';
 
   @override
   String get badgesParkPassport10Label => 'パスポートコレクター';
 
   @override
-  String get badgesParkPassport10Desc => '10の州でパークパスポートを達成';
+  String get badgesParkPassport10Desc => '10の州で公園パスポートを達成';
 
   @override
-  String get badgesParkMonths3Label => 'パーク3か月';
+  String get badgesParkMonths3Label => '公園で3か月';
 
   @override
-  String get badgesParkMonths3Desc => '異なる3か月でパークコースを完走';
+  String get badgesParkMonths3Desc => '異なる3か月で公園コースを完走';
 
   @override
-  String get badgesParkMonths6Label => 'パーク半年';
+  String get badgesParkMonths6Label => '公園で半年';
 
   @override
-  String get badgesParkMonths6Desc => '異なる6か月でパークコースを完走';
+  String get badgesParkMonths6Desc => '異なる6か月で公園コースを完走';
 
   @override
-  String get badgesParkMonths12Label => 'パーク1年';
+  String get badgesParkMonths12Label => '公園で1年';
 
   @override
-  String get badgesParkMonths12Desc => '異なる12か月でパークコースを完走';
+  String get badgesParkMonths12Desc => '異なる12か月で公園コースを完走';
 
   @override
-  String get badgesParkMonths24Label => 'パーク2年';
+  String get badgesParkMonths24Label => '公園で2年';
 
   @override
-  String get badgesParkMonths24Desc => '異なる24か月でパークコースを完走';
+  String get badgesParkMonths24Desc => '異なる24か月で公園コースを完走';
 
   @override
   String get racePredictorTitle => 'レースタイム予測';
@@ -16020,7 +16025,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String simWatchResult(int synced, int total) {
-    return 'ウォッチから $total 件中 $synced 件のランを同期しました';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total 件',
+    );
+    return 'ウォッチから $_temp0中 $synced 件のランを同期しました';
   }
 
   @override
@@ -16468,7 +16478,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String watchScreensRemoveBody(int count) {
-    return 'この画面の $count 個の項目も削除されます。';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 個',
+    );
+    return 'この画面の $_temp0の項目も削除されます。';
   }
 
   @override
@@ -16479,12 +16494,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String watchScreensShrinkTitle(int count) {
-    return '$count 個の項目を削除しますか？';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 個',
+    );
+    return '$_temp0の項目を削除しますか？';
   }
 
   @override
   String watchScreensShrinkBody(String layout, int slots, String dropped) {
-    return '$layout レイアウトのスロットは $slots 個なので、$dropped は表示されなくなります。';
+    String _temp0 = intl.Intl.pluralLogic(
+      slots,
+      locale: localeName,
+      other: '$slots 個',
+    );
+    return '$layout レイアウトのスロットは $_temp0なので、$dropped は表示されなくなります。';
   }
 
   @override
@@ -16495,7 +16520,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String watchScreensPushed(int count) {
-    return '$count 個の画面をウォッチに送信しました';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 個',
+    );
+    return '$_temp0の画面をウォッチに送信しました';
   }
 
   @override
@@ -17711,7 +17741,7 @@ class AppLocalizationsJa extends AppLocalizations {
       locale: localeName,
       other: '$count件',
     );
-    return 'キャンセルしましたが、$_temp0の返金を開始できませんでした。ウェブのイベントページから再度お試しください。';
+    return 'キャンセルしましたが、$_temp0の返金を開始できませんでした。Webのイベントページから再度お試しください。';
   }
 
   @override
@@ -17751,10 +17781,10 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get eventWaitlistOfferClaimHint => 'お支払いはウェブで行います。';
+  String get eventWaitlistOfferClaimHint => 'お支払いはWebで行います。';
 
   @override
-  String get eventWaitlistOfferClaim => 'ウェブで確保する';
+  String get eventWaitlistOfferClaim => 'Webで確保する';
 
   @override
   String get eventFormCapacity => '定員';
@@ -17792,7 +17822,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventFormSessionPlanNone => 'なし';
 
   @override
-  String get eventFormSessionPlanEmpty => 'セッションプランはまだありません。ウェブで作成してください。';
+  String get eventFormSessionPlanEmpty => 'セッションプランはまだありません。Webで作成してください。';
 
   @override
   String get eventFormCharge => 'このイベントを有料にする';
@@ -17802,7 +17832,7 @@ class AppLocalizationsJa extends AppLocalizations {
       '参加登録時に参加費を受け取ります。お金はクラブではなく自分の受け取りアカウントに入金されます。参加費を設定できるのは対面イベントだけです。';
 
   @override
-  String get eventFormChargeNeedsPayout => 'イベントを有料にするには、ウェブで受け取り口座を設定してください。';
+  String get eventFormChargeNeedsPayout => 'イベントを有料にするには、Webで受け取りを設定してください。';
 
   @override
   String get eventFormPrice => '価格';
@@ -17840,7 +17870,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventFormPricingFailed =>
-      'イベントは作成されましたが、価格を保存できませんでした。ウェブのイベントページから価格を設定してください。';
+      'イベントは作成されましたが、価格を保存できませんでした。Webのイベントページから価格を設定してください。';
 
   @override
   String get eventFormSessionPlanFailed =>
@@ -20518,10 +20548,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardBadgeKicker => 'バッジ獲得';
 
   @override
-  String get shareCardKindCourse => 'パークコース';
+  String get shareCardKindCourse => '公園コース';
 
   @override
-  String get shareCardCourseKicker => 'パークコースのタイム';
+  String get shareCardCourseKicker => '公園コースのタイム';
 
   @override
   String shareCardCourseMonthRank(String rank, String month) {
@@ -21159,7 +21189,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventRacePreflightBlockedTitle => 'このレースはまだ準備できません';
 
   @override
-  String get eventRacePreflightFixOnWeb => 'コースのラインはウェブのイベントエディターで編集します。';
+  String get eventRacePreflightFixOnWeb => 'コースのラインはWebのイベントエディターで編集します。';
 
   @override
   String get eventRaceArmAnyway => 'このまま準備する';
@@ -21366,7 +21396,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubVerificationStatusNone => '未認証です。';
 
   @override
-  String get clubVerificationStatusWebHint => '依頼とドメインの証明はウェブで管理します。';
+  String get clubVerificationStatusWebHint => '依頼とドメインの証明はWebで管理します。';
 
   @override
   String get clubVerificationStatusLoadFailed => '認証状況を読み込めませんでした。';

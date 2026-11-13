@@ -252,8 +252,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get importStatusSavingLocally => 'Wird lokal gespeichert...';
 
   @override
-  String importStatusSkippedDuplicates(Object count) {
-    return '$count Duplikat(e) übersprungen, bereits aus einer anderen Quelle importiert';
+  String importStatusSkippedDuplicates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Duplikate',
+      one: '$count Duplikat',
+    );
+    return '$_temp0 übersprungen, bereits aus einer anderen Quelle importiert';
   }
 
   @override
@@ -9369,7 +9375,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get integrationsHrScanHint =>
-      'Wecke deinen Gurt / Brustgurt. Apps benötigen üblicherweise 3–8 Sekunden.';
+      'Wecke deinen Herzfrequenzgurt. Apps benötigen üblicherweise 3–8 Sekunden.';
 
   @override
   String get integrationsHrScanEmpty =>
@@ -16822,7 +16828,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String simWatchResult(int synced, int total) {
-    return '$synced von $total Lauf/Läufen von der Uhr synchronisiert';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total Läufen',
+      one: '$total Lauf',
+    );
+    return '$synced von $_temp0 von der Uhr synchronisiert';
   }
 
   @override
@@ -17291,7 +17303,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String watchScreensRemoveBody(int count) {
-    return 'Ihre $count Wert(e) gehen mit.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Werte gehen',
+      one: '$count Wert geht',
+    );
+    return '$_temp0 mit.';
   }
 
   @override
@@ -17302,12 +17320,24 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String watchScreensShrinkTitle(int count) {
-    return '$count Wert(e) verwerfen?';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Werte',
+      one: '$count Wert',
+    );
+    return '$_temp0 verwerfen?';
   }
 
   @override
   String watchScreensShrinkBody(String layout, int slots, String dropped) {
-    return 'Ein $layout-Layout zeigt $slots Feld(er), daher würde $dropped nicht mehr angezeigt.';
+    String _temp0 = intl.Intl.pluralLogic(
+      slots,
+      locale: localeName,
+      other: '$slots Felder',
+      one: '$slots Feld',
+    );
+    return 'Ein $layout-Layout zeigt $_temp0, daher würde $dropped nicht mehr angezeigt.';
   }
 
   @override
@@ -17318,7 +17348,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String watchScreensPushed(int count) {
-    return '$count Ansicht(en) an die Uhr gesendet';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Ansichten',
+      one: '$count Ansicht',
+    );
+    return '$_temp0 an die Uhr gesendet';
   }
 
   @override
@@ -18617,7 +18653,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventCancelNotOrganiser =>
-      'Nur Organisator*innen dieses Clubs können einen Termin absagen.';
+      'Nur Eventorganisatoren dieses Clubs können einen Termin absagen.';
 
   @override
   String get eventCancelFailed =>

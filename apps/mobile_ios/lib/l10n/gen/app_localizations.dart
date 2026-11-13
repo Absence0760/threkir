@@ -458,8 +458,8 @@ abstract class AppLocalizations {
   /// Status when cross-source duplicate runs are skipped during import
   ///
   /// In en, this message translates to:
-  /// **'Skipped {count} duplicate(s) already imported from another source'**
-  String importStatusSkippedDuplicates(Object count);
+  /// **'Skipped {count, plural, one{{count} duplicate} other{{count} duplicates}} already imported from another source'**
+  String importStatusSkippedDuplicates(int count);
 
   /// Per-run progress status while saving imported runs locally
   ///
@@ -13871,7 +13871,7 @@ abstract class AppLocalizations {
   /// Persistent notice under the restore tile shown when the restored archive declared itself incomplete
   ///
   /// In en, this message translates to:
-  /// **'That archive said it was incomplete. {runs, plural, one{{runs} run was} other{{runs} runs were}} restored and nothing was overwritten - restore from a complete backup to fill the gaps.'**
+  /// **'That archive said it was incomplete. {runs, plural, one{{runs} run was} other{{runs} runs were}} restored and nothing was overwritten — restore from a complete backup to fill the gaps.'**
   String settingsAccountRestoreIncompleteArchive(int runs);
 
   /// Banner shown when restore can't run because the local store is missing
@@ -27034,7 +27034,7 @@ abstract class AppLocalizations {
   /// No description provided for @simWatchResult.
   ///
   /// In en, this message translates to:
-  /// **'Synced {synced} of {total} run(s) from the watch'**
+  /// **'Synced {synced} of {total, plural, one{{total} run} other{{total} runs}} from the watch'**
   String simWatchResult(int synced, int total);
 
   /// No description provided for @simWatchSyncFailed.
@@ -27796,7 +27796,7 @@ abstract class AppLocalizations {
   /// No description provided for @watchScreensRemoveBody.
   ///
   /// In en, this message translates to:
-  /// **'Its {count} metric(s) go with it.'**
+  /// **'Its {count, plural, one{{count} metric goes} other{{count} metrics go}} with it.'**
   String watchScreensRemoveBody(int count);
 
   /// No description provided for @watchScreensRemoveConfirm.
@@ -27814,13 +27814,13 @@ abstract class AppLocalizations {
   /// No description provided for @watchScreensShrinkTitle.
   ///
   /// In en, this message translates to:
-  /// **'Drop {count} metric(s)?'**
+  /// **'Drop {count, plural, one{{count} metric} other{{count} metrics}}?'**
   String watchScreensShrinkTitle(int count);
 
   /// Warning naming the metrics a narrower layout would drop
   ///
   /// In en, this message translates to:
-  /// **'A {layout} screen draws {slots} slot(s), so {dropped} would no longer be shown.'**
+  /// **'A {layout} screen draws {slots, plural, one{{slots} slot} other{{slots} slots}}, so {dropped} would no longer be shown.'**
   String watchScreensShrinkBody(String layout, int slots, String dropped);
 
   /// No description provided for @watchScreensShrinkConfirm.
@@ -27838,7 +27838,7 @@ abstract class AppLocalizations {
   /// No description provided for @watchScreensPushed.
   ///
   /// In en, this message translates to:
-  /// **'Pushed {count} screen(s) to the watch'**
+  /// **'Pushed {count, plural, one{{count} screen} other{{count} screens}} to the watch'**
   String watchScreensPushed(int count);
 
   /// No description provided for @watchScreensCleared.

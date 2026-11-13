@@ -252,8 +252,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get importStatusSavingLocally => 'Enregistrement local…';
 
   @override
-  String importStatusSkippedDuplicates(Object count) {
-    return '$count doublon(s) ignoré(s), déjà importé(s) depuis une autre source';
+  String importStatusSkippedDuplicates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count doublons ignorés, déjà importés',
+      one: '$count doublon ignoré, déjà importé',
+    );
+    return '$_temp0 depuis une autre source';
   }
 
   @override
@@ -8835,8 +8841,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp1 = intl.Intl.pluralLogic(
       tracks,
       locale: localeName,
-      other: '$tracks tracés',
-      one: '$tracks tracé',
+      other: '$tracks traces',
+      one: '$tracks trace',
     );
     String _temp2 = intl.Intl.pluralLogic(
       routes,
@@ -16836,7 +16842,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String simWatchResult(int synced, int total) {
-    return '$synced course(s) sur $total synchronisée(s) depuis la montre';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total courses synchronisées',
+      one: '$total course synchronisée',
+    );
+    return '$synced sur $_temp0 depuis la montre';
   }
 
   @override
@@ -17309,7 +17321,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String watchScreensRemoveBody(int count) {
-    return 'Ses $count mesure(s) disparaîtront avec lui.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mesures disparaîtront',
+      one: '$count mesure disparaîtra',
+    );
+    return '$_temp0 avec lui.';
   }
 
   @override
@@ -17320,12 +17338,24 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String watchScreensShrinkTitle(int count) {
-    return 'Abandonner $count mesure(s) ?';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mesures',
+      one: '$count mesure',
+    );
+    return 'Abandonner $_temp0 ?';
   }
 
   @override
   String watchScreensShrinkBody(String layout, int slots, String dropped) {
-    return 'Une disposition $layout affiche $slots emplacement(s), donc $dropped ne serait plus affiché.';
+    String _temp0 = intl.Intl.pluralLogic(
+      slots,
+      locale: localeName,
+      other: '$slots emplacements',
+      one: '$slots emplacement',
+    );
+    return 'Une disposition $layout affiche $_temp0, donc $dropped ne serait plus affiché.';
   }
 
   @override
@@ -17336,7 +17366,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String watchScreensPushed(int count) {
-    return '$count écran(s) envoyé(s) à la montre';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count écrans envoyés',
+      one: '$count écran envoyé',
+    );
+    return '$_temp0 à la montre';
   }
 
   @override

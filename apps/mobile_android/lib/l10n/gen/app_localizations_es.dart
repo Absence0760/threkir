@@ -252,8 +252,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get importStatusSavingLocally => 'Guardando localmente...';
 
   @override
-  String importStatusSkippedDuplicates(Object count) {
-    return 'Se omitieron $count duplicado(s) ya importados desde otra fuente';
+  String importStatusSkippedDuplicates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se omitieron $count duplicados ya importados',
+      one: 'Se omitió $count duplicado ya importado',
+    );
+    return '$_temp0 desde otra fuente';
   }
 
   @override
@@ -16799,7 +16805,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String simWatchResult(int synced, int total) {
-    return 'Se sincronizaron $synced de $total carrera(s) del reloj';
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total carreras',
+      one: '$total carrera',
+    );
+    return 'Se sincronizaron $synced de $_temp0 del reloj';
   }
 
   @override
@@ -17269,7 +17281,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String watchScreensRemoveBody(int count) {
-    return 'Sus $count métrica(s) se irán con ella.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count métricas se irán',
+      one: '$count métrica se irá',
+    );
+    return '$_temp0 con ella.';
   }
 
   @override
@@ -17280,12 +17298,24 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String watchScreensShrinkTitle(int count) {
-    return '¿Descartar $count métrica(s)?';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count métricas',
+      one: '$count métrica',
+    );
+    return '¿Descartar $_temp0?';
   }
 
   @override
   String watchScreensShrinkBody(String layout, int slots, String dropped) {
-    return 'Un diseño $layout dibuja $slots casilla(s), así que $dropped ya no se mostraría.';
+    String _temp0 = intl.Intl.pluralLogic(
+      slots,
+      locale: localeName,
+      other: '$slots casillas',
+      one: '$slots casilla',
+    );
+    return 'Un diseño $layout dibuja $_temp0, así que $dropped ya no se mostraría.';
   }
 
   @override
@@ -17296,7 +17326,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String watchScreensPushed(int count) {
-    return '$count pantalla(s) enviada(s) al reloj';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pantallas enviadas',
+      one: '$count pantalla enviada',
+    );
+    return '$_temp0 al reloj';
   }
 
   @override

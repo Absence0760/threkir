@@ -148,7 +148,7 @@ Set<String> countsBeforeNouns(
 ) {
   final spans = _blocks(message);
   final hits = <String>{};
-  for (final m in RegExp(r'\{(\w+)\}\s+([a-z]+s)\b').allMatches(message)) {
+  for (final m in RegExp(r'\{(\w+)\}\s+([a-z]+(?:s\b|\(s\)))').allMatches(message)) {
     final arg = m.group(1)!;
     final type = types[arg];
     if (type == 'String' || type == 'DateTime') continue;
@@ -166,6 +166,8 @@ void main() {
   test('the scan reads a count before a plural noun, outside its plural', () {
     expect(countsBeforeNouns('k', 'Restored {runs} runs', {'runs': 'int'}),
         {'k runs'});
+    expect(countsBeforeNouns('k', 'Pushed {count} screen(s)', {'count': 'int'}),
+        {'k count'});
     expect(
         countsBeforeNouns(
             'k',

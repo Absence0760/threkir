@@ -221,12 +221,12 @@
 		<PageHeader flush title={fundraiser.title}>
 			{#snippet sub()}
 				<p>
-					{#if fundraiser.charity_url}
-						<a href={fundraiser.charity_url} target="_blank" rel="noopener noreferrer nofollow"
-							>{fundraiser.charity_name}</a
+					{#if fundraiser?.charity_url}
+						<a href={fundraiser?.charity_url} target="_blank" rel="noopener noreferrer nofollow"
+							>{fundraiser?.charity_name}</a
 						>
 					{:else}
-						{fundraiser.charity_name}
+						{fundraiser?.charity_name}
 					{/if}
 				</p>
 			{/snippet}

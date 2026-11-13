@@ -343,7 +343,7 @@
 						disabled={visibilityBusy}
 						data-testid="session-toggle-public"
 					>
-						{plan.is_public ? t('session.makePrivate') : t('session.makePublic')}
+						{plan?.is_public ? t('session.makePrivate') : t('session.makePublic')}
 					</button>
 					<button
 						type="button"

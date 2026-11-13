@@ -10,8 +10,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		addShare,
-		fetchFollowers,
-		fetchFollowing,
+		fetchFollowGraph,
 		fetchShares,
 		revokeShare,
 		setAudience,
@@ -107,8 +106,8 @@
 		peopleLoading = true;
 		peopleFailed = false;
 		try {
-			const [followers, following] = await Promise.all([fetchFollowers(me), fetchFollowing(me)]);
-			candidates = dmRecipientCandidates(followers.rows, following.rows, me);
+			const { followers, following } = await fetchFollowGraph(me);
+			candidates = dmRecipientCandidates(followers, following, me);
 		} catch {
 			// "Nobody to share with" and "could not find out" are different
 			// answers; only the second is worth a retry.

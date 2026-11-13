@@ -12,7 +12,7 @@
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { fetchFollowers, fetchFollowing } from '#lib/core/data.ts';
+	import { fetchFollowGraph } from '#lib/core/data.ts';
 	import { dmRecipientCandidates, filterDmRecipients, type DmRecipient } from '#lib/social/dm_recipients.ts';
 	import { dmRelationLabelKey } from '#lib/social/dm_relation_label.ts';
 
@@ -30,8 +30,8 @@
 		loading = true;
 		loadFailed = false;
 		try {
-			const [followers, following] = await Promise.all([fetchFollowers(me), fetchFollowing(me)]);
-			candidates = dmRecipientCandidates(followers.rows, following.rows, me);
+			const { followers, following } = await fetchFollowGraph(me);
+			candidates = dmRecipientCandidates(followers, following, me);
 		} catch (e) {
 			// "Nobody to message" and "couldn't find out who" are different answers.
 			console.warn('new message: people read failed', e);

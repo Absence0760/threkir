@@ -8585,6 +8585,45 @@ export async function fetchFollowing(
 	};
 }
 
+/// Everyone who follows `userId` and everyone `userId` follows, each direction
+/// walked to its end. A picker that offers "people you can message / share
+/// with / add" filters this list on the client, so one page of it would hide
+/// everyone past the first page from the list AND from its search (round 3
+/// review: past the 50th follow, nobody could be found). Throws when either
+/// walk ends short, so a partial graph never reads as "these are all".
+export async function fetchFollowGraph(
+	userId: string
+): Promise<{ followers: PublicProfile[]; following: PublicProfile[] }> {
+	const walkEdges = <K extends 'follower_id' | 'followee_id'>(
+		order: readonly KeysetKey[],
+		anchor: 'followee_id' | 'follower_id',
+		other: K
+	) =>
+		walkKeyset(order, (after, limit) => {
+			let q = supabase.from('user_follows').select(`${other}, followed_at`).eq(anchor, userId);
+			if (after) q = q.or(after);
+			for (const k of order) {
+				q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+			}
+			return q.limit(limit) as unknown as PromiseLike<{
+				data: (Record<K, string> & { followed_at: string })[] | null;
+				error: unknown;
+			}>;
+		});
+	const [inbound, outbound] = await Promise.all([
+		walkEdges(FOLLOWERS_ORDER, 'followee_id', 'follower_id'),
+		walkEdges(FOLLOWING_ORDER, 'follower_id', 'followee_id'),
+	]);
+	for (const walk of [inbound, outbound]) {
+		if (!walk.complete) throw dbError(walk.error ?? new Error('fetchFollowGraph: the walk ended short'));
+	}
+	const [followers, following] = await Promise.all([
+		profilesInEdgeOrder(inbound.rows.map((e) => e.follower_id)),
+		profilesInEdgeOrder(outbound.rows.map((e) => e.followee_id)),
+	]);
+	return { followers, following };
+}
+
 export interface FeedEntry extends Run {
 	author: PublicProfile;
 }

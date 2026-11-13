@@ -119,6 +119,8 @@ twin the same way so the two surfaces read alike. Both rules are guards
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
 | race | **Prova** everywhere: workout kind, nav and tabs ("Provas"), `races.title` "Calendário de provas", race control ("Preparar prova", "Encerrar prova") | settled 2026-10-13; *corrida* is only ever a run, so the Runs and Races tabs no longer collide |
+| backup (the full archive you download and restore) | **cópia de segurança** (feminine: « a cópia de segurança completa », « nesta cópia de segurança ») | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « backup » |
+| build (the plan's build phase) | **construção** — « semanas de construção », « Encurtar a construção » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « desenvolvimento » |
 | gun time / chip time | **Tempo oficial** / **Tempo de chip**; short forms "oficial {gun} · chip {chip}" | settled 2026-10-13; not "bruto"/"líquido" (Brazilian race-results usage) nor "tempo real" (collides with *em tempo real*) |
 | finish | Chegada (finish line); Concluído (status); Concluir (mobile) / Finalizar (web) action | |
 | DNF | DNF; "Não concluiu" (web `checkpoint.statusDnf`) | |

@@ -88,6 +88,8 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
 | race | **Prova** (workout kind, run source); "Corridas" in nav, tabs and `races.title` | collides with *run* — inconsistency 1 |
+| build (the plan's build phase) | **construção** — « semanas de construção », « Encurtar a construção » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « desenvolvimento » |
+| gym session / gym workout | **treino de academia** / treinos de academia (masculine: « os treinos de academia ») | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « sessão de academia » or « sessão de musculação » |
 | finish | Chegada (finish line); Concluído (status); Concluir (mobile) / Finalizar (web) action | |
 | Done | By what it does. A button that **closes** a sheet, a dialog, a selection mode or a finished screen is **Pronto** (`filterBarDone`, `runDone`, `coachShare.done`, `runs.done`). A **status** — a workout, a step or a goal that is done — is **Concluído / concluída / concluídos** (`dash.doneBadge`, `coachingAthleteStatusDone`, the widget's done state, the onboarding rail's last step), and so is a button that records a step as done (`session.run.done`); "Mark as done / not done" is "Marcar como concluído / não concluído", "{done} de {total} concluídos", "{pct}% concluído" | settled 2026-11-12; never "Feito" / "feitos" for the status, never "Concluído" for a button that only closes. Not a status, so kept: `gymRoutineHistoryLastDone` "Feita hoje / ontem" (the routine was *performed* then) |
 | DNF | DNF; "Não concluiu" (web `checkpoint.statusDnf`) | |

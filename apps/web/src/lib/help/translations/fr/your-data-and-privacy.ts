@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 						'Les courses que vous rendez publiques apparaissent sur votre profil et dans le fil. Les courses privées ne sont visibles que par vous.',
 						'Votre appartenance à un club public, et tout ce que vous y publiez, peut être vu par les personnes qui peuvent voir le club.',
 						'Tant que vous partagez un lien en direct, la course en cours peut être vue par toute personne disposant du lien.',
-						'Une photo pour laquelle vous cochez **Afficher sur la page de la course**, sur une course publique liée à une course officielle, apparaît sur la page publique de cette course avec sa légende et votre nom. Décochez-la, ou rendez votre course privée, pour la retirer.',
+						'Une photo pour laquelle vous cochez **Afficher sur la page de l\'épreuve**, sur une course publique liée à une épreuve officielle, apparaît sur la page publique de cette épreuve avec sa légende et votre nom. Décochez-la, ou rendez votre course privée, pour la retirer.',
 					],
 				},
 				{

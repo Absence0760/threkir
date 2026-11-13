@@ -303,7 +303,8 @@ class AppLocalizationsPt extends AppLocalizations {
       'Esta cópia de segurança foi criada por uma versão mais recente da app. Atualize a app e depois restaure-a.';
 
   @override
-  String get importStatusRestoringBackup => 'A restaurar backup...';
+  String get importStatusRestoringBackup =>
+      'A restaurar a cópia de segurança...';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
@@ -312,7 +313,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importBackupFailed(Object error) {
-    return 'Falha ao restaurar o backup: $error';
+    return 'Falha ao restaurar a cópia de segurança: $error';
   }
 
   @override
@@ -370,21 +371,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get importCsvButton => 'Importar CSV';
 
   @override
-  String get importBackupCardTitle => 'ZIP de backup completo';
+  String get importBackupCardTitle => 'ZIP da cópia de segurança completa';
 
   @override
   String get importBackupCardSubtitle =>
-      'Restaure corridas, rotas e trajetos de GPS de um ficheiro de backup';
+      'Restaure corridas, rotas e trajetos de GPS a partir de um ficheiro de cópia de segurança';
 
   @override
   String get importBackupCardDescription =>
       'Exportação e restauro sem perdas. Funciona sem sessão iniciada — as corridas restauradas sincronizam com a sua conta da próxima vez que iniciar sessão.';
 
   @override
-  String get importBackupMakeOne => 'Fazer um backup';
+  String get importBackupMakeOne => 'Fazer uma cópia de segurança';
 
   @override
-  String get importBackupButton => 'Restaurar ZIP de backup';
+  String get importBackupButton => 'Restaurar ZIP da cópia de segurança';
 
   @override
   String get importErrorsHeader => 'Erros';
@@ -1624,7 +1625,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get signInSubtitle =>
-      'Inicie sessão para fazer backup das corridas e vê-las na app web.';
+      'Inicie sessão para guardar uma cópia de segurança das corridas e vê-las na app web.';
 
   @override
   String get signInButton => 'Entrar';
@@ -1675,7 +1676,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get signUpSubtitle =>
-      'Crie uma conta para fazer backup das corridas e vê-las na app web.';
+      'Crie uma conta para guardar uma cópia de segurança das corridas e vê-las na app web.';
 
   @override
   String get signUpButton => 'Criar conta';
@@ -8570,17 +8571,18 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountBackupSignInFirst =>
-      'Entre primeiro para fazer backup das suas corridas.';
+      'Entre primeiro para fazer uma cópia de segurança das suas corridas.';
 
   @override
-  String get settingsAccountBackupPreparing => 'A preparar backup…';
+  String get settingsAccountBackupPreparing =>
+      'A preparar a cópia de segurança…';
 
   @override
-  String get settingsAccountBackupShareText => 'Backup do Run app';
+  String get settingsAccountBackupShareText => 'Cópia de segurança do Run app';
 
   @override
   String settingsAccountBackupFailed(Object error) {
-    return 'Falha no backup: $error';
+    return 'Falha na cópia de segurança: $error';
   }
 
   @override
@@ -8610,10 +8612,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountRestoreUnavailable =>
-      'Serviço de backup indisponível.';
+      'Serviço de cópias de segurança indisponível.';
 
   @override
-  String get settingsAccountRestoreTitle => 'Restaurar do backup?';
+  String get settingsAccountRestoreTitle => 'Restaurar da cópia de segurança?';
 
   @override
   String get settingsAccountRestoreBodyOffline =>
@@ -8621,7 +8623,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountRestoreBodyOnline =>
-      'Isto adiciona ou substitui corridas e rotas com IDs correspondentes no backup. Não eliminará corridas ou rotas que não estejam no backup.';
+      'Isto adiciona ou substitui corridas e rotas com IDs correspondentes na cópia de segurança. Não eliminará corridas ou rotas que não estejam na cópia de segurança.';
 
   @override
   String get settingsAccountRestore => 'Restaurar';
@@ -8794,16 +8796,16 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAccountExportUnavailable =>
-      'O serviço de exportação da conta não está configurado nesta versão. O backup completo abaixo é criado neste dispositivo e não inclui os registos da sua conta.';
+      'O serviço de exportação da conta não está configurado nesta versão. A cópia de segurança completa abaixo é criada neste dispositivo e não inclui os registos da sua conta.';
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
-    return '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, por isso não as inclui — use o backup completo para as guardar.';
+    return '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, por isso não as inclui — use a cópia de segurança completa para as guardar.';
   }
 
   @override
   String get settingsAccountBackupOnDeviceNotice =>
-      'O seu último backup completo foi criado neste dispositivo. Contém as suas corridas, rotas, perfil, preferências e registos de ginásio e alimentação — mas não os registos da sua conta. Use a exportação da conta para a cópia completa.';
+      'A sua última cópia de segurança completa foi criada neste dispositivo. Contém as suas corridas, rotas, perfil, preferências e registos de ginásio e alimentação — mas não os registos da sua conta. Use a exportação da conta para a cópia completa.';
 
   @override
   String settingsAccountExportRateLimited(int seconds) {
@@ -8826,7 +8828,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get settingsAccountFullBackup => 'Backup completo';
+  String get settingsAccountFullBackup => 'Cópia de segurança completa';
 
   @override
   String get settingsAccountFullBackupSubtitle =>
@@ -8840,11 +8842,11 @@ class AppLocalizationsPt extends AppLocalizations {
       'Data, distância, duração, ritmo, origem — uma linha por corrida. Mesmo formato da exportação RGPD da web.';
 
   @override
-  String get settingsAccountRestoreTile => 'Restaurar do backup';
+  String get settingsAccountRestoreTile => 'Restaurar da cópia de segurança';
 
   @override
   String get settingsAccountRestoreTileSubtitle =>
-      'Escolha um backup .zip guardado anteriormente.';
+      'Escolha uma cópia de segurança .zip guardada anteriormente.';
 
   @override
   String get settingsAccountDeleteAccount => 'Eliminar conta';
@@ -12565,7 +12567,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsTabAccountSubtitle =>
-      'Sessão, perfil, importação e backup, eliminar conta';
+      'Sessão, perfil, importação e cópia de segurança, eliminar conta';
 
   @override
   String get settingsTabIntegrationsSubtitle =>
@@ -20174,7 +20176,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planBreakPushBack => 'Adiar o plano';
 
   @override
-  String get planBreakShortenBuild => 'Encurtar o desenvolvimento';
+  String get planBreakShortenBuild => 'Encurtar a construção';
 
   @override
   String get planBreakDismiss => 'Manter o plano como está';
@@ -30990,7 +30992,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentBulletLifts =>
-      'Um resumo das suas sessões de academia mais recentes: a data, o nome da sessão, quantos exercícios e séries e o peso total levantado.';
+      'Um resumo dos seus treinos de academia mais recentes: a data, o nome do treino, quantos exercícios e séries e o peso total levantado.';
 
   @override
   String get coachConsentBulletNutrition =>
@@ -33194,7 +33196,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get dashboardFirstRunGymHint => 'Prefere musculação?';
 
   @override
-  String get dashboardFirstRunGymAction => 'Registre uma sessão de academia';
+  String get dashboardFirstRunGymAction => 'Registre um treino de academia';
 
   @override
   String get dashboardPeriodMonth => 'Mês';
@@ -33511,7 +33513,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadIncludesLifts =>
-      'Inclui sessões de academia — musculação também soma fadiga.';
+      'Inclui treinos de academia — musculação também soma fadiga.';
 
   @override
   String get trainingLoadLowConfidenceMedication =>
@@ -36417,7 +36419,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionTargetsExerciseHint =>
-      'As corridas e sessões de musculação que você registrar hoje são somadas por cima.';
+      'As corridas e os treinos de academia que você registrar hoje são somados por cima.';
 
   @override
   String get nutritionTargetsMacrosHeading => 'Macros';
@@ -36440,7 +36442,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionTargetsDefaultsHint =>
-      'O nível de atividade é o seu dia típico sem contar os treinos — as corridas e sessões de musculação registradas são somadas à parte. Ambos são salvos quando você os altera.';
+      'O nível de atividade é o seu dia típico sem contar os treinos — as corridas e os treinos de academia registrados são somados à parte. Ambos são salvos quando você os altera.';
 
   @override
   String get nutritionTargetsMetricsHeading => 'Dados corporais';
@@ -36555,7 +36557,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsExcludeGymFromReadinessHint =>
-      'Por padrão, as sessões de musculação aumentam sua fadiga e reduzem sua prontidão, como uma corrida. Ative isto para que seu condicionamento, fadiga e forma se baseiem apenas nas corridas.';
+      'Por padrão, os treinos de academia aumentam sua fadiga e reduzem sua prontidão, como uma corrida. Ative isto para que seu condicionamento, fadiga e forma se baseiem apenas nas corridas.';
 
   @override
   String get prefsHrMedicationAffected =>
@@ -43017,7 +43019,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String planBreakHintRace(String date) {
-    return 'Você pode retomar o plano de onde parou. O dia da prova continua sendo $date e o polimento é mantido; cada semana que você repetir substitui uma semana de desenvolvimento posterior.';
+    return 'Você pode retomar o plano de onde parou. O dia da prova continua sendo $date e o polimento é mantido; cada semana que você repetir substitui uma semana de construção posterior.';
   }
 
   @override
@@ -43034,7 +43036,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get planBreakPushBack => 'Adiar o plano';
 
   @override
-  String get planBreakShortenBuild => 'Encurtar o desenvolvimento';
+  String get planBreakShortenBuild => 'Encurtar a construção';
 
   @override
   String get planBreakDismiss => 'Manter o plano como está';
@@ -43062,8 +43064,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '$n semanas de desenvolvimento posteriores são retiradas',
-      one: '$n semana de desenvolvimento posterior é retirada',
+      other: '$n semanas de construção posteriores são retiradas',
+      one: '$n semana de construção posterior é retirada',
     );
     return '$_temp0 para abrir espaço; o polimento não muda.';
   }

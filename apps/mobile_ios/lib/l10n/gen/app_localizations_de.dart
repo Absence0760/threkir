@@ -7507,7 +7507,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get planDetailPublishTooltip => 'Als Vereinsvorlage veröffentlichen';
+  String get planDetailPublishTooltip => 'Als Club-Vorlage veröffentlichen';
 
   @override
   String get planDetailRacesTitle => 'Wettkämpfe in diesem Plan';
@@ -7823,19 +7823,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailPublishLoadClubsTimeout =>
-      'Deine Vereine konnten nicht geladen werden — prüfe dein Netzwerk.';
+      'Deine Clubs konnten nicht geladen werden — prüfe dein Netzwerk.';
 
   @override
   String get planDetailPublishLoadClubsFailed =>
-      'Deine Vereine konnten nicht geladen werden.';
+      'Deine Clubs konnten nicht geladen werden.';
 
   @override
   String get planDetailPublishNoClubs =>
-      'Du musst Inhaber oder Admin eines Vereins sein, um eine Vorlage zu veröffentlichen.';
+      'Du musst Inhaber oder Admin eines Clubs sein, um eine Vorlage zu veröffentlichen.';
 
   @override
   String planDetailPublishSuccess(String name) {
-    return '„$name“ als Vereinsvorlage veröffentlicht.';
+    return '„$name“ als Club-Vorlage veröffentlicht.';
   }
 
   @override
@@ -7844,11 +7844,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get planDetailPublishPickerTitle => 'Im Verein veröffentlichen';
+  String get planDetailPublishPickerTitle => 'Im Club veröffentlichen';
 
   @override
   String get planDetailPublishPickerBody =>
-      'Mitglieder des Vereins können diesen Plan als eigenen übernehmen.';
+      'Mitglieder des Clubs können diesen Plan als eigenen übernehmen.';
 
   @override
   String planDetailPublishPickerMembers(int count) {
@@ -11410,7 +11410,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventEditorMembersOnlyHint =>
-      'Nur Vereinsmitglieder können dieses Event sehen; es erscheint nicht in der öffentlichen Suche.';
+      'Nur Clubmitglieder können dieses Event sehen; es erscheint nicht in der öffentlichen Suche.';
 
   @override
   String get eventEditorDiscipline => 'Disziplin';
@@ -15505,14 +15505,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseClaimTitle =>
-      'Dieses Rennen für deinen Verein beanspruchen';
+      'Dieses Rennen für deinen Club beanspruchen';
 
   @override
   String get raceCourseClaimBody =>
-      'Mit dem Beanspruchen wird das Rennen verifiziert und dein Verein kann seine Strecke verknüpfen. Beanspruche nur ein Rennen, das dein Verein ausrichtet oder für das er Strecken zeichnet.';
+      'Mit dem Beanspruchen wird das Rennen verifiziert und dein Club kann seine Strecke verknüpfen. Beanspruche nur ein Rennen, das dein Club ausrichtet oder für das er Strecken zeichnet.';
 
   @override
-  String get raceCourseClaimClub => 'Verein';
+  String get raceCourseClaimClub => 'Club';
 
   @override
   String get raceCourseClaimConfirm => 'Rennen beanspruchen';
@@ -15538,7 +15538,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseLinkNoRoutes =>
-      'Dein Verein hat noch keine öffentlichen Routen. Erstelle eine im Tab „Routen“ des Vereins, mach sie öffentlich und verknüpfe sie dann hier.';
+      'Dein Club hat noch keine öffentlichen Routen. Erstelle eine im Tab „Routen“ des Clubs, mach sie öffentlich und verknüpfe sie dann hier.';
 
   @override
   String get raceCourseLinkSourceLabel => 'Woher die Strecke stammt';
@@ -15576,7 +15576,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get raceCourseSuggestBody =>
-      'Wähle eine deiner öffentlichen Routen. Der Veranstalter prüft sie – oder ein verifizierter Verein, solange niemand das Rennen beansprucht hat.';
+      'Wähle eine deiner öffentlichen Routen. Der Veranstalter prüft sie – oder ein verifizierter Club, solange niemand das Rennen beansprucht hat.';
 
   @override
   String get raceCourseSuggestRoute => 'Deine Route';
@@ -15626,7 +15626,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String raceCourseReviewApproveBody(String route) {
-    return 'Die Strecke muss eine öffentliche Route deines Vereins sein. Wähle die Vereinskopie von $route.';
+    return 'Die Strecke muss eine öffentliche Route deines Clubs sein. Wähle die Clubkopie von $route.';
   }
 
   @override
@@ -17289,7 +17289,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String rateLimitCreateClub(String wait) {
-    return 'Du erstellst zu schnell Vereine – bitte warte $wait und versuche es erneut.';
+    return 'Du erstellst zu schnell Clubs – bitte warte $wait und versuche es erneut.';
   }
 
   @override
@@ -17600,7 +17600,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailSectionShareHint =>
-      'Vereinsvorlage und öffentliche Planbibliothek';
+      'Club-Vorlage und öffentliche Planbibliothek';
 
   @override
   String get confirmAgeHeading => 'Nur noch ein Schritt';
@@ -19631,7 +19631,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewReadyMadeBody =>
-      'Ein integrierter Plan oder einer, den ein Verein, in dem du Mitglied bist, veröffentlicht hat. Du kannst ihn danach bearbeiten.';
+      'Ein integrierter Plan oder einer, den ein Club, in dem du Mitglied bist, veröffentlicht hat. Du kannst ihn danach bearbeiten.';
 
   @override
   String get planNewReadyMadeButton => 'Fertige Pläne ansehen';
@@ -19640,7 +19640,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planNewReadyMadeBuiltIn => 'Integrierte Pläne';
 
   @override
-  String get planNewReadyMadeClubs => 'Aus deinen Vereinen';
+  String get planNewReadyMadeClubs => 'Aus deinen Clubs';
 
   @override
   String get planNewBuildOwn => 'Oder stell dir deinen eigenen zusammen';

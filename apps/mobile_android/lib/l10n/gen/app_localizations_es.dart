@@ -9147,7 +9147,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsHrScanHint =>
-      'Activa tu banda / cinta pectoral. Suele tardar de 3 a 8 segundos.';
+      'Activa tu banda de FC. Suele tardar de 3 a 8 segundos.';
 
   @override
   String get integrationsHrScanEmpty =>
@@ -9185,7 +9185,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsTreadmillScanHint =>
-      'Asegúrate de que el Bluetooth de la cinta esté activado y la banda despierta. La búsqueda tarda de 3 a 8 segundos.';
+      'Asegúrate de que la cinta de correr esté encendida y con el Bluetooth activado. La búsqueda tarda de 3 a 8 segundos.';
 
   @override
   String get integrationsTreadmillScanEmpty =>

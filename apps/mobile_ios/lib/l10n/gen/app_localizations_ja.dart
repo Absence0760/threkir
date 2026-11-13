@@ -789,7 +789,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardTrendGroupVolumeHint => '週ごとの走行距離';
 
   @override
-  String get dashboardTrendGroupFitness => '体力とコンディション';
+  String get dashboardTrendGroupFitness => '体力と調子';
 
   @override
   String get dashboardTrendGroupFitnessHint => '準備度・体力・トレーニング負荷';
@@ -1418,7 +1418,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get safetyAutoLiveShareSafetySubtitle =>
-      'このスマートフォンでランを開始すると、自動的にライブ共有を開始します。公開されることはありません。確認済みの安全連絡先だけが、遅延アラートまたはルート逸脱アラートで届くリンクから追跡できます。アラートを設定すると既定でオンになります。';
+      'このスマートフォンでランを開始すると、自動的にライブ共有を開始します。公開されることはありません。確認済みの緊急連絡先だけが、遅延アラートまたはルート逸脱アラートで届くリンクから追跡できます。アラートを設定すると既定でオンになります。';
 
   @override
   String get safetyOffRouteTitle => 'ルート逸脱アラート';
@@ -1435,7 +1435,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSafetyLiveShareStarted =>
-      '安全共有がオンです。安全連絡先だけが、アラートが送られた後にのみ追跡できます';
+      '安全共有がオンです。緊急連絡先だけが、アラートが送られた後にのみ追跡できます';
 
   @override
   String get runSafetyNudgeSolo =>

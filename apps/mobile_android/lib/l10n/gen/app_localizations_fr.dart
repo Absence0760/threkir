@@ -18775,10 +18775,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routeDetailSendDmDone => 'Terminé';
 
   @override
-  String get runPhotosRaceGalleryShow => 'Afficher sur la page de la course';
+  String get runPhotosRaceGalleryShow => 'Afficher sur la page de l\'épreuve';
 
   @override
-  String get runPhotosRaceGalleryHide => 'Retirer de la page de la course';
+  String get runPhotosRaceGalleryHide => 'Retirer de la page de l\'épreuve';
 
   @override
   String get runPhotosRaceGalleryHint =>
@@ -18786,11 +18786,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runPhotosRaceGalleryPrivate =>
-      'Rendez cette activité publique pour partager ses photos sur la page de la course.';
+      'Rendez cette activité publique pour partager ses photos sur la page de l\'épreuve.';
 
   @override
   String runPhotosRaceGalleryError(String error) {
-    return 'Impossible de mettre à jour la page de la course : $error';
+    return 'Impossible de mettre à jour la page de l\'épreuve : $error';
   }
 
   @override

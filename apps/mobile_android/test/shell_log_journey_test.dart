@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -89,6 +90,19 @@ typedef _Shell = ({
   Preferences prefs,
 });
 
+/// The runner's session as the shell sees it here: no account calls, and
+/// health-data consent given, which logging food needs (decisions § 2514).
+class _ConsentedApi extends ApiClient {
+  @override
+  String? get userId => null;
+
+  @override
+  Stream<String?> get authUserChanges => const Stream<String?>.empty();
+
+  @override
+  Future<bool> fetchHealthDataConsented() async => true;
+}
+
 void main() {
   late _FakeGeolocatorPlatform geolocator;
   final tempDirs = <Directory>[];
@@ -161,7 +175,7 @@ void main() {
   /// [showNutrition] are the runner's own Settings choices; left null, each
   /// modality stays hidden until it has data, as on a new account.
   Future<_Shell> pumpShell(WidgetTester tester,
-      {bool? showGym, bool? showNutrition}) async {
+      {bool? showGym, bool? showNutrition, ApiClient? api}) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
@@ -182,7 +196,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: HomeScreen(
-          apiClient: null,
+          apiClient: api,
           runStore: runStore,
           routeStore: LocalRouteStore(),
           gearStore: gearStore,
@@ -378,7 +392,8 @@ void main() {
   group('logging a meal from the centre button', () {
     testWidgets('Log food, the Nutrition tab, its composer, and the saved meal',
         (tester) async {
-      final s = await pumpShell(tester, showNutrition: true);
+      final s =
+          await pumpShell(tester, showNutrition: true, api: _ConsentedApi());
 
       await pick(tester, 'Log food');
       expect(shellPage(tester), 1);
@@ -404,7 +419,7 @@ void main() {
       expect(s.foodStore.rows.single['item_name'], 'Banana');
       expect(s.foodStore.rows.single['calories'], 105.0);
       expect(s.foodStore.hasPending, isTrue,
-          reason: 'signed out, the meal waits on this device to sync');
+          reason: 'with no session, the meal waits on this device to sync');
 
       await unmount(tester);
     });

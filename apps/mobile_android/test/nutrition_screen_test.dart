@@ -237,13 +237,10 @@ void main() {
     try {
       await tester.pumpWidget(_app(f.store));
       await tester.pump();
-      expect(
-        find.text(
-            'Add your height, weight, age and sex to see calorie + macro targets.'),
-        findsOneWidget,
-      );
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(l10n.nutritionNoTargets), findsOneWidget);
 
-      await tester.tap(find.text('Add body metrics'));
+      await tester.tap(find.text(l10n.nutritionAddBodyMetrics));
       await tester.pumpAndSettle();
       expect(find.byType(SettingsBodyMetricsScreen), findsOneWidget);
     } finally {

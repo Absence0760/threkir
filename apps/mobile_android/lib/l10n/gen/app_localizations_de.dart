@@ -16287,8 +16287,14 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String badgesFeedEarned(String name, String badge) {
-    return '$name hat das Abzeichen $badge erhalten';
+  String badgesFeedEarned(int count, String name, String badge) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name hat $count Abzeichen erhalten',
+      one: '$name hat das Abzeichen $badge erhalten',
+    );
+    return '$_temp0';
   }
 
   @override

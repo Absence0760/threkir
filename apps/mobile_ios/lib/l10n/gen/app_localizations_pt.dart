@@ -16274,8 +16274,14 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String badgesFeedEarned(String name, String badge) {
-    return '$name conquistou a medalha $badge';
+  String badgesFeedEarned(int count, String name, String badge) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name conquistou $count medalhas',
+      one: '$name conquistou a medalha $badge',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -39773,8 +39779,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String badgesFeedEarned(String name, String badge) {
-    return '$name conquistou a medalha $badge';
+  String badgesFeedEarned(int count, String name, String badge) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name conquistou $count medalhas',
+      one: '$name conquistou a medalha $badge',
+    );
+    return '$_temp0';
   }
 
   @override

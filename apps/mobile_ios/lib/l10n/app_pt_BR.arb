@@ -4466,7 +4466,7 @@
   "badgesEmpty": "Ainda sem medalhas — continue correndo.",
   "badgesEmptyOther": "Ainda não há medalhas públicas.",
   "badgesEarnedOn": "Conquistada em {date}",
-  "badgesFeedEarned": "{name} conquistou a medalha {badge}",
+  "badgesFeedEarned": "{count, plural, =1{{name} conquistou a medalha {badge}} other{{name} conquistou {count} medalhas}}",
   "feedBadgesLoadFailed": "Não foi possível carregar as últimas medalhas das pessoas que você segue.",
   "badgesARunner": "Um corredor",
   "badgesTierBronze": "Bronze",

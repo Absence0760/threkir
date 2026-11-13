@@ -26139,11 +26139,11 @@ abstract class AppLocalizations {
   /// **'Earned {date}'**
   String badgesEarnedOn(String date);
 
-  /// Feed badge-strip chip text
+  /// A feed row for the badges one person you follow earned on one day: with one badge it names it, with several it gives the count and the badge names follow on the line below
   ///
   /// In en, this message translates to:
-  /// **'{name} earned the {badge} badge'**
-  String badgesFeedEarned(String name, String badge);
+  /// **'{count, plural, =1{{name} earned the {badge} badge} other{{name} earned {count} badges}}'**
+  String badgesFeedEarned(int count, String name, String badge);
 
   /// One-line error in place of the feed's badge strip when the read of recent badges from followed people failed; a Retry button sits beside it
   ///

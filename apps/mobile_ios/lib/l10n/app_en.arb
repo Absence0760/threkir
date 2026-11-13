@@ -21396,10 +21396,13 @@
       }
     }
   },
-  "badgesFeedEarned": "{name} earned the {badge} badge",
+  "badgesFeedEarned": "{count, plural, =1{{name} earned the {badge} badge} other{{name} earned {count} badges}}",
   "@badgesFeedEarned": {
-    "description": "Feed badge-strip chip text",
+    "description": "A feed row for the badges one person you follow earned on one day: with one badge it names it, with several it gives the count and the badge names follow on the line below",
     "placeholders": {
+      "count": {
+        "type": "int"
+      },
       "name": {
         "type": "String"
       },

@@ -131,14 +131,14 @@ class ViewSwitch<T> extends StatelessWidget {
           child: track,
         );
       }
-      final group = Semantics(
+      // semantics-children: a group name, read once before the segments inside it
+      return Semantics(
         key: const Key('view-switch'),
         container: true,
         explicitChildNodes: true,
         label: label,
         child: track,
       );
-      return group;
     });
   }
 }

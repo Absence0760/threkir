@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra [[route:/settings/payouts|Definições, Pagamentos]] na web.",
+              "Abra [[route:/settings/payouts|Pagamentos]] na web.",
               "Prima **Configurar pagamentos**. É encaminhado para o Stripe para introduzir os seus dados e a conta bancária onde quer receber.",
               "Conclua os passos do Stripe. Quando voltar, a página mostra o seu estado.",
               "Se indicar **Registo incompleto — conclua para começar a cobrar** ou **A sua conta de pagamentos precisa de atenção antes de poder receber**, prima **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar onde ficou."

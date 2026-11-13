@@ -261,7 +261,7 @@
 					{#snippet actions()}
 						<a class="btn btn-outline" href="/settings/privacy">
 							<span class="material-symbols" aria-hidden="true">settings</span>
-							{m('shell.settings')}
+							{m('settingsLayout.tabPrivacy')}
 						</a>
 					{/snippet}
 				</EmptyState>

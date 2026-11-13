@@ -206,7 +206,12 @@
 					{m('fuelPlan.weightToggle')}
 				</label>
 				<p class="section-hint" id="fuel-weight-hint" data-testid="fuel-weight-hint">
-					{consentedWeightKg == null ? m('fuelPlan.weightUnavailable') : m('fuelPlan.weightHint')}
+					{#if consentedWeightKg == null}
+						{m('fuelPlan.weightUnavailable')}
+						<a href="/settings/body#body-metrics">{m('settingsLayout.tabBody')}</a>
+					{:else}
+						{m('fuelPlan.weightHint')}
+					{/if}
 				</p>
 			{/if}
 		</section>

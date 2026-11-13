@@ -45,7 +45,7 @@
 		shownDescription,
 	} from '#lib/routes/route_description.ts';
 	import { requestAiDescription } from '#lib/routes/route_describe_client.ts';
-	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
+	import { AI_CONSENT_HREF, AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 
 	// The "Describe this route" button always works (offline template); the
@@ -353,6 +353,7 @@
 	let genSource = $state<'ai' | 'template' | null>(null);
 	let describing = $state(false);
 	let describeError = $state<string | null>(null);
+	let describeNeedsConsent = $state(false);
 	let showUpgradeHint = $state(false);
 
 	/// Map the loaded route into the describer's input shape. Endpoints
@@ -387,6 +388,7 @@
 		if (!route || describing) return;
 		describing = true;
 		describeError = null;
+		describeNeedsConsent = false;
 		showUpgradeHint = false;
 		const input = describeInput();
 		const parts = describeRoute(input);
@@ -407,10 +409,10 @@
 			// without clobbering the description. A consent gap is not a
 			// failure the runner can retry away, so it gets its own copy
 			// pointing at where they can act on it.
-			describeError =
-				e instanceof Error && e.message === AI_DISCLOSURE_ERROR
-					? m('routeDetail.describeConsentRequired')
-					: m('routeDetail.describeFailed');
+			describeNeedsConsent = e instanceof Error && e.message === AI_DISCLOSURE_ERROR;
+			describeError = describeNeedsConsent
+				? m('routeDetail.describeConsentRequired')
+				: m('routeDetail.describeFailed');
 		} finally {
 			describing = false;
 		}
@@ -1000,7 +1002,10 @@
 							</p>
 						{/if}
 						{#if describeError}
-							<p class="desc-error" role="alert">{describeError}</p>
+							<p class="desc-error" role="alert">
+								{describeError}
+								{#if describeNeedsConsent}<a href={AI_CONSENT_HREF}>{m('planEditor.aiErrorConsentLink')}</a>{/if}
+							</p>
 						{/if}
 					{:else}
 						<button

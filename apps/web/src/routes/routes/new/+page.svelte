@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
+	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { tick } from 'svelte';
 	import { smartBack } from '#lib/util/smart_back.ts';
@@ -448,7 +449,7 @@
 	let nlRequest = $state('');
 	let nlBusy = $state(false);
 	// `upsell` draws the refusal with the link to Pro.
-	let nlError = $state<{ text: string; upsell: boolean } | null>(null);
+	let nlError = $state<{ text: string; upsell: boolean; consent?: boolean } | null>(null);
 	// Set after a successful extraction so the user sees what was applied
 	// (incl. the shape, which the form can't render directly) and which
 	// fields were assumed from a default.
@@ -496,6 +497,7 @@
 			if (err instanceof RouteRequestError) {
 				nlError = {
 					upsell: err.kind === 'upgrade',
+					consent: err.kind === 'consent',
 					text:
 						err.kind === 'upgrade'
 							? m('routeNew.aiRequestProOnly')
@@ -972,6 +974,7 @@
 						{#if nlError}
 							<p class="ai-request-error" role="alert">
 								{#if nlError.upsell}<ProUpsellLink message={nlError.text} />{:else}{nlError.text}{/if}
+								{#if nlError.consent}<a href={AI_CONSENT_HREF}>{m('planEditor.aiErrorConsentLink')}</a>{/if}
 							</p>
 						{/if}
 						{#if nlApplied}

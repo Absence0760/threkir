@@ -25,7 +25,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Ouvrez [[route:/settings/payouts|Paramètres, Paiements]] sur le web.',
+						'Ouvrez [[route:/settings/payouts|Paiements]] sur le web.',
 						'Appuyez sur **Configurer les paiements**. Vous êtes redirigé vers Stripe pour saisir vos informations et le compte bancaire sur lequel vous voulez être payé.',
 						'Terminez les étapes de Stripe. À votre retour, la page affiche votre statut.',
 						'S\'il indique **Configuration incomplète — terminez pour commencer à facturer** ou **Votre compte de paiement nécessite une action avant de pouvoir encaisser**, appuyez sur **Terminer la configuration des paiements** pour retourner sur Stripe et reprendre là où vous en étiez.',
@@ -93,7 +93,7 @@ export const translation: GuideTranslation = {
 		's0.b0': '94bdd45ffa45992b',
 		's0.b1': 'a2c35333af5a1b69',
 		's1.heading': '3f872765a64cbf87',
-		's1.b0.i0': 'e50bbd6128265cce',
+		's1.b0.i0': '9321b7eb6cd09720',
 		's1.b0.i1': '0f46885c40eac7c9',
 		's1.b0.i2': '5c865b5f5c133459',
 		's1.b0.i3': '8dda9f151d4fc524',

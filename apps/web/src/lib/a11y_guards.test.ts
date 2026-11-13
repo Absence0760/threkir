@@ -325,15 +325,16 @@ test('accessibility: ToastContainer announces from permanently-mounted live regi
 		);
 	}
 
-	const firstIf = markup.indexOf('{#if');
-	if (firstIf >= 0) {
-		for (const politeness of ['polite', 'assertive']) {
-			assert.ok(
-				markup.indexOf(`aria-live="${politeness}"`) < firstIf,
-				`The aria-live="${politeness}" region must be mounted unconditionally — a region ` +
-					'that appears together with its text announces nothing.',
-			);
-		}
+	// An `{#if}` INSIDE a region (a toast's optional action) is fine; one still
+	// open where a region starts would mount the region with its text.
+	const openIfsBefore = (at: number) =>
+		(markup.slice(0, at).match(/\{#if/g) ?? []).length - (markup.slice(0, at).match(/\{\/if\}/g) ?? []).length;
+	for (const politeness of ['polite', 'assertive']) {
+		assert.ok(
+			openIfsBefore(markup.indexOf(`aria-live="${politeness}"`)) === 0,
+			`The aria-live="${politeness}" region must be mounted unconditionally — a region ` +
+				'that appears together with its text announces nothing.',
+		);
 	}
 
 	// The message renders once. Two `{#each}` blocks over the toast list, one

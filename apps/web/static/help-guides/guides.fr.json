@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez [[route:/settings/payouts|Paramètres, Paiements]] sur le web.",
+              "Ouvrez [[route:/settings/payouts|Paiements]] sur le web.",
               "Appuyez sur **Configurer les paiements**. Vous êtes redirigé vers Stripe pour saisir vos informations et le compte bancaire sur lequel vous voulez être payé.",
               "Terminez les étapes de Stripe. À votre retour, la page affiche votre statut.",
               "S'il indique **Configuration incomplète — terminez pour commencer à facturer** ou **Votre compte de paiement nécessite une action avant de pouvoir encaisser**, appuyez sur **Terminer la configuration des paiements** pour retourner sur Stripe et reprendre là où vous en étiez."

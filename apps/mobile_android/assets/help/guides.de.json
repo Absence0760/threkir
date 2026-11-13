@@ -1266,7 +1266,7 @@
           {
             "type": "steps",
             "items": [
-              "Öffne im Web [[route:/settings/payouts|Einstellungen, Auszahlungen]].",
+              "Öffne im Web [[route:/settings/payouts|Auszahlungen]].",
               "Drücke **Zahlungen einrichten**. Du wirst zu Stripe weitergeleitet, um deine Angaben und das Bankkonto einzugeben, auf das du ausgezahlt werden willst.",
               "Schließ die Schritte bei Stripe ab. Wenn du zurückkommst, zeigt die Seite deinen Status.",
               "Steht dort **Einrichtung unvollständig – abschließen, um Zahlungen zu starten** oder **Dein Auszahlungskonto benötigt Aufmerksamkeit, bevor du Zahlungen annehmen kannst**, drücke **Zahlungseinrichtung abschließen**, um zu Stripe zurückzukehren und dort weiterzumachen, wo du aufgehört hast."

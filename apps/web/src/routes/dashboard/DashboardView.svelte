@@ -407,8 +407,8 @@
 		recent: 'dash.trendGroupRecent',
 	};
 
-	/// Hiding is honestly reversible (Settings → Units & display brings a group
-	/// back), so it takes no confirm; the toast says where the way back is.
+	/// Hiding is honestly reversible (the Progress cards switches bring a group
+	/// back), so it takes no confirm; the toast's action opens them.
 	async function hideTrendGroup(id: HideableDashboardCard) {
 		const previous = hiddenCards;
 		hiddenCards = withCardHidden(previous, id, true);
@@ -416,7 +416,10 @@
 		if (!uid) return;
 		try {
 			await updateUniversal(uid, { [DASHBOARD_HIDDEN_CARDS_KEY]: hiddenCards });
-			showToast(m('dash.cardHidden', { name: m(TREND_GROUP_TITLES[id]) }), 'success');
+			showToast(m('dash.cardHidden', { name: m(TREND_GROUP_TITLES[id]) }), 'success', 8000, {
+				label: m('dash.cardHiddenAction'),
+				href: '/settings/display#home-cards',
+			});
 		} catch (e) {
 			hiddenCards = previous;
 			showToast(m('dash.hideCardFailed', { error: errorCopy(e, m, 'dash.hideCardFailed') }), 'error');

@@ -1777,9 +1777,7 @@ class _ProgressSummaryCard extends StatelessWidget {
               StatTile.medium(
                 label: l10n.dashboardSectionStreak,
                 value: '$streakDays',
-                unit: streakDays == 1
-                    ? l10n.dashboardStreakDayUnit
-                    : l10n.dashboardStreakDaysUnit,
+                unit: l10n.dashboardStreakDayUnit(streakDays),
               ),
             ],
           ),

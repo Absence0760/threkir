@@ -1803,9 +1803,7 @@ class _StreakRow extends StatelessWidget {
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
-                      state.current == 1
-                          ? l10n.dashboardStreakDayUnit
-                          : l10n.dashboardStreakDaysUnit,
+                      l10n.dashboardStreakDayUnit(state.current),
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,

@@ -121,8 +121,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String recapAcrossRuns(Object count, Object runWord) {
-    return 'sur $count $runWord';
+  String recapAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'sur $count courses',
+      one: 'sur $count course',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -132,8 +138,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get recapBestStreakLabel => 'Meilleure série';
 
   @override
-  String recapStreakDays(Object days, Object dayWord) {
-    return '$days $dayWord';
+  String recapStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days jours',
+      one: '$days jour',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1095,27 +1107,13 @@ class AppLocalizationsFr extends AppLocalizations {
       days,
       locale: localeName,
       other: 'Course dans $days jours',
-      one: 'Course dans $days jour',
+      one: 'Course demain',
     );
     return '$_temp0';
   }
-
-  @override
-  String get homeRaceTomorrow => 'Course demain';
 
   @override
   String get homeRaceDay => 'Jour de course';
-
-  @override
-  String homePlanStartsInDays(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Commence dans $days jours',
-      one: 'Commence dans $days jour',
-    );
-    return '$_temp0';
-  }
 
   @override
   String homePlanUpNext(String name, String date) {
@@ -1123,7 +1121,15 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get homePlanStartsTomorrow => 'Commence demain';
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Commence dans $days jours',
+      one: 'Commence demain',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get youViewProfile => 'Voir le profil';
@@ -5089,13 +5095,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runHeatmapLegendTitle => 'Votre carte de chaleur';
 
   @override
-  String runHeatmapLegendSummaryOne(int n) {
-    return '$n course cartographiée — plus lumineux là où vous courez le plus.';
-  }
-
-  @override
-  String runHeatmapLegendSummaryMany(int n) {
-    return '$n courses cartographiées — plus lumineux là où vous courez le plus.';
+  String runHeatmapLegendSummary(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          '$n courses cartographiées — plus lumineux là où vous courez le plus.',
+      one: '$n course cartographiée — plus lumineux là où vous courez le plus.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -10483,10 +10491,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboardStreakHistory => 'Historique';
 
   @override
-  String get dashboardStreakDayUnit => 'jour';
-
-  @override
-  String get dashboardStreakDaysUnit => 'jours';
+  String dashboardStreakDayUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'jours',
+      one: 'jour',
+      zero: 'jour',
+    );
+    return '$_temp0';
+  }
 
   @override
   String dashboardStreakBest(int count) {
@@ -10725,6 +10739,17 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get fitnessStatRunsTooltip =>
       'Courses récentes assez longues pour compter dans votre estimation de forme.';
+
+  @override
+  String fitnessNextHardSession(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Prochaine séance difficile dans ~$days jours de course facile.',
+      one: 'Prochaine séance difficile dans ~$days jour de course facile.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get fitnessStatCtl => 'Forme (CTL)';
@@ -11695,11 +11720,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get upcomingEventInOneHour => 'Dans 1 heure';
-
-  @override
   String upcomingEventInHours(int count) {
-    return 'Dans $count heures';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Dans $count heures',
+      one: 'Dans $count heure',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -12138,13 +12166,30 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String ttsDistanceWholeKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kilomètres',
+      one: '$count kilomètre',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String ttsDistanceMetres(int value) {
     return '$value mètres';
   }
 
   @override
-  String ttsDistanceMileSingular(String value) {
-    return '$value mile';
+  String ttsDistanceWholeMiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count miles',
+      one: '$count mile',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -14980,11 +15025,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String challengesEndsIn(int n) {
-    return 'Se termine dans $n jours';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Se termine dans $n jours',
+      one: 'Se termine aujourd\'hui',
+    );
+    return '$_temp0';
   }
-
-  @override
-  String get challengesEndsToday => 'Se termine aujourd\'hui';
 
   @override
   String get challengesEnded => 'Terminé';
@@ -15170,11 +15218,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get challengesStandingTiedOne => 'À égalité avec 1 autre';
-
-  @override
-  String challengesStandingTiedMany(int n) {
-    return 'À égalité avec $n autres';
+  String challengesStandingTied(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'À égalité avec $n autres',
+      one: 'À égalité avec $n autre',
+    );
+    return '$_temp0';
   }
 
   @override

@@ -290,8 +290,8 @@ abstract class AppLocalizations {
   /// Subtitle under the hero distance giving the run count
   ///
   /// In en, this message translates to:
-  /// **'across {count} {runWord}'**
-  String recapAcrossRuns(Object count, Object runWord);
+  /// **'{count, plural, one{across {count} run} other{across {count} runs}}'**
+  String recapAcrossRuns(int count);
 
   /// Stat card label for the longest run of the year
   ///
@@ -305,11 +305,11 @@ abstract class AppLocalizations {
   /// **'Best streak'**
   String get recapBestStreakLabel;
 
-  /// Stat card value for the best streak length in days
+  /// Recap best-streak stat value
   ///
   /// In en, this message translates to:
-  /// **'{days} {dayWord}'**
-  String recapStreakDays(Object days, Object dayWord);
+  /// **'{days, plural, one{{days} day} other{{days} days}}'**
+  String recapStreakDays(int days);
 
   /// Stat card label for the highest-mileage week
   ///
@@ -1826,14 +1826,8 @@ abstract class AppLocalizations {
   /// Countdown on the Home plan card: whole days until the plan's race day (always 2 or more; 1 is homeRaceTomorrow)
   ///
   /// In en, this message translates to:
-  /// **'{days, plural, one{Race in {days} day} other{Race in {days} days}}'**
+  /// **'{days, plural, =1{Race tomorrow} other{Race in {days} days}}'**
   String homeRaceInDays(int days);
-
-  /// Countdown on the Home plan card when race day is tomorrow
-  ///
-  /// In en, this message translates to:
-  /// **'Race tomorrow'**
-  String get homeRaceTomorrow;
 
   /// Countdown on the Home plan card on race day itself
   ///
@@ -1841,23 +1835,17 @@ abstract class AppLocalizations {
   /// **'Race day'**
   String get homeRaceDay;
 
-  /// Home plan card before the plan's first day: whole days until it starts
-  ///
-  /// In en, this message translates to:
-  /// **'{days, plural, one{Starts in {days} day} other{Starts in {days} days}}'**
-  String homePlanStartsInDays(int days);
-
   /// Home card line naming the next active plan queued after the current one. date is its formatted start date
   ///
   /// In en, this message translates to:
   /// **'Up next: {name}, starts {date}'**
   String homePlanUpNext(String name, String date);
 
-  /// Home plan card when the plan starts tomorrow
+  /// Home plan card before the plan's first day: whole days until it starts, tomorrow at 1
   ///
   /// In en, this message translates to:
-  /// **'Starts tomorrow'**
-  String get homePlanStartsTomorrow;
+  /// **'{days, plural, =1{Starts tomorrow} other{Starts in {days} days}}'**
+  String homePlanStartsInDays(int days);
 
   /// Second line of the You tab's identity header, under the runner's name; tapping the header opens their own profile
   ///
@@ -8199,17 +8187,11 @@ abstract class AppLocalizations {
   /// **'Your heatmap'**
   String get runHeatmapLegendTitle;
 
-  /// Legend summary on the personal heatmap for a single mapped run
+  /// Heatmap legend: how many runs are drawn
   ///
   /// In en, this message translates to:
-  /// **'{n} mapped run — brighter where you run most.'**
-  String runHeatmapLegendSummaryOne(int n);
-
-  /// Legend summary on the personal heatmap for multiple mapped runs
-  ///
-  /// In en, this message translates to:
-  /// **'{n} mapped runs — brighter where you run most.'**
-  String runHeatmapLegendSummaryMany(int n);
+  /// **'{n, plural, one{{n} mapped run — brighter where you run most.} other{{n} mapped runs — brighter where you run most.}}'**
+  String runHeatmapLegendSummary(int n);
 
   /// Low end of the colour-scale legend on the personal heatmap
   ///
@@ -16658,17 +16640,11 @@ abstract class AppLocalizations {
   /// **'History'**
   String get dashboardStreakHistory;
 
-  /// Singular day unit beside the current streak count
+  /// Unit word under the streak day count
   ///
   /// In en, this message translates to:
-  /// **'day'**
-  String get dashboardStreakDayUnit;
-
-  /// Plural days unit beside the current streak count
-  ///
-  /// In en, this message translates to:
-  /// **'days'**
-  String get dashboardStreakDaysUnit;
+  /// **'{count, plural, one{day} other{days}}'**
+  String dashboardStreakDayUnit(int count);
 
   /// Best run-streak readout when the best exceeds the current
   ///
@@ -17062,6 +17038,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recent runs long enough to count toward your fitness estimate.'**
   String get fitnessStatRunsTooltip;
+
+  /// Fitness card, under the recovery advice: days of easy running until the next hard session
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, one{Next hard session in ~{days} day of easy running.} other{Next hard session in ~{days} days of easy running.}}'**
+  String fitnessNextHardSession(int days);
 
   /// Fitness card stat label for CTL (chronic training load)
   ///
@@ -18761,16 +18743,10 @@ abstract class AppLocalizations {
   /// **'In {count} min'**
   String upcomingEventInMinutes(int count);
 
-  /// Relative time: in one hour
-  ///
-  /// In en, this message translates to:
-  /// **'In 1 hour'**
-  String get upcomingEventInOneHour;
-
   /// Relative time: in N hours
   ///
   /// In en, this message translates to:
-  /// **'In {count} hours'**
+  /// **'{count, plural, one{In {count} hour} other{In {count} hours}}'**
   String upcomingEventInHours(int count);
 
   /// Relative time: tomorrow
@@ -19529,17 +19505,23 @@ abstract class AppLocalizations {
   /// **'{value} kilometres'**
   String ttsDistanceKm(String value);
 
+  /// Spoken distance in whole kilometres
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} kilometre} other{{count} kilometres}}'**
+  String ttsDistanceWholeKm(int count);
+
   /// Spoken distance in metres
   ///
   /// In en, this message translates to:
   /// **'{value} metres'**
   String ttsDistanceMetres(int value);
 
-  /// Spoken distance of exactly one mile
+  /// Spoken distance in whole miles
   ///
   /// In en, this message translates to:
-  /// **'{value} mile'**
-  String ttsDistanceMileSingular(String value);
+  /// **'{count, plural, one{{count} mile} other{{count} miles}}'**
+  String ttsDistanceWholeMiles(int count);
 
   /// Spoken distance in miles (plural; value may be integer or decimal string)
   ///
@@ -24238,17 +24220,11 @@ abstract class AppLocalizations {
   /// **'{rate} per day to finish'**
   String challengesPaceNeedPerDay(String rate);
 
-  /// Days-left label
+  /// Challenge window: days left, rounded up; 1 reads as ending today
   ///
   /// In en, this message translates to:
-  /// **'Ends in {n} days'**
+  /// **'{n, plural, =1{Ends today} other{Ends in {n} days}}'**
   String challengesEndsIn(int n);
-
-  /// Ends-today label
-  ///
-  /// In en, this message translates to:
-  /// **'Ends today'**
-  String get challengesEndsToday;
 
   /// Past-end label
   ///
@@ -24538,17 +24514,11 @@ abstract class AppLocalizations {
   /// **'#{rank} of {total}'**
   String challengesStandingRank(int rank, int total);
 
-  /// Standing card: exactly one other entrant shares the viewer rank
+  /// Standing card: how many other entrants share the viewer rank
   ///
   /// In en, this message translates to:
-  /// **'Tied with 1 other'**
-  String get challengesStandingTiedOne;
-
-  /// Standing card: several other entrants share the viewer rank
-  ///
-  /// In en, this message translates to:
-  /// **'Tied with {n} others'**
-  String challengesStandingTiedMany(int n);
+  /// **'{n, plural, one{Tied with {n} other} other{Tied with {n} others}}'**
+  String challengesStandingTied(int n);
 
   /// Standing card: metric gap to the nearest entrant ranked above
   ///

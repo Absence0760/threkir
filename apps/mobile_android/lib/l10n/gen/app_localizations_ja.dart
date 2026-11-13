@@ -118,8 +118,13 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String recapAcrossRuns(Object count, Object runWord) {
-    return '$count件の$runWord';
+  String recapAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count回のランで',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -129,8 +134,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get recapBestStreakLabel => '最高の連続記録';
 
   @override
-  String recapStreakDays(Object days, Object dayWord) {
-    return '$days$dayWord';
+  String recapStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days日',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1052,25 +1062,13 @@ class AppLocalizationsJa extends AppLocalizations {
       days,
       locale: localeName,
       other: 'レースは$days日後',
+      one: 'レースは明日',
     );
     return '$_temp0';
   }
-
-  @override
-  String get homeRaceTomorrow => 'レースは明日';
 
   @override
   String get homeRaceDay => 'レース当日';
-
-  @override
-  String homePlanStartsInDays(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: '$days日後に開始',
-    );
-    return '$_temp0';
-  }
 
   @override
   String homePlanUpNext(String name, String date) {
@@ -1078,7 +1076,15 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get homePlanStartsTomorrow => '明日開始';
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days日後に開始',
+      one: '明日開始',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get youViewProfile => 'プロフィールを見る';
@@ -4796,13 +4802,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runHeatmapLegendTitle => 'あなたのヒートマップ';
 
   @override
-  String runHeatmapLegendSummaryOne(int n) {
-    return 'マップ化されたラン$n件 — よく走る場所ほど明るく表示されます。';
-  }
-
-  @override
-  String runHeatmapLegendSummaryMany(int n) {
-    return 'マップ化されたラン$n件 — よく走る場所ほど明るく表示されます。';
+  String runHeatmapLegendSummary(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'マップ化されたラン$n件 — よく走る場所ほど明るく表示されます。',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -9925,10 +9931,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardStreakHistory => '履歴';
 
   @override
-  String get dashboardStreakDayUnit => '日';
-
-  @override
-  String get dashboardStreakDaysUnit => '日';
+  String dashboardStreakDayUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '日',
+    );
+    return '$_temp0';
+  }
 
   @override
   String dashboardStreakBest(int count) {
@@ -10155,6 +10165,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get fitnessStatRunsTooltip => 'フィットネス推定に反映できる十分な長さの直近のラン。';
+
+  @override
+  String fitnessNextHardSession(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '次のハードなセッションまで、イージーラン約$days日。',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get fitnessStatCtl => 'フィットネス (CTL)';
@@ -11095,11 +11115,13 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get upcomingEventInOneHour => '1 時間後';
-
-  @override
   String upcomingEventInHours(int count) {
-    return '$count 時間後';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 時間後',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -11529,13 +11551,28 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String ttsDistanceWholeKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countキロメートル',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String ttsDistanceMetres(int value) {
     return '$valueメートル';
   }
 
   @override
-  String ttsDistanceMileSingular(String value) {
-    return '$valueマイル';
+  String ttsDistanceWholeMiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countマイル',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -14261,11 +14298,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String challengesEndsIn(int n) {
-    return 'あと $n 日で終了';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'あと $n 日で終了',
+      one: '本日終了',
+    );
+    return '$_temp0';
   }
-
-  @override
-  String get challengesEndsToday => '本日終了';
 
   @override
   String get challengesEnded => '終了済み';
@@ -14437,11 +14477,13 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get challengesStandingTiedOne => '同順位: 1';
-
-  @override
-  String challengesStandingTiedMany(int n) {
-    return '同順位: $n';
+  String challengesStandingTied(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '同順位: $n',
+    );
+    return '$_temp0';
   }
 
   @override

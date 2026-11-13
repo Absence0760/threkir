@@ -363,8 +363,7 @@ class _RecapScreenState extends State<RecapScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    l10n.recapAcrossRuns(recap.runCount,
-                        recap.runCount == 1 ? 'run' : 'runs'),
+                    l10n.recapAcrossRuns(recap.runCount),
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
@@ -383,8 +382,7 @@ class _RecapScreenState extends State<RecapScreen> {
                 Expanded(
                   child: _StatCard(
                     label: l10n.recapBestStreakLabel,
-                    value: l10n.recapStreakDays(recap.bestStreakDays,
-                        recap.bestStreakDays == 1 ? 'day' : 'days'),
+                    value: l10n.recapStreakDays(recap.bestStreakDays),
                   ),
                 ),
               ],

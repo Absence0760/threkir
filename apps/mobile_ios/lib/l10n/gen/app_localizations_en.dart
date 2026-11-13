@@ -121,8 +121,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String recapAcrossRuns(Object count, Object runWord) {
-    return 'across $count $runWord';
+  String recapAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'across $count runs',
+      one: 'across $count run',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -132,8 +138,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapBestStreakLabel => 'Best streak';
 
   @override
-  String recapStreakDays(Object days, Object dayWord) {
-    return '$days $dayWord';
+  String recapStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1082,27 +1094,13 @@ class AppLocalizationsEn extends AppLocalizations {
       days,
       locale: localeName,
       other: 'Race in $days days',
-      one: 'Race in $days day',
+      one: 'Race tomorrow',
     );
     return '$_temp0';
   }
-
-  @override
-  String get homeRaceTomorrow => 'Race tomorrow';
 
   @override
   String get homeRaceDay => 'Race day';
-
-  @override
-  String homePlanStartsInDays(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Starts in $days days',
-      one: 'Starts in $days day',
-    );
-    return '$_temp0';
-  }
 
   @override
   String homePlanUpNext(String name, String date) {
@@ -1110,7 +1108,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homePlanStartsTomorrow => 'Starts tomorrow';
+  String homePlanStartsInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Starts in $days days',
+      one: 'Starts tomorrow',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get youViewProfile => 'View profile';
@@ -5025,13 +5031,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runHeatmapLegendTitle => 'Your heatmap';
 
   @override
-  String runHeatmapLegendSummaryOne(int n) {
-    return '$n mapped run — brighter where you run most.';
-  }
-
-  @override
-  String runHeatmapLegendSummaryMany(int n) {
-    return '$n mapped runs — brighter where you run most.';
+  String runHeatmapLegendSummary(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n mapped runs — brighter where you run most.',
+      one: '$n mapped run — brighter where you run most.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -10352,10 +10359,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardStreakHistory => 'History';
 
   @override
-  String get dashboardStreakDayUnit => 'day';
-
-  @override
-  String get dashboardStreakDaysUnit => 'days';
+  String dashboardStreakDayUnit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'days',
+      one: 'day',
+    );
+    return '$_temp0';
+  }
 
   @override
   String dashboardStreakBest(int count) {
@@ -10591,6 +10603,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get fitnessStatRunsTooltip =>
       'Recent runs long enough to count toward your fitness estimate.';
+
+  @override
+  String fitnessNextHardSession(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Next hard session in ~$days days of easy running.',
+      one: 'Next hard session in ~$days day of easy running.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get fitnessStatCtl => 'Fitness (CTL)';
@@ -11551,11 +11574,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get upcomingEventInOneHour => 'In 1 hour';
-
-  @override
   String upcomingEventInHours(int count) {
-    return 'In $count hours';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'In $count hours',
+      one: 'In $count hour',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -11991,13 +12017,30 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String ttsDistanceWholeKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kilometres',
+      one: '$count kilometre',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String ttsDistanceMetres(int value) {
     return '$value metres';
   }
 
   @override
-  String ttsDistanceMileSingular(String value) {
-    return '$value mile';
+  String ttsDistanceWholeMiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count miles',
+      one: '$count mile',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -14801,11 +14844,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String challengesEndsIn(int n) {
-    return 'Ends in $n days';
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Ends in $n days',
+      one: 'Ends today',
+    );
+    return '$_temp0';
   }
-
-  @override
-  String get challengesEndsToday => 'Ends today';
 
   @override
   String get challengesEnded => 'Ended';
@@ -14985,11 +15031,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get challengesStandingTiedOne => 'Tied with 1 other';
-
-  @override
-  String challengesStandingTiedMany(int n) {
-    return 'Tied with $n others';
+  String challengesStandingTied(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Tied with $n others',
+      one: 'Tied with $n other',
+    );
+    return '$_temp0';
   }
 
   @override

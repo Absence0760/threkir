@@ -255,12 +255,12 @@ void main() {
       expect(formatSpokenDistance(50, DistanceUnit.km), '50 metres');
     });
 
-    test('exactly 1km drops decimal — "1 kilometres" not "1.0 kilometres"', () {
+    test('exactly 1km drops the decimal and is singular — "1 kilometre"', () {
       // The km == km.roundToDouble() check catches integer km values
       // and renders them without the decimal. A regression that
       // always emitted .1f would speak "1.0 kilometres" — accurate
       // but unnatural.
-      expect(formatSpokenDistance(1000, DistanceUnit.km), '1 kilometres');
+      expect(formatSpokenDistance(1000, DistanceUnit.km), '1 kilometre');
       expect(formatSpokenDistance(5000, DistanceUnit.km), '5 kilometres');
     });
 
@@ -281,7 +281,7 @@ void main() {
     });
 
     test('exactly 1000 m boundary enters the km branch', () {
-      expect(formatSpokenDistance(1000.0, DistanceUnit.km), '1 kilometres');
+      expect(formatSpokenDistance(1000.0, DistanceUnit.km), '1 kilometre');
     });
   });
 
@@ -446,14 +446,14 @@ void main() {
     });
 
     test('distance is in spoken-distance form, NOT metres always', () {
-      // 1000m step → "1 kilometres", 200m step → "200 metres"
+      // 1000m step → "1 kilometre", 200m step → "200 metres"
       final long = formatWorkoutStepUtterance(
         step(kind: WorkoutStepKind.rep,
             repIndex: 1, repTotal: 1,
             targetDistanceMetres: 1000),
         DistanceUnit.km,
       );
-      expect(long, contains('1 kilometres'));
+      expect(long, contains('1 kilometre'));
       final short = formatWorkoutStepUtterance(
         step(kind: WorkoutStepKind.recovery, targetDistanceMetres: 200),
         DistanceUnit.km,

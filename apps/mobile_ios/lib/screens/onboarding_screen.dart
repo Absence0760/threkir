@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppIconSize, AppMotion, motionDuration, reduceMotion;
+    show AppIconSize, AppMotion, motionDuration, reduceMotion, ListCard;
 
 import '../mascot.dart';
 import '../widgets/grisnir_moments.dart';
@@ -473,18 +473,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 20),
           for (final o in options)
-            Card(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: _privacyDefault == o.value
-                      ? theme.colorScheme.primary
-                      : theme.dividerColor,
-                  width: _privacyDefault == o.value ? 2 : 1,
-                ),
-              ),
+            ListCard.flush(
               child: RadioListTile<String>(
+                selected: _privacyDefault == o.value,
                 value: o.value,
                 groupValue: _privacyDefault,
                 onChanged: (v) => setState(() => _privacyDefault = v!),

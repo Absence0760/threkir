@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/legal_links.dart';
 import '../lib/screens/settings_about_screen.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(WidgetTester tester) async {
   await tester.pumpWidget(
@@ -179,5 +180,12 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('update-checking')), findsNothing);
     expect(find.byKey(const Key('update-uptodate')), findsOneWidget);
+  });
+
+  worstCaseTestWidgets('the about page', (tester, locale) async {
+    await tester.pumpWidget(
+        worstCaseApp(locale: locale, home: const SettingsAboutScreen()));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'About');
   });
 }

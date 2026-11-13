@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../adaptive_width.dart';
+import '../fab_clearance.dart';
 import '../auth_error.dart';
 import '../column_limits.dart';
 import '../diary_day.dart';
@@ -982,116 +983,115 @@ class _NutritionScreenState extends State<NutritionScreen>
     final theme = Theme.of(context);
     final today = _dayEntries;
     final groups = groupByMealSlot(today);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.nutritionTitle),
-        actions: [
-          // None of the three is gated on `_refreshing`: every one of them
-          // writes through the offline-first store, which needs no server and
-          // no arrival refresh, and the add control is the only way into the
-          // composer. Disabling them for the refresh made the surface's whole
-          // point unavailable for its slowest seven seconds (issue #921).
-          if (today.isNotEmpty)
-            IconButton(
-              tooltip: l10n.nutritionSaveAsMeal,
-              icon: const Icon(Icons.bookmark_add_outlined),
-              onPressed: _savingMeal ? null : _saveAsMeal,
-            ),
-          if (today.isNotEmpty)
-            IconButton(
-              tooltip: l10n.nutritionSaveAsRecipe,
-              icon: const Icon(Icons.menu_book_outlined),
-              onPressed: _savingRecipe ? null : _saveAsRecipe,
-            ),
-          if (_platePhotoAvailable)
-            IconButton(
-              tooltip: l10n.nutritionLogFromPhoto,
-              icon: const Icon(Icons.photo_camera),
-              onPressed: _logFromPhoto,
-            ),
+    return HubTabBody(
+      title: l10n.fitnessTabNutrition,
+      // None of these is gated on `_refreshing`: every one of them writes
+      // through the offline-first store, which needs no server and no arrival
+      // refresh, and Log food is the only way into the composer. Disabling
+      // them for the refresh made the surface's whole point unavailable for
+      // its slowest seven seconds (issue #921).
+      primary: PrimaryAction(
+        label: l10n.nutritionLogFood,
+        icon: Icons.add,
+        tooltip: l10n.nutritionLogFood,
+        onPressed: _logFood,
+      ),
+      actions: [
+        if (_platePhotoAvailable)
           IconButton(
-            tooltip: l10n.nutritionLogFood,
-            icon: const Icon(Icons.add),
-            onPressed: _logFood,
+            tooltip: l10n.nutritionLogFromPhoto,
+            icon: const Icon(Icons.photo_camera),
+            onPressed: _logFromPhoto,
+          ),
+        if (today.isNotEmpty)
+          IconButton(
+            tooltip: l10n.nutritionSaveAsMeal,
+            icon: const Icon(Icons.bookmark_add_outlined),
+            onPressed: _savingMeal ? null : _saveAsMeal,
+          ),
+        if (today.isNotEmpty)
+          IconButton(
+            tooltip: l10n.nutritionSaveAsRecipe,
+            icon: const Icon(Icons.menu_book_outlined),
+            onPressed: _savingRecipe ? null : _saveAsRecipe,
+          ),
+      ],
+      banner: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_isOnline && !_anyPending)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppInsets.gutter, vertical: AppSpace.sm),
+              color: theme.colorScheme.surfaceContainerHigh,
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off, size: 16),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.nutritionOfflineCached,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          PendingSyncBanner(
+            api: widget.api,
+            isOnline: _isOnline,
+            stores: [widget.store, _templateStore, _recipeStore],
           ),
         ],
       ),
+      onRefresh: _refresh,
       body: contentColumn(
         context,
-        Column(
+        ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppInsets.pageTop,
+              AppInsets.gutter, fabScrollClearance(context)),
           children: [
-            if (!_isOnline && !_anyPending)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: theme.colorScheme.surfaceContainerHigh,
-                child: Row(
-                  children: [
-                    const Icon(Icons.cloud_off, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.nutritionOfflineCached,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            PendingSyncBanner(
-              api: widget.api,
-              isOnline: _isOnline,
-              stores: [widget.store, _templateStore, _recipeStore],
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _dayBar(theme, l10n),
-                    const SizedBox(height: 12),
-                    _ringsCard(theme, l10n, sumMacros(today)),
-                    const SizedBox(height: 12),
-                    _waterCard(theme, l10n),
-                    const SizedBox(height: 12),
-                    ...(() {
-                      final nutrients = _nutrientBudgets(today);
-                      return nutrients.isEmpty
-                          ? const <Widget>[]
-                          : <Widget>[
-                              _nutrientsCard(theme, l10n, nutrients),
-                              const SizedBox(height: 12),
-                            ];
-                    })(),
-                    if (_templateStore.templates.isNotEmpty) ...[
-                      _templatesCard(theme, l10n),
+            _dayBar(theme, l10n),
+            const SizedBox(height: 12),
+            _ringsCard(theme, l10n, sumMacros(today)),
+            const SizedBox(height: 12),
+            _waterCard(theme, l10n),
+            const SizedBox(height: 12),
+            ...(() {
+              final nutrients = _nutrientBudgets(today);
+              return nutrients.isEmpty
+                  ? const <Widget>[]
+                  : <Widget>[
+                      _nutrientsCard(theme, l10n, nutrients),
                       const SizedBox(height: 12),
-                    ],
-                    if (_recipeStore.recipes.isNotEmpty) ...[
-                      _recipesCard(theme, l10n),
-                      const SizedBox(height: 12),
-                    ],
-                    if (groups.isEmpty)
-                      EmptyState(
-                        icon: Icons.restaurant,
-                        title: _viewingToday
-                            ? l10n.nutritionEmptyTitle
-                            : l10n.nutritionDayEmptyPast,
-                        body: l10n.nutritionEmptyBody,
-                        ctaLabel: l10n.nutritionLogFood,
-                        onCta: _logFood,
-                      )
-                    else
-                      ...groups.map((g) => _mealGroup(theme, l10n, g)),
-                    if (today.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      _trendCard(theme, l10n),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+                    ];
+            })(),
+            if (_templateStore.templates.isNotEmpty) ...[
+              _templatesCard(theme, l10n),
+              const SizedBox(height: 12),
+            ],
+            if (_recipeStore.recipes.isNotEmpty) ...[
+              _recipesCard(theme, l10n),
+              const SizedBox(height: 12),
+            ],
+            if (groups.isEmpty)
+              EmptyState(
+                icon: Icons.restaurant,
+                title: _viewingToday
+                    ? l10n.nutritionEmptyTitle
+                    : l10n.nutritionDayEmptyPast,
+                body: l10n.nutritionEmptyBody,
+                ctaLabel: l10n.nutritionLogFood,
+                onCta: _logFood,
+              )
+            else
+              ...groups.map((g) => _mealGroup(theme, l10n, g)),
+            if (today.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _trendCard(theme, l10n),
+            ],
           ],
         ),
       ),
@@ -1115,6 +1115,7 @@ class _NutritionScreenState extends State<NutritionScreen>
   Widget _dayBar(ThemeData theme, AppLocalizations l10n) {
     final tag = localeToTag(Localizations.localeOf(context));
     final now = DateTime.now();
+    // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
       label: l10n.nutritionDayNavLabel,
@@ -1179,10 +1180,11 @@ class _NutritionScreenState extends State<NutritionScreen>
   /// deletes behind an AlertDialog.
   Widget _templatesCard(ThemeData theme, AppLocalizations l10n) {
     final templates = _templateStore.templates;
-    return Card(
+    // Flush: each row is a ListTile with its own inset and tap.
+    return ListCard.flush(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1229,10 +1231,11 @@ class _NutritionScreenState extends State<NutritionScreen>
   /// Each row logs ONE summed serving with one tap or deletes behind a dialog.
   Widget _recipesCard(ThemeData theme, AppLocalizations l10n) {
     final recipes = _recipeStore.recipes;
-    return Card(
+    // Flush: each row is a ListTile with its own inset and tap.
+    return ListCard.flush(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1294,73 +1297,74 @@ class _NutritionScreenState extends State<NutritionScreen>
       _Ring(l10n.nutritionCarbs, c.carbsG, _targets?.carbsG, 'g', budget?.carbs),
       _Ring(l10n.nutritionFat, c.fatG, _targets?.fatG, 'g', budget?.fat),
     ];
-    return Card(
+    return ListCard(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            if (budget != null) ...[
-              _calorieChip(theme, l10n, budget.calories),
-              const SizedBox(height: 12),
-            ],
+      child: Column(
+        children: [
+          if (budget != null) ...[
+            _calorieChip(theme, l10n, budget.calories),
+            const SizedBox(height: 12),
+          ],
+          // A Wrap, so the four rings take two lines at 2x text on a 320 dp
+          // phone rather than overflowing it by 305 dp.
+          Wrap(
+            alignment: WrapAlignment.spaceAround,
+            spacing: 8,
+            runSpacing: 12,
+            children: [for (final r in rings) _ringWidget(theme, r)],
+          ),
+          if (_targets != null && _targets!.exerciseKcal > 0) ...[
+            const SizedBox(height: 10),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [for (final r in rings) _ringWidget(theme, r)],
-            ),
-            if (_targets != null && _targets!.exerciseKcal > 0) ...[
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.local_fire_department,
-                      size: 14, color: theme.colorScheme.outline),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      _viewingToday
-                          ? l10n.nutritionGoalBreakdown(
-                              _targets!.baseCalories,
-                              _targets!.exerciseKcal,
-                            )
-                          : l10n.nutritionDayGoalBreakdown(
-                              _targets!.baseCalories,
-                              _targets!.exerciseKcal,
-                            ),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.local_fire_department,
+                    size: 14, color: theme.colorScheme.outline),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    _viewingToday
+                        ? l10n.nutritionGoalBreakdown(
+                            _targets!.baseCalories,
+                            _targets!.exerciseKcal,
+                          )
+                        : l10n.nutritionDayGoalBreakdown(
+                            _targets!.baseCalories,
+                            _targets!.exerciseKcal,
+                          ),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
-                ],
-              ),
-            ],
-            if (_targets == null) ...[
-              const SizedBox(height: 12),
-              Text(
-                l10n.nutritionNoTargets,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                textAlign: TextAlign.center,
-              ),
-              if (activePreferences != null) ...[
-                const SizedBox(height: 8),
-                FilledButton.tonalIcon(
-                  onPressed: _openBodyMetrics,
-                  icon: const Icon(Icons.straighten),
-                  label: Text(l10n.nutritionAddBodyMetrics),
                 ),
               ],
-            ],
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: TextButton.icon(
-                onPressed: _openTargets,
-                icon: const Icon(Icons.tune, size: 18),
-                label: Text(l10n.nutritionTargetsLink),
-              ),
             ),
           ],
-        ),
+          if (_targets == null) ...[
+            const SizedBox(height: 12),
+            Text(
+              l10n.nutritionNoTargets,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+            if (activePreferences != null) ...[
+              const SizedBox(height: 8),
+              FilledButton.tonalIcon(
+                onPressed: _openBodyMetrics,
+                icon: const Icon(Icons.straighten),
+                label: Text(l10n.nutritionAddBodyMetrics),
+              ),
+            ],
+          ],
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              onPressed: _openTargets,
+              icon: const Icon(Icons.tune, size: 18),
+              label: Text(l10n.nutritionTargetsLink),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1465,26 +1469,24 @@ class _NutritionScreenState extends State<NutritionScreen>
   Widget _nutrientsCard(
       ThemeData theme, AppLocalizations l10n, List<NutrientBudget> budgets) {
     final tag = localeToTag(Localizations.localeOf(context));
-    return Card(
+    return ListCard(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.nutritionNutrients, style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            for (final n in budgets)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: _nutrientRow(theme, l10n, tag, n),
-              ),
-            const SizedBox(height: 4),
-            Text(l10n.nutritionNutrientsHint,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.nutritionNutrients, style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          for (final n in budgets)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _nutrientRow(theme, l10n, tag, n),
+            ),
+          const SizedBox(height: 4),
+          Text(l10n.nutritionNutrientsHint,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        ],
       ),
     );
   }
@@ -1508,6 +1510,7 @@ class _NutritionScreenState extends State<NutritionScreen>
     return Row(
       children: [
         Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+        // semantics-children: the coverage sentence qualifies the number beside it; the number still reads
         Semantics(
           label: coverage,
           child: Text(amount.toString(), style: theme.textTheme.bodyMedium),
@@ -1587,72 +1590,84 @@ class _NutritionScreenState extends State<NutritionScreen>
       (targetMl / _waterUnitMl).round(),
       drunkPips,
     ].reduce(math.max);
-    return Card(
+    return ListCard(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(l10n.nutritionWater,
-                      style: theme.textTheme.titleSmall),
-                ),
-                Text(
-                  l10n.nutritionWaterAmount(
-                    _litres(_waterMl, tag),
-                    _litres(targetMl, tag),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // The label, then the amount and the remaining pill at the end of
+          // the line while they fit; at large text they drop under the
+          // label instead of squeezing it to a letter per line and running
+          // off the card (#1374 TO-10).
+          Wrap(
+            key: const Key('nutritionWaterHeader'),
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              Text(l10n.nutritionWater, style: theme.textTheme.titleSmall),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    l10n.nutritionWaterAmount(
+                      _litres(_waterMl, tag),
+                      _litres(targetMl, tag),
+                    ),
+                    style: theme.textTheme.bodyMedium,
                   ),
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(width: 8),
-                _waterChip(theme, l10n, budget, tag),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.remove),
-                  tooltip: l10n.nutritionWaterRemove,
-                  onPressed: _waterMl <= 0
-                      ? null
-                      : () => _setWater(math.max(0, _waterMl - _waterUnitMl)),
-                ),
-                Expanded(
-                  child: Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: [
-                      for (var i = 0; i < pipCount; i++)
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: i < drunkPips
-                                ? (budget.reached
-                                    ? theme.colorScheme.secondary
-                                    : theme.colorScheme.primary)
-                                : theme.colorScheme.surfaceContainerHighest,
-                          ),
+                  _waterChip(theme, l10n, budget, tag),
+                  // Here rather than between the pips and +, where at 2x
+                  // it left the pips no room beside two 48 dp buttons.
+                  Text('$units × 250 ml', style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove),
+                tooltip: l10n.nutritionWaterRemove,
+                onPressed: _waterMl <= 0
+                    ? null
+                    : () => _setWater(math.max(0, _waterMl - _waterUnitMl)),
+              ),
+              Expanded(
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (var i = 0; i < pipCount; i++)
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: i < drunkPips
+                              ? (budget.reached
+                                  ? theme.colorScheme.secondary
+                                  : theme.colorScheme.primary)
+                              : theme.colorScheme.surfaceContainerHighest,
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text('$units × 250 ml', style: theme.textTheme.bodySmall),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  tooltip: l10n.nutritionWaterAdd,
-                  onPressed: () => _setWater(_waterMl + _waterUnitMl),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: l10n.nutritionWaterAdd,
+                onPressed: () => _setWater(_waterMl + _waterUnitMl),
+              ),
+            ],
+          ),
+
+        ],
       ),
     );
   }
@@ -1682,66 +1697,64 @@ class _NutritionScreenState extends State<NutritionScreen>
   }
 
   Widget _mealGroup(ThemeData theme, AppLocalizations l10n, MealSlotGroup g) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => _openMealDetail(g.slot),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  children: [
-                    Expanded(
-                        child: Text(_slotLabel(l10n, g.slot),
-                            style: theme.textTheme.titleSmall)),
-                    Text('${g.calories} kcal',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            )),
-                    Icon(Icons.chevron_right,
-                        size: 18, color: theme.colorScheme.outline),
-                  ],
-                ),
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppInsets.itemGap),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _openMealDetail(g.slot),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                      child: Text(_slotLabel(l10n, g.slot),
+                          style: theme.textTheme.titleSmall)),
+                  Text('${g.calories} kcal',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          )),
+                  Icon(Icons.chevron_right,
+                      size: 18, color: theme.colorScheme.outline),
+                ],
               ),
             ),
-            for (final e in g.entries)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(e.itemName, style: theme.textTheme.bodyMedium),
-                          Text(
-                            _macroLine(e),
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        ],
-                      ),
+          ),
+          for (final e in g.entries)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(e.itemName, style: theme.textTheme.bodyMedium),
+                        Text(
+                          _macroLine(e),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ),
-                    Text('${(e.calories ?? 0).round()}',
-                        style: theme.textTheme.bodyMedium),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      tooltip: l10n.nutritionDelete,
-                      onPressed: () => _delete(e),
-                    ),
-                  ],
-                ),
+                  ),
+                  Text('${(e.calories ?? 0).round()}',
+                      style: theme.textTheme.bodyMedium),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    tooltip: l10n.nutritionDelete,
+                    onPressed: () => _delete(e),
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -1797,82 +1810,79 @@ class _NutritionScreenState extends State<NutritionScreen>
       days.map((d) => d.calories).fold(0.0, math.max),
       (goal ?? 0).toDouble(),
     ].reduce(math.max);
-    return Card(
+    return ListCard(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                      _viewingToday
-                          ? l10n.nutritionWeeklyTrend
-                          : l10n.nutritionDayTrendEnding(
-                              formatDateMed(_dayWindow.start, tag)),
-                      style: theme.textTheme.titleSmall),
-                ),
-                if (summary.deltaPerDay != null)
-                  _weekDeltaChip(theme, l10n, summary.deltaPerDay!),
-                if (protein.daysMetGoal != null) ...[
-                  const SizedBox(width: 6),
-                  _weekProteinChip(theme, l10n, protein),
-                ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                    _viewingToday
+                        ? l10n.nutritionWeeklyTrend
+                        : l10n.nutritionDayTrendEnding(
+                            formatDateMed(_dayWindow.start, tag)),
+                    style: theme.textTheme.titleSmall),
+              ),
+              if (summary.deltaPerDay != null)
+                _weekDeltaChip(theme, l10n, summary.deltaPerDay!),
+              if (protein.daysMetGoal != null) ...[
+                const SizedBox(width: 6),
+                _weekProteinChip(theme, l10n, protein),
               ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: barArea + labelLane,
-              child: Stack(
-                children: [
-                  if (goal != null)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: (labelLane - 4) + (goal / maxCal) * barArea,
-                      child: Tooltip(
-                        message: '${l10n.nutritionGoalLine}: $goal kcal',
-                        child: Container(
-                          height: 1.5,
-                          color: theme.colorScheme.outline,
-                        ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: barArea + labelLane,
+            child: Stack(
+              children: [
+                if (goal != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: (labelLane - 4) + (goal / maxCal) * barArea,
+                    child: Tooltip(
+                      message: '${l10n.nutritionGoalLine}: $goal kcal',
+                      child: Container(
+                        height: 1.5,
+                        color: theme.colorScheme.outline,
                       ),
                     ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      for (final d in days)
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Container(
-                                height: math.max(2, (d.calories / maxCal) * barArea),
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                d.label,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
                   ),
-                ],
-              ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final d in days)
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: math.max(2, (d.calories / maxCal) * barArea),
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              d.label,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

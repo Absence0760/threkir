@@ -9,7 +9,8 @@ import 'package:ui_kit/ui_kit.dart' show
         EmptyState,
         ProgressBar,
         StatusPill,
-        StatusPillSize;
+        StatusPillSize,
+        ListCard, AppSpace, AppBarAction, PageHeader, PushedPage;
 
 import '../gear_backfill.dart';
 import '../gear_wear.dart';
@@ -117,11 +118,20 @@ class _GearScreenState extends State<GearScreen> {
   List<Map<String, dynamic>> get _retired =>
       _visible.where((r) => r['retired_at'] != null).toList();
 
-  Future<void> _maybeSync() async {
+  /// Pushes local changes. With [id], waits only briefly and answers whether
+  /// that row reached the server (issue #1374 FS-15).
+  Future<bool> _maybeSync([String? id]) async {
     final api = widget.api;
-    if (api == null || !_isOnline) return;
-    await widget.store.syncWithServer(api);
+    if (api == null) return true;
+    if (!_isOnline) return false;
+    var synced = true;
+    if (id == null) {
+      await widget.store.syncWithServer(api);
+    } else {
+      synced = await widget.store.syncRowBriefly(api, id);
+    }
     if (mounted && widget.store.hasPending) setState(() {});
+    return synced;
   }
 
   Future<void> _create() async {
@@ -214,7 +224,7 @@ class _GearScreenState extends State<GearScreen> {
     } else {
       await widget.store.unretireLocal(row['id'] as String);
     }
-    await _maybeSync();
+    await _maybeSync(row['id'] as String);
   }
 
   Future<void> _delete(Map<String, dynamic> row) async {
@@ -240,9 +250,10 @@ class _GearScreenState extends State<GearScreen> {
         ) ??
         false;
     if (!ok) return;
-    await widget.store.deleteLocal(row['id'] as String);
-    await _maybeSync();
-    if (mounted && !_isOnline) {
+    final id = row['id'] as String;
+    await widget.store.deleteLocal(id);
+    final synced = await _maybeSync(id);
+    if (mounted && !synced) {
       showTopBanner(context, l10n.gearDeletedOffline);
     }
   }
@@ -272,19 +283,18 @@ class _GearScreenState extends State<GearScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.gearTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.gearAddGear,
-            icon: const Icon(Icons.add),
-            onPressed: _refreshing ? null : _create,
-          ),
-        ],
-      ),
+    return PushedPage(
+      title: l10n.gearTitle,
+      actions: [
+        AppBarAction(
+          icon: const Icon(Icons.add),
+          label: l10n.gearAddGear,
+          onPressed: _refreshing ? null : _create,
+        ),
+      ],
       body: Column(
         children: [
+          PageHeader(title: l10n.gearTitle),
           // Rotations hung off an `Icons.sync_alt` AppBar glyph whose name
           // existed only as a tooltip — undiscoverable on a touch device, and
           // the glyph read as "sync" besides (#666 I8 + I15). Web renders it
@@ -430,94 +440,61 @@ class _GearScreenState extends State<GearScreen> {
     final wearBadge = _wearBadge(wear, theme, l10n);
     final brandModel =
         [brand, model].where((s) => s != null && s.isNotEmpty).join(' ');
-    return Card(
-      child: InkWell(
-        onTap: () => _edit(row),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-          child: Row(
+    return ListCard.row(
+      onTap: () => _edit(row),
+      dense: true,
+      title: name,
+      titleMaxLines: 1,
+      badge: wearBadge,
+      subtitle: brandModel.isEmpty ? null : brandModel,
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasTarget)
+            ProgressBar(
+              value: prog.pct,
+              // Not colorScheme.error: it is 2.991:1 against the bar's
+              // track in light. danger is the token that clears it.
+              fill: switch (wear.status) {
+                GearWearStatus.due => AppSemanticColors.ofTheme(theme).warning,
+                GearWearStatus.worn => AppSemanticColors.ofTheme(theme).danger,
+                _ => null,
+              },
+            ),
+          const SizedBox(height: AppSpace.xs),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        // Cap the name + ellipsize so a long gear name can't
-                        // blow past the card width (RenderFlex overflow) —
-                        // Wrap doesn't width-constrain its children the way
-                        // Row/Column do. Mirrors run_gear_chips.dart.
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 220),
-                          child: Text(
-                            name,
-                            style: theme.textTheme.titleSmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        ?wearBadge,
-                      ],
-                    ),
-                    if (brandModel.isNotEmpty)
-                      Text(brandModel,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant)),
-                    const SizedBox(height: 6),
-                    if (hasTarget)
-                      ProgressBar(
-                        value: prog.pct,
-                        // Not colorScheme.error: it is 2.991:1 against the
-                        // bar's track in light. danger is the token that
-                        // clears it.
-                        fill: switch (wear.status) {
-                          GearWearStatus.due =>
-                            AppSemanticColors.ofTheme(theme).warning,
-                          GearWearStatus.worn =>
-                            AppSemanticColors.ofTheme(theme).danger,
-                          _ => null,
-                        },
-                      ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(prog.label, style: theme.textTheme.bodySmall),
-                        Flexible(
-                          child: Text(
-                            l10n.gearRunCount(runCount),
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              Flexible(
+                child: Text(prog.label, style: theme.textTheme.bodySmall),
               ),
-              PopupMenuButton<String>(
-                onSelected: (v) {
-                  if (v == 'retire') _retire(row);
-                  if (v == 'delete') _delete(row);
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'retire',
-                    child: Text(row['retired_at'] == null
-                        ? l10n.gearRetire
-                        : l10n.gearRestore),
-                  ),
-                  PopupMenuItem(value: 'delete', child: Text(l10n.gearDelete)),
-                ],
+              const SizedBox(width: AppSpace.sm),
+              Flexible(
+                child: Text(
+                  l10n.gearRunCount(runCount),
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant),
+                ),
               ),
             ],
           ),
-        ),
+        ],
+      ),
+      trailing: PopupMenuButton<String>(
+        onSelected: (v) {
+          if (v == 'retire') _retire(row);
+          if (v == 'delete') _delete(row);
+        },
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            value: 'retire',
+            child: Text(row['retired_at'] == null
+                ? l10n.gearRetire
+                : l10n.gearRestore),
+          ),
+          PopupMenuItem(value: 'delete', child: Text(l10n.gearDelete)),
+        ],
       ),
     );
   }

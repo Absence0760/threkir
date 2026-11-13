@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../coach_share.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -146,14 +147,11 @@ class CoachShareCard extends StatelessWidget {
     final secondary = theme.textTheme.labelMedium?.copyWith(
       color: cs.onSurfaceVariant,
     );
-    return Container(
+    return ListCard(
       key: const ValueKey('dm-coach-share'),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant),
-      ),
+      margin: EdgeInsets.zero,
+      dense: true,
+      color: cs.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

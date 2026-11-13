@@ -265,7 +265,11 @@ test.describe('onboarding → first run → dashboard journey', () => {
 
 			// ── 6-7. The dashboard reflects the run ─────────────────────
 			await test.step('the dashboard recent-runs + This-Week strip reflect the run', async () => {
+				// Recent runs and the week lead are on Progress, one tap from
+				// Today's progress summary card.
 				await page.goto('/dashboard');
+				await page.getByTestId('today-progress-summary').click();
+				await expect(page).toHaveURL(/\/dashboard\/progress$/);
 
 				// Recent-runs panel: each row is an `a.run-row` linking to
 				// /runs/<id>, so match on the href suffix.

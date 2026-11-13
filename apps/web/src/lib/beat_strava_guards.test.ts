@@ -21,7 +21,7 @@ test('Dashboard wires the readiness card through computeReadiness()', () => {
 	// Reason: the readiness score must come from the pure helper, not
 	// an inline reimplementation. Anyone reaching for inline math here
 	// would silently disagree with the unit-tested band thresholds.
-	const source = read('src/routes/dashboard/+page.svelte');
+	const source = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(source, /computeReadiness/, 'dashboard must call the pure helper');
 	assert.match(source, /class="readiness-card readiness-\{readiness\.band\}"/, 'band-coded card class missing');
 });
@@ -36,7 +36,7 @@ test('Dashboard readiness card hides when TSB is null', () => {
 	// than `liveSnap.trainingStressBal` directly; `loadNow` is null
 	// exactly when there is no TSB to score, and readiness is fed from
 	// `loadNow.tsb`. Same invariant (hide when no TSB), single source.
-	const source = read('src/routes/dashboard/+page.svelte');
+	const source = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(
 		source,
 		/\{#if loadNow != null\}\s*<section class="readiness-card/,
@@ -70,7 +70,7 @@ test('/recap/[year] surfaces a share button that uses navigator.share or clipboa
 });
 
 test('Dashboard links to /recap/{current year}', () => {
-	const source = read('src/routes/dashboard/+page.svelte');
+	const source = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(
 		source,
 		/href="\/recap\/\{new Date\(\)\.getFullYear\(\)\}"/,

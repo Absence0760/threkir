@@ -396,15 +396,17 @@ class _FakeApi extends ApiClient {
           {int limit = 50}) async =>
       const [];
 
-  @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
-          {int limit = 20, List<Object?>? after}) async =>
-      const KeysetPage(<UserProfileRow>[], null);
+  /// The follow graph the inbox's New message offers.
+  List<UserProfileRow> followers = const [];
+  List<UserProfileRow> following = const [];
+  Object? followsError;
 
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 20, List<Object?>? after}) async =>
-      const KeysetPage(<UserProfileRow>[], null);
+  Future<({List<UserProfileRow> followers, List<UserProfileRow> following})>
+      fetchFollowGraph(String userId) async {
+    if (followsError != null) throw followsError!;
+    return (followers: followers, following: following);
+  }
 
   @override
   Future<List<AchievementRow>> fetchUserBadges(String userId) async =>
@@ -975,6 +977,79 @@ void main() {
       expect(find.text(l10n.messagesLoadEarlier), findsNothing);
       expect(tester.getTopLeft(find.text('five')).dy,
           greaterThan(tester.getTopLeft(find.text('four')).dy));
+    });
+  });
+
+  group('draft (issue #1374 NS-8)', () {
+    testWidgets('a typed message survives leaving the thread and coming back',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+      await _type(tester, 'half a reply');
+      await tester.pumpWidget(const SizedBox());
+      await _pumpThread(tester, api);
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const ValueKey('message-composer')))
+              .controller!
+              .text,
+          'half a reply');
+      expect(_sendButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('a draft stays with its own conversation', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+      await _type(tester, 'for Ada only');
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(_app(MessageThreadScreen(
+        api: api,
+        partnerId: 'p-2',
+        partnerName: 'Grace',
+        pollInterval: _quiet,
+      )));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('for Ada only'), findsNothing);
+    });
+
+    testWidgets('sending clears the draft', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+      await _type(tester, 'sent now');
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await pumpUntil(tester, () => api.sent.isNotEmpty, describe: 'the send');
+      await tester.pump();
+      await tester.pumpWidget(const SizedBox());
+      await _pumpThread(tester, api);
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const ValueKey('message-composer')))
+              .controller!
+              .text,
+          isEmpty);
+    });
+
+    testWidgets('a send that fails after leaving puts the text back as the draft',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..sendGate = Completer<DirectMessageRow>();
+      await _pumpThread(tester, api);
+      await _type(tester, 'lost in transit');
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await tester.pump();
+      await tester.pumpWidget(const SizedBox());
+      api.sendGate!.completeError(Exception('offline'));
+      await tester.pump();
+      api.sendGate = null;
+      await _pumpThread(tester, api);
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const ValueKey('message-composer')))
+              .controller!
+              .text,
+          'lost in transit');
     });
   });
 
@@ -2916,6 +2991,97 @@ void main() {
       await pumpInbox(tester, api);
       expect(find.text(l10n.messagesPhotoPreview), findsOneWidget);
       expect(find.text(l10n.messagesUnsentPlaceholder), findsNothing);
+    });
+  });
+
+  group('New message (issue #1374)', () {
+    UserProfileRow person(String id, String name) => UserProfileRow(
+        profilePrivate: false, shadowHidden: false, id: id, displayName: name);
+
+    Future<void> openSheet(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('inbox-new-message')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('the inbox offers New message, and so does an empty inbox',
+        (tester) async {
+      final api = _FakeApi();
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('inbox-new-message')), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, l10n.messagesNewMessage),
+          findsOneWidget);
+    });
+
+    testWidgets('a signed-out inbox offers none', (tester) async {
+      final api = _FakeApi(signedIn: false);
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('inbox-new-message')), findsNothing);
+    });
+
+    testWidgets('it lists the follow graph and starts a thread with the one '
+        'picked', (tester) async {
+      final api = _FakeApi()
+        ..following = [person('p-9', 'Ada Lovelace')]
+        ..followers = [person('p-8', 'Grace Hopper')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      await openSheet(tester);
+
+      expect(find.text(l10n.messagesNewMessage), findsWidgets);
+      expect(find.text('Grace Hopper'), findsOneWidget);
+      await tester.tap(find.text('Ada Lovelace'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final thread =
+          tester.widget<MessageThreadScreen>(find.byType(MessageThreadScreen));
+      expect(thread.partnerId, 'p-9');
+    });
+
+    testWidgets('picking someone already in a conversation opens that one',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Bo')]
+        ..following = [person('p-1', 'Bo')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      await openSheet(tester);
+      await tester.tap(find.byKey(const ValueKey('new-message-p-1')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final thread =
+          tester.widget<MessageThreadScreen>(find.byType(MessageThreadScreen));
+      expect(thread.conversationId, 'c-p-1');
+    });
+
+    testWidgets('a failed follow read says so with Retry, never "nobody"',
+        (tester) async {
+      final api = _FakeApi()..followsError = Exception('offline');
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      await openSheet(tester);
+
+      expect(find.text(l10n.messagesNewMessageLoadFailed), findsOneWidget);
+      expect(find.text(l10n.messagesNewMessageNobody), findsNothing);
+
+      api.followsError = null;
+      api.following = [person('p-9', 'Ada Lovelace')];
+      await tester.tap(find.text(l10n.errorStateRetry));
+      await tester.pump();
+      expect(find.text('Ada Lovelace'), findsOneWidget);
+    });
+
+    testWidgets('nobody to message says how to get someone', (tester) async {
+      final api = _FakeApi();
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      await openSheet(tester);
+      expect(find.text(l10n.messagesNewMessageNobody), findsOneWidget);
     });
   });
 }

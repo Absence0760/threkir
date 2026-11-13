@@ -8,10 +8,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/challenge_invite_screen.dart';
 import '../lib/social_service.dart';
+import 'worst_case_layout.dart';
 
 ChallengeInvitePreview _preview({
   String? creatorId = 'abcd1234-0000-4000-8000-000000000009',
@@ -77,7 +79,8 @@ Future<void> _pump(WidgetTester tester, _FakeSocial social) async {
 void main() {
   testWidgets('shows the challenge the link names and who sent it', (tester) async {
     await _pump(tester, _FakeSocial(preview: _preview()));
-    expect(find.text('Run 50 km with me'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Run 50 km with me'),
+        findsOneWidget);
     expect(find.text('Invited by Cass'), findsOneWidget);
     expect(find.text('12 runners in'), findsOneWidget);
     expect(find.text('Every km counts.'), findsOneWidget);
@@ -135,6 +138,18 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pump();
     await tester.pump();
-    expect(find.text('Run 50 km with me'), findsOneWidget);
+    expect(find.widgetWithText(PageHeading, 'Run 50 km with me'),
+        findsOneWidget);
+  });
+
+  worstCaseTestWidgets('the invite', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ChallengeInviteScreen(
+          social: _FakeSocial(preview: _preview()), token: 'tok-abc12345'),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Challenge invite');
   });
 }

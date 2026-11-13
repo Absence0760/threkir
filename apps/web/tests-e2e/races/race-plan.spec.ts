@@ -212,7 +212,7 @@ test.describe('/races/[id] — build a plan from a race', () => {
 		await expect(course).toContainText('Course');
 		await expect(course).toContainText('elevation gain');
 		const href = new URL((await page.getByTestId('race-detail-tailor-ai').getAttribute('href'))!, 'https://example.test');
-		expect(href.searchParams.get('describe') ?? '').toContain('Course: 180 m ascent, road surface.');
+		expect(href.searchParams.get('describe') ?? '').toContain('Course: 180 m ascent, surface: Road.');
 	});
 
 	test('a private course is neither shown nor described', async ({ page }) => {

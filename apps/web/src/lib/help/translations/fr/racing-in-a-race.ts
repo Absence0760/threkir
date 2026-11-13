@@ -15,7 +15,7 @@ export const translation: GuideTranslation = {
 						'App iPhone : elle exécute le même code qu\'Android, mais n\'a pas encore été testée sur iPhone lors d\'une vraie course.',
 						'Montre Wear OS : prise en charge complète au poignet, y compris le chronométrage par les lignes. L\'inscription et le choix du parcours se font toujours sur le web ou le téléphone.',
 						'Apple Watch : prise en charge préliminaire seulement. Elle affiche le bandeau de course, envoie votre position et transmet votre temps via votre iPhone, mais elle ne détecte pas les lignes de départ et d\'arrivée : elle n\'a donc pas d\'arrivée automatique, et elle n\'a pas fait ses preuves lors d\'une vraie course. Gardez votre téléphone sur vous en secours, ou rechronométrez ensuite votre résultat à partir de votre tracé sur le web.',
-						'Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir du tracé d\'une sortie. Un navigateur ne peut pas enregistrer de course.',
+						'Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir du tracé d\'une course enregistrée. Un navigateur ne peut pas enregistrer de course.',
 					],
 				},
 			],
@@ -27,7 +27,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Ouvrez l\'événement de la course.',
-						'S\'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l\'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.',
+						'S\'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l\'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je participe**.',
 						'Touchez **Je participe**. Seule une inscription **Je participe** reçoit les alertes de course sur votre appareil ; **Peut-être** ne les reçoit pas.',
 					],
 				},
@@ -51,7 +51,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'L\'app mobile recherche les courses auxquelles vous avez répondu **Je viens** et qui commencent dans la journée qui suit. Si le bandeau tarde à apparaître, gardez l\'app ouverte sur l\'onglet Courir pendant une minute.',
+					text: 'L\'app mobile recherche les courses auxquelles vous avez répondu **Je participe** et qui commencent dans la journée qui suit. Si le bandeau tarde à apparaître, gardez l\'app ouverte sur l\'onglet Courir pendant une minute.',
 				},
 			],
 		},

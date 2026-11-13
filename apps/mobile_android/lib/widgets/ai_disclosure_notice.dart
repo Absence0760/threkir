@@ -8,7 +8,7 @@ import '../l10n/gen/app_localizations.dart';
 
 /// The AI-processing disclosure a runner accepts (GDPR Art 6(1)(a)).
 ///
-/// One copy, three hosts: the Coach first-use gate, the Settings → Account
+/// One copy, three hosts: the Coach first-use gate, the You → Account
 /// tile where an existing acceptance is widened, and the route-detail
 /// fallback notice. Keeping the copy here is what stops two surfaces
 /// describing different processing while writing the same consent record —

@@ -38,6 +38,8 @@ class _FakeApiClient extends ApiClient {
 
   // Discovery support.
   int discoverCalls = 0;
+  /// The routes read fails while set.
+  bool failRoutes = false;
   String? lastFilter;
   List<double>? lastDistMin;
   List<cm.DiscoverableRoutePin> nextPins = const [];
@@ -84,6 +86,7 @@ class _FakeApiClient extends ApiClient {
     List<double?>? distMax,
   }) async {
     discoverCalls++;
+    if (failRoutes) throw Exception('offline');
     lastFilter = filter;
     lastDistMin = distMin;
     lastMinLng = minLng;
@@ -132,18 +135,23 @@ Future<void> _pump(
   Future<Position> Function()? locateFn,
   Future<Position?> Function()? backgroundLocateFn,
   void Function(BuildContext, String)? openRaceOverride,
+  double textScale = 1,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: RoutesHeatmapScreen(
-        api: api,
-        geocodingFetcher: geocodingFetcher,
-        locateFn: locateFn,
-        backgroundLocateFn: backgroundLocateFn,
-        openRaceOverride: openRaceOverride,
+      home: MediaQuery.withClampedTextScaling(
+        minScaleFactor: textScale,
+        maxScaleFactor: textScale,
+        child: RoutesHeatmapScreen(
+          api: api,
+          geocodingFetcher: geocodingFetcher,
+          locateFn: locateFn,
+          backgroundLocateFn: backgroundLocateFn,
+          openRaceOverride: openRaceOverride,
+        ),
       ),
     ),
   );
@@ -594,6 +602,28 @@ void main() {
       expect(find.text('Wash Park 5K Loop'), findsOneWidget);
     });
 
+    // Issue #1374 FS-10: a failed fetch read as "No routes here", so the
+    // runner panned and changed filters over a map that never loaded.
+    testWidgets('a failed routes read says so on the pill, and a tap retries',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..failRoutes = true
+        ..nextPins = [_pin()];
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text(l10n.heatmapLoadFailed), findsOneWidget);
+      expect(find.text(l10n.heatmapNoRoutesHere), findsNothing);
+
+      api.failRoutes = false;
+      final calls = api.discoverCalls;
+      await tester.tap(find.byKey(const Key('heatmap-results-pill')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.discoverCalls, calls + 1);
+      expect(find.text('1 route'), findsOneWidget);
+    });
+
     testWidgets('a result row names the surface in the reader\'s language, '
         'not the stored token', (tester) async {
       final api = _FakeApiClient()
@@ -807,4 +837,62 @@ void main() {
   // reliably (it matches the sheet's offstage measurement copy) — the same
   // limitation the existing sheet tests work around by tapping only the
   // top-of-list rows.
+
+  // The map controls, the pill / selection card and the credit are
+  // MapFirstPage's floating column (issue #1374, IK-10 for landscape).
+  group('RoutesHeatmapScreen — insets', () {
+    void setView(WidgetTester tester, Size size, FakeViewPadding bar) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = bar;
+      tester.view.viewPadding = bar;
+      addTearDown(tester.view.reset);
+    }
+
+    cm.Route route() => cm.Route(
+          id: 'a',
+          userId: 'u',
+          name: 'Wash Park 5K Loop',
+          waypoints: const [
+            Waypoint(lat: 39.740, lng: -105.000),
+            Waypoint(lat: 39.745, lng: -105.005),
+          ],
+          distanceMetres: 5000,
+        );
+
+    testWidgets('320 dp, 2x text, 3-button bar: the selection card and '
+        'Locate me sit above the bar, Locate above the card', (tester) async {
+      setView(tester, const Size(320, 640), const FakeViewPadding(bottom: 48));
+      final api = _FakeApiClient()
+        ..nextPins = [_pin()]
+        ..nextRouteById = route();
+      await _pump(tester, api, textScale: 2);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('1 route'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Wash Park 5K Loop'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      final view = tester.getRect(find.text('View route'));
+      final locate = tester.getRect(find.byType(FloatingActionButton));
+      expect(view.bottom, lessThanOrEqualTo(640 - 48));
+      expect(locate.bottom, lessThanOrEqualTo(view.top));
+      expect(find.text('View route').hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('landscape: the controls and the pill clear a side bar',
+        (tester) async {
+      setView(tester, const Size(780, 360), const FakeViewPadding(right: 48));
+      final api = _FakeApiClient()..nextPins = [_pin()];
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(find.byType(FloatingActionButton)).right,
+          lessThanOrEqualTo(780 - 48));
+      expect(tester.getRect(find.text('1 route')).right,
+          lessThanOrEqualTo(780 - 48));
+    });
+  });
 }

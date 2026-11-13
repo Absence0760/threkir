@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	// The fuelling plan for one run, without a route: the page the Coach's
 	// fuelling handoff links to (decisions § 1975). The Coach writes only the
 	// duration and any per-hour rate the runner stated; every parameter is
@@ -135,10 +136,7 @@
 </svelte:head>
 
 <div class="fuel-page">
-	<header class="page-header">
-		<h1>{m('fuelPlan.title')}</h1>
-		<p class="head-sub">{m('fuelPlan.intro')}</p>
-	</header>
+	<PageHeader title={m('fuelPlan.title')} subtitle={m('fuelPlan.intro')} />
 
 	{#if !enabled}
 		<section class="card-elevated" data-testid="fuel-unavailable">
@@ -208,7 +206,12 @@
 					{m('fuelPlan.weightToggle')}
 				</label>
 				<p class="section-hint" id="fuel-weight-hint" data-testid="fuel-weight-hint">
-					{consentedWeightKg == null ? m('fuelPlan.weightUnavailable') : m('fuelPlan.weightHint')}
+					{#if consentedWeightKg == null}
+						{m('fuelPlan.weightUnavailable')}
+						<a href="/settings/body#body-metrics">{m('settingsLayout.tabBody')}</a>
+					{:else}
+						{m('fuelPlan.weightHint')}
+					{/if}
 				</p>
 			{/if}
 		</section>
@@ -253,21 +256,6 @@
 		max-width: 720px;
 		margin: 0 auto;
 		padding: var(--space-lg);
-	}
-
-	.page-header {
-		margin-bottom: var(--space-lg);
-	}
-
-	.page-header h1 {
-		margin: 0;
-		font-size: 1.6rem;
-	}
-
-	.head-sub {
-		margin: 0.3rem 0 0;
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
 	}
 
 	section {

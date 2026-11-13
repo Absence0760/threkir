@@ -28,6 +28,8 @@ const fmt: RecapSlideFormat = {
 	monthName: (mo) => MONTHS[mo - 1],
 	monthLetter: (mo) => MONTHS[mo - 1][0],
 	count: (n) => n.toLocaleString('en'),
+	unit: 'km',
+	locale: 'en',
 	url: 'threkir.com',
 };
 
@@ -112,14 +114,26 @@ test('a stat with nothing to show earns no slide', () => {
 });
 
 test('a rich year is capped to a story-length reel, badges trimmed to the first few', () => {
-	const badges = Array.from({ length: 7 }, (_, i) => ({ id: `b${i}`, icon: 'star', label: `Badge ${i}`, detail: '' }));
+	const badges = (['dist-100', 'runs-50', 'long-half', 'elev-5000', 'months-12', 'variety', 'night'] as const).map(
+		(id) => ({ id, icon: 'star', value: id === 'variety' ? 3 : id === 'night' ? '22:10' : undefined }),
+	);
 	const s = recapSlides(recap({ personalRecordCount: 3, badges }), fmt);
 	assert.equal(s.length, MAX_MIDDLE_SLIDES + 2);
 	const few = recapSlides(recap({ month: 3, topWeek: null, fastestPaceSecPerKm: null, badges }), fmt);
 	const b = few.find((x) => x.kind === 'badges');
 	assert.ok(b && b.kind === 'badges');
 	assert.equal(b.items.length, MAX_BADGES);
+	assert.equal(b.items[0], 'Century');
 	assert.equal(b.sub, '7 earned in 2026');
+});
+
+test('a badge that names a distance names it in the reader\'s unit', () => {
+	const badges = [{ id: 'dist-1000' as const, icon: 'public' }];
+	const km = recapSlides(recap({ month: 3, badges }), fmt).find((x) => x.kind === 'badges');
+	const mi = recapSlides(recap({ month: 3, badges }), { ...fmt, unit: 'mi' }).find((x) => x.kind === 'badges');
+	assert.ok(km && km.kind === 'badges' && mi && mi.kind === 'badges');
+	assert.deepEqual(km.items, ['1,000 km club']);
+	assert.deepEqual(mi.items, ['621 mi club']);
 });
 
 test('the streak, climb and records slides use the page formatters and plurals', () => {

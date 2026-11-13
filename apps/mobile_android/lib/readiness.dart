@@ -4,6 +4,9 @@
 ///
 /// TS↔Dart parity pair with `apps/web/src/lib/training/readiness.ts`. Keep in
 /// lockstep — the shared-library-syncer agent watches the pair.
+library;
+
+import 'l10n/gen/app_localizations.dart';
 
 class ReadinessInputs {
   /// Training Stress Balance (Form). Positive = fresh, negative = fatigued.
@@ -28,26 +31,54 @@ enum ReadinessBand { low, moderate, high }
 /// and one name over two different numbers read as a contradiction (#902).
 enum ReadinessContributorKind { form, sleep, restingHr }
 
+/// Why an input moved the score. The words live in the reader's catalogue
+/// (`readinessReason*`), read by `readinessAdviceText`.
+enum ReadinessReason {
+  heavyFatigue,
+  fatigued,
+  slightFatigue,
+  formNeutral,
+  fresh,
+  veryFresh,
+  overTapered,
+  veryLittleSleep,
+  shortSleep,
+  underSleep,
+  wellRested,
+  extendedSleep,
+  hrWellAbove,
+  hrAbove,
+  hrSlightlyHigh,
+  hrBaseline,
+  hrBelow,
+}
+
 class ReadinessContribution {
   final ReadinessContributorKind kind;
   final int delta;
-  final String note;
+  final ReadinessReason reason;
+
+  /// Resting HR above baseline, for the reasons that name it.
+  final int? diffBpm;
   const ReadinessContribution({
     required this.kind,
     required this.delta,
-    required this.note,
+    required this.reason,
+    this.diffBpm,
   });
 }
 
 class Readiness {
   final int score;
   final ReadinessBand band;
-  final String advice;
+
+  /// The contributor the advice line names; null when there are no inputs.
+  final ReadinessContribution? dominant;
   final List<ReadinessContribution> contributors;
   const Readiness({
     required this.score,
     required this.band,
-    required this.advice,
+    required this.dominant,
     required this.contributors,
   });
 }
@@ -67,89 +98,91 @@ ReadinessContribution? _scoreTsb(double? tsb) {
   // so it used to land on the final "over-tapered" branch.
   if (tsb == null || !tsb.isFinite) return null;
   int delta;
-  String note;
+  ReadinessReason reason;
   if (tsb < -20) {
     delta = -20;
-    note = 'Heavy fatigue — recent training stress is well above your fitness';
+    reason = ReadinessReason.heavyFatigue;
   } else if (tsb < -10) {
     delta = -12;
-    note = 'Fatigued from recent training';
+    reason = ReadinessReason.fatigued;
   } else if (tsb < -5) {
     delta = -6;
-    note = 'Slight fatigue';
+    reason = ReadinessReason.slightFatigue;
   } else if (tsb <= 5) {
     delta = 0;
-    note = 'Form is neutral';
+    reason = ReadinessReason.formNeutral;
   } else if (tsb <= 15) {
     delta = 8;
-    note = 'Fresh and well-recovered';
+    reason = ReadinessReason.fresh;
   } else if (tsb <= 25) {
     delta = 5;
-    note = 'Very fresh — borderline tapered';
+    reason = ReadinessReason.veryFresh;
   } else {
     delta = -3;
-    note = 'Over-tapered — edge may be blunted';
+    reason = ReadinessReason.overTapered;
   }
   return ReadinessContribution(
-      kind: ReadinessContributorKind.form, delta: delta, note: note);
+      kind: ReadinessContributorKind.form, delta: delta, reason: reason);
 }
 
 ReadinessContribution? _scoreSleep(double? hours) {
   if (hours == null || !hours.isFinite) return null;
   int delta;
-  String note;
+  ReadinessReason reason;
   if (hours < 5) {
     delta = -25;
-    note = 'Very little sleep — recovery is compromised';
+    reason = ReadinessReason.veryLittleSleep;
   } else if (hours < 6.5) {
     delta = -12;
-    note = 'Short on sleep';
+    reason = ReadinessReason.shortSleep;
   } else if (hours < 7.5) {
     delta = -3;
-    note = 'A little under target sleep';
+    reason = ReadinessReason.underSleep;
   } else if (hours <= 9) {
     delta = 5;
-    note = 'Well rested';
+    reason = ReadinessReason.wellRested;
   } else {
     delta = 0;
-    note = 'Extended sleep — recovery should be solid';
+    reason = ReadinessReason.extendedSleep;
   }
   return ReadinessContribution(
-      kind: ReadinessContributorKind.sleep, delta: delta, note: note);
+      kind: ReadinessContributorKind.sleep, delta: delta, reason: reason);
 }
 
 ReadinessContribution? _scoreRestingHr(int? resting, int? baseline) {
   if (resting == null || baseline == null) return null;
   final diff = resting - baseline;
   int delta;
-  String note;
+  ReadinessReason reason;
   if (diff > 10) {
     delta = -18;
-    note = 'Resting HR $diff bpm above baseline — strong sign of illness or under-recovery';
+    reason = ReadinessReason.hrWellAbove;
   } else if (diff > 5) {
     delta = -10;
-    note = 'Resting HR $diff bpm above baseline';
+    reason = ReadinessReason.hrAbove;
   } else if (diff > 2) {
     delta = -4;
-    note = 'Resting HR slightly elevated';
+    reason = ReadinessReason.hrSlightlyHigh;
   } else if (diff >= -2) {
     delta = 0;
-    note = 'Resting HR at baseline';
+    reason = ReadinessReason.hrBaseline;
   } else {
     delta = 3;
-    note = 'Resting HR below baseline — well recovered';
+    reason = ReadinessReason.hrBelow;
   }
   return ReadinessContribution(
-      kind: ReadinessContributorKind.restingHr, delta: delta, note: note);
+      kind: ReadinessContributorKind.restingHr,
+      delta: delta,
+      reason: reason,
+      diffBpm: reason == ReadinessReason.hrWellAbove ||
+              reason == ReadinessReason.hrAbove
+          ? diff
+          : null);
 }
 
-String _dominantAdvice(
-    List<ReadinessContribution> contributors, ReadinessBand band) {
-  if (contributors.isEmpty) {
-    return band == ReadinessBand.high
-        ? 'Looks like a good day to push the pace.'
-        : 'Connect sleep + HR data for a real readiness picture.';
-  }
+ReadinessContribution? _dominantContributor(
+    List<ReadinessContribution> contributors) {
+  if (contributors.isEmpty) return null;
   // Ties in |delta| are common — a TSB of -12 and six hours of sleep both
   // score -12, and the two carry DIFFERENT advice. Dart's List.sort is
   // unstable where JS's is stable, so without the index fallback the
@@ -162,13 +195,45 @@ String _dominantAdvice(
       final c = b.$2.delta.abs().compareTo(a.$2.delta.abs());
       return c != 0 ? c : a.$1.compareTo(b.$1);
     });
-  final dom = indexed.first.$2;
-  final tail = switch (band) {
-    ReadinessBand.low => 'Consider an easy day or a rest day.',
-    ReadinessBand.moderate => 'A steady or moderate effort fits today.',
-    ReadinessBand.high => 'You’re primed for a harder effort if planned.',
+  return indexed.first.$2;
+}
+
+/// The advice line in the reader's language: the dominant input's reason and
+/// what the band suggests, or, with no inputs, a band-aware suggestion.
+/// Mirrors `readinessAdviceText` in `readiness.ts`.
+String readinessAdviceText(Readiness r, AppLocalizations l10n) {
+  final d = r.dominant;
+  if (d == null) {
+    return r.band == ReadinessBand.high
+        ? l10n.readinessAdviceNoSignalHigh
+        : l10n.readinessAdviceNoSignal;
+  }
+  final bpm = d.diffBpm ?? 0;
+  final reason = switch (d.reason) {
+    ReadinessReason.heavyFatigue => l10n.readinessReasonHeavyFatigue,
+    ReadinessReason.fatigued => l10n.readinessReasonFatigued,
+    ReadinessReason.slightFatigue => l10n.readinessReasonSlightFatigue,
+    ReadinessReason.formNeutral => l10n.readinessReasonFormNeutral,
+    ReadinessReason.fresh => l10n.readinessReasonFresh,
+    ReadinessReason.veryFresh => l10n.readinessReasonVeryFresh,
+    ReadinessReason.overTapered => l10n.readinessReasonOverTapered,
+    ReadinessReason.veryLittleSleep => l10n.readinessReasonVeryLittleSleep,
+    ReadinessReason.shortSleep => l10n.readinessReasonShortSleep,
+    ReadinessReason.underSleep => l10n.readinessReasonUnderSleep,
+    ReadinessReason.wellRested => l10n.readinessReasonWellRested,
+    ReadinessReason.extendedSleep => l10n.readinessReasonExtendedSleep,
+    ReadinessReason.hrWellAbove => l10n.readinessReasonHrWellAbove(bpm),
+    ReadinessReason.hrAbove => l10n.readinessReasonHrAbove(bpm),
+    ReadinessReason.hrSlightlyHigh => l10n.readinessReasonHrSlightlyHigh,
+    ReadinessReason.hrBaseline => l10n.readinessReasonHrBaseline,
+    ReadinessReason.hrBelow => l10n.readinessReasonHrBelow,
   };
-  return '${dom.note}. $tail';
+  final next = switch (r.band) {
+    ReadinessBand.low => l10n.readinessNextLow,
+    ReadinessBand.moderate => l10n.readinessNextModerate,
+    ReadinessBand.high => l10n.readinessNextHigh,
+  };
+  return l10n.readinessAdviceLine(reason, next);
 }
 
 Readiness computeReadiness(ReadinessInputs inputs) {
@@ -186,7 +251,7 @@ Readiness computeReadiness(ReadinessInputs inputs) {
   return Readiness(
     score: score,
     band: band,
-    advice: _dominantAdvice(contributors, band),
+    dominant: _dominantContributor(contributors),
     contributors: contributors,
   );
 }

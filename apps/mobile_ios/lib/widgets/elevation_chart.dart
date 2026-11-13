@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show ChartPalette;
 
 import '../elevation_profile.dart';
+import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart' show UnitFormat;
 import '../run_stats.dart' show haversineMetres;
 
@@ -18,6 +19,7 @@ class ElevationChart extends StatefulWidget {
   final List<Waypoint> track;
   final ThemeData theme;
   final DistanceUnit unit;
+
   /// Linked-cursor: fires with the track-index currently under the
   /// pointer (null on touch release). Lets `run_detail_screen` paint
   /// the matching marker on `LiveRunMap` — Nike/Strava-style brushing.
@@ -41,7 +43,12 @@ class _ElevationProfile {
   final double dataMin;
   final double dataMax;
   final ({double lo, double hi}) domain;
-  const _ElevationProfile(this.smoothed, this.dataMin, this.dataMax, this.domain);
+  const _ElevationProfile(
+    this.smoothed,
+    this.dataMin,
+    this.dataMax,
+    this.domain,
+  );
 }
 
 class _ElevationChartState extends State<ElevationChart> {
@@ -54,6 +61,11 @@ class _ElevationChartState extends State<ElevationChart> {
 
   int? _touchIdx;
   int? _lastEmittedIdx;
+
+  /// The cursor a screen reader steps along the track, as a stop out of
+  /// [_a11yStops]: the drag-to-read cursor has no keyboard or swipe path.
+  int _a11yStop = 0;
+  static const int _a11yStops = 20;
   late List<double> _cum;
   late bool _timed;
   _ElevationProfile? _profile;
@@ -84,7 +96,45 @@ class _ElevationChartState extends State<ElevationChart> {
       if (v < lo) lo = v;
       if (v > hi) hi = v;
     }
+    var gain = 0.0;
+    for (var i = 1; i < smoothed.length; i++) {
+      final d = smoothed[i] - smoothed[i - 1];
+      if (d > 0) gain += d;
+    }
+    _gainM = gain;
     _profile = _ElevationProfile(smoothed, lo, hi, elevationDomain(lo, hi));
+  }
+
+  double _gainM = 0;
+
+  /// The track index nearest [target] metres along it.
+  int _idxAt(double target) {
+    var lo = 0, hi = _cum.length - 1;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (_cum[mid] < target) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo;
+  }
+
+  String _pointLabel(AppLocalizations l10n, int stop) {
+    final idx = _idxAt(_cum.last * stop / _a11yStops);
+    return l10n.elevationChartPoint(
+      UnitFormat.elevation(_profile!.smoothed[idx], widget.unit),
+      UnitFormat.distance(_cum[idx], widget.unit),
+    );
+  }
+
+  void _stepA11y(int to) {
+    setState(() {
+      _a11yStop = to.clamp(0, _a11yStops);
+      _touchIdx = _idxAt(_cum.last * _a11yStop / _a11yStops);
+    });
+    _emitHover();
   }
 
   void _emitHover() {
@@ -100,9 +150,12 @@ class _ElevationChartState extends State<ElevationChart> {
     final profile = _profile;
     if (profile == null) return const SizedBox.shrink();
     final theme = widget.theme;
-    final labelStyle = theme.textTheme.labelSmall
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final labelStyle = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     final total = _cum.isEmpty ? 0.0 : _cum.last;
+    final l10n = AppLocalizations.of(context);
+    final canStep = _cum.length >= 2 && total > 0;
     final textScaler = MediaQuery.textScalerOf(context);
     var widest = 0.0;
     for (final ele in [profile.dataMin, profile.dataMax]) {
@@ -124,29 +177,57 @@ class _ElevationChartState extends State<ElevationChart> {
           height: textScaler.scale(20),
           child: _touchIdx != null ? _buildCrosshairLabel() : null,
         ),
-        SizedBox(
-          height: _chartHeight,
-          child: GestureDetector(
-            onPanStart: (d) => _onTouch(d.localPosition),
-            onPanUpdate: (d) => _onTouch(d.localPosition),
-            onPanEnd: (_) => _clearTouch(),
-            onTapDown: (d) => _onTouch(d.localPosition),
-            onTapUp: (_) => _clearTouch(),
-            onTapCancel: _clearTouch,
-            child: CustomPaint(
-              painter: _ElevationPainter(
-                smoothed: profile.smoothed,
-                cumulativeM: _cum,
-                dataMin: profile.dataMin,
-                dataMax: profile.dataMax,
-                domain: profile.domain,
-                theme: theme,
-                gutter: _gutter,
-                unit: widget.unit,
-                textScaler: textScaler,
-                touchIdx: _touchIdx,
+        // One node for the plot: a summary of the profile as its label, and
+        // a cursor a screen reader steps with swipe up / down, which moves
+        // the crosshair and the linked map marker as a drag does (#1374
+        // A11Y-14).
+        Semantics(
+          key: const Key('elevationChartSemantics'),
+          container: true,
+          excludeSemantics: true,
+          label: l10n.elevationChartSummary(
+            UnitFormat.distance(total, widget.unit),
+            UnitFormat.elevation(profile.dataMin, widget.unit),
+            UnitFormat.elevation(profile.dataMax, widget.unit),
+            UnitFormat.elevation(_gainM, widget.unit),
+          ),
+          value: canStep ? _pointLabel(l10n, _a11yStop) : null,
+          increasedValue: canStep && _a11yStop < _a11yStops
+              ? _pointLabel(l10n, _a11yStop + 1)
+              : null,
+          decreasedValue: canStep && _a11yStop > 0
+              ? _pointLabel(l10n, _a11yStop - 1)
+              : null,
+          onIncrease: canStep && _a11yStop < _a11yStops
+              ? () => _stepA11y(_a11yStop + 1)
+              : null,
+          onDecrease: canStep && _a11yStop > 0
+              ? () => _stepA11y(_a11yStop - 1)
+              : null,
+          child: SizedBox(
+            height: _chartHeight,
+            child: GestureDetector(
+              onPanStart: (d) => _onTouch(d.localPosition),
+              onPanUpdate: (d) => _onTouch(d.localPosition),
+              onPanEnd: (_) => _clearTouch(),
+              onTapDown: (d) => _onTouch(d.localPosition),
+              onTapUp: (_) => _clearTouch(),
+              onTapCancel: _clearTouch,
+              child: CustomPaint(
+                painter: _ElevationPainter(
+                  smoothed: profile.smoothed,
+                  cumulativeM: _cum,
+                  dataMin: profile.dataMin,
+                  dataMax: profile.dataMax,
+                  domain: profile.domain,
+                  theme: theme,
+                  gutter: _gutter,
+                  unit: widget.unit,
+                  textScaler: textScaler,
+                  touchIdx: _touchIdx,
+                ),
+                size: const Size(double.infinity, _chartHeight),
               ),
-              size: const Size(double.infinity, _chartHeight),
             ),
           ),
         ),
@@ -175,17 +256,7 @@ class _ElevationChartState extends State<ElevationChart> {
     final plotWidth = box.size.width - _gutter;
     if (plotWidth <= 0) return;
     final frac = ((local.dx - _gutter) / plotWidth).clamp(0.0, 1.0);
-    final target = frac * _cum.last;
-    var lo = 0, hi = _cum.length - 1;
-    while (lo < hi) {
-      final mid = (lo + hi) >> 1;
-      if (_cum[mid] < target) {
-        lo = mid + 1;
-      } else {
-        hi = mid;
-      }
-    }
-    setState(() => _touchIdx = lo);
+    setState(() => _touchIdx = _idxAt(frac * _cum.last));
     _emitHover();
   }
 
@@ -205,8 +276,10 @@ class _ElevationChartState extends State<ElevationChart> {
         double segDist = 0;
         for (var i = windowStart + 1; i <= windowEnd; i++) {
           segDist += haversineMetres(
-            widget.track[i - 1].lineLat, widget.track[i - 1].lineLng,
-            widget.track[i].lineLat, widget.track[i].lineLng,
+            widget.track[i - 1].lineLat,
+            widget.track[i - 1].lineLng,
+            widget.track[i].lineLat,
+            widget.track[i].lineLng,
           );
         }
         if (segDist > 10) {
@@ -311,19 +384,20 @@ class _ElevationPainter extends CustomPainter {
     final plotWidth = size.width - gutter;
     final range = domain.hi - domain.lo;
     double xAt(int i) => plotLeft + cumulativeM[i] / total * plotWidth;
-    double yAt(double ele) => size.height - (ele - domain.lo) / range * size.height;
+    double yAt(double ele) =>
+        size.height - (ele - domain.lo) / range * size.height;
 
     final colour = ChartPalette.ofTheme(theme).series.first;
-    final labelStyle = theme.textTheme.labelSmall!
-        .copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final labelStyle = theme.textTheme.labelSmall!.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     // Gridlines and labels at the data's own low and high points, in the
     // gutter rather than on the plot, so neither ever sits on the line.
     final labelHeight = (TextPainter(
       text: TextSpan(text: '0 m', style: labelStyle),
       textDirection: TextDirection.ltr,
       textScaler: textScaler,
-    )..layout())
-        .height;
+    )..layout()).height;
     for (final ele in elevationGutterLabels(
       dataMin: dataMin,
       dataMax: dataMax,

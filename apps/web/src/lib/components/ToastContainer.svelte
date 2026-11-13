@@ -31,6 +31,7 @@
 		{#each others as t (t.id)}
 			<div class="toast toast-{t.type}">
 				{t.message}
+				{#if t.action}<a class="toast-action" href={t.action.href} data-testid="toast-action">{t.action.label}</a>{/if}
 			</div>
 		{/each}
 	</div>
@@ -38,6 +39,7 @@
 		{#each errors as t (t.id)}
 			<div class="toast toast-{t.type}">
 				{t.message}
+				{#if t.action}<a class="toast-action" href={t.action.href} data-testid="toast-action">{t.action.label}</a>{/if}
 			</div>
 		{/each}
 	</div>
@@ -87,6 +89,17 @@
 		   --color-danger-strong is 6.06:1 in both themes. */
 		background: var(--color-danger-strong);
 		color: white;
+	}
+	/* The stack ignores clicks so an empty one never eats one; the action is
+	   the one part of a toast that must take them. */
+	.toast-action {
+		pointer-events: auto;
+		margin-inline-start: var(--space-sm);
+		color: inherit;
+		font-weight: 700;
+		text-decoration: underline;
+		display: inline-block;
+		min-height: 24px;
 	}
 	@keyframes slide-in {
 		from { opacity: 0; transform: translateY(0.5rem); }

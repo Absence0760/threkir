@@ -239,9 +239,9 @@ test.describe('navigation — Routes nested under the run surface', () => {
 			.getByRole('link', { name: /^Routes$/ })
 			.click();
 		await expect(page).toHaveURL(/\/routes(\?.*)?$/, { timeout: 10_000 });
-		// The inner My-routes tab confirms the routes library mounted.
+		// The Mine view link confirms the routes library mounted.
 		await expect(
-			page.getByRole('tab', { name: /My routes/ })
+			page.getByTestId('routes-view-nav').getByRole('link', { name: 'Mine', exact: true })
 		).toBeVisible({ timeout: 10_000 });
 	});
 
@@ -250,7 +250,7 @@ test.describe('navigation — Routes nested under the run surface', () => {
 	}) => {
 		await page.goto('/routes');
 		await expect(
-			page.getByRole('tab', { name: /My routes/ })
+			page.getByTestId('routes-view-nav').getByRole('link', { name: 'Mine', exact: true })
 		).toBeVisible({ timeout: 10_000 });
 	});
 
@@ -274,15 +274,22 @@ test.describe('navigation — the segment catalogue under the run surface', () =
 
 	// /segments shipped reachable only from a run-detail effort chip and
 	// its own detail page's back-link — a surface with no door in any
-	// global nav slot (decisions.md § 677).
-	test('Segments is reachable from /runs via the run-surface sub-tab', async ({
+	// global nav slot (decisions.md § 677). Its door is Routes → Explore →
+	// Segments since issue #1374 dropped its run-surface tab.
+	test('Segments is reachable from /runs through Routes → Explore', async ({
 		page
 	}) => {
 		await page.goto('/runs');
 		await page
 			.getByRole('navigation', { name: /Run surface sections/ })
-			.getByRole('link', { name: /^Segments$/ })
+			.getByRole('link', { name: /^Routes$/ })
 			.click();
+		await expect(page).toHaveURL(/\/routes$/, { timeout: 10_000 });
+		await page
+			.getByTestId('routes-view-nav')
+			.getByRole('link', { name: 'Explore', exact: true })
+			.click();
+		await page.getByTestId('routes-explore-segments').click();
 		await expect(page).toHaveURL(/\/segments$/, { timeout: 10_000 });
 		await expect(
 			page.getByRole('heading', { name: /Famous segments/ })

@@ -220,7 +220,7 @@ test.describe('recap year-in-running data journey', () => {
 				// bignum = fmtKm(totalDistanceM). 52.697 km → "52.7 km".
 				await expect(page.locator('.bignum')).toHaveText(km1(TOTAL_M));
 				await expect(page.getByText(`across ${RUNS.length} runs`)).toBeVisible();
-				// Active months chip: Mar/Jun/Sep = 3 (recap.activeInMonthsMany).
+				// Active months chip: Mar/Jun/Sep = 3 (recap.activeInMonths).
 				await expect(page.getByText('active in 3 months')).toBeVisible();
 			});
 

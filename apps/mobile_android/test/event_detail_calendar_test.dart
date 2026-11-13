@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -289,4 +290,31 @@ void main() {
       expect(find.text("Couldn't open your calendar app."), findsOneWidget);
     });
   });
+
+  // #1374 A11Y-12: the meet-point map was an unnamed button that does what the
+  // Directions button under it does, so TalkBack stopped on "button" first.
+  group('EventDetailScreen — meet point', () {
+    realtimeWidgetTest('the map is a tap for the eye; Directions is the named control', (
+      tester,
+    ) async {
+      dotenv.loadFromString(envString: 'MAPTILER_KEY=test', isOptional: true);
+      addTearDown(() => dotenv.loadFromString(envString: '', isOptional: true));
+      await pump(tester, _MeetPointSocial(startsAt: aheadBy(7)));
+      tester.takeException();
+      final map = find.byKey(const Key('eventMeetPointMap'));
+      await reveal(tester, map);
+      expect(tester.widget<ExcludeSemantics>(map).excluding, isTrue);
+      expect(find.descendant(of: map, matching: find.byType(InkWell)), findsOneWidget);
+      expect(find.text('Get directions to Riverside Park'), findsOneWidget);
+      tester.takeException();
+    });
+  });
 }
+
+class _MeetPointSocial extends _CalendarSocial {
+  _MeetPointSocial({required super.startsAt});
+  @override
+  Future<({double lat, double lng})?> fetchEventMeetPoint(String eventId) async =>
+      (lat: 51.5, lng: -0.12);
+}
+

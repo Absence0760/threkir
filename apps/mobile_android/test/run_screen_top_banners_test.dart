@@ -6,6 +6,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/widgets/safety_nudge_banner.dart';
 import '../lib/widgets/workout_execution_band.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -48,6 +49,83 @@ const _offRoute = 'Off route — 120m away';
 const _gpsLost = 'GPS signal lost — move to open sky';
 
 void main() {
+  // Issue #1374: the banners are ListCards. Each status state, with the
+  // off-route banner and the nudge stacked on it, fits at the worst case.
+  for (final (name, permissionLost, gpsLost, weakGps, approximate) in [
+    ('permission', true, false, false, false),
+    ('gps lost', false, true, false, false),
+    ('weak gps', false, false, true, false),
+    ('approximate', false, false, true, true),
+  ]) {
+    worstCaseTestWidgets('Run top banners ($name)', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: SingleChildScrollView(
+              child: RunTopBanners(
+                offRouteMetres: 120,
+                permissionLost: permissionLost,
+                gpsLost: gpsLost,
+                weakGps: weakGps,
+                approximateLocation: approximate,
+                onTurnOnPreciseLocation: () {},
+                safetyNudgeVisible: true,
+                onSafetyNudgeShare: () {},
+                onSafetyNudgeDismiss: () {},
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+    });
+  }
+
+  // The real host: the band hangs from the top of the run screen's Stack and
+  // must stop above the stats overlay. At 2x in de / es / fr the nudge alone
+  // is taller than that space; the band scrolls, so its Share button is
+  // still reachable rather than drawn off the bottom of the screen.
+  worstCaseTestWidgets('Run top band over the stats overlay',
+      (tester, locale) async {
+    const clearance = 300.0;
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: Stack(
+          children: [
+            RunTopOverlay(
+              bottomClearance: clearance,
+              badges: const SizedBox(key: _badgeKey, height: 40),
+              banners: RunTopBanners(
+                offRouteMetres: 120,
+                permissionLost: false,
+                gpsLost: true,
+                weakGps: false,
+                safetyNudgeVisible: true,
+                onSafetyNudgeShare: () {},
+                onSafetyNudgeDismiss: () {},
+              ),
+            ),
+          ],
+        ),
+      ),
+    ));
+    await tester.pump();
+    final stack = tester.getRect(find.byType(Stack).first);
+    final band = tester.getRect(find.descendant(
+        of: find.byType(RunTopOverlay),
+        matching: find.byType(SingleChildScrollView)));
+    expect(band.bottom, lessThanOrEqualTo(stack.bottom - clearance + 0.5));
+    final share = find.text(l10nFor(locale).runSafetyNudgeShareAction);
+    await tester.ensureVisible(share);
+    await tester.pump();
+    expect(share.hitTestable(), findsOneWidget);
+    expect(tester.getRect(share).bottom,
+        lessThanOrEqualTo(stack.bottom - clearance + 0.5));
+  });
+
   testWidgets('off-route + GPS-lost render together without overlapping '
       '(issue #666 V10)', (tester) async {
     await _pump(tester, offRouteMetres: 120, gpsLost: true);
@@ -215,6 +293,7 @@ Future<void> _pumpOverlay(
           body: Stack(
             children: [
               RunTopOverlay(
+                bottomClearance: 0,
                 workoutBand: armed
                     ? WorkoutExecutionBand(
                         state: notifier,

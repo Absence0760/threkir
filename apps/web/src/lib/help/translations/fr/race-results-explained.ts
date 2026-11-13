@@ -81,7 +81,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la sortie que vous avez enregistrée. Ouvrez la sortie sur le web : si elle appartient à une course, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé.',
+					text: 'Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la course que vous avez enregistrée. Ouvrez-la sur le web : si elle appartient à une épreuve, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé.',
 				},
 				{
 					type: 'steps',

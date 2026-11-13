@@ -16,7 +16,7 @@
 	} from '#lib/core/data.ts';
 	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
 	import { geocodePlace } from '#lib/routes/geocoding.ts';
-	import { PRIVACY_ZONES_KEY, type PrivacyZone } from '#lib/routes/privacy.ts';
+	import { PRIVACY_ZONES_KEY, effectiveZoneRadius, type PrivacyZone } from '#lib/routes/privacy.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -170,7 +170,7 @@
 				[PRIVACY_ZONES_KEY]: next.map((z) => ({
 					lat: z.lat,
 					lng: z.lng,
-					radius_m: z.radius_m,
+					radius_m: effectiveZoneRadius(z),
 				})),
 			});
 			privacyZones = next;
@@ -344,7 +344,7 @@
 							<div class="zone-coords">
 								{zone.lat.toFixed(5)}, {zone.lng.toFixed(5)}
 							</div>
-							<div class="zone-radius">{m('prefs.zoneRadius', { radius: String(zone.radius_m) })}</div>
+							<div class="zone-radius">{m('prefs.zoneRadius', { radius: String(effectiveZoneRadius(zone)) })}</div>
 						</div>
 						<button class="btn btn-outline btn-sm" type="button" onclick={() => (removeZoneIdx = idx)}>
 							{m('prefs.removeZone')}

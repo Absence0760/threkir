@@ -59,8 +59,10 @@ extension ActivityTypeIcon on ActivityType {
   }
 }
 
-/// The centre nav button's caption when a tap starts recording [type]. Short
-/// enough for the centre slot; the caption shrinks to fit rather than clip.
+/// The caption of a button whose tap starts recording [type] (the Today
+/// hero's quick Start). Only a control that starts the run says Start; the
+/// centre nav button away from the Run page opens it and names the activity
+/// instead ([activityTypeLabel]).
 String startActivityCaption(AppLocalizations l10n, ActivityType type) {
   switch (type) {
     case ActivityType.run:
@@ -76,8 +78,8 @@ String startActivityCaption(AppLocalizations l10n, ActivityType type) {
   }
 }
 
-/// The sentence-form action that starts recording [type]: the centre button's
-/// spoken label and the empty Home's primary button.
+/// The sentence-form action that starts recording [type]: the empty Home's
+/// primary button.
 String startActivityAction(AppLocalizations l10n, ActivityType type) {
   switch (type) {
     case ActivityType.run:

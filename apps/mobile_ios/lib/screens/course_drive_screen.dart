@@ -1,7 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ChoiceChipOption,
+        ChoiceChipRow,
+        PageHeader,
+        PushedPage,
+        SectionHeader;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../audio_cues.dart';
@@ -294,17 +300,40 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l.courseDriveTitle)),
+    return PushedPage(
+      title: l.courseDriveTitle,
+      // The heading opens every state, so the bar never carries the title cut
+      // (TO-12), and it scrolls with the page: fixed above it, it took a
+      // third of a 320 x 640 phone at 2x text from the legs and notes.
       body: _loading
-          ? SectionedDetailSkeleton(label: l.courseDriveTitle, hasAction: true)
+          ? _withHeader(
+              l,
+              SectionedDetailSkeleton(
+                  label: l.courseDriveTitle, hasAction: true))
           : _loadFailed
-          ? ErrorState(message: l.courseDriveLoadFailed, onRetry: _load)
+          ? _withHeader(
+              l,
+              AppErrorState(message: l.courseDriveLoadFailed, onRetry: _load))
           : _run == _DriveRun.running
           ? _driving(context, l)
           : _handOff(context, l),
     );
   }
+
+  Widget _header(AppLocalizations l) =>
+      PageHeader(title: l.courseDriveTitle, padding: EdgeInsets.zero);
+
+  /// The heading above a whole-page state that fills the rest; the state
+  /// (a skeleton, a failed read) scrolls itself.
+  Widget _withHeader(AppLocalizations l, Widget child) => CustomScrollView(
+    slivers: [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        sliver: SliverToBoxAdapter(child: _header(l)),
+      ),
+      SliverFillRemaining(child: child),
+    ],
+  );
 
   Widget _driving(BuildContext context, AppLocalizations l) {
     final theme = Theme.of(context);
@@ -320,10 +349,17 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
         formatDistanceForPref(next.alongM - fix.alongM),
       );
     }
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          sliver: SliverToBoxAdapter(child: _header(l)),
+        ),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
@@ -362,7 +398,9 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
             ),
           ],
         ),
-      ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -378,6 +416,8 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              _header(l),
+              const SizedBox(height: 16),
               if (_run == _DriveRun.finished)
                 Text(
                   l.courseDriveFinished,
@@ -418,10 +458,7 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
                   ),
                 ),
               const SizedBox(height: 16),
-              Text(
-                l.courseDriveLegsHeading,
-                style: theme.textTheme.titleMedium,
-              ),
+              SectionHeader.title(label: l.courseDriveLegsHeading),
               for (final leg in legs)
                 ListTile(
                   key: Key('course-drive-leg-${leg.index}'),
@@ -440,10 +477,7 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
               const SizedBox(height: 12),
               ..._checkSection(theme, l, muted),
               const SizedBox(height: 16),
-              Text(
-                l.courseDriveNotesHeading,
-                style: theme.textTheme.titleMedium,
-              ),
+              SectionHeader.title(label: l.courseDriveNotesHeading),
               if (_notes.isEmpty)
                 Text(l.courseDriveNoNotes, style: muted)
               else

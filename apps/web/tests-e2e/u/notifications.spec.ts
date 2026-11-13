@@ -136,7 +136,6 @@ test.describe('/u/[me]?tab=notifications — run_completed render (persona #38)'
 	});
 
 	test.afterEach(async () => {
-		const admin = getAdminClient();
 		if (runId) {
 			try {
 				await deleteRun(runId);
@@ -145,11 +144,8 @@ test.describe('/u/[me]?tab=notifications — run_completed render (persona #38)'
 			}
 			runId = null;
 		}
-		await admin
-			.from('user_follows')
-			.delete()
-			.eq('follower_id', USER_B.id)
-			.eq('followee_id', USER_A.id);
+		// The follow stays: alex following runner is seed state that later
+		// specs (audience sharing's followers level, the feed) rely on.
 	});
 
 	test('follower sees the completed-run notification WITH the run distance', async ({

@@ -80,6 +80,7 @@ class MapAttribution extends StatelessWidget {
       alignment: AlignmentDirectional.bottomStart,
       child: Padding(
         padding: EdgeInsetsDirectional.only(start: 4, bottom: 4 + bottomInset),
+        // semantics-children: a group name, read once before the controls inside it
         child: Semantics(
           container: true,
           label: l10n.mapAttributionSemantics,

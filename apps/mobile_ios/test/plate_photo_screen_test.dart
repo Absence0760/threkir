@@ -12,6 +12,8 @@ import '../lib/local_food_store.dart';
 import '../lib/offline_sync_store.dart' show SyncState;
 import '../lib/plate_photo_client.dart';
 import '../lib/screens/plate_photo_screen.dart';
+import '../lib/settings_destination.dart';
+import 'worst_case_layout.dart';
 
 class _FakeStore extends LocalFoodStore {
   final saved = <Map<String, Object?>>[];
@@ -80,6 +82,32 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
 Future<Uint8List?> _picker(_) async => Uint8List.fromList([1, 2, 3]);
 
 void main() {
+  // Issue #1374: each estimated item is a ListCard holding its fields.
+  worstCaseTestWidgets('Plate photo items', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: PlatePhotoForm(
+          store: _FakeStore(),
+          picker: _picker,
+          estimator: (_, _) async => const PlateEstimate([
+            PlateItem(itemName: 'Rice', calories: 205),
+            PlateItem(itemName: 'Napkin', lowConfidence: true),
+          ], 'dinner'),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('plate-photo-gallery')));
+    await tester.tap(find.byKey(const ValueKey('plate-photo-gallery')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('plate-photo-estimate')));
+    await tester.tap(find.byKey(const ValueKey('plate-photo-estimate')));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Plate photo');
+  });
+
   testWidgets('estimate, remove one, edit one, save only what is kept', (tester) async {
     final store = _FakeStore();
     await _pump(
@@ -100,6 +128,10 @@ void main() {
     await tester.pump();
     expect(store.saved, isEmpty);
 
+    // The page's heading sits above the form, so the last row starts below
+    // the fold.
+    await tester.ensureVisible(find.byTooltip('Remove Napkin'));
+    await tester.pump();
     await tester.tap(find.byTooltip('Remove Napkin'));
     await tester.pump();
     await tester.enterText(find.widgetWithText(TextField, '205'), '250');
@@ -157,12 +189,15 @@ void main() {
     await tester.pump();
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.platePhotoErrorPro), findsOneWidget);
+    expect(find.text(l10n.proUpsellAction), findsOneWidget);
     expect(store.saved, isEmpty);
   });
 
-  testWidgets('a consent refusal points at Settings → Account, not the Coach', (tester) async {
+  testWidgets('a consent refusal opens the Account page, not the Coach', (tester) async {
     // The Coach only asks a runner with no record, so a stale acceptance sent
-    // there finds nothing to accept; Settings → Account accepts from both.
+    // there finds nothing to accept; the Account page accepts from both.
+    pendingSettingsDestination.value = null;
+    addTearDown(() => pendingSettingsDestination.value = null);
     await _pump(
       tester,
       PlatePhotoForm(
@@ -178,12 +213,37 @@ void main() {
     await tester.pump();
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.platePhotoErrorConsent), findsOneWidget);
-    expect(l10n.platePhotoErrorConsent, contains('Settings → Account'));
     expect(l10n.platePhotoErrorConsent, isNot(contains('Coach')));
+    await tester.tap(find.byKey(const ValueKey('plate-photo-consent-link')));
+    expect(pendingSettingsDestination.value, SettingsDestination.account);
+  });
+
+  // Issue #1374 NS-14: Android killing the app while the camera ran lost
+  // the photo; the picker keeps it, and the logger takes it back on open.
+  testWidgets('a photo the camera kept across a kill is picked back up',
+      (tester) async {
+    await _pump(
+      tester,
+      PlatePhotoForm(
+        store: _FakeStore(),
+        picker: (_) async => null,
+        lostReader: () async => Uint8List.fromList([9, 9, 9]),
+      ),
+    );
+    await tester.pump();
+    final button = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('plate-photo-estimate')));
+    expect(button.onPressed, isNotNull,
+        reason: 'the recovered photo is ready to estimate');
   });
 
   testWidgets('estimate stays disabled until a picture is chosen', (tester) async {
-    await _pump(tester, PlatePhotoForm(store: _FakeStore(), picker: (_) async => null));
+    await _pump(
+        tester,
+        PlatePhotoForm(
+            store: _FakeStore(),
+            picker: (_) async => null,
+            lostReader: () async => null));
     final button = tester.widget<FilledButton>(find.byKey(const ValueKey('plate-photo-estimate')));
     expect(button.onPressed, isNull);
   });

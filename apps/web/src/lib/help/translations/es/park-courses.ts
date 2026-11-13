@@ -8,11 +8,11 @@ export const translation: GuideTranslation = {
 		{
 			heading: "Qué es un recorrido de parque",
 			blocks: [
-				{ type: 'p', text: "Un recorrido de parque es un recorrido fijo de contrarreloj por un sendero de un parque estatal o nacional. No hay organizador ni día de carrera: córrelo cuando el parque esté abierto y una carrera que cubra todo el recorrido se cronometra. Los encontrarás en **Corre cuando quieras**, dentro de [[route:/races|Pruebas y recorridos]], con los más cercanos primero cuando indicas un lugar, o todos en [[route:/parks|Recorridos de parques]]." },
+				{ type: 'p', text: "Un recorrido de parque es un recorrido contrarreloj fijo por un sendero de un parque estatal o nacional. No hay organizador ni fecha de competición: córrelo cuando el parque esté abierto, y cualquier carrera que cubra todo el recorrido se cronometra en él. Los encontrarás en **Corre cuando quieras**, dentro de [[route:/races|Pruebas y recorridos]], con los más cercanos primero cuando indicas un lugar, o todos en [[route:/parks|Recorridos de parques]]. Elige **Recorridos** arriba en Pruebas y recorridos para ver todos los recorridos solos, sin el calendario de pruebas." },
 				{
 					type: 'list',
 					items: [
-						"Es una contrarreloj, no una carrera. El sendero sigue abierto para todos y nadie lo controla, así que respeta las normas del parque y cede el paso a los demás en el sendero.",
+						"Es una contrarreloj, no una prueba organizada. El sendero sigue abierto para todos y nadie lo controla, así que respeta las normas del parque y cede el paso a los demás en el sendero.",
 						"Cada página de recorrido muestra la distancia, el desnivel positivo, la forma, la superficie y la dificultad, de dónde viene la línea del recorrido y si está abierto.",
 						"Selecciona **Navegar este recorrido** para seguir el recorrido como una ruta. No se ofrece mientras el recorrido está cerrado.",
 						"La **Guía del recorrido** de la página del recorrido indica dónde aparcar y cada giro en orden, con el nombre del sendero, además de los puentes, vados, cambios de superficie y subidas. Está redactada con datos del mapa; hasta que alguien la recorra en el parque, lo indica encima de la lista. La misma guía va en el archivo GPX del recorrido.",
@@ -73,7 +73,7 @@ export const translation: GuideTranslation = {
 		title: "c0967d2bf224e3d2",
 		summary: "6a173631b44944bc",
 		"s0.heading": "216fc084817bfda9",
-		"s0.b0": "a96a5717c602367f",
+		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
@@ -239,11 +240,13 @@ void main() {
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: SettingsScreen(
-            preferences: prefs,
-            heartRate: BleHeartRate(),
-            treadmill: BleTreadmill(),
-            devBackendUrl: url,
+          home: Scaffold(
+            body: SettingsScreen(
+              preferences: prefs,
+              heartRate: BleHeartRate(),
+              treadmill: BleTreadmill(),
+              devBackendUrl: url,
+            ),
           ),
         ),
       );
@@ -262,7 +265,7 @@ void main() {
       await pumpSettings(tester, 'http://127.0.0.1:24321');
       await tester.dragUntilVisible(
         find.text('Sim watch link'),
-        find.byType(ListView),
+        find.byType(CustomScrollView),
         const Offset(0, -200),
       );
       expect(find.text('Sim watch link'), findsOneWidget);
@@ -271,7 +274,7 @@ void main() {
     testWidgets('sim watch tile hidden against a real backend',
         (tester) async {
       await pumpSettings(tester, 'https://abc.supabase.co');
-      await tester.drag(find.byType(ListView), const Offset(0, -2000));
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -2000));
       await tester.pump();
       expect(find.text('Sim watch link'), findsNothing);
     });
@@ -416,7 +419,7 @@ void main() {
       await pumpUntil(tester, () => tester.any(find.text('No screens composed')),
           describe: "the editor's stored-screens read to resolve to empty");
 
-      expect(find.text('Watch screens'), findsOneWidget);
+      expect(find.widgetWithText(PageHeader, 'Watch screens'), findsOneWidget);
       expect(find.text('No screens composed'), findsOneWidget);
     });
   });

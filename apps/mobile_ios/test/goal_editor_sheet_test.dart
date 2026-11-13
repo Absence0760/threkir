@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show TextLane;
+import 'package:ui_kit/ui_kit.dart' show PageHeading, TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/goals.dart';
 import '../lib/preferences.dart';
@@ -121,7 +121,7 @@ void main() {
         (tester) async {
       final prefs = await _makePrefs();
       await _pumpSheet(tester, prefs);
-      expect(find.text('New goal'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New goal'), findsOneWidget);
     });
 
     testWidgets(
@@ -134,7 +134,7 @@ void main() {
         distanceMetres: 40000,
       );
       await _pumpSheet(tester, prefs, existing: goal);
-      expect(find.text('Edit goal'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Edit goal'), findsOneWidget);
       // 40 km distance pre-populated in the distance field.
       expect(find.text('40.0'), findsOneWidget);
     });
@@ -219,12 +219,13 @@ void main() {
       expect(prefs.upsertCalls, 1);
     });
 
-    testWidgets('Cancel button dismisses the sheet without saving',
+    testWidgets('the close button dismisses the sheet without saving',
         (tester) async {
       final prefs = await _makePrefs();
       await _pumpSheet(tester, prefs);
-      expect(find.text('New goal'), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
+      expect(find.widgetWithText(PageHeading, 'New goal'), findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+      await tester.tap(find.byTooltip('Close'));
       // Pop animation for fullscreenDialog runs ~400-500ms; double-
       // pump well past so the AppBar title is gone.
       await tester.pump();
@@ -356,7 +357,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.textContaining("Couldn't save the goal"), findsOneWidget);
       // Sheet stays open (its AppBar title is still mounted).
-      expect(find.text('New goal'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New goal'), findsOneWidget);
       expect(prefs.goals, isEmpty);
       await tester.pump(const Duration(seconds: 4)); // drain banner timer
     });
@@ -413,11 +414,9 @@ void main() {
   });
 
   group('GoalEditorSheet — the §486 action row', () {
-    // Delete sits at one end and Cancel/Save at the other, so this is §486's
-    // OPPOSING-ENDS shape rather than a run of buttons: the grouped side goes
-    // in an `Expanded(Wrap)` and the lone anchor keeps the leading edge
-    // through the reflow. An `OverflowBar` would have stacked all three into
-    // one end-aligned column and put Delete next to Save.
+    // Delete is EditorPage's `secondary` and Save its one primary action, in
+    // the pinned bar: Delete at the leading end, Save at the trailing end, and
+    // the two stack (Save under Delete) when they no longer fit (TO-7).
     //
     // Both cases pin the DERIVATION, never a width: flutter_test's font is
     // fixed-advance and 2-6x wider than Roboto (§500), so "reflowed here"
@@ -458,35 +457,33 @@ void main() {
       await tester.tap(find.text('Open'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.ensureVisible(find.text('Cancel'));
-      await tester.pump();
     }
 
-    testWidgets('lays out as one run at 1.0x, Delete leading', (tester) async {
+    testWidgets('lays out as one run at 1.0x, Delete leading, no Cancel',
+        (tester) async {
       await pumpEditing(tester, scale: 1.0, width: 400);
       final del = tester.getRect(find.text('Delete'));
-      final cancel = tester.getRect(find.text('Cancel'));
       final save = tester.getRect(find.text('Save'));
-      expect(cancel.top, save.top, reason: 'Cancel/Save left their shared run');
-      expect(save.left, greaterThan(cancel.right),
-          reason: 'Save must follow Cancel, end-aligned');
-      expect(del.left, lessThan(cancel.left),
-          reason: 'Delete must hold the leading edge');
+      expect(find.text('Cancel'), findsNothing);
+      expect(del.center.dy, closeTo(save.center.dy, 1),
+          reason: 'Delete and Save left their shared run');
+      expect(save.left, greaterThan(del.right),
+          reason: 'Save must hold the trailing end');
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the grouped end reflows at 2.0x and Delete keeps its edge',
+    testWidgets('stacks at 2.0x on 320 dp with Save whole and on screen',
         (tester) async {
       await pumpEditing(tester, scale: 2.0, width: 320);
       final del = tester.getRect(find.text('Delete'));
-      final cancel = tester.getRect(find.text('Cancel'));
-      final save = tester.getRect(find.text('Save'));
-      expect(save.top, greaterThanOrEqualTo(cancel.bottom),
-          reason: 'the grouped end did not reflow onto a second run');
-      expect(del.left, lessThanOrEqualTo(cancel.left),
-          reason: 'Delete lost the leading edge to the reflow');
-      expect(del.top, lessThanOrEqualTo(cancel.bottom),
-          reason: 'Delete must stay on the first run');
+      final save =
+          tester.getRect(find.widgetWithText(FilledButton, 'Save'));
+      expect(save.right, lessThanOrEqualTo(320));
+      expect(save.left, greaterThanOrEqualTo(0));
+      expect(save.top, greaterThanOrEqualTo(del.bottom),
+          reason: 'the row did not stack, so one button is clipped');
+      expect(find.widgetWithText(FilledButton, 'Save').hitTestable(),
+          findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

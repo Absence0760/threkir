@@ -1,3 +1,5 @@
+import 'dart:ui' show CheckedState;
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
@@ -47,6 +49,9 @@ Future<Preferences> _makePrefs() async {
   return p;
 }
 
+Finder _runRows() => find.byWidgetPredicate((w) =>
+    w is CheckboxListTile && w.key != const Key('gearBackfillSelectAll'));
+
 void main() {
   group('gear_backfill_sheet', () {
     testWidgets('renders one row per candidate with everything selected',
@@ -87,8 +92,9 @@ void main() {
       expect(find.textContaining('Attach past runs to Vaporfly?'),
           findsOneWidget);
       expect(find.textContaining('3'), findsAtLeastNWidgets(1));
-      // Three rows.
-      expect(find.byType(CheckboxListTile), findsNWidgets(3));
+      // Three rows, plus the select-all control.
+      expect(_runRows(), findsNWidgets(3));
+      expect(find.byKey(const Key('gearBackfillSelectAll')), findsOneWidget);
       // Attach button shows the full selection by default.
       expect(find.widgetWithText(FilledButton, 'Attach 3'), findsOneWidget);
     });
@@ -163,7 +169,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
 
       // Deselect the middle row.
-      final boxes = find.byType(CheckboxListTile);
+      final boxes = _runRows();
       await tester.tap(boxes.at(1));
       await tester.pump();
       expect(find.widgetWithText(FilledButton, 'Attach 2'), findsOneWidget);
@@ -225,10 +231,13 @@ void main() {
 
       expect(find.widgetWithText(FilledButton, 'Attach 2'), findsOneWidget);
 
-      // The toggle is a bare text GestureDetector — it must expose merged
-      // button semantics so TalkBack announces it as actionable.
+      // #1374 A11Y-13: the checkbox had no name and its label was a second,
+      // separate button. It is one checkbox node named by its label now.
       final semantics = tester.getSemantics(find.text('Select none'));
-      expect(semantics.hasFlag(SemanticsFlag.isButton), isTrue);
+      final data = semantics.getSemanticsData();
+      expect(data.label, contains('Select none'));
+      expect(data.flagsCollection.isChecked, isNot(CheckedState.none));
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
     });
   });
 }

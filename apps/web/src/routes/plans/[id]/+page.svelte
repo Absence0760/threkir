@@ -1640,7 +1640,7 @@
 		let raceState: 'upcoming' | 'today' | 'past';
 		if (t < start) {
 			const d = Math.round((start.getTime() - t.getTime()) / dayMs);
-			relation = d === 1 ? m('planDetail.startsTomorrow') : m('planDetail.startsInDays', { d });
+			relation = m('planDetail.startsIn', { d });
 			raceState = 'upcoming';
 		} else if (t > end) {
 			relation = m('planDetail.raceDayPast');

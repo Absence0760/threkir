@@ -855,7 +855,7 @@ export const PAIRS = [
 			{ file: DATA_TS, decl: 'PR_BRACKET_LABELS', shape: 'keys' },
 			{ file: DATA_TS, decl: 'PR_BRACKET_ORDER', shape: 'keys' },
 			{
-				file: 'apps/web/src/routes/dashboard/+page.svelte',
+				file: 'apps/web/src/routes/dashboard/DashboardView.svelte',
 				decl: 'PR_KEY_DISTANCE_M',
 				shape: 'keys',
 			},

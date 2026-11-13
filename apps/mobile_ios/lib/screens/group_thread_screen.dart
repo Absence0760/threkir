@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../auth_error.dart';
 import '../coach_share.dart' show parseDmKind;
+import '../dm_drafts.dart';
 import '../dm_edit.dart';
 import '../dm_image.dart';
 import '../dm_image_encode.dart';
@@ -24,20 +25,17 @@ import '../group_messages.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../widgets/thread_title.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/dm_bubble.dart';
 import '../widgets/dm_photo.dart';
 import '../widgets/dm_reaction_chips.dart';
 import '../widgets/error_state.dart';
 import '../widgets/group_members_sheet.dart';
+import '../widgets/message_actions_sheet.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/top_banner.dart';
 import 'message_thread_screen.dart' show kMessageThreadPollInterval;
-
-/// What a runner was typing into each group, per account, so leaving a
-/// group and coming back keeps the draft and a draft never follows the
-/// reader into another group's audience (web keeps them per group too).
-final Map<String, String> _groupDrafts = {};
 
 /// A group conversation (issue #1365 slice 3, group_messages.md § 3,
 /// decisions § 2468). Mirrors web's `/messages/group/[id]`.
@@ -130,7 +128,8 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   int _reactionWrites = 0;
   int _reactionReadSeq = 0;
 
-  String get _draftKey => '${widget.api.userId}|${widget.conversationId}';
+  String get _draftKey =>
+      DmDrafts.groupKey(widget.api.userId, widget.conversationId);
 
   bool get _active => _membership == _Membership.active;
 
@@ -144,7 +143,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     _title = widget.title;
     _muted = widget.initialMuted ?? false;
     _left = widget.initialLeft;
-    _composer.text = _groupDrafts[_draftKey] ?? '';
+    _composer.text = DmDrafts.read(_draftKey);
     _composer.addListener(_onComposerChanged);
     WidgetsBinding.instance.addObserver(this);
     if (widget.api.userId == null) return;
@@ -167,12 +166,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   }
 
   void _onComposerChanged() {
-    final text = _composer.text;
-    if (text.isEmpty) {
-      _groupDrafts.remove(_draftKey);
-    } else {
-      _groupDrafts[_draftKey] = text;
-    }
+    DmDrafts.write(_draftKey, _composer.text);
     setState(() {});
   }
 
@@ -638,50 +632,15 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   }
 
   Future<void> _showOptions(DirectMessageRow m) async {
-    final l10n = AppLocalizations.of(context);
     final mine = m.senderId == widget.api.userId;
     final editable =
         _active && canEditDm(m, widget.api.userId, DateTime.now());
     final canReact = _canReact(m);
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      useSafeArea: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (canReact)
-              ListTile(
-                key: const ValueKey('message-action-react'),
-                leading: const Icon(Icons.add_reaction_outlined),
-                title: Text(l10n.messagesReact),
-                onTap: () => Navigator.pop(ctx, 'react'),
-              ),
-            if (editable)
-              ListTile(
-                key: const ValueKey('message-action-edit'),
-                leading: const Icon(Icons.edit_outlined),
-                title: Text(l10n.messagesEdit),
-                onTap: () => Navigator.pop(ctx, 'edit'),
-              ),
-            if (mine)
-              ListTile(
-                key: const ValueKey('message-action-unsend'),
-                leading: Icon(Icons.undo,
-                    color: AppSemanticColors.of(ctx).danger),
-                title: Text(l10n.messagesUnsend),
-                onTap: () => Navigator.pop(ctx, 'unsend'),
-              )
-            else
-              ListTile(
-                key: const ValueKey('message-action-report'),
-                leading: const Icon(Icons.flag_outlined),
-                title: Text(l10n.messagesReport),
-                onTap: () => Navigator.pop(ctx, 'report'),
-              ),
-          ],
-        ),
-      ),
+    final action = await showMessageActionsSheet(
+      context,
+      mine: mine,
+      editable: editable,
+      canReact: canReact,
     );
     if (!mounted || action == null) return;
     switch (action) {
@@ -814,40 +773,23 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
+        toolbarHeight: ThreadTitle.toolbarHeight(context,
+            subtitle: !_notAvailable && _active),
         title: _notAvailable
             ? null
-            : Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: Icon(Icons.group,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          title,
-                          key: const ValueKey('group-title'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (_active)
-                          Text(
-                            l10n.groupsMemberCount(_activeCount),
-                            key: const ValueKey('group-member-count'),
-                            style: Theme.of(context).textTheme.labelSmall,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+            : ThreadTitle(
+                avatar: CircleAvatar(
+                  radius: 16,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Icon(Icons.group,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+                title: title,
+                titleKey: const ValueKey('group-title'),
+                subtitle: _active ? l10n.groupsMemberCount(_activeCount) : null,
+                subtitleKey: const ValueKey('group-member-count'),
               ),
         actions: [
           if (_active) ...[
@@ -957,7 +899,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
       );
     }
     if (_loadError != null) {
-      return ErrorState(message: l10n.messagesThreadLoadError, onRetry: _load);
+      return AppErrorState(message: l10n.messagesThreadLoadError, onRetry: _load);
     }
     final tag = localeToTag(Localizations.localeOf(context));
     final me = widget.api.userId;
@@ -1130,6 +1072,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
                   const SizedBox(width: 4),
                 ],
                 Expanded(
+                  // semantics-children: names the composer; its hint is a different line, so nothing reads twice
                   child: Semantics(
                     label: l10n.groupsComposerLabel(_displayTitle(l10n)),
                     child: TextField(

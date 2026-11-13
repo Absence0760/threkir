@@ -89,6 +89,44 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('the countdown is not a live region; it is announced at the marks only', (tester) async {
+    final semantics = tester.ensureSemantics();
+    var clock = t0;
+    final controller = RaceController(SocialService());
+    final race = ActiveRace(
+      eventId: 'sch',
+      instanceStart: t0,
+      status: 'armed',
+      startedAt: null,
+      eventTitle: 'Saturday 5K',
+      startMode: SessionStartMode.scheduled,
+      scheduledStartAt: t0.add(const Duration(seconds: 65)),
+      windowClosesAt: t0.add(const Duration(hours: 1)),
+    );
+    await _pump(tester, race: race, controller: controller, now: () => clock);
+    await tester.pump(const Duration(milliseconds: 500));
+    final labels = <String>{};
+    for (var s = 1; s <= 64; s++) {
+      clock = t0.add(Duration(seconds: s));
+      await tester.pump(const Duration(milliseconds: 500));
+      final live = find.byWidgetPredicate(
+          (w) => w is Semantics && (w.properties.liveRegion ?? false));
+      expect(live, findsNothing, reason: 'a per-second clock in a live region talks over the recorder');
+      labels.add(tester.widget<Text>(find.byKey(const ValueKey('race-banner-body'))).data!);
+    }
+    expect(labels.length, greaterThan(60), reason: 'the visible text still ticks');
+    final spoken = tester.takeAnnouncements().map((a) => a.message).toList();
+    expect(spoken, [
+      'Saturday 5K starts in 1:05',
+      'Saturday 5K starts in 1:00',
+      'Saturday 5K starts in 0:30',
+      'Saturday 5K starts in 0:10',
+      'Saturday 5K starts in 0:05',
+    ]);
+    await tester.pumpWidget(const SizedBox());
+    semantics.dispose();
+  });
+
   testWidgets('a self-timed window offers the explicit attempt switch', (tester) async {
     final controller = RaceController(SocialService());
     final race = ActiveRace(

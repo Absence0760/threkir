@@ -29,8 +29,8 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Paramètres et cochez **Profil privé** sous **Être trouvé**.',
-						'Dans l\'app mobile, ouvrez **Préférences** dans l\'onglet **Vous** et activez **Profil privé** sous **Confidentialité et partage**.',
+						'Sur le web, ouvrez [[route:/settings/privacy|Confidentialité et partage]] dans les Réglages et cochez **Profil privé** sous **Être trouvé**.',
+						'Dans l\'app mobile, ouvrez **Confidentialité et partage** dans l\'onglet **Vous** et activez **Profil privé**.',
 					],
 				},
 				{
@@ -90,7 +90,7 @@ export const translation: GuideTranslation = {
 		's0.b1.i3': '3b0697b82ce30a11',
 		's1.heading': 'e679ca0953315c31',
 		's1.b0.i0': '8f81f66ef4f33b7f',
-		's1.b0.i1': 'a2257970d4c18f57',
+		's1.b0.i1': '9cd5a4284ba22a5f',
 		's1.b1': '0a095b7bf566bcfd',
 		's1.b2': 'ad288ebf5f9c8856',
 		's2.heading': '93f13a5ed9bf1a93',

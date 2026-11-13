@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -350,14 +351,11 @@
 </script>
 
 <div class="page">
-	<header class="page-head">
-		<p class="kicker">{m('shell.settings')}</p>
-		<h1>{m('settingsIntegrations.title')}</h1>
-		<HelpLink route="/settings/integrations" />
-		<p class="tagline">
-			{m('settingsIntegrations.tagline')}
-		</p>
-	</header>
+	<PageHeader kicker={m('shell.settings')} title={m('settingsIntegrations.title')} subtitle={m('settingsIntegrations.tagline')}>
+		{#snippet help()}
+			<HelpLink route="/settings/integrations" />
+		{/snippet}
+	</PageHeader>
 
 	{#if pageLoading}
 		<div class="skeleton-stack" aria-hidden="true">
@@ -679,24 +677,6 @@
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 64rem;
-	}
-
-	.page-head { margin-bottom: var(--space-xl); }
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-2xs);
-	}
-	h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 var(--space-xs); }
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
 	}
 
 	.provider-section { margin-bottom: var(--space-xl); }

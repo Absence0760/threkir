@@ -220,7 +220,11 @@ void main() {
       expect(find.text('Share link'), findsNothing);
       expect(find.byIcon(Icons.edit_outlined), findsNothing);
       expect(find.byIcon(Icons.delete_outline), findsNothing);
-      expect(find.byTooltip('Report run'), findsOneWidget);
+      // Report sits in the overflow, as every Report does.
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Report run'), findsOneWidget);
     });
 
     testWidgets('a public run is not marked shared', (tester) async {

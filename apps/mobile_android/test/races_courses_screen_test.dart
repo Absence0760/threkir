@@ -17,6 +17,7 @@ import '../lib/training.dart' show toIsoDate;
 import '../lib/widgets/run_any_time_section.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// Races & courses (issue #1352): the race calendar and the park courses
 /// that can be run any day, as two sections that load and fail on their own.
@@ -116,11 +117,13 @@ class _ParksApi extends ApiClient {
     this.viewer = 'viewer-1',
     this.failCourses = false,
     this.failRecords = false,
+    this.extraCourses = 0,
   });
 
   final String? viewer;
   final bool failCourses;
   final bool failRecords;
+  final int extraCourses;
   int recordCalls = 0;
 
   @override
@@ -140,6 +143,8 @@ class _ParksApi extends ApiClient {
       _course('near', 'p2', 'Near Loop', distanceM: 10000, laps: 2, lat: 37.51),
       // A course whose park the reader cannot see is not listed.
       _course('hidden', 'p-gone', 'Hidden Loop', lat: 37.5),
+      for (var i = 0; i < extraCourses; i++)
+        _course('extra-$i', 'p2', 'Extra Loop $i', lat: 37.6 + i / 100),
     ];
   }
 
@@ -202,6 +207,26 @@ void main() {
         () => find.text('Far Loop').evaluate().isNotEmpty,
         describe: 'the park courses to list',
       );
+
+  worstCaseTestWidgets('the race and course cards', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RacesScreen(
+        service: _Races(results: [_race('r1', 'Richmond 10K')]),
+        api: _ParksApi(),
+      ),
+    ));
+    // Far Loop is below a 320 x 640 viewport, so wait for the race instead;
+    // the walk builds the course cards as it scrolls past them.
+    await pumpUntil(
+      tester,
+      () => find.text('Richmond 10K').evaluate().isNotEmpty,
+      describe: 'the race to list',
+    );
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Races & courses');
+    expect(find.text('Far Loop'), findsOneWidget);
+  });
 
   testWidgets('shows Upcoming races and Run any time, each with its content',
       (tester) async {
@@ -302,6 +327,132 @@ void main() {
         findsNothing);
   });
 
+  testWidgets(
+      'the Show switch hides either section, and Courses lists every course',
+      (tester) async {
+    tallView(tester);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(results: [_race('r1', 'Richmond 10K')]),
+      api: _ParksApi(extraCourses: 8),
+    )));
+    await coursesListed(tester);
+    final cards = anyTime(find.byWidgetPredicate((w) =>
+        w.key is ValueKey<String> &&
+        (w.key! as ValueKey<String>).value.startsWith('races-any-time-course-')));
+    expect(find.text('Upcoming races'), findsOneWidget);
+    expect(cards, findsNWidgets(kRunAnyTimeLimit));
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Courses'));
+    await tester.pump();
+    expect(find.text('Upcoming races'), findsNothing);
+    expect(find.text('Richmond 10K'), findsNothing);
+    expect(find.byKey(const Key('filter-bar-filters')), findsNothing);
+    // The section is kept, not rebuilt, so every course is there at once.
+    expect(cards, findsNWidgets(10));
+    expect(find.byKey(const Key('races-any-time-all')), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Races'));
+    await tester.pump();
+    expect(find.byKey(const Key('races-any-time')), findsNothing);
+    expect(find.text('Upcoming races'), findsOneWidget);
+    expect(find.text('Richmond 10K'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'All'));
+    await tester.pump();
+    expect(find.text('Upcoming races'), findsOneWidget);
+    await coursesListed(tester);
+    expect(cards, findsNWidgets(kRunAnyTimeLimit));
+  });
+
+  testWidgets(
+      'Courses leads with the parks, nearest course first, each opening its '
+      'park; All has no park row', (tester) async {
+    tallView(tester);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(),
+      api: _ParksApi(),
+    )));
+    await coursesListed(tester);
+    expect(find.byKey(const Key('races-any-time-parks')), findsNothing);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Courses'));
+    await tester.pump();
+    final row = find.byKey(const Key('races-any-time-parks'));
+    expect(row, findsOneWidget);
+    expect(find.text('Parks'), findsOneWidget);
+    final cards = find.descendant(of: row, matching: find.byType(ParkCard));
+    expect(cards, findsNWidgets(2));
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('races-any-time-park-p2')),
+            matching: find.text('Swift Creek')),
+        findsOneWidget);
+    // The stable order, without a fix: Pocahontas first.
+    expect(tester.getTopLeft(find.byKey(const ValueKey('races-any-time-park-p1'))).dx,
+        lessThan(tester.getTopLeft(find.byKey(const ValueKey('races-any-time-park-p2'))).dx));
+    await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey('races-any-time-park-p2')),
+        matching: find.text('Swift Creek')));
+    await pumpUntil(
+      tester,
+      () => find.byType(ParkScreen).evaluate().isNotEmpty,
+      describe: 'the park screen to open',
+    );
+    expect(
+        tester.widget<ParkScreen>(find.byType(ParkScreen)).listing.park.id, 'p2');
+  });
+
+  testWidgets('a course card names its park as a link of its own',
+      (tester) async {
+    tallView(tester);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(),
+      api: _ParksApi(),
+    )));
+    await coursesListed(tester);
+    final link = find.byKey(const ValueKey('races-any-time-park-link-near'));
+    expect(
+      tester.getSemantics(link),
+      matchesSemantics(
+        label: 'Swift Creek, Virginia: park page',
+        isLink: true,
+        hasTapAction: true,
+      ),
+    );
+    await tester.tap(link);
+    await pumpUntil(
+      tester,
+      () => find.byType(ParkScreen).evaluate().isNotEmpty,
+      describe: 'the park screen to open',
+    );
+    expect(find.byType(ParkCourseScreen), findsNothing);
+  });
+
+  testWidgets('a host notifier opens the tab on the view it names',
+      (tester) async {
+    tallView(tester);
+    final show = ValueNotifier(RacesShow.all);
+    addTearDown(show.dispose);
+    await tester.pumpWidget(_app(RacesScreen(
+      service: _Races(results: [_race('r1', 'Richmond 10K')]),
+      api: _ParksApi(),
+      show: show,
+    )));
+    await coursesListed(tester);
+    show.value = RacesShow.courses;
+    await tester.pump();
+    expect(find.text('Upcoming races'), findsNothing);
+    expect(
+      tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Courses'))
+          .selected,
+      isTrue,
+    );
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Races'));
+    await tester.pump();
+    expect(show.value, RacesShow.races);
+  });
+
   testWidgets('without a client the races stand alone', (tester) async {
     await tester.pumpWidget(_app(RacesScreen(
       service: _Races(results: [_race('r1', 'Richmond 10K')]),
@@ -312,6 +463,8 @@ void main() {
       describe: 'the race to list',
     );
     expect(find.byKey(const Key('races-any-time')), findsNothing);
+    expect(find.widgetWithText(ChoiceChip, 'Courses'), findsNothing,
+        reason: 'no client, so no courses view to switch to');
   });
 
   group('RunAnyTimeSection', () {

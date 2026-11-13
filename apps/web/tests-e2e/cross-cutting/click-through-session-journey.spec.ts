@@ -45,9 +45,7 @@ test.describe('click-through session journey', () => {
 		await test.step('sign in through the form and land on the dashboard', async () => {
 			await signIn(page, USER_A);
 			await expect(page).toHaveURL(/\/dashboard$/, { timeout: 10_000 });
-			await expect(
-				page.getByRole('heading', { level: 2, name: 'Distance', exact: true })
-			).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('dash-today-hero')).toBeVisible({ timeout: 10_000 });
 		});
 
 		await test.step('Runs in the sidebar → open a run → All runs', async () => {

@@ -4,6 +4,8 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, untrack } from 'svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
@@ -873,6 +875,35 @@
 	/// therefore never replaced without being named first.
 	let overlapping = $state<OverlapPlan[]>([]);
 
+	// Unsaved-changes guard (issue #1374 NS-6, twin of mobile's New plan
+	// guard, decisions § 2500): every field the runner sets, plus a count of
+	// edits made in the preview outline. The outline itself is regenerated
+	// from the fields, so a snapshot of it would read the first generation
+	// as an edit. The extra-recovery switch saves itself and is left out.
+	let previewEdits = $state(0);
+	const dirty = trackDirty(() => ({
+		name,
+		goalEvent,
+		ultraChoice,
+		ultraDistanceM,
+		startDate,
+		daysPerWeek,
+		targetHours,
+		targetMin,
+		targetSec,
+		recent5kMin,
+		recent5kSec,
+		recent5kConfirmed,
+		beginnerWalkRun,
+		startingPoint,
+		weekOverride,
+		easeBack,
+		aiRequest,
+		importText,
+		importedMode,
+		previewEdits,
+	}));
+
 	async function submit(e: Event) {
 		e.preventDefault();
 		if (!name.trim() || !plan || busy) return;
@@ -932,7 +963,13 @@
 			);
 			if (outcome.kind === 'overlap') overlapping = outcome.overlapping;
 			else if (outcome.kind === 'trimBlocked') error = trimBlockedMessage(outcome.overlapping, startDate);
-			else oncreated?.(outcome.value);
+			else {
+				// Created: leaving now loses nothing, and the host navigates away,
+				// which the busy half of the guard would otherwise refuse.
+				dirty.rebaseline();
+				busy = false;
+				oncreated?.(outcome.value);
+			}
 		} catch (e: unknown) {
 			error = describeError(e);
 		} finally {
@@ -944,6 +981,8 @@
 		overlapping = [];
 	}
 </script>
+
+<UnsavedChangesGuard isDirty={dirty.isDirty} isBusy={() => busy} />
 
 <form onsubmit={submit} class="plan-editor">
 	<!-- Spans both columns: a pasted plan is a wide Markdown table, and the
@@ -1270,7 +1309,11 @@
 			</div>
 		</section>
 
-		<aside class="preview">
+		<aside
+			class="preview"
+			oninput={() => previewEdits++}
+			onchange={() => previewEdits++}
+		>
 			<h2>{t('planEditor.previewAndEdit')}</h2>
 			{#if plan}
 				{#if !isWalkRunPlan}
@@ -1342,7 +1385,7 @@
 								<span class="week-phase">{planPhaseLabel(w.phase)}</span>
 								<span class="week-km">{fmtKm(w.target_volume_m, 0)}</span>
 								<span class="week-workouts">
-									{t(sessionCount === 1 ? 'planEditor.nSessionsOne' : 'planEditor.nSessionsMany', { n: sessionCount })}
+									{t('planEditor.nSessions', { n: sessionCount })}
 								</span>
 								<span class="caret material-symbols" aria-hidden="true">
 									{expandedWeek === weekIdx ? 'expand_less' : 'expand_more'}

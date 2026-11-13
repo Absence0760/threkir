@@ -1,11 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard, AppInsets;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show DetailHero, DetailMeta, DetailPage, HeroCta, SectionHeader;
 
 import '../course_drive.dart' show DriveMarkerInput, DrivePoint;
 import '../course_drive_flag.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart' show activeLocaleTag;
 import '../preferences.dart'
     show
         activeDistanceUnit,
@@ -748,8 +752,19 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final race = _race;
-    return Scaffold(
-      appBar: AppBar(title: Text(race?.name ?? l.racesTitle)),
+    return DetailPage(
+      title: race?.name ?? l.racesTitle,
+      pinned: [
+        if (race != null)
+          Builder(
+            builder: (btnContext) => IconButton(
+              key: const Key('race-detail-share'),
+              icon: const Icon(Icons.share_outlined),
+              tooltip: l.racesDetailShare,
+              onPressed: () => _share(btnContext, race),
+            ),
+          ),
+      ],
       body: _loading
           ? SectionedDetailSkeleton(
               label: l.commonLoading,
@@ -758,7 +773,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
               rows: 3,
             )
           : _loadFailed
-              ? ErrorState(message: l.racesDetailLoadFailed, onRetry: _load)
+              ? AppErrorState(message: l.racesDetailLoadFailed, onRetry: _load)
               : race == null
                   ? _message(l.racesDetailNotFound)
                   : _body(context, l, race),
@@ -806,9 +821,13 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
                 ? null
                 : RacePlanCourse(
                     ascentM: course.ascentM,
-                    surface: course.surface,
+                    surface: (course.surface ?? '').isEmpty
+                        ? null
+                        : routeSurfaceLabel(l, course.surface!),
                   ),
             unit: activeDistanceUnit,
+            l10n: l,
+            localeTag: activeLocaleTag,
           )
         : null;
     final courseParts = <String>[
@@ -836,91 +855,100 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
       organiserIsOfficial: race.organiserIsOfficial,
       courseSource: course?.source,
     );
-    final meta = <String>[
-      race.raceDate,
-      if (race.distanceM != null) formatDistanceForPref(race.distanceM!.toDouble()),
-      if (race.locationLabel != null) race.locationLabel!,
+    // The page's one primary action: queue a plan behind the current one,
+    // else build one, else (race day on) import the result.
+    final HeroCta? primary = chain != null
+        ? HeroCta(
+            key: const Key('race-detail-add-to-season'),
+            label: l.racesAddToSeason,
+            onPressed: () => _trainFor(race, notBeforeIso: chain.notBeforeIso),
+          )
+        : canTrainFor
+            ? HeroCta(
+                key: const Key('race-detail-train'),
+                label: l.racesBuildPlan,
+                onPressed: () => _trainFor(race),
+              )
+            : canImport
+                ? HeroCta(
+                    label: l.racesImportResult,
+                    onPressed: () => _import(race),
+                  )
+                : null;
+    final secondary = <Widget>[
+      if (canTrainFor && chain != null)
+        OutlinedButton(
+          key: const Key('race-detail-train'),
+          onPressed: () => _trainFor(race),
+          child: Text(l.racesBuildPlan),
+        ),
+      if (describe != null)
+        OutlinedButton(
+          key: const Key('race-detail-tailor-ai'),
+          onPressed: () => _trainFor(race,
+              notBeforeIso: chain?.notBeforeIso, describe: describe),
+          child: Text(l.racesTailorWithAi),
+        ),
+      if (race.entryUrl != null)
+        OutlinedButton(
+          onPressed: () => _launch(race.entryUrl!),
+          child: Text(l.racesRegister),
+        ),
+      if (race.resultsUrl != null)
+        OutlinedButton(
+          onPressed: () => _launch(race.resultsUrl!),
+          child: Text(l.racesViewResults),
+        ),
+      if (canImport && (chain != null || canTrainFor))
+        OutlinedButton(
+          onPressed: () => _import(race),
+          child: Text(l.racesImportResult),
+        ),
     ];
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       children: [
-        Text(race.name, style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 4),
-        Text(meta.join(' · '), style: theme.textTheme.bodyMedium),
-        const SizedBox(height: 4),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: KeyedSubtree(
-            key: const Key('race-detail-provenance'),
-            child: ProvenanceBadge(provenance: listingProvenance),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          raceSourceLabel(l, race.provider, race.organiserClubName),
-          key: const Key('race-detail-source'),
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
-        if (!race.isVerified)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(l.racesUnverified, style: theme.textTheme.labelSmall),
-          ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (chain != null)
-              FilledButton(
-                key: const Key('race-detail-add-to-season'),
-                onPressed: () =>
-                    _trainFor(race, notBeforeIso: chain.notBeforeIso),
-                child: Text(l.racesAddToSeason),
+        DetailHero(
+          title: race.name,
+          padding: const EdgeInsets.only(top: 16),
+          meta: [
+            DetailMeta(icon: Icons.event, text: race.raceDate),
+            if (race.distanceM != null)
+              DetailMeta(
+                icon: Icons.straighten,
+                text: formatDistanceForPref(race.distanceM!.toDouble()),
               ),
-            if (canTrainFor && chain != null)
-              OutlinedButton(
-                key: const Key('race-detail-train'),
-                onPressed: () => _trainFor(race),
-                child: Text(l.racesBuildPlan),
-              )
-            else if (canTrainFor)
-              FilledButton(
-                key: const Key('race-detail-train'),
-                onPressed: () => _trainFor(race),
-                child: Text(l.racesBuildPlan),
-              ),
-            if (describe != null)
-              OutlinedButton(
-                key: const Key('race-detail-tailor-ai'),
-                onPressed: () => _trainFor(race,
-                    notBeforeIso: chain?.notBeforeIso, describe: describe),
-                child: Text(l.racesTailorWithAi),
-              ),
-            if (race.entryUrl != null)
-              OutlinedButton(
-                onPressed: () => _launch(race.entryUrl!),
-                child: Text(l.racesRegister),
-              ),
-            if (race.resultsUrl != null)
-              OutlinedButton(
-                onPressed: () => _launch(race.resultsUrl!),
-                child: Text(l.racesViewResults),
-              ),
-            Builder(
-              builder: (btnContext) => OutlinedButton(
-                onPressed: () => _share(btnContext, race),
-                child: Text(l.racesDetailShare),
-              ),
+            if (race.locationLabel != null)
+              DetailMeta(
+                  icon: Icons.place, text: race.locationLabel!),
+          ],
+          badges: [
+            KeyedSubtree(
+              key: const Key('race-detail-provenance'),
+              child: ProvenanceBadge(provenance: listingProvenance),
             ),
-            if (canImport)
-              FilledButton(
-                onPressed: () => _import(race),
-                child: Text(l.racesImportResult),
+          ],
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              raceSourceLabel(l, race.provider, race.organiserClubName),
+              key: const Key('race-detail-source'),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            if (!race.isVerified)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child:
+                    Text(l.racesUnverified, style: theme.textTheme.labelSmall),
               ),
           ],
+          cta: primary,
         ),
+        if (secondary.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: secondary),
+        ],
         if (chain != null)
           Padding(
             key: const Key('race-detail-season-hint'),
@@ -945,7 +973,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
             key: const Key('race-detail-course'),
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l.racesCourseHeading, style: theme.textTheme.titleMedium),
+              SectionHeader.title(label: l.racesCourseHeading),
               const SizedBox(height: 4),
               Text(courseParts.join(' · '), style: theme.textTheme.bodyMedium),
               if (courseProvenance != null) ...[
@@ -997,7 +1025,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
           clubId: race.organiserIsOfficial ? race.organiserClubId : null,
         ),
         const SizedBox(height: 24),
-        Text(l.racesDetailYourRuns, style: theme.textTheme.titleMedium),
+        SectionHeader.title(label: l.racesDetailYourRuns),
         const SizedBox(height: 8),
         if (_runsFailed)
           Row(
@@ -1010,15 +1038,14 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
           Text(l.racesDetailNoRuns, style: theme.textTheme.bodySmall)
         else
           for (final r in _runs)
-            Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                title: Text(r.startedAt.length >= 10 ? r.startedAt.substring(0, 10) : r.startedAt),
-                subtitle: Text(
-                  '${formatDistanceForPref(r.distanceM)} · '
+            ListCard.row(
+              margin: const EdgeInsets.only(bottom: AppInsets.itemGap),
+              dense: true,
+              title: r.startedAt.length >= 10
+                  ? r.startedAt.substring(0, 10)
+                  : r.startedAt,
+              subtitle: '${formatDistanceForPref(r.distanceM)} · '
                   '${r.chipTime != null ? '${l.racesChipTime} ${r.chipTime}' : formatEffortTime(r.durationS.toDouble())}',
-                ),
-              ),
             ),
       ],
     );

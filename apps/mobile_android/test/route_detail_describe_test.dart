@@ -95,9 +95,11 @@ void main() {
       expect(find.textContaining('trail'), findsOneWidget);
       // 90 m over 5 km = 18 m/km → "gently rolling".
       expect(find.textContaining('gently rolling'), findsOneWidget);
-      // Free user sees the upsell, never the AI attribution.
-      expect(find.text('AI descriptions are a Pro feature. Upgrade to enhance.'),
+      // Free user sees the upsell, never the AI attribution, and the upsell
+      // links to Pro rather than telling them to go and find it.
+      expect(find.text('AI descriptions are a Pro feature.'),
           findsOneWidget);
+      expect(find.text('See Pro'), findsOneWidget);
       expect(find.text("Written by AI from this route's stats"), findsNothing);
       expect(aiCalled, isFalse);
     });
@@ -121,7 +123,7 @@ void main() {
       );
       expect(find.text("Written by AI from this route's stats"), findsOneWidget);
       // The upgrade hint is gone for a Pro user whose call returned upgrade:false.
-      expect(find.text('AI descriptions are a Pro feature. Upgrade to enhance.'),
+      expect(find.text('AI descriptions are a Pro feature.'),
           findsNothing);
     });
 
@@ -239,7 +241,7 @@ void main() {
       );
       expect(find.text("Couldn't generate a description. Please try again."),
           findsNothing);
-      expect(find.text('AI descriptions are a Pro feature. Upgrade to enhance.'),
+      expect(find.text('AI descriptions are a Pro feature.'),
           findsNothing);
     });
   });

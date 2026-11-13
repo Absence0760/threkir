@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../food_search.dart' show FoodMacros;
 import '../l10n/gen/app_localizations.dart';
@@ -44,47 +45,42 @@ class NutritionRingsCard extends StatelessWidget {
       _Ring(l10n.nutritionCarbs, consumed.carbsG, targets?.carbsG, budget?.carbs),
       _Ring(l10n.nutritionFat, consumed.fatG, targets?.fatG, budget?.fat),
     ];
-    return Card(
+    return ListCard(
       margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      onTap: onTap,
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(Icons.restaurant,
-                      size: 18, color: theme.colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(l10n.nutritionTitle,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          letterSpacing: 0.6,
-                        )),
-                  ),
-                  Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-                ],
+              Icon(Icons.restaurant,
+                  size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(l10n.nutritionTitle,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      letterSpacing: 0.6,
+                    )),
               ),
-              const SizedBox(height: 12),
-              // A Wrap, not a Row: the rings are bounded but the labels
-              // under them are not, and four macro names in Portuguese
-              // want 184 px more than a 320 dp card at 2x OS text scale.
-              // One run of four is byte-identical to the Row it replaces —
-              // spaceAround distributes a run the same way — and the
-              // reflow only happens once the names genuinely do not fit,
-              // which beats truncating "Carbohidratos" to "Carboh…".
-              Wrap(
-                alignment: WrapAlignment.spaceAround,
-                runSpacing: 12,
-                children: [for (final r in rings) _ringWidget(theme, r)],
-              ),
+              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          // A Wrap, not a Row: the rings are bounded but the labels
+          // under them are not, and four macro names in Portuguese
+          // want 184 px more than a 320 dp card at 2x OS text scale.
+          // One run of four is byte-identical to the Row it replaces —
+          // spaceAround distributes a run the same way — and the
+          // reflow only happens once the names genuinely do not fit,
+          // which beats truncating "Carbohidratos" to "Carboh…".
+          Wrap(
+            alignment: WrapAlignment.spaceAround,
+            runSpacing: 12,
+            children: [for (final r in rings) _ringWidget(theme, r)],
+          ),
+        ],
       ),
     );
   }

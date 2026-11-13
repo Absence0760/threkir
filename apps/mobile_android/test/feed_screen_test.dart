@@ -4,13 +4,15 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show AppInsets, ListSkeleton, PageHeading;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/adaptive_width.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/engagement_cache.dart';
 import '../lib/screens/feed_screen.dart';
 import '../lib/widgets/error_state.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 
@@ -31,6 +33,7 @@ RunFeedEntry _runEntry({
   int durationS = 1500,
   String authorId = 'u-1',
   String? authorName = 'Alex Runner',
+  String? trackUrl,
 }) =>
     RunFeedEntry(
       run: RunRow(safetyAudience: false, 
@@ -44,6 +47,7 @@ RunFeedEntry _runEntry({
         isDnf: false,
         followersOnly: false,
         isPublic: true,
+        trackUrl: trackUrl,
       ),
       author: _author(id: authorId, name: authorName),
     );
@@ -115,10 +119,9 @@ class _FakeApi extends ApiClient {
 
   int followingCalls = 0;
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
-      {int limit = 100, List<Object?>? after}) async {
+  Future<List<UserProfileRow>> fetchAllFollowing(String userId) async {
     followingCalls++;
-    return KeysetPage(followees, null);
+    return followees;
   }
 
   @override
@@ -158,14 +161,29 @@ class _ThrowingApi extends _FakeApi {
       throw Exception('feed down');
 }
 
-/// Fake whose author-dropdown fetch (fetchFollowing) throws — the feed
+/// Fake whose badge-awards read fails on the first call and succeeds after,
+/// so the strip's error and its retry are both reachable.
+class _BadgeAwardsFailOnceApi extends _FakeApi {
+  _BadgeAwardsFailOnceApi({super.entries, super.badgeAwards});
+  int badgeCalls = 0;
+  @override
+  Future<List<BadgeAwardEntry>> fetchFollowingBadgeAwards({
+    int limit = 20,
+    ({DateTime earnedAt, String id})? cursor,
+  }) async {
+    badgeCalls++;
+    if (badgeCalls == 1) throw Exception('badges down');
+    return badgeAwards;
+  }
+}
+
+/// Fake whose author-dropdown fetch (fetchAllFollowing) throws — the feed
 /// entries must still render (issue #506: a dropdown failure can't blank
 /// the whole feed).
 class _FollowingFailApi extends _FakeApi {
   _FollowingFailApi({super.entries, super.engagement});
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 100, List<Object?>? after}) async =>
+  Future<List<UserProfileRow>> fetchAllFollowing(String userId) async =>
       throw Exception('followees down');
 }
 
@@ -213,12 +231,14 @@ Future<void> _settle(WidgetTester tester) async {
 
 void main() {
   setUpAll(_ensureSupabase);
+  // The cache is app-wide; each test starts from what its own feed loads.
+  setUp(EngagementCache.instance.clear);
 
   group('FeedScreen — initial render', () {
     testWidgets('renders the Feed app-bar title', (tester) async {
       await _pump(tester, _FakeApi());
       await _settle(tester);
-      expect(find.text('Feed'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'Feed'), findsOneWidget);
     });
 
     testWidgets('first frame shows the list skeleton', (tester) async {
@@ -245,6 +265,27 @@ void main() {
       expect(find.text('Alex Runner'), findsWidgets);
       // 5 km distance stat in the default (km) unit.
       expect(find.textContaining('5.00'), findsOneWidget);
+    });
+
+    // #1374 A11Y-12: the track thumbnail was a second, unnamed button that
+    // opens the same run as the stats row under it.
+    testWidgets('the track thumbnail is not a second unnamed button', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        _FakeApi(
+          entries: [_runEntry(trackUrl: 'u-1/run-1.json.gz')],
+          followees: [_profileRow('u-1', 'Alex Runner')],
+        ),
+      );
+      await _settle(tester);
+      final thumb = find.byKey(const Key('feedCardTrackThumb'));
+      expect(thumb, findsOneWidget);
+      expect(find.descendant(of: thumb, matching: find.byType(InkWell)), findsOneWidget,
+          reason: 'the thumbnail still opens the run by touch');
+      expect(tester.widget<ExcludeSemantics>(thumb).excluding, isTrue);
+      tester.takeException();
+      handle.dispose();
     });
 
     testWidgets('the kudos count from the engagement map renders',
@@ -286,7 +327,7 @@ void main() {
       expect(find.bySemanticsLabel('Remove kudos'), findsNothing);
     });
 
-    testWidgets('signed-out viewer still loads the feed but skips fetchFollowing',
+    testWidgets('signed-out viewer still loads the feed but skips fetchAllFollowing',
         (tester) async {
       final api = _FakeApi(
         entries: [_runEntry(distanceM: 5000)],
@@ -398,6 +439,29 @@ void main() {
       expect(api.giveCalls, 1);
     });
 
+    // Issue #1374 NS-9: kudos and a comment given on the run's own page did
+    // not reach its feed card, and the card's kudos then re-gave one.
+    testWidgets('a change made on the run\'s page shows on its card',
+        (tester) async {
+      final api = _FakeApi(
+        entries: [_runEntry()],
+        followees: [_profileRow('u-1', 'Alex Runner')],
+        engagement: {
+          'run-1': (kudosCount: 4, viewerHasKudos: false, commentCount: 0),
+        },
+      );
+      await _pump(tester, api);
+      await _settle(tester);
+      expect(find.text('4'), findsOneWidget);
+
+      // What RunSocialSection publishes after a kudos and a comment.
+      EngagementCache.instance.put('me', 'run-1',
+          const EngagementSummary(kudosCount: 5, viewerHasKudos: true, commentCount: 1));
+      await tester.pump();
+      expect(find.text('5'), findsOneWidget);
+      expect(find.bySemanticsLabel('Remove kudos'), findsOneWidget);
+    });
+
     testWidgets('a failed kudos write rolls back the count + surfaces a banner',
         (tester) async {
       final api = _KudosFailApi(
@@ -443,6 +507,36 @@ void main() {
       );
     });
 
+    testWidgets(
+        'a failed read says so with a retry, never "no badges" (§ 2501)',
+        (tester) async {
+      final api = _BadgeAwardsFailOnceApi(
+        entries: [_runEntry()],
+        badgeAwards: [_badgeAward(authorName: 'Alex Runner')],
+      );
+      await _pump(tester, api);
+      await _settle(tester);
+      expect(
+        find.text("Couldn't load the latest badges from people you follow."),
+        findsOneWidget,
+      );
+      expect(find.byType(ActionChip), findsNothing);
+      // The core feed is untouched by the adornment's failure.
+      expect(find.byType(Card), findsWidgets);
+
+      await tester.tap(find.text('Retry'));
+      await _settle(tester);
+      expect(api.badgeCalls, 2);
+      expect(
+        find.text("Couldn't load the latest badges from people you follow."),
+        findsNothing,
+      );
+      expect(
+        find.textContaining('Alex Runner earned the Century streak badge'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('no strip when there are no badge awards', (tester) async {
       final api = _FakeApi(entries: [_runEntry()], badgeAwards: const []);
       await _pump(tester, api);
@@ -471,6 +565,17 @@ void main() {
       // label was cropped inside the rail.
       expect(tester.getSize(chip).height, greaterThan(small));
     });
+  });
+
+  worstCaseTestWidgets('the feed badge strip failure line', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: FeedScreen(
+        api: _BadgeAwardsFailOnceApi(entries: [_runEntry()]),
+      ),
+    ));
+    await _settle(tester);
+    expect(find.byType(ErrorState), findsOneWidget);
   });
 
   group('FeedScreen — stat row at a narrow width', () {
@@ -506,9 +611,9 @@ void main() {
         ),
       );
       await _settle(tester);
-      // 1280dp surface, 720dp column, minus the list's 12dp side padding.
+      // 1280dp surface, 720dp column, minus the list's 16dp page gutter.
       expect(tester.getSize(find.byType(Card).first).width,
-          kContentMaxWidth - 24);
+          kContentMaxWidth - 2 * AppInsets.gutter);
     });
 
     testWidgets('compact surface keeps the feed card full width',
@@ -524,8 +629,9 @@ void main() {
         ),
       );
       await _settle(tester);
-      // 400dp surface minus the list's 12dp side padding.
-      expect(tester.getSize(find.byType(Card).first).width, 400 - 24);
+      // 400dp surface minus the list's 16dp page gutter.
+      expect(tester.getSize(find.byType(Card).first).width,
+          400 - 2 * AppInsets.gutter);
     });
   });
 }

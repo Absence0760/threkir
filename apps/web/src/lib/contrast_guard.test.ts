@@ -30,7 +30,7 @@ import { planWorkoutStatusLook } from './training/plan_workout_status_style.js';
 /** The four surfaces that render a `.source-badge`. */
 const BADGE_SURFACES = [
 	'routes/runs/+page.svelte',
-	'routes/dashboard/+page.svelte',
+	'routes/dashboard/DashboardView.svelte',
 	'lib/components/PeriodSummary.svelte',
 	'lib/components/RunShareView.svelte',
 ];
@@ -573,7 +573,7 @@ test('run-detail HR zone defs read the shared zone tokens', () => {
 // against — the bar's extent is the datum, so that boundary is the graphical
 // information.
 test('dashboard HR zone bars read the shared zone tokens', () => {
-	const page = readFileSync(resolve(__dirname, '../routes/dashboard/+page.svelte'), 'utf-8');
+	const page = readFileSync(resolve(__dirname, '../routes/dashboard/DashboardView.svelte'), 'utf-8');
 	for (let i = 1; i <= 5; i++) {
 		assert.ok(
 			page.includes(`.zone-row-${i} .zone-bar { background: var(--zone-${i}); }`),
@@ -1908,7 +1908,7 @@ for (const { label, marker } of THEMES) {
 // entry, no failure) and the modality cue would just vanish.
 const SECTION_ACCENT_SURFACES: Array<[file: string, tokens: string[]]> = [
 	['routes/+layout.svelte', ['--section-dashboard', '--section-dashboard-ink', '--section-on-accent']],
-	['routes/dashboard/+page.svelte', ['--section-gym', '--section-gym-ink']],
+	['routes/dashboard/DashboardView.svelte', ['--section-gym', '--section-gym-ink']],
 	// The timeline rows moved out of /history into the component it shares with
 	// the /runs list view (decisions § 2117); the accent moved with them.
 	['lib/components/TimelineDayList.svelte', ['--section-gym-ink', '--section-nutrition-ink']],

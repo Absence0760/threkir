@@ -3,8 +3,11 @@
 // stay in sync so web and Android render the same instance timestamps for a
 // given event row. See docs/architecture/decisions.md #10.
 
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+
+import 'l10n/gen/app_localizations.dart';
 
 enum Weekday { mo, tu, we, th, fr, sa, su }
 
@@ -20,16 +23,6 @@ const _isoCodes = <Weekday, String>{
   Weekday.su: 'SU',
 };
 
-const _weekdayLabels = <Weekday, String>{
-  Weekday.mo: 'Mon',
-  Weekday.tu: 'Tue',
-  Weekday.we: 'Wed',
-  Weekday.th: 'Thu',
-  Weekday.fr: 'Fri',
-  Weekday.sa: 'Sat',
-  Weekday.su: 'Sun',
-};
-
 Weekday? weekdayFromCode(String code) {
   for (final e in _isoCodes.entries) {
     if (e.value == code) return e.key;
@@ -38,7 +31,11 @@ Weekday? weekdayFromCode(String code) {
 }
 
 String weekdayCode(Weekday w) => _isoCodes[w]!;
-String weekdayLabel(Weekday w) => _weekdayLabels[w]!;
+/// A weekday's short name in the reader's locale ("Mon", "lun.", "月"), from
+/// intl rather than a table. 2024-01-01 was a Monday. Mirrors web's
+/// `weekdayLabel`.
+String weekdayLabel(Weekday w, String localeTag) =>
+    DateFormat.E(localeTag).format(DateTime(2024, 1, 1 + w.index, 12));
 
 RecurrenceFreq? recurrenceFromString(String? s) {
   switch (s) {
@@ -271,17 +268,22 @@ DateTime? nextInstanceAfter(EventRecurrence e, [DateTime? after]) {
   return xs.isEmpty ? null : xs.first;
 }
 
-String describeRecurrence(RecurrenceFreq? freq, List<Weekday>? byday) {
-  if (freq == null) return 'One-off event';
-  if (freq == RecurrenceFreq.monthly) return 'Repeats monthly';
-  final days = (byday == null || byday.isEmpty)
-      ? ''
-      : [Weekday.mo, Weekday.tu, Weekday.we, Weekday.th, Weekday.fr, Weekday.sa, Weekday.su]
-          .where(byday.contains)
-          .map(weekdayLabel)
-          .join(', ');
-  final base = freq == RecurrenceFreq.biweekly ? 'Every other week' : 'Every week';
-  return days.isEmpty ? base : '$base · $days';
+/// "Every week · Mon, Wed" in the reader's language. Mirrors web's
+/// `describeRecurrence`.
+String describeRecurrence(RecurrenceFreq? freq, List<Weekday>? byday,
+    AppLocalizations l10n, String localeTag) {
+  if (freq == null) return l10n.eventRecurrenceOneOff;
+  if (freq == RecurrenceFreq.monthly) return l10n.eventRecurrenceMonthly;
+  final base = freq == RecurrenceFreq.biweekly
+      ? l10n.eventRecurrenceBiweekly
+      : l10n.eventRecurrenceWeekly;
+  final days = [
+    Weekday.mo, Weekday.tu, Weekday.we, Weekday.th, Weekday.fr, Weekday.sa, Weekday.su
+  ].where((d) => byday?.contains(d) ?? false).map((d) => weekdayLabel(d, localeTag));
+  return days.isEmpty
+      ? base
+      : l10n.eventRecurrenceWithDays(
+          base, days.join(l10n.eventRecurrenceDaySeparator));
 }
 
 const weekdayChoices = <Weekday>[

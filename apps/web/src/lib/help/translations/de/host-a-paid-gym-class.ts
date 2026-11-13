@@ -26,7 +26,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Öffne deinen Club, geh zum Tab **Events** und drücke **Neues Event**.',
-						'Wähle unter **Veranstaltungstyp** die Option **Kurs**. Route, Distanz, Tempo und Rennergebnisse werden bei einem Kurs ausgeblendet.',
+						'Wähle unter **Event-Typ** die Option **Kurs**. Route, Distanz, Tempo und Rennergebnisse werden bei einem Kurs ausgeblendet.',
 						'Fülle **Disziplin** aus, zum Beispiel „HIIT“ oder „Bootcamp“, und einen **Titel**, den die Leute im Kalender wiedererkennen.',
 						'Setze **Standard-Trainingsdauer** auf die Kurslänge in Minuten. Damit können Teilnehmende den Kurs danach mit einem Tippen erfassen.',
 						'Lege **Datum**, **Startzeit**, **Dauer** und **Treffpunkt** fest.',

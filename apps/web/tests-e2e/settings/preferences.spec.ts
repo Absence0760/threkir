@@ -70,13 +70,13 @@ test.describe('settings preference pages', () => {
 		await page.getByRole('button', { name: 'Miles', exact: true }).click();
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 
-		// ── /dashboard Recent Runs (formatDistance per-row) ──
+		// ── /dashboard/progress Recent Runs (formatDistance per-row) ──
 		// Stat cards are an unreliable target: "Longest Run" pre-fetch
 		// renders as 0, which formats as "0 yd" in mi mode — substring-
 		// matches "mi" → false-pass / false-fail depending on race. The
 		// .run-row distance is rendered from a non-empty `filteredRuns`
 		// so its presence already proves the fetch completed.
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		const recentRunDistance = page
 			.locator('.run-row .run-distance')
 			.first();

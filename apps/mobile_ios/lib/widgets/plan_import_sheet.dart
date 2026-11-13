@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show ListCard, SheetScaffold;
 
 import '../backend_timeout.dart';
 import '../l10n/date_format.dart';
@@ -8,6 +10,7 @@ import '../plan_parse_message.dart';
 import '../plan_serialize.dart';
 import '../training.dart';
 import '../training_service.dart';
+import 'form_sheet.dart';
 import 'plan_overlap_dialog.dart';
 
 /// Opens the plan import sheet: paste a plan table (web's export, or a
@@ -17,10 +20,8 @@ import 'plan_overlap_dialog.dart';
 Future<String?> showPlanImportSheet(
   BuildContext context,
   TrainingService training,
-) => showModalBottomSheet<String>(
-  context: context,
-  isScrollControlled: true,
-  useSafeArea: true,
+) => showFormSheet<String>(
+  context,
   builder: (_) => PlanImportSheet(training: training),
 );
 
@@ -123,15 +124,18 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SheetDiscardGuard(
+        isDirty: () => _textCtl.text.trim().isNotEmpty,
+        child: _sheet(context),
+      );
+
+  Widget _sheet(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final parsed = _parsed;
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
+    return SheetScaffold(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -210,7 +214,6 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
             ],
           ],
         ),
-      ),
     );
   }
 }
@@ -234,13 +237,10 @@ class _Preview extends StatelessWidget {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    return Container(
+    return ListCard(
       key: const Key('planImportPreview'),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      margin: EdgeInsets.zero,
+      dense: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

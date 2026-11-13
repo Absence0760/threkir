@@ -17,12 +17,16 @@ import '../backend_timeout.dart';
 import '../widgets/club_form_sheet.dart';
 import '../widgets/error_state.dart';
 import '../widgets/strava_clubs_section.dart';
+import '../widgets/top_banner.dart';
 import '../widgets/verified_badge.dart';
 import 'club_detail_screen.dart';
 import 'club_invite_screen.dart';
 import 'help_screen.dart';
-import 'people_screen.dart';
 
+/// The Social hub's Clubs tab: browse public clubs and the runner's own
+/// memberships. A ui_kit `HubTabBody`, so in the hub it draws no app bar and
+/// hands "New club" to the hub's FAB; pushed on its own it gets a small
+/// titled app bar and the FAB itself (issue #1374).
 class ClubsScreen extends StatefulWidget {
   final SocialService social;
   final TrainingService training;
@@ -32,11 +36,6 @@ class ClubsScreen extends StatefulWidget {
   /// the club. Mirrors web's `/routes/new?club=<id>` deep link.
   final ApiClient? apiClient;
   final LocalRouteStore? routeStore;
-  /// When true, render only the body (segmented strip + list) without
-  /// the Scaffold/AppBar/FAB wrapping. The parent (e.g. SocialScreen)
-  /// owns those chrome surfaces. Default false preserves the
-  /// standalone-route shape for any legacy callers.
-  final bool embedded;
 
   /// Whether this build carries a Strava client id. "Your Strava clubs" is
   /// inert without one, as on web (decisions § 1959); tests pass their own.
@@ -47,15 +46,14 @@ class ClubsScreen extends StatefulWidget {
     required this.training,
     this.apiClient,
     this.routeStore,
-    this.embedded = false,
     this.stravaConfigured = isStravaConfigured,
   });
 
   @override
-  State<ClubsScreen> createState() => ClubsScreenState();
+  State<ClubsScreen> createState() => _ClubsScreenState();
 }
 
-class ClubsScreenState extends State<ClubsScreen> {
+class _ClubsScreenState extends State<ClubsScreen> {
   // Default to "My clubs" — returning users want to see the clubs they're
   // already in first. Fresh users with no memberships get an empty state
   // that points them at Browse.
@@ -113,20 +111,30 @@ class ClubsScreenState extends State<ClubsScreen> {
       });
     } on TimeoutException catch (e) {
       debugPrint('ClubsScreen._load timed out after ${kBackendLoadTimeout.inSeconds}s: $e');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _ClubsLoadError.timeout;
-        });
-      }
+      _failed(_ClubsLoadError.timeout);
     } catch (e, s) {
       debugPrint('ClubsScreen._load failed: $e\n$s');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _ClubsLoadError.generic;
-        });
-      }
+      _failed(_ClubsLoadError.generic);
+    }
+  }
+
+  /// A failed reload keeps the clubs already on screen and says so in a
+  /// banner; only a list that never loaded is replaced by the error state.
+  void _failed(_ClubsLoadError error) {
+    if (!mounted) return;
+    final hadRows = (_tab == 0 ? _browse : _mine).isNotEmpty;
+    setState(() {
+      _loading = false;
+      _error = error;
+    });
+    if (hadRows) {
+      final l10n = AppLocalizations.of(context);
+      showTopBanner(
+        context,
+        error == _ClubsLoadError.timeout
+            ? l10n.clubsTimeoutError
+            : l10n.clubsLoadError,
+      );
     }
   }
 
@@ -136,17 +144,6 @@ class ClubsScreenState extends State<ClubsScreen> {
     _searchCtrl.dispose();
     _strava?.dispose();
     super.dispose();
-  }
-
-  /// FAB body — exposed for embedding parents (SocialScreen) that
-  /// want to hoist the FAB to their own Scaffold.
-  Widget buildCreateClubFab(BuildContext context) {
-    return FloatingActionButton.extended(
-      heroTag: 'clubs_create_fab',
-      onPressed: _createClub,
-      icon: const Icon(Icons.add),
-      label: Text(AppLocalizations.of(context).clubsNewClub),
-    );
   }
 
   Future<void> _createClub({
@@ -210,162 +207,146 @@ class ClubsScreenState extends State<ClubsScreen> {
     );
   }
 
-  /// Embedded mode: the segment-strip + search bar live INSIDE the
-  /// body so the parent (SocialScreen) can host its own outer
-  /// TabBar without nesting two Material chrome surfaces.
-  Widget _buildBody(BuildContext context, {required bool inlineSegments}) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final list = _tab == 0 ? _browse : _mine;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (inlineSegments) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: ChoiceChipRow<int>(
-              options: [
-                ChoiceChipOption(value: 0, label: l10n.clubsTabBrowse),
-                ChoiceChipOption(value: 1, label: l10n.clubsTabMine),
-              ],
-              selected: _tab,
-              onChanged: (v) => setState(() => _tab = v),
-            ),
-          ),
-          // "Have an invite code?" tile — mobile mirror of web
-          // /clubs/join/[token]. Always visible so a user who tapped
-          // a phone-side invite link (and got bounced through the
-          // browser to web's redemption flow) can also redeem
-          // directly in-app by pasting the code.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.qr_code, size: 18),
-              label: Text(l10n.clubsJoinWithCode),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => ClubInviteScreen(
-                      social: widget.social,
-                      training: widget.training,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          if (_tab == 0)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Semantics(
-                textField: true,
-                label: l10n.clubsSearchHint,
-                child: TextField(
-                controller: _searchCtrl,
-                onSubmitted: (_) => _load(),
-                decoration: InputDecoration(
-                  hintText: l10n.clubsSearchHint,
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  isDense: true,
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              ),
-            ),
-        ],
-        Expanded(child: _buildList(list)),
-      ],
+  /// A new query is a different list, so the old results go and the loading
+  /// frame shows until the new ones arrive.
+  void _searchBrowse() {
+    setState(() => _browse = const []);
+    _load();
+  }
+
+  void _joinWithCode() {
+    // Mobile mirror of web /clubs/join/[token], for a runner who tapped an
+    // invite link that the browser redeemed elsewhere and can paste the code.
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ClubInviteScreen(
+          social: widget.social,
+          training: widget.training,
+        ),
+      ),
     );
   }
 
-  Widget _buildList(List<ClubView> list) {
-    final l10n = AppLocalizations.of(context);
+  /// Browse / My clubs as the quick chips, the Browse search, and Join with
+  /// code as the row's one secondary action. Three stacked control rows
+  /// before (chips, a full-width button, the search), now at most two.
+  FilterBar _filterBar(AppLocalizations l10n) => FilterBar(
+        key: const ValueKey('clubs-filter-bar'),
+        search: _tab == 0
+            ? AppSearchField(
+                  controller: _searchCtrl,
+                  hint: l10n.clubsSearchHint,
+                  clearTooltip: l10n.commonClearSearch,
+                  onSubmitted: (_) => _searchBrowse(),
+                  // Clearing goes back to the default ranking at once; a
+                  // typed query is sent on submit, since a place name is
+                  // geocoded and each keystroke would spend a lookup.
+                  onChanged: (v) {
+                    if (v.isEmpty) _searchBrowse();
+                  },
+                )
+            : null,
+        trailing: [
+          IconButton(
+            key: const ValueKey('clubs-join-with-code'),
+            tooltip: l10n.clubsJoinWithCode,
+            icon: const Icon(Icons.qr_code),
+            onPressed: _joinWithCode,
+          ),
+        ],
+        chips: [
+          for (final option in [
+            ChoiceChipOption(value: 0, label: l10n.clubsTabBrowse),
+            ChoiceChipOption(value: 1, label: l10n.clubsTabMine),
+          ])
+            buildChoiceChip<int>(
+              context,
+              option,
+              _tab,
+              (v) => setState(() => _tab = v),
+            ),
+        ],
+      );
+
+  Widget _empty(AppLocalizations l10n) => _tab == 0
+      ? EmptyState(
+          icon: Icons.groups_outlined,
+          title: l10n.clubsEmptyBrowseTitle,
+          body: l10n.clubsMissingClubBody,
+          ctaLabel: l10n.clubsSetUpYourClub,
+          onCta: () => _createClub(initialName: _searchCtrl.text.trim()),
+          footer: TextButton.icon(
+            onPressed: () => openGuide(context, 'create-a-club'),
+            icon: const Icon(Icons.help_outline),
+            label: Text(l10n.clubsHowToCreateClub),
+          ),
+        )
+      : EmptyState(
+          icon: Icons.person_add_alt_1,
+          title: l10n.clubsEmptyMineTitle,
+          body: l10n.clubsEmptyMineBody,
+          ctaLabel: l10n.clubsTabBrowse,
+          ctaIcon: Icons.travel_explore,
+          onCta: () => setState(() => _tab = 0),
+          footer: TextButton.icon(
+            onPressed: _joinWithCode,
+            icon: const Icon(Icons.qr_code),
+            label: Text(l10n.clubsJoinWithCode),
+          ),
+        );
+
+  Widget _buildList(AppLocalizations l10n, List<ClubView> list) {
     final strava = _stravaSection();
-    final empty = _Empty(
-      tab: _tab,
-      onSetUpClub: () => _createClub(initialName: _searchCtrl.text.trim()),
-      onHowToCreate: () => openGuide(context, 'create-a-club'),
+    final empty = _empty(l10n);
+    final bottom = fabScrollClearance(context);
+    return AsyncView<List<ClubView>>(
+      loading: _loading,
+      error: _error,
+      data: list,
+      isEmpty: (l) => l.isEmpty,
+      loadingState: LoadingState.list(label: l10n.commonLoading),
+      errorBuilder: (_, error) => AppErrorState(
+        message: error == _ClubsLoadError.timeout
+            ? l10n.clubsTimeoutError
+            : l10n.clubsLoadError,
+        onRetry: _load,
+      ),
+      empty: strava == null
+          ? empty
+          : ListView(
+              padding: EdgeInsets.fromLTRB(
+                  AppInsets.gutter, 0, AppInsets.gutter, bottom),
+              children: [empty, strava],
+            ),
+      builder: (ctx, list) => ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+            AppInsets.gutter, AppSpace.sm, AppInsets.gutter, bottom),
+        itemCount: list.length + (strava == null ? 0 : 1),
+        separatorBuilder: (_, _) => const SizedBox(height: AppInsets.itemGap),
+        itemBuilder: (ctx, i) => i == list.length
+            ? strava!
+            : _ClubTile(
+                view: list[i],
+                onTap: () => _openClub(list[i].row.slug),
+              ),
+      ),
     );
-    return _loading
-          ? ListSkeleton(label: l10n.commonLoading)
-          : _error != null
-              ? ErrorState(
-                  message: _error == _ClubsLoadError.timeout
-                      ? l10n.clubsTimeoutError
-                      : l10n.clubsLoadError,
-                  onRetry: _load)
-              : list.isEmpty
-              ? (strava == null
-                  ? empty
-                  : ListView(
-                      padding: EdgeInsets.fromLTRB(
-                          16, 0, 16, fabScrollClearance(context)),
-                      children: [empty, strava],
-                    ))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    padding: EdgeInsets.fromLTRB(
-                        16, 16, 16, fabScrollClearance(context)),
-                    itemCount: list.length + (strava == null ? 0 : 1),
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (ctx, i) => i == list.length
-                        ? strava!
-                        : _ClubTile(
-                      view: list[i],
-                      onTap: () async {
-                        await Navigator.of(ctx).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => ClubDetailScreen(
-                              social: widget.social,
-                              training: widget.training,
-                              apiClient: widget.apiClient,
-                              routeStore: widget.routeStore,
-                              slug: list[i].row.slug,
-                            ),
-                          ),
-                        );
-                        _load();
-                      },
-                    ),
-                  ),
-                );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Embedded mode: just the body — chrome (AppBar, FAB) is the
-    // SocialScreen parent's responsibility. Segments + search bar
-    // are inlined into the body so the parent's outer TabBar can
-    // remain visually clean.
-    if (widget.embedded) {
-      return _buildBody(context, inlineSegments: true);
-    }
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context).clubsTitle),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_search),
-            tooltip: AppLocalizations.of(context).clubsFindPeople,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => PeopleScreen(api: ApiClient()),
-                ),
-              );
-            },
-          ),
-        ],
+    final l10n = AppLocalizations.of(context);
+    return HubTabBody(
+      title: l10n.clubsTitle,
+      filters: _filterBar(l10n),
+      primary: PrimaryAction(
+        label: l10n.clubsNewClub,
+        icon: Icons.add,
+        onPressed: _createClub,
       ),
-      floatingActionButtonLocation: pageFabLocation(context),
-      floatingActionButton: buildCreateClubFab(context),
-      body: _buildBody(context, inlineSegments: true),
+      onRefresh: _load,
+      body: _buildList(l10n, _tab == 0 ? _browse : _mine),
     );
   }
 }
@@ -379,187 +360,94 @@ class _ClubTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final c = view.row;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
+    return ListCard.row(
+      margin: EdgeInsets.zero,
+      dense: true,
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Row(
-          children: [
-            IdentityAvatar(seed: c.id, name: c.name, size: 44),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          c.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      // Verified-official badge — differentiates an
-                      // authentic operator (e.g. the Richmond
-                      // Marathon) from a fan or squatter holding the
-                      // same name on a sibling slug. clubs.name is
-                      // intentionally NOT unique; the badge is the
-                      // disambiguator. Renders right after the name
-                      // text so screen-reader tab order is name →
-                      // verified → private.
-                      if (c.isVerified) const VerifiedBadge(),
-                      if (!(c.isPublic ?? true))
-                        Container(
-                          margin: const EdgeInsets.only(left: 6),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: theme.dividerColor),
-                          ),
-                          child: Text(
-                            AppLocalizations.of(context).clubsBadgePrivate,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              letterSpacing: 0.8,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                    ],
+      chevron: true,
+      leading: IdentityAvatar(seed: c.id, name: c.name, size: 44),
+      title: c.name,
+      // The order stays name, verified, private for a screen reader.
+      badge: c.isVerified || !(c.isPublic ?? true)
+          ? Wrap(
+              spacing: AppSpace.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                // Verified-official badge — differentiates an authentic
+                // operator (e.g. the Richmond Marathon) from a fan or
+                // squatter holding the same name on a sibling slug.
+                // clubs.name is intentionally NOT unique; the badge is the
+                // disambiguator.
+                if (c.isVerified) const VerifiedBadge(),
+                if (!(c.isPublic ?? true))
+                  StatusPill(
+                    label: AppLocalizations.of(context).clubsBadgePrivate,
+                    foreground: theme.colorScheme.onSurfaceVariant,
+                    fill: theme.colorScheme.surface,
+                    outline: theme.dividerColor,
+                    icon: Icons.lock_outline,
+                    size: StatusPillSize.compact,
                   ),
-                  const SizedBox(height: 2),
-                  if (c.locationLabel != null && c.locationLabel!.isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(Icons.place, size: 14,
-                            color: theme.colorScheme.outline),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            c.locationLabel!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
+              ],
+            )
+          : null,
+      // Wraps: the place, the count and the role pill side by side ran 271 dp
+      // past the tile at 2x on a 320 dp phone (issue #1374).
+      meta: Wrap(
+        spacing: 10,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (c.locationLabel case final place? when place.isNotEmpty)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.place, size: 14, color: theme.colorScheme.outline),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(
+                  child: Text(
+                    place,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.group, size: 14,
-                          color: theme.colorScheme.outline),
-                      const SizedBox(width: 4),
-                      Text(
-                        AppLocalizations.of(context)
-                            .clubsMemberCount(view.memberCount),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      if (view.viewerRole != null) ...[
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            view.viewerRole!,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  final int tab;
-  final VoidCallback onSetUpClub;
-  final VoidCallback onHowToCreate;
-  const _Empty({
-    required this.tab,
-    required this.onSetUpClub,
-    required this.onHowToCreate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              tab == 0 ? Icons.groups_outlined : Icons.person_add_alt_1,
-              size: 48,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              tab == 0
-                  ? l10n.clubsEmptyBrowseTitle
-                  : l10n.clubsEmptyMineTitle,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              tab == 0
-                  ? l10n.clubsMissingClubBody
-                  : l10n.clubsEmptyMineBody,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            if (tab == 0) ...[
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: onSetUpClub,
-                icon: const Icon(Icons.add),
-                label: Text(l10n.clubsSetUpYourClub),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: onHowToCreate,
-                icon: const Icon(Icons.help_outline),
-                label: Text(l10n.clubsHowToCreateClub),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.group, size: 14, color: theme.colorScheme.outline),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  AppLocalizations.of(context)
+                      .clubsMemberCount(view.memberCount),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ],
-          ],
-        ),
+          ),
+          if (view.viewerRole != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                view.viewerRole!,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

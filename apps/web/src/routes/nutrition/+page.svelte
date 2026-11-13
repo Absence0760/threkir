@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -723,9 +724,8 @@
 <svelte:head><title>{m('nutrition.heading')} — Threkir</title></svelte:head>
 
 <div class="page">
-	<header class="page-header">
-		<h1>{m('nutrition.heading')}</h1>
-		<div class="head-actions">
+	<PageHeader title={m('nutrition.heading')}>
+		{#snippet actions()}
 			<!-- Ungated on purpose: Targets is this surface's entry point to the
 			     number every ring is measured against, so a user with none yet is
 			     exactly who needs to reach it (multi_modal.md, §63 amendment). -->
@@ -734,8 +734,8 @@
 				{m('nutrition.targets.link')}
 			</a>
 			<button class="btn btn-primary" type="button" onclick={() => (showLog = true)} data-testid="log-food">{m('nutrition.logFood')}</button>
-		</div>
-	</header>
+		{/snippet}
+	</PageHeader>
 
 	<div class="day-bar">
 		<nav class="day-nav" aria-label={m('nutrition.day.navLabel')}>
@@ -1348,22 +1348,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-lg);
-	}
-	.page-header {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: var(--space-md);
-		margin-bottom: var(--space-xl);
-	}
-	.page-header h1 { margin: 0; }
-	.head-actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-sm);
-		flex-wrap: wrap;
-		justify-content: flex-end;
 	}
 	/* Cancels .page-header's bottom margin so the stepper reads as part of the
 	   header rather than as a floating row above the first card. */

@@ -143,7 +143,7 @@ void main() {
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     // Both tracks aggregated → the two-run legend summary, distinct from
     // the AppBar/legend title (which share the "Your heatmap" string).
-    expect(find.text(l10n.runHeatmapLegendSummaryMany(2)), findsOneWidget);
+    expect(find.text(l10n.runHeatmapLegendSummary(2)), findsOneWidget);
   });
 
   testWidgets('cells and legend paint the basemap\'s heat ramp, not one '
@@ -156,7 +156,7 @@ void main() {
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     await pumpUntil(
       tester,
-      () => find.text(l10n.runHeatmapLegendSummaryOne(1)).evaluate().isNotEmpty,
+      () => find.text(l10n.runHeatmapLegendSummary(1)).evaluate().isNotEmpty,
       describe: 'the one-run legend',
     );
     final ramps = [
@@ -223,7 +223,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text(l10n.runHeatmapErrorTitle), findsNothing);
-    expect(find.text(l10n.runHeatmapLegendSummaryOne(1)), findsOneWidget);
+    expect(find.text(l10n.runHeatmapLegendSummary(1)), findsOneWidget);
   });
 
   // Issue #239: signed-out recording is a supported flow, so the local

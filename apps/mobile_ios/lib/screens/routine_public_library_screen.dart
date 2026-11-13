@@ -131,12 +131,19 @@ class _RoutinePublicLibraryScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.gymLibraryTitle)),
-      body: Column(
+    return PushedPage(
+      title: l10n.gymLibraryTitle,
+      // The heading scrolls away with the list; the search stays pinned
+      // above it. Fixed, the two took most of a 320 x 640 phone at 2x text.
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(child: PageHeader(title: l10n.gymLibraryTitle)),
+        ],
+        body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
@@ -154,7 +161,7 @@ class _RoutinePublicLibraryScreenState
                 : _signedOut
                     ? SignInRequiredState(api: widget.api, onSignedIn: _load)
                     : _error
-                    ? ErrorState(
+                    ? AppErrorState(
                         message: l10n.gymLibraryLoadError, onRetry: _load)
                     : _routines.isEmpty
                         ? Center(
@@ -176,35 +183,23 @@ class _RoutinePublicLibraryScreenState
                                 final e = _routines[i];
                                 final author =
                                     e.authorHandle ?? l10n.gymLibraryAnonymous;
-                                return Card(
+                                return ListCard.row(
                                   margin: EdgeInsets.zero,
-                                  child: ListTile(
-                                    onTap: () => _open(e),
-                                    title: Text(e.routine.title,
-                                        style: theme.textTheme.titleMedium),
-                                    subtitle: Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          if (e.isOfficial)
-                                            const OfficialBadge(),
-                                          Text(l10n.gymLibraryByAuthor(author)),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            l10n.gymRoutineExerciseCount(
-                                                e.routine.exerciseCount),
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                              color: theme
-                                                  .colorScheme.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                  dense: true,
+                                  onTap: () => _open(e),
+                                  chevron: true,
+                                  title: e.routine.title,
+                                  badge: e.isOfficial
+                                      ? const OfficialBadge()
+                                      : null,
+                                  subtitle: l10n.gymLibraryByAuthor(author),
+                                  meta: Text(
+                                    l10n.gymRoutineExerciseCount(
+                                        e.routine.exerciseCount),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color:
+                                          theme.colorScheme.onSurfaceVariant,
                                     ),
-                                    trailing: const Icon(Icons.chevron_right),
                                   ),
                                 );
                               },
@@ -212,6 +207,7 @@ class _RoutinePublicLibraryScreenState
                           ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -248,6 +244,8 @@ class _RoutinePublicPreviewScreenState
       _exercises = const [];
   bool _loading = true;
   bool _adopting = false;
+  /// Set once the clone has landed, so the button cannot make a second copy.
+  bool _adopted = false;
 
   @override
   void initState() {
@@ -278,67 +276,89 @@ class _RoutinePublicPreviewScreenState
 
   Future<void> _adopt() async {
     final api = widget.api;
-    if (api == null || _adopting) return;
+    if (api == null || _adopting || _adopted) return;
     final l10n = AppLocalizations.of(context);
     setState(() => _adopting = true);
+    // The clone is one non-idempotent write, so it carries no client timeout:
+    // a timeout cannot cancel a write the server may still land, and reporting
+    // that as a failure invited a retry that made a second copy (issue #1374
+    // FS-8). Only the clone's own failure is "couldn't adopt".
+    final String newId;
     try {
-      final newId = await api
-          .cloneGymRoutineTemplate(widget.entry.routine.id)
-          .timeout(kBackendLoadTimeout);
-      // The clone lands as a personal routine server-side; hydrate it into the
-      // caller's store so the detail renders offline-first (mirrors the club
-      // Adopt path in club_detail_screen).
-      await widget.store.syncWithServer(api);
-      final detail = await api.fetchGymRoutineDetail(newId);
-      if (detail != null) {
-        await widget.store.upsertFromServer(
-          detail.routine.toJson(),
-          [
-            for (final e in detail.exercises)
-              StoredRoutineExercise(
-                exerciseName: e.exercise.exerciseName,
-                exerciseKey: e.exercise.exerciseKey,
-                supersetGroup: e.exercise.supersetGroup,
-                supersetOrder: e.exercise.supersetOrder,
-                modality: e.exercise.modality,
-                progression: e.exercise.progression,
-                progressionParams: e.exercise.progressionParams is Map
-                    ? Map<String, dynamic>.from(
-                        e.exercise.progressionParams as Map)
-                    : const <String, dynamic>{},
-                sets: [
-                  for (final s in e.sets)
-                    StoredRoutineSet(
-                      setType: s.setType,
-                      targetRepsMin: s.targetRepsMin,
-                      targetRepsMax: s.targetRepsMax,
-                      targetWeightKg: s.targetWeightKg,
-                      targetRpe: s.targetRpe,
-                      restS: s.restS,
-                      targetDurationS: s.targetDurationS,
-                      targetDistanceM: s.targetDistanceM,
-                    ),
-                ],
-              ),
-          ],
-        );
-      }
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => RoutineDetailScreen(
-            api: api,
-            store: widget.store,
-            gymStore: widget.gymStore,
-            routineId: newId,
-            social: widget.social,
-          ),
-        ),
-      );
-    } catch (_) {
+      newId = await api.cloneGymRoutineTemplate(widget.entry.routine.id);
+    } catch (e) {
+      debugPrint('RoutinePublicLibrary._adopt clone failed: $e');
       if (!mounted) return;
       setState(() => _adopting = false);
       showTopBanner(context, l10n.gymLibraryAdoptFailed);
+      return;
+    }
+    // Adopted. The detail screen reads the copy from the store, so it opens
+    // only once the copy is there; otherwise the adopt still stands and says
+    // the copy arrives with the next sync.
+    if (mounted) setState(() => _adopted = true);
+    try {
+      await _hydrate(api, newId).timeout(kBackendLoadTimeout);
+    } catch (e) {
+      debugPrint('RoutinePublicLibrary._adopt hydrate failed: $e');
+    }
+    if (!mounted) return;
+    setState(() => _adopting = false);
+    if (widget.store.byId(newId) == null) {
+      showTopBanner(context, l10n.gymLibraryAdoptedNotSynced);
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => RoutineDetailScreen(
+          api: api,
+          store: widget.store,
+          gymStore: widget.gymStore,
+          routineId: newId,
+          social: widget.social,
+        ),
+      ),
+    );
+  }
+
+  /// The clone lands as a personal routine server-side; hydrate it into the
+  /// caller's store so the detail renders offline-first (mirrors the club
+  /// Adopt path in club_detail_screen).
+  Future<void> _hydrate(ApiClient api, String newId) async {
+    await widget.store.syncWithServer(api);
+    final detail = await api.fetchGymRoutineDetail(newId);
+    if (detail != null) {
+      await widget.store.upsertFromServer(
+        detail.routine.toJson(),
+        [
+          for (final e in detail.exercises)
+            StoredRoutineExercise(
+              exerciseName: e.exercise.exerciseName,
+              exerciseKey: e.exercise.exerciseKey,
+              supersetGroup: e.exercise.supersetGroup,
+              supersetOrder: e.exercise.supersetOrder,
+              modality: e.exercise.modality,
+              progression: e.exercise.progression,
+              progressionParams: e.exercise.progressionParams is Map
+                  ? Map<String, dynamic>.from(
+                      e.exercise.progressionParams as Map)
+                  : const <String, dynamic>{},
+              sets: [
+                for (final s in e.sets)
+                  StoredRoutineSet(
+                    setType: s.setType,
+                    targetRepsMin: s.targetRepsMin,
+                    targetRepsMax: s.targetRepsMax,
+                    targetWeightKg: s.targetWeightKg,
+                    targetRpe: s.targetRpe,
+                    restS: s.restS,
+                    targetDurationS: s.targetDurationS,
+                    targetDistanceM: s.targetDistanceM,
+                  ),
+              ],
+            ),
+        ],
+      );
     }
   }
 
@@ -374,22 +394,25 @@ class _RoutinePublicPreviewScreenState
     final theme = Theme.of(context);
     final r = widget.entry.routine;
     final author = widget.entry.authorHandle ?? l10n.gymLibraryAnonymous;
-    return Scaffold(
-      appBar: AppBar(title: Text(r.title)),
+    return DetailPage(
+      title: r.title,
       floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: _loading
           ? null
           : FloatingActionButton.extended(
-              onPressed: _adopting ? null : _adopt,
+              onPressed: _adopting || _adopted ? null : _adopt,
               icon: _adopting
                   ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.library_add),
-              label: Text(
-                  _adopting ? l10n.gymLibraryAdopting : l10n.gymLibraryAdopt),
+                  : Icon(_adopted ? Icons.check : Icons.library_add),
+              label: Text(_adopting
+                  ? l10n.gymLibraryAdopting
+                  : _adopted
+                      ? l10n.gymLibraryAdopted
+                      : l10n.gymLibraryAdopt),
             ),
       body: _loading
           ? SectionedDetailSkeleton(
@@ -400,32 +423,32 @@ class _RoutinePublicPreviewScreenState
               padding: EdgeInsets.fromLTRB(
                   16, 16, 16, fabScrollClearance(context)),
               children: [
-                if (widget.entry.isOfficial) ...[
-                  const Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: OfficialBadge(size: 16),
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                Text(l10n.gymLibraryByAuthor(author),
-                    style: theme.textTheme.bodyMedium),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.gymRoutineExerciseCount(r.exerciseCount),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                DetailHero(
+                  title: r.title,
+                  padding: EdgeInsets.zero,
+                  badges: [
+                    if (widget.entry.isOfficial) const OfficialBadge(size: 16),
+                  ],
+                  meta: [
+                    DetailMeta(
+                      icon: Icons.person_outline,
+                      text: l10n.gymLibraryByAuthor(author),
+                    ),
+                    DetailMeta(
+                      icon: Icons.fitness_center,
+                      text: l10n.gymRoutineExerciseCount(r.exerciseCount),
+                    ),
+                  ],
+                  description: (r.notes ?? '').trim().isNotEmpty
+                      ? Text(r.notes!.trim(), style: theme.textTheme.bodyMedium)
+                      : null,
                 ),
-                if ((r.notes ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(r.notes!.trim(), style: theme.textTheme.bodyMedium),
-                ],
                 const SizedBox(height: 16),
                 for (final ex in _exercises)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      child: Column(
+                  ListCard(
+                    margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+                    dense: true,
+                    child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -445,7 +468,6 @@ class _RoutinePublicPreviewScreenState
                             ),
                         ],
                       ),
-                    ),
                   ),
               ],
             ),

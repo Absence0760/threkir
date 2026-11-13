@@ -219,6 +219,30 @@ test.describe('/social?tab=feed — load failure surfaces an error toast', () =>
 			page.locator('.toast-error', { hasText: /Could not load feed/ })
 		).toBeVisible({ timeout: 10_000 });
 	});
+
+	test('a failed badge-awards read says so with a retry, and the retry recovers', async ({ page }) => {
+		// The strip once swallowed this read as "no badges" (§ 2501). Fail the
+		// first followee-awards read only (the `user_id=in.(…)` one), so the
+		// retry reaches the real table and no other achievements read is hit.
+		let failed = false;
+		await page.route('**/rest/v1/achievements*', async (route) => {
+			if (failed || !route.request().url().includes('user_id=in.')) return route.fallback();
+			failed = true;
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated badge failure' })
+			});
+		});
+
+		await page.goto('/social?tab=feed');
+
+		const error = page.getByTestId('feed-badges-error');
+		await expect(error).toBeVisible({ timeout: 10_000 });
+		await expect(error).toContainText(/Couldn't load the latest badges/);
+		await error.getByRole('button', { name: 'Retry' }).click();
+		await expect(error).toBeHidden({ timeout: 10_000 });
+	});
 });
 
 /**

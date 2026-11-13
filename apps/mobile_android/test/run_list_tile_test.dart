@@ -8,6 +8,7 @@
 
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -262,9 +263,10 @@ void main() {
             'showing the queued one, promises a sync that cannot happen');
 
     final semantics = tester.widget<Semantics>(
-      find.ancestor(
+      find.descendant(
         of: find.byType(Card),
-        matching: find.byType(Semantics),
+        matching: find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.label != null),
       ).first,
     );
     final en = lookupAppLocalizations(const Locale('en'));
@@ -318,5 +320,54 @@ void main() {
     }
     expect(heights.last, greaterThan(heights.first),
         reason: 'the row grows with the text instead of clipping it');
+  });
+
+  // #1374 A11Y-9: the row's label carried English "elevation gain" in every
+  // locale, and the row's texts merged in after it, so TalkBack read the run
+  // twice.
+  testWidgets('the row is one node, read once, in the reader\'s language',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    var taps = 0;
+    var longPresses = 0;
+    SharedPreferences.setMockInitialValues({});
+    final prefs = Preferences();
+    await prefs.init();
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('de'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: ListView(children: [
+          RunListTile.owned(
+            run: _run(metadata: const {'elevation_m': 120}),
+            unit: DistanceUnit.km,
+            api: null,
+            onTap: () => taps++,
+            onLongPress: () => longPresses++,
+          ),
+        ]),
+      ),
+    ));
+    await tester.pump();
+    final node = tester.getSemantics(find.byType(RunListTile));
+    final de = lookupAppLocalizations(const Locale('de'));
+    final label = node.getSemanticsData().label;
+    expect(label, contains(de.racesCourseGain('120 m')));
+    expect(label, isNot(contains('elevation gain')));
+    // Nothing inside the row is a second node: the distance is in the label
+    // exactly once.
+    expect('5'.allMatches(label.split(',').first).length, 1);
+    var children = 0;
+    node.visitChildren((_) {
+      children++;
+      return true;
+    });
+    expect(children, 0, reason: 'the row\'s texts must not be read again after the label');
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    expect(node.getSemanticsData().hasAction(SemanticsAction.longPress), isTrue);
+    tester.semantics.tap(find.semantics.byLabel(label));
+    expect(taps, 1);
+    handle.dispose();
   });
 }

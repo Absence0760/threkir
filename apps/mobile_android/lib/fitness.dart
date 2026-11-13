@@ -319,50 +319,43 @@ bool isReturningFromGap(Iterable<Run> runs,
   return nowMs - latest >= gapDays * 24 * 3600 * 1000;
 }
 
-/// Rule-based recovery advice from TSB + CTL. Mirrors the web's
-/// thresholds 1:1.
-String recoveryAdvice(double? tsb, double? ctl,
+/// Which advice the fitness card shows, rule-based on TSB + CTL. Returns a
+/// kind, not a sentence: the card reads the reader's catalogue
+/// (`fitnessRecoveryAdvice*`). Mirrors `recoveryAdviceKind` in `fitness.ts`
+/// threshold for threshold.
+enum RecoveryAdviceKind {
+  noData,
+  welcomeBack,
+  heavyLoad,
+  building,
+  loaded,
+  sweetSpot,
+  tapering,
+  veryFresh,
+}
+
+RecoveryAdviceKind recoveryAdviceKind(double? tsb, double? ctl,
     {bool returningFromLayoff = false}) {
-  if (tsb == null || ctl == null) {
-    return 'Not enough data yet — log a few runs with HR and try again.';
-  }
+  if (tsb == null || ctl == null) return RecoveryAdviceKind.noData;
   // A returning runner can show a high TSB purely because ATL decayed
   // faster than CTL during the break — detraining, not freshness.
   // Persona-hunt comeback #29.
-  if (returningFromLayoff) {
-    return 'Welcome back. Your form numbers reset after the break — '
-        'rebuild gradually with easy, consistent running before any hard '
-        'sessions.';
-  }
+  if (returningFromLayoff) return RecoveryAdviceKind.welcomeBack;
   // Heavy acute overload warrants a rest warning even at low chronic load.
   // A new runner who just spiked a hard week (low CTL, deeply negative TSB)
   // is exactly the at-injury-risk case the ctl<10 "still building" message
   // would otherwise mask — so the overload guard comes first.
-  if (tsb < -30) {
-    return "You're heavily loaded — easy running or a rest day today.";
-  }
-  if (ctl < 10) {
-    return 'Fitness is still building. Focus on consistency; one quality '
-        'session a week is plenty for now.';
-  }
-  if (tsb < -10) {
-    return 'Loaded but within build territory. Easy / steady is right '
-        'for today.';
-  }
-  if (tsb < 10) {
-    return 'Sweet spot — a steady run or a tempo effort works.';
-  }
-  if (tsb < 25) {
-    return 'Tapering / freshening up — a race or hard workout will land '
-        'well in the next few days.';
-  }
-  return "Very fresh — if you've been tapering on purpose, race soon. "
-      "Otherwise, it's time to build again.";
+  if (tsb < -30) return RecoveryAdviceKind.heavyLoad;
+  if (ctl < 10) return RecoveryAdviceKind.building;
+  if (tsb < -10) return RecoveryAdviceKind.loaded;
+  if (tsb < 10) return RecoveryAdviceKind.sweetSpot;
+  if (tsb < 25) return RecoveryAdviceKind.tapering;
+  return RecoveryAdviceKind.veryFresh;
 }
 
 /// TSB at or above which a hard / quality session is advisable. Below
 /// this the runner is still loaded enough that the next session should
-/// stay easy. Matches the boundary in `recoveryAdvice` where the advice
+/// stay easy. Matches the boundary in `recoveryAdviceKind` where the advice
 /// flips from "easy / steady" to "a steady run or a tempo effort works".
 const double kHardSessionTsbThreshold = -10;
 

@@ -4,6 +4,7 @@
 	// draft" puts it in the composer to edit, and the message it becomes is
 	// marked AI-assisted. Every refusal says what would unblock it.
 	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
 	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { requestCoachAssistDraft } from '#lib/coach/assist/client.ts';
 	import { CoachAssistError, type CoachAssistErrorKind } from '#lib/coach/assist/client_kind.ts';
@@ -88,7 +89,7 @@
 					{:else if failure === 'coach_consent'}
 						{m('coachAssist.errorCoachConsent')} <a href={AI_CONSENT_HREF}>{m('coachAssist.errorCoachConsentLink')}</a>
 					{:else if failure === 'upgrade'}
-						{m('coachAssist.errorUpgrade')} <a href="/settings/upgrade">{m('coachAssist.errorUpgradeLink')}</a>
+						<ProUpsellLink message={m('coachAssist.errorUpgrade')} />
 					{:else if failure === 'rate_limited'}
 						{m('coachAssist.errorRateLimited')}
 					{:else if failure === 'not_your_athlete'}

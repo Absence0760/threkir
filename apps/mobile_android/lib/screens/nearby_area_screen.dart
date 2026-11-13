@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard, PageHeader, PushedPage;
 
 import '../geocoding.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -187,102 +188,94 @@ class _NearbyAreaScreenState extends State<NearbyAreaScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.nearbyAreaTitle)),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          children: [
-            Text(
-              l10n.nearbyAreaExplainer,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+    return PushedPage(
+      title: l10n.nearbyAreaTitle,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        children: [
+          PageHeader(
+            title: l10n.nearbyAreaTitle,
+            subtitle: l10n.nearbyAreaExplainer,
+            padding: const EdgeInsets.only(top: 16, bottom: 16),
+          ),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (_loadFailed)
+            AppErrorState(
+              message: l10n.nearbyAreaLoadFailed,
+              onRetry: _loadLabel,
+            )
+          else
+            ListCard.row(
+              dense: true,
+              title: _label == null
+                  ? l10n.nearbyAreaNone
+                  : l10n.nearbyAreaCurrent(_label!),
+              titleMaxLines: 3,
+              // An action under the label rather than a trailing button:
+              // at 2x the button took the row's width from the label.
+              actions: [
+                if (_label != null)
+                  TextButton(
+                    onPressed: _busy ? null : _forget,
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                    ),
+                    child: Text(l10n.nearbyAreaForget),
+                  ),
+              ],
+            ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _searchCtl,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: l10n.nearbyAreaSearchHint,
+              prefixIcon: const Icon(Icons.search, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            const SizedBox(height: 16),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-              )
-            else if (_loadFailed)
-              ErrorState(
-                message: l10n.nearbyAreaLoadFailed,
-                onRetry: _loadLabel,
-              )
-            else
-              Card(
-                child: ListTile(
-                  title: Text(
-                    _label == null
-                        ? l10n.nearbyAreaNone
-                        : l10n.nearbyAreaCurrent(_label!),
-                  ),
-                  trailing: _label == null
-                      ? null
-                      : TextButton(
-                          onPressed: _busy ? null : _forget,
-                          style: TextButton.styleFrom(
-                            foregroundColor: theme.colorScheme.error,
-                          ),
-                          child: Text(l10n.nearbyAreaForget),
-                        ),
+            onChanged: _onSearchChanged,
+          ),
+          if (_searching)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (_searchUnavailable)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              // A provider that is down must not read as "that place does
+              // not exist" — the runner would go looking for another name.
+              child: Text(
+                l10n.nearbyAreaSearchUnavailable,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.error),
+              ),
+            )
+          else if (_searched && _results.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Text(
+                l10n.nearbyAreaNoResults,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            const SizedBox(height: 24),
-            Semantics(
-              textField: true,
-              label: l10n.nearbyAreaSearchHint,
-              child: TextField(
-                controller: _searchCtl,
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  hintText: l10n.nearbyAreaSearchHint,
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onChanged: _onSearchChanged,
+            )
+          else
+            for (final r in _results)
+              ListTile(
+                leading: const Icon(Icons.place),
+                title: Text(r.name),
+                enabled: !_busy,
+                onTap: () => _pick(r),
               ),
-            ),
-            if (_searching)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-              )
-            else if (_searchUnavailable)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                // A provider that is down must not read as "that place does
-                // not exist" — the runner would go looking for another name.
-                child: Text(
-                  l10n.nearbyAreaSearchUnavailable,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.error),
-                ),
-              )
-            else if (_searched && _results.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Text(
-                  l10n.nearbyAreaNoResults,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              )
-            else
-              for (final r in _results)
-                ListTile(
-                  leading: const Icon(Icons.place),
-                  title: Text(r.name),
-                  enabled: !_busy,
-                  onTap: () => _pick(r),
-                ),
-          ],
-        ),
+        ],
       ),
     );
   }

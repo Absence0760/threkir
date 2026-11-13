@@ -95,6 +95,12 @@ async function plantEffort(p: Planted, userId: string, timeS: number) {
 	if (error) throw error;
 }
 
+async function plantCourses(n: number): Promise<Planted[]> {
+	const planted: Planted[] = [];
+	for (let i = 0; i < n; i++) planted.push(await plantCourse());
+	return planted;
+}
+
 async function teardown(p: Planted | null) {
 	if (!p) return;
 	for (const id of p.runIds) await deleteRun(id).catch(() => {});
@@ -106,16 +112,16 @@ async function teardown(p: Planted | null) {
 test.describe('races & courses', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('the run-surface strip is five tabs in the mobile order, with no Parks tab', async ({ page }) => {
+	test('the run-surface strip is four tabs in the mobile order, with no Parks or Segments tab', async ({ page }) => {
 		await page.goto('/races');
 		const strip = page.locator('nav.surface-tabs');
 		await expect(strip).toBeVisible({ timeout: 10_000 });
+		// Segments is Routes → Explore since issue #1374 (owner decision 1).
 		await expect(strip.getByRole('link')).toHaveText([
 			'Runs',
 			'Plans',
 			'Races & courses',
 			'Routes',
-			'Segments',
 		]);
 		await expect(strip.getByRole('link', { name: 'Races & courses' })).toHaveAttribute('aria-current', 'page');
 		await expect(strip.locator('a[href="/parks"]')).toHaveCount(0);
@@ -138,7 +144,7 @@ test.describe('races & courses', () => {
 			await page.goto('/races');
 			const upcoming = page.getByTestId('races-upcoming');
 			await expect(upcoming.getByRole('heading', { level: 2, name: 'Upcoming races' })).toBeVisible();
-			await expect(upcoming.getByTestId('races-search')).toBeVisible();
+			await expect(page.getByTestId('races-search')).toBeVisible();
 			await expect(
 				upcoming.getByTestId('races-results').or(upcoming.getByTestId('races-empty')),
 			).toBeVisible({ timeout: 10_000 });
@@ -157,7 +163,7 @@ test.describe('races & courses', () => {
 				new RegExp(`^Fastest in \\d{4}: 9:10 by ${holder?.display_name ?? ''}$`),
 			);
 
-			await card.click();
+			await card.getByTestId('races-any-time-course-link').click();
 			await page.waitForURL(`**/parks/us-ak/${planted.parkSlug}/any-time-loop`);
 			await expect(page.getByRole('heading', { level: 1, name: planted.courseName })).toBeVisible();
 		} finally {
@@ -244,7 +250,148 @@ test.describe('races & courses', () => {
 		}
 	});
 
-	test('/parks is reachable from Run any time, from Segments and directly, with no strip of its own', async ({
+	test('the Show switch hides either section, and the URL says which', async ({ page }) => {
+		await page.goto('/races');
+		const show = page.getByRole('group', { name: 'Show' });
+		const all = show.getByRole('button', { name: 'All' });
+		const races = show.getByRole('button', { name: 'Races' });
+		const courses = show.getByRole('button', { name: 'Courses' });
+		await expect(all).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('races-upcoming')).toBeVisible();
+		await expect(page.getByTestId('races-any-time')).toBeVisible();
+
+		await courses.click();
+		await expect(page).toHaveURL(/\/races\?show=courses$/);
+		await expect(courses).toHaveAttribute('aria-pressed', 'true');
+		await expect(all).toHaveAttribute('aria-pressed', 'false');
+		await expect(page.getByTestId('races-upcoming')).toHaveCount(0);
+		await expect(page.getByTestId('races-filters-toggle')).toHaveCount(0);
+		const anyTime = page.getByTestId('races-any-time');
+		await expect(anyTime).toBeVisible();
+		await expect(anyTime.getByTestId('races-near')).toBeVisible();
+		await expect(anyTime.getByTestId('races-use-location')).toBeVisible();
+		await expect(anyTime.getByTestId('races-any-time-all')).toHaveAttribute('href', '/parks');
+
+		await races.click();
+		await expect(page).toHaveURL(/\/races\?show=races$/);
+		await expect(page.getByTestId('races-any-time')).toHaveCount(0);
+		await expect(page.getByTestId('races-upcoming')).toBeVisible();
+		await expect(page.getByTestId('races-filters-toggle')).toBeVisible();
+
+		await all.click();
+		await expect(page).toHaveURL(/\/races$/);
+		await expect(page.getByTestId('races-upcoming')).toBeVisible();
+		await expect(page.getByTestId('races-any-time')).toBeVisible();
+	});
+
+	test('a ?show= link opens that view, and a value it does not know opens both', async ({ page }) => {
+		await page.goto('/races?show=courses');
+		await expect(page.getByTestId('races-show-courses')).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('races-any-time')).toBeVisible();
+		await expect(page.getByTestId('races-upcoming')).toHaveCount(0);
+
+		await page.goto('/races?show=races');
+		await expect(page.getByTestId('races-show-races')).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('races-any-time')).toHaveCount(0);
+
+		await page.goto('/races?show=parks');
+		await expect(page.getByTestId('races-show-all')).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('races-upcoming')).toBeVisible();
+		await expect(page.getByTestId('races-any-time')).toBeVisible();
+	});
+
+	test('Courses lists every course, where both sections stop at eight', async ({ page }) => {
+		let planted: Planted[] = [];
+		try {
+			planted = await plantCourses(9);
+
+			await page.goto('/races');
+			const cards = page.getByTestId('races-any-time-course');
+			await expect(cards.first()).toBeVisible({ timeout: 10_000 });
+			await expect(cards).toHaveCount(8);
+
+			await page.getByTestId('races-show-courses').click();
+			for (const p of planted) {
+				await expect(cards.filter({ hasText: p.courseName })).toHaveCount(1, { timeout: 10_000 });
+			}
+			expect(await cards.count()).toBeGreaterThan(8);
+		} finally {
+			for (const p of planted) await teardown(p);
+		}
+	});
+
+	test('back from a course returns to the Courses view', async ({ page }) => {
+		let planted: Planted | null = null;
+		try {
+			planted = await plantCourse();
+			await page.goto('/races');
+			await page.getByTestId('races-show-courses').click();
+			await expect(page).toHaveURL(/\?show=courses$/);
+			await page
+				.getByTestId('races-any-time-course')
+				.filter({ hasText: planted.courseName })
+				.getByTestId('races-any-time-course-link')
+				.click();
+			await page.waitForURL(`**/parks/us-ak/${planted.parkSlug}/any-time-loop`);
+			await page.goBack();
+			await expect(page).toHaveURL(/\/races\?show=courses$/);
+			await expect(page.getByTestId('races-show-courses')).toHaveAttribute('aria-pressed', 'true');
+			await expect(page.getByTestId('races-upcoming')).toHaveCount(0);
+		} finally {
+			await teardown(planted);
+		}
+	});
+
+	test('Park courses on Segments opens Races & courses on its Courses view', async ({ page }) => {
+		await page.goto('/segments');
+		const link = page.getByTestId('segments-parks-link');
+		await expect(link).toHaveAttribute('href', '/races?show=courses');
+		await link.click();
+		await page.waitForURL(/\/races\?show=courses$/);
+		await expect(page.getByTestId('races-show-courses')).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('races-upcoming')).toHaveCount(0);
+		await expect(page.getByTestId('races-any-time')).toBeVisible();
+	});
+
+	test('Courses leads with the parks, each opening its park page; All has no park row', async ({ page }) => {
+		let planted: Planted | null = null;
+		try {
+			planted = await plantCourse();
+			await page.goto('/races');
+			await expect(page.getByTestId('races-any-time-course').first()).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('races-any-time-parks')).toHaveCount(0);
+
+			await page.getByTestId('races-show-courses').click();
+			const parks = page.getByTestId('races-any-time-parks');
+			await expect(page.getByRole('heading', { level: 3, name: 'Parks' })).toBeVisible();
+			const card = parks.getByTestId('park-card').filter({ hasText: planted.parkName });
+			await expect(card).toHaveAttribute('href', `/parks/us-ak/${planted.parkSlug}`);
+			await expect(card.getByTestId('park-card-facts')).toContainText('1 course');
+			await card.click();
+			await page.waitForURL(`**/parks/us-ak/${planted.parkSlug}`);
+			await expect(page.getByRole('heading', { level: 1, name: planted.parkName })).toBeVisible();
+		} finally {
+			await teardown(planted);
+		}
+	});
+
+	test('a course card names its park as a link of its own, to the park page', async ({ page }) => {
+		let planted: Planted | null = null;
+		try {
+			planted = await plantCourse();
+			await page.goto('/races');
+			const card = page.getByTestId('races-any-time-course').filter({ hasText: planted.courseName });
+			const parkLink = card.getByTestId('races-any-time-park-link');
+			await expect(parkLink).toHaveText(`${planted.parkName}, Alaska`, { timeout: 10_000 });
+			await expect(parkLink).toHaveAccessibleName(`${planted.parkName}, Alaska: park page`);
+			await parkLink.click();
+			await page.waitForURL(`**/parks/us-ak/${planted.parkSlug}`);
+		} finally {
+			await teardown(planted);
+		}
+	});
+
+	test('/parks is reachable from Run any time and directly, with no strip of its own', async ({
 		page,
 	}) => {
 		await page.goto('/races');
@@ -253,11 +400,6 @@ test.describe('races & courses', () => {
 		await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
 		await expect(page.locator('nav.surface-tabs')).toHaveCount(0);
 		await expect(page.getByTestId('parks-back-to-races')).toHaveAttribute('href', '/races');
-
-		await page.goto('/segments');
-		await page.getByTestId('segments-parks-link').click();
-		await page.waitForURL(/\/parks$/);
-		await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
 
 		await page.goto('/parks');
 		await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
@@ -281,6 +423,26 @@ test.describe('races & courses, with a location', () => {
 			const first = page.getByTestId('races-any-time-course').first();
 			await expect(first).toContainText(planted.courseName, { timeout: 10_000 });
 			await expect(first).toContainText(/0\.0 (km|mi) away/);
+		} finally {
+			await teardown(planted);
+		}
+	});
+
+	test('in the Courses view, Use my location sits with the courses and orders them', async ({ page }) => {
+		let planted: Planted | null = null;
+		try {
+			planted = await plantCourse();
+			await page.goto('/races?show=courses');
+			const anyTime = page.getByTestId('races-any-time');
+			await anyTime.getByTestId('races-use-location').click();
+			await expect(anyTime.getByTestId('races-near-clear')).toContainText('Near me');
+			const first = anyTime.getByTestId('races-any-time-course').first();
+			await expect(first).toContainText(planted.courseName, { timeout: 10_000 });
+			await expect(first).toContainText(/0\.0 (km|mi) away/);
+
+			await anyTime.getByTestId('races-near-clear').click();
+			await expect(anyTime.getByTestId('races-near-clear')).toHaveCount(0);
+			await expect(first).not.toContainText(/ away/);
 		} finally {
 			await teardown(planted);
 		}

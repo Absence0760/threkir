@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:api_client/api_client.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show ListCard, PageBarTitle, PageBody, PageHeader, PageTitleScope;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -378,33 +380,56 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       // on the first step it offers the same exit the header does.
       canPop: false,
       onPopInvokedWithResult: _onPopInvoked,
-      child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: Text(l10n.setupPageTitle),
-          actions: [
-            TextButton(
-              onPressed: _saving ? null : _skip,
-              child: Text(l10n.setupSkip),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              _ProgressDots(step: _stepIndex.value, total: _steps.length),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 8,
+      // Not a PushedPage: the wizard has no Back. It says its title in the
+      // step's scroll all the same, and the bar repeats it once that heading
+      // has scrolled away.
+      child: PageTitleScope(
+        child: Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: PageBarTitle(l10n.setupPageTitle),
+          ),
+          body: PageBody(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _ProgressDots(step: _stepIndex.value, total: _steps.length),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // At the top of the step rather than an app-bar
+                          // action: "Einrichtung überspringen" at 2x text is
+                          // wider than a 320 dp app bar, and an action cannot
+                          // wrap. In the scroll, so it never costs the step's
+                          // fixed chrome a line.
+                          Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: TextButton(
+                              onPressed: _saving ? null : _skip,
+                              child:
+                                  Text(l10n.setupSkip, textAlign: TextAlign.end),
+                            ),
+                          ),
+                          PageHeader(
+                            title: l10n.setupPageTitle,
+                            padding: const EdgeInsets.only(bottom: 8),
+                          ),
+                          _buildStep(theme, l10n),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: _buildStep(theme, l10n),
-                ),
+                  if (_saveFailed) _buildOfflineExit(theme, l10n),
+                  _buildNav(l10n),
+                ],
               ),
-              if (_saveFailed) _buildOfflineExit(theme, l10n),
-              _buildNav(l10n),
-            ],
+            ),
           ),
         ),
       ),
@@ -586,18 +611,14 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       hint: l10n.setupTrackHint,
       child: Column(
         children: [
-          Card(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            child: ListTile(
-              leading: const Icon(Icons.directions_run),
-              title: Text(l10n.setupTrackRunning),
-              subtitle: Text(l10n.setupTrackRunningAlwaysOn),
-              trailing:
-                  Icon(Icons.check_circle, color: theme.colorScheme.primary),
-            ),
+          ListCard.row(
+            leading: const Icon(Icons.directions_run),
+            title: l10n.setupTrackRunning,
+            subtitle: l10n.setupTrackRunningAlwaysOn,
+            trailing:
+                Icon(Icons.check_circle, color: theme.colorScheme.primary),
           ),
-          Card(
-            margin: const EdgeInsets.symmetric(vertical: 6),
+          ListCard.flush(
             child: SwitchListTile(
               secondary: const Icon(Icons.fitness_center),
               title: Text(l10n.fitnessTabGym),
@@ -609,8 +630,7 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
               }),
             ),
           ),
-          Card(
-            margin: const EdgeInsets.symmetric(vertical: 6),
+          ListCard.flush(
             child: SwitchListTile(
               secondary: const Icon(Icons.restaurant),
               title: Text(l10n.fitnessTabNutrition),
@@ -636,16 +656,14 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       child: Column(
         children: [
           for (final source in sources)
-            Card(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              child: ListTile(
-                key: ValueKey('setup-import-$source'),
-                leading: Icon(_importIcon(source)),
-                title: Text(_importName(l10n, source)),
-                subtitle: Text(_importDescription(l10n, source)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _saving ? null : () => _openImport(source),
-              ),
+            ListCard.row(
+              key: ValueKey('setup-import-$source'),
+              leading: Icon(_importIcon(source)),
+              title: _importName(l10n, source),
+              subtitle: _importDescription(l10n, source),
+              chevron: true,
+              enabled: !_saving,
+              onTap: () => _openImport(source),
             ),
         ],
       ),
@@ -689,8 +707,12 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // isExpanded: at 2x on a 320 dp phone the longest choice is wider
+          // than the field, and an unexpanded dropdown overflows instead of
+          // ellipsizing it.
           DropdownButtonFormField<String>(
             initialValue: _gender.value,
+            isExpanded: true,
             decoration: InputDecoration(labelText: l10n.setupGenderLabel),
             items: [
               DropdownMenuItem(
@@ -836,62 +858,59 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
   };
 
   Widget _buildNav(AppLocalizations l10n) {
+    // An OverflowBar rather than Back beside an Expanded: at 2x text the
+    // forward label ("Ouvrir le tableau de bord") was squeezed into what Back
+    // left and wrapped to six lines, pushing the wizard's chrome 152 dp past
+    // a 320 dp phone. Here the two share a line when they fit and stack,
+    // each at full width, when they do not.
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Row(
+      child: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: 8,
+        overflowSpacing: 4,
         children: [
-          if (_stepIndex.value > 0) ...[
+          if (_stepIndex.value > 0)
             OutlinedButton(
               onPressed: _saving ? null : _back,
               child: Text(l10n.setupBack),
             ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Wrap(
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                if (!_isLastStep)
-                  // The two text fields are the only answers typed rather
-                  // than tapped, so the label tracks them directly instead
-                  // of rebuilding the whole wizard on every keystroke.
-                  ListenableBuilder(
-                    listenable: Listenable.merge([
-                      _displayNameCtl.value,
-                      _weightCtl.value,
-                    ]),
-                    builder: (context, _) => FilledButton(
-                      onPressed: _saving ? null : _next,
-                      child: Text(
-                        _currentStepAnswered
-                            ? l10n.setupContinue
-                            : l10n.setupSkipStep,
-                      ),
-                    ),
-                  )
-                // On the final step, when the runner picked a goal the body
-                // hosts the primary "Create my training plan" CTA — so "Open
-                // dashboard" demotes to a secondary action here to avoid two
-                // competing primary buttons. With no goal, finishing is the
-                // one primary action.
-                else if (_primaryGoal.value == null)
-                  FilledButton(
-                    onPressed: _saving ? null : _finish,
-                    child: Text(
-                      _saving ? l10n.setupSaving : l10n.setupOpenDashboard,
-                    ),
-                  )
-                else
-                  OutlinedButton(
-                    onPressed: _saving ? null : _finish,
-                    child: Text(l10n.setupOpenDashboard),
-                  ),
-              ],
+          if (!_isLastStep)
+            // The two text fields are the only answers typed rather
+            // than tapped, so the label tracks them directly instead
+            // of rebuilding the whole wizard on every keystroke.
+            ListenableBuilder(
+              listenable: Listenable.merge([
+                _displayNameCtl.value,
+                _weightCtl.value,
+              ]),
+              builder: (context, _) => FilledButton(
+                onPressed: _saving ? null : _next,
+                child: Text(
+                  _currentStepAnswered
+                      ? l10n.setupContinue
+                      : l10n.setupSkipStep,
+                ),
+              ),
+            )
+          // On the final step, when the runner picked a goal the body
+          // hosts the primary "Create my training plan" CTA — so "Open
+          // dashboard" demotes to a secondary action here to avoid two
+          // competing primary buttons. With no goal, finishing is the
+          // one primary action.
+          else if (_primaryGoal.value == null)
+            FilledButton(
+              onPressed: _saving ? null : _finish,
+              child: Text(
+                _saving ? l10n.setupSaving : l10n.setupOpenDashboard,
+              ),
+            )
+          else
+            OutlinedButton(
+              onPressed: _saving ? null : _finish,
+              child: Text(l10n.setupOpenDashboard),
             ),
-          ),
         ],
       ),
     );
@@ -954,48 +973,15 @@ class _OptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: selected ? theme.colorScheme.primary : theme.dividerColor,
-          width: selected ? 2 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (selected)
-                Icon(Icons.check_circle, color: theme.colorScheme.primary),
-            ],
-          ),
-        ),
-      ),
+    return ListCard.row(
+      onTap: onTap,
+      selected: selected,
+      title: title,
+      subtitle: subtitle,
+      // The check says "chosen" in a glyph as well as the selected tint.
+      trailing: selected
+          ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
+          : null,
     );
   }
 }

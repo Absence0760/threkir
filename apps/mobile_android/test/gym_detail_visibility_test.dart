@@ -12,6 +12,7 @@ import '../lib/local_gym_store.dart';
 import '../lib/screens/gym_detail_screen.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 /// Counts updateLocal calls so the double-submit guard can be asserted.
 class _CountingGymStore extends LocalGymStore {
@@ -83,6 +84,25 @@ Widget _screen(LocalGymStore store, String id) => MaterialApp(
     );
 
 void main() {
+  worstCaseTestWidgets('the exercise cards', (tester, locale) async {
+    late LocalGymStore store;
+    late String id;
+    late Directory dir;
+    await tester.runAsync(() async {
+      final s = await _seed();
+      store = s.store;
+      id = s.id;
+      dir = s.dir;
+    });
+    addTearDown(() => dir.deleteSync(recursive: true));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: GymDetailScreen(api: null, store: store, workoutId: id),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Gym workout');
+  });
+
   testWidgets('detail shows Private chip + make-public toggle flips the store',
       (tester) async {
     late LocalGymStore store;
@@ -196,8 +216,11 @@ void main() {
     await tester.pumpWidget(_screen(store, id));
     await tester.pump();
 
+    // Delete sits in the overflow, as every destructive toolbar action does.
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
     await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Delete'));
+      await tester.tap(find.text('Delete'));
     });
     await tester.pumpAndSettle();
     expect(find.text('Delete workout?'), findsOneWidget);

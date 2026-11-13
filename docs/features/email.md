@@ -189,7 +189,7 @@ Shared pieces:
 - **Preference** — `user_settings.prefs.email_notifications` (`all | important
   | off`, default `important`) gates the **notification** channel only;
   transactional/lifecycle mail ignores it (you can't opt out of a receipt).
-  Toggle on web `/settings/notifications` + mobile Settings → Preferences.
+  Toggle on web `/settings/notifications` + mobile You → Notifications.
   Registry: `docs/backend/settings.md`.
 - **Per-kind mutes** — `mailer.go` `kindMutePrefKey` maps a notification kind to
   a prefs-bag key that silences it on the OUTBOUND channels (email + both
@@ -504,7 +504,7 @@ neither, and neither carries a `List-Unsubscribe` header.
   with Japanese ordering platform before browser through indexed verbs.
 - **Opt-out:** `email_new_device_alerts` (`docs/backend/settings.md`), opt-OUT
   and default on; only the literal `'off'` mutes. Web Settings → Notifications
-  and mobile Settings → Preferences.
+  and mobile You → Notifications.
 - **Layered resilience:** the trigger traps every error and returns, so the
   bookkeeping can never fail a sign-in; the worst case is one missed alert.
 - **Volume bound:** at most one mail per class per account per retention
@@ -591,8 +591,8 @@ neither, and neither carries a `List-Unsubscribe` header.
   credential** (jobs drain to `done` without `SMTP_HOST`); enabling an actual
   send is the operator's SMTP provisioning + the CISO/counsel sign-off (the cron
   is harmless no-op churn until then). The **opt-in preference toggle** ships on
-  web Settings → Preferences (`email-lifecycle-drip` checkbox) + mobile
-  Settings → Preferences (`prefsEmailLifecycleDrip` switch, default off),
+  web Settings → Notifications (`email-lifecycle-drip` checkbox) + mobile
+  You → Notifications (`prefsEmailLifecycleDrip` switch, default off),
   i18n'd across every web locale + every ARB — the in-app equivalent of the one-click
   unsubscribe, mirroring the digest toggle.
 - [x] **Account-deletion receipt** — SHIPPED 2026-06-20 (migration
@@ -652,7 +652,7 @@ neither, and neither carries a `List-Unsubscribe` header.
   silent AND lets the already-built branch re-ask (repairing a crash between the
   finish write and the announcement). A failed announcement never fails the
   export. The **opt-OUT** `notify_data_export_ready` pref is the per-kind mute
-  (default on, web Settings → Preferences), deliberately the opposite direction
+  (default on, web Settings → Notifications), deliberately the opposite direction
   from the engagement streams' opt-IN — see `docs/backend/settings.md` and the
   ADR for why. Goes live with the shared `SMTP_HOST` worker gate like every
   other notification kind; no new credential.
@@ -786,7 +786,7 @@ neither, and neither carries a `List-Unsubscribe` header.
   `pushImportantKinds` and the new `pushOnlyKinds`, which `shouldEmail`
   refuses under every mode, `all` included: a ten-minute warning is stale in a
   mailbox. One opt-OUT mute covers both, `notify_race_starting_soon` (web
-  Settings → Notifications, mobile Settings → Preferences); the tick reads it
+  Settings → Notifications, mobile You → Notifications); the tick reads it
   and raises no starting-soon row for a muted runner. The copy is static like
   every other kind and names no time: the start can move again before the
   push is read, so the time is one tap away on the event page, which is the

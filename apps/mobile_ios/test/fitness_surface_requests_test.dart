@@ -9,29 +9,33 @@ import '../lib/fitness_surface_requests.dart';
 
 void main() {
   group('FitnessSurfaceRequests', () {
-    test('with nobody listening a request is refused and nothing is parked',
-        () {
-      final requests = FitnessSurfaceRequests();
-      expect(requests.request(FitnessTab.plans), isFalse);
-      expect(requests.take(), isNull);
-    });
+    test(
+      'with nobody listening a request is refused and nothing is parked',
+      () {
+        final requests = FitnessSurfaceRequests();
+        expect(requests.request(FitnessTab.plans), isFalse);
+        expect(requests.take(), isNull);
+      },
+    );
 
     test('a listener is told, and take hands over the tab once', () {
       final requests = FitnessSurfaceRequests();
-      final drained = <FitnessTab?>[];
+      final drained = <FitnessSurfaceRequest?>[];
       requests.addListener(() => drained.add(requests.take()));
       expect(requests.request(FitnessTab.routes), isTrue);
-      expect(drained, [FitnessTab.routes]);
+      expect(drained, [
+        (tab: FitnessTab.routes, racesShow: null, routesShow: null),
+      ]);
       expect(requests.take(), isNull);
     });
 
     test('the same tab can be asked for twice in a row', () {
       final requests = FitnessSurfaceRequests();
       final drained = <FitnessTab?>[];
-      requests.addListener(() => drained.add(requests.take()));
-      requests.request(FitnessTab.segments);
-      requests.request(FitnessTab.segments);
-      expect(drained, [FitnessTab.segments, FitnessTab.segments]);
+      requests.addListener(() => drained.add(requests.take()?.tab));
+      requests.request(FitnessTab.routes);
+      requests.request(FitnessTab.routes);
+      expect(drained, [FitnessTab.routes, FitnessTab.routes]);
     });
 
     test('an undrained request is replaced by the newest one', () {
@@ -41,7 +45,56 @@ void main() {
       requests.request(FitnessTab.plans);
       requests.request(FitnessTab.races);
       expect(told, 2);
-      expect(requests.take(), FitnessTab.races);
+      expect(requests.take(), (
+        tab: FitnessTab.races,
+        racesShow: null,
+        routesShow: null,
+      ));
+    });
+
+    test('a Races & courses request carries the view to open it on', () {
+      final requests = FitnessSurfaceRequests();
+      requests.addListener(() {});
+      requests.request(FitnessTab.races, racesShow: RacesShow.courses);
+      expect(requests.take(), (
+        tab: FitnessTab.races,
+        racesShow: RacesShow.courses,
+        routesShow: null,
+      ));
+    });
+
+    test('a Routes request carries the view, so the catalogue opens as '
+        'Explore on Segments', () {
+      final requests = FitnessSurfaceRequests();
+      requests.addListener(() {});
+      requests.request(FitnessTab.routes, routesShow: RoutesShow.segments);
+      expect(requests.take(), (
+        tab: FitnessTab.routes,
+        racesShow: null,
+        routesShow: RoutesShow.segments,
+      ));
+    });
+  });
+
+  group('FitnessHubViews', () {
+    test('a request moves only the views it names', () {
+      final views = FitnessHubViews();
+      addTearDown(views.dispose);
+      views.routes.value = RoutesShow.routes;
+      views.apply((
+        tab: FitnessTab.races,
+        racesShow: RacesShow.courses,
+        routesShow: null,
+      ));
+      expect(views.races.value, RacesShow.courses);
+      expect(views.routes.value, RoutesShow.routes);
+      views.apply((
+        tab: FitnessTab.routes,
+        racesShow: null,
+        routesShow: RoutesShow.segments,
+      ));
+      expect(views.races.value, RacesShow.courses);
+      expect(views.routes.value, RoutesShow.segments);
     });
   });
 
@@ -70,7 +123,7 @@ void main() {
     testWidgets('with a shell listening the tab goes to it and nothing is '
         'pushed', (tester) async {
       final drained = <FitnessTab?>[];
-      void listener() => drained.add(fitnessSurfaceRequests.take());
+      void listener() => drained.add(fitnessSurfaceRequests.take()?.tab);
       fitnessSurfaceRequests.addListener(listener);
       addTearDown(() => fitnessSurfaceRequests.removeListener(listener));
 

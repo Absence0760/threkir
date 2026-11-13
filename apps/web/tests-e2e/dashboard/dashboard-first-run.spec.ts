@@ -42,7 +42,9 @@ test.describe('dashboard first-run state', () => {
 
 		try {
 			// ── Empty account ────────────────────────────────────────────
-			await page.goto('/dashboard');
+			// Progress is where the derived cards live, so it is where their
+			// absence means something; Today gets the same first-run block.
+			await page.goto('/dashboard/progress');
 
 			const firstRun = page.getByTestId('dash-first-run');
 			await expect(firstRun).toBeVisible({ timeout: 15_000 });
@@ -54,6 +56,10 @@ test.describe('dashboard first-run state', () => {
 			await expect(page.locator('.stat-grid')).toHaveCount(0);
 			await expect(page.locator('.filter-row')).toHaveCount(0);
 			await expect(page.locator('.fitness-card')).toHaveCount(0);
+
+			await page.goto('/dashboard');
+			await expect(firstRun).toBeVisible({ timeout: 15_000 });
+			await expect(page.getByTestId('today-progress-summary')).toHaveCount(0);
 
 			// Both actions are real and reachable — a dead-end empty state is
 			// the failure mode this card exists to remove.
@@ -78,8 +84,12 @@ test.describe('dashboard first-run state', () => {
 				duration_s: 1_500,
 			});
 
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			await expect(page.locator('.stat-grid')).toBeVisible({ timeout: 15_000 });
+			await expect(page.getByTestId('dash-first-run')).toHaveCount(0);
+
+			await page.goto('/dashboard');
+			await expect(page.getByTestId('today-progress-summary')).toBeVisible({ timeout: 15_000 });
 			await expect(page.getByTestId('dash-first-run')).toHaveCount(0);
 		} finally {
 			await ctx.close();

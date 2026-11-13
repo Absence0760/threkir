@@ -690,3 +690,98 @@ test.describe('Heatmap keep-on-map / pin (web)', () => {
 		await expect(page.getByTestId('clear-pins')).toHaveCount(0);
 	});
 });
+
+// Issue #1374 FS-10: a failed routes read showed "No routes here yet", so the
+// runner panned and changed filters over a map that never loaded.
+test.describe('Heatmap results sidebar — a failed routes read', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('says the read failed with Retry, not that there are no routes', async ({ page }) => {
+		let fail = true;
+		await page.route('**/rest/v1/rpc/discoverable_routes_in_bbox*', async (route) => {
+			if (!fail) {
+				await route.continue();
+				return;
+			}
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated discovery failure' })
+			});
+		});
+
+		await page.goto('/routes/heatmap');
+		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
+		const error = page.getByTestId('discover-load-error');
+		await expect(error).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('discover-list').locator('.results-empty:not(.results-error)')).toHaveCount(0);
+
+		// Retry issues a fresh read, and a read that fails again is reported
+		// again. The map's own settle refetches fail too while `fail` holds,
+		// so nothing can clear the error under the click.
+		const retried = page.waitForRequest(
+			(req) => req.url().includes('/rest/v1/rpc/discoverable_routes_in_bbox')
+		);
+		await error.getByRole('button', { name: 'Retry' }).click();
+		await retried;
+		await expect(error).toBeVisible();
+
+		// Once reads succeed the error goes. A settle refetch may land first and
+		// unmount the button, so the click is dispatched in the page rather than
+		// through a locator that would wait for a button already gone.
+		fail = false;
+		await page.evaluate(() =>
+			(document.querySelector('[data-testid="discover-load-error"] button') as HTMLButtonElement | null)?.click()
+		);
+		await expect(error).toHaveCount(0, { timeout: 10_000 });
+	});
+
+	test('a failed reload keeps the listed routes and says so, with Retry', async ({ page }) => {
+		let fail = false;
+		await page.route('**/rest/v1/rpc/discoverable_routes_in_bbox*', async (route) => {
+			if (fail) {
+				await route.fulfill({
+					status: 500,
+					contentType: 'application/json',
+					body: JSON.stringify({ message: 'simulated discovery failure' })
+				});
+				return;
+			}
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify([
+					{
+						id: '00000000-0000-4000-8000-0000000fa110',
+						name: 'Stale-list loop',
+						slug: null,
+						is_featured: false,
+						distance_m: 5000,
+						elevation_m: null,
+						surface: 'road',
+						run_count: 0,
+						lng: 0,
+						lat: 0,
+						is_official: false
+					}
+				])
+			});
+		});
+
+		await page.goto('/routes/heatmap');
+		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
+		const list = page.getByTestId('discover-list');
+		await expect(list.getByText('Stale-list loop')).toBeVisible({ timeout: 10_000 });
+
+		fail = true;
+		await page.getByTestId('filters-button').click();
+		await page.getByTestId('lens-chips').locator('[data-filter="official"]').click();
+		const stale = page.getByTestId('discover-stale-error');
+		await expect(stale).toBeVisible({ timeout: 10_000 });
+		await expect(list.getByText('Stale-list loop')).toBeVisible();
+
+		fail = false;
+		await stale.getByRole('button', { name: 'Retry' }).click();
+		await expect(stale).toHaveCount(0, { timeout: 10_000 });
+	});
+});

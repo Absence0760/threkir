@@ -46,7 +46,7 @@ proparoxytones: `quilômetro`, `gênero`, `oxigênio`, `cronômetro`.
 `contato` (never `contacto`).
 
 House vocabulary (verified in both catalogues): `salvar`, `registrar` /
-`registro`, `compartilhar`, `tela`, `celular`, `arquivo`, `senha`,
+`registro` (logging), `gravar` / `gravação` (GPS recording), `compartilhar`, `tela`, `celular`, `arquivo`, `senha`,
 `ao vivo` (live), `usuário`, `academia` (gym), `esteira` (treadmill),
 `acessar`, `equipe`, `baixar` (download), `café da manhã`, `padrão`
 (default and standard), `o app`.
@@ -61,9 +61,12 @@ House vocabulary (verified in both catalogues): `salvar`, `registrar` /
 ## Plurals
 
 `one` covers **0 and 1** (CLDR `pt`, on both platforms). Never write a
-literal `1` in a `one` branch — 11 mobile strings already do (e.g.
-`importFailuresHeading`), rendering "1 …" for 0. Use `{count}` (ARB) /
-`#` (web).
+literal `1` in a `one` branch (it renders "1 …" for 0). Use `{count}` (ARB)
+/ `#` (web). And when the plural is the **whole message**, its `one` branch
+must name the count ("{count} convite enviado") or the plural must carry an
+`=0{…}` branch: a count-free "Convite enviado" is what 0 renders. A plural
+inside a longer sentence is agreement and stays as it is. Both rules are
+guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 
 ## Running glossary (what the catalogues already use)
 
@@ -81,10 +84,17 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | elevation gain | **Ganho de elevação** (web); "Subida" (mobile) | `runStatElevation` "Elevação" |
 | heart rate / HR | Frequência cardíaca / FC | |
 | heart rate zone | Zonas de frequência cardíaca | |
+| fitness / fatigue / form (training load: CTL / ATL / TSB) | **Condicionamento** / **Fadiga** / **Forma** — "Condicionamento, fadiga e forma", "Condicionamento (CTL)", "Forma (TSB)", "condicionamento − fadiga". *Fitness* in its everyday sense ("reflete seu condicionamento atual", VDOT "pontuação de condicionamento") takes the same word, as the English does; same terms as pt-PT | settled 2026-11-12; never "forma" / "forma física" for fitness ("Quanto maior, melhor o condicionamento"), never "Frescor" for form. The idiom "Manter a forma" (*stay fit*, `setupGoalGeneralFitness`) is not the noun and stays. The *Fitness* destination (`navFitness`) stays "Fitness" |
 | cadence (steps/min) | Cadência | "Frequência" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plano de treino; short Plano(s) | |
 | race | **Prova** (workout kind, run source); "Corridas" in nav, tabs and `races.title` | collides with *run* — inconsistency 1 |
+| @username help | « nome de utilizador/usuário público (@…) », never « @nome de … » | settled 2026-11-13 (#1374 round 3.5), both surfaces |
+| Threkir's gender | **o Threkir** for the app (« no Threkir », « do Threkir »); **a Threkir** only for the company in legal and consent text (« em nome da Threkir ») | settled 2026-11-13 (#1374 round 3.5), both surfaces |
+| cue (guided run) | **dica** / dicas — « Ouvir dica », « # dicas na corrida » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « alerta », « sinal » or « indicação » for a guided-run cue (a session plan's breath / alignment cue stays « Indicação ») |
+| build (the plan's build phase) | **construção** — « semanas de construção », « Encurtar a construção » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « desenvolvimento » |
+| gym session / gym workout | **treino de academia** / treinos de academia (masculine: « os treinos de academia ») | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « sessão de academia » or « sessão de musculação ». Inside the Gym records, where academia is already the context, a count is the bare « # treino / # treinos » and « desde o primeiro treino » (round 3.7), never « sessão ». « Plano de sessão » stays: it is the yoga/pilates session plan, a different thing |
 | finish | Chegada (finish line); Concluído (status); Concluir (mobile) / Finalizar (web) action | |
+| Done | By what it does. A button that **closes** a sheet, a dialog, a selection mode or a finished screen is **Pronto** (`filterBarDone`, `runDone`, `coachShare.done`, `runs.done`). A **status** — a workout, a step or a goal that is done — is **Concluído / concluída / concluídos** (`dash.doneBadge`, `coachingAthleteStatusDone`, the widget's done state, the onboarding rail's last step), and so is a button that records a step as done (`session.run.done`); "Mark as done / not done" is "Marcar como concluído / não concluído", "{done} de {total} concluídos", "{pct}% concluído" | settled 2026-11-12; never "Feito" / "feitos" for the status, never "Concluído" for a button that only closes. Not a status, so kept: `gymRoutineHistoryLastDone` "Feita hoje / ontem" (the routine was *performed* then) |
 | DNF | DNF; "Não concluiu" (web `checkpoint.statusDnf`) | |
 | route | Rota / Rotas; percurso for a course | |
 | segment | Segmento / Segmentos | |
@@ -93,10 +103,12 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | gym | **Academia** | |
 | nutrition | Nutrição | |
 | log (verb) | Registrar | `navLog` |
+| record (GPS / an activity), recording | **Gravar** / **gravação** — "Gravando", "Gravação e voz", "Começar uma gravação", "corrida gravada", "distância gravada", "grave com uma cinta" | settled 2026-11-12; never *registrar* / *registro* for recording. *Registrar* / *registro* stay for logging (manual entry, diary, gym and food log), records on file (consent, DNF / DNS, weigh-ins, payment records, a DNS record) and a race finish being recorded |
 | streak | Sequência | |
 | goal | Meta / Metas | "Objetivo" occasionally on web |
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
 | AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está pensando"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
+| AI disclosure | **o aviso de IA** ("precisa que aceite o aviso de IA atualizado" — keep the consent: the reader accepts the notice, not merely needs it) | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
 | event host | **Organizador** | `admin.earnings.*`; never "Anfitrião" |
 | payouts / payout account | **Repasses** / **conta de repasses** | `payouts.pageTitle`, `fundraiser.setUpPayouts`; *payment* (a charge) stays "pagamento" |
 | activity discipline (yoga, pilates…) | **Modalidade** | `eventEditor.discipline`, `session.discipline` |
@@ -110,7 +122,14 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
+| Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab and page title; a string names the page, never a path to it (decisions § 2496) | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar** | settled 2026-10-21; never "pulado" for the status. Skipping a step or setup is **Pular**; "não pule" stays in coaching advice |
+| readiness | **Prontidão** — "Prontidão {score}", "da sua prontidão para correr", "reduzem a sua prontidão", "Excluir a carga do ginásio da prontidão para correr" | settled 2026-11-13; never "preparo" (Brazilian colloquial, and a second word for one score) |
+| taper (the plan phase and the act) | **Polimento** — phase "Polimento", "Polimento em torno das provas B/C", "está no polimento", "antes do polimento", "o polimento fica como está", "Em polimento — …" | settled 2026-11-13; never "afinamento", "afunilamento" or "redução de carga" for the taper. "Redução de carga" stays for a *deload* (`planDetail.replanDeload`) |
+| load trend going down (the coach roster's "Tapering": acute load more than 15 % below the 28-day average, `loadTrend` in `coach_load.ts`) | **Diminuindo** (beside « Subindo », « Estável »), as the load card's « Sua carga está diminuindo » | settled 2026-11-13 (#1374 round 3.7); a measured drop, not a planned taper, so never « Polimento » here |
+| a planned gym set that was not performed (status) | **Não atingido** (`gymReviewStatusMissed`, `gym.review.status.missed`), beside "Parcial" | settled 2026-11-13, phone aligned to web; never "Não feito" / "Falhado" |
+| Let it go (missed workout) | button **Deixar passar**; its banner says the same act back: "Você deixou passar. Seu plano continua como estava." | settled 2026-11-13; never a bare "Pronto." / "Feito.", which drops what was let go |
+| unlinking a matched run | "O treino aparecerá como ainda não concluído" on both platforms (`workoutUnlinkBody`, `workoutDetail.unlinkRunMessage`): the planned item is a *treino*, not a *sessão* | settled 2026-11-13 |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Salvar / Configurações (nav "Config.") / Feed / Seguidores | |
 | Arm early / Arm anyway | **Preparar mais cedo** / **Preparar mesmo assim** | settled 2026-11-10; the last "Armar antes" / "Armar mesmo assim" / "Arme antes" / "arma a corrida" strings moved to *Preparar* |

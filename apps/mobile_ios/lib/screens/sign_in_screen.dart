@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeader, PushedPage;
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -322,8 +323,8 @@ class _SignInScreenState extends State<SignInScreen> {
     // Android keeps Google as the primary; Apple is still available via the
     // package's web fallback for users who'd prefer it.
     final appleFirst = Platform.isIOS;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.signInTitle)),
+    return PushedPage(
+      title: l10n.signInTitle,
       // Scaffold already inherits resizeToAvoidBottomInset: true, so the
       // body gets shrunk by the keyboard — the Column inside has to be
       // scrollable to absorb the remaining content, otherwise Flutter's
@@ -334,7 +335,8 @@ class _SignInScreenState extends State<SignInScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 32),
+              PageHeader(title: l10n.signInTitle, padding: EdgeInsets.zero),
+              const SizedBox(height: 16),
               Icon(Icons.directions_run,
                   size: 64, color: theme.colorScheme.primary),
               const SizedBox(height: 16),

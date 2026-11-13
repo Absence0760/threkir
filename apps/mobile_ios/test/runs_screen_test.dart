@@ -7,7 +7,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState;
+import 'package:ui_kit/ui_kit.dart' show AppSearchField, EmptyState;
 import '../lib/goals.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
@@ -146,7 +146,7 @@ Future<void> _pump(
   required LocalRouteStore routeStore,
   required Preferences prefs,
   double textScale = 1.0,
-  bool centreStartsRun = false,
+  bool centreOpensRecorder = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -162,12 +162,19 @@ Future<void> _pump(
         runStore: runStore,
         routeStore: routeStore,
         preferences: prefs,
-        centreStartsRun: centreStartsRun,
+        centreOpensRecorder: centreOpensRecorder,
       ),
     ),
   );
   await tester.pump();
 }
+
+/// The run list's own scrollable — not the search field's, which comes first
+/// and scrolls sideways.
+Finder _listScrollable() => find
+    .byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down)
+    .first;
 
 void main() {
   tearDown(() {
@@ -177,34 +184,12 @@ void main() {
   });
 
   group('RunsScreen', () {
-    testWidgets(
-        'AppBar carries the date-range label + run-count (claiming the '
-        'previously-empty title slot)',
-        (tester) async {
-      // Pre-polish the AppBar had no title and the date-range label
-      // lived on its own row below — half a row of dead vertical
-      // real estate. Now the range label anchors the AppBar title
-      // and the body row drops.
+    testWidgets('pushed on its own it is titled Runs, and an empty history '
+        'offers no search', (tester) async {
       final s = await _makeStores();
       await _pump(tester, runStore: s.runStore, routeStore: s.routeStore, prefs: s.prefs);
-      expect(find.byType(AppBar), findsOneWidget);
-      // Default range is "This week" — pinned in the AppBar.
-      expect(
-        find.descendant(
-          of: find.byType(AppBar),
-          matching: find.text('This week'),
-        ),
-        findsOneWidget,
-      );
-      // "0 runs" count chip (empty seed store) sits next to the
-      // title.
-      expect(
-        find.descendant(
-          of: find.byType(AppBar),
-          matching: find.text('0 runs'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.widgetWithText(AppBar, 'Runs'), findsOneWidget);
+      expect(find.byType(AppSearchField), findsNothing);
     });
 
     testWidgets('shows empty state when store has no runs', (tester) async {
@@ -232,17 +217,20 @@ void main() {
       expect(find.byType(AddRunScreen), findsOneWidget);
     });
 
-    testWidgets('the empty state names the centre button by its run caption '
-        'when a tap on it starts a run', (tester) async {
+    testWidgets('the empty state names the centre button by its caption '
+        'when a tap on it opens the recorder', (tester) async {
       final s = await _makeStores();
       await _pump(tester,
           runStore: s.runStore,
           routeStore: s.routeStore,
           prefs: s.prefs,
-          centreStartsRun: true);
+          centreOpensRecorder: true);
       final empty = tester.widget<EmptyState>(find.byType(EmptyState));
-      expect(empty.body, contains('Start run'));
+      expect(empty.body, contains('Tap Run to record one'));
       expect(empty.body, isNot(contains('Log')));
+      expect(empty.body, isNot(contains('Start')),
+          reason: 'the centre button opens the recorder; only its Start '
+              'starts a run (#1374)');
     });
 
     testWidgets(
@@ -254,9 +242,9 @@ void main() {
           runStore: s.runStore,
           routeStore: s.routeStore,
           prefs: s.prefs,
-          centreStartsRun: true);
+          centreOpensRecorder: true);
       final empty = tester.widget<EmptyState>(find.byType(EmptyState));
-      expect(empty.body, contains('Start trail run'));
+      expect(empty.body, contains('Tap Trail run'));
     });
 
     // The shell's centre button, a thumb away, is the one that records; this
@@ -600,7 +588,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Load 20 more'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _listScrollable(),
       );
       expect(find.text('Load 20 more'), findsOneWidget);
     });
@@ -646,7 +634,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Load 20 more'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _listScrollable(),
       );
 
       // The clearance contract holds at the END of the scroll extent —
@@ -945,7 +933,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Load 20 more'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _listScrollable(),
       );
       expect(find.text('Load 20 more'), findsOneWidget);
       await tester.tap(find.text('Load 20 more'));
@@ -1071,7 +1059,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Load 20 more'),
         300,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: _listScrollable(),
       );
       await tester.tap(find.text('Load 20 more'));
       await tester.pump();
@@ -1192,7 +1180,7 @@ void main() {
 
       // Header chip reads "1 run" — the yesterday entry. The today entry
       // is filtered out by the upper cutoff.
-      expect(find.text('1 run'), findsOneWidget);
+      expect(find.textContaining('1 run'), findsOneWidget);
     });
 
     testWidgets('ignores a malformed filter blob and keeps defaults',
@@ -1222,7 +1210,45 @@ void main() {
 
       // Default range = this week → all 3 seeded runs (anchored within
       // the past 90 minutes by _makeRuns) survive.
-      expect(find.text('3 runs'), findsOneWidget);
+      expect(find.textContaining('3 runs'), findsOneWidget);
+    });
+  });
+
+  group('RunsScreen search', () {
+    testWidgets('finds a run by its name, folding case and accents, and '
+        'clears in one tap', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+      _runsDir = Directory.systemTemp.createTempSync('runs_screen_test_');
+      final runs = _makeRuns(3);
+      Run titled(Run r, String title) => Run(
+            id: r.id,
+            startedAt: r.startedAt,
+            duration: r.duration,
+            distanceMetres: r.distanceMetres,
+            track: r.track,
+            source: r.source,
+            metadata: {MetadataKeys.title: title},
+          );
+      // ignore: invalid_use_of_visible_for_testing_member
+      final runStore = LocalRunStore()
+        ..debugSeed([
+          titled(runs[0], 'Richmond Marathon'),
+          titled(runs[1], 'Tempo Tuesday'),
+          runs[2],
+        ], dir: _runsDir);
+      await _pump(tester,
+          runStore: runStore, routeStore: LocalRouteStore(), prefs: prefs);
+      expect(find.textContaining('3 runs'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).first, 'RICHMÖND');
+      await tester.pump();
+      expect(find.textContaining('1 run'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Clear search'));
+      await tester.pump();
+      expect(find.textContaining('3 runs'), findsOneWidget);
     });
   });
 
@@ -1287,7 +1313,7 @@ void main() {
       // We assert via the summary chip (1 run total) — the exact row
       // text is brittle (depends on UnitFormat + month header), but
       // the count is invariant.
-      expect(find.text('1 run'), findsOneWidget,
+      expect(find.textContaining('1 run'), findsOneWidget,
           reason: 'A manual save must propagate through the LocalRunStore '
               'listener into _filterAndSort on RunsScreen — the dashboard '
               'reads the same store and shows the run in This Week, so the '
@@ -1324,7 +1350,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 50));
       // Default range = "this week". A run dated today must show.
-      expect(find.text('1 run'), findsOneWidget);
+      expect(find.textContaining('1 run'), findsOneWidget);
     });
 
     testWidgets(
@@ -1384,7 +1410,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // The summary chip reflects 1 run — auto-clear worked.
-      expect(find.text('1 run'), findsOneWidget,
+      expect(find.textContaining('1 run'), findsOneWidget,
           reason: 'A run that does NOT match the sticky filter must '
               'still surface — the screen auto-clears activity/source '
               'filters when a fresh save would otherwise be hidden.');
@@ -1445,7 +1471,7 @@ void main() {
       // assert chip presence (the chip rendering moves around), but
       // we DO check that the persisted SharedPreferences entry still
       // carries activity=run — proves we didn't reset it.
-      expect(find.text('1 run'), findsOneWidget);
+      expect(find.textContaining('1 run'), findsOneWidget);
       final sp = await SharedPreferences.getInstance();
       final raw = sp.getString('runs_filters_v1');
       expect(raw, isNotNull);
@@ -1503,7 +1529,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('1 run'), findsOneWidget);
+      expect(find.textContaining('1 run'), findsOneWidget);
     });
   });
 

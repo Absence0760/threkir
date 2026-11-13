@@ -84,6 +84,12 @@ String _argSpan(String source, int open) {
 int _lineOf(String source, int index) =>
     '\n'.allMatches(source.substring(0, index)).length + 1;
 
+List<File> _uiKitDartFiles() => Directory('../../packages/ui_kit/lib')
+    .listSync(recursive: true)
+    .whereType<File>()
+    .where((f) => f.path.endsWith('.dart'))
+    .toList();
+
 List<File> _libDartFiles() => Directory('lib')
     .listSync(recursive: true)
     .whereType<File>()
@@ -204,4 +210,68 @@ void main() {
               '>=48 or drop the wrapper. Offenders: $offenders');
     });
   });
+
+  group('lib/-wide: hand-built icon buttons', () {
+    // #1374 A11Y-6. The photo tiles drew their edit / delete / race-gallery
+    // buttons as Material(CircleBorder) > InkWell > SizedBox(30) > Icon: a
+    // 30 dp target, 4 dp from its neighbour, which the IconButton-only
+    // checks above never saw. A tap surface whose child is a sub-48 box
+    // around a bare Icon is an icon button by another name; use IconButton,
+    // or ui_kit's OverlayIconButton over a photo or a map.
+    test('no InkWell / InkResponse / GestureDetector wraps a sub-48dp box around an Icon', () {
+      final offenders = <String>[];
+      final dim = RegExp(r'\b(?:width|height|dimension):\s*(\d+(?:\.\d+)?)');
+      for (final f in [..._libDartFiles(), ..._uiKitDartFiles()]) {
+        final src = f.readAsStringSync();
+        for (final m in RegExp(r'\b(?:InkWell|InkResponse|GestureDetector)\(').allMatches(src)) {
+          final span = _argSpan(src, m.end - 1);
+          final child = RegExp(r'\bchild:\s*(?:const\s+)?SizedBox(?:\.square)?\(').firstMatch(span);
+          if (child == null) continue;
+          final box = _argSpan(span, child.end - 1);
+          final childAt = box.indexOf('child:');
+          if (childAt < 0) continue;
+          final own = box.substring(0, childAt);
+          final inner = box.substring(childAt + 'child:'.length).trimLeft();
+          if (!RegExp(r'^(?:const\s+)?Icon\(').hasMatch(inner)) continue;
+          for (final d in dim.allMatches(own)) {
+            final v = double.tryParse(d.group(1)!);
+            if (v != null && v < 48) {
+              offenders.add('${f.path}:${_lineOf(src, m.start)} (${d.group(0)})');
+              break;
+            }
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'a tap surface around a sub-48dp box holding an Icon is an icon '
+              'button under the 48dp floor. Use IconButton or OverlayIconButton. '
+              'Offenders:\n${offenders.join('\n')}');
+    });
+  });
+
+  group('lib/ and ui_kit: interactive chips keep a 48dp target', () {
+    // #1374 A11Y-15. ChoiceChipRow (19 screens), FilterBar's removable
+    // chips, the route tag chip whose "x" is the only remove, and the
+    // surface peer strip were compact and shrink-wrapped: 24-32 dp targets.
+    // A chip that can be tapped or deleted keeps the theme's density and a
+    // padded tap target.
+    test('no tappable chip is compact or shrink-wrapped', () {
+      final offenders = <String>[];
+      for (final f in [..._libDartFiles(), ..._uiKitDartFiles()]) {
+        final src = f.readAsStringSync();
+        for (final m in RegExp(r'(?<![\w.])(?:Chip|ChoiceChip|FilterChip|InputChip|ActionChip)(?:\.elevated)?\(').allMatches(src)) {
+          final span = _argSpan(src, m.end - 1);
+          final tappable = ['onSelected', 'onPressed', 'onDeleted'].any(span.contains);
+          if (!tappable) continue;
+          if (span.contains('VisualDensity.compact') ||
+              span.contains('MaterialTapTargetSize.shrinkWrap')) {
+            offenders.add('${f.path}:${_lineOf(src, m.start)}');
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'a tappable chip under the 48dp target:\n${offenders.join('\n')}');
+    });
+  });
 }
+

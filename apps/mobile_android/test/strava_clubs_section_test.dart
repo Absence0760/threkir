@@ -9,6 +9,7 @@ import '../lib/screens/clubs_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/undo_bar.dart';
+import 'worst_case_layout.dart';
 
 /// "Your Strava clubs" on My clubs (issue #1151 step 4, decisions § 1959) —
 /// the mobile mirror of web's `tests-e2e/clubs/strava-clubs.spec.ts` (the
@@ -208,6 +209,32 @@ void main() {
     expect(_inRow(member, find.text(l.stravaClubsAdminOnly)), findsOneWidget);
     expect(_inRow(member, find.text(l.stravaClubsSetUp)), findsNothing);
     expect(_inRow(member, find.text(l.stravaClubsLinkToMine)), findsNothing);
+  });
+
+  worstCaseTestWidgets('Strava club rows', (tester, locale) async {
+    final api = _FakeApi(_connected([
+      _stravaClub(name: 'Leeds Harriers and Athletic Club Road Section'),
+      _stravaClub(
+        id: _stravaClubId + 1,
+        name: 'Member Only Milers',
+        memberCount: 1,
+        viewerIsAdmin: false,
+      ),
+    ]));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ClubsScreen(
+        social: _FakeSocial([_mine()]),
+        training: TrainingService(),
+        apiClient: api,
+        stravaConfigured: () => true,
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.scrollUntilVisible(_row(_stravaClubId + 1), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pump();
   });
 
   testWidgets('linking is offered only to a runner who administers a club',

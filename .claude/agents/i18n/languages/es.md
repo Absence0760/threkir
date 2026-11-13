@@ -36,8 +36,8 @@ where it can't, use `vosotros` and flag it.
 
 **RAE / ASALE** (*Diccionario de la lengua española*, *Ortografía* 2010):
 no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
-124 and 6 / 13 strings). `cardíaca` (16 / 24) is the house form —
-`cardiaca` appears once per surface and is a slip. `correo` for email
+124 and 6 / 13 strings). `cardíaca` is the house form, never `cardiaca` (the last one,
+`prefs.dateOfBirthPurpose`, moved 2026-11-13). `correo` for email
 (34 / 41). Sentence case for labels.
 
 ## Typography
@@ -69,9 +69,19 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | elevation gain | **Desnivel positivo** | web; mobile "Desnivel +", "Desnivel", "Subida", "Ascenso", web `dash.elevationGain` "desnivel acumulado" |
 | heart rate / HR | Frecuencia cardíaca / FC | |
 | heart rate zone | Zonas de frecuencia cardíaca | |
+| fitness / fatigue / form (training load: CTL / ATL / TSB) | **Estado físico** / **Fatiga** / **Forma** — "Estado físico, fatiga y forma", "Estado físico (CTL)", "CTL (estado físico)", "Forma (TSB)", "estado físico − fatiga". *Fitness* in its everyday sense ("refleja tu estado físico actual", VDOT "puntuación de estado físico", "tu estado físico reciente") takes the same word, as the English does | settled 2026-11-12; never "forma física" or bare "Estado" for fitness, never "frescura" for form. *Forma* is the TSB alone (and *form* in its everyday sense, "tu forma pasada"). The *Fitness* destination (`navFitness`) stays "Fitness" |
+| heart-rate strap | **banda de FC** (compact) / **banda de frecuencia cardíaca** (prose) | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « cinta » (that is the treadmill, « cinta de correr ») nor « banda pectoral / de pecho »; a treadmill's belt is « la cinta », never « la banda » |
+| per-device override (Signed-in devices) | **personalización** (« Añadir personalización », « # preferencias personalizadas »); the verb is « sustituir » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « anulación », which reads as *cancelled* |
+| tied with N others (challenge standing) | « Empate con N más » | settled 2026-11-13 (#1374 round 3.5), both surfaces; gender-neutral, never « Empatado » |
+| mapped run (personal heatmap) | **carrera en el mapa** | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « carrera mapeada » |
+| cue (guided run) | **indicación** / indicaciones | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « aviso » for a cue |
+| max HR / resting HR | **frecuencia cardíaca máxima** / **frecuencia cardíaca en reposo** in sentences, setting titles and errors; abbreviated **FC máxima** / **FC en reposo** only where the HR row allows *FC* (a field label with its unit, a button: "FC máxima (ppm)", "Definir FC máxima"); coordinated "frecuencia cardíaca en reposo y máxima". The unit is **ppm**, never "bpm" / "lpm". A zone's upper bound is "el límite superior de frecuencia cardíaca", not "frecuencia cardíaca máxima" | settled 2026-11-12; never "FC máx." |
 | cadence (steps/min) | Cadencia | `runStatCadence`; "Frecuencia" in `discover.cadenceLabel` means *recurrence* |
 | training plan | Plan de entrenamiento; short Plan(es) | |
-| race | Carrera; "Competir" for the race phase intent | collides with *run* — inconsistency 1 |
+| race (a competition you find, enter, browse or are listed for) | **Prueba / Pruebas** — `navRaces` / `nav.races` "Pruebas", "Calendario de pruebas" (`racesTitle`, `races.title`), "Pruebas y recorridos", "Próximas pruebas", "Buscar pruebas por nombre…", "Página de la prueba e inscripción", "Reclamar esta prueba", "Ficha de prueba", "página de la prueba" (race photo gallery), "resultados de pruebas" (RunSignUp / ChronoTrack); "Es una contrarreloj, no una prueba organizada" (park courses) | settled 2026-11-12 (inconsistency 1). Covers every race-discovery, calendar, registration, race-listing, race-page, race-course-claim and results-import string. Feminine like *carrera*, so agreement is unchanged ("esta prueba", "Próximas pruebas"). *Prueba* in its other senses ("periodo de prueba", "Prueba encontrada", "prueba a ampliarlo") are unaffected |
+| race (as the athlete's own effort, in training plans) | **Carrera** — "carrera objetivo", "carreras A/B/C", "Semana de carrera", "Día de carrera", "Fecha de carrera", "Estrategia de carrera", "Predictor de tiempo de carrera", "Avituallamiento de carrera"; "Competir" for the race phase intent | settled 2026-11-12: plan / season / workout / prediction strings keep *carrera*, as Spanish running coaching does. A plan string that points at the race *listing* takes *prueba* ("Toca «Añadir a mi temporada» en la prueba", "Buscar una prueba") |
+| race (a club-hosted live race: control, live page, results) | **Carrera** — the race-control rows below, "Control de carrera", "Carrera en vivo", "Director de carrera", help category `helpCategoryRaces` / `help.categoryRaces` "Carreras"; never «competición» for this race ("No se pudo cargar la carrera de esta actividad", "la llegada que deshiciste durante la carrera") | settled 2026-11-10 / 2026-11-12: the host's live race keeps *carrera* (Preparar / Finalizar / Cancelar carrera, «CARRERA PREPARADA» on Wear) |
+| run (the runner's own recording, in a string that also names a race «carrera») | **Actividad** — the self-timed button «Esta actividad es mi intento» (phone, web, help and the Wear watch's `race_attempt`), "Tu actividad se sigue grabando, pero no se enviará ningún resultado", "la traza de esta actividad" (re-time), "Una actividad que no marques como tu intento nunca se une a la carrera", "Ninguna actividad el día de la carrera" (plan recap) | settled 2026-11-13: where a live-race or training-plan string already says *carrera* for the race, the run beside it is *actividad*, so «Esta carrera es mi intento» beside «Abre la carrera» can't be read as the race. A string that names only the run keeps *carrera*; the run screen is «la pantalla Correr» |
 | finish | **Meta** (finish line); Finalizado (status); Finalizar (action) | "Meta" also used once for *goal* on web |
 | DNF | DNF | web `liveEvent`/checkpoint also "Abandono" |
 | route | Ruta / Rutas | |
@@ -87,12 +97,15 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | streak | Racha | |
 | goal | Objetivo / Objetivos | |
 | coach | Entrenador; AI Coach = **Entrenador IA** | web `coachChat.coach` "Coach" |
+| AI disclosure | **el aviso de IA** ("necesita el aviso de IA actualizado") | settled 2026-11-13; never "la información actualizada sobre IA". Consent wording: CISO/counsel review |
+| readiness | **Preparación** ("tu preparación real", `dash.readinessLabel`, `readinessCardHeader`) | settled 2026-11-13 (#1374 round 3.6), both surfaces; never "disposición" |
 | auto-pause | — | no catalogue string yet; build from "pausa" ("Carrera en pausa", "Pausar") → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "quitar/retirar kudos") | |
 | workout / session | Entrenamiento / sesión | |
 | warm-up / cool-down / recovery | Calentamiento / Enfriamiento / Recuperación | |
+| taper (the plan phase and the act) | **Puesta a punto** — phase label `planPhaseTaper` / `planPhase.taper` "Puesta a punto", "Puesta a punto en torno a carreras B/C", "estás en la puesta a punto", "Bien para una puesta a punto o una semana de recuperación", "En puesta a punto: una sesión dura no te hará daño" | settled 2026-11-13; never "afinamiento" / "afinando", "tapering", or "descarga", which is a *deload* / step-back week ("semana de descarga") |
 | challenge | Desafío | web also "reto" (0 / 7) |
-| save / settings / feed / followers | Guardar / **Ajustes** (mobile) – **Configuración** (web `shell.settings`) / Feed / Seguidores | inconsistency 3 |
+| save / settings / feed / followers | Guardar / **Ajustes** / Feed / Seguidores | settings settled 2026-11-13 on **Ajustes** everywhere (`navSettings`, web `shell.settings`, `prefs.kicker`, help "en Ajustes"); never "Configuración" for the settings area. *Configuración* stays for *setup* ("Configuración incompleta" for payouts) |
 | arm / armed (race control) | **Preparar** / **preparada** — "Preparar carrera", "Carrera preparada", status "Preparada", "Preparar antes", "Preparar de todos modos", "Prepárala antes" | settled 2026-11-10; never "Armar" / "armado" or "lista" / "Listo" (reads as *ready*, confusable with GO). The Wear watch's banner is «CARRERA PREPARADA» |
 | set up (a race created automatically before its start) | **configurar** ("La carrera se configura un día antes") | settled 2026-11-10; never "preparar", which is *arm* |
 | self-timed (race) | **con cronometraje propio** ("carrera con cronometraje propio", "Ventana de cronometraje propio") | settled 2026-11-10; never "autocronometrada" |
@@ -101,12 +114,25 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 
-1. **run vs race are both "Carrera(s)".** Web `runSurface.tabRuns` and
-   `runSurface.tabRaces` render "Carreras" twice on one tab bar
-   (`RunSurfaceTabs.svelte`); `nav.races` / `navRaces` (unused) too.
+1. ~~**run vs race are both "Carrera(s)"**~~: resolved 2026-11-12. A race
+   you find, enter, browse or are listed for is **prueba(s)** (the race
+   calendar, race pages, listings, claims, results import, `nav.races` /
+   `navRaces` "Pruebas"; the run-surface tab is `runSurface.tabRacesCourses`
+   "Pruebas y recorridos" beside `tabRuns` "Carreras"). The run stays
+   *carrera*, and so do the training-plan race terms and the club-hosted
+   live race-control vocabulary settled 2026-11-10 — see the three *race*
+   rows in the glossary for the boundary.
+   The help category `helpCategoryRaces` / `help.categoryRaces` stays
+   **Carreras** (checked 2026-11-12): eight of its nine guides are the
+   club-hosted live race (set it up, choose how it starts, race day for
+   hosts, racing in it, following it live, start and finish lines,
+   self-timed races, results), none of them points at the race calendar,
+   and each already says *carrera*; the ninth, `drive-a-course`, is about a
+   public race course and rightly says *prueba* in its own text. A category
+   label names its guides, so it follows the live-race row, not the
+   calendar's. Revisit only if a calendar or race-listing guide joins it.
 2. ~~**gym**~~: resolved 2026-11-10, the phone says "Gym" like the web.
-3. **settings**: "Ajustes" (mobile `navSettings`, web `prefs.kicker`) vs
-   "Configuración" (web `shell.settings`).
+3. ~~**settings**~~: resolved 2026-11-13, "Ajustes" everywhere.
 4. ~~**PR badge**~~: resolved 2026-11-10, "PR" on both.
 5. **elevation gain** — five renderings, see table.
 6. **VO₂ max**: "VO₂ máx" (`metric.vo2max.label`, `fitnessStatVo2Max`) vs

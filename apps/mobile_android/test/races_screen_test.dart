@@ -11,6 +11,7 @@ import '../lib/training.dart' show toIsoDate;
 import '../lib/screens/race_detail_screen.dart';
 import '../lib/screens/races_screen.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 class _FakeRaceService extends RaceService {
   final List<RaceListingView> results;
@@ -144,12 +145,29 @@ Widget _app(RaceService service,
 /// Opens the filter sheet. A fixed pump past the sheet's entrance rather than
 /// pumpAndSettle, which never settles while the loading skeleton shimmers.
 Future<void> _openFilters(WidgetTester tester) async {
-  await tester.tap(find.byKey(const Key('races-filters-button')));
+  await tester.tap(find.byKey(const Key('filter-bar-filters')));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
 }
 
 void main() {
+  worstCaseTestWidgets('the race cards', (tester, locale) async {
+    final service = _FakeRaceService(
+      results: [
+        _listing('r-w1', 'Schwarzwald Halbmarathon mit Bergwertung',
+            distanceM: 21097, distanceMAway: 12000, verified: false),
+        _listing('r-w2', 'Riverside 10k',
+            distanceM: 10000, raceDate: _isoDaysOut(90)),
+      ],
+    );
+    await tester.pumpWidget(
+        worstCaseApp(locale: locale, home: RacesScreen(service: service)));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(Card), findsWidgets);
+    await walkScrollable(tester, primaryScrollable(), 'Races');
+  });
+
   testWidgets('renders the empty state when no listings match', (tester) async {
     await tester.pumpWidget(_app(_FakeRaceService(results: const [])));
     await tester.pump();
@@ -693,7 +711,7 @@ void main() {
 
     // No filter chip on the screen itself: only the search and Filters.
     expect(find.byType(ChoiceChip), findsNothing);
-    expect(find.byKey(const Key('races-active-filters')), findsNothing);
+    expect(find.byType(InputChip), findsNothing);
 
     final firstCard = find.ancestor(
         of: find.textContaining('Long Sponsor Name 0'),
@@ -712,29 +730,29 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 300));
 
-    final active = find.byKey(const Key('races-active-filters'));
+    final active = find.byKey(const Key('filter-bar-chips'));
     expect(active, findsOneWidget);
     final halfChip =
         find.descendant(of: active, matching: find.widgetWithText(InputChip, 'Half'));
     expect(halfChip, findsOneWidget);
     expect(
         find.descendant(
-            of: find.byKey(const Key('races-filters-button')),
+            of: find.byKey(const Key('filter-bar-filters')),
             matching: find.text('1')),
         findsOneWidget);
 
     await tester.tap(find.byTooltip('Remove filter: Half'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byKey(const Key('races-active-filters')), findsNothing);
+    expect(find.byType(InputChip), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
   // Issue #666 C5: the list reserved nothing at all for the Submit-race FAB,
   // so the last card sat under it — worst on a 3-button nav bar, which lifts
   // the button another ~48dp into the list.
-  testWidgets('the last race card clears the FAB, nav bar included',
-      (tester) async {
+  testWidgets('the last race card clears the nav bar, and Add a race waits '
+      'in the overflow rather than holding a FAB', (tester) async {
     tester.view.physicalSize = const Size(360, 700);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -744,6 +762,7 @@ void main() {
     ]);
     await tester.pumpWidget(_app(service, bottomInset: 48));
     await tester.pumpAndSettle();
+    expect(find.byType(FloatingActionButton), findsNothing);
 
     await tester.scrollUntilVisible(find.text('Race 7'), 300,
         scrollable: find
@@ -755,11 +774,16 @@ void main() {
 
     final lastCard = find.ancestor(
         of: find.text('Race 7'), matching: find.byType(Card));
-    expect(
-      tester.getRect(lastCard).bottom,
-      lessThan(tester.getRect(find.byType(FloatingActionButton)).top),
-      reason: 'the last card must end above the button that floats over it',
-    );
+    expect(tester.getRect(lastCard).bottom, lessThanOrEqualTo(700 - 48),
+        reason: 'the last card must end above the 3-button nav bar');
+
+    // Pushed on its own, the controls scroll away with the page's heading.
+    await tester.ensureVisible(
+        find.byKey(const Key('races-overflow'), skipOffstage: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('races-overflow')));
+    await tester.pumpAndSettle();
+    expect(find.text('Add a race'), findsOneWidget);
   });
 
   group('RacesScreen — the runner\'s distance unit', () {

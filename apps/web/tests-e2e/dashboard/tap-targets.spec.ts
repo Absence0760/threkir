@@ -9,7 +9,7 @@ import {
 import { USER_A } from '../fixtures/users';
 
 /**
- * Every icon button on /dashboard clears the tap-target bar, with headroom.
+ * Every icon button on /dashboard/progress clears the tap-target bar, with headroom.
  *
  * This replaces a single assertion on `.pr-hide`, which policed one control and
  * left the ones around it — the seven metric disclosures among them — unmeasured.
@@ -32,7 +32,7 @@ const VIEWPORTS = [
 	{ name: 'phone', width: 375, height: 667 }
 ] as const;
 
-test.describe('/dashboard tap targets', () => {
+test.describe('/dashboard/progress tap targets', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	let runId = '';
@@ -55,7 +55,7 @@ test.describe('/dashboard tap targets', () => {
 			page
 		}) => {
 			await page.setViewportSize({ width: vp.width, height: vp.height });
-			await page.goto('/dashboard');
+			await page.goto('/dashboard/progress');
 			const main = page.locator('#main-content');
 			await expect(main.locator('.pr-hide').first()).toBeVisible({ timeout: 10_000 });
 

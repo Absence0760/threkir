@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { USER_B } from '../fixtures/users';
 
 /**
- * ChallengesPanel (/dashboard) — a failed my_active_challenges fetch must
+ * ChallengesPanel (/dashboard/progress) — a failed my_active_challenges fetch must
  * surface a distinct error, NOT silently coerce to the self-hiding
  * "not in any challenge" state.
  *
@@ -26,7 +26,7 @@ test.describe('ChallengesPanel — load failure', () => {
 			});
 		});
 
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 
 		const strip = page.locator('section.challenges-strip', { hasText: "Couldn't load challenges." });
 		await expect(strip).toBeVisible({ timeout: 10_000 });

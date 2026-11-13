@@ -111,11 +111,36 @@ test.describe('Legal pages', () => {
 		// pseudonymous user id, which matched none of them.
 		await page.goto('/privacy');
 		const body = await page.locator('.legal-page').innerText();
-		expect(body).toContain('Settings → Account → Send error reports');
+		expect(body).toMatch(/Send error reports on the\s+Privacy & sharing page, in Preferences on the app's You tab/);
 		expect(body).toMatch(/iPhone and Android apps it is on by default/);
 		expect(body).toMatch(/website, client-side error monitoring stays off until\s+you accept/);
 		expect(body).not.toContain('pseudonymous user id');
 		expect(body).not.toContain('remains gated on your telemetry');
+	});
+
+	test('each consent and data right names where it lives on the web and in the app', async ({
+		page
+	}) => {
+		// The app has no Settings screen since #1374 (decisions § 2494): AI
+		// Coach consent is on the Account page, but health-data consent is
+		// the Store health data switch under Body metrics, so one "Settings →
+		// Account" pointed app users to the wrong place for an Art 7(3)
+		// withdrawal.
+		await page.goto('/privacy');
+		const privacy = (await page.locator('.legal-page').innerText()).replace(/\s+/g, ' ');
+		expect(privacy).toContain(
+			"AI Coach consent on the Account page (Settings → Account on the web, Account in the app's You tab)"
+		);
+		expect(privacy).toContain(
+			"health-data consent under Settings → Account on the web, or with the Store health data switch under Body metrics in the app's You tab"
+		);
+		expect(privacy).not.toContain('Settings → Export your data');
+		expect(privacy).not.toContain('Settings → Profile');
+
+		await page.goto('/health-data-notice');
+		const notice = (await page.locator('.legal-page').innerText()).replace(/\s+/g, ' ');
+		expect(notice).toContain('Store health data switch under Body metrics');
+		expect(notice).not.toContain("or Account in the app's You tab;");
 	});
 
 	test('/terms states the subscription pillars + marketplace + DMCA clauses', async ({
@@ -211,8 +236,9 @@ test.describe('Legal pages', () => {
 		// requirement: reachable logged-out, a working path to the in-app
 		// deletion, and a fallback for users who can no longer sign in.
 		await page.goto('/delete-account');
+		// The link names the page, not a menu path (decisions § 2496).
 		await expect(
-			page.getByRole('link', { name: 'Settings → Account' })
+			page.getByRole('link', { name: 'your Account settings' })
 		).toHaveAttribute('href', '/settings/account');
 		await expect(
 			page.getByRole('link', { name: /privacy@threkir\.com/ }).first()
@@ -221,6 +247,8 @@ test.describe('Legal pages', () => {
 		// Retention carve-outs must not silently drift from /privacy §7.
 		expect(body).toMatch(/backups[^\n]*28 days/i);
 		expect(body).toContain('permanent and cannot be undone');
+		// The app has no Settings screen; deletion is under the You tab.
+		expect(body).toContain('open Account in the You tab and choose Delete account');
 	});
 
 	test('/delete-account reads in the browser language, not only in English', async ({
@@ -232,7 +260,7 @@ test.describe('Legal pages', () => {
 		const page = await context.newPage();
 		await page.goto('/delete-account');
 		await expect(page.getByRole('heading', { level: 1, name: 'Konto löschen' })).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Einstellungen → Konto' })).toHaveAttribute(
+		await expect(page.getByRole('link', { name: 'deine Kontoeinstellungen' })).toHaveAttribute(
 			'href',
 			'/settings/account'
 		);

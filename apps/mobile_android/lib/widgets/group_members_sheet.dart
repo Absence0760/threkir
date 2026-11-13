@@ -8,6 +8,7 @@ import '../group_errors.dart';
 import '../group_messages.dart';
 import '../l10n/gen/app_localizations.dart';
 import 'confirm_destructive.dart';
+import 'form_sheet.dart';
 import 'group_people_picker.dart';
 import 'top_banner.dart';
 
@@ -20,22 +21,19 @@ Future<void> showGroupMembersSheet(
   required String title,
   required List<GroupMember> members,
   required Future<void> Function() onChanged,
-}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: 0.9,
-        child: GroupMembersSheet(
-          api: api,
-          conversationId: conversationId,
-          title: title,
-          members: members,
-          onChanged: onChanged,
-        ),
-      ),
-    );
+}) => showFormSheet<void>(
+  context,
+  builder: (_) => FractionallySizedBox(
+    heightFactor: 0.9,
+    child: GroupMembersSheet(
+      api: api,
+      conversationId: conversationId,
+      title: title,
+      members: members,
+      onChanged: onChanged,
+    ),
+  ),
+);
 
 /// A group's members and what its owner and admins can do to them (issue
 /// #1365 slice 3, group_messages.md § 2). Removal, cancelling an invitation
@@ -231,7 +229,6 @@ class _GroupMembersSheetState extends State<GroupMembersSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final myRole = _myRole;
     final active = [
       for (final m in _members)
@@ -241,88 +238,102 @@ class _GroupMembersSheetState extends State<GroupMembersSheet> {
     final seats = groupSeatsLeft(active.length, pending);
     final sorted = sortGroupMembers(_members);
     final manage = canManageGroup(myRole);
-    return Material(
-      key: const ValueKey('group-members-sheet'),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: [
-          Text(
-            l10n.groupsMembersTitle(active.length),
-            style: theme.textTheme.titleLarge,
-          ),
-          if (manage) ...[
-            const SizedBox(height: 12),
-            if (_renaming)
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const ValueKey('group-rename-input'),
-                      controller: _rename,
-                      autofocus: true,
-                      maxLength: kGroupTitleMax,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        labelText: l10n.groupsTitleLabel,
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
+    return SheetDiscardGuard(
+      isDirty: () =>
+          (_renaming && _rename.text.trim() != _title.trim()) ||
+          (_inviting && _invitees.isNotEmpty),
+      child: SheetScaffold(
+        key: const ValueKey('group-members-sheet'),
+        title: Text(l10n.groupsMembersTitle(active.length)),
+        scrollBody: false,
+        // The list shrinks above the keyboard, so the people the search
+        // matches and the Send invites row below them stay on screen
+        // (issue #1374 IK-2).
+        body: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            if (manage) ...[
+              if (_renaming) ...[
+                TextField(
+                  key: const ValueKey('group-rename-input'),
+                  controller: _rename,
+                  autofocus: true,
+                  maxLength: kGroupTitleMax,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: l10n.groupsTitleLabel,
+                    isDense: true,
+                  ),
+                ),
+                OverflowBar(
+                  alignment: MainAxisAlignment.end,
+                  overflowAlignment: OverflowBarAlignment.end,
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: () => setState(() => _renaming = false),
+                      child: Text(l10n.commonCancel),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () => setState(() => _renaming = false),
-                    child: Text(l10n.commonCancel),
-                  ),
-                  FilledButton(
-                    key: const ValueKey('group-rename-save'),
-                    onPressed: _busy || normalizeGroupTitle(_rename.text) == null
-                        ? null
-                        : _saveTitle,
-                    child: Text(l10n.groupsRenameSave),
-                  ),
-                ],
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    key: const ValueKey('group-rename'),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: Text(l10n.groupsRename),
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() {
+                    FilledButton(
+                      key: const ValueKey('group-rename-save'),
+                      onPressed:
+                          _busy || normalizeGroupTitle(_rename.text) == null
+                          ? null
+                          : _saveTitle,
+                      child: Text(l10n.groupsRenameSave),
+                    ),
+                  ],
+                ),
+              ] else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const ValueKey('group-rename'),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: Text(l10n.groupsRename),
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() {
                               _rename.text = _title;
                               _renaming = true;
                             }),
-                  ),
-                  if (!_inviting)
-                    OutlinedButton.icon(
-                      key: const ValueKey('group-invite-more'),
-                      icon: const Icon(Icons.person_add_alt),
-                      label: Text(l10n.groupsInviteMore),
-                      onPressed: seats == 0 || _busy
-                          ? null
-                          : () => setState(() => _inviting = true),
                     ),
-                ],
-              ),
-            if (_inviting) ...[
-              const SizedBox(height: 12),
-              GroupPeoplePicker(
-                key: const ValueKey('group-invite-panel'),
-                api: widget.api,
-                selected: _invitees,
-                onChanged: (ids) => setState(() => _invitees = ids),
-                exclude: {for (final m in _members) m.userId},
-                max: seats,
-                disabled: _busy,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                    if (!_inviting)
+                      OutlinedButton.icon(
+                        key: const ValueKey('group-invite-more'),
+                        icon: const Icon(Icons.person_add_alt),
+                        label: Text(l10n.groupsInviteMore),
+                        onPressed: seats == 0 || _busy
+                            ? null
+                            : () => setState(() => _inviting = true),
+                      ),
+                  ],
+                ),
+              if (_inviting) ...[
+                const SizedBox(height: 12),
+                GroupPeoplePicker(
+                  key: const ValueKey('group-invite-panel'),
+                  api: widget.api,
+                  selected: _invitees,
+                  onChanged: (ids) => setState(() => _invitees = ids),
+                  exclude: {for (final m in _members) m.userId},
+                  max: seats,
+                  disabled: _busy,
+                ),
+              ],
+            ],
+            const SizedBox(height: 8),
+            for (final m in sorted) _memberRow(l10n, m, myRole),
+          ],
+        ),
+        actions: manage && _inviting
+            ? OverflowBar(
+                alignment: MainAxisAlignment.end,
+                overflowAlignment: OverflowBarAlignment.end,
+                spacing: 8,
+                overflowSpacing: 8,
                 children: [
                   TextButton(
                     onPressed: () => setState(() {
@@ -331,20 +342,14 @@ class _GroupMembersSheetState extends State<GroupMembersSheet> {
                     }),
                     child: Text(l10n.commonCancel),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton(
                     key: const ValueKey('group-invite-send'),
-                    onPressed:
-                        _busy || _invitees.isEmpty ? null : _sendInvites,
+                    onPressed: _busy || _invitees.isEmpty ? null : _sendInvites,
                     child: Text(l10n.groupsInviteSend(_invitees.length)),
                   ),
                 ],
-              ),
-            ],
-          ],
-          const SizedBox(height: 8),
-          for (final m in sorted) _memberRow(l10n, m, myRole),
-        ],
+              )
+            : null,
       ),
     );
   }

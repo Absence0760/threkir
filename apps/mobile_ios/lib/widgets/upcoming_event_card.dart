@@ -153,9 +153,7 @@ class UpcomingEventCard extends StatelessWidget {
           : l10n.upcomingEventInMinutes(diff.inMinutes);
     }
     if (diff.inHours < 24) {
-      return diff.inHours == 1
-          ? l10n.upcomingEventInOneHour
-          : l10n.upcomingEventInHours(diff.inHours);
+      return l10n.upcomingEventInHours(diff.inHours);
     }
     if (diff.inHours < 48) return l10n.upcomingEventTomorrow;
     return l10n.upcomingEventInDays(diff.inDays);

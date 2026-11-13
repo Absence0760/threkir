@@ -71,7 +71,7 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		// ICU plural runtime: this workout has exactly one exercise, so the
 		// dashboard recent-lifts row renders the singular "1 exercise", not
 		// "1 exercises" (gym.exercisesShort → Intl.PluralRules `one` branch).
-		await page.goto('/dashboard');
+		await page.goto('/dashboard/progress');
 		const liftRow = page.locator('.run-row', { hasText: title });
 		await expect(liftRow).toBeVisible({ timeout: 10_000 });
 		await expect(liftRow.locator('.run-pace')).toHaveText('1 exercise');

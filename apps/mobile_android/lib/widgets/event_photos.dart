@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../auth_error.dart' show friendlyError;
 import '../event_photo_window.dart';
@@ -309,8 +310,9 @@ class _EventPhotosState extends State<EventPhotos> {
       context: context,
       builder: (ctx) {
         final theme = Theme.of(ctx);
-        return SafeArea(
-          child: Column(
+        return SheetScaffold(
+          padding: EdgeInsets.zero,
+          body: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -483,13 +485,15 @@ class _EventPhotosState extends State<EventPhotos> {
           ),
         const SizedBox(height: 8),
         if (_loadFailed)
-          Row(
+          // A Wrap, so Retry drops under the message at large text rather
+          // than pushing off the edge.
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
-              Expanded(
-                child: Text(
-                  l10n.eventPhotosLoadFailed,
-                  style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
-                ),
+              Text(
+                l10n.eventPhotosLoadFailed,
+                style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
               ),
               TextButton(onPressed: _load, child: Text(l10n.eventPhotosRetry)),
             ],
@@ -566,6 +570,7 @@ class _PhotoTile extends StatelessWidget {
           // unlabelled roleless rectangle. The caption and uploader below are
           // separate nodes, so without this the tappable thing itself carries
           // no name and no role.
+          // semantics-children: the child draws no text, and keeps its own tap
           Semantics(
             button: true,
             image: true,

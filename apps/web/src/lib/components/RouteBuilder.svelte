@@ -933,16 +933,12 @@
 						failedWaypoints.length > 0
 							? ' ' +
 								t(
-									failedWaypoints.length === 1
-										? 'routeBuilder.waypointCouldntSnapOne'
-										: 'routeBuilder.waypointCouldntSnapMany',
-									{ list: wpList, radius: OSRM_SNAP_RADIUS_M },
+									'routeBuilder.waypointCouldntSnap',
+									{ n: failedWaypoints.length, list: wpList, radius: OSRM_SNAP_RADIUS_M },
 								)
 							: ' ' +
 								t(
-									failedSegments === 1
-										? 'routeBuilder.segmentCouldntSnapOne'
-										: 'routeBuilder.segmentCouldntSnapMany',
+									'routeBuilder.segmentCouldntSnap',
 									{ n: failedSegments },
 								);
 					onerror(

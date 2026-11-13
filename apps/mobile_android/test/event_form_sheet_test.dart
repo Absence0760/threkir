@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show PageHeading;
 import '../lib/event_gym_template.dart';
 import '../lib/social_service.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -247,7 +248,7 @@ void main() {
       // Heading now lives in the host AppBar (full-screen dialog), not an
       // inline Text in a bottom sheet.
       expect(find.byType(AppBar), findsOneWidget);
-      expect(find.text('New event'), findsOneWidget);
+      expect(find.widgetWithText(PageHeading, 'New event'), findsOneWidget);
       expect(find.byTooltip('Close'), findsOneWidget);
     });
 

@@ -20,6 +20,7 @@ import '../lib/widgets/nutrition_log_sheet.dart';
 import '../lib/widgets/undo_bar.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 class _OfflineFakeApi extends ApiClient {
   @override
@@ -91,12 +92,15 @@ Future<void> _closeUndoWindow(WidgetTester tester) =>
 /// decisions § 695, which pushes a single-entry day's delete affordance just
 /// past the bottom of the 800x600 test viewport.
 Future<void> _tapDelete(WidgetTester tester) async {
-  await tester.scrollUntilVisible(find.byTooltip('Delete'), 200);
+  await tester.scrollUntilVisible(find.byTooltip('Delete'), 200,
+      scrollable: primaryScrollable());
   await tester.pump();
   await tester.tap(find.byTooltip('Delete'));
 }
 
-Widget _app(LocalFoodStore store, {double textScale = 1.0}) => MaterialApp(
+Widget _app(LocalFoodStore store, {double textScale = 1.0, Locale? locale}) =>
+    MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
@@ -108,6 +112,17 @@ Widget _app(LocalFoodStore store, {double textScale = 1.0}) => MaterialApp(
     );
 
 void main() {
+  // Pushed on its own, the tab says its title above its controls, which takes
+  // the default 800 x 600 surface's last rows below the fold. These tests read
+  // the diary's rows, so they lay it out on a taller phone; the worst-case runs
+  // below set their own size.
+  setUp(() {
+    final view = TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
+    view.physicalSize = const Size(800, 1000) * view.devicePixelRatio;
+  });
+  tearDown(() => TestWidgetsFlutterBinding.instance.platformDispatcher
+      .implicitView!
+      .resetPhysicalSize());
   group('macro ring rendering', _ringRenderingTests);
   group('diary day navigation', _diaryDayTests);
   group('a keep-alive tab that tracks reality', _livenessTests);
@@ -115,6 +130,27 @@ void main() {
   setUpAll(() => initializeDateFormatting());
   setUp(() => SharedPreferences.setMockInitialValues({}));
   tearDown(debugResetUndo);
+
+  // Issue #1374 TO-6 / TO-10: the day with a meal and water logged, walked at
+  // the worst case in every locale. The water row's label, amount and
+  // remaining pill shared one Row, and overflowed from 1.5x on 320 dp.
+  worstCaseTestWidgets('Nutrition', (tester, locale) async {
+    final f = await _store('worstcase_');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    await tester.runAsync(() async {
+      await f.store.createLocal(
+        startedAt: DateTime.now(),
+        itemName: 'Porridge with banana and honey',
+        mealSlot: 'breakfast',
+        calories: 2450,
+      );
+    });
+    await tester.pumpWidget(
+        _app(f.store, textScale: kWorstCaseTextScale, locale: locale));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await walkScrollable(tester, primaryScrollable(), 'Nutrition');
+  });
 
   testWidgets('renders the empty state when nothing is logged today',
       (tester) async {
@@ -892,6 +928,10 @@ void _diaryDayTests() {
           describe: 'the saved template to be written to disk');
       await tester.pumpAndSettle();
 
+      // The hub's FAB floats over the list's last rows; scroll the saved
+      // card's Log clear of it, as a person would.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
       await tester.runAsync(() async {
         await tester.tap(find.widgetWithText(TextButton, 'Log'));
       });
@@ -949,6 +989,10 @@ void _diaryDayTests() {
           describe: 'the saved recipe to be written to disk');
       await tester.pumpAndSettle();
 
+      // The hub's FAB floats over the list's last rows; scroll the saved
+      // card's Log clear of it, as a person would.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
       await tester.runAsync(() async {
         await tester.tap(find.widgetWithText(TextButton, 'Log'));
       });
@@ -1096,10 +1140,8 @@ void _livenessTests() {
       await tester.pump();
       expect(api.pulls, 1, reason: 'the refresh is still hanging');
 
-      final add = tester.widget<IconButton>(find
-          .ancestor(
-              of: find.byIcon(Icons.add), matching: find.byType(IconButton))
-          .first);
+      final add = tester.widget<FloatingActionButton>(
+          find.widgetWithText(FloatingActionButton, 'Log food'));
       expect(add.onPressed, isNotNull,
           reason: 'the add control is not gated on a read');
 

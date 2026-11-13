@@ -1,5 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, StatGrid, StatTile, kStatLargeCellMinWidth;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppSpace,
+        EmptyState,
+        ListCard,
+        ListSkeleton,
+        PageHeader,
+        PushedPage,
+        StatGrid,
+        StatTile,
+        kStatLargeCellMinWidth;
 
 import '../backend_timeout.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -58,12 +68,12 @@ class _YourSharesScreenState extends State<YourSharesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final rows = _rows ?? const <ShareStat>[];
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.sharesTitle)),
+    return PushedPage(
+      title: l10n.sharesTitle,
       body: _loading
           ? ListSkeleton.section(label: l10n.commonLoading, rowHeight: 72)
           : _error
-              ? ErrorState(message: l10n.sharesLoadFailed, onRetry: _load)
+              ? AppErrorState(message: l10n.sharesLoadFailed, onRetry: _load)
               : rows.isEmpty
                   ? EmptyState(
                       icon: Icons.share_outlined,
@@ -75,9 +85,11 @@ class _YourSharesScreenState extends State<YourSharesScreen> {
                       child: ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
-                          Text(l10n.sharesTagline,
-                              style: Theme.of(context).textTheme.bodyMedium),
-                          const SizedBox(height: 12),
+                          PageHeader(
+                            title: l10n.sharesTitle,
+                            subtitle: l10n.sharesTagline,
+                            padding: const EdgeInsets.only(bottom: 12),
+                          ),
                           for (final r in rows) _ShareCard(stat: r),
                           const SizedBox(height: 8),
                           Text(l10n.sharesFootnote,
@@ -126,35 +138,30 @@ class _ShareCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Card(
+    return ListCard.row(
       key: ValueKey('share-${stat.kind}-${stat.entityId}'),
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_kind(l10n).toUpperCase(), style: theme.textTheme.labelSmall),
-            const SizedBox(height: 2),
-            Text(_title(l10n), style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            StatGrid(
-              minCellWidth: kStatLargeCellMinWidth,
-              cells: [
-                _stat(theme, l10n, l10n.sharesVisits, stat.visits, stat.refVisits),
-                _stat(theme, l10n, l10n.sharesSignups, stat.signups, 0),
-                if (stat.kind == 'plan')
-                  _stat(theme, l10n, l10n.sharesStarts, stat.starts, stat.refStarts),
-                if (stat.kind == 'challenge')
-                  _stat(theme, l10n, l10n.sharesJoins, stat.joins, stat.refJoins),
-              ],
-            ),
-            if (stat.botVisits > 0) ...[
-              const SizedBox(height: 8),
-              Text(l10n.sharesBotVisits(stat.botVisits), style: theme.textTheme.bodySmall),
+      title: _title(l10n),
+      subtitle: _kind(l10n),
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StatGrid(
+            minCellWidth: kStatLargeCellMinWidth,
+            cells: [
+              _stat(theme, l10n, l10n.sharesVisits, stat.visits, stat.refVisits),
+              _stat(theme, l10n, l10n.sharesSignups, stat.signups, 0),
+              if (stat.kind == 'plan')
+                _stat(theme, l10n, l10n.sharesStarts, stat.starts, stat.refStarts),
+              if (stat.kind == 'challenge')
+                _stat(theme, l10n, l10n.sharesJoins, stat.joins, stat.refJoins),
             ],
+          ),
+          if (stat.botVisits > 0) ...[
+            const SizedBox(height: AppSpace.sm),
+            Text(l10n.sharesBotVisits(stat.botVisits),
+                style: theme.textTheme.bodySmall),
           ],
-        ),
+        ],
       ),
     );
   }

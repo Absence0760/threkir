@@ -9,7 +9,9 @@ import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import '../lib/ai_disclosure.dart';
 import '../lib/ai_disclosure_memo.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/preferences.dart';
 import '../lib/screens/coach_screen.dart';
+import '../lib/screens/coaching_screen.dart';
 import '../lib/screens/guided_runs_screen.dart';
 import '../lib/widgets/ai_tag.dart';
 import '../lib/widgets/surface_peer_strip.dart';
@@ -252,11 +254,16 @@ void main() {
     });
 
     testWidgets(
-        'the consented view names Guided runs as a peer of AI Coach (#666 I7)',
-        (tester) async {
+        'the consented view names Guided runs and Athletes & coaches as peers '
+        'of AI Coach (#666 I7, #1374)', (tester) async {
       // Web reaches the guided-run library from a rail on `/coach`; on mobile
-      // the library used to be filed under Settings -> Account. Pin the peer
-      // and pin that tapping it opens the library.
+      // the library used to be filed under Settings -> Account, then on You
+      // beside Athletes & coaches. Both now hang off the Coach. Pin the peers
+      // and pin that tapping each opens its screen.
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -272,7 +279,8 @@ void main() {
       // Assert the population: both peers are on the strip, and the current
       // one is the coach itself, so the pass cannot come from an empty strip.
       final peers = tester.widget<SurfacePeerStrip>(strip).peers;
-      expect(peers.map((p) => p.label).toList(), ['AI Coach', 'Guided runs']);
+      expect(peers.map((p) => p.label).toList(),
+          ['AI Coach', 'Guided runs', 'Athletes & coaches']);
       expect(peers.first.isCurrent, isTrue);
 
       await tester.tap(find.descendant(
@@ -282,6 +290,21 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(GuidedRunsScreen), findsOneWidget);
+
+      Navigator.of(tester.element(find.byType(GuidedRunsScreen))).pop();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(GuidedRunsScreen), findsNothing);
+      final athletes = find.descendant(
+        of: strip,
+        matching: find.text('Athletes & coaches'),
+      );
+      await tester.ensureVisible(athletes);
+      await tester.pump();
+      await tester.tap(athletes);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(CoachingScreen), findsOneWidget);
       await _drain(tester);
     });
 
@@ -323,6 +346,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       expect(find.byType(SignInRequiredState), findsOneWidget);
       expect(find.text('Before you chat with Coach'), findsNothing);
+      // Guided runs are local scripts, so the library stays one tap away
+      // signed out; Athletes & coaches needs an account and is left off.
+      final peers = tester
+          .widget<SurfacePeerStrip>(find.byType(SurfacePeerStrip))
+          .peers
+          .map((p) => p.label)
+          .toList();
+      expect(peers, ['AI Coach', 'Guided runs']);
     });
 
     testWidgets('without an AI-disclosure record the chat is gated behind the '

@@ -122,6 +122,10 @@ test.describe('park course credit (web)', () => {
 		await expect(page.getByText('Run it clockwise.')).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('segment-course-credit')).toHaveText(CREDIT);
 		await expect(page.getByText(CREDIT)).toHaveCount(1);
+		await expect(page.getByTestId('segment-park-course-link')).toHaveAttribute(
+			'href',
+			`/parks/us-va/e2e-credit-park-${TAG}/credit-loop`,
+		);
 	});
 
 	test('the official route page shows the course credit; an ordinary route shows none', async ({ page }) => {

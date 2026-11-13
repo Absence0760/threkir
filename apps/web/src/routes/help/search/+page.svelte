@@ -2,6 +2,7 @@
 	/// Help search results for `?q=`. Ranked by `searchGuides`: a word in the
 	/// title outranks one in the summary, which outranks one further down.
 	import { page } from '$app/state';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { KIND_LABEL } from '#lib/help/labels.ts';
 	import HelpSearchForm from '#lib/components/help/HelpSearchForm.svelte';
@@ -17,11 +18,7 @@
 </svelte:head>
 
 <div class="help-search-page">
-	<a class="back-link" href="/help">
-		<span class="material-symbols" aria-hidden="true">arrow_back</span>
-		{m('help.allGuides')}
-	</a>
-	<h1>{m('help.searchTitle')}</h1>
+	<PageHeader back={{ href: '/help', label: m('help.allGuides') }} title={m('help.searchTitle')} />
 
 	<HelpSearchForm {query} />
 
@@ -56,22 +53,6 @@
 	}
 	.help-search-page > * {
 		max-width: var(--page-measure);
-	}
-	.back-link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-xs);
-		min-height: 2.25rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--color-primary);
-		text-decoration: none;
-	}
-	.back-link .material-symbols {
-		font-size: 1.1rem;
-	}
-	h1 {
-		margin: var(--space-sm) 0 var(--space-md);
 	}
 	.results h2 {
 		margin: var(--space-lg) 0 var(--space-sm);

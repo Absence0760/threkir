@@ -6,13 +6,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../l10n/gen/app_localizations.dart';
 import '../map_tile_readiness.dart';
 import '../official_distance.dart';
 import '../preferences.dart';
 import '../share_sheet.dart';
-import 'capture_png.dart';
+import 'share_canvas.dart';
 import 'live_run_map.dart'
     show basemapTileLayer, basemapVoidColour, tileUrlFor;
 import 'map_attribution.dart';
@@ -89,7 +90,7 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
       }
       await WidgetsBinding.instance.endOfFrame;
 
-      final bytes = await capturePngBytes(_cardKey);
+      final bytes = await captureShareCanvas(_cardKey, canvasSize: kRouteShareCanvas);
 
       final tmp = await getTemporaryDirectory();
       final file = File('${tmp.path}/route-${widget.route.id}.png');
@@ -114,58 +115,46 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + mq.viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.shareCardRouteTitle, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AspectRatio(
-                  aspectRatio: 9 / 16,
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: RouteShareCard(
-                      route: widget.route,
-                      preferences: widget.preferences,
-                      tileReadiness: _tiles,
-                    ),
-                  ),
-                ),
+    return SheetScaffold.floating(
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.shareCardRouteTitle, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            // A fixed canvas with text scaling off, so the shared PNG is the
+            // same at any OS text size (issue #1374 TO-3).
+            child: ShareCanvas(
+              canvasSize: kRouteShareCanvas,
+              captureKey: _cardKey,
+              child: RouteShareCard(
+                route: widget.route,
+                preferences: widget.preferences,
+                tileReadiness: _tiles,
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _capturing ? null : _shareImage,
-                  icon: _capturing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.share_outlined),
-                  label: Text(_capturing
-                      ? l10n.shareCardRouteCapturing
-                      : l10n.shareCardRouteShareImage),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _capturing ? null : _shareImage,
+              icon: _capturing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.share_outlined),
+              label: Text(_capturing
+                  ? l10n.shareCardRouteCapturing
+                  : l10n.shareCardRouteShareImage),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -178,6 +167,10 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
 /// Public, like its sibling [RunShareCard], so the card can be mounted on its
 /// own: what it draws is the artifact that goes to social media, and a private
 /// class left that unreachable from a test.
+/// The route share image's canvas: 9:16 for a story, laid out at this size
+/// and exported 1080 px wide (#1374 TO-3).
+const Size kRouteShareCanvas = Size(360, 640);
+
 class RouteShareCard extends StatelessWidget {
   final cm.Route route;
   final Preferences preferences;

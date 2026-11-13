@@ -5,7 +5,16 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, StatGrid, StatTile;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppBarAction,
+        EmptyState,
+        ListCard,
+        PageHeader,
+        PushedPage,
+        SheetScaffold,
+        StatGrid,
+        StatTile;
 
 import '../goals.dart';
 import '../l10n/date_format.dart';
@@ -17,7 +26,7 @@ import '../local_route_store.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
-import '../widgets/capture_png.dart';
+import '../widgets/share_canvas.dart';
 import 'run_detail_screen.dart';
 import '../widgets/activity_heatmap.dart';
 import '../widgets/run_list_tile.dart';
@@ -377,25 +386,28 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
     final unit = widget.preferences.unit;
     final stats = computePeriodStats(_periodRuns);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(switch (_period) {
-          PeriodType.week => l10n.periodWeeklySummary,
-          PeriodType.month => l10n.periodMonthlySummary,
-          PeriodType.all => l10n.periodAllTimeSummary,
-        }),
-        actions: [
-          if (_periodRuns.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.share_outlined),
-              tooltip: l10n.periodShareTooltip,
-              onPressed: _showShareSheet,
-            ),
-        ],
-      ),
+    final title = switch (_period) {
+      PeriodType.week => l10n.periodWeeklySummary,
+      PeriodType.month => l10n.periodMonthlySummary,
+      PeriodType.all => l10n.periodAllTimeSummary,
+    };
+    return PushedPage(
+      title: title,
+      actions: [
+        if (_periodRuns.isNotEmpty)
+          AppBarAction(
+            icon: const Icon(Icons.share_outlined),
+            label: l10n.periodShareTooltip,
+            onPressed: _showShareSheet,
+          ),
+      ],
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          PageHeader(
+            title: title,
+            padding: const EdgeInsets.only(bottom: 12),
+          ),
           _buildPeriodNav(theme),
           const SizedBox(height: 16),
           _buildStatsCard(theme, unit, stats),
@@ -404,16 +416,13 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
           // it shows on that week only.
           if (_showsCurrentWeek) ...[
             const SizedBox(height: 16),
-            Card(
+            ListCard(
               key: const Key('periodSummaryWeekStrip'),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: ThisWeekStrip(
-                  runs: _periodRuns,
-                  unit: unit,
-                  weekStartDay: _weekStartDay,
-                  now: DateTime.now(),
-                ),
+              child: ThisWeekStrip(
+                runs: _periodRuns,
+                unit: unit,
+                weekStartDay: _weekStartDay,
+                now: DateTime.now(),
               ),
             ),
           ],
@@ -421,15 +430,17 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
           // screen's week picker: a tapped column moves the summary to it.
           if (_period == PeriodType.week) ...[
             const SizedBox(height: 16),
-            Card(
+            ListCard(
               key: const Key('periodSummaryHeatmap'),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: ActivityHeatmap(
-                  runs: widget.runStore.summaryRuns,
-                  weekStartDay: _weekStartDay,
-                  onWeekTap: _showWeek,
-                ),
+              child: ActivityHeatmap(
+                runs: widget.runStore.summaryRuns,
+                weekStartDay: _weekStartDay,
+                onWeekTap: _showWeek,
+                selectedWeek: periodStart(_period, _anchor,
+                    weekStartDay: _weekStartDay),
+                weekLabel: (w) => periodTitle(PeriodType.week, w,
+                    localeToTag(Localizations.localeOf(context)),
+                    weekStartDay: _weekStartDay),
               ),
             ),
           ],
@@ -544,52 +555,49 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
   Widget _buildStatsCard(ThemeData theme, DistanceUnit unit, PeriodStats stats) {
     final l10n = AppLocalizations.of(context);
     final dur = formatDurationCoarse(Duration(seconds: stats.totalDurationSec));
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            StatGrid(
-              cells: [
-                StatTile.large(
-                  label: l10n.periodStatDistance,
-                  value:
-                      UnitFormat.distanceValue(stats.totalDistanceMetres, unit),
-                  unit: UnitFormat.distanceLabel(unit),
-                ),
-                StatTile.large(
-                  label: l10n.periodStatRuns,
-                  value: '${stats.runCount}',
-                ),
-                StatTile.large(
-                  label: l10n.periodStatTime,
-                  value: dur,
-                ),
-              ],
-            ),
-            if (stats.avgPaceSecPerKm != null || stats.totalVertMetres > 0) ...[
-              const SizedBox(height: 16),
-              StatGrid(
-                cells: [
-                  if (stats.avgPaceSecPerKm != null)
-                    StatTile.large(
-                      label: l10n.periodStatAvgPace,
-                      value: UnitFormat.pace(stats.avgPaceSecPerKm, unit),
-                      unit: UnitFormat.paceLabel(unit),
-                    ),
-                  if (stats.totalVertMetres > 0)
-                    StatTile.large(
-                      key: const Key('periodSummaryVert'),
-                      label: metricText(l10n, Metric.vert),
-                      value:
-                          UnitFormat.elevationValue(stats.totalVertMetres, unit),
-                      unit: UnitFormat.elevationLabel(unit),
-                    ),
-                ],
+    return ListCard(
+      child: Column(
+        children: [
+          StatGrid(
+            cells: [
+              StatTile.large(
+                label: l10n.periodStatDistance,
+                value:
+                    UnitFormat.distanceValue(stats.totalDistanceMetres, unit),
+                unit: UnitFormat.distanceLabel(unit),
+              ),
+              StatTile.large(
+                label: l10n.periodStatRuns,
+                value: '${stats.runCount}',
+              ),
+              StatTile.large(
+                label: l10n.periodStatTime,
+                value: dur,
               ),
             ],
+          ),
+          if (stats.avgPaceSecPerKm != null || stats.totalVertMetres > 0) ...[
+            const SizedBox(height: 16),
+            StatGrid(
+              cells: [
+                if (stats.avgPaceSecPerKm != null)
+                  StatTile.large(
+                    label: l10n.periodStatAvgPace,
+                    value: UnitFormat.pace(stats.avgPaceSecPerKm, unit),
+                    unit: UnitFormat.paceLabel(unit),
+                  ),
+                if (stats.totalVertMetres > 0)
+                  StatTile.large(
+                    key: const Key('periodSummaryVert'),
+                    label: metricText(l10n, Metric.vert),
+                    value:
+                        UnitFormat.elevationValue(stats.totalVertMetres, unit),
+                    unit: UnitFormat.elevationLabel(unit),
+                  ),
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -651,7 +659,7 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
       // `finisher_certificate_card`, the other tile-free card.
       await WidgetsBinding.instance.endOfFrame;
 
-      final bytes = await capturePngBytes(_cardKey);
+      final bytes = await captureShareCanvas(_cardKey, canvasSize: kPeriodShareCanvas);
 
       final tmp = await getTemporaryDirectory();
       final file = File(
@@ -683,75 +691,67 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final mq = MediaQuery.of(context);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + mq.viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
+    return SheetScaffold.floating(
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.periodShareSummary, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            // A fixed canvas with text scaling off, so the shared PNG is the
+            // same at any OS text size (issue #1374 TO-3).
+            child: ShareCanvas(
+              canvasSize: kPeriodShareCanvas,
+              captureKey: _cardKey,
+              child: _PeriodShareCard(
+                periodTitle: widget.periodTitle,
+                periodLabel: widget.periodLabel,
+                stats: widget.stats,
+                unit: widget.unit,
+              ),
+            ),
           ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 16),
+          Row(
             children: [
-              Text(l10n.periodShareSummary, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AspectRatio(
-                  aspectRatio: 4 / 3,
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: _PeriodShareCard(
-                      periodTitle: widget.periodTitle,
-                      periodLabel: widget.periodLabel,
-                      stats: widget.stats,
-                      unit: widget.unit,
-                    ),
-                  ),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _capturing ? null : _shareText,
+                  icon: const Icon(Icons.text_snippet_outlined),
+                  label: Text(l10n.periodShareText),
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _capturing ? null : _shareText,
-                      icon: const Icon(Icons.text_snippet_outlined),
-                      label: Text(l10n.periodShareText),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _capturing ? null : _shareImage,
-                      icon: _capturing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.image_outlined),
-                      label: Text(l10n.periodShareImage),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _capturing ? null : _shareImage,
+                  icon: _capturing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.image_outlined),
+                  label: Text(l10n.periodShareImage),
+                ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
 // ── Share card ──────────────────────────────────────────────────────────
+
+/// The period summary share image's canvas: 4:3, laid out at this size and
+/// exported 1080 px wide (#1374 TO-3).
+const Size kPeriodShareCanvas = Size(480, 360);
 
 class _PeriodShareCard extends StatelessWidget {
   final String periodTitle;

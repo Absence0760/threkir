@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/social_service.dart';
 import '../lib/widgets/challenge_invite_card.dart';
+import 'worst_case_layout.dart';
 
 class _FakeSocial extends SocialService {
   _FakeSocial({this.enabled = true});
@@ -59,6 +60,26 @@ Future<void> _pump(WidgetTester tester, _FakeSocial social,
 }
 
 void main() {
+  worstCaseTestWidgets('Challenge invite card', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: ChallengeInviteCard(
+            social: _FakeSocial(),
+            challengeId: 'c1',
+            isPublic: true,
+            canManage: true,
+            isCreator: true,
+            webBaseOverride: 'https://threkir.com',
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+  });
+
   testWidgets("the creator's public share link reads their ref (decisions § 2268)",
       (tester) async {
     final creator = _FakeSocial();

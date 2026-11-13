@@ -44,15 +44,15 @@ class RecapWeekTop {
 class RecapBadge {
   final String id;
   final String icon; // material-symbols glyph name
-  final String label;
-  final String detail;
 
-  const RecapBadge({
-    required this.id,
-    required this.icon,
-    required this.label,
-    required this.detail,
-  });
+  /// The count (streak days, months, records, photos, activity types) or the
+  /// local start time ("05:42") the badge's detail line names; null when the
+  /// detail names no number. The words are not here: the web trophy grid
+  /// reads them from the reader's catalogue by id (`recapBadgeText`), so a
+  /// published snapshot reads in its reader's language, not its author's.
+  final Object? value;
+
+  const RecapBadge({required this.id, required this.icon, this.value});
 }
 
 /// Counts the recap can't derive from `Run` rows alone — the page fetches
@@ -157,9 +157,8 @@ class _BadgeTier {
   final bool when;
   final String id;
   final String icon;
-  final String label;
-  final String detail;
-  const _BadgeTier(this.when, this.id, this.icon, this.label, this.detail);
+  final Object? value;
+  const _BadgeTier(this.when, this.id, this.icon, [this.value]);
 }
 
 /// Earned-only trophy grid. Each category lists tiers high→low; the first
@@ -172,57 +171,57 @@ List<RecapBadge> computeRecapBadges(_BadgeInputs i) {
   void pick(List<_BadgeTier> tiers) {
     for (final t in tiers) {
       if (t.when) {
-        out.add(RecapBadge(id: t.id, icon: t.icon, label: t.label, detail: t.detail));
+        out.add(RecapBadge(id: t.id, icon: t.icon, value: t.value));
         return;
       }
     }
   }
 
   pick([
-    _BadgeTier(km >= 2000, 'dist-2000', 'public', '2,000 km', 'Halfway round the planet'),
-    _BadgeTier(km >= 1000, 'dist-1000', 'public', '1,000 km club', 'A four-figure year'),
-    _BadgeTier(km >= 500, 'dist-500', 'route', '500 km', 'Serious mileage'),
-    _BadgeTier(km >= 100, 'dist-100', 'route', 'Century', '100 km on the year'),
+    _BadgeTier(km >= 2000, 'dist-2000', 'public'),
+    _BadgeTier(km >= 1000, 'dist-1000', 'public'),
+    _BadgeTier(km >= 500, 'dist-500', 'route'),
+    _BadgeTier(km >= 100, 'dist-100', 'route'),
   ]);
   pick([
-    _BadgeTier(i.runCount >= 200, 'runs-200', 'sprint', '200 runs', 'Almost every other day'),
-    _BadgeTier(i.runCount >= 100, 'runs-100', 'sprint', 'Centurion', '100 runs logged'),
-    _BadgeTier(i.runCount >= 50, 'runs-50', 'sprint', '50 runs', 'A steady habit'),
+    _BadgeTier(i.runCount >= 200, 'runs-200', 'sprint'),
+    _BadgeTier(i.runCount >= 100, 'runs-100', 'sprint'),
+    _BadgeTier(i.runCount >= 50, 'runs-50', 'sprint'),
   ]);
   pick([
-    _BadgeTier(i.longestRunM >= 50000, 'long-ultra', 'military_tech', 'Ultra', '50 km+ in one run'),
-    _BadgeTier(i.longestRunM >= 42195, 'long-marathon', 'military_tech', 'Marathon', '42.2 km in one run'),
-    _BadgeTier(i.longestRunM >= 21097, 'long-half', 'military_tech', 'Half marathon', '21.1 km in one run'),
+    _BadgeTier(i.longestRunM >= 50000, 'long-ultra', 'military_tech'),
+    _BadgeTier(i.longestRunM >= 42195, 'long-marathon', 'military_tech'),
+    _BadgeTier(i.longestRunM >= 21097, 'long-half', 'military_tech'),
   ]);
   pick([
-    _BadgeTier(i.bestStreakDays >= 30, 'streak-30', 'local_fire_department', 'Month-long streak', '${i.bestStreakDays} days in a row'),
-    _BadgeTier(i.bestStreakDays >= 14, 'streak-14', 'local_fire_department', 'Fortnight streak', '${i.bestStreakDays} days in a row'),
-    _BadgeTier(i.bestStreakDays >= 7, 'streak-7', 'local_fire_department', 'Week streak', '${i.bestStreakDays} days in a row'),
+    _BadgeTier(i.bestStreakDays >= 30, 'streak-30', 'local_fire_department', i.bestStreakDays),
+    _BadgeTier(i.bestStreakDays >= 14, 'streak-14', 'local_fire_department', i.bestStreakDays),
+    _BadgeTier(i.bestStreakDays >= 7, 'streak-7', 'local_fire_department', i.bestStreakDays),
   ]);
   pick([
-    _BadgeTier(i.totalElevationM >= 8849, 'elev-everest', 'terrain', 'Everested', 'Climbed an Everest'),
-    _BadgeTier(i.totalElevationM >= 5000, 'elev-5000', 'terrain', '5,000 m climbed', 'Vertical year'),
+    _BadgeTier(i.totalElevationM >= 8849, 'elev-everest', 'terrain'),
+    _BadgeTier(i.totalElevationM >= 5000, 'elev-5000', 'terrain'),
   ]);
   pick([
-    _BadgeTier(i.activeMonths >= 12, 'months-12', 'calendar_month', 'Every month', 'Active all 12 months'),
-    _BadgeTier(i.activeMonths >= 6, 'months-6', 'calendar_month', 'Half the year', 'Active in ${i.activeMonths} months'),
+    _BadgeTier(i.activeMonths >= 12, 'months-12', 'calendar_month'),
+    _BadgeTier(i.activeMonths >= 6, 'months-6', 'calendar_month', i.activeMonths),
   ]);
   pick([
-    _BadgeTier(i.personalRecordCount >= 5, 'pr-5', 'trophy', 'Record breaker', '${i.personalRecordCount} personal records'),
-    _BadgeTier(i.personalRecordCount >= 1, 'pr-1', 'trophy', 'New PR', '${i.personalRecordCount} personal record${i.personalRecordCount == 1 ? '' : 's'}'),
+    _BadgeTier(i.personalRecordCount >= 5, 'pr-5', 'trophy', i.personalRecordCount),
+    _BadgeTier(i.personalRecordCount >= 1, 'pr-1', 'trophy', i.personalRecordCount),
   ]);
   pick([
-    _BadgeTier(i.photoCount >= 25, 'photo-25', 'photo_camera', 'Storyteller', '${i.photoCount} run photos'),
-    _BadgeTier(i.photoCount >= 1, 'photo-1', 'photo_camera', 'Documented', '${i.photoCount} run photo${i.photoCount == 1 ? '' : 's'}'),
+    _BadgeTier(i.photoCount >= 25, 'photo-25', 'photo_camera', i.photoCount),
+    _BadgeTier(i.photoCount >= 1, 'photo-1', 'photo_camera', i.photoCount),
   ]);
   pick([
-    _BadgeTier(i.distinctActivities >= 3, 'variety', 'category', 'All-rounder', '${i.distinctActivities} activity types'),
+    _BadgeTier(i.distinctActivities >= 3, 'variety', 'category', i.distinctActivities),
   ]);
   pick([
-    _BadgeTier(i.earliestStartLocal != null && i.earliestStartLocal!.compareTo('06:00') < 0, 'early', 'wb_twilight', 'Early bird', 'First steps at ${i.earliestStartLocal}'),
+    _BadgeTier(i.earliestStartLocal != null && i.earliestStartLocal!.compareTo('06:00') < 0, 'early', 'wb_twilight', i.earliestStartLocal),
   ]);
   pick([
-    _BadgeTier(i.latestStartLocal != null && i.latestStartLocal!.compareTo('21:00') >= 0, 'night', 'bedtime', 'Night owl', 'Out at ${i.latestStartLocal}'),
+    _BadgeTier(i.latestStartLocal != null && i.latestStartLocal!.compareTo('21:00') >= 0, 'night', 'bedtime', i.latestStartLocal),
   ]);
 
   return out;
@@ -643,18 +642,9 @@ Map<String, dynamic> recapSnapshotJson(YearInRunningRecap r) => {
       'parkCount': r.parkCount,
       'badges': [
         for (final b in r.badges)
-          {'id': b.id, 'icon': b.icon, 'label': b.label, 'detail': b.detail},
+          {'id': b.id, 'icon': b.icon, if (b.value != null) 'value': b.value},
       ],
     };
-
-/// Smallish utility for the share-card copy. Mirror of `recapHeadline`.
-String recapHeadline(YearInRunningRecap recap, String kmOrMi) {
-  if (recap.runCount == 0) return 'No runs in ${recap.year} yet.';
-  final total = kmOrMi == 'mi'
-      ? '${(recap.totalDistanceM / 1609.344).round()} mi'
-      : '${(recap.totalDistanceM / 1000).round()} km';
-  return '${recap.year}: $total across ${recap.runCount} runs.';
-}
 
 class _MonthAccum {
   double distance = 0;

@@ -8,7 +8,7 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { fetchFollowers, fetchFollowing } from '#lib/core/data.ts';
+	import { fetchFollowGraph } from '#lib/core/data.ts';
 	import { dmRecipientCandidates, filterDmRecipients, type DmRecipient } from '#lib/social/dm_recipients.ts';
 
 	interface Props {
@@ -37,8 +37,8 @@
 		loading = true;
 		loadFailed = false;
 		try {
-			const [followers, following] = await Promise.all([fetchFollowers(me), fetchFollowing(me)]);
-			candidates = dmRecipientCandidates(followers.rows, following.rows, me);
+			const { followers, following } = await fetchFollowGraph(me);
+			candidates = dmRecipientCandidates(followers, following, me);
 		} catch {
 			// "Nobody to invite" and "couldn't find out who" are different answers.
 			candidates = [];

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import 'package:ui_kit/ui_kit.dart' show PageHeading, PushedPage;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -114,8 +115,10 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
       return l10n.challengeInviteStartsIn(p.startsAt.difference(now).inDays + 1);
     }
     if (now.isAfter(p.endsAt)) return l10n.challengesEnded;
-    final days = p.endsAt.difference(now).inDays;
-    return days <= 1 ? l10n.challengesEndsToday : l10n.challengesEndsIn(days);
+    // Whole days left, rounded up as web's challenge_labels does: under a
+    // day is "today", 25 hours is 2 days.
+    final minutes = p.endsAt.difference(now).inMinutes;
+    return l10n.challengesEndsIn(minutes <= 0 ? 1 : (minutes / 1440).ceil());
   }
 
   @override
@@ -127,12 +130,13 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
     if (!_loaded) {
       body = Center(
         child: Semantics(
+          excludeSemantics: true,
           label: l10n.commonLoading,
           child: const CircularProgressIndicator(),
         ),
       );
     } else if (_loadFailed) {
-      body = ErrorState(message: l10n.challengeInviteLoadFailed, onRetry: _load);
+      body = AppErrorState(message: l10n.challengeInviteLoadFailed, onRetry: _load);
     } else if (p == null) {
       body = Padding(
         padding: const EdgeInsets.all(24),
@@ -161,7 +165,7 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
               style: theme.textTheme.labelLarge
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 4),
-          Text(p.title, style: theme.textTheme.headlineSmall),
+          PageHeading(p.title),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -209,8 +213,8 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
         ],
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.challengeInviteTitle)),
+    return PushedPage(
+      title: p?.title ?? l10n.challengeInviteTitle,
       body: body,
     );
   }

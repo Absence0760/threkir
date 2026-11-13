@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard;
 
 import '../l10n/gen/app_localizations.dart';
 import '../race_service.dart';
@@ -184,31 +185,33 @@ class _CourseAlertsSectionState extends State<CourseAlertsSection> {
               style: theme.textTheme.bodySmall,
             ),
           for (final a in _alerts)
-            Card(
+            ListCard.row(
               key: Key('course-alert-${a.id}'),
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Icon(courseAlertIcon(a.kind)),
-                title: Text(courseAlertKindLabel(l, a.kind)),
-                subtitle: Text(
-                  '${a.createdAt.length >= 10 ? a.createdAt.substring(0, 10) : a.createdAt}\n${a.message}',
-                ),
-                isThreeLine: true,
-                trailing: _canPost
-                    ? IconButton(
-                        key: Key('course-alert-remove-${a.id}'),
-                        tooltip: l.courseAlertsRemoveLabel(
-                            courseAlertKindLabel(l, a.kind)),
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _remove(a),
-                      )
-                    : null,
-              ),
+              margin: const EdgeInsets.only(bottom: AppSpace.sm),
+              dense: true,
+              leading: Icon(courseAlertIcon(a.kind)),
+              title: courseAlertKindLabel(l, a.kind),
+              subtitle: a.createdAt.length >= 10
+                  ? a.createdAt.substring(0, 10)
+                  : a.createdAt,
+              meta: Text(a.message),
+              trailing: _canPost
+                  ? IconButton(
+                      key: Key('course-alert-remove-${a.id}'),
+                      tooltip: l.courseAlertsRemoveLabel(
+                          courseAlertKindLabel(l, a.kind)),
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _remove(a),
+                    )
+                  : null,
             ),
           if (_canPost) ...[
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               key: const Key('course-alert-kind'),
+              // Expanded, so a long kind label ellipsizes inside the field
+              // rather than running past it at 320 dp and 2x.
+              isExpanded: true,
               initialValue: _kind,
               decoration: InputDecoration(labelText: l.courseAlertsKindLabel),
               items: [

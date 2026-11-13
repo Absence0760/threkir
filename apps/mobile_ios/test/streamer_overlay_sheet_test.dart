@@ -17,7 +17,7 @@ class _FakeController implements StreamerOverlayController {
   int loads = 0;
   int creates = 0;
   int revokes = 0;
-  final delays = <int>[];
+  final saves = <Map<String, Object>>[];
 
   _FakeController({this.overlay});
 
@@ -45,10 +45,24 @@ class _FakeController implements StreamerOverlayController {
   @override
   Future<void> revoke() async => revokes++;
 
+  Object? saveError;
+
   @override
-  Future<LiveOverlay?> setDelay(int delaySeconds) async {
-    delays.add(delaySeconds);
-    overlay = overlay?.copyWith(delaySeconds: delaySeconds);
+  Future<LiveOverlay?> save({
+    int? delaySeconds,
+    bool? showMap,
+    bool? showHeartRate,
+  }) async {
+    saves.add({
+      if (delaySeconds != null) 'delay': delaySeconds,
+      if (showMap != null) 'map': showMap,
+      if (showHeartRate != null) 'hr': showHeartRate,
+    });
+    if (saveError != null) throw saveError!;
+    overlay = overlay?.copyWith(
+        delaySeconds: delaySeconds,
+        showMap: showMap,
+        showHeartRate: showHeartRate);
     return overlay;
   }
 }
@@ -80,9 +94,14 @@ class _FakeApi implements ApiClient {
 }
 
 const _existing = LiveOverlay(
-    token: 'abc', delaySeconds: 60, showMap: true, showHeartRate: true);
+    token: 'abc',
+    delaySeconds: 60,
+    showMap: false,
+    showHeartRate: true,
+    heartRateConsent: true);
 
-Future<void> _pump(WidgetTester tester, _FakeController c) async {
+Future<void> _pump(WidgetTester tester, _FakeController c,
+    {VoidCallback? onReviewHealthConsent}) async {
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -91,6 +110,7 @@ Future<void> _pump(WidgetTester tester, _FakeController c) async {
         controller: c,
         webBase: 'https://threkir.test/',
         unit: DistanceUnit.mi,
+        onReviewHealthConsent: onReviewHealthConsent ?? () {},
       ),
     ),
   ));
@@ -114,6 +134,113 @@ void main() {
     expect(isLiveOverlayDisabledError(Exception('live_overlay_disabled')),
         isTrue);
     expect(isLiveOverlayDisabledError(Exception('socket closed')), isFalse);
+  });
+
+  test('the trace adds map=1 to the link, which the overlay page reads', () {
+    expect(
+      streamerOverlayUrl('https://threkir.test', 'tok',
+          unit: DistanceUnit.mi, showMap: true),
+      'https://threkir.test/live/overlay?units=mi&map=1#tok',
+    );
+    expect(streamerOverlayUrl('https://threkir.test', 'tok', showMap: true),
+        'https://threkir.test/live/overlay?map=1#tok');
+  });
+
+  // #1374 round 3: these two switches used to exist only on web, and the
+  // sheet sent people there to turn them on.
+  testWidgets('switching the trace on saves it and puts map=1 in the link',
+      (tester) async {
+    final c = _FakeController(overlay: _existing);
+    await _pump(tester, c);
+    expect(find.text('Open on the web'), findsNothing);
+    await tester.ensureVisible(_key('streamer-overlay-map'));
+    await tester.tap(_key('streamer-overlay-map'));
+    await tester.pump();
+    expect(c.saves, [
+      {'map': true}
+    ]);
+    expect(find.text('https://threkir.test/live/overlay?units=mi&map=1#abc'),
+        findsOneWidget);
+    expect(find.text('Saved. The link changed: copy it into your streaming '
+        'app again.'), findsOneWidget);
+  });
+
+  testWidgets('a failed save puts the switch back and says so',
+      (tester) async {
+    final c = _FakeController(overlay: _existing)..saveError = Exception('x');
+    await _pump(tester, c);
+    await tester.ensureVisible(_key('streamer-overlay-heart-rate'));
+    await tester.tap(_key('streamer-overlay-heart-rate'));
+    await tester.pump();
+    expect(
+        tester
+            .widget<SwitchListTile>(_key('streamer-overlay-heart-rate'))
+            .value,
+        isTrue);
+    expect(find.text("Couldn't save the overlay settings. Please try again."),
+        findsOneWidget);
+  });
+
+  testWidgets('without health-data consent heart rate cannot be turned on',
+      (tester) async {
+    var reviewed = 0;
+    final c = _FakeController(
+        overlay: const LiveOverlay(
+            token: 'abc',
+            delaySeconds: 60,
+            showMap: false,
+            showHeartRate: false));
+    await _pump(tester, c, onReviewHealthConsent: () => reviewed++);
+    final hr = tester.widget<SwitchListTile>(_key('streamer-overlay-heart-rate'));
+    expect(hr.onChanged, isNull);
+    expect(
+        find.text(
+            'Heart rate is health data. Turn on health-data consent to show it.'),
+        findsOneWidget);
+    await tester.ensureVisible(_key('streamer-overlay-review-consent'));
+    await tester.tap(_key('streamer-overlay-review-consent'));
+    expect(reviewed, 1);
+  });
+
+  testWidgets('heart rate left on without consent can still be turned off',
+      (tester) async {
+    final c = _FakeController(
+        overlay: const LiveOverlay(
+            token: 'abc',
+            delaySeconds: 60,
+            showMap: false,
+            showHeartRate: true));
+    await _pump(tester, c);
+    await tester.ensureVisible(_key('streamer-overlay-heart-rate'));
+    await tester.tap(_key('streamer-overlay-heart-rate'));
+    await tester.pump();
+    expect(c.saves, [
+      {'hr': false}
+    ]);
+  });
+
+  testWidgets('320 dp at 2x text: the switches fit', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: MediaQuery(
+        data: const MediaQueryData(
+            size: Size(320, 640), textScaler: TextScaler.linear(2)),
+        child: Scaffold(
+          body: StreamerOverlaySheet(
+            controller: _FakeController(overlay: _existing),
+            webBase: 'https://threkir.test/',
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(_key('streamer-overlay-heart-rate'));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('no overlay yet: Create makes one and shows its link',
@@ -214,11 +341,12 @@ void main() {
         isTrue);
   });
 
-  test('setDelay sends the map and heart-rate choices the server holds now',
+  test('save sends the choices it was not given as the server holds them now',
       () async {
     final api = _FakeApi(const LiveOverlay(
         token: 'abc', delaySeconds: 60, showMap: false, showHeartRate: true));
-    final saved = await ApiStreamerOverlayController(api).setDelay(300);
+    final saved =
+        await ApiStreamerOverlayController(api).save(delaySeconds: 300);
     expect(api.updates, [
       {'delay': 300, 'map': false, 'hr': true}
     ]);
@@ -227,9 +355,10 @@ void main() {
     expect(saved?.showHeartRate, isTrue);
   });
 
-  test('setDelay writes nothing when the overlay no longer exists', () async {
+  test('save writes nothing when the overlay no longer exists', () async {
     final api = _FakeApi(null);
-    expect(await ApiStreamerOverlayController(api).setDelay(300), isNull);
+    expect(await ApiStreamerOverlayController(api).save(showMap: true),
+        isNull);
     expect(api.updates, isEmpty);
   });
 
@@ -245,7 +374,9 @@ void main() {
     await tester.ensureVisible(_key('streamer-overlay-delay-300'));
     await tester.tap(_key('streamer-overlay-delay-300'));
     await tester.pump();
-    expect(c.delays, [300]);
+    expect(c.saves, [
+      {'delay': 300}
+    ]);
     expect(
         tester
             .widget<ChoiceChip>(_key('streamer-overlay-delay-300'))

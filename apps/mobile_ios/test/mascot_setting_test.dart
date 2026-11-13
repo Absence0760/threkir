@@ -73,6 +73,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SettingsPreferencesScreen(
+          page: PreferencesPage.display,
           apiClient: _Api(),
           preferences: prefs,
           settingsSync: sync,
@@ -86,7 +87,10 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     final row =
-        tester.widget<SwitchListTile>(find.byKey(const Key('prefsShowMascot')));
+        tester.widget<SwitchListTile>(find.descendant(
+        of: find.byKey(const Key('prefsShowMascot')),
+        matching: find.byType(SwitchListTile),
+      ));
     expect(row.value, isTrue, reason: 'on by default');
     await tester.tap(find.byKey(const Key('prefsShowMascot')));
     await tester.pumpAndSettle();

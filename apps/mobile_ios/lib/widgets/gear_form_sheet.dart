@@ -55,6 +55,7 @@ Future<GearFormResult?> showGearFormSheet({
             ? l10n.gearFormTitleAddShoes
             : l10n.gearFormTitleAddBike),
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (_) => _GearFormSheet(
       key: formKey,
       store: store,
@@ -139,6 +140,9 @@ class _GearFormSheetState extends State<_GearFormSheet> {
         _notes.text,
         _purchasedAt?.toIso8601String() ?? '',
       ].join('\u0000');
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
 
   // The wear-note composer commits through its own Add button, so pending
   // text / area there is loseable work too.
@@ -326,8 +330,16 @@ class _GearFormSheetState extends State<_GearFormSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final unitLabel = widget.preferences.unit == DistanceUnit.mi ? 'mi' : 'km';
-    // Heading lives in the host AppBar (showFullScreenForm).
     return FullScreenFormBody(
+      save: EditorSave(
+        label: _saving
+            ? l10n.gearFormSaving
+            : widget.existing != null
+                ? l10n.gearFormSave
+                : l10n.gearFormAdd,
+        busy: _saving,
+        onPressed: _save,
+      ),
       children: [
             TextField(
               controller: _name,
@@ -414,6 +426,7 @@ class _GearFormSheetState extends State<_GearFormSheet> {
                 maxLines: 2,
               ),
               DropdownButtonFormField<String?>(
+                isExpanded: true,
                 initialValue: _wearArea,
                 decoration:
                     InputDecoration(labelText: l10n.gearWearLogArea),
@@ -472,26 +485,6 @@ class _GearFormSheetState extends State<_GearFormSheet> {
                     ),
                   ),
             ],
-            const SizedBox(height: 16),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              spacing: 8,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.maybePop(context),
-                  child: Text(l10n.gearFormCancel),
-                ),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: Text(_saving
-                      ? l10n.gearFormSaving
-                      : widget.existing != null
-                          ? l10n.gearFormSave
-                          : l10n.gearFormAdd),
-                ),
-              ],
-            ),
           ],
         );
   }

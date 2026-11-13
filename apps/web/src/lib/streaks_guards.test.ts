@@ -14,7 +14,7 @@ test('Dashboard wires the streak card through the pure helpers', () => {
 	// Reason: the streak figures must come from the unit-tested helpers,
 	// not an inline reimplementation — computeRunStreaks for the windowed
 	// compute, streakCardState for the sub-label decision.
-	const source = read('src/routes/dashboard/+page.svelte');
+	const source = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(source, /computeRunStreaks/, 'dashboard must call the pure helper');
 	assert.match(source, /streakCardState\(/, 'dashboard must derive the card via streakCardState');
 	assert.match(source, /class="stat-card" class:streak-active/, 'streak stat card missing');
@@ -26,7 +26,7 @@ test('Dashboard streak sub-label is served by the all-time RPC, not the window',
 	// truncates one spanning the boundary (decisions §471). The card must
 	// fetch run_streaks_for_user (re-fetched per source filter) and render
 	// the sub-label from streakCard, never from the windowed runStreaks.
-	const source = read('src/routes/dashboard/+page.svelte');
+	const source = read('src/routes/dashboard/DashboardView.svelte');
 	assert.match(source, /fetchRunStreaks\(/, 'dashboard must fetch the all-time aggregate');
 	assert.match(source, /streakCard\.current/, 'current value missing');
 	assert.match(source, /streakCard\.sub\.kind === 'best'/, 'best sub-label branch missing');

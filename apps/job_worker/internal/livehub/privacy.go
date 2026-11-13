@@ -27,11 +27,27 @@ type PrivacyZone struct {
 // the hub-side clip below is the equivalent for the WebSocket path.
 func IsInAnyZone(lat, lng float64, zones []PrivacyZone) bool {
 	for _, z := range zones {
-		if haversineMetres(lat, lng, z.Lat, z.Lng) <= z.RadiusM {
+		if haversineMetres(lat, lng, z.Lat, z.Lng) <= z.EffectiveRadiusM() {
 			return true
 		}
 	}
 	return false
+}
+
+// MinZoneRadiusM is the smallest radius a zone covers. The phone once
+// offered 50 m; a zone saved then covers 100 m now, so aligning every
+// platform on 100-1000 m never shrank anyone's privacy. Mirrors
+// `PRIVACY_ZONE_MIN_RADIUS_M` (web), `privacyZoneMinRadiusM` (mobile) and
+// `privacy_in_any_zone` (Postgres).
+const MinZoneRadiusM = 100.0
+
+// EffectiveRadiusM is the radius the zone covers: what was stored, never
+// less than [MinZoneRadiusM]. A NaN radius is the floor.
+func (z PrivacyZone) EffectiveRadiusM() float64 {
+	if z.RadiusM > MinZoneRadiusM {
+		return z.RadiusM
+	}
+	return MinZoneRadiusM
 }
 
 const earthRadiusMetres = 6371000.0

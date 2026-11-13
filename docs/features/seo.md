@@ -21,6 +21,23 @@ The fix is per-surface: **prerender** what's static, **Lambda-SSR** what's
 dynamic-but-public, and leave the auth-gated app CSR (it shouldn't be
 indexed anyway).
 
+## Language of a share head
+
+A share page's `<head>` (title, description, `og:`/`twitter:` tags, JSON-LD)
+and its OG card are **English for every reader, on purpose**, while the page
+body under them renders in the reader's language. CloudFront caches each
+share response on its path alone; the crawlers that read the head send no
+reader's language (Googlebot crawls without `Accept-Language`, and Slack,
+iMessage and WhatsApp unfurl with the server's own); and Google's guidance is
+one language per URL, with `hreflang` alternates, rather than a page that
+changes language by request. Localising the head would therefore mean a URL
+per language, `hreflang` in the head and sitemap, and a CJK font in the OG
+Lambdas, not a change to the builders. The English still has to be correct
+English: a count agrees with its noun through `englishCount` in
+`share_meta.ts`. `src/lib/i18n/english_text_guard.test.ts` lists each share
+module as English by design, with this reason, and fails any other `src/lib`
+module that carries English prose a reader would see.
+
 ## Per-surface render map
 
 | Surface | Mode | `<head>` owner | Structured data |

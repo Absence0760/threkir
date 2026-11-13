@@ -264,8 +264,8 @@ void main() {
   /// Gym's own add, the composer it opens, one exercise with one set, Save.
   /// Returns once the store has written the workout and the composer is gone.
   Future<void> logALift(WidgetTester tester, LocalGymStore gymStore) async {
-    final add = find.descendant(
-        of: find.byType(GymScreen), matching: find.byTooltip('Log workout'));
+    // The Gym tab's add is the hub's FAB (issue #1374), not drawn inside it.
+    final add = find.widgetWithText(FloatingActionButton, 'Log workout');
     expect(add, findsOneWidget);
     await tester.tap(add);
     await settle(tester);
@@ -292,8 +292,7 @@ void main() {
   /// Nutrition's own add, the manual entry, Add. Returns once the store has
   /// written the entry and the composer is gone.
   Future<void> logAMeal(WidgetTester tester, LocalFoodStore foodStore) async {
-    final add = find.descendant(
-        of: find.byType(NutritionScreen), matching: find.byTooltip('Log food'));
+    final add = find.widgetWithText(FloatingActionButton, 'Log food');
     expect(add, findsOneWidget);
     await tester.tap(add);
     await settle(tester);
@@ -334,7 +333,7 @@ void main() {
       await pick(tester, 'Log lift');
       expect(shellPage(tester), 1, reason: 'Gym is a tab of the Fitness hub');
       expect(find.byType(GymScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget,
+      expect(find.byType(NavigationBar), findsOneWidget,
           reason: 'a dwell-in surface, not a modal over the shell');
 
       await logALift(tester, s.gymStore);
@@ -364,7 +363,11 @@ void main() {
 
       await pick(tester, 'Log run');
       expect(shellPage(tester), 2);
-      expect(find.text('START'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(NavigationBar), matching: find.text('Start')),
+          findsOneWidget,
+          reason: 'on the idle Run page the centre button is the Start');
       expect(find.textContaining('already on'), findsNothing);
       expect(s.gymStore.workouts, hasLength(1));
 
@@ -380,7 +383,7 @@ void main() {
       await pick(tester, 'Log food');
       expect(shellPage(tester), 1);
       expect(find.byType(NutritionScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
 
       await logAMeal(tester, s.foodStore);
 
@@ -415,8 +418,8 @@ void main() {
       await pick(tester, 'Log food');
       expect(shellPage(tester), 1, reason: 'the same hub, another tab');
       expect(find.byType(NutritionScreen), findsOneWidget);
-      // The hub's tab label and the Nutrition screen's own title.
-      expect(find.text('Nutrition'), findsNWidgets(2));
+      // The hub's tab label only: the tab draws no title bar of its own.
+      expect(find.text('Nutrition'), findsOneWidget);
       expect(find.textContaining('already on'), findsNothing);
 
       await unmount(tester);
@@ -446,9 +449,12 @@ void main() {
       expect(s.gymStore.workouts, hasLength(1));
       expect(s.gymStore.workouts.single.syncState, SyncState.pendingCreate);
 
-      // The centre button no longer starts a run outright: there is a lift
-      // to log as well, so it fans the menu with Log lift on it.
-      expect(find.text('Start run'), findsNothing);
+      // The centre button no longer goes straight to the recorder: there is
+      // a lift to log as well, so it fans the menu with Log lift on it.
+      expect(
+          find.descendant(
+              of: find.byType(NavigationBar), matching: find.text('Run')),
+          findsNothing);
       await openFan(tester);
       expect(fanItem('Log lift'), findsOneWidget);
 

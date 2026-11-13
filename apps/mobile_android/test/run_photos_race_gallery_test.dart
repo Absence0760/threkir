@@ -8,6 +8,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show OverlayIconButton;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/run_photos.dart';
@@ -94,6 +95,32 @@ void main() {
     expect(api.shareCalls, [('a', true)]);
     expect(find.byTooltip(_hide), findsOneWidget);
     expect(find.byTooltip(_show), findsNothing);
+  });
+
+  // #1374 A11Y-6: the three overlay buttons were 30 dp discs 4 dp apart, so a
+  // mis-tap on edit landed on delete.
+  testWidgets('the overlay buttons are 48 dp targets that do not overlap',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final api = _RaceApi(
+      photos: [_photo('a')],
+      context: (isPublic: true, raceListingId: 'listing-1'),
+    );
+    await _pump(tester, api);
+    final rects = [
+      for (final e in find.byType(OverlayIconButton).evaluate())
+        tester.getRect(find.byWidget(e.widget)),
+    ];
+    expect(rects, hasLength(3), reason: 'edit, race gallery, delete');
+    for (final r in rects) {
+      expect(r.width, greaterThanOrEqualTo(48));
+      expect(r.height, greaterThanOrEqualTo(48));
+    }
+    for (var i = 0; i < rects.length - 1; i++) {
+      expect(rects[i].right, lessThanOrEqualTo(rects[i + 1].left + 0.01));
+    }
   });
 
   testWidgets('an opted-in photo can be withdrawn', (tester) async {

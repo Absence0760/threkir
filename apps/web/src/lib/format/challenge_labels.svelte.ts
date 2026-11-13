@@ -33,5 +33,5 @@ export function challengeWindowLabel(
 	if (now < starts) return m('challenges.startsIn', { n: Math.ceil((starts - now) / 86400000) });
 	if (now >= ends) return m('challenges.ended');
 	const d = Math.ceil((ends - now) / 86400000);
-	return d <= 1 ? m('challenges.endsToday') : m('challenges.endsIn', { n: d });
+	return m('challenges.endsIn', { n: Math.max(1, d) });
 }

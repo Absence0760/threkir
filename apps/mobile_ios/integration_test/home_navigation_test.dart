@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/fitness_hub_screen.dart';
 import '../lib/screens/home_screen.dart';
 import '../lib/screens/you_screen.dart';
@@ -16,14 +16,14 @@ void main() {
       'destinations', (tester) async {
     await launchApp(onboarded: true);
 
-    await pumpUntilFound(tester, find.byType(BottomAppBar),
+    await pumpUntilFound(tester, find.byType(NavigationBar),
         describe: 'the cold launch to reach the Home shell');
     final l10n = l10nOf(tester, find.byType(HomeScreen));
-    await pumpUntilFound(tester, find.byType(DashboardScreen).hitTestable(),
+    await pumpUntilFound(tester, find.byType(TodayScreen).hitTestable(),
         describe: 'the dashboard to be the visible page');
 
     Finder navItem(String label) => find.descendant(
-        of: find.byType(BottomAppBar), matching: find.text(label));
+        of: find.byType(NavigationBar), matching: find.text(label));
 
     // The hub is captioned Training rather than Fitness while Gym and
     // Nutrition are both hidden, which depends on what this install has
@@ -37,7 +37,7 @@ void main() {
     final stops = <(String, Type)>[
       (l10n.navYou, YouScreen),
       (hubLabel, FitnessHubScreen),
-      (l10n.navHome, DashboardScreen),
+      (l10n.navHome, TodayScreen),
     ];
     for (final (label, screen) in stops) {
       await tester.tap(navItem(label));

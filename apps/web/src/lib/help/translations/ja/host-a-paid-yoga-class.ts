@@ -86,7 +86,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'来た人を記録します: [[guide:take-attendance|クラスで出欠を取る]]。',
 						'開催回を1つ中止する必要がある場合は、[[guide:cancel-a-class|クラスを中止し、支払った全員に返金する]]の手順で、支払った全員に返金されます。',
-						'代金はプラットフォーム手数料を差し引いてあなた自身の支払いアカウントに支払われ、[[route:/settings/payouts|支払い]]の**収益**に表示されます。',
+						'代金はプラットフォーム手数料を差し引いてあなた自身の受け取りアカウントに支払われ、[[route:/settings/payouts|受け取り]]の**収益**に表示されます。',
 					],
 				},
 				{

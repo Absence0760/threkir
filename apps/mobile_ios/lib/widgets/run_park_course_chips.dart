@@ -118,6 +118,7 @@ class _RunParkCourseChipsState extends State<RunParkCourseChips> {
       );
     }
     if (_times.isEmpty) return const SizedBox.shrink();
+    // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
       label: l10n.runDetailParkCourses,

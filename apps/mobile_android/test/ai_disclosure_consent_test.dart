@@ -12,6 +12,7 @@ import '../lib/screens/settings_account_screen.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// The mobile half of issue #734: the AI route assistant now requires the
 /// widened (v2) disclosure, so mobile needs a surface on which a runner can
@@ -332,5 +333,30 @@ void main() {
       expect(api.recorded, [kAiDisclosureCurrentVersion]);
       expect(find.text("Before you use Threkir's AI features"), findsNothing);
     });
+  });
+
+  worstCaseTestWidgets('the Coach disclosure', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: CoachScreen(api: _ConsentApi(), training: TrainingService()),
+    ));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await walkScrollable(tester, primaryScrollable(), 'Coach disclosure');
+  });
+
+  worstCaseTestWidgets('Settings → Account', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SettingsAccountScreen(
+        apiClient: _ConsentApi(storedVersion: 1),
+        preferences: Preferences(),
+        settingsSync: null,
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Account');
   });
 }

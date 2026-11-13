@@ -29,6 +29,9 @@ test('the goal reads the same for every crawler, per metric', () => {
 	assert.equal(challengeGoalStable(base), '50.00 km');
 	assert.equal(challengeGoalStable({ metric: 'duration', goal_value: 36000 }), '10 h');
 	assert.equal(challengeGoalStable({ metric: 'activity_count', goal_value: 20 }), '20 activities');
+	assert.equal(challengeGoalStable({ metric: 'activity_count', goal_value: 1 }), '1 activity');
+	assert.equal(challengeGoalStable({ metric: 'streak_days', goal_value: 1 }), '1 day');
+	assert.equal(challengeGoalStable({ metric: 'park_courses', goal_value: 1 }), '1 park course');
 	assert.equal(challengeGoalStable({ metric: 'streak_days', goal_value: 30 }), '30 days');
 	assert.equal(challengeGoalStable({ metric: 'vert', goal_value: 1000 }), '1000 m');
 	assert.equal(challengeGoalStable({ metric: 'distance', goal_value: null }), '');

@@ -832,9 +832,9 @@ test.describe('/routes/new — Route Builder control surface', () => {
 		await expect(page.locator('.point-set').first()).toBeVisible({ timeout: 5_000 });
 
 		await page.getByRole('button', { name: /Generate .* (loop|route)/ }).click();
-		const upsell = page.locator('.pro-upsell');
+		const upsell = page.getByTestId('route-generate-pro-upsell');
 		await expect(upsell).toBeVisible({ timeout: 30_000 });
-		await expect(upsell.getByRole('link', { name: /Upgrade to Pro/i })).toHaveAttribute(
+		await expect(upsell.getByRole('link', { name: 'See Pro' })).toHaveAttribute(
 			'href',
 			'/settings/upgrade',
 		);

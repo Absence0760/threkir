@@ -157,7 +157,7 @@ the water tower, then a flat return along the river path."*
 - **Where a runner accepts it.** One disclosure component per platform, rendered
   by every host that writes the record: web's `AiDisclosureNotice.svelte` (the
   `/coach` first-use dialog + Settings → Account) and mobile's
-  `widgets/ai_disclosure_notice.dart` (the Coach gate, a Settings → Account tile,
+  `widgets/ai_disclosure_notice.dart` (the Coach gate, a You → Account tile,
   and the route-detail fallback notice, which offers it inline and re-runs the
   enhancement on acceptance). Mobile writes `record_ai_disclosure_consent()`
   directly — the v1 `record_coach_consent()` wrapper has no client left — and

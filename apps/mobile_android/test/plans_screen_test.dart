@@ -13,6 +13,7 @@ import '../lib/training.dart';
 import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/error_state.dart';
+import '../lib/widgets/plan_list_card.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 
 Future<void> _pump(WidgetTester tester, {required TrainingService training}) {
@@ -177,10 +178,11 @@ Finder _card(String name) =>
 
 void main() {
   group('PlansScreen — not signed in', () {
-    testWidgets('renders the Training plans app-bar title', (tester) async {
+    testWidgets('pushed on its own, its app bar says Plans, the tab\'s name',
+        (tester) async {
       await _pump(tester, training: TrainingService());
       await tester.pump();
-      expect(find.text('Training plans'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Plans'), findsOneWidget);
     });
 
     testWidgets('shows the shared sign-in state', (tester) async {
@@ -405,6 +407,8 @@ void main() {
 
     testWidgets('deleting a finished plan confirms, deletes and reloads',
         (tester) async {
+      // Tall, so the New plan FAB floats clear of the second card's Delete.
+      _tallView(tester);
       final training = _FakeTraining([
         _plan('p4', 'Old marathon', 'completed', _days(-200), _days(-90)),
         _activePlan(),
@@ -648,12 +652,15 @@ void main() {
         (tester) async {
       final training = _FakeTraining([])..createGate = Completer<void>();
       await _pumpSignedIn(tester, training);
+      await tester.ensureVisible(find.byKey(const Key('planStarter-half_12wk')));
+      await tester.pump();
       await tester.tap(find.byKey(const Key('planStarter-half_12wk')));
       await tester.pump();
       await tester.pump();
       expect(training.created, isNotNull);
-      InkWell tile(String id) =>
-          tester.widget<InkWell>(find.byKey(Key('planStarter-$id')));
+      InkWell tile(String id) => tester.widget<InkWell>(find.descendant(
+          of: find.byKey(Key('planStarter-$id')),
+          matching: find.byType(InkWell)));
       for (final id in ['c25k', 'half_12wk', 'marathon_16wk']) {
         expect(tile(id).onTap, isNull, reason: id);
       }
@@ -690,6 +697,8 @@ void main() {
         (tester) async {
       final training = _FakeTraining([]);
       await _pumpSignedIn(tester, training);
+      await tester.ensureVisible(find.byKey(const Key('planStarter-half_12wk')));
+      await tester.pump();
       await tester.tap(find.byKey(const Key('planStarter-half_12wk')));
       await tester.pump();
       await tester.pump();

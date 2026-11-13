@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ChartCardHeader;
+import 'package:ui_kit/ui_kit.dart' show ChartCardHeader, ListCard;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -35,10 +35,9 @@ class RecentLiftsCard extends StatelessWidget {
     final tag = localeToTag(Localizations.localeOf(context));
     final recent = workouts.take(5).toList();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
+    return ListCard(
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ChartCardHeader(
@@ -51,7 +50,6 @@ class RecentLiftsCard extends StatelessWidget {
             for (final w in recent) _liftRow(context, theme, l10n, tag, w),
           ],
         ),
-      ),
     );
   }
 

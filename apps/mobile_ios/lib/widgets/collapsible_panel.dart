@@ -14,6 +14,17 @@ import '../l10n/gen/app_localizations.dart';
 /// callers only supply the content for each state. It also clears a docked
 /// FAB ([DockedFabInset]), which would otherwise cover its bottom row.
 class CollapsiblePanel extends StatefulWidget {
+  /// How far the handle's touch target reaches above the panel's visible
+  /// top edge. The handle draws in a 28 dp strip, which clears WCAG's 24 dp
+  /// but not Android's 48 dp, and growing the strip would grow the panel
+  /// over the map; so the panel lays out this much transparent space above
+  /// itself that belongs to the handle (issue #1374 A11Y-15). The run screen
+  /// keeps its floating cards clear of it.
+  static const double handleOverhang = 20;
+
+  /// The visible handle strip; with [handleOverhang] it is a 48 dp target.
+  static const double handleHeight = 28;
+
   final Widget expandedChild;
   final Widget collapsedChild;
   final bool initiallyExpanded;
@@ -50,6 +61,37 @@ class _CollapsiblePanelState extends State<CollapsiblePanel> {
     final theme = Theme.of(context);
     final bottomSafe = MediaQuery.of(context).padding.bottom;
 
+    final l10n = AppLocalizations.of(context);
+    // The handle's whole target: the transparent overhang above the panel
+    // and the drawn strip at its top, one semantics node and one gesture.
+    final handle = Semantics(
+      label: _expanded ? l10n.runCollapseStatsPanel : l10n.runExpandStatsPanel,
+      button: true,
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: const ValueKey('collapsible-panel-handle'),
+        behavior: HitTestBehavior.opaque,
+        onTap: _toggle,
+        onVerticalDragEnd: _onVerticalDragEnd,
+        child: const SizedBox(
+          height: CollapsiblePanel.handleOverhang + CollapsiblePanel.handleHeight,
+          width: double.infinity,
+        ),
+      ),
+    );
+
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: CollapsiblePanel.handleOverhang),
+          child: _panel(context, theme, bottomSafe),
+        ),
+        Positioned(top: 0, left: 0, right: 0, child: handle),
+      ],
+    );
+  }
+
+  Widget _panel(BuildContext context, ThemeData theme, double bottomSafe) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: BackdropFilter(
@@ -62,26 +104,16 @@ class _CollapsiblePanelState extends State<CollapsiblePanel> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Semantics(
-                label: _expanded
-                    ? AppLocalizations.of(context).runCollapseStatsPanel
-                    : AppLocalizations.of(context).runExpandStatsPanel,
-                button: true,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _toggle,
-                  onVerticalDragEnd: _onVerticalDragEnd,
-                  child: SizedBox(
-                    height: 28,
-                    child: Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: theme.dividerColor,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
+              // Drawn here; the handle's target is laid over it from above.
+              SizedBox(
+                height: CollapsiblePanel.handleHeight,
+                child: Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.dividerColor,
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),

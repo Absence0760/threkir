@@ -63,6 +63,10 @@ test.describe('/routes/[id] — Describe (free user)', () => {
 		await expect(page.locator('.route-description')).toContainText(/road .*route/i);
 		await expect(page.locator('.desc-upgrade')).toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.desc-upgrade')).toContainText(/Pro/i);
+		await expect(page.locator('.desc-upgrade').getByRole('link', { name: 'See Pro' })).toHaveAttribute(
+			'href',
+			'/settings/upgrade',
+		);
 		// No AI attribution on the free / templated path.
 		await expect(page.locator('.desc-attribution')).toHaveCount(0);
 		// The server's template is English by contract; the page keeps its

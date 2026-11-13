@@ -4,6 +4,7 @@
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
+	import { recapBadgeFromSnapshot } from '#lib/share/recap_card_text.ts';
 	import { buildRecapOgImageUrl } from '#lib/share/share_recap_meta.ts';
 
 	let { data } = $props();
@@ -42,7 +43,9 @@
 			personalRecordCount: s.personalRecordCount ?? 0,
 			parkCourseCount: s.parkCourseCount ?? 0,
 			parkCount: s.parkCount ?? 0,
-			badges: s.badges ?? []
+			badges: (Array.isArray(s.badges) ? (s.badges as unknown[]) : [])
+				.map(recapBadgeFromSnapshot)
+				.filter((b) => b != null)
 		};
 	});
 

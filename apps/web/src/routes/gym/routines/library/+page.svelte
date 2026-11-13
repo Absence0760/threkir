@@ -1,5 +1,8 @@
 <script lang="ts">
+	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { fetchPublicGymRoutineLibrary, type PublicGymRoutineEntry } from '#lib/core/data.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -32,22 +35,20 @@
 </svelte:head>
 
 <div class="library">
-	<header class="library-head">
-		<a class="back" href="/gym/routines">{t('gymLibrary.backToRoutines')}</a>
-		<h1>{t('gymLibrary.heading')}</h1>
-		<p class="sub">{t('gymLibrary.subheading')}</p>
-	</header>
+	<PageHeader
+		back={{ href: '/gym/routines', label: t('gymLibrary.backToRoutines') }}
+		title={t('gymLibrary.heading')}
+		subtitle={t('gymLibrary.subheading')}
+	/>
 
-	<label class="search">
-		<span class="visually-hidden">{t('gymLibrary.searchAria')}</span>
-		<input
-			type="search"
+	<div class="search">
+		<AppSearchField
 			bind:value={query}
 			oninput={onSearchInput}
+			label={t('gymLibrary.searchAria')}
 			placeholder={t('gymLibrary.searchPlaceholder')}
-			aria-label={t('gymLibrary.searchAria')}
 		/>
-	</label>
+	</div>
 
 	{#if loading}
 		<p class="state" role="status">{t('gymLibrary.loading')}</p>
@@ -64,18 +65,15 @@
 		<ul class="routine-grid" data-testid="gym-library-list">
 			{#each routines as r (r.id)}
 				<li>
-					<a class="routine-card" href="/gym/routines/library/{r.id}">
-						<span class="routine-name">{r.title}{#if r.is_official}<OfficialBadge />{/if}</span>
-						<span class="routine-author">
-							{t('gymLibrary.byAuthor', {
-								author: r.author_handle ?? t('gymLibrary.anonymousAuthor'),
-							})}
-						</span>
-						<span class="routine-meta">
+					<ListCard class="routine-card" href="/gym/routines/library/{r.id}" title={r.title} subtitle={t('gymLibrary.byAuthor', { author: r.author_handle ?? t('gymLibrary.anonymousAuthor') })}>
+						{#snippet badge()}{#if r.is_official}<OfficialBadge />{/if}{/snippet}
+						{#snippet meta()}
+							<span class="routine-meta">
 							<span class="chip">{t('gymLibrary.exercisesLabel', { count: r.exercise_count })}</span>
-						</span>
-						<span class="routine-cta">{t('gymLibrary.preview')}</span>
-					</a>
+							</span>
+						{/snippet}
+						{#snippet trailing()}<span class="routine-cta">{t('gymLibrary.preview')}</span>{/snippet}
+					</ListCard>
 				</li>
 			{/each}
 		</ul>
@@ -88,32 +86,9 @@
 		margin: 0 auto;
 		padding: 1rem;
 	}
-	.library-head {
-		margin-bottom: 1rem;
-	}
-	.back {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-		text-decoration: none;
-	}
-	.library-head h1 {
-		margin: 0.25rem 0 0.25rem;
-		font-size: 1.4rem;
-	}
-	.sub {
-		margin: 0;
-		color: var(--color-text-secondary);
-	}
 	.search {
-		display: block;
+		display: flex;
 		margin-bottom: 1rem;
-	}
-	.search input {
-		width: 100%;
-		padding: 0.6rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.5rem;
-		font-size: 1rem;
 	}
 	.state {
 		text-align: center;
@@ -133,29 +108,6 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
 		gap: 0.75rem;
-	}
-	.routine-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		padding: 1rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.75rem;
-		text-decoration: none;
-		color: inherit;
-		background: var(--color-surface);
-		transition: border-color var(--transition-fast);
-	}
-	.routine-card:hover {
-		border-color: var(--color-primary);
-	}
-	.routine-name {
-		font-weight: 600;
-		font-size: 1.05rem;
-	}
-	.routine-author {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
 	}
 	.routine-meta {
 		display: flex;

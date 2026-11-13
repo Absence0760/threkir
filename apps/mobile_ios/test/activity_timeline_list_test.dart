@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/activity_timeline_list.dart';
+import 'worst_case_layout.dart';
 
 ActivityRow _row(String id, String kind, DateTime at, Map<String, dynamic> summary) =>
     ActivityRow(id: id, kind: kind, startedAt: at, summary: summary);
@@ -34,6 +35,32 @@ Future<void> _pump(
 
 void main() {
   setUpAll(() => initializeDateFormatting());
+
+  worstCaseTestWidgets('Activity timeline rows', (tester, locale) async {
+    final now = DateTime.now();
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: ActivityTimelineList(
+          activities: [
+            _row('r1', 'run', now, {'distance_m': 42195, 'duration_s': 12530}),
+            _row('l1', 'lift', now, {
+              'title': 'Upper body push and pull with accessory supersets',
+              'set_count': 25,
+              'volume_kg': 12400,
+            }),
+            _row('m1', 'meal', now,
+                {'item_name': 'Chicken bowl with rice', 'calories': 640}),
+          ],
+          unit: DistanceUnit.km,
+          onTapRun: (_) {},
+          onTapLift: (_) {},
+          onRefresh: () async {},
+        ),
+      ),
+    ));
+    await tester.pump();
+  });
 
   testWidgets('empty list shows the timeline empty state', (tester) async {
     await _pump(tester, const []);

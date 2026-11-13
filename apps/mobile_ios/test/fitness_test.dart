@@ -279,40 +279,37 @@ void main() {
     });
   });
 
-  group('recoveryAdvice', () {
+  group('recoveryAdviceKind', () {
     test('flags low CTL as still building', () {
-      final s = recoveryAdvice(0, 5);
-      expect(s.toLowerCase(), contains('building'));
+      expect(recoveryAdviceKind(0, 5), RecoveryAdviceKind.building);
     });
 
     test('flags very negative TSB as heavily loaded', () {
-      final s = recoveryAdvice(-40, 50);
-      expect(s.toLowerCase(), contains('heavily loaded'));
+      expect(recoveryAdviceKind(-40, 50), RecoveryAdviceKind.heavyLoad);
     });
 
     test('heavy overload warns even at low CTL (overreached new runner)', () {
-      // ctl=8, tsb=-40 → the low-CTL "still building" message must not mask
+      // ctl=8, tsb=-40 → the low-CTL "still building" advice must not mask
       // the rest warning.
-      final s = recoveryAdvice(-40, 8);
-      expect(s.toLowerCase(), contains('heavily loaded'));
-      expect(s.toLowerCase(), isNot(contains('building')));
+      expect(recoveryAdviceKind(-40, 8), RecoveryAdviceKind.heavyLoad);
     });
 
-    test('flags very positive TSB as fresh', () {
-      final s = recoveryAdvice(30, 50);
-      expect(s.toLowerCase(), contains('fresh'));
+    test('ladder rises through the TSB bands, boundaries included', () {
+      expect(recoveryAdviceKind(-30, 50), RecoveryAdviceKind.loaded);
+      expect(recoveryAdviceKind(-10, 50), RecoveryAdviceKind.sweetSpot);
+      expect(recoveryAdviceKind(10, 50), RecoveryAdviceKind.tapering);
+      expect(recoveryAdviceKind(25, 50), RecoveryAdviceKind.veryFresh);
     });
 
-    test('returns the empty-data string when inputs are null', () {
-      expect(recoveryAdvice(null, 50), contains('Not enough'));
-      expect(recoveryAdvice(0, null), contains('Not enough'));
+    test('returns noData when inputs are null', () {
+      expect(recoveryAdviceKind(null, 50), RecoveryAdviceKind.noData);
+      expect(recoveryAdviceKind(0, null), RecoveryAdviceKind.noData);
     });
 
     test('returning-from-layoff overrides freshness rungs (comeback #29)', () {
-      final normal = recoveryAdvice(40, 50);
-      final returning = recoveryAdvice(40, 50, returningFromLayoff: true);
-      expect(returning, isNot(equals(normal)));
-      expect(returning.toLowerCase(), anyOf(contains('rebuild'), contains('back')));
+      expect(recoveryAdviceKind(40, 50), RecoveryAdviceKind.veryFresh);
+      expect(recoveryAdviceKind(40, 50, returningFromLayoff: true),
+          RecoveryAdviceKind.welcomeBack);
     });
   });
 

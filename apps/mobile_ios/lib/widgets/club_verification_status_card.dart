@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../l10n/gen/app_localizations.dart';
 import '../social_service.dart';
@@ -62,26 +63,23 @@ class _ClubVerificationStatusCardState
     } else {
       line = clubVerificationStatusLine(l10n, rows, isVerified: widget.isVerified);
     }
-    return Card(
+    return ListCard.row(
       key: const Key('club-verification-status'),
-      child: ListTile(
-        leading: Icon(
-          widget.isVerified ? Icons.verified : Icons.verified_outlined,
-        ),
-        title: Text(l10n.clubVerificationStatusTitle),
-        subtitle: Text(
-          line.isEmpty
-              ? l10n.clubVerificationStatusWebHint
-              : '$line\n${l10n.clubVerificationStatusWebHint}',
-        ),
-        trailing: _failed
-            ? IconButton(
-                tooltip: l10n.clubVerificationStatusRetry,
-                icon: const Icon(Icons.refresh),
-                onPressed: _load,
-              )
-            : null,
+      leading: Icon(
+        widget.isVerified ? Icons.verified : Icons.verified_outlined,
       ),
+      title: l10n.clubVerificationStatusTitle,
+      subtitle: line.isEmpty
+          ? l10n.clubVerificationStatusWebHint
+          : '$line\n${l10n.clubVerificationStatusWebHint}',
+      subtitleMaxLines: 4,
+      trailing: _failed
+          ? IconButton(
+              tooltip: l10n.clubVerificationStatusRetry,
+              icon: const Icon(Icons.refresh),
+              onPressed: _load,
+            )
+          : null,
     );
   }
 }

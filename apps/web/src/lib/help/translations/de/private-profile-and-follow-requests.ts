@@ -30,7 +30,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Öffne im Web in den Einstellungen [[route:/settings/privacy|Datenschutz & Teilen]] und hake unter **Gefunden werden** die Option **Privates Profil** an.',
-						'Öffne in der Handy-App **Voreinstellungen** im Tab **Du** und schalte unter **Datenschutz & Teilen** die Option **Privates Profil** ein.',
+						'Öffne in der Handy-App **Datenschutz & Teilen** im Tab **Du** und schalte **Privates Profil** ein.',
 					],
 				},
 				{
@@ -90,7 +90,7 @@ export const translation: GuideTranslation = {
 		's0.b1.i3': '3b0697b82ce30a11',
 		's1.heading': 'e679ca0953315c31',
 		's1.b0.i0': '8f81f66ef4f33b7f',
-		's1.b0.i1': 'a2257970d4c18f57',
+		's1.b0.i1': '9cd5a4284ba22a5f',
 		's1.b1': '0a095b7bf566bcfd',
 		's1.b2': 'ad288ebf5f9c8856',
 		's2.heading': '93f13a5ed9bf1a93',

@@ -2,6 +2,7 @@
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { prefilledClubName } from '#lib/social/club_setup.ts';
 	import {
@@ -70,16 +71,15 @@
 		{m('clubsNewPage.backToClubs')}
 	</a>
 
-	<header class="page-header">
-		<p class="kicker">{m('clubsNewPage.kicker')}</p>
-		<h1>{m('clubsNewPage.heading')}</h1>
-		<p class="tagline">
-			{m('clubsNewPage.tagline')}
-		</p>
+	<PageHeader
+		kicker={m('clubsNewPage.kicker')}
+		title={m('clubsNewPage.heading')}
+		subtitle={m('clubsNewPage.tagline')}
+	>
 		{#if stravaClubId !== null}
 			<p class="tagline" data-testid="clubs-new-strava-note">{m('stravaClubs.setUpNote')}</p>
 		{/if}
-	</header>
+	</PageHeader>
 
 	<ClubEditor
 		{initialName}
@@ -110,23 +110,6 @@
 	}
 	.back-link .material-symbols {
 		font-size: 1.1rem;
-	}
-	.page-header {
-		margin-bottom: var(--space-xl);
-	}
-	.kicker {
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		margin: 0 0 var(--space-2xs);
-	}
-	h1 {
-		font-size: 1.75rem;
-		font-weight: 800;
-		line-height: 1.2;
-		margin: 0 0 var(--space-xs);
 	}
 	.tagline {
 		color: var(--color-text-secondary);

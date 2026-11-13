@@ -26,21 +26,28 @@ test.describe('/dashboard — a failed read is not an empty account', () => {
 			});
 		});
 
-		await page.goto('/dashboard');
+		// Today and Progress run the same load, so both must say so.
+		for (const path of ['/dashboard', '/dashboard/progress']) {
+			await page.goto(path);
 
-		const banner = page.getByTestId('dash-load-error');
-		await expect(banner).toBeVisible({ timeout: 15_000 });
-		await expect(banner).toHaveAttribute('role', 'alert');
-		await expect(page.getByTestId('dash-load-retry')).toBeVisible();
+			const banner = page.getByTestId('dash-load-error');
+			await expect(banner).toBeVisible({ timeout: 15_000 });
+			await expect(banner).toHaveAttribute('role', 'alert');
+			await expect(page.getByTestId('dash-load-retry')).toBeVisible();
 
-		// None of the zeroed cards may render alongside the failure — that is
-		// the misleading state the banner replaces.
-		await expect(page.locator('.stat-card')).toHaveCount(0);
+			// None of the zeroed cards may render alongside the failure — that
+			// is the misleading state the banner replaces.
+			await expect(page.getByTestId('today-progress-summary')).toHaveCount(0);
+			await expect(page.locator('.stat-card')).toHaveCount(0);
+		}
 	});
 
 	test('a healthy load renders the real dashboard, not the error', async ({ page }) => {
 		await page.goto('/dashboard');
+		await expect(page.getByTestId('today-progress-summary')).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('dash-load-error')).toHaveCount(0);
 
+		await page.goto('/dashboard/progress');
 		await expect(page.locator('.stat-card').first()).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('dash-load-error')).toHaveCount(0);
 	});

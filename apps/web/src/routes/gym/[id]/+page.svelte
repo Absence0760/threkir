@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -404,21 +405,21 @@
 			{/snippet}
 		</EmptyState>
 	{:else if data}
-		<header class="page-header">
-			<div class="head-text">
-				<h1>{data.workout.title || t('gym.untitled')}</h1>
+		{@const workout = data.workout}
+		<PageHeader title={workout.title || t('gym.untitled')}>
+			{#snippet sub()}
 				<p class="head-date">
-					{formatDate(data.workout.started_at)}
-					<span class="visibility-chip" class:is-public={data.workout.is_public}>
+					{formatDate(workout.started_at)}
+					<span class="visibility-chip" class:is-public={workout.is_public}>
 						<span class="material-symbols" aria-hidden="true">
-							{data.workout.is_public ? 'public' : 'lock'}
+							{workout.is_public ? 'public' : 'lock'}
 						</span>
-						{data.workout.is_public ? t('gym.public') : t('gym.private')}
+						{workout.is_public ? t('gym.public') : t('gym.private')}
 					</span>
 				</p>
-			</div>
-			{#if isOwner}
-				<div class="head-actions">
+			{/snippet}
+			{#snippet actions()}
+				{#if isOwner}
 					<button
 						class="btn btn-secondary btn-sm"
 						onclick={toggleVisibility}
@@ -426,9 +427,9 @@
 						data-testid="gym-toggle-public"
 					>
 						<span class="material-symbols" aria-hidden="true">
-							{data.workout.is_public ? 'lock' : 'public'}
+							{workout.is_public ? 'lock' : 'public'}
 						</span>
-						{data.workout.is_public ? t('gym.makePrivate') : t('gym.makePublic')}
+						{workout.is_public ? t('gym.makePrivate') : t('gym.makePublic')}
 					</button>
 					<button
 						class="btn btn-secondary btn-sm"
@@ -463,9 +464,9 @@
 						<span class="material-symbols" aria-hidden="true">delete</span>
 						{t('gym.delete')}
 					</button>
-				</div>
-			{/if}
-		</header>
+				{/if}
+			{/snippet}
+		</PageHeader>
 
 		<div class="summary-grid">
 			<div class="card-elevated summary-stat">
@@ -621,21 +622,6 @@
 		outline-offset: 2px;
 		border-radius: var(--radius-sm);
 	}
-
-	.page-header {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-md);
-		margin-bottom: var(--space-lg);
-	}
-	.head-text {
-		min-width: 0;
-	}
-	.page-header h1 {
-		margin: 0 0 var(--space-2xs);
-	}
 	.head-date {
 		margin: 0;
 		font-size: 0.9rem;
@@ -664,19 +650,6 @@
 	}
 	.visibility-chip .material-symbols {
 		font-size: 0.85rem;
-	}
-	.head-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
-	}
-	.head-actions .btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-	}
-	.head-actions .material-symbols {
-		font-size: 1.05rem;
 	}
 
 	/* Summary stat strip — composes the shared .card-elevated; only the
@@ -859,19 +832,5 @@
 		flex-direction: column;
 		gap: var(--space-sm);
 		margin-bottom: var(--space-md);
-	}
-
-	@media (max-width: 40rem) {
-		.page-header {
-			flex-direction: column;
-			gap: var(--space-sm);
-		}
-		.head-actions {
-			width: 100%;
-		}
-		.head-actions .btn {
-			flex: 1 1 0;
-			justify-content: center;
-		}
 	}
 </style>

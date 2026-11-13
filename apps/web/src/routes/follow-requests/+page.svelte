@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Avatar from '#lib/components/Avatar.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -63,10 +64,7 @@
 </svelte:head>
 
 <div class="page">
-	<header class="head">
-		<h1>{m('followRequests.title')}</h1>
-		<p class="tagline">{m('followRequests.tagline')}</p>
-	</header>
+	<PageHeader title={m('followRequests.title')} subtitle={m('followRequests.tagline')} />
 
 	{#if loading}
 		<p class="muted" role="status">{m('profile.loadingShort')}</p>
@@ -132,10 +130,6 @@
 		max-width: 40rem;
 		margin: 0 auto;
 	}
-	.head h1 {
-		margin: 0 0 var(--space-xs) 0;
-	}
-	.tagline,
 	.muted,
 	.when {
 		color: var(--color-text-secondary);

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/profile_screen.dart';
+import '../lib/engagement_cache.dart';
 import '../lib/widgets/run_social_section.dart';
 import '../lib/widgets/undo_bar.dart';
 import 'supabase_test_init.dart';
@@ -307,6 +308,21 @@ void main() {
         expect(find.text('3'), findsOneWidget);
       },
     );
+
+    // Issue #1374 NS-9: the feed card for this run read its own stale copy.
+    testWidgets('a kudos given here reaches the app-wide engagement cache',
+        (tester) async {
+      EngagementCache.instance.debugClear();
+      final api = _SocialApi(kudosCount: 2, viewerHasKudos: false);
+      await _pumpApi(tester, api);
+      expect(EngagementCache.instance.of('viewer-1', 'fake-run-id')?.kudosCount,
+          2);
+      await tester.tap(find.byType(TextButton).first);
+      await tester.pumpAndSettle();
+      final cached = EngagementCache.instance.of('viewer-1', 'fake-run-id');
+      expect(cached?.kudosCount, 3);
+      expect(cached?.viewerHasKudos, isTrue);
+    });
 
     testWidgets('kudos pill carries an accessibility label for its state', (
       tester,

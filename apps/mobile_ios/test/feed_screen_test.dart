@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart' show AppInsets, ListSkeleton;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/adaptive_width.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/engagement_cache.dart';
 import '../lib/screens/feed_screen.dart';
 import '../lib/widgets/error_state.dart';
 import 'supabase_test_init.dart';
@@ -213,6 +214,8 @@ Future<void> _settle(WidgetTester tester) async {
 
 void main() {
   setUpAll(_ensureSupabase);
+  // The cache is app-wide; each test starts from what its own feed loads.
+  setUp(EngagementCache.instance.debugClear);
 
   group('FeedScreen — initial render', () {
     testWidgets('renders the Feed app-bar title', (tester) async {
@@ -396,6 +399,29 @@ void main() {
       expect(find.byIcon(Icons.favorite), findsOneWidget);
       await _settle(tester);
       expect(api.giveCalls, 1);
+    });
+
+    // Issue #1374 NS-9: kudos and a comment given on the run's own page did
+    // not reach its feed card, and the card's kudos then re-gave one.
+    testWidgets('a change made on the run\'s page shows on its card',
+        (tester) async {
+      final api = _FakeApi(
+        entries: [_runEntry()],
+        followees: [_profileRow('u-1', 'Alex Runner')],
+        engagement: {
+          'run-1': (kudosCount: 4, viewerHasKudos: false, commentCount: 0),
+        },
+      );
+      await _pump(tester, api);
+      await _settle(tester);
+      expect(find.text('4'), findsOneWidget);
+
+      // What RunSocialSection publishes after a kudos and a comment.
+      EngagementCache.instance.put('me', 'run-1',
+          const EngagementSummary(kudosCount: 5, viewerHasKudos: true, commentCount: 1));
+      await tester.pump();
+      expect(find.text('5'), findsOneWidget);
+      expect(find.bySemanticsLabel('Remove kudos'), findsOneWidget);
     });
 
     testWidgets('a failed kudos write rolls back the count + surfaces a banner',

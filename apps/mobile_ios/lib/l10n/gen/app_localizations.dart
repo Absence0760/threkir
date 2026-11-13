@@ -9802,6 +9802,12 @@ abstract class AppLocalizations {
   /// **'No routes shared with this club yet.'**
   String get clubDetailRoutesEmpty;
 
+  /// Routes tab of a club when the read failed; shown with a Retry button instead of the empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this club\'s routes. Check your connection and try again.'**
+  String get clubDetailRoutesLoadFailed;
+
   /// Banner shown after adopting a plan template
   ///
   /// In en, this message translates to:
@@ -9825,6 +9831,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No plan templates yet for this club.'**
   String get clubDetailNoTemplates;
+
+  /// Templates tab of a club when the read failed; shown with a Retry button instead of the empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this club\'s templates. Check your connection and try again.'**
+  String get clubDetailTemplatesLoadFailed;
 
   /// Button to adopt a plan template
   ///

@@ -50,6 +50,7 @@ import 'session_detail_screen.dart';
 import 'public_route_screen.dart';
 import 'route_builder_screen.dart';
 import '../widgets/sign_in_required_state.dart';
+import '../widgets/stale_refresh_banner.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
 
@@ -106,6 +107,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   bool _busy = false;
   bool _templatesLoaded = false;
   bool _routesLoaded = false;
+  // A failed read is an error with Retry, never the empty state, and leaves
+  // the tab unloaded so the next visit tries again (issue #1374 FS-3).
+  Object? _templatesError;
+  Object? _routesError;
   String? _error;
   bool _timedOut = false;
   late final TabController _tabs;
@@ -1505,10 +1510,27 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       setState(() {
         _routes = list;
         _routesLoaded = true;
+        _routesError = null;
       });
-    } catch (_) {
-      if (mounted) setState(() => _routesLoaded = true);
+    } catch (e) {
+      debugPrint('ClubDetail._loadRoutes failed: $e');
+      if (!mounted) return;
+      if (_routesLoaded) {
+        showStaleRefreshBanner(context, e);
+      } else {
+        setState(() => _routesError = e);
+      }
     }
+  }
+
+  void _retryRoutes() {
+    setState(() => _routesError = null);
+    _loadRoutes();
+  }
+
+  void _retryTemplates() {
+    setState(() => _templatesError = null);
+    _loadTemplates();
   }
 
   Future<void> _buildClubRoute(ClubView c) async {
@@ -1559,9 +1581,16 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
         _gymRoutineTemplates = routines;
         _officialGymRoutineIds = officialRoutines;
         _templatesLoaded = true;
+        _templatesError = null;
       });
-    } catch (_) {
-      if (mounted) setState(() => _templatesLoaded = true);
+    } catch (e) {
+      debugPrint('ClubDetail._loadTemplates failed: $e');
+      if (!mounted) return;
+      if (_templatesLoaded) {
+        showStaleRefreshBanner(context, e);
+      } else {
+        setState(() => _templatesError = e);
+      }
     }
   }
 
@@ -1714,12 +1743,6 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   }
 
   Widget _buildRoutesTab(ThemeData theme, ClubView c) {
-    if (!_routesLoaded) {
-      return ListSkeleton(
-        label: AppLocalizations.of(context).commonLoading,
-        rows: 4,
-      );
-    }
     // Admin-only CTA — mirrors web's `Routes` tab "New route" + "Transfer
     // from My routes" actions strip on `/clubs/[slug]`. We only render
     // "Build route" today because the mobile transfer flow lives on
@@ -1731,8 +1754,21 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     final canBuild = c.isAdmin &&
         widget.apiClient != null &&
         widget.routeStore != null;
-    if (_routes.isEmpty) {
-      return EmptyState(
+    return AsyncView<List<cm.Route>>(
+      loading: !_routesLoaded && _routesError == null,
+      error: _routesError,
+      data: _routesLoaded ? _routes : null,
+      isEmpty: (r) => r.isEmpty,
+      onRefresh: _loadRoutes,
+      loadingState: LoadingState.list(
+        label: AppLocalizations.of(context).commonLoading,
+        rows: 4,
+      ),
+      errorBuilder: (_, _) => AppErrorState(
+        message: AppLocalizations.of(context).clubDetailRoutesLoadFailed,
+        onRetry: _retryRoutes,
+      ),
+      empty: EmptyState(
         icon: Icons.route,
         title: canBuild
             ? AppLocalizations.of(context).clubDetailRoutesEmptyBuild
@@ -1743,14 +1779,11 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             canBuild ? AppLocalizations.of(context).clubDetailBuildRoute : null,
         onCta: canBuild ? () => _buildClubRoute(c) : null,
         ctaIcon: Icons.add_road,
-      );
-    }
-    return RefreshIndicator(
-      onRefresh: _loadRoutes,
-      child: ListView.separated(
+      ),
+      builder: (_, routes) => ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        itemCount: _routes.length + (canBuild ? 1 : 0),
+        itemCount: routes.length + (canBuild ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, index) {
           if (canBuild && index == 0) {
@@ -1765,7 +1798,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             );
           }
           final i = index - (canBuild ? 1 : 0);
-          final r = _routes[i];
+          final r = routes[i];
           return Card(
             child: ListTile(
               leading: r.waypoints.length >= 2
@@ -1814,27 +1847,32 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   }
 
   Widget _buildTemplatesTab(ThemeData theme, ClubView c) {
-    if (!_templatesLoaded) {
-      return ListSkeleton(
-        label: AppLocalizations.of(context).commonLoading,
+    final l10n = AppLocalizations.of(context);
+    return AsyncView<bool>(
+      loading: !_templatesLoaded && _templatesError == null,
+      error: _templatesError,
+      data: _templatesLoaded ? true : null,
+      isEmpty: (_) =>
+          _templates.isEmpty &&
+          _sessionTemplates.isEmpty &&
+          _gymRoutineTemplates.isEmpty,
+      onRefresh: _loadTemplates,
+      loadingState: LoadingState.list(
+        label: l10n.commonLoading,
         rows: 4,
         hasLeading: false,
-      );
-    }
-    final l10n = AppLocalizations.of(context);
-    if (_templates.isEmpty &&
-        _sessionTemplates.isEmpty &&
-        _gymRoutineTemplates.isEmpty) {
-      return EmptyState(
+      ),
+      errorBuilder: (_, _) => AppErrorState(
+        message: l10n.clubDetailTemplatesLoadFailed,
+        onRetry: _retryTemplates,
+      ),
+      empty: EmptyState(
         icon: Icons.assignment_outlined,
         title: c.isAdmin
             ? l10n.clubDetailNoTemplatesAdmin
             : l10n.clubDetailNoTemplates,
-      );
-    }
-    return RefreshIndicator(
-      onRefresh: _loadTemplates,
-      child: ListView(
+      ),
+      builder: (_, _) => ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [

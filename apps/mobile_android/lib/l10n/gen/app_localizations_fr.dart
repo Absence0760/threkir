@@ -6100,6 +6100,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucun itinéraire partagé avec ce club pour le moment.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Impossible de charger les itinéraires de ce club. Vérifiez votre connexion et réessayez.';
+
+  @override
   String get clubDetailTemplateAdded => 'Modèle ajouté à vos plans.';
 
   @override
@@ -6114,6 +6118,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Aucun modèle de plan pour ce club pour le moment.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Impossible de charger les modèles de ce club. Vérifiez votre connexion et réessayez.';
 
   @override
   String get clubDetailAdopt => 'Adopter';

@@ -117,6 +117,22 @@ void main() {
       expect(line, isNot(contains('127.0.0.1')));
       expect(line, isNot(contains('http')));
     });
+
+    // Issue #1374 FS-3: a club's Templates tab read a failed fetch as "No plan
+    // templates yet for this club" and never retried.
+    for (final (name, read) in <(String, Future<Object?> Function(ApiClient))>[
+      ('fetchClubSessionTemplates', (a) => a.fetchClubSessionTemplates('c')),
+      ('fetchClubGymRoutineTemplates',
+          (a) => a.fetchClubGymRoutineTemplates('c')),
+    ]) {
+      test('$name throws and logs only the error type', () async {
+        final api = ApiClient.withClient(fake);
+        await expectLater(read(api), throwsA(anything));
+        final line = logged.singleWhere((l) => l.startsWith('$name failed:'));
+        expect(line, isNot(contains('127.0.0.1')));
+        expect(line, isNot(contains('http')));
+      });
+    }
   });
 }
 

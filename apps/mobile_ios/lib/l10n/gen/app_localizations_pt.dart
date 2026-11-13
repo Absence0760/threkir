@@ -6087,6 +6087,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nenhuma rota partilhada com este clube ainda.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Não foi possível carregar as rotas deste clube. Verifique a sua ligação e tente novamente.';
+
+  @override
   String get clubDetailTemplateAdded => 'Modelo adicionado aos seus planos.';
 
   @override
@@ -6101,6 +6105,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Nenhum modelo de plano para este clube ainda.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Não foi possível carregar os modelos deste clube. Verifique a sua ligação e tente novamente.';
 
   @override
   String get clubDetailAdopt => 'Adotar';
@@ -28714,6 +28722,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Nenhuma rota compartilhada com este clube ainda.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Não foi possível carregar as rotas deste clube. Verifique sua conexão e tente novamente.';
+
+  @override
   String get clubDetailTemplateAdded => 'Modelo adicionado aos seus planos.';
 
   @override
@@ -28728,6 +28740,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get clubDetailNoTemplates =>
       'Nenhum modelo de plano para este clube ainda.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Não foi possível carregar os modelos deste clube. Verifique sua conexão e tente novamente.';
 
   @override
   String get clubDetailAdopt => 'Adotar';

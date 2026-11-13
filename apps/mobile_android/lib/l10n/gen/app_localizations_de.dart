@@ -6104,6 +6104,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Mit diesem Club wurden noch keine Routen geteilt.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'Die Routen dieses Clubs konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get clubDetailTemplateAdded => 'Vorlage zu deinen Plänen hinzugefügt.';
 
   @override
@@ -6118,6 +6122,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Noch keine Planvorlagen für diesen Club.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'Die Vorlagen dieses Clubs konnten nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get clubDetailAdopt => 'Übernehmen';

@@ -6744,7 +6744,9 @@ class ApiClient {
 
   /// Club-owned session plans (the club's "session templates"). Visible to
   /// members + writable by admins via RLS. Mirrors [fetchClubTemplates] +
-  /// web `fetchClubSessionTemplates` (session_planner.md P3).
+  /// web `fetchClubSessionTemplates` (session_planner.md P3). Throws on a
+  /// failed read, so the club's Templates tab shows an error rather than "no
+  /// templates" (issue #1374 FS-3).
   Future<List<SessionPlanRow>> fetchClubSessionTemplates(String clubId) async {
     try {
       final data = await _client
@@ -6757,8 +6759,8 @@ class ApiClient {
               (r) => SessionPlanRow.fromJson(r as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      debugPrint('fetchClubSessionTemplates failed: $e');
-      return const [];
+      debugPrint('fetchClubSessionTemplates failed: ${safeErrorLabel(e)}');
+      rethrow;
     }
   }
 
@@ -8579,8 +8581,8 @@ class ApiClient {
 
   /// Club-owned gym routines published as templates (`gym_routines.club_id`
   /// set). RLS exposes these to club members. Mirrors web
-  /// `fetchClubGymRoutineTemplates` + the session-template fetch's fail-soft
-  /// shape (gym_routine_club_templates, migration 20270109_001).
+  /// `fetchClubGymRoutineTemplates` (gym_routine_club_templates, migration
+  /// 20270109_001). Throws on a failed read, like the session-template fetch.
   Future<List<GymRoutineRow>> fetchClubGymRoutineTemplates(String clubId) async {
     try {
       final data = await _client
@@ -8592,8 +8594,8 @@ class ApiClient {
           .map((r) => GymRoutineRow.fromJson(r as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      debugPrint('fetchClubGymRoutineTemplates failed: $e');
-      return const [];
+      debugPrint('fetchClubGymRoutineTemplates failed: ${safeErrorLabel(e)}');
+      rethrow;
     }
   }
 

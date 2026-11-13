@@ -5749,6 +5749,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubDetailRoutesEmpty => 'このクラブと共有されたルートはまだありません。';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'このクラブのルートを読み込めませんでした。接続を確認して、もう一度お試しください。';
+
+  @override
   String get clubDetailTemplateAdded => 'テンプレートをプランに追加しました。';
 
   @override
@@ -5761,6 +5765,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get clubDetailNoTemplates => 'このクラブのプランテンプレートはまだありません。';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'このクラブのテンプレートを読み込めませんでした。接続を確認して、もう一度お試しください。';
 
   @override
   String get clubDetailAdopt => '採用';

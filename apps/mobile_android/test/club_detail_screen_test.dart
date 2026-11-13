@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_models/core_models.dart' as cm show Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -112,6 +113,29 @@ class _FakeApi extends ApiClient {
     return const [];
   }
 }
+
+class _FlakyRoutesSocial extends _FakeSocial {
+  bool fail = true;
+  @override
+  Future<List<cm.Route>> fetchClubRoutes(String clubId) async {
+    if (fail) throw Exception('offline');
+    return const [];
+  }
+}
+
+class _FlakyTemplatesApi extends _FakeApi {
+  bool fail = true;
+  _FlakyTemplatesApi() : super([_routine('r-1', 'Club push day', 3)]);
+  @override
+  Future<List<GymRoutineRow>> fetchClubGymRoutineTemplates(
+    String clubId,
+  ) async {
+    if (fail) throw Exception('offline');
+    return super.fetchClubGymRoutineTemplates(clubId);
+  }
+}
+
+final _l10n = lookupAppLocalizations(const Locale('en'));
 
 class _FakeTraining extends TrainingService {
   @override
@@ -691,6 +715,73 @@ void main() {
         // unstubbed PlanDetailScreen.
       },
     );
+  });
+
+  // Issue #1374 FS-3: a failed read became "No routes shared with this club
+  // yet" for good, since the tab was marked loaded and the empty state could
+  // not be pulled.
+  group('ClubDetailScreen — Routes and Templates tabs on a failed read', () {
+    Future<void> openTab(WidgetTester tester, String tab,
+        {required SocialService social, ApiClient? api,
+        TrainingService? training}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: social,
+            training: training ?? _FakeTraining(),
+            apiClient: api,
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text(tab));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+    }
+
+    realtimeWidgetTest('Routes shows an error with Retry, then the result',
+        (tester) async {
+      final social = _FlakyRoutesSocial();
+      await openTab(tester, 'Routes', social: social);
+      expect(find.text(_l10n.clubDetailRoutesLoadFailed), findsOneWidget);
+      expect(find.text(_l10n.clubDetailRoutesEmpty), findsNothing);
+
+      social.fail = false;
+      await tester.tap(find.text(_l10n.errorStateRetry));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text(_l10n.clubDetailRoutesLoadFailed), findsNothing);
+      expect(find.text(_l10n.clubDetailRoutesEmpty), findsOneWidget);
+      // The empty state can be pulled, so it is never a dead end.
+      expect(
+        find.ancestor(
+          of: find.text(_l10n.clubDetailRoutesEmpty),
+          matching: find.byType(RefreshIndicator),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    realtimeWidgetTest('Templates shows an error with Retry, then the rows',
+        (tester) async {
+      final api = _FlakyTemplatesApi();
+      await openTab(tester, 'Templates', social: _FakeSocial(), api: api);
+      expect(find.text(_l10n.clubDetailTemplatesLoadFailed), findsOneWidget);
+      expect(find.text(_l10n.clubDetailNoTemplates), findsNothing);
+
+      api.fail = false;
+      await tester.tap(find.text(_l10n.errorStateRetry));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text(_l10n.clubDetailTemplatesLoadFailed), findsNothing);
+      expect(find.text('Club push day'), findsOneWidget);
+    });
   });
 
   group('ClubDetailScreen — pending approve double-submit guard', () {

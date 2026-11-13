@@ -6081,6 +6081,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Aún no se han compartido rutas con este club.';
 
   @override
+  String get clubDetailRoutesLoadFailed =>
+      'No se pudieron cargar las rutas de este club. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
   String get clubDetailTemplateAdded => 'Plantilla añadida a tus planes.';
 
   @override
@@ -6095,6 +6099,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get clubDetailNoTemplates =>
       'Aún no hay plantillas de plan para este club.';
+
+  @override
+  String get clubDetailTemplatesLoadFailed =>
+      'No se pudieron cargar las plantillas de este club. Comprueba tu conexión e inténtalo de nuevo.';
 
   @override
   String get clubDetailAdopt => 'Adoptar';

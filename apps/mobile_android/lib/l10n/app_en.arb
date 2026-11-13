@@ -8136,6 +8136,10 @@
   "@clubDetailRoutesEmpty": {
     "description": "Empty routes tab for members"
   },
+  "clubDetailRoutesLoadFailed": "Couldn't load this club's routes. Check your connection and try again.",
+  "@clubDetailRoutesLoadFailed": {
+    "description": "Routes tab of a club when the read failed; shown with a Retry button instead of the empty state"
+  },
   "clubDetailTemplateAdded": "Template added to your plans.",
   "@clubDetailTemplateAdded": {
     "description": "Banner shown after adopting a plan template"
@@ -8156,6 +8160,10 @@
   "clubDetailNoTemplates": "No plan templates yet for this club.",
   "@clubDetailNoTemplates": {
     "description": "Empty templates tab for members"
+  },
+  "clubDetailTemplatesLoadFailed": "Couldn't load this club's templates. Check your connection and try again.",
+  "@clubDetailTemplatesLoadFailed": {
+    "description": "Templates tab of a club when the read failed; shown with a Retry button instead of the empty state"
   },
   "clubDetailAdopt": "Adopt",
   "@clubDetailAdopt": {

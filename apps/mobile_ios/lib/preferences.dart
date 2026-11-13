@@ -1134,6 +1134,16 @@ class UnitFormat {
 
   static const _yardsPerMetre = 1.09361;
 
+  /// A distance for a cell a seventh of a phone wide: one decimal below 10
+  /// and none from 10 up, a whole ".0" dropped, so "15.0 km" reads "15 km".
+  /// Twin of web's `formatCompactDistance`.
+  static String compactDistance(double metres, DistanceUnit unit,
+      [String? localeTag]) {
+    final v = unit == DistanceUnit.mi ? metres / kMetresPerMile : metres / 1000;
+    final digits = (v * 10 + 0.5).floor() / 10 >= 10 ? 0 : 1;
+    return thresholdDistance(metres, unit, digits, localeTag);
+  }
+
   /// A badge or milestone threshold in the reader's unit: "42.2 km" /
   /// "26.2 mi", "50 km" / "31.1 mi", "1,000 km" / "621 mi". [digits] is 1 for
   /// a race distance and 0 for a total; a value that rounds to a whole number
@@ -1386,6 +1396,11 @@ DistanceUnit get activeDistanceUnit =>
 /// don't carry a Preferences dep.
 String formatDistanceForPref(double metres) =>
     UnitFormat.distance(metres, activeDistanceUnit);
+
+/// A distance for a narrow grid cell in the active unit: "15 km", "6.4 mi"
+/// ([UnitFormat.compactDistance]). Mirrors web `fmtCompactDistance`.
+String compactDistanceForPref(num metres) =>
+    UnitFormat.compactDistance(metres.toDouble(), activeDistanceUnit);
 
 /// Format an elevation gain using the active user unit pref. Mirrors
 /// `formatElevation` in `apps/web/src/lib/format/units.svelte.ts`. Null →

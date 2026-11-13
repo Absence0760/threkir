@@ -37,3 +37,11 @@ export function formatThresholdDistance(
 	const n = Number.isInteger(r) ? formatInteger(r, locale) : formatDecimal(r, 1, locale);
 	return `${n} ${unit}`;
 }
+
+/// A distance for a cell a seventh of a phone wide: one decimal below 10 and
+/// none from 10 up, a whole ".0" dropped, so "15.0 km" reads "15 km" and
+/// "6.4 mi" keeps its decimal. Dart twin: `UnitFormat.compactDistance`.
+export function formatCompactDistance(metres: number, unit: 'km' | 'mi', locale?: string): string {
+	const v = unit === 'mi' ? metres / METRES_PER_MILE : metres / 1000;
+	return formatThresholdDistance(metres, unit, Math.round(v * 10) / 10 >= 10 ? 0 : 1, locale);
+}

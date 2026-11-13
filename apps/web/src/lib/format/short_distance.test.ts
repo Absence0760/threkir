@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatShortDistance, formatThresholdDistance } from './short_distance';
+import { formatCompactDistance, formatShortDistance, formatThresholdDistance } from './short_distance';
 
 // Mirrored case for case by apps/mobile_android/test/unit_format_short_distance_test.dart.
 
@@ -40,4 +40,14 @@ test('threshold: a whole number for a total, grouped by the locale', () => {
 	assert.equal(formatThresholdDistance(1000000, 'mi', 0, 'en'), '621 mi');
 	assert.equal(formatThresholdDistance(5000000, 'mi', 0, 'de'), '3.107 mi');
 	assert.equal(formatThresholdDistance(21097, 'km', 1, 'de'), '21,1 km');
+});
+
+test('compact: no decimal from 10 up, so a week cell never cuts "15.0 km"', () => {
+	assert.equal(formatCompactDistance(15000, 'km', 'en'), '15 km');
+	assert.equal(formatCompactDistance(9960, 'km', 'en'), '10 km');
+	assert.equal(formatCompactDistance(6400, 'km', 'en'), '6.4 km');
+	assert.equal(formatCompactDistance(8000, 'km', 'en'), '8 km');
+	assert.equal(formatCompactDistance(24140, 'mi', 'en'), '15 mi');
+	assert.equal(formatCompactDistance(6437, 'mi', 'de'), '4 mi');
+	assert.equal(formatCompactDistance(10300, 'mi', 'de'), '6,4 mi');
 });

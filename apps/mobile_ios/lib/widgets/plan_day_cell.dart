@@ -4,6 +4,8 @@ import 'package:ui_kit/ui_kit.dart' show AppRadius, AppIconSize;
 
 import '../l10n/gen/app_localizations.dart';
 import '../plan_current.dart';
+import '../planned_size_label.dart';
+import '../preferences.dart' show compactDistanceForPref;
 import '../training.dart';
 import '../training_labels.dart';
 import '../workout_kind_color.dart';
@@ -47,6 +49,11 @@ class PlanDayCell extends StatelessWidget {
     final short =
         MediaQuery.sizeOf(context).width < kPlanCellShortLabelBelow;
     final radius = BorderRadius.circular(AppRadius.sm);
+    // The web cell's size: a walk-run session in minutes, any other as its
+    // distance, compact so a seventh of a phone holds it ("15 km").
+    final size = wo == null
+        ? null
+        : plannedSizeLabel(l10n, wo, distance: compactDistanceForPref);
 
     Widget cell = Container(
       margin: const EdgeInsets.all(2),
@@ -102,10 +109,11 @@ class PlanDayCell extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            if (wo.targetDistanceM != null && wo.kind != 'rest')
+            if (size != null)
               Text(
-                fmtKm(wo.targetDistanceM, 1),
-                maxLines: 1,
+                size,
+                // "15 km" breaks before its unit rather than losing it.
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w600,
@@ -137,9 +145,7 @@ class PlanDayCell extends StatelessWidget {
         todayIso,
         day: semanticsDay,
         kind: workoutKindLabel(l10n, kind!),
-        distance: wo.targetDistanceM != null && wo.kind != 'rest'
-            ? fmtKm(wo.targetDistanceM, 1)
-            : null,
+        distance: plannedSizeLabel(l10n, wo),
       ),
       // excludeSemantics drops the InkWell's own tap action, so the node
       // carries it or a screen reader's double-tap does nothing.

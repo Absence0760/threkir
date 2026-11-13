@@ -20,13 +20,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Sheets still laid out by hand, per file. Every one is in a file another
-/// lane of issue #1374 round 2 owns, and moves with that lane's rework.
-const _unmigrated = <String, int>{
-  // The editor lane rebuilds these screens on `EditorPage`.
-  'lib/screens/add_run_screen.dart': 1,
-  'lib/screens/plan_new_screen.dart': 1,
-};
+/// Sheets still laid out by hand, per file. Empty since issue #1374 round 2;
+/// it may only stay empty.
+const _unmigrated = <String, int>{};
 
 /// `showFormSheet` itself calls `showModalBottomSheet` with the caller's
 /// builder, so it is not a sheet of its own.

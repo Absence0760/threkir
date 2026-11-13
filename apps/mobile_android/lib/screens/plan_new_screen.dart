@@ -676,8 +676,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       name: raceName == null || raceName.isEmpty
           ? null
           : raceName.length > cap
-              ? raceName.substring(0, cap)
-              : raceName,
+          ? raceName.substring(0, cap)
+          : raceName,
     );
   }
 
@@ -998,8 +998,9 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             startDate: _startDate,
             daysPerWeek: _daysPerWeek,
             generated: preview,
-            raceListingId:
-                _racePreset?.ok == true ? widget.raceListingId : null,
+            raceListingId: _racePreset?.ok == true
+                ? widget.raceListingId
+                : null,
             onOverlap: action,
           )
           .timeout(kBackendLoadTimeout);
@@ -1084,7 +1085,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         ? goalAheadOfRecentRuns(_goalDistanceM, _goalTimeSec, _efforts)
         : null;
     return DiscardGuard(
-      isDirty: () => _initialSnapshot != null && _snapshot() != _initialSnapshot,
+      isDirty: () =>
+          _initialSnapshot != null && _snapshot() != _initialSnapshot,
       isBusy: () => _busy || _cloning || _creatingStarter,
       child: EditorPage(
         title: l10n.planNewTitle,
@@ -1403,8 +1405,10 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                       Padding(
                         key: const Key('plan-new-recent5k-suggested'),
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(l10n.planNewRecent5kSuggested,
-                            style: muted),
+                        child: Text(
+                          l10n.planNewRecent5kSuggested,
+                          style: muted,
+                        ),
                       ),
                     if (_recent5kComplete)
                       SwitchListTile(
@@ -1464,44 +1468,42 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     if (error == null && preview == null) return null;
     return Column(
       mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (error != null)
-                Semantics(
-                  liveRegion: true,
-                  child: Container(
-                    key: const Key('plan-new-error'),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    child: Text(
-                      error,
-                      style: TextStyle(
-                        color: theme.colorScheme.onErrorContainer,
-                      ),
-                    ),
-                  ),
-                ),
-              if (preview != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    l10n.planNewSummary(
-                      preview.weeks.length,
-                      formatDateMed(preview.endDate, tag),
-                    ),
-                    key: const Key('plan-new-summary'),
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            );
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (error != null)
+          Semantics(
+            liveRegion: true,
+            child: Container(
+              key: const Key('plan-new-error'),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Text(
+                error,
+                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+              ),
+            ),
+          ),
+        if (preview != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              l10n.planNewSummary(
+                preview.weeks.length,
+                formatDateMed(preview.endDate, tag),
+              ),
+              key: const Key('plan-new-summary'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   String _aiAssumptionLabel(AppLocalizations l10n, PlanRequestAssumption a) =>
@@ -1715,8 +1717,10 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.library_books_outlined,
-                          size: AppIconSize.standard),
+                      : const Icon(
+                          Icons.library_books_outlined,
+                          size: AppIconSize.standard,
+                        ),
                   label: Text(
                     _creatingStarter
                         ? l10n.planNewStarterCreating
@@ -1728,15 +1732,19 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                 TextButton.icon(
                   key: const Key('planNewImport'),
                   onPressed: _importPlan,
-                  icon: const Icon(Icons.content_paste,
-                      size: AppIconSize.standard),
+                  icon: const Icon(
+                    Icons.content_paste,
+                    size: AppIconSize.standard,
+                  ),
                   label: Text(l10n.planNewImportButton),
                 ),
                 TextButton.icon(
                   key: const Key('planNewSeason'),
                   onPressed: _openSeason,
-                  icon: const Icon(Icons.event_note,
-                      size: AppIconSize.standard),
+                  icon: const Icon(
+                    Icons.event_note,
+                    size: AppIconSize.standard,
+                  ),
                   label: Text(l10n.seasonPlanTitle),
                 ),
               ],
@@ -2256,58 +2264,46 @@ class _ReadyMadePicker extends StatelessWidget {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.planNewReadyMadeTitle, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  _SectionLabel(l10n.planNewReadyMadeBuiltIn),
-                  for (final p in starters)
-                    ListTile(
-                      key: Key('plan-new-starter-${p.id}'),
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.event_note),
-                      title: Text(starterPlanName(l10n, p.id)),
-                      subtitle: Text(
-                        starterSummaryText(l10n, p.id) ?? '',
-                        style: muted,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.pop(context, p),
-                    ),
-                  if (templates.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _SectionLabel(l10n.planNewReadyMadeClubs),
-                    for (final o in templates)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.groups_outlined),
-                        title: Text(o.template.name),
-                        subtitle: Text(o.clubName, style: muted),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.pop(context, o),
-                      ),
-                  ],
-                ],
+    return SheetScaffold(
+      title: Text(l10n.planNewReadyMadeTitle),
+      scrollBody: false,
+      body: ListView(
+        shrinkWrap: true,
+        children: [
+          _SectionLabel(l10n.planNewReadyMadeBuiltIn),
+          for (final p in starters)
+            ListTile(
+              key: Key('plan-new-starter-${p.id}'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.event_note),
+              title: Text(starterPlanName(l10n, p.id)),
+              subtitle: Text(
+                starterSummaryText(l10n, p.id) ?? '',
+                style: muted,
               ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pop(context, p),
             ),
+          if (templates.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.planNewCancel),
+            _SectionLabel(l10n.planNewReadyMadeClubs),
+            for (final o in templates)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.groups_outlined),
+                title: Text(o.template.name),
+                subtitle: Text(o.clubName, style: muted),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(context, o),
               ),
-            ),
           ],
+        ],
+      ),
+      actions: Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.planNewCancel),
         ),
       ),
     );

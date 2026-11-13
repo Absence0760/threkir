@@ -30,14 +30,6 @@ const _exempt = <String, ({int count, String why})>{
     count: 1,
     why: "the picker's Create custom exercise row is a list action",
   ),
-  'lib/screens/privacy_zones_screen.dart': (
-    count: 1,
-    why: 'a map editor: its Save moves with the map-first page template',
-  ),
-  'lib/screens/route_builder_screen.dart': (
-    count: 1,
-    why: 'a map editor: its Save moves with the map-first page template',
-  ),
   'lib/screens/route_detail_screen.dart': (
     count: 1,
     why: 'Rate opens the review dialog from a detail page',

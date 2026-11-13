@@ -126,7 +126,7 @@ Lets the workflow upload an `.aab` without a human in the loop:
 5. Generate a JSON key for the service account (Service Accounts → … → Manage keys → Add key → JSON).
 6. Paste the entire JSON into the GitHub Secret `PLAY_SERVICE_ACCOUNT_JSON`.
 
-The same service account JSON is reusable for the Wear OS release ([`apps/watch_wear/deployment.md`](../watch_wear/deployment.md)) — grant it "Release apps to testing tracks" on that app too. The Wear release still stops at Internal: `com.threkir.watchwear` is its own Play listing and has no production access yet.
+The Wear OS release ([`apps/watch_wear/deployment.md`](../watch_wear/deployment.md)) uses the same secret with no extra grant: Wear OS is a form factor of this same app, `com.threkir.app` (decisions § 2480), and its bundle goes to the Wear OS internal track, which "Release apps to testing tracks" already covers. It stops there; Wear OS production is promoted by hand in Play Console.
 
 The daily rollout job reads its own copy of this secret from the reviewer-less `play-rollout` environment (restricted to `main`), because a cron job on `production` would wait every day for an approval nobody is watching for.
 

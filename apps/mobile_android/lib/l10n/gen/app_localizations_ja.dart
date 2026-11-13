@@ -1956,7 +1956,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runExpectedReturnServerNote =>
-      '期限はサーバーに保存されるため、このスマートフォンが使えなくなっても有効です。アクティビティを保存すると解除されます。圏外で終えた場合は、同期されるまで通知が送られることがあります。';
+      '期限はサーバーに保存されるため、このスマートフォンが使えなくなっても有効です。ランを保存すると解除されます。圏外で終えたランは、同期されるまで通知が送られることがあります。';
 
   @override
   String runExpectedReturnOptionMinutes(int minutes) {
@@ -3972,7 +3972,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routeDetailWatchPushRejected =>
-      '時計が送信を拒否し、以前の内容をそのまま保持しました。もう一度お試しください。';
+      'ウォッチが送信を拒否し、以前の内容をそのまま保持しました。もう一度お試しください。';
 
   @override
   String routeDetailWatchCourseFailed(String error) {
@@ -13964,7 +13964,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get roadbookPlanExplain =>
-      '時計はこれをもとに到達予想時刻と関門時刻を計算します。時刻で指定された関門も送るには、スタート時刻を設定してください。';
+      'ウォッチはこれをもとに到達予想時刻と関門時刻を計算します。時刻で指定された関門も送るには、スタート時刻を設定してください。';
 
   @override
   String get roadbookPlanCancel => 'キャンセル';
@@ -15421,7 +15421,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get simWatchSyncAction => '時計からランを同期';
+  String get simWatchSyncAction => 'ウォッチからランを同期';
 
   @override
   String simWatchSyncing(int done, int total) {
@@ -15430,19 +15430,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String simWatchResult(int synced, int total) {
-    return '時計から $total 件中 $synced 件のランを同期しました';
+    return 'ウォッチから $total 件中 $synced 件のランを同期しました';
   }
 
   @override
   String simWatchSyncFailed(String error) {
-    return '時計の同期に失敗しました: $error';
+    return 'ウォッチの同期に失敗しました: $error';
   }
 
   @override
-  String get simWatchPushSettingsAction => '設定を時計に送信';
+  String get simWatchPushSettingsAction => '設定をウォッチに送信';
 
   @override
-  String get simWatchSettingsPushed => '設定を時計に送信しました';
+  String get simWatchSettingsPushed => '設定をウォッチに送信しました';
 
   @override
   String simWatchPushSettingsFailed(String error) {
@@ -15450,11 +15450,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get simWatchPushWorkoutAction => 'ワークアウトを時計に送信';
+  String get simWatchPushWorkoutAction => 'ワークアウトをウォッチに送信';
 
   @override
   String simWatchWorkoutPushed(int steps) {
-    return 'ワークアウトを時計に送信しました（$stepsステップ）';
+    return 'ワークアウトをウォッチに送信しました（$stepsステップ）';
   }
 
   @override
@@ -15476,11 +15476,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get simWatchPushCourseAction => 'コースを時計に送信';
+  String get simWatchPushCourseAction => 'コースをウォッチに送信';
 
   @override
   String simWatchCoursePushed(int points) {
-    return 'コースを時計に送信しました（$pointsポイント）';
+    return 'コースをウォッチに送信しました（$pointsポイント）';
   }
 
   @override
@@ -15489,7 +15489,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get simWatchNoRuns => '同期する時計のランがありません';
+  String get simWatchNoRuns => '同期するウォッチのランがありません';
 
   @override
   String get simWatchWaitingFrames => '接続済み — フレーム待機中…';

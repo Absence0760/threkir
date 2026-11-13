@@ -1241,11 +1241,47 @@ abstract class AppLocalizations {
   /// **'Resting heart rate'**
   String get readinessContributorRestingHr;
 
-  /// Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header.
+  /// Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary
   ///
   /// In en, this message translates to:
-  /// **'Trends'**
-  String get dashboardTrendsDivider;
+  /// **'Today'**
+  String get todayTitle;
+
+  /// Title of the Progress page, reached from the progress summary card on Today: trends, personal bests, streak, goals and the recap
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get progressTitle;
+
+  /// Heading of the one progress summary card on Today; a tap opens the Progress page
+  ///
+  /// In en, this message translates to:
+  /// **'Your progress'**
+  String get progressSummaryTitle;
+
+  /// Screen-reader hint on the progress summary card: what a tap does
+  ///
+  /// In en, this message translates to:
+  /// **'Open your progress'**
+  String get progressSummaryOpenHint;
+
+  /// Label under this calendar week's distance on Today's progress summary card
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get progressSummaryWeek;
+
+  /// Label under this calendar month's distance on Today's progress summary card
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get progressSummaryMonth;
+
+  /// Quiet line under Today's goals strip when the runner has more goals than it lists; the strip opens the Progress page, which lists them all
+  ///
+  /// In en, this message translates to:
+  /// **'More goals in Progress'**
+  String get todayGoalsMore;
 
   /// Home dashboard trend group heading, collapsible: the weekly distance cards
   ///
@@ -1373,11 +1409,11 @@ abstract class AppLocalizations {
   /// **'Readiness {score}'**
   String dashboardHeroReadiness(int score);
 
-  /// Long-press action on a Home trend group that hides it from Home
+  /// Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Settings brings it back
   ///
   /// In en, this message translates to:
-  /// **'Hide from Home'**
-  String get dashboardHideFromHome;
+  /// **'Hide from Progress'**
+  String get progressHideGroup;
 
   /// Banner after hiding a Home trend group; {name} is the group title
   ///
@@ -1607,6 +1643,18 @@ abstract class AppLocalizations {
   /// **'Stop'**
   String get navStop;
 
+  /// Caption under the centre nav button while the Run page shows its start screen, where a tap starts the 3-2-1 countdown. Must fit the 72dp centre slot
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get navStart;
+
+  /// Screen-reader label for the centre nav button during the 3-2-1 countdown; a tap cancels the start
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel the start'**
+  String get runCancelStartA11yLabel;
+
   /// Screen-reader label for the centre nav button while a run is recording
   ///
   /// In en, this message translates to:
@@ -1720,6 +1768,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Advice on your runs, training and recovery'**
   String get homeAskCoachSubtitleRunOnly;
+
+  /// Title of the Coach row on Today when the AI coach is not live on this deploy or the runner is signed out: the Coach screen still holds guided runs and athletes & coaches
+  ///
+  /// In en, this message translates to:
+  /// **'Coach'**
+  String get homeCoachTitle;
+
+  /// Subtitle of the Coach row on Today when the AI coach is not available: what the Coach screen holds instead
+  ///
+  /// In en, this message translates to:
+  /// **'Guided runs, athletes and coaches'**
+  String get homeCoachSubtitleTools;
 
   /// Title of the profile entry at the top of the You tab
   ///
@@ -3287,12 +3347,6 @@ abstract class AppLocalizations {
   /// **'Start run'**
   String get runStartA11yLabel;
 
-  /// Screen-reader label for the tappable recent-run card on the start-run screen
-  ///
-  /// In en, this message translates to:
-  /// **'Open last run details'**
-  String get runLastRunOpenA11yLabel;
-
   /// Idle-screen button to pick a route to follow when no route is selected
   ///
   /// In en, this message translates to:
@@ -3484,18 +3538,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap to cancel'**
   String get runTapToCancel;
-
-  /// Empty-state encouragement on the idle run screen when there is no recent run, event, or plan
-  ///
-  /// In en, this message translates to:
-  /// **'Your first run is one tap away.'**
-  String get runFirstRunPrompt;
-
-  /// Label on the last-run card when the recorded distance is negligible (treated as a generic activity)
-  ///
-  /// In en, this message translates to:
-  /// **'Last activity'**
-  String get runLastActivity;
 
   /// Label on the last-run card on the idle run screen
   ///
@@ -4210,48 +4252,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recording without GPS — could not start the sensor.'**
   String get runGpsSensorFailed;
-
-  /// Relative-time label for an event within the last minute
-  ///
-  /// In en, this message translates to:
-  /// **'Just now'**
-  String get runAgoJustNow;
-
-  /// Relative-time label in minutes
-  ///
-  /// In en, this message translates to:
-  /// **'{count} min ago'**
-  String runAgoMinutes(int count);
-
-  /// Relative-time label in hours
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} hour ago} other{{count} hours ago}}'**
-  String runAgoHours(int count);
-
-  /// Relative-time label for one day ago
-  ///
-  /// In en, this message translates to:
-  /// **'Yesterday'**
-  String get runAgoYesterday;
-
-  /// Relative-time label in days (2-6 days)
-  ///
-  /// In en, this message translates to:
-  /// **'{count} days ago'**
-  String runAgoDays(int count);
-
-  /// Relative-time label in weeks
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} week ago} other{{count} weeks ago}}'**
-  String runAgoWeeks(int count);
-
-  /// Relative-time label in months
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} month ago} other{{count} months ago}}'**
-  String runAgoMonths(int count);
 
   /// Workout-execution band text after the structured workout is abandoned
   ///
@@ -16222,23 +16222,11 @@ abstract class AppLocalizations {
   /// **'Coach'**
   String get dashboardCoachTooltip;
 
-  /// Dashboard toolbar tooltip for the activity-feed action
-  ///
-  /// In en, this message translates to:
-  /// **'Activity feed'**
-  String get dashboardFeedTooltip;
-
   /// Dashboard toolbar tooltip for the year-in-running recap action
   ///
   /// In en, this message translates to:
   /// **'Year in running'**
   String get dashboardRecapTooltip;
-
-  /// Dashboard toolbar tooltip for opening the user's own profile
-  ///
-  /// In en, this message translates to:
-  /// **'Your profile'**
-  String get dashboardProfileTooltip;
 
   /// Dashboard empty-state welcome headline
   ///

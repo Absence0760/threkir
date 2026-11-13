@@ -195,6 +195,14 @@ Layer 2, none of them needs a foreign key between activity rows.
 > tab is absorbed into Fitness→All, Settings folds into `You`, and Routes
 > moved out of Social onto the run surface. The section just below documents
 > the *historical* nav; read the redesign section for what ships today.
+>
+> **Since 2026-11-12 (issue #1374), mobile:** the selected destination wears
+> a pill behind its icon and a heavier label, not only the primary colour;
+> the **Social** item carries a dot while messages wait unread (the count is
+> in its semantics value), read through the `SocialUnreadSource` interface
+> (`lib/social_unread.dart`) on launch, resume, sign-in and every page
+> change; and Home's toolbar is the title and the Add / Import overflow only,
+> its Feed, bell and Profile glyphs gone to Social and You.
 
 The `Run` tab disappears as a top-level destination. The centre slot
 becomes an **action button**, not a tab.
@@ -316,6 +324,37 @@ becomes an **action button**, not a tab.
   largest text size.
 
 ## Home — a prioritised, self-hiding card stack
+
+> **Status (mobile, 2026-11-12, issue #1374): Home is Today, and the trends
+> are a Progress page.** Owner decision on #1374 ("Home becomes Today"),
+> re-opening § 2385-2387 for mobile. `dashboard_screen.dart` is titled
+> **Today** and holds about six blocks, in this order: the Today hero
+> (today's workout with its Start, readiness, and the quick Start), the next
+> race or plan card and the next club event, the last run and today's lift
+> and meals, a **goals strip** (`todayGoalsStrip`, each goal's name and how
+> far along it is, up to three), **one progress summary card**
+> (`todayProgressSummary`: this week, this month and the current streak, the
+> week from `weekLead` so it matches Progress to the metre), and the Coach
+> row, which now shows whenever a training service exists (the Coach screen
+> also holds Guided runs and Athletes & coaches): "Ask your coach" only when
+> the AI coach is live and the runner is signed in (§ 2227), otherwise
+> "Coach · Guided runs, athletes and coaches". A tap on the summary card or the goals strip pushes
+> **`ProgressScreen`** (`progress_screen.dart`), a page with its own app bar,
+> not a tab: the week lead, the full goal cards with the editor, the month and
+> all-time totals with the recap and the Set a goal link, the streak, and the
+> five trend groups below. The Trends divider is gone, since nothing on the
+> Progress page is "today". Folding, hiding (now "Hide from Progress"), the
+> `simple` training-load expander and the two-column tablet grid moved with
+> the groups unchanged, under the same keys (`dashboard_trends`,
+> `dashboard_hidden_cards`, `dashboard_training_load_expanded`), so a fold or
+> a hide made on Home before the move is still what the runner sees. Today
+> is one reading column on a tablet. Today and Progress read the same
+> load series and HR prefs through `training_load_inputs.dart`. The idle Run
+> page no longer repeats today's workout, the next event or the last run.
+> **Web keeps the single `/dashboard`** (no web change in this round); the
+> blocks below describe web, and mobile's Progress page. Tests:
+> `test/today_progress_layout_test.dart` (320 dp, 2x, 3-button bar),
+> `test/dashboard_*_test.dart`.
 
 > **Status (web — shipped):** `/dashboard` renders a Today's-lift
 > card (when a session was logged today), a Recent-lifts trend card, a
@@ -568,7 +607,9 @@ Density rules so it never becomes a wall of cards:
   event summaries (they show what happened, they don't animate).
 
 > **Status (web + mobile, 2026-10-16, #1187):** the section rhythm and the
-> v1 collapse are built on both platforms. A hairline with a quiet "Trends"
+> v1 collapse are built on both platforms. (On mobile the groups moved to the
+> Progress page on 2026-11-12, issue #1374, and the divider went with them;
+> see the status block at the top of this section.) A hairline with a quiet "Trends"
 > label (`.trends-divider` on web, `_TrendsDivider` on mobile) closes the
 > Today block: on web it sits above the source filter and the stat grid, on
 > a phone above Goals, and on a tablet above the period row. Below it the

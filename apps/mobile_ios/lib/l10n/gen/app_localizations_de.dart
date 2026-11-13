@@ -784,7 +784,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get readinessContributorRestingHr => 'Ruhepuls';
 
   @override
-  String get dashboardTrendsDivider => 'Trends';
+  String get todayTitle => 'Heute';
+
+  @override
+  String get progressTitle => 'Fortschritt';
+
+  @override
+  String get progressSummaryTitle => 'Dein Fortschritt';
+
+  @override
+  String get progressSummaryOpenHint => 'Deinen Fortschritt öffnen';
+
+  @override
+  String get progressSummaryWeek => 'Diese Woche';
+
+  @override
+  String get progressSummaryMonth => 'Diesen Monat';
+
+  @override
+  String get todayGoalsMore => 'Weitere Ziele unter Fortschritt';
 
   @override
   String get dashboardTrendGroupVolume => 'Umfang';
@@ -858,7 +876,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'Auf der Startseite ausblenden';
+  String get progressHideGroup => 'Unter Fortschritt ausblenden';
 
   @override
   String dashboardCardHidden(String name) {
@@ -980,6 +998,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get navStop => 'Stopp';
 
   @override
+  String get navStart => 'Start';
+
+  @override
+  String get runCancelStartA11yLabel => 'Start abbrechen';
+
+  @override
   String get logReturnToRunA11yLabel => 'Zurück zu deinem Lauf';
 
   @override
@@ -1037,6 +1061,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get homeAskCoachSubtitleRunOnly =>
       'Tipps zu Läufen, Training und Erholung';
+
+  @override
+  String get homeCoachTitle => 'Coach';
+
+  @override
+  String get homeCoachSubtitleTools => 'Geführte Läufe, Athleten und Coaches';
 
   @override
   String get youProfileTitle => 'Dein Profil';
@@ -1956,9 +1986,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runStartA11yLabel => 'Lauf starten';
 
   @override
-  String get runLastRunOpenA11yLabel => 'Details des letzten Laufs öffnen';
-
-  @override
   String get runChooseRoute => 'Route wählen';
 
   @override
@@ -2076,13 +2103,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runTapToCancel => 'Zum Abbrechen tippen';
-
-  @override
-  String get runFirstRunPrompt =>
-      'Dein erster Lauf ist nur einen Tipp entfernt.';
-
-  @override
-  String get runLastActivity => 'Letzte Aktivität';
 
   @override
   String get runLastRun => 'Letzter Lauf';
@@ -2500,55 +2520,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get runGpsSensorFailed =>
       'Aufzeichnung ohne GPS — der Sensor konnte nicht gestartet werden.';
-
-  @override
-  String get runAgoJustNow => 'Gerade eben';
-
-  @override
-  String runAgoMinutes(int count) {
-    return 'vor $count Min.';
-  }
-
-  @override
-  String runAgoHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'vor $count Stunden',
-      one: 'vor $count Stunde',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get runAgoYesterday => 'Gestern';
-
-  @override
-  String runAgoDays(int count) {
-    return 'vor $count Tagen';
-  }
-
-  @override
-  String runAgoWeeks(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'vor $count Wochen',
-      one: 'vor $count Woche',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String runAgoMonths(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'vor $count Monaten',
-      one: 'vor $count Monat',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get runWorkoutAbandonedBand => 'Workout abgebrochen · freier Lauf';
@@ -10200,13 +10171,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dashboardCoachTooltip => 'Coach';
 
   @override
-  String get dashboardFeedTooltip => 'Aktivitäten-Feed';
-
-  @override
   String get dashboardRecapTooltip => 'Jahresrückblick im Laufen';
-
-  @override
-  String get dashboardProfileTooltip => 'Dein Profil';
 
   @override
   String get dashboardWelcomeTitle => 'Willkommen!';

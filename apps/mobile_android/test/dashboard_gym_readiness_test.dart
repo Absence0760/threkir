@@ -8,12 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/disclosure.dart';
 import '../lib/l10n/gen/app_localizations.dart';
-import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
 
 Run _run(String id, {int daysAgo = 1}) => Run(
       id: id,
@@ -58,11 +57,10 @@ void main() {
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: DashboardScreen(
+            home: ProgressScreen(
               runStore: runStore,
               routeStore: LocalRouteStore(),
               gymStore: gymStore,
-              foodStore: LocalFoodStore(),
               preferences: prefs,
             ),
           ),

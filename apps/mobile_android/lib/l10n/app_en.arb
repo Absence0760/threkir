@@ -1058,9 +1058,33 @@
   "@readinessContributorRestingHr": {
     "description": "Readiness breakdown: the points resting heart rate added to the score"
   },
-  "dashboardTrendsDivider": "Trends",
-  "@dashboardTrendsDivider": {
-    "description": "Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header."
+  "todayTitle": "Today",
+  "@todayTitle": {
+    "description": "Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary"
+  },
+  "progressTitle": "Progress",
+  "@progressTitle": {
+    "description": "Title of the Progress page, reached from the progress summary card on Today: trends, personal bests, streak, goals and the recap"
+  },
+  "progressSummaryTitle": "Your progress",
+  "@progressSummaryTitle": {
+    "description": "Heading of the one progress summary card on Today; a tap opens the Progress page"
+  },
+  "progressSummaryOpenHint": "Open your progress",
+  "@progressSummaryOpenHint": {
+    "description": "Screen-reader hint on the progress summary card: what a tap does"
+  },
+  "progressSummaryWeek": "This week",
+  "@progressSummaryWeek": {
+    "description": "Label under this calendar week's distance on Today's progress summary card"
+  },
+  "progressSummaryMonth": "This month",
+  "@progressSummaryMonth": {
+    "description": "Label under this calendar month's distance on Today's progress summary card"
+  },
+  "todayGoalsMore": "More goals in Progress",
+  "@todayGoalsMore": {
+    "description": "Quiet line under Today's goals strip when the runner has more goals than it lists; the strip opens the Progress page, which lists them all"
   },
   "dashboardTrendGroupVolume": "Volume",
   "@dashboardTrendGroupVolume": {
@@ -1151,9 +1175,9 @@
       }
     }
   },
-  "dashboardHideFromHome": "Hide from Home",
-  "@dashboardHideFromHome": {
-    "description": "Long-press action on a Home trend group that hides it from Home"
+  "progressHideGroup": "Hide from Progress",
+  "@progressHideGroup": {
+    "description": "Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Settings brings it back"
   },
   "dashboardCardHidden": "{name} is hidden. You can bring it back in Settings.",
   "@dashboardCardHidden": {
@@ -1312,6 +1336,14 @@
   "@navStop": {
     "description": "Caption under the centre nav button while a run is recording on the Run page, where the button is the hold-to-stop control. Must fit the 72dp centre slot"
   },
+  "navStart": "Start",
+  "@navStart": {
+    "description": "Caption under the centre nav button while the Run page shows its start screen, where a tap starts the 3-2-1 countdown. Must fit the 72dp centre slot"
+  },
+  "runCancelStartA11yLabel": "Cancel the start",
+  "@runCancelStartA11yLabel": {
+    "description": "Screen-reader label for the centre nav button during the 3-2-1 countdown; a tap cancels the start"
+  },
   "logReturnToRunA11yLabel": "Return to your run",
   "@logReturnToRunA11yLabel": {
     "description": "Screen-reader label for the centre nav button while a run is recording"
@@ -1387,6 +1419,14 @@
   "homeAskCoachSubtitleRunOnly": "Advice on your runs, training and recovery",
   "@homeAskCoachSubtitleRunOnly": {
     "description": "Subtitle of the pinned Ask your coach card on Home while Gym and Nutrition are both hidden, so it names only what this runner records"
+  },
+  "homeCoachTitle": "Coach",
+  "@homeCoachTitle": {
+    "description": "Title of the Coach row on Today when the AI coach is not live on this deploy or the runner is signed out: the Coach screen still holds guided runs and athletes & coaches"
+  },
+  "homeCoachSubtitleTools": "Guided runs, athletes and coaches",
+  "@homeCoachSubtitleTools": {
+    "description": "Subtitle of the Coach row on Today when the AI coach is not available: what the Coach screen holds instead"
   },
   "youProfileTitle": "Your profile",
   "@youProfileTitle": {
@@ -2527,10 +2567,6 @@
   "@runStartA11yLabel": {
     "description": "Screen-reader label for the start-run button"
   },
-  "runLastRunOpenA11yLabel": "Open last run details",
-  "@runLastRunOpenA11yLabel": {
-    "description": "Screen-reader label for the tappable recent-run card on the start-run screen"
-  },
   "runChooseRoute": "Choose route",
   "@runChooseRoute": {
     "description": "Idle-screen button to pick a route to follow when no route is selected"
@@ -2678,14 +2714,6 @@
   "runTapToCancel": "Tap to cancel",
   "@runTapToCancel": {
     "description": "Hint shown during the pre-run countdown — tapping anywhere aborts the start"
-  },
-  "runFirstRunPrompt": "Your first run is one tap away.",
-  "@runFirstRunPrompt": {
-    "description": "Empty-state encouragement on the idle run screen when there is no recent run, event, or plan"
-  },
-  "runLastActivity": "Last activity",
-  "@runLastActivity": {
-    "description": "Label on the last-run card when the recorded distance is negligible (treated as a generic activity)"
   },
   "runLastRun": "Last run",
   "@runLastRun": {
@@ -3262,59 +3290,6 @@
   "runGpsSensorFailed": "Recording without GPS — could not start the sensor.",
   "@runGpsSensorFailed": {
     "description": "Banner shown when the GPS sensor could not start for an unknown reason"
-  },
-  "runAgoJustNow": "Just now",
-  "@runAgoJustNow": {
-    "description": "Relative-time label for an event within the last minute"
-  },
-  "runAgoMinutes": "{count} min ago",
-  "@runAgoMinutes": {
-    "description": "Relative-time label in minutes",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoHours": "{count, plural, one{{count} hour ago} other{{count} hours ago}}",
-  "@runAgoHours": {
-    "description": "Relative-time label in hours",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoYesterday": "Yesterday",
-  "@runAgoYesterday": {
-    "description": "Relative-time label for one day ago"
-  },
-  "runAgoDays": "{count} days ago",
-  "@runAgoDays": {
-    "description": "Relative-time label in days (2-6 days)",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoWeeks": "{count, plural, one{{count} week ago} other{{count} weeks ago}}",
-  "@runAgoWeeks": {
-    "description": "Relative-time label in weeks",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoMonths": "{count, plural, one{{count} month ago} other{{count} months ago}}",
-  "@runAgoMonths": {
-    "description": "Relative-time label in months",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
   },
   "runWorkoutAbandonedBand": "Workout abandoned · running freely",
   "@runWorkoutAbandonedBand": {
@@ -13638,17 +13613,9 @@
   "@dashboardCoachTooltip": {
     "description": "Dashboard toolbar tooltip for the AI Coach action"
   },
-  "dashboardFeedTooltip": "Activity feed",
-  "@dashboardFeedTooltip": {
-    "description": "Dashboard toolbar tooltip for the activity-feed action"
-  },
   "dashboardRecapTooltip": "Year in running",
   "@dashboardRecapTooltip": {
     "description": "Dashboard toolbar tooltip for the year-in-running recap action"
-  },
-  "dashboardProfileTooltip": "Your profile",
-  "@dashboardProfileTooltip": {
-    "description": "Dashboard toolbar tooltip for opening the user's own profile"
   },
   "dashboardWelcomeTitle": "Welcome!",
   "@dashboardWelcomeTitle": {
@@ -27984,7 +27951,6 @@
   "@parksSharedUseSaturdayMorningGroup": {
     "description": "Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation."
   },
-
   "parksAttributionOsm": "Course line © OpenStreetMap contributors",
   "@parksAttributionOsm": {
     "description": "Park courses (#1313): web key parks.attributionOsm."

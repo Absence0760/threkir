@@ -396,9 +396,11 @@ void main() {
         runs: [_run('r1', _tenDaysAgo, fastest5kS: 1450)],
         training: _Training(fails: true),
         sync: (p) => _Sync(p, _Service({})),
-        ready: () =>
-            find.byKey(const Key('dashboardWeekLead')).evaluate().isNotEmpty,
-        describe: 'the week lead',
+        ready: () => find
+            .byKey(const Key('todayProgressSummary'))
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the progress summary',
       );
       await tester.pump();
       expect(_suggestion, findsNothing);

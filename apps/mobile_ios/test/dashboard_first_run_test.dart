@@ -26,7 +26,7 @@ class _HistoryApi extends ApiClient {
   _HistoryApi({this.runs = 0});
 
   final int runs;
-  int pbFetches = 0;
+  int profileFetches = 0;
 
   @override
   String? get userId => 'u1';
@@ -63,13 +63,10 @@ class _HistoryApi extends ApiClient {
       const [];
 
   @override
-  Future<List<PersonalRecordRow>> fetchPersonalRecords() async {
-    pbFetches++;
-    return const [];
+  Future<UserProfileRow?> fetchMyProfile() async {
+    profileFetches++;
+    return null;
   }
-
-  @override
-  Future<UserProfileRow?> fetchMyProfile() async => null;
 }
 
 class _PlanTraining extends TrainingService {
@@ -238,7 +235,7 @@ void main() {
         (tester) async {
       final s = await _stores();
       await _pump(tester, s);
-      expect(find.text('Home'), findsOneWidget,
+      expect(find.text('Today'), findsOneWidget,
           reason: 'the surface opened on four unlabelled glyphs and no title');
       // `_coachEntry()` is a labelled card 8 dp below the toolbar, so the
       // toolbar glyph was a duplicate route with a tooltip for a label.
@@ -276,7 +273,7 @@ void main() {
       // period cards and a blank heatmap (issue #921).
       expect(find.text('Welcome!'), findsOneWidget);
       // And the goal it just set is still on screen.
-      expect(find.textContaining('Goals'), findsWidgets);
+      expect(find.byKey(const Key('todayGoalsStrip')), findsOneWidget);
     });
 
     testWidgets('offers the gym to an account that has not said whether it '
@@ -410,7 +407,7 @@ void main() {
       expect(find.text('Welcome!'), findsNothing);
       expect(find.byType(SkeletonBlock), findsNWidgets(3));
 
-      await pumpUntil(tester, () => api.pbFetches > 0,
+      await pumpUntil(tester, () => api.profileFetches > 0,
           describe: 'the mount-time loaders to finish');
       expect(find.text('Welcome!'), findsNothing,
           reason: 'the server says this account has runs on the way');
@@ -463,8 +460,8 @@ void main() {
       final s = await _stores();
       final api = _HistoryApi();
       await _pump(tester, s, api: api);
-      await pumpUntil(tester, () => api.pbFetches == 1,
-          describe: 'the mount-time PB fetch');
+      await pumpUntil(tester, () => api.profileFetches == 1,
+          describe: 'the mount-time profile read');
 
       expect(find.byType(RefreshIndicator), findsOneWidget,
           reason: 'Runs / Gym / Nutrition all pull to refresh; Home did not');
@@ -474,7 +471,7 @@ void main() {
       // `pumpUntil` deliberately never advances the fake clock.
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
-      await pumpUntil(tester, () => api.pbFetches > 1,
+      await pumpUntil(tester, () => api.profileFetches > 1,
           describe: 'the pull to re-run the five loaders');
       await pumpUntilStoreWritesSettle(tester);
     });

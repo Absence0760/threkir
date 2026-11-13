@@ -1,8 +1,9 @@
 // The adaptive Today hero that leads Home (#1187, decisions § 2385): which
 // state it shows comes from the `dashboard_layout` parity pair, and whichever
-// it is, it is the first card under the toolbar, above the week lead, at the
-// default text size and at 2.0x. Plus hiding a trend group by long-pressing
-// its heading (decisions § 2386). Web twin:
+// it is, it is the first card under the toolbar, above Today's progress
+// summary, at the default text size and at 2.0x. Plus hiding a trend group by
+// long-pressing its heading on the Progress page (decisions § 2386, issue
+// #1374). Web twin:
 // `apps/web/tests-e2e/dashboard/today-hero.spec.ts`.
 
 import 'dart:io';
@@ -21,6 +22,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
 import '../lib/settings_sync.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
@@ -115,7 +117,7 @@ List<Run> get _pastRuns => [
     ];
 
 final _hero = find.byKey(const Key('dashboardTodayHero'));
-final _lead = find.byKey(const Key('dashboardWeekLead'));
+final _summary = find.byKey(const Key('todayProgressSummary'));
 
 Future<_Sync> _mount(
   WidgetTester tester, {
@@ -123,6 +125,7 @@ Future<_Sync> _mount(
   TrainingService? training,
   Map<String, dynamic> bag = const {},
   double textScale = 1.0,
+  bool progress = false,
   required bool Function() ready,
 }) async {
   tester.view.physicalSize = const Size(400, 4000);
@@ -153,17 +156,26 @@ Future<_Sync> _mount(
             .copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
-      home: DashboardScreen(
-        runStore: runStore,
-        routeStore: LocalRouteStore(),
-        gymStore: LocalGymStore(),
-        foodStore: LocalFoodStore(),
-        preferences: prefs,
-        training: training,
-        settingsSync: sync,
-        onStartRun: () {},
-        onStartWorkout: (_) {},
-      ),
+      home: progress
+          ? ProgressScreen(
+              runStore: runStore,
+              routeStore: LocalRouteStore(),
+              gymStore: LocalGymStore(),
+              preferences: prefs,
+              training: training,
+              settingsSync: sync,
+            )
+          : DashboardScreen(
+              runStore: runStore,
+              routeStore: LocalRouteStore(),
+              gymStore: LocalGymStore(),
+              foodStore: LocalFoodStore(),
+              preferences: prefs,
+              training: training,
+              settingsSync: sync,
+              onStartRun: () {},
+              onStartWorkout: (_) {},
+            ),
     ));
   });
   addTearDown(() => dir.deleteSync(recursive: true));
@@ -177,12 +189,12 @@ TodayHeroState _state(WidgetTester tester) =>
 
 double _top(WidgetTester tester, Finder f) => tester.getTopLeft(f).dy;
 
-/// The hero is the first card: above the lead, and nothing card-shaped sits
-/// between the toolbar and it.
+/// The hero is the first card: above the progress summary, and nothing
+/// card-shaped sits between the toolbar and it.
 void _expectHeroFirst(WidgetTester tester) {
   final heroTop = _top(tester, _hero);
-  expect(heroTop, lessThan(_top(tester, _lead)),
-      reason: 'the Today hero sits above the week lead');
+  expect(heroTop, lessThan(_top(tester, _summary)),
+      reason: 'the Today hero sits above the progress summary');
   for (final card in tester.widgetList<Card>(find.byType(Card))) {
     final f = find.byWidget(card);
     if (find.ancestor(of: f, matching: _hero).evaluate().isNotEmpty) continue;
@@ -278,7 +290,7 @@ void main() {
           ready: () => find.text('Welcome!').evaluate().isNotEmpty,
         );
         expect(_hero, findsNothing);
-        expect(_lead, findsNothing);
+        expect(_summary, findsNothing);
         expect(tester.takeException(), isNull);
       });
     });
@@ -341,9 +353,10 @@ void main() {
     _expectHeroFirst(tester);
   });
 
-  testWidgets('readiness is in the hero, not in the trend groups, and the '
-      'load views are one card', (tester) async {
+  testWidgets('readiness is in the hero, not in Progress\'s trend groups, '
+      'and the load views are one card', (tester) async {
     await _mount(
+      progress: true,
       tester,
       runs: _pastRuns,
       ready: () => find
@@ -365,6 +378,7 @@ void main() {
   testWidgets('long-pressing a trend heading hides that group, universally',
       (tester) async {
     final sync = await _mount(
+      progress: true,
       tester,
       runs: _pastRuns,
       ready: () => find
@@ -392,6 +406,7 @@ void main() {
   testWidgets('a group hidden in the settings bag is not built',
       (tester) async {
     await _mount(
+      progress: true,
       tester,
       runs: _pastRuns,
       bag: {

@@ -17,6 +17,8 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/pro_sellable.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
+import '../lib/adaptive_width.dart' show kContentMaxWidth;
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/screens/run_detail_screen.dart';
 import 'pump_until.dart';
@@ -556,7 +558,8 @@ void main() {
       expect(find.text('Import runs'), findsOneWidget);
     });
 
-    testWidgets('shows section headers when store has runs', (tester) async {
+    testWidgets('Today names its last run and closes on the progress summary',
+        (tester) async {
       // Seed the store on disk before the screen sees it so the notifier
       // never fires during the pump.
       //
@@ -605,22 +608,22 @@ void main() {
           await tester.pump();
 
           // 'Last run' is near the top of the list and visible in the test
-          // viewport without scrolling. The activity stat strip
-          // (WEEK / MONTH / ALL TIME) replaced the previous stacked
-          // section cards — pin its all-caps labels to prove the strip
-          // mounted.
+          // viewport without scrolling. The month and all-time strip moved to
+          // the Progress page (issue #1374); Today closes on one summary.
           expect(find.text('Last run'), findsOneWidget);
-          // The week is the week lead's alone (decisions § 2283).
-          expect(find.text('WEEK'), findsNothing);
-          expect(find.text('MONTH'), findsOneWidget);
-          expect(find.text('ALL TIME'), findsOneWidget);
+          expect(find.text('MONTH'), findsNothing);
+          expect(find.text('ALL TIME'), findsNothing);
+          await tester.scrollUntilVisible(
+              find.byKey(const Key('todayProgressSummary')), 300,
+              scrollable: find.byType(Scrollable).first);
+          expect(find.text('Your progress'), findsOneWidget);
         } finally {
           dir.deleteSync(recursive: true);
         }
       });
     });
 
-    group('goals for a runner with runs', () {
+    group('goals on the Progress page for a runner with runs', () {
       Future<Preferences> pumpWithRun(WidgetTester tester, Directory dir,
           {RunGoal? goal}) async {
         SharedPreferences.setMockInitialValues({});
@@ -635,11 +638,10 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: DashboardScreen(
+          home: ProgressScreen(
             runStore: runStore,
             routeStore: LocalRouteStore(),
             gymStore: LocalGymStore(),
-            foodStore: LocalFoodStore(),
             preferences: prefs,
           ),
         ));
@@ -656,7 +658,7 @@ void main() {
           final dir = Directory.systemTemp.createTempSync('dashboard_nogoal_');
           try {
             await pumpWithRun(tester, dir);
-            expect(find.text('Goals'), findsNothing);
+            expect(find.text('GOALS'), findsNothing);
             expect(find.text('Set your first goal'), findsNothing);
             final link = find.byKey(const Key('dashboardAddGoalLink'));
             expect(link, findsOneWidget);
@@ -686,9 +688,9 @@ void main() {
             await pumpWithRun(tester, dir,
                 goal: const RunGoal(
                     id: 'g1', period: GoalPeriod.week, distanceMetres: 20000));
-            expect(find.text('Goals'), findsOneWidget);
+            expect(find.text('GOALS'), findsOneWidget);
             expect(find.byKey(const Key('dashboardAddGoalLink')), findsNothing);
-            expect(tester.getTopLeft(find.text('Goals')).dy,
+            expect(tester.getTopLeft(find.text('GOALS')).dy,
                 lessThan(tester.getTopLeft(find.text('MONTH')).dy));
           } finally {
             dir.deleteSync(recursive: true);
@@ -866,11 +868,10 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: ProgressScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
-                foodStore: LocalFoodStore(),
                 preferences: prefs,
               ),
             ),
@@ -1205,10 +1206,12 @@ void main() {
           await tester.pump();
           await tester.pump();
           expect(find.text("TODAY'S WORKOUT"), findsOneWidget);
-          expect(api.pbFetchesAs, ['u1']);
-          // Several loaders want the profile (age-grade inputs + nutrition
-          // targets), so assert who they ran as rather than how many there
-          // were — the count is not the contract.
+          // The PBs moved to the Progress page (issue #1374), so Today never
+          // reads them.
+          expect(api.pbFetchesAs, isEmpty);
+          // Several loaders want the profile (the coach's consent record +
+          // nutrition targets), so assert who they ran as rather than how
+          // many there were — the count is not the contract.
           expect(api.profileFetchesAs, isNotEmpty);
           expect(api.profileFetchesAs, everyElement('u1'));
           final profileFetchesOnMount = api.profileFetchesAs.length;
@@ -1223,9 +1226,9 @@ void main() {
           await tester.pump();
           await tester.pump();
           expect(find.text("TODAY'S WORKOUT"), findsNothing);
-          expect(api.pbFetchesAs, ['u1', null]);
-          // The age-grade inputs (DOB + sex) are per-user too: a stale profile
-          // would grade the next user's PBs against this user's birth date.
+          expect(api.pbFetchesAs, isEmpty);
+          // The profile is per-user too: a stale one would carry this user's
+          // coach consent to the next.
           final refetched = api.profileFetchesAs.skip(profileFetchesOnMount);
           expect(refetched, isNotEmpty);
           expect(refetched, everyElement(isNull));
@@ -1258,11 +1261,10 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: ProgressScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
-                foodStore: LocalFoodStore(),
                 preferences: prefs,
               ),
             ),
@@ -1325,14 +1327,13 @@ void main() {
             ),
             findsOneWidget,
           );
-          // Below what Home is opened for (decisions § 2280), above Trends.
+          // Below what Home is opened for (decisions § 2280): it closes
+          // Today, under the progress summary (issue #1374).
           double bottomOf(String key) =>
               tester.getBottomLeft(find.byKey(Key(key))).dy;
           final coachTop = tester.getTopLeft(find.text('Ask your coach')).dy;
-          expect(coachTop, greaterThan(bottomOf('dashboardWeekLead')));
           expect(coachTop, greaterThan(bottomOf('dashboardLatestRun')));
-          expect(
-              coachTop, lessThan(tester.getTopLeft(find.text('Trends')).dy));
+          expect(coachTop, greaterThan(bottomOf('todayProgressSummary')));
         } finally {
           dir.deleteSync(recursive: true);
         }
@@ -1395,11 +1396,13 @@ void main() {
         () async => throw const SocketException('unreachable'),
       ),
     ]) {
-      testWidgets('no coach card when $label', (tester) async {
+      testWidgets('no "Ask your coach" promise when $label', (tester) async {
         // Decisions § 2227: the Messages inbox hides its Coach row unless the
         // capability manifest says the Coach is live, failing closed on an
-        // unreachable manifest. Home's card follows the same signal, so it
-        // never opens a Coach this deploy does not run.
+        // unreachable manifest. Home's row follows the same signal for its
+        // promise: it never offers a chat this deploy does not run. The row
+        // itself stays (issue #1374), since the Coach screen also holds
+        // Guided runs and Athletes & coaches, named in its subtitle.
         await tester.runAsync(() async {
           SharedPreferences.setMockInitialValues({});
           final prefs = Preferences();
@@ -1431,6 +1434,9 @@ void main() {
             await tester.pump();
             await tester.pump();
             expect(find.text('Ask your coach'), findsNothing);
+            expect(find.text('Coach'), findsOneWidget);
+            expect(find.text('Guided runs, athletes and coaches'),
+                findsOneWidget);
           } finally {
             dir.deleteSync(recursive: true);
           }
@@ -1522,12 +1528,11 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: ProgressScreen(
                 apiClient: _FakeApiPb(),
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
-                foodStore: LocalFoodStore(),
                 preferences: prefs,
               ),
             ),
@@ -1569,17 +1574,17 @@ void main() {
     });
 
     group('expanded (tablet) layout', () {
-      const leadRowKey = Key('dashboardExpandedLeadRow');
       const chartColumnsKey = Key('dashboardExpandedChartColumns');
 
-      Finder contentCap() => find.byWidgetPredicate(
-          (w) => w is ConstrainedBox && w.constraints.maxWidth == 1100);
+      Finder contentCap(double width) => find.byWidgetPredicate(
+          (w) => w is ConstrainedBox && w.constraints.maxWidth == width);
 
       Future<void> pumpSeeded(
         WidgetTester tester,
         Directory dir, {
         TrainingService? training,
         bool withGoal = false,
+        bool progress = false,
       }) async {
         SharedPreferences.setMockInitialValues({});
         final prefs = Preferences();
@@ -1600,14 +1605,22 @@ void main() {
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: DashboardScreen(
-              runStore: runStore,
-              routeStore: LocalRouteStore(),
-              gymStore: LocalGymStore(),
-              foodStore: LocalFoodStore(),
-              preferences: prefs,
-              training: training,
-            ),
+            home: progress
+                ? ProgressScreen(
+                    runStore: runStore,
+                    routeStore: LocalRouteStore(),
+                    gymStore: LocalGymStore(),
+                    preferences: prefs,
+                    training: training,
+                  )
+                : DashboardScreen(
+                    runStore: runStore,
+                    routeStore: LocalRouteStore(),
+                    gymStore: LocalGymStore(),
+                    foodStore: LocalFoodStore(),
+                    preferences: prefs,
+                    training: training,
+                  ),
           ),
         );
         await tester.pump();
@@ -1615,11 +1628,11 @@ void main() {
         await tester.pump();
       }
 
-      testWidgets(
-          'expanded width caps content and pairs lead cards + chart columns',
+      testWidgets('Today stays one reading column on a tablet',
           (tester) async {
         // 2560x1440 physical at DPR 2 → 1280x720 logical: a 10" tablet
-        // in landscape, WidthClass.expanded.
+        // in landscape, WidthClass.expanded. Today is a short list since
+        // issue #1374, so it is capped to the reading width, not split.
         tester.view.physicalSize = const Size(2560, 1440);
         tester.view.devicePixelRatio = 2.0;
         addTearDown(tester.view.reset);
@@ -1632,34 +1645,16 @@ void main() {
                 training: _FakeTraining(_overviewWithTodayWorkout()),
                 withGoal: true);
 
-            expect(contentCap(), findsOneWidget);
-            // Today's workout leads in the Today hero (decisions § 2385); the
-            // rest of the Today block and Goals share the lead row instead of
-            // stacking full-width.
+            expect(contentCap(kContentMaxWidth), findsOneWidget);
             expect(
               find.descendant(
                   of: find.byKey(const Key('dashboardTodayHero')),
                   matching: find.text("TODAY'S WORKOUT")),
               findsOneWidget,
             );
-            expect(find.byKey(leadRowKey), findsOneWidget);
-            expect(
-              find.descendant(
-                  of: find.byKey(leadRowKey), matching: find.text('Goals')),
-              findsOneWidget,
-            );
-
-            // The chart cards flow into the two-column grid below the
-            // stat strip.
-            await tester.scrollUntilVisible(find.byKey(chartColumnsKey), 300,
-                scrollable: find.byType(Scrollable).first);
-            expect(find.byKey(chartColumnsKey), findsOneWidget);
-            expect(
-              find.descendant(
-                  of: find.byKey(chartColumnsKey),
-                  matching: find.byType(MileageTrendCard)),
-              findsOneWidget,
-            );
+            expect(find.byKey(chartColumnsKey), findsNothing,
+                reason: 'the charts are the Progress page\'s');
+            expect(find.byKey(const Key('todayGoalsStrip')), findsOneWidget);
           } finally {
             dir.deleteSync(recursive: true);
           }
@@ -1667,7 +1662,7 @@ void main() {
       });
 
       testWidgets(
-          'expanded with no plan or modality card leads with the latest run',
+          'Progress caps its content and flows the charts into two columns',
           (tester) async {
         tester.view.physicalSize = const Size(2560, 1440);
         tester.view.devicePixelRatio = 2.0;
@@ -1675,44 +1670,18 @@ void main() {
 
         await tester.runAsync(() async {
           final dir =
-              Directory.systemTemp.createTempSync('dashboard_expanded_lead_');
+              Directory.systemTemp.createTempSync('progress_expanded_');
           try {
-            // No training service + empty gym/food stores → no workout card
-            // and no modality cards. The seeded run is still a lead card.
-            await pumpSeeded(tester, dir, withGoal: true);
-            expect(find.byKey(leadRowKey), findsOneWidget);
+            await pumpSeeded(tester, dir, withGoal: true, progress: true);
+            expect(contentCap(1100), findsOneWidget);
+            await tester.scrollUntilVisible(find.byKey(chartColumnsKey), 300,
+                scrollable: find.byType(Scrollable).first);
             expect(
               find.descendant(
-                  of: find.byKey(leadRowKey),
-                  matching: find.byKey(const Key('dashboardLatestRun'))),
+                  of: find.byKey(chartColumnsKey),
+                  matching: find.byType(MileageTrendCard)),
               findsOneWidget,
             );
-            expect(find.text('Goals'), findsOneWidget);
-            expect(contentCap(), findsOneWidget);
-          } finally {
-            dir.deleteSync(recursive: true);
-          }
-        });
-      });
-
-      testWidgets(
-          'expanded with no goals lets the lead cards stand alone (no empty '
-          'cell)', (tester) async {
-        tester.view.physicalSize = const Size(2560, 1440);
-        tester.view.devicePixelRatio = 2.0;
-        addTearDown(tester.view.reset);
-
-        await tester.runAsync(() async {
-          final dir =
-              Directory.systemTemp.createTempSync('dashboard_expanded_nogoal_');
-          try {
-            // A runner with no goals has no Goals section to pair with, and a
-            // grid cell can't reserve space for a hidden one.
-            await pumpSeeded(tester, dir);
-            expect(find.byKey(leadRowKey), findsNothing);
-            expect(find.byKey(const Key('dashboardLatestRun')), findsOneWidget);
-            expect(find.text('Goals'), findsNothing);
-            expect(find.byKey(const Key('dashboardAddGoalLink')), findsOneWidget);
           } finally {
             dir.deleteSync(recursive: true);
           }
@@ -1727,13 +1696,10 @@ void main() {
           final dir =
               Directory.systemTemp.createTempSync('dashboard_stacked_');
           try {
-            await pumpSeeded(tester, dir, withGoal: true);
-            expect(find.byKey(leadRowKey), findsNothing);
+            await pumpSeeded(tester, dir, withGoal: true, progress: true);
             expect(find.byKey(chartColumnsKey), findsNothing);
-            expect(contentCap(), findsNothing);
-            expect(find.text('Goals'), findsOneWidget);
-            // The week lead pushes the period strip below the default
-            // surface's fold, where the lazy ListView has not built it.
+            expect(contentCap(1100), findsNothing);
+            expect(find.text('GOALS'), findsOneWidget);
             await tester.scrollUntilVisible(find.text('MONTH'), 300,
                 scrollable: find.byType(Scrollable).first);
             expect(find.text('MONTH'), findsOneWidget);

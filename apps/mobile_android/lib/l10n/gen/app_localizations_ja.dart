@@ -749,7 +749,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readinessContributorRestingHr => '安静時心拍数';
 
   @override
-  String get dashboardTrendsDivider => 'トレンド';
+  String get todayTitle => '今日';
+
+  @override
+  String get progressTitle => '進捗';
+
+  @override
+  String get progressSummaryTitle => 'あなたの進捗';
+
+  @override
+  String get progressSummaryOpenHint => '進捗を開く';
+
+  @override
+  String get progressSummaryWeek => '今週';
+
+  @override
+  String get progressSummaryMonth => '今月';
+
+  @override
+  String get todayGoalsMore => 'その他の目標は進捗で';
 
   @override
   String get dashboardTrendGroupVolume => '走行量';
@@ -817,7 +835,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'ホームで非表示';
+  String get progressHideGroup => '進捗で非表示';
 
   @override
   String dashboardCardHidden(String name) {
@@ -937,6 +955,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get navStop => '停止';
 
   @override
+  String get navStart => 'スタート';
+
+  @override
+  String get runCancelStartA11yLabel => 'スタートを取り消す';
+
+  @override
   String get logReturnToRunA11yLabel => '記録中のランに戻る';
 
   @override
@@ -992,6 +1016,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get homeAskCoachSubtitleRunOnly => 'ラン・トレーニング・回復のアドバイス';
+
+  @override
+  String get homeCoachTitle => 'コーチ';
+
+  @override
+  String get homeCoachSubtitleTools => 'ガイド付きラン、アスリートとコーチ';
 
   @override
   String get youProfileTitle => 'あなたのプロフィール';
@@ -1863,9 +1893,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runStartA11yLabel => 'ランを開始';
 
   @override
-  String get runLastRunOpenA11yLabel => '前回のランの詳細を開く';
-
-  @override
   String get runChooseRoute => 'ルートを選択';
 
   @override
@@ -1980,12 +2007,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runTapToCancel => 'タップしてキャンセル';
-
-  @override
-  String get runFirstRunPrompt => '最初のランはタップひとつで始められます。';
-
-  @override
-  String get runLastActivity => '前回のアクティビティ';
 
   @override
   String get runLastRun => '前回のラン';
@@ -2381,37 +2402,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runGpsSensorFailed => 'GPSなしで記録中 — センサーを開始できませんでした。';
-
-  @override
-  String get runAgoJustNow => 'たった今';
-
-  @override
-  String runAgoMinutes(int count) {
-    return '$count分前';
-  }
-
-  @override
-  String runAgoHours(int count) {
-    return '$count時間前';
-  }
-
-  @override
-  String get runAgoYesterday => '昨日';
-
-  @override
-  String runAgoDays(int count) {
-    return '$count日前';
-  }
-
-  @override
-  String runAgoWeeks(int count) {
-    return '$count週間前';
-  }
-
-  @override
-  String runAgoMonths(int count) {
-    return '$countか月前';
-  }
 
   @override
   String get runWorkoutAbandonedBand => 'ワークアウト中止 · フリーラン中';
@@ -9637,13 +9627,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardCoachTooltip => 'コーチ';
 
   @override
-  String get dashboardFeedTooltip => 'アクティビティフィード';
-
-  @override
   String get dashboardRecapTooltip => 'ランニングの一年';
-
-  @override
-  String get dashboardProfileTooltip => 'あなたのプロフィール';
 
   @override
   String get dashboardWelcomeTitle => 'ようこそ！';

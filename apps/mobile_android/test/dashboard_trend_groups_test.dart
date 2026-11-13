@@ -1,6 +1,7 @@
-// multi_modal.md § Home, contract v1: "Today" cards, then a thin divider, then
-// "Trends", and every trend card collapsible to a single-line heading. The web
-// twin is `tests-e2e/dashboard/layout.spec.ts`.
+// The trend groups, every one collapsible to a single-line heading. They sat
+// under a Trends divider on Home until issue #1374 moved them to the Progress
+// page, one tap from Today's summary card. The web twin is
+// `tests-e2e/dashboard/layout.spec.ts`.
 
 import 'dart:convert';
 import 'dart:io';
@@ -12,12 +13,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
-import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
 import '../lib/widgets/mileage_trend_card.dart';
 import '../lib/widgets/activity_heatmap.dart';
 import 'pump_until.dart';
@@ -69,26 +69,28 @@ Future<void> _pump(WidgetTester tester, _Harness h,
     ),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: DashboardScreen(
+    home: ProgressScreen(
       key: key,
       runStore: h.runStore,
       routeStore: LocalRouteStore(),
       gymStore: LocalGymStore(),
-      foodStore: LocalFoodStore(),
       preferences: h.prefs,
     ),
   ));
   await pumpUntil(
     tester,
-    () => find.byKey(const Key('dashboardTrendsDivider')).evaluate().isNotEmpty,
-    describe: 'the dashboard to mount its trend section',
+    () => find
+        .byKey(const ValueKey('dashboard-trend-volume'))
+        .evaluate()
+        .isNotEmpty,
+    describe: 'the Progress page to mount its trend groups',
   );
 }
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('a Trends divider sits between today and the trend groups',
+  testWidgets('the trend groups follow the week lead, in web\'s order',
       (tester) async {
     tester.view.physicalSize = const Size(400, 8000);
     tester.view.devicePixelRatio = 1.0;
@@ -97,17 +99,11 @@ void main() {
     addTearDown(() => h.dir.deleteSync(recursive: true));
     await _pump(tester, h);
 
-    final divider = find.byKey(const Key('dashboardTrendsDivider'));
-    expect(find.descendant(of: divider, matching: find.text('Trends')),
-        findsOneWidget);
-    expect(find.descendant(of: divider, matching: find.byType(Divider)),
-        findsOneWidget,
-        reason: 'a hairline, not a section header');
+    expect(find.byKey(const Key('dashboardTrendsDivider')), findsNothing,
+        reason: 'the page is all trends, so nothing divides it from Today');
 
     double top(Finder f) => tester.getTopLeft(f).dy;
     final weekLead = find.byKey(const Key('dashboardWeekLead'));
-    expect(top(weekLead), lessThan(top(divider)),
-        reason: 'the week lead is a Today card');
 
     // Web's order, every group mounting for a runner with history and no
     // HR zones (Effort) or lifts (Recent), which hide with their only card.
@@ -117,7 +113,7 @@ void main() {
     for (final g in order) {
       expect(g, findsOneWidget);
     }
-    expect(top(order.first), greaterThan(top(divider)));
+    expect(top(order.first), greaterThan(top(weekLead)));
     expect(top(order[0]), lessThan(top(order[1])));
     expect(top(order[1]), lessThan(top(order[2])));
     expect(find.byKey(const ValueKey('dashboard-trend-effort')), findsNothing);
@@ -173,7 +169,7 @@ void main() {
     expect(find.byType(MileageTrendCard), findsOneWidget);
   });
 
-  testWidgets('the divider and group headings hold at 2.0x text on a phone',
+  testWidgets('the group headings hold at 2.0x text on a phone',
       (tester) async {
     tester.view.physicalSize = const Size(360, 12000);
     tester.view.devicePixelRatio = 1.0;
@@ -191,12 +187,12 @@ void main() {
     await _pump(tester, h, textScale: 2.0);
     FlutterError.onError = previous;
 
-    expect(find.text('Trends'), findsOneWidget);
     expect(find.text('Fitness and form'), findsOneWidget);
     expect(find.text('Personal bests and predicted race times'),
         findsOneWidget);
     final ours = errors.where((e) =>
-        e.contains('disclosure_section.dart') || e.contains('_TrendsDivider'));
+        e.contains('disclosure_section.dart') ||
+        e.contains('progress_screen.dart'));
     expect(ours, isEmpty);
   });
 }

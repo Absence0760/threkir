@@ -306,9 +306,15 @@ void main() {
     tester.takeException();
   }
 
-  /// START, the countdown, and a short track — a run in progress.
+  /// Start (the docked centre button, issue #1374), the countdown, and a
+  /// short track — a run in progress.
+  ///
+  /// The rail docks nothing, so there the panel keeps its own START.
   Future<void> recordARun(WidgetTester tester) async {
-    await tester.tap(find.text('START'));
+    final panelStart = find.text('START');
+    await tester.tap(tester.any(panelStart)
+        ? panelStart
+        : find.byType(FloatingActionButton));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     for (var i = 0; i < 3; i++) {
@@ -374,7 +380,7 @@ void main() {
           reason: 'a pause is not the end of the run');
       expect(find.byType(HoldToStopButton).hitTestable(), findsOneWidget,
           reason: 'the docked Stop stays while paused');
-      expect(find.text('START'), findsNothing);
+      expect(centreLabelled('Start run'), findsNothing);
 
       // The runner walks 300 m north to a water fountain with the run paused.
       await emitFixes(tester, [
@@ -701,7 +707,7 @@ void main() {
       expect(find.text('Resume your run?'), findsNothing);
       await pumpUntil(tester, () => runRecordingActive.value,
           describe: 'the resumed recording');
-      expect(find.text('START'), findsNothing,
+      expect(centreLabelled('Start run'), findsNothing,
           reason: 'Resume goes straight back to recording, no countdown');
       expect(find.byType(HoldToStopButton).hitTestable(), findsOneWidget,
           reason: 'the resumed run gets the docked Stop like any other');
@@ -749,11 +755,10 @@ void main() {
       tester.takeException();
 
       expect(find.text('Resume your run?'), findsNothing);
-      expect(find.text('START'), findsOneWidget);
+      expect(centreLabelled('Start run'), findsOneWidget);
       expect(runRecordingActive.value, isFalse);
       expect(runSummaryShowing.value, isFalse);
       expect(runStore.runs, isEmpty, reason: 'Discard saves nothing');
-      expect(centreLabelled('Start a run'), findsOneWidget);
 
       await unmount(tester);
     });

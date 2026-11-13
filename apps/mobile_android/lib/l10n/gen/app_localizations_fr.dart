@@ -780,7 +780,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get readinessContributorRestingHr => 'Fréquence cardiaque au repos';
 
   @override
-  String get dashboardTrendsDivider => 'Tendances';
+  String get todayTitle => 'Aujourd\'hui';
+
+  @override
+  String get progressTitle => 'Progression';
+
+  @override
+  String get progressSummaryTitle => 'Votre progression';
+
+  @override
+  String get progressSummaryOpenHint => 'Ouvrir votre progression';
+
+  @override
+  String get progressSummaryWeek => 'Cette semaine';
+
+  @override
+  String get progressSummaryMonth => 'Ce mois-ci';
+
+  @override
+  String get todayGoalsMore => 'Autres objectifs dans Progression';
 
   @override
   String get dashboardTrendGroupVolume => 'Volume';
@@ -854,7 +872,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'Masquer de l\'accueil';
+  String get progressHideGroup => 'Masquer de la progression';
 
   @override
   String dashboardCardHidden(String name) {
@@ -977,6 +995,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navStop => 'Arrêter';
 
   @override
+  String get navStart => 'Démarrer';
+
+  @override
+  String get runCancelStartA11yLabel => 'Annuler le départ';
+
+  @override
   String get logReturnToRunA11yLabel => 'Revenir à votre course';
 
   @override
@@ -1034,6 +1058,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get homeAskCoachSubtitleRunOnly =>
       'Des conseils sur vos courses, votre entraînement et votre récupération';
+
+  @override
+  String get homeCoachTitle => 'Coach';
+
+  @override
+  String get homeCoachSubtitleTools => 'Courses guidées, athlètes et coachs';
 
   @override
   String get youProfileTitle => 'Votre profil';
@@ -1956,10 +1986,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runStartA11yLabel => 'Démarrer la course';
 
   @override
-  String get runLastRunOpenA11yLabel =>
-      'Ouvrir les détails de la dernière course';
-
-  @override
   String get runChooseRoute => 'Choisir un parcours';
 
   @override
@@ -2078,13 +2104,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runTapToCancel => 'Touchez pour annuler';
-
-  @override
-  String get runFirstRunPrompt =>
-      'Votre première course n\'est qu\'à un toucher.';
-
-  @override
-  String get runLastActivity => 'Dernière activité';
 
   @override
   String get runLastRun => 'Dernière course';
@@ -2504,55 +2523,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get runGpsSensorFailed =>
       'Enregistrement sans GPS — impossible de démarrer le capteur.';
-
-  @override
-  String get runAgoJustNow => 'À l\'instant';
-
-  @override
-  String runAgoMinutes(int count) {
-    return 'il y a $count min';
-  }
-
-  @override
-  String runAgoHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'il y a $count heures',
-      one: 'il y a 1 heure',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get runAgoYesterday => 'Hier';
-
-  @override
-  String runAgoDays(int count) {
-    return 'il y a $count jours';
-  }
-
-  @override
-  String runAgoWeeks(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'il y a $count semaines',
-      one: 'il y a 1 semaine',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String runAgoMonths(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'il y a $count mois',
-      one: 'il y a 1 mois',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get runWorkoutAbandonedBand => 'Séance abandonnée · course libre';
@@ -10210,13 +10180,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboardCoachTooltip => 'Coach';
 
   @override
-  String get dashboardFeedTooltip => 'Fil d\'activité';
-
-  @override
   String get dashboardRecapTooltip => 'Année en course';
-
-  @override
-  String get dashboardProfileTooltip => 'Votre profil';
 
   @override
   String get dashboardWelcomeTitle => 'Bienvenue !';

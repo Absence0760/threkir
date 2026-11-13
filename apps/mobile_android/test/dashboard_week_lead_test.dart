@@ -1,9 +1,10 @@
-// The week lead that opens Home for an account with runs (#905 workstream 3,
-// web `DashboardWeekLead.svelte`). The numbers are pinned by the
-// `week_lead.dart` parity pair's own suite; this one pins what the screen does
-// with them: where the card sits, which yardstick line it shows, the
-// next-session half appearing only with an active plan, the unit preference,
-// the two actions now in Home's overflow, and the card staying off the runless welcome state.
+// The week lead (#905 workstream 3, web `DashboardWeekLead.svelte`), which
+// opens the Progress page since issue #1374 moved it off Home. The numbers are
+// pinned by the `week_lead.dart` parity pair's own suite; this one pins what
+// the screen does with them: where the card sits, which yardstick line it
+// shows, the next-session half appearing only with an active plan, the unit
+// preference, and on Home: the two actions in Home's overflow, the hero's
+// Start, and no lead on the runless welcome state.
 
 import 'dart:io';
 
@@ -23,6 +24,7 @@ import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/dashboard_screen.dart';
 import '../lib/screens/import_screen.dart';
 import '../lib/screens/period_summary_screen.dart';
+import '../lib/screens/progress_screen.dart';
 import '../lib/screens/run_screen.dart' show runRecordingActive;
 import '../lib/training_service.dart';
 import '../lib/widgets/this_week_strip.dart';
@@ -95,6 +97,7 @@ Future<({Preferences prefs, Directory dir})> _mount(
   List<RunGoal> goals = const [],
   VoidCallback? onStartRun,
   ValueChanged<PlanWorkoutRow>? onStartWorkout,
+  bool progress = false,
   required bool Function() ready,
   required String describe,
 }) async {
@@ -124,16 +127,24 @@ Future<({Preferences prefs, Directory dir})> _mount(
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
-        runStore: runStore,
-        routeStore: LocalRouteStore(),
-        gymStore: LocalGymStore(),
-        foodStore: LocalFoodStore(),
-        preferences: prefs,
-        training: training,
-        onStartRun: onStartRun,
-        onStartWorkout: onStartWorkout,
-      ),
+      home: progress
+          ? ProgressScreen(
+              runStore: runStore,
+              routeStore: LocalRouteStore(),
+              gymStore: LocalGymStore(),
+              preferences: prefs,
+              training: training,
+            )
+          : DashboardScreen(
+              runStore: runStore,
+              routeStore: LocalRouteStore(),
+              gymStore: LocalGymStore(),
+              foodStore: LocalFoodStore(),
+              preferences: prefs,
+              training: training,
+              onStartRun: onStartRun,
+              onStartWorkout: onStartWorkout,
+            ),
     ));
   });
   addTearDown(() => dir.deleteSync(recursive: true));
@@ -142,6 +153,7 @@ Future<({Preferences prefs, Directory dir})> _mount(
 }
 
 final _lead = find.byKey(const Key('dashboardWeekLead'));
+final _summary = find.byKey(const Key('todayProgressSummary'));
 
 void main() {
   testWidgets(
@@ -149,6 +161,7 @@ void main() {
       'average when there is no plan or weekly goal', (tester) async {
     final now = DateTime.now();
     await _mount(
+      progress: true,
       tester,
       runs: [
         // Stamped at mount time, so it is inside this calendar week whatever
@@ -185,7 +198,7 @@ void main() {
     expect(find.descendant(of: _lead, matching: find.text('Import runs')),
         findsNothing);
 
-    // It is the first card under the toolbar: above the period strip.
+    // It is the page's first card: above the period strip.
     expect(tester.getBottomLeft(_lead).dy,
         lessThan(tester.getTopLeft(find.text('MONTH')).dy));
   });
@@ -193,6 +206,7 @@ void main() {
   testWidgets('the distance honours the miles preference', (tester) async {
     final now = DateTime.now();
     await _mount(
+      progress: true,
       tester,
       useMiles: true,
       runs: [_run('r1', now, 8046.72)],
@@ -210,6 +224,7 @@ void main() {
       'plan', (tester) async {
     final now = DateTime.now();
     await _mount(
+      progress: true,
       tester,
       goals: const [
         RunGoal(id: 'g1', period: GoalPeriod.week, distanceMetres: 20000),
@@ -228,12 +243,12 @@ void main() {
   });
 
   testWidgets(
-      'with an active plan it sits under the Today hero and names the next '
-      'open session', (tester) async {
+      'with an active plan it names the next open session', (tester) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final todays = _workout('wo-today', today, 'long', distanceM: 16000);
     await _mount(
+      progress: true,
       tester,
       training: _FakeTraining(_overview([
         _workout('wo-done', today.subtract(const Duration(days: 1)), 'easy',
@@ -256,10 +271,6 @@ void main() {
               'Long run · ${UnitFormat.distance(16000, DistanceUnit.km)}')),
       findsOneWidget,
     );
-    // The Today hero leads Home (decisions § 2385); on a plan day it is
-    // today's workout, and the lead follows it.
-    expect(tester.getBottomLeft(find.text("TODAY'S WORKOUT")).dy,
-        lessThan(tester.getTopLeft(_lead).dy));
     // The plan puts distance in this calendar week, so it is the yardstick.
     expect(
       tester.widget<Text>(find.byKey(const Key('dashboardWeekLeadVs'))).data,
@@ -272,6 +283,7 @@ void main() {
     final now = DateTime.now();
     final yesterday = DateTime(now.year, now.month, now.day - 1);
     await _mount(
+      progress: true,
       tester,
       training: _FakeTraining(_overview([
         _workout('wo-past', yesterday, 'easy', distanceM: 5000, done: true),
@@ -292,8 +304,8 @@ void main() {
     await _mount(
       tester,
       runs: [_run('r1', now, 5000)],
-      ready: () => _lead.evaluate().isNotEmpty,
-      describe: 'the week lead to mount',
+      ready: () => _summary.evaluate().isNotEmpty,
+      describe: 'Today to mount',
     );
     await tester.tap(find.byKey(const Key('dashboardMoreMenu')));
     await tester.pump();
@@ -326,15 +338,16 @@ void main() {
     );
   });
 
-  testWidgets('the lead is Home\'s one this-week view, and its chevron opens '
+  testWidgets('the lead is the one this-week view, and its chevron opens '
       'the weekly summary', (tester) async {
     await _mount(
+      progress: true,
       tester,
       runs: [_run('r1', DateTime.now(), 5000)],
       ready: () => _lead.evaluate().isNotEmpty,
       describe: 'the week lead to mount',
     );
-    // decisions § 2283: no This Week strip and no Week stat cell on Home.
+    // decisions § 2283: no This Week strip and no Week stat cell.
     expect(find.byType(ThisWeekStrip), findsNothing);
     expect(find.text('WEEK'), findsNothing);
     await tester.tap(find.byKey(const Key('dashboardWeekLeadOpenWeek')));
@@ -432,8 +445,8 @@ void main() {
         tester,
         runs: [_run('r1', DateTime.now(), 5000)],
         onStartRun: () {},
-        ready: () => _lead.evaluate().isNotEmpty,
-        describe: 'the week lead to mount',
+        ready: () => _summary.evaluate().isNotEmpty,
+        describe: 'Today to mount',
       );
       expect(heroStart, findsNothing);
       expect(cardStart, findsNothing);
@@ -444,8 +457,8 @@ void main() {
       await _mount(
         tester,
         runs: [_run('r1', DateTime.now(), 5000)],
-        ready: () => _lead.evaluate().isNotEmpty,
-        describe: 'the week lead to mount',
+        ready: () => _summary.evaluate().isNotEmpty,
+        describe: 'Today to mount',
       );
       expect(heroStart, findsNothing);
     });

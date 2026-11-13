@@ -197,7 +197,7 @@ void main() {
       expect(_top(tester, _latestRun), lessThan(_top(tester, _gym)));
     });
 
-    testWidgets('the whole Today block stays above the Trends divider',
+    testWidgets('the whole Today block stays above the progress summary',
         (tester) async {
       final s = await _seed(
         tester,
@@ -205,15 +205,14 @@ void main() {
         liftAt: _dayStart.add(const Duration(minutes: 1)),
       );
       await _pumpHome(tester, s, until: _gym);
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      final divider = find.text(l10n.dashboardTrendsDivider);
+      final summary = find.byKey(const Key('todayProgressSummary'));
       await tester.dragUntilVisible(
-          divider, find.byType(Scrollable).first, const Offset(0, -200));
-      expect(_top(tester, _latestRun), lessThan(_top(tester, divider)));
+          summary, find.byType(Scrollable).first, const Offset(0, -200));
+      expect(_top(tester, _latestRun), lessThan(_top(tester, summary)));
     });
   });
 
-  testWidgets('tablet lead column puts today\'s lift above an older last run',
+  testWidgets('tablet keeps today\'s lift above an older last run',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 1000);
     tester.view.devicePixelRatio = 1;

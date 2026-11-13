@@ -3818,16 +3818,26 @@ void main() {
           reason: 'viewer-holds-crown banner copy missing from app_en.arb');
     });
 
-    test('Dashboard wires its streak card through computeRunStreaks()', () {
+    test('Today and Progress wire the streak through computeRunStreaks()',
+        () {
       // Reason: the streak figures must come from the pure helper in
       // lib/streaks.dart, not an inline reimplementation. The helper
       // is unit-tested and twinned with web; inline drift would silently
-      // disagree on the Strava grace rule.
-      final source =
-          File('lib/screens/dashboard_screen.dart').readAsStringSync();
-      expect(source.contains('computeRunStreaks'), isTrue,
-          reason: 'dashboard must call the pure helper');
-      expect(source.contains('_StreakRow'), isTrue,
+      // disagree on the Strava grace rule. The card moved to the Progress
+      // page and Today's summary shows the current streak (issue #1374).
+      for (final path in const [
+        'lib/screens/dashboard_screen.dart',
+        'lib/screens/progress_screen.dart',
+      ]) {
+        expect(File(path).readAsStringSync().contains('computeRunStreaks'),
+            isTrue,
+            reason: '$path must call the pure helper');
+      }
+      expect(
+          File('lib/screens/progress_screen.dart')
+              .readAsStringSync()
+              .contains('_StreakRow'),
+          isTrue,
           reason: 'streak card widget missing');
     });
 
@@ -4037,11 +4047,10 @@ void main() {
           'makeRunPrivate',
           'concludeLiveBroadcast',
           'fetchPlanForWorkout',
-          'fetchNextRsvpedEvent',
         ];
         // The event card's club lookup moved into the shared
-        // `openUpcomingEvent` (Home and the Run tab both tap through it,
-        // decisions § 2285), so its timeout is pinned there.
+        // `openUpcomingEvent` (decisions § 2285), so its timeout is pinned
+        // there. Only Home draws the card since issue #1374.
         final eventCard =
             File('lib/widgets/upcoming_event_card.dart').readAsStringSync();
         expect(

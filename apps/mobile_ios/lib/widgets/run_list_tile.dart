@@ -235,79 +235,93 @@ class RunListTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 56),
-              child: Row(
-                children: [
-                  leading,
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              activity.icon,
-                              size: 18,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                dist,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
+              child: LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  children: [
+                    leading,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                activity.icon,
+                                size: 18,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  dist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            '$date  ·  $dur  ·  ${activityTypeLabel(l10n, activity).toLowerCase()}$vertLabel',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '$date  ·  $dur  ·  ${activityTypeLabel(l10n, activity).toLowerCase()}$vertLabel',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            trailingValue,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (syncMark != null) ...[
-                            const SizedBox(width: 6),
-                            syncMark,
-                          ],
                         ],
                       ),
-                      if (trailingUnit.isNotEmpty)
-                        Text(
-                          trailingUnit,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            letterSpacing: 0.3,
-                          ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Capped, and scaled down past the cap: at 320 dp and 2x
+                    // the metric took all but 17 dp of the row and the
+                    // distance line beside it overflowed (issue #1374).
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * 0.3,
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  trailingValue,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (syncMark != null) ...[
+                                  const SizedBox(width: 6),
+                                  syncMark,
+                                ],
+                              ],
+                            ),
+                            if (trailingUnit.isNotEmpty)
+                              Text(
+                                trailingUnit,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                          ],
                         ),
-                    ],
-                  ),
-                ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

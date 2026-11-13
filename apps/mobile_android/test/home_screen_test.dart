@@ -26,6 +26,8 @@ import '../lib/race_controller.dart';
 import '../lib/run_stop_dock.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
+import '../lib/social_unread.dart';
+import '../lib/widgets/gym_summary_card.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/confirm_age_screen.dart';
@@ -194,7 +196,8 @@ Future<({
   );
 }
 
-Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
+Future<void> _pump(WidgetTester tester, dynamic s,
+    {ApiClient? api, SocialUnreadSource? socialUnread}) async {
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -213,6 +216,7 @@ Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
         training: s.training,
         heartRate: s.heartRate,
         treadmill: s.treadmill,
+        socialUnread: socialUnread,
       ),
     ),
   );
@@ -229,6 +233,43 @@ Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
   await tester.runAsync(() async {
     await s.gymStore.createLocal(title: 'Push day', startedAt: DateTime.now());
   });
+}
+
+/// An unread count the test sets by hand, standing in for the shell's read.
+class _FakeUnread extends ChangeNotifier implements SocialUnreadSource {
+  int _count = 0;
+  int refreshes = 0;
+
+  @override
+  int get unreadCount => _count;
+
+  set count(int value) {
+    _count = value;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> refresh() async => refreshes++;
+}
+
+/// Takes every [RunStartRequests] the shell sends before the mounted recorder
+/// can, so a test sees what the centre button asked for without a real
+/// countdown asking the platform for location. Must be called before
+/// [_pump]: listeners run in the order they were added.
+List<RunStartRequest> _captureStartRequests() {
+  final taken = <RunStartRequest>[];
+  void listener() {
+    final r = runStartRequests.take();
+    if (r != null) taken.add(r);
+  }
+
+  runStartRequests.addListener(listener);
+  addTearDown(() {
+    runStartRequests.removeListener(listener);
+    runIdleShowing.value = true;
+    runCountdownShowing.value = false;
+  });
+  return taken;
 }
 
 /// [text] inside the long-press menu's sheet, so a page's own copy of the
@@ -342,6 +383,110 @@ void main() {
               'the wizard while the stamp is queued');
       expect(prefs.setupWizardDismissed, isTrue,
           reason: 'the queued stamp retries on the next launch');
+    });
+  });
+
+  group("Home's links select tabs rather than push copies (issue #1374)", () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets("today's lift card selects the hub's Gym tab", (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      await pumpUntil(
+          tester, () => find.byType(GymSummaryCard).evaluate().isNotEmpty,
+          describe: "Today's lift card");
+
+      await tester.ensureVisible(find.byType(GymSummaryCard));
+      await tester.tap(find.byType(GymSummaryCard));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(shellPage(tester), 1, reason: 'the shell shows the Fitness hub');
+      expect(find.byType(GymScreen), findsOneWidget,
+          reason: "the hub's own Gym tab");
+      expect(find.byType(BackButton), findsNothing,
+          reason: 'no second Gym screen pushed over the shell');
+      tester.takeException();
+    });
+
+    testWidgets("Today's toolbar is its title and the overflow only",
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(find.byIcon(Icons.dynamic_feed_outlined), findsNothing);
+      expect(find.byIcon(Icons.person_outline), findsNothing);
+      expect(find.byIcon(Icons.notifications_outlined), findsNothing);
+      expect(find.byKey(const Key('dashboardMoreMenu')), findsOneWidget);
+    });
+  });
+
+  group('the Social nav item (issue #1374)', () {
+    Finder socialItem() => find.ancestor(
+        of: find.descendant(
+            of: find.byType(BottomAppBar), matching: find.text('Social')),
+        matching: find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.label == 'Social'));
+
+    testWidgets('carries a dot while messages wait unread, said in its value',
+        (tester) async {
+      final unread = _FakeUnread();
+      final s = await _makeStores();
+      await _pump(tester, s, socialUnread: unread);
+      expect(find.byKey(const ValueKey('navUnreadDot')), findsNothing);
+      expect(tester.widget<Semantics>(socialItem()).properties.value, isNull);
+
+      unread.count = 3;
+      await tester.pump();
+      final dot = find.byKey(const ValueKey('navUnreadDot'));
+      expect(dot, findsOneWidget);
+      expect(tester.widget<Badge>(dot).isLabelVisible, isTrue,
+          reason: 'a dot, a shape on the icon, not a tint');
+      expect(tester.widget<Semantics>(socialItem()).properties.value,
+          '3 unread messages');
+
+      unread.count = 0;
+      await tester.pump();
+      expect(find.byKey(const ValueKey('navUnreadDot')), findsNothing);
+    });
+
+    testWidgets('re-reads the count on launch and on every page change',
+        (tester) async {
+      final unread = _FakeUnread();
+      final s = await _makeStores();
+      await _pump(tester, s, socialUnread: unread);
+      expect(unread.refreshes, 1);
+      await tester.tap(find.text('Social'));
+      await tester.pump();
+      expect(unread.refreshes, 2);
+      tester.takeException();
+    });
+
+    testWidgets('the selected destination wears a pill, not only a colour',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final pill = find.byKey(const ValueKey('navSelectedIndicator'));
+      expect(pill, findsOneWidget);
+      expect(
+          find.ancestor(
+              of: pill,
+              matching: find.byWidgetPredicate((w) =>
+                  w is Semantics &&
+                  w.properties.label == 'Home' &&
+                  w.properties.selected == true)),
+          findsOneWidget);
+      await tester.tap(find.text('Social'));
+      await tester.pump();
+      expect(find.descendant(of: socialItem(), matching: pill), findsOneWidget,
+          reason: 'the pill follows the selection');
+      tester.takeException();
     });
   });
 
@@ -913,6 +1058,102 @@ void main() {
     });
   });
 
+  group('the docked centre button is the Start on the idle Run page (#1374)',
+      () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    Finder caption(String text) => find.descendant(
+        of: find.byType(BottomAppBar), matching: find.text(text));
+
+    for (final fanMode in [false, true]) {
+      final mode = fanMode ? 'the "+" fan' : 'run-primary';
+
+      testWidgets(
+          '$mode: one tap starts the countdown, and a tap during it cancels',
+          (tester) async {
+        final starts = _captureStartRequests();
+        final s = await _makeStores();
+        if (fanMode) await _seedLoggedLift(tester, s);
+        await _pump(tester, s);
+
+        if (fanMode) {
+          await tester.tap(find.byTooltip('Log'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          await tester.tap(find.byTooltip('Log run'));
+        } else {
+          await tester.tap(find.byType(FloatingActionButton));
+        }
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        tester.takeException();
+        expect(shellPage(tester), 2);
+        expect(starts, isEmpty,
+            reason: 'reaching the Run page does not start a run by itself');
+
+        expect(caption('Start'), findsOneWidget);
+        expect(_semanticsLabelled('Start run'), findsOneWidget);
+        expect(find.text('START'), findsNothing,
+            reason: 'the panel draws no second Start under the docked one');
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(starts, [RunStartRequest.start]);
+        expect(find.textContaining('already on'), findsNothing);
+
+        runIdleShowing.value = false;
+        runCountdownShowing.value = true;
+        await tester.pump();
+        expect(caption('Cancel'), findsOneWidget);
+        expect(_semanticsLabelled('Cancel the start'), findsOneWidget);
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(starts, [RunStartRequest.start, RunStartRequest.cancel]);
+        tester.takeException();
+      });
+    }
+
+    testWidgets('away from the Run page the button keeps its own meaning',
+        (tester) async {
+      final starts = _captureStartRequests();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(caption('Start'), findsNothing);
+      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(starts, isEmpty);
+    });
+
+    testWidgets("Home's Start asks for the start and lands on the Run page",
+        (tester) async {
+      final starts = _captureStartRequests();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.runAsync(() async {});
+      await pumpUntil(
+          tester,
+          () => find
+              .byKey(const Key('dashboardWelcomeStart'))
+              .evaluate()
+              .isNotEmpty,
+          describe: "the welcome state's Start");
+
+      await tester.tap(find.byKey(const Key('dashboardWelcomeStart')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(starts, [RunStartRequest.start],
+          reason: 'one tap on Home starts the run, behind the countdown');
+      expect(shellPage(tester), 2);
+    });
+  });
+
   group('the docked centre button is the Stop on the Run page', () {
     double shellPage(WidgetTester tester) {
       final controller =
@@ -1008,8 +1249,16 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         expect(find.byType(HoldToStopButton), findsOneWidget);
 
-        // The recorder's finished state releases the flag.
+        // The recorder's finished state releases the flag and shows the
+        // summary, which is not the start screen, so the docked button is
+        // not its Start (issue #1374).
+        addTearDown(() {
+          runSummaryShowing.value = false;
+          runIdleShowing.value = true;
+        });
         runRecordingActive.value = false;
+        runSummaryShowing.value = true;
+        runIdleShowing.value = false;
         await tester.pump();
 
         expect(find.byType(HoldToStopButton), findsNothing);
@@ -1612,9 +1861,11 @@ void main() {
       void listener() => dismissals++;
       runSummaryDismissRequests.addListener(listener);
       addTearDown(() => runSummaryDismissRequests.removeListener(listener));
+      final starts = _captureStartRequests();
       final s = await _makeStores();
       await _pump(tester, s);
       runSummaryShowing.value = true;
+      runIdleShowing.value = false;
 
       // From another page: the tap lands on Run with the summary closing.
       await tester.tap(find.byType(FloatingActionButton));
@@ -1632,15 +1883,16 @@ void main() {
       expect(find.textContaining('already on'), findsNothing);
       expect(shellPage(tester), 2);
 
-      // Once the start screen is what shows, the banner is true again.
+      // Once the start screen is what shows, the button is its Start.
       runSummaryShowing.value = false;
+      runIdleShowing.value = true;
+      await tester.pump();
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(dismissals, 2);
-      expect(find.text("You're already on Run"), findsOneWidget);
-      // showTopBanner arms an auto-dismiss timer; let it run out.
-      await tester.pump(const Duration(seconds: 8));
+      expect(starts, [RunStartRequest.start]);
+      expect(find.textContaining('already on'), findsNothing);
     });
 
     testWidgets('long-press for a pure runner opens the runner menu, not a '

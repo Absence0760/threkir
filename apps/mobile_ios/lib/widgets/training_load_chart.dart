@@ -225,11 +225,15 @@ class _LegendKey extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          AppLocalizations.of(context)
-              .trainingLoadLegendEntry(label, value.round()),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        // Flexible, so at 2x on a 320 dp phone the entry wraps under its
+        // swatch instead of running 55 dp past the card (issue #1374).
+        Flexible(
+          child: Text(
+            AppLocalizations.of(context)
+                .trainingLoadLegendEntry(label, value.round()),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],

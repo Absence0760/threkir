@@ -189,6 +189,44 @@ void main() {
     expect(fn.contains('readChunked('), isTrue);
   });
 
+  test('the follow graph a picker filters is walked to its end', () {
+    // New message, Send route, the group and share-audience pickers and the
+    // feed's author filter filter the whole follow graph on the client; one
+    // capped page of it hid everyone past the cap (decisions § 2507). Both
+    // directions go through _walkFollowEdges, which walks by keyset cursor
+    // and lets a failed page throw.
+    final walk = body('Future<List<UserProfileRow>> _walkFollowEdges(');
+    expect(walk, isNotEmpty, reason: '_walkFollowEdges moved or was renamed');
+    expect(walk.contains('await _walk('), isTrue);
+    expect(walk.contains('.limit('), isFalse);
+    final graph = body('fetchFollowGraph(String userId)');
+    expect(graph, isNotEmpty, reason: 'fetchFollowGraph moved or was renamed');
+    expect(graph.contains('_walkFollowEdges('), isTrue);
+    expect(graph.contains('fetchAllFollowing(userId)'), isTrue);
+    expect(
+      body('Future<List<UserProfileRow>> fetchAllFollowing(')
+          .contains('_walkFollowEdges('),
+      isTrue,
+    );
+    expect(
+      body('Future<List<UserProfileRow>> fetchShareCandidates()')
+          .contains('fetchFollowGraph(userId)'),
+      isTrue,
+      reason: 'the share audience is the whole follow graph',
+    );
+    final code = src
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n');
+    expect(
+      RegExp(r'(?<!Future<KeysetPage<UserProfileRow>> )fetchFollow(ers|ing)\(')
+          .hasMatch(code),
+      isFalse,
+      reason: 'inside the client the follow graph is read with '
+          'fetchFollowGraph / fetchAllFollowing, never one page',
+    );
+  });
+
   test('_followPage filters after the cursor and returns the next one', () {
     expect(followPage, isNotEmpty, reason: '_followPage moved or was renamed');
     expect(followPage.contains('keysetAfter(order, after)'), isTrue);

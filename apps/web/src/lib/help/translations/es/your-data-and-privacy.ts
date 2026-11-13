@@ -30,7 +30,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Preferencias** de la pestaña **Tú**.',
+						'En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Privacidad y uso compartido** de la pestaña **Tú**.',
 						'Para cambiar una sola carrera más tarde, ábrela y toca **Privado** o **Público** debajo de su título. Antes de hacer pública una carrera, te lo preguntamos y te mostramos lo que ocultarán tus zonas de privacidad.',
 					],
 				},
@@ -100,7 +100,7 @@ export const translation: GuideTranslation = {
 		's0.b0.i4': 'cc3a91ab3dc6a2a6',
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
-		's1.b0.i0': '7b3a2d8b5b822576',
+		's1.b0.i0': 'bf8692c8ac6194c3',
 		's1.b0.i1': '8b40e69003586cd6',
 		's1.b1': 'bdd9bb09bf384ad6',
 		's1.b2.i0': 'aab065e45ac34e20',

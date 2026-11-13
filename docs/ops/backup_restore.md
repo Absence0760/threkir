@@ -180,7 +180,7 @@ migrations — see `personal_data_export_profile_guard_test.go` and
   backup". Implemented in `apps/web/src/lib/backup/backup.ts`. Uses `JSZip`.
   Both paths require an authenticated session — there's no local
   persistence to stage into.
-- **Mobile Android** → Settings → Account → "Full backup" / "Restore from backup".
+- **Mobile Android** → You → Account → "Full backup" / "Restore from backup".
   Implemented in `apps/mobile_android/lib/backup.dart`. Uses the
   `archive` package. **Restore works offline** — if the user isn't
   signed in, runs + routes are hydrated into `LocalRunStore` /

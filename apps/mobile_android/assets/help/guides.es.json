@@ -51,7 +51,7 @@
           {
             "type": "steps",
             "items": [
-              "En la web, abre [[route:/settings/notifications|Notificaciones]] en Configuración. En la app móvil, abre **Preferencias** en la pestaña **Tú** y desplázate hasta **Notificaciones**.",
+              "En la web, abre [[route:/settings/notifications|Notificaciones]] en Configuración. En la app móvil, abre **Notificaciones** en la pestaña **Tú**.",
               "Ajusta **Notificaciones por correo** y **Notificaciones push** por separado."
             ]
           },
@@ -137,7 +137,7 @@
             "type": "steps",
             "items": [
               "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y marca **Perfil privado** en **Que te encuentren**.",
-              "En la app móvil, abre **Preferencias** en la pestaña **Tú** y activa **Perfil privado** en **Privacidad y uso compartido**."
+              "En la app móvil, abre **Privacidad y uso compartido** en la pestaña **Tú** y activa **Perfil privado**."
             ]
           },
           {
@@ -416,7 +416,7 @@
           {
             "type": "steps",
             "items": [
-              "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Preferencias** de la pestaña **Tú**.",
+              "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Privacidad y uso compartido** de la pestaña **Tú**.",
               "Para cambiar una sola carrera más tarde, ábrela y toca **Privado** o **Público** debajo de su título. Antes de hacer pública una carrera, te lo preguntamos y te mostramos lo que ocultarán tus zonas de privacidad."
             ]
           },
@@ -1926,7 +1926,7 @@
           },
           {
             "type": "p",
-            "text": "Los corredores desactivan ambos con **Carrera a punto de empezar**: en la web, en [[route:/settings/notifications|Notificaciones]]; en la app del móvil, en **Preferencias**, dentro de la pestaña **Tú**."
+            "text": "Los corredores desactivan ambos con **Carrera a punto de empezar**: en la web, en [[route:/settings/notifications|Notificaciones]]; en la app del móvil, en **Notificaciones**, dentro de la pestaña **Tú**."
           }
         ]
       },
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "Registrar desde una foto forma parte de Pro. Registrar alimentos a mano sigue siendo gratis.",
-              "Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, abre Ajustes → Cuenta y acéptalo allí.",
+              "Usa IA, así que necesita el aviso de IA más reciente. Si se te pide aceptarlo, el mensaje incluye un enlace a la página de tu cuenta, donde puedes aceptarlo.",
               "La foto solo se usa para calcular qué hay en el plato. Los datos de ubicación y de la cámara se eliminan antes de enviarla, y Threkir no guarda la foto."
             ]
           },
@@ -3933,7 +3933,7 @@
           {
             "type": "steps",
             "items": [
-              "Abre la pestaña **Tú**, luego **Preferencias**, y en **Privacidad y uso compartido** toca **Zonas de privacidad**.",
+              "Abre la pestaña **Tú**, luego **Privacidad y uso compartido**, y toca **Zonas de privacidad**.",
               "Toca el mapa para colocar una zona. Usa **Buscar lugares…** o **Ubicarme** para mover antes el mapa.",
               "Ajusta el control deslizante de **Radio**.",
               "Toca **Guardar**. No cambia nada hasta que guardes."

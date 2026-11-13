@@ -30,7 +30,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Preferências**, no separador **Tu**.',
+						'Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Privacidade e partilha**, no separador **Tu**.',
 						'Para alterar uma única corrida mais tarde, abra-a e toque em **Privado** ou **Público** por baixo do título. Antes de tornar uma corrida pública, pedimos confirmação e mostramos o que as suas zonas de privacidade vão esconder.',
 					],
 				},
@@ -100,7 +100,7 @@ export const translation: GuideTranslation = {
 		's0.b0.i4': 'cc3a91ab3dc6a2a6',
 		's0.b1': '0bbe7c39a03a9a09',
 		's1.heading': 'ac353e580fc0908f',
-		's1.b0.i0': '7b3a2d8b5b822576',
+		's1.b0.i0': 'bf8692c8ac6194c3',
 		's1.b0.i1': '8b40e69003586cd6',
 		's1.b1': 'bdd9bb09bf384ad6',
 		's1.b2.i0': 'aab065e45ac34e20',

@@ -8,7 +8,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, StatGrid, StatTile, StatusPill, motionScrollTo;
+    show
+        AppSemanticColors,
+        KeepAliveChild,
+        StatGrid,
+        StatTile,
+        StatusPill,
+        motionScrollTo;
 
 import '../ai_disclosure.dart';
 import '../apple_watch_route_bridge.dart';
@@ -1193,7 +1199,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               // FlutterMap + MapController; scrolling back rebuilt it from
               // scratch — a visible tile reload plus a jank spike. Keeping it
               // alive also pauses its pulse ticker while off-screen.
-              _KeepAliveMap(
+              KeepAliveChild(
                 child: SizedBox(
                   height: detailMapHeight(viewport.maxHeight),
                   child: _displayWaypoints.length < 2
@@ -2884,30 +2890,5 @@ class RouteTransferClubPicker extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// Preserves its child's State when it scrolls out of the enclosing
-/// ListView's cache extent. Wraps the route-detail map so the FlutterMap +
-/// MapController aren't disposed and rebuilt (with a full tile reload) on
-/// every scroll past it. Same `AutomaticKeepAliveClientMixin` idiom as
-/// `_LazyKeepAliveTab` on the home shell.
-class _KeepAliveMap extends StatefulWidget {
-  final Widget child;
-  const _KeepAliveMap({required this.child});
-
-  @override
-  State<_KeepAliveMap> createState() => _KeepAliveMapState();
-}
-
-class _KeepAliveMapState extends State<_KeepAliveMap>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
   }
 }

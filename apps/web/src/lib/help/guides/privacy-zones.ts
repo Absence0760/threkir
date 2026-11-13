@@ -57,7 +57,7 @@ export const guide: Guide = {
 				{
 					type: 'steps',
 					items: [
-						'Open the **You** tab, then **Preferences**, and under **Privacy & sharing** tap **Privacy zones**.',
+						'Open the **You** tab, then **Privacy & sharing**, and tap **Privacy zones**.',
 						'Tap the map to drop a zone. Use **Search places…** or **Locate me** to move the map first.',
 						'Adjust the **Radius** slider.',
 						'Tap **Save**. Nothing changes until you save.',

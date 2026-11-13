@@ -6,9 +6,8 @@
 // so the way there cannot drift from the screens again.
 //
 // The exemptions below give directions into somewhere other than this app's
-// settings, or are wording that changes only with a sign-off. The map may only
-// shrink: an entry whose key is gone or whose string no longer gives a path
-// fails, so a fixed string cannot stay listed.
+// settings. The map may only shrink: an entry whose key is gone or whose
+// string no longer gives a path fails, so a fixed string cannot stay listed.
 
 import 'dart:convert';
 import 'dart:io';
@@ -24,10 +23,6 @@ const _exempt = {
       'the store\'s subscription settings, where an auto-renewal is cancelled',
   'proSubscribeSubtitleConfiguredAnnual':
       'the store\'s subscription settings, where an auto-renewal is cancelled',
-  'coachConsentProcessing':
-      'AI-disclosure wording shared with web consentTermsPrefix and pinned by '
-          'ai_disclosure_notice_test; where consent is withdrawn is part of '
-          'the consent text, so it changes with a CISO and counsel sign-off',
 };
 
 /// "Settings → Gear", "Preferences › Training", "You > Settings": a named

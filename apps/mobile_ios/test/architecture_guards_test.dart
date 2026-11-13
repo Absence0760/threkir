@@ -1309,41 +1309,31 @@ void main() {
     });
   });
 
-  group('run-detail map survives ListView scroll', () {
-    test('the map card is wrapped in a keep-alive so scroll does not rebuild it',
-        () {
-      // Reason: the run-detail map is a live FlutterMap rendered as an
-      // ordinary ListView child. A bare list child is disposed once it
-      // scrolls past the cache extent, tearing down the FlutterMap +
-      // MapController; scrolling back rebuilt it from scratch — a visible
-      // tile reload plus a jank spike (GitHub #274). The fix wraps the map
-      // card in a keep-alive (AutomaticKeepAliveClientMixin, wantKeepAlive
-      // => true), which both preserves its State and pauses its pulse ticker
-      // while off-screen. Catches a regression that unwraps the map.
-      final source =
-          File('lib/screens/run_detail_screen.dart').readAsStringSync();
-      expect(
-        source,
-        contains('class _KeepAliveMap'),
-        reason: 'The run-detail map must keep a _KeepAliveMap wrapper so the '
-            'ListView does not dispose + rebuild the FlutterMap on scroll.',
-      );
-      expect(
-        source,
-        contains('AutomaticKeepAliveClientMixin'),
-        reason: '_KeepAliveMap must mix in AutomaticKeepAliveClientMixin — '
-            'that is what keeps the map State alive past the cache extent.',
-      );
-      // The map (LiveRunMap, inside the SizedBox card) must sit UNDER the
-      // wrapper: _KeepAliveMap( must appear before the map's LiveRunMap in
-      // source order. If LiveRunMap moves ahead of the wrapper, the card is
-      // a bare list child again and the reload regression is back.
-      final wrapIdx = source.indexOf('_KeepAliveMap(');
-      final mapIdx = source.indexOf('LiveRunMap(');
-      expect(wrapIdx >= 0 && wrapIdx < mapIdx, isTrue,
-          reason: '_KeepAliveMap( must wrap the map card (appear before '
-              'LiveRunMap in source order).');
-    });
+  group('detail maps survive ListView scroll', () {
+    // Reason: the run- and route-detail maps (LiveRunMap, a FlutterMap) are
+    // ordinary ListView children. A bare list child is disposed once it
+    // scrolls past the cache extent, tearing down the FlutterMap +
+    // MapController; scrolling back rebuilt it from scratch — a visible tile
+    // reload plus a jank spike (GitHub #274). Each map card is wrapped in
+    // ui_kit's KeepAliveChild, which both preserves its State and pauses its
+    // pulse ticker while off-screen; keep_alive_child_test pins that it does.
+    // Catches a regression that unwraps the map or grows a private copy.
+    for (final (file, map) in [
+      ('lib/screens/run_detail_screen.dart', 'LiveRunMap('),
+      ('lib/screens/route_detail_screen.dart', 'LiveRunMap('),
+    ]) {
+      test('$file wraps its map card in KeepAliveChild', () {
+        final source = File(file).readAsStringSync();
+        final wrapIdx = source.indexOf('KeepAliveChild(');
+        final mapIdx = source.indexOf(map);
+        expect(wrapIdx >= 0 && mapIdx > wrapIdx, isTrue,
+            reason: 'KeepAliveChild( must wrap the map card (appear before '
+                '$map in source order).');
+        expect(source, isNot(contains('AutomaticKeepAliveClientMixin')),
+            reason: 'use ui_kit\'s KeepAliveChild rather than a private '
+                'keep-alive copy.');
+      });
+    }
   });
 
   group('privacy-zone removal confirms before erasing', () {

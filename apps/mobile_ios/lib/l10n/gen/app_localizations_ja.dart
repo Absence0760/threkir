@@ -15693,6 +15693,182 @@ class AppLocalizationsJa extends AppLocalizations {
       '最近のベストな走りからリーゲルの換算式で算出し、新しさで重み付けしています。近い距離ほど信頼できます。';
 
   @override
+  String get lineCalibrationEntryTitle => 'ライン較正';
+
+  @override
+  String get lineCalibrationEntrySubtitle => 'デバッグビルド: 計時ラインの誤差値';
+
+  @override
+  String get lineCalibrationTitle => 'ライン較正（デバッグ）';
+
+  @override
+  String get lineCalibrationIntro =>
+      'キャプチャを開始し、「ラン」タブでラインを通過するランを記録してから、ここでキャプチャを停止してください。実際の各通過をNTP同期した時計に対して動画で計時し、その時刻を入力してください。CSVには誤差値と件数のみが含まれます。';
+
+  @override
+  String lineCalibrationCapturing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'キャプチャ中: $count件の測位',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String lineCalibrationIdle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '停止中: $count件の測位を保持',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationStart => 'キャプチャを開始';
+
+  @override
+  String get lineCalibrationStop => 'キャプチャを停止';
+
+  @override
+  String get lineCalibrationRefresh => '更新';
+
+  @override
+  String get lineCalibrationLatLabel => 'ライン中心の緯度';
+
+  @override
+  String get lineCalibrationLngLabel => 'ライン中心の経度';
+
+  @override
+  String get lineCalibrationBearingLabel => '進行方位（度）';
+
+  @override
+  String get lineCalibrationHalfWidthLabel => '半幅（m）';
+
+  @override
+  String get lineCalibrationHere => '現在地を中心にする';
+
+  @override
+  String lineCalibrationMeasure(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'サーバー時計を測定（$count回の往復）',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationOffsetLabel => '時計のずれ（ms）';
+
+  @override
+  String get lineCalibrationOffsetHelper => 'サーバー − 端末';
+
+  @override
+  String get lineCalibrationApproachLabel => '進入角';
+
+  @override
+  String get lineCalibrationApproach90 => 'ラインに対して90°';
+
+  @override
+  String get lineCalibrationApproach30 => 'ラインに対して30°';
+
+  @override
+  String get lineCalibrationApproachParallel20 => '平行、20 m離れて';
+
+  @override
+  String get lineCalibrationApproachParallel40 => '平行、40 m離れて';
+
+  @override
+  String get lineCalibrationApproachStanding => 'ライン上で静止';
+
+  @override
+  String get lineCalibrationPaceLabel => 'ペース';
+
+  @override
+  String get lineCalibrationPaceWalk => '歩き';
+
+  @override
+  String get lineCalibrationPaceRun => 'ラン';
+
+  @override
+  String get lineCalibrationPaceStill => '静止';
+
+  @override
+  String get lineCalibrationCarryLabel => '携帯方法';
+
+  @override
+  String get lineCalibrationCarryHand => '手に持つ';
+
+  @override
+  String get lineCalibrationCarryPocket => 'ポケットに入れる';
+
+  @override
+  String get lineCalibrationInstantsLabel => '実際の通過時刻';
+
+  @override
+  String lineCalibrationInstantsHint(String time, String instant) {
+    return '$time または $instant';
+  }
+
+  @override
+  String get lineCalibrationInstantsHelper =>
+      '1行に1つ。時刻はキャプチャ当日のこの端末のタイムゾーンで解釈されます。日付をまたぐ場合や基準時計がUTCを表示している場合は、タイムゾーン付きのISO時刻を入力してください。';
+
+  @override
+  String get lineCalibrationClockFailed => 'サーバー時計に接続できませんでした。ずれを手動で入力してください。';
+
+  @override
+  String get lineCalibrationNoFix => '位置を取得できません。';
+
+  @override
+  String get lineCalibrationLineMissing => 'ラインを入力してください: 中心、進行方位、半幅。';
+
+  @override
+  String get lineCalibrationOffsetMissing => '時計のずれを測定するか入力してください。';
+
+  @override
+  String lineCalibrationInstantsInvalid(String time) {
+    return '1行に1つの時刻: $time または ISO-8601。';
+  }
+
+  @override
+  String get lineCalibrationFewFixes => 'キャプチャの測位が2件未満です。';
+
+  @override
+  String get lineCalibrationLineUnusable => 'このラインは使用できません。';
+
+  @override
+  String get lineCalibrationScore => 'このキャプチャを評価';
+
+  @override
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  ) {
+    return '$matched/$total件一致、見逃し$missed件、誤検出$falseCount件、ニアミス$near件; 中央値 $median ms、|誤差| p50 $p50 ms、p95 $p95 ms; ずれ ±$offset ms';
+  }
+
+  @override
+  String lineCalibrationNothingMatched(int ms) {
+    return '一致はありませんでしたが、検出は実際の時刻から中央値で$ms ms離れています。時計、ずれ、タイムゾーンを確認してください。';
+  }
+
+  @override
+  String get lineCalibrationShare => 'CSVを共有';
+
+  @override
+  String get lineCalibrationCopy => 'CSVをコピー';
+
+  @override
   String get settingsSectionDeveloper => '開発者';
 
   @override

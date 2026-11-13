@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'set-up-a-race',
 	title: 'Ein Rennen einrichten',
-	summary: 'Erstelle ein Club-Event mit einer oder mehreren Strecken, damit Teilnehmende eine Distanz wählen, live gemessen werden und in einer Rangliste pro Strecke landen.',
+	summary: 'Erstelle ein Club-Event mit einer oder mehreren Strecken, damit Teilnehmende eine Distanz wählen, live gemessen werden und in einer Bestenliste pro Strecke landen.',
 	sections: [
 		{
 			heading: 'Bevor du beginnst',
@@ -48,7 +48,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Werden am selben Tag mehrere Distanzen gelaufen? Füge jede zusätzliche Distanz als eigene Strecke hinzu. Jede Strecke bekommt ihre eigene Rangliste.',
+					text: 'Werden am selben Tag mehrere Distanzen gelaufen? Füge jede zusätzliche Distanz als eigene Strecke hinzu. Jede Strecke bekommt ihre eigene Bestenliste.',
 				},
 				{
 					type: 'steps',
@@ -101,7 +101,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst.',
+					text: 'Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Bestenliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst.',
 				},
 				{
 					type: 'p',

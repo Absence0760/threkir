@@ -2728,7 +2728,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Ein Lauf, den du nicht als deinen Versuch markierst, nimmt nie am Rennen teil: Er sendet keine Live-Position und bekommt kein Ergebnis. So landet ein Lauf, den du gar nicht als Rennen laufen wolltest, nie in der Rangliste."
+            "text": "Ein Lauf, den du nicht als deinen Versuch markierst, nimmt nie am Rennen teil: Er sendet keine Live-Position und bekommt kein Ergebnis. So landet ein Lauf, den du gar nicht als Rennen laufen wolltest, nie in der Bestenliste."
           }
         ]
       },
@@ -2746,7 +2746,7 @@
           },
           {
             "type": "p",
-            "text": "Was die Zeiten in der Rangliste bedeuten, steht in [[guide:race-results-explained|Rennergebnisse erklärt]]."
+            "text": "Was die Zeiten in der Bestenliste bedeuten, steht in [[guide:race-results-explained|Rennergebnisse erklärt]]."
           }
         ]
       },
@@ -2782,7 +2782,7 @@
     "id": "set-up-a-race",
     "lang": "de",
     "title": "Ein Rennen einrichten",
-    "summary": "Erstelle ein Club-Event mit einer oder mehreren Strecken, damit Teilnehmende eine Distanz wählen, live gemessen werden und in einer Rangliste pro Strecke landen.",
+    "summary": "Erstelle ein Club-Event mit einer oder mehreren Strecken, damit Teilnehmende eine Distanz wählen, live gemessen werden und in einer Bestenliste pro Strecke landen.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2841,7 +2841,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Werden am selben Tag mehrere Distanzen gelaufen? Füge jede zusätzliche Distanz als eigene Strecke hinzu. Jede Strecke bekommt ihre eigene Rangliste."
+            "text": "Werden am selben Tag mehrere Distanzen gelaufen? Füge jede zusätzliche Distanz als eigene Strecke hinzu. Jede Strecke bekommt ihre eigene Bestenliste."
           },
           {
             "type": "steps",
@@ -2894,7 +2894,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
+            "text": "Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Bestenliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
           },
           {
             "type": "p",

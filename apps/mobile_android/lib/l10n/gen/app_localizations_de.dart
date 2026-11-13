@@ -1316,7 +1316,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Threkir speichert dein Geschlecht, deine Größe, deinen Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in deinen Plänen, deine Angabe zu Medikamenten, die deine Herzfrequenz beeinflussen, und dein Ernährungstagebuch und nutzt sie zusammen mit deinem Geburtsdatum als Gesundheitsdaten (Art. 9 Abs. 2 lit. a DSGVO), um dein Training und deine Ernährungsziele zu personalisieren und dich in Segment-Bestenlisten nach Geschlecht und Altersgruppe einzuordnen – nur solange diese Option aktiviert ist. Schalte sie aus und speichere, um die Einwilligung zu widerrufen und diese Daten zu löschen; dein Geburtsdatum bleibt als Altersangabe gespeichert.';
+      'Threkir speichert dein Geschlecht, deine Größe, deinen Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in deinen Plänen, deine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und dein Ernährungstagebuch und nutzt sie zusammen mit deinem Geburtsdatum als Gesundheitsdaten (Art. 9 Abs. 2 lit. a DSGVO), um dein Training und deine Ernährungsziele zu personalisieren und dich in Segment-Bestenlisten nach Geschlecht und Altersgruppe einzuordnen – nur solange diese Option aktiviert ist. Schalte sie aus und speichere, um die Einwilligung zu widerrufen und diese Daten zu löschen; dein Geburtsdatum bleibt als Altersangabe gespeichert.';
 
   @override
   String get bodyMetricsHeight => 'Größe';
@@ -1362,7 +1362,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Dadurch werden dein Geschlecht, deine Größe, dein Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in deinen Plänen, deine Angabe zu Medikamenten, die deine Herzfrequenz beeinflussen, und dein Ernährungstagebuch dauerhaft gelöscht. Deine Aktivitäten selbst bleiben erhalten, und dein Geburtsdatum bleibt als Altersangabe gespeichert, wird aber nicht mehr als Gesundheitsdatum genutzt. Das kann nicht rückgängig gemacht werden.';
+      'Dadurch werden dein Geschlecht, deine Größe, dein Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in deinen Plänen, deine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und dein Ernährungstagebuch dauerhaft gelöscht. Deine Aktivitäten selbst bleiben erhalten, und dein Geburtsdatum bleibt als Altersangabe gespeichert, wird aber nicht mehr als Gesundheitsdatum genutzt. Das kann nicht rückgängig gemacht werden.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Widerrufen & löschen';
@@ -2059,7 +2059,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'Ich willige ein, dass Threkir mein Geschlecht, meine Größe, meinen Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit meinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in meinen Plänen, meine Angabe zu Medikamenten, die meine Herzfrequenz beeinflussen, und mein Ernährungstagebuch speichert und sie zusammen mit meinem Geburtsdatum als Gesundheitsdaten (Art. 9 Abs. 2 lit. a DSGVO) nutzt, um mein Training und meine Ernährungsziele zu personalisieren und mich in Segment-Bestenlisten nach Geschlecht und Altersgruppe einzuordnen. Ich kann diese Einwilligung jederzeit widerrufen.';
+      'Ich willige ein, dass Threkir mein Geschlecht, meine Größe, meinen Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die mit meinen Aktivitäten aufgezeichnete Herzfrequenz, die Herzfrequenzvorgaben in meinen Plänen, meine Einstellung zu Medikamenten, die die Herzfrequenz beeinflussen, und mein Ernährungstagebuch speichert und sie zusammen mit meinem Geburtsdatum als Gesundheitsdaten (Art. 9 Abs. 2 lit. a DSGVO) nutzt, um mein Training und meine Ernährungsziele zu personalisieren und mich in Segment-Bestenlisten nach Geschlecht und Altersgruppe einzuordnen. Ich kann diese Einwilligung jederzeit widerrufen.';
 
   @override
   String get setupPrivacyTitle => 'Wer sieht deine Läufe?';
@@ -11819,7 +11819,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get workoutEditErrHrNeedsConsent =>
-      'Ein Herzfrequenz-Ziel braucht die Einwilligung der laufenden Person zu Gesundheitsdaten. Lösche es oder bitte sie, in ihren Einstellungen einzuwilligen.';
+      'Eine Herzfrequenzvorgabe braucht die Einwilligung der laufenden Person zu Gesundheitsdaten. Lösche sie oder bitte die Person, in ihren Einstellungen einzuwilligen.';
 
   @override
   String get workoutEditNotesLabel => 'Notizen';
@@ -20843,7 +20843,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthData =>
-      'Pläne können dein Geburtsdatum nur mit deiner Einwilligung zu Gesundheitsdaten an dein Alter anpassen.';
+      'Pläne können dein Geburtsdatum nur mit deiner Einwilligung zu Gesundheitsdaten nutzen, um sich an dein Alter anzupassen.';
 
   @override
   String get planNewDobHintHealthDataAction => 'Einwilligung prüfen';

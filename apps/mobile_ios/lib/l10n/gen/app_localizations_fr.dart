@@ -542,7 +542,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$count activités ont été importées sans leur fréquence cardiaque',
       one: '$count activité a été importée sans sa fréquence cardiaque',
     );
-    return '$_temp0 : Threkir ne conserve la fréquence cardiaque qu\'avec votre consentement au traitement de vos données de santé.';
+    return '$_temp0 : Threkir ne conserve la fréquence cardiaque qu\'avec votre consentement aux données de santé.';
   }
 
   @override
@@ -1313,7 +1313,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Threkir conserve votre genre, votre taille, votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités, les cibles de fréquence cardiaque de vos plans, l\'indication qu\'un médicament modifie votre fréquence cardiaque et votre journal alimentaire, et les utilise avec votre date de naissance en tant que données de santé (art. 9, par. 2, point a, du RGPD) pour personnaliser votre entraînement et vos objectifs nutritionnels et vous placer dans les classements de segments par genre et par tranche d\'âge, uniquement tant que cette option est activée. Désactivez-la puis enregistrez pour retirer votre consentement et effacer ces données ; votre date de naissance reste enregistrée pour attester de votre âge.';
+      'Threkir conserve votre genre, votre taille, votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités, les cibles de fréquence cardiaque de vos plans, votre réglage relatif aux médicaments qui modifient votre fréquence cardiaque et votre journal alimentaire, et les utilise avec votre date de naissance en tant que données de santé (art. 9, par. 2, point a, du RGPD) pour personnaliser votre entraînement et vos objectifs nutritionnels et vous placer dans les classements de segments par genre et par tranche d\'âge, uniquement tant que cette option est activée. Désactivez-la puis enregistrez pour retirer votre consentement et effacer ces données ; votre date de naissance reste enregistrée pour indiquer votre âge.';
 
   @override
   String get bodyMetricsHeight => 'Taille';
@@ -1359,7 +1359,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Cela efface définitivement votre genre, votre taille, votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités, les cibles de fréquence cardiaque de vos plans, l\'indication qu\'un médicament modifie votre fréquence cardiaque et votre journal alimentaire. Vos activités elles-mêmes sont conservées, et votre date de naissance reste enregistrée pour attester de votre âge, mais n\'est plus utilisée en tant que donnée de santé. Cette action est irréversible.';
+      'Cela efface définitivement votre genre, votre taille, votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités, les cibles de fréquence cardiaque de vos plans, votre réglage relatif aux médicaments qui modifient votre fréquence cardiaque et votre journal alimentaire. Vos activités elles-mêmes sont conservées, et votre date de naissance reste enregistrée pour indiquer votre âge, mais n\'est plus utilisée en tant que donnée de santé. Cette action est irréversible.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirer et effacer';
@@ -1370,7 +1370,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get healthConsentFoodBody =>
-      'Threkir ne conserve un journal alimentaire qu\'avec votre consentement au traitement de vos données de santé. Rien n\'est enregistré tant que vous ne l\'avez pas donné.';
+      'Threkir ne conserve un journal alimentaire qu\'avec votre consentement aux données de santé. Rien n\'est enregistré tant que vous ne l\'avez pas donné.';
 
   @override
   String get healthConsentGiveAction => 'Consulter le consentement';
@@ -2058,7 +2058,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'Je consens à ce que Threkir conserve mon genre, ma taille, mon historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec mes activités, les cibles de fréquence cardiaque de mes plans, l\'indication qu\'un médicament modifie ma fréquence cardiaque et mon journal alimentaire, et les utilise avec ma date de naissance en tant que données de santé (art. 9, par. 2, point a, du RGPD) pour personnaliser mon entraînement et mes objectifs nutritionnels et me placer dans les classements de segments par genre et par tranche d\'âge. Je peux retirer ce consentement à tout moment.';
+      'Je consens à ce que Threkir conserve mon genre, ma taille, mon historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec mes activités, les cibles de fréquence cardiaque de mes plans, mon réglage relatif aux médicaments qui modifient ma fréquence cardiaque et mon journal alimentaire, et les utilise avec ma date de naissance en tant que données de santé (art. 9, par. 2, point a, du RGPD) pour personnaliser mon entraînement et mes objectifs nutritionnels et me placer dans les classements de segments par genre et par tranche d\'âge. Je peux retirer ce consentement à tout moment.';
 
   @override
   String get setupPrivacyTitle => 'Qui voit vos courses ?';
@@ -2357,7 +2357,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runHeartRateNotSaved =>
-      'La fréquence cardiaque de cette activité n\'a pas été enregistrée : Threkir ne conserve la fréquence cardiaque qu\'avec votre consentement au traitement de vos données de santé.';
+      'La fréquence cardiaque de cette activité n\'a pas été enregistrée : Threkir ne conserve la fréquence cardiaque qu\'avec votre consentement aux données de santé.';
 
   @override
   String get runDone => 'Terminé';
@@ -20865,10 +20865,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthData =>
-      'Les plans ne peuvent utiliser votre date de naissance pour s\'adapter à votre âge qu\'avec votre consentement à l\'utilisation des données de santé.';
+      'Les plans ne peuvent utiliser votre date de naissance pour s\'adapter à votre âge qu\'avec votre consentement aux données de santé.';
 
   @override
-  String get planNewDobHintHealthDataAction => 'Vérifier le consentement';
+  String get planNewDobHintHealthDataAction => 'Consulter le consentement';
 
   @override
   String get messagesAiTag => 'IA';
@@ -21190,7 +21190,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'La fréquence cardiaque est une donnée de santé. Activez le consentement aux données de santé pour l\'afficher.';
 
   @override
-  String get streamerOverlayReviewConsent => 'Vérifier le consentement';
+  String get streamerOverlayReviewConsent => 'Consulter le consentement';
 
   @override
   String get streamerOverlaySettingsSaved =>

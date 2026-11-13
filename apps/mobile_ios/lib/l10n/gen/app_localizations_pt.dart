@@ -1316,7 +1316,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'A Threkir armazena o seu género, a sua altura, o seu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as suas atividades, as metas de frequência cardíaca dos seus planos, a indicação de que a sua frequência cardíaca é afetada por medicação e o seu registo alimentar, e utiliza-os com a sua data de nascimento como dados de saúde (art. 9, n.º 2, alínea a), do RGPD) para personalizar o seu treino e as suas metas de nutrição e para o colocar nas classificações de segmentos por género e faixa etária, apenas enquanto esta opção estiver ativa. Desative e guarde para retirar o consentimento e apagar estes dados; a sua data de nascimento fica guardada como registo da sua idade.';
+      'A Threkir armazena o seu género, a sua altura, o seu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as suas atividades, as metas de frequência cardíaca dos seus planos, a sua definição de medicação que afeta a frequência cardíaca e o seu registo alimentar, e utiliza-os com a sua data de nascimento como dados de saúde (art. 9, n.º 2, alínea a), do RGPD) para personalizar o seu treino e as suas metas de nutrição e para o colocar nas classificações de segmentos por género e faixa etária, apenas enquanto esta opção estiver ativa. Desative e guarde para retirar o consentimento e apagar estes dados; a sua data de nascimento fica guardada como registo da sua idade.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -1362,7 +1362,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isto apaga permanentemente o seu género, a sua altura, o seu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as suas atividades, as metas de frequência cardíaca dos seus planos, a indicação de que a sua frequência cardíaca é afetada por medicação e o seu registo alimentar. As suas atividades em si mantêm-se, e a sua data de nascimento fica guardada como registo da sua idade, mas deixa de ser usada como dado de saúde. Isto não pode ser desfeito.';
+      'Isto apaga permanentemente o seu género, a sua altura, o seu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as suas atividades, as metas de frequência cardíaca dos seus planos, a sua definição de medicação que afeta a frequência cardíaca e o seu registo alimentar. As suas atividades em si mantêm-se, e a sua data de nascimento fica guardada como registo da sua idade, mas deixa de ser usada como dado de saúde. Isto não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
@@ -2057,7 +2057,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'Consinto que a Threkir armazene o meu género, a minha altura, o meu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as minhas atividades, as metas de frequência cardíaca dos meus planos, a indicação de que a minha frequência cardíaca é afetada por medicação e o meu registo alimentar, e que os utilize com a minha data de nascimento como dados de saúde (art. 9, n.º 2, alínea a), do RGPD) para personalizar o meu treino e as minhas metas de nutrição e para me colocar nas classificações de segmentos por género e faixa etária. Posso retirar este consentimento a qualquer momento.';
+      'Consinto que a Threkir armazene o meu género, a minha altura, o meu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca gravada com as minhas atividades, as metas de frequência cardíaca dos meus planos, a minha definição de medicação que afeta a frequência cardíaca e o meu registo alimentar, e que os utilize com a minha data de nascimento como dados de saúde (art. 9, n.º 2, alínea a), do RGPD) para personalizar o meu treino e as minhas metas de nutrição e para me colocar nas classificações de segmentos por género e faixa etária. Posso retirar este consentimento a qualquer momento.';
 
   @override
   String get setupPrivacyTitle => 'Quem vê as suas corridas?';
@@ -20829,7 +20829,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthData =>
-      'Os planos só podem usar a sua data de nascimento para se ajustarem à sua idade com o seu consentimento para a utilização de dados de saúde.';
+      'Os planos só podem usar a sua data de nascimento para se ajustarem à sua idade com o seu consentimento de dados de saúde.';
 
   @override
   String get planNewDobHintHealthDataAction => 'Rever consentimento';
@@ -24448,7 +24448,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'A Threkir armazena seu gênero, sua altura, seu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com suas atividades, as metas de frequência cardíaca dos seus planos, a indicação de que sua frequência cardíaca é afetada por medicação e seu registro alimentar, e os usa com sua data de nascimento como dados de saúde (art. 9(2)(a) do GDPR) para personalizar seu treino e suas metas de nutrição e colocar você nas classificações de segmentos por gênero e faixa etária, apenas enquanto esta opção estiver ativada. Desative esta opção e salve para retirar o consentimento e apagar esses dados; sua data de nascimento continua salva como registro da sua idade.';
+      'A Threkir armazena seu gênero, sua altura, seu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com suas atividades, as metas de frequência cardíaca dos seus planos, sua configuração de medicação que afeta a frequência cardíaca e seu registro alimentar, e os usa com sua data de nascimento como dados de saúde (art. 9(2)(a) do GDPR) para personalizar seu treino e suas metas de nutrição e colocar você nas classificações de segmentos por gênero e faixa etária, apenas enquanto esta opção estiver ativada. Desative esta opção e salve para retirar o consentimento e apagar esses dados; sua data de nascimento continua salva como registro da sua idade.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -24494,7 +24494,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isso apaga permanentemente seu gênero, sua altura, seu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com suas atividades, as metas de frequência cardíaca dos seus planos, a indicação de que sua frequência cardíaca é afetada por medicação e seu registro alimentar. Suas atividades em si continuam salvas, e sua data de nascimento continua salva como registro da sua idade, mas deixa de ser usada como dado de saúde. Não pode ser desfeito.';
+      'Isso apaga permanentemente seu gênero, sua altura, seu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com suas atividades, as metas de frequência cardíaca dos seus planos, sua configuração de medicação que afeta a frequência cardíaca e seu registro alimentar. Suas atividades em si continuam salvas, e sua data de nascimento continua salva como registro da sua idade, mas deixa de ser usada como dado de saúde. Não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
@@ -25189,7 +25189,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupHealthConsent =>
-      'Consinto que a Threkir armazene meu gênero, minha altura, meu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com minhas atividades, as metas de frequência cardíaca dos meus planos, a indicação de que minha frequência cardíaca é afetada por medicação e meu registro alimentar, e que os use com minha data de nascimento como dados de saúde (art. 9(2)(a) do GDPR) para personalizar meu treino e minhas metas de nutrição e me colocar nas classificações de segmentos por gênero e faixa etária. Posso retirar este consentimento a qualquer momento.';
+      'Consinto que a Threkir armazene meu gênero, minha altura, meu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca gravada com minhas atividades, as metas de frequência cardíaca dos meus planos, minha configuração de medicação que afeta a frequência cardíaca e meu registro alimentar, e que os use com minha data de nascimento como dados de saúde (art. 9(2)(a) do GDPR) para personalizar meu treino e minhas metas de nutrição e me colocar nas classificações de segmentos por gênero e faixa etária. Posso retirar este consentimento a qualquer momento.';
 
   @override
   String get setupPrivacyTitle => 'Quem vê suas corridas?';
@@ -40554,7 +40554,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get segmentCatalogueIntro =>
-      'Subidas, pontes e voltas de parque selecionadas no mundo todo. Corra um deles e seu tempo entra na classificação automaticamente.';
+      'Subidas, pontes e voltas de parque selecionadas no mundo todo. Corra uma delas e seu tempo entra na classificação automaticamente.';
 
   @override
   String get segmentCatalogueSearchLabel => 'Buscar';
@@ -43942,7 +43942,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewDobHintHealthData =>
-      'Os planos só podem usar sua data de nascimento para se ajustar à sua idade com o seu consentimento para o uso de dados de saúde.';
+      'Os planos só podem usar sua data de nascimento para se ajustar à sua idade com o seu consentimento de dados de saúde.';
 
   @override
   String get planNewDobHintHealthDataAction => 'Revisar consentimento';

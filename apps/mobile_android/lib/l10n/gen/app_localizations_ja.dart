@@ -1252,7 +1252,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'このオプションがオンの間に限り、Threkirはあなたの性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録を保存し、生年月日とあわせて健康データとして（GDPR 第9条(2)(a)）、トレーニングと栄養目標のパーソナライズ、および性別・年齢区分別のセグメントのランキングへの振り分けに使用します。オフにして保存すると同意が撤回され、これらのデータが削除されます。生年月日は年齢の記録として残ります。';
+      'このオプションがオンの間に限り、Threkirはあなたの性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録を保存し、これらと生年月日を健康データとして（GDPR 第9条(2)(a)）、トレーニングと栄養目標のパーソナライズ、および性別・年齢区分別のセグメントのランキングへの振り分けに使用します。オフにして保存すると同意が撤回され、これらのデータが削除されます。生年月日は年齢の記録として残ります。';
 
   @override
   String get bodyMetricsHeight => '身長';
@@ -1305,7 +1305,7 @@ class AppLocalizationsJa extends AppLocalizations {
       'Threkir は、健康データの利用に同意した場合にのみ食事記録を保存します。同意するまで何も記録されません。';
 
   @override
-  String get healthConsentGiveAction => '同意を確認する';
+  String get healthConsentGiveAction => '同意内容を確認する';
 
   @override
   String get bodyMetricsSaved => '保存しました';
@@ -1958,7 +1958,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'Threkirが私の性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録を保存し、生年月日とあわせて健康データとして（GDPR 第9条(2)(a)）、トレーニングと栄養目標のパーソナライズ、および性別・年齢区分別のセグメントのランキングへの振り分けに使用することに同意します。この同意はいつでも撤回できます。';
+      'Threkirが私の性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録を保存し、これらと生年月日を健康データとして（GDPR 第9条(2)(a)）、トレーニングと栄養目標のパーソナライズ、および性別・年齢区分別のセグメントのランキングへの振り分けに使用することに同意します。この同意はいつでも撤回できます。';
 
   @override
   String get setupPrivacyTitle => 'ランは誰が見られる？';
@@ -10642,7 +10642,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSegEffortsNoRoute =>
-      'セグメントはルートごとに対応します。このランを保存済みルートに紐付けるとランキングで競えます。';
+      'セグメントはルートごとに照合されます。このランを保存済みルートに紐付けると、そのランキングで競えます。';
 
   @override
   String get runSegEffortsEmpty => 'このランにセグメント記録はありません。';

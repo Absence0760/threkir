@@ -1311,7 +1311,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Threkir almacena tu género, tu altura, tu historial de peso, cualquier dato de ciclo o embarazo, la frecuencia cardíaca registrada con tus actividades, los objetivos de frecuencia cardíaca de tus planes, la indicación de que un medicamento afecta a tu frecuencia cardíaca y tu registro de comidas, y los usa junto con tu fecha de nacimiento como datos de salud (art. 9.2.a del RGPD) para personalizar tu entrenamiento y tus objetivos de nutrición y situarte en las clasificaciones de segmentos por género y franja de edad, solo mientras esta opción está activada. Desactívala y guarda para retirar el consentimiento y borrar estos datos; tu fecha de nacimiento se mantiene como registro de tu edad.';
+      'Threkir almacena tu género, tu altura, tu historial de peso, cualquier dato de ciclo o embarazo, la frecuencia cardíaca registrada con tus actividades, los objetivos de frecuencia cardíaca de tus planes, la opción sobre medicación que afecta a tu frecuencia cardíaca y tu registro de comidas, y los usa junto con tu fecha de nacimiento como datos de salud (art. 9.2.a del RGPD) para personalizar tu entrenamiento y tus objetivos de nutrición y situarte en las clasificaciones de segmentos por género y franja de edad, solo mientras este ajuste esté activado. Desactívalo y guarda para retirar el consentimiento y borrar estos datos; tu fecha de nacimiento se mantiene como registro de tu edad.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -1357,7 +1357,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Esto borra permanentemente tu género, tu altura, tu historial de peso, cualquier dato de ciclo o embarazo, la frecuencia cardíaca registrada con tus actividades, los objetivos de frecuencia cardíaca de tus planes, la indicación de que un medicamento afecta a tu frecuencia cardíaca y tu registro de comidas. Tus actividades en sí se conservan, y tu fecha de nacimiento se mantiene como registro de tu edad, pero deja de usarse como dato de salud. Esto no se puede deshacer.';
+      'Esto borra permanentemente tu género, tu altura, tu historial de peso, cualquier dato de ciclo o embarazo, la frecuencia cardíaca registrada con tus actividades, los objetivos de frecuencia cardíaca de tus planes, la opción sobre medicación que afecta a tu frecuencia cardíaca y tu registro de comidas. Tus actividades en sí se conservan, y tu fecha de nacimiento se mantiene como registro de tu edad, pero deja de usarse como dato de salud. Esto no se puede deshacer.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar y borrar';
@@ -2052,7 +2052,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'Doy mi consentimiento para que Threkir almacene mi género, mi altura, mi historial de peso, cualquier dato de ciclo o embarazo, la frecuencia cardíaca registrada con mis actividades, los objetivos de frecuencia cardíaca de mis planes, la indicación de que un medicamento afecta a mi frecuencia cardíaca y mi registro de comidas, y los use junto con mi fecha de nacimiento como datos de salud (art. 9.2.a del RGPD) para personalizar mi entrenamiento y mis objetivos de nutrición y situarme en las clasificaciones de segmentos por género y franja de edad. Puedo retirar este consentimiento en cualquier momento.';
+      'Doy mi consentimiento para que Threkir almacene mi género, mi altura, mi historial de peso, cualquier dato de ciclo o embarazo, la frecuencia cardíaca registrada con mis actividades, los objetivos de frecuencia cardíaca de mis planes, la opción sobre medicación que afecta a mi frecuencia cardíaca y mi registro de comidas, y los use junto con mi fecha de nacimiento como datos de salud (art. 9.2.a del RGPD) para personalizar mi entrenamiento y mis objetivos de nutrición y situarme en las clasificaciones de segmentos por género y franja de edad. Puedo retirar este consentimiento en cualquier momento.';
 
   @override
   String get setupPrivacyTitle => '¿Quién ve tus carreras?';
@@ -14988,7 +14988,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get roadbookWeightUnavailable =>
-      'Para basar el líquido en tu peso corporal, añade tu peso en Datos corporales y da allí el consentimiento para datos de salud.';
+      'Para calcular el líquido según tu peso corporal, añade tu peso en Datos corporales y da allí tu consentimiento de datos de salud.';
 
   @override
   String get roadbookColTarget => 'Objetivo';
@@ -20815,7 +20815,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthData =>
-      'Los planes solo pueden usar tu fecha de nacimiento para ajustarse a tu edad con tu consentimiento para el uso de datos de salud.';
+      'Los planes solo pueden usar tu fecha de nacimiento para ajustarse a tu edad con tu consentimiento de datos de salud.';
 
   @override
   String get planNewDobHintHealthDataAction => 'Revisar el consentimiento';

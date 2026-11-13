@@ -41,7 +41,8 @@ const _exempt = <String, ({int count, String why})>{
   ),
 };
 
-final _host = RegExp(r'\b(Scaffold|EditorPage|FullScreenFormBody)\(');
+final _host =
+    RegExp(r'\b(Scaffold|PushedPage|DetailPage|EditorPage|FullScreenFormBody)\(');
 final _button = RegExp(
     r'\b(?:FilledButton|TextButton|ElevatedButton|OutlinedButton)(?:\.\w+)?\(');
 final _saveHandler = RegExp(r'\b_(?:save|submit|create|redeem)(?:[A-Z]\w*)?\b');

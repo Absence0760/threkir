@@ -4661,7 +4661,6 @@ export const messages = {
 	"discover.nearNoMatch": "Ort konnte nicht gefunden werden.",
 	"discover.geoNeedsHttps": "Standort erfordert eine sichere (HTTPS-)Verbindung.",
 	"discover.geoFailed": "Standort konnte nicht ermittelt werden.",
-	"discover.clearNear": "Standortfilter entfernen",
 	"nav.races": "Rennen",
 	"races.title": "Rennkalender",
 	"races.subtitle": "Finde ein Rennen in deiner Nähe und importiere dann dein offizielles Ergebnis.",

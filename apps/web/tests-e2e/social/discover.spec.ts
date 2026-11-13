@@ -67,6 +67,9 @@ test.describe('/social — activity discovery', () => {
 
 		// Back to class; the Sunday weekday filter keeps it, Monday drops it.
 		await page.getByTestId('discover-cat-class').click();
+		// Day and time live in the Filters sheet (#1374); its changes apply at
+		// once, so the list behind it is already filtered.
+		await page.getByTestId('discover-filters-toggle').click();
 		await page.getByTestId('discover-day').selectOption('SU');
 		await expect(row).toBeVisible({ timeout: 10_000 });
 		await page.getByTestId('discover-day').selectOption('MO');
@@ -155,7 +158,9 @@ test.describe('/social — proximity discovery', () => {
 		const row = results.getByRole('link', { name: new RegExp(discipline) });
 		await expect(row).toBeVisible({ timeout: 10_000 });
 
-		// Near fix (NYC) → still visible, now with a distance label.
+		// Near fix (NYC) → still visible, now with a distance label. "Use my
+		// location" lives in the Filters sheet (#1374).
+		await page.getByTestId('discover-filters-toggle').click();
 		await page.getByTestId('discover-use-location').click();
 		await expect(row).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByTestId('discover-distance').first()).toBeVisible();
@@ -167,6 +172,7 @@ test.describe('/social — proximity discovery', () => {
 		await page.reload();
 		await page.getByTestId('discover-search').fill(discipline);
 		await expect(row).toBeVisible({ timeout: 10_000 });
+		await page.getByTestId('discover-filters-toggle').click();
 		await page.getByTestId('discover-use-location').click();
 		await expect(row).toBeHidden({ timeout: 10_000 });
 	});

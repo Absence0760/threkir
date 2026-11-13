@@ -21,7 +21,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/add_run_screen.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/import_screen.dart';
 import '../lib/screens/period_summary_screen.dart';
 import '../lib/screens/progress_screen.dart';
@@ -135,7 +135,7 @@ Future<({Preferences prefs, Directory dir})> _mount(
               preferences: prefs,
               training: training,
             )
-          : DashboardScreen(
+          : TodayScreen(
               runStore: runStore,
               routeStore: LocalRouteStore(),
               gymStore: LocalGymStore(),

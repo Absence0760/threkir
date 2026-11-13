@@ -3826,7 +3826,7 @@ void main() {
       // disagree on the Strava grace rule. The card moved to the Progress
       // page and Today's summary shows the current streak (issue #1374).
       for (final path in const [
-        'lib/screens/dashboard_screen.dart',
+        'lib/screens/today_screen.dart',
         'lib/screens/progress_screen.dart',
       ]) {
         expect(File(path).readAsStringSync().contains('computeRunStreaks'),
@@ -3996,7 +3996,7 @@ void main() {
         for (final caller in const [
           'lib/screens/run_screen.dart',
           'lib/screens/home_screen.dart',
-          'lib/screens/dashboard_screen.dart',
+          'lib/screens/today_screen.dart',
         ]) {
           expect(
             RegExp(r'fetchActiveOverview\(\)\s*\.timeout\(')

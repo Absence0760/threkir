@@ -22,7 +22,7 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/plan_new_screen.dart';
 import '../lib/settings_sync.dart';
 import '../lib/plan_calibration.dart';
@@ -195,7 +195,7 @@ Future<void> _mount(
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
+      home: TodayScreen(
         apiClient: _Api(),
         runStore: runStore,
         routeStore: LocalRouteStore(),

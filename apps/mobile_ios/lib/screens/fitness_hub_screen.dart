@@ -364,7 +364,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
         // These three keep no state alive of their own, and a TabBarView page
         // is disposed once it scrolls out of view: without the wrapper a tab
         // switch would re-run each one's arrival fetch and drop its filters.
-        FitnessTab.plans => _KeepAliveTab(
+        FitnessTab.plans => KeepAliveTab(
             child: PlansScreen(
               key: const PageStorageKey('fitness-plans'),
               training: widget.training,
@@ -372,7 +372,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               runStore: widget.runStore,
             ),
           ),
-        FitnessTab.races => _KeepAliveTab(
+        FitnessTab.races => KeepAliveTab(
             child: RacesScreen(
               key: const PageStorageKey('fitness-races'),
               service: _raceService,
@@ -381,7 +381,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               show: widget.views?.races,
             ),
           ),
-        FitnessTab.routes => _KeepAliveTab(
+        FitnessTab.routes => KeepAliveTab(
             child: RoutesScreen(
               key: const PageStorageKey('fitness-routes'),
               apiClient: widget.apiClient,
@@ -405,25 +405,4 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             settingsSync: widget.settingsSync,
           ),
       };
-}
-
-class _KeepAliveTab extends StatefulWidget {
-  final Widget child;
-
-  const _KeepAliveTab({required this.child});
-
-  @override
-  State<_KeepAliveTab> createState() => _KeepAliveTabState();
-}
-
-class _KeepAliveTabState extends State<_KeepAliveTab>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
 }

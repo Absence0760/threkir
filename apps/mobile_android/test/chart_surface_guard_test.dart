@@ -69,7 +69,7 @@ const _bannedInCards = 'textTheme.titleMedium';
 /// private `_SectionHeader` copy is gone from Today and from the Progress page
 /// the goals moved to. A card is not a group and names itself.
 const _goalSurfaces = <String>[
-  'lib/screens/dashboard_screen.dart',
+  'lib/screens/today_screen.dart',
   'lib/screens/progress_screen.dart',
 ];
 

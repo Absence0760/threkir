@@ -33,36 +33,6 @@ const ALLOW: { file: string; kind: Kind; why: string }[] = [
 		kind: 'search',
 		why: 'a GET form submitted with its own button (`name="q"`), not a live list filter',
 	},
-	{
-		file: 'lib/components/SocialDiscover.svelte',
-		kind: 'search',
-		why: 'Social tab bodies move onto FilterBar with the Social hub work (#1374 batch 3), owned there',
-	},
-	{
-		file: 'lib/components/SocialPeople.svelte',
-		kind: 'search',
-		why: 'Social tab bodies move onto FilterBar with the Social hub work (#1374 batch 3), owned there',
-	},
-	{
-		file: 'routes/messages/+layout.svelte',
-		kind: 'search',
-		why: 'Messages moves into Social in #1374 batch 3, which owns its list controls',
-	},
-	{
-		file: 'routes/segments/+page.svelte',
-		kind: 'search',
-		why: 'Segments folds into Routes (#1374 owner decision 1); that change owns the page',
-	},
-	{
-		file: 'routes/segments/+page.svelte',
-		kind: 'page-header',
-		why: 'Segments folds into Routes (#1374 owner decision 1); that change owns the page',
-	},
-	{
-		file: 'routes/routes/+page.svelte',
-		kind: 'page-header',
-		why: 'its tab strip is reordered by the Routes `Mine · Explore` change (#1374), which owns the header',
-	},
 ];
 
 // `type="search"` on an input element. Svelte's parser finds the elements, so

@@ -11,7 +11,7 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/widgets/gym_summary_card.dart';
 import '../lib/widgets/nutrition_rings_card.dart';
 
@@ -59,7 +59,7 @@ Future<void> _pump(WidgetTester tester, dynamic s) async {
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
+      home: TodayScreen(
         apiClient: null,
         training: null,
         runStore: s.runStore,

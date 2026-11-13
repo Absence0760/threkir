@@ -66,7 +66,7 @@ import 'challenge_detail_screen.dart';
 import 'challenge_invite_screen.dart';
 import 'club_invite_screen.dart';
 import 'confirm_age_screen.dart';
-import 'dashboard_screen.dart';
+import 'today_screen.dart';
 import 'event_detail_screen.dart';
 import 'fitness_hub_screen.dart';
 import 'gear_screen.dart';
@@ -936,7 +936,7 @@ class _HomeScreenState extends State<HomeScreen>
     // until the user actually swipes there.
     _pages = [
       _LazyKeepAliveTab(
-        builder: () => DashboardScreen(
+        builder: () => TodayScreen(
           key: const PageStorageKey('dashboard'),
           apiClient: widget.apiClient,
           training: widget.training,

@@ -35,8 +35,8 @@ import '../lib/widgets/gym_summary_card.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/confirm_age_screen.dart';
-import '../lib/screens/dashboard_screen.dart';
 import '../lib/screens/gear_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/gym_screen.dart';
 import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';
@@ -1682,7 +1682,7 @@ void main() {
         'later pop cannot restore it', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      final pageContext = tester.element(find.byType(DashboardScreen));
+      final pageContext = tester.element(find.byType(TodayScreen));
       final field = FocusNode(debugLabel: 'a field on the Home page');
       final attachment = field.attach(pageContext);
       attachment.reparent();
@@ -1723,7 +1723,7 @@ void main() {
     testWidgets('stays put on the page the runner is still on', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      final pageContext = tester.element(find.byType(DashboardScreen));
+      final pageContext = tester.element(find.byType(TodayScreen));
       final field = FocusNode(debugLabel: 'a field on the Home page');
       final attachment = field.attach(pageContext);
       attachment.reparent();

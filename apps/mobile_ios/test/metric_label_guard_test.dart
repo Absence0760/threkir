@@ -27,7 +27,7 @@
 //
 // Where this differs from web, and why: web requires a `plain` render to have
 // an interactive sibling in the SAME file, because a Svelte component IS the
-// surface. `dashboard_screen.dart` is one file holding a dozen cards, so the
+// surface. `today_screen.dart` is one file holding a dozen cards, so the
 // same rule there would assert almost nothing; and a Flutter card that is
 // already a tap target (the period card taps through to a period summary)
 // cannot nest a second one the way a DOM node can. The Dart rule is therefore

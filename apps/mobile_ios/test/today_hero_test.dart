@@ -21,7 +21,7 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/screens/progress_screen.dart';
 import '../lib/settings_sync.dart';
 import '../lib/training_service.dart';
@@ -165,7 +165,7 @@ Future<_Sync> _mount(
               training: training,
               settingsSync: sync,
             )
-          : DashboardScreen(
+          : TodayScreen(
               runStore: runStore,
               routeStore: LocalRouteStore(),
               gymStore: LocalGymStore(),
@@ -185,7 +185,7 @@ Future<_Sync> _mount(
 }
 
 TodayHeroState _state(WidgetTester tester) =>
-    tester.widget<DashboardTodayHero>(_hero).state;
+    tester.widget<TodayHero>(_hero).state;
 
 double _top(WidgetTester tester, Finder f) => tester.getTopLeft(f).dy;
 

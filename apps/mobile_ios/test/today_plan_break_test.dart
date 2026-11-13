@@ -20,7 +20,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/plan_break.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/today_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/plan_break_card.dart';
 import 'pump_until.dart';
@@ -186,7 +186,7 @@ Future<void> _pump(WidgetTester tester, _Training training,
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: DashboardScreen(
+    home: TodayScreen(
       apiClient: api,
       training: training,
       runStore: runStore,

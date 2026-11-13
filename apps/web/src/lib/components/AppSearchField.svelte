@@ -16,6 +16,7 @@
 		id,
 		describedby,
 		testid,
+		maxlength,
 		input = $bindable(null),
 	}: {
 		value?: string;
@@ -27,6 +28,7 @@
 		id?: string;
 		describedby?: string;
 		testid?: string;
+		maxlength?: number;
 		input?: HTMLInputElement | null;
 	} = $props();
 
@@ -50,6 +52,7 @@
 		aria-label={label}
 		aria-describedby={describedby}
 		data-testid={testid}
+		{maxlength}
 		oninput={(e) => {
 			value = e.currentTarget.value;
 			oninput?.(value);

@@ -197,14 +197,18 @@ test.describe('social journey — non-member discovers a public-club event + RSV
 					'true'
 				);
 
+				// Cadence, weekday, time and price live in the Filters sheet
+				// (#1374); Done closes it once they are set.
+				await page.getByTestId('discover-filters-toggle').click();
 				await page.getByTestId('discover-cadence').selectOption('weekly');
 				await page.getByTestId('discover-day').selectOption('MO');
 				await page.getByTestId('discover-time').selectOption('morning');
 
-				// Price chips live in a chip-row; "Free" is the second one. The
-				// event has no event_pricing rows, so the RPC's free branch
+				// The event has no event_pricing rows, so the RPC's free branch
 				// (`pr.price_cents is null`) keeps it.
-				await page.getByRole('button', { name: 'Free', exact: true }).click();
+				await page.getByTestId('discover-price-free').click();
+				await page.getByTestId('discover-filters-done').click();
+				await expect(page.getByTestId('discover-chip-price')).toBeVisible();
 			});
 
 			await test.step('text-search the unique discipline + find the result', async () => {

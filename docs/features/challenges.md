@@ -251,7 +251,7 @@ Files (under `apps/mobile_android/lib/`, then mirror byte-identical to `apps/mob
 - `widgets/challenge_progress_card.dart` — the self-hiding Home dashboard card; renders nothing when `myActiveChallenges` is empty (data-presence self-hide, matching the gym/nutrition cards).
 - `social_service.dart` — add `fetchChallenges`, `fetchChallengeById`, `createChallenge`, `joinChallenge`, `leaveChallenge`, `fetchChallengeLeaderboard`, `myActiveChallenges`, `recomputeChallengeCompletion` (route through `packages/api_client`, not direct `.from`).
 - `social_screen.dart` — register the Challenges tab; its Create challenge `PrimaryAction` becomes the hub's FAB.
-- `dashboard_screen.dart` — mount `challenge_progress_card.dart` (best-effort hydrate on mount like the gym/nutrition cards).
+- `today_screen.dart` — mount `challenge_progress_card.dart` (best-effort hydrate on mount like the gym/nutrition cards).
 
 Add the leaderboard/challenge DTOs to `packages/core_models` only if the RPC return shape isn't 1:1 with a generated row (the leaderboard rows aren't a table, so a hand model `ChallengeLeaderboardEntry` in core_models is expected).
 
@@ -333,7 +333,7 @@ Mobile ARB equivalents camelCased (`challengesTitle`, `challengesJoin`, `challen
 6. `git commit -- apps/backend/supabase/seed.sql` — seed challenges.
 7. `git commit -- apps/mobile_android/lib/challenge_progress.dart apps/mobile_ios/lib/challenge_progress.dart apps/mobile_android/test/challenge_progress_test.dart apps/mobile_ios/test/challenge_progress_test.dart` — Dart parity helper + tests, both twins.
 8. `git commit -- apps/mobile_android/lib/social_service.dart apps/mobile_ios/lib/social_service.dart apps/mobile_android/test/social_service_test.dart apps/mobile_ios/test/social_service_test.dart` — service methods + tests, both twins.
-9. `git commit -- apps/mobile_android/lib/screens/challenges_screen.dart apps/mobile_android/lib/screens/challenge_detail_screen.dart apps/mobile_android/lib/widgets/challenge_form_sheet.dart apps/mobile_android/lib/widgets/challenge_progress_card.dart apps/mobile_android/lib/screens/social_screen.dart apps/mobile_android/lib/screens/dashboard_screen.dart apps/mobile_android/lib/l10n/*.arb apps/mobile_android/lib/l10n/gen/** <same paths under apps/mobile_ios/...> apps/mobile_android/test/challenge*_test.dart apps/mobile_ios/test/challenge*_test.dart` — mobile UI + nav + i18n + tests, both twins in one commit.
+9. `git commit -- apps/mobile_android/lib/screens/challenges_screen.dart apps/mobile_android/lib/screens/challenge_detail_screen.dart apps/mobile_android/lib/widgets/challenge_form_sheet.dart apps/mobile_android/lib/widgets/challenge_progress_card.dart apps/mobile_android/lib/screens/social_screen.dart apps/mobile_android/lib/screens/today_screen.dart apps/mobile_android/lib/l10n/*.arb apps/mobile_android/lib/l10n/gen/** <same paths under apps/mobile_ios/...> apps/mobile_android/test/challenge*_test.dart apps/mobile_ios/test/challenge*_test.dart` — mobile UI + nav + i18n + tests, both twins in one commit.
 10. `git commit -- docs/** CLAUDE.md` — roadmap checkbox, parity cells, feature doc, api_database, conventions/decisions, doc index.
 
 (Per house rule: commit only when the user asks; never `git push`; no AI attribution. The path-scoped form is mandatory in this shared checkout.)

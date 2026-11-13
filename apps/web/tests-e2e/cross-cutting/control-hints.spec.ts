@@ -316,9 +316,15 @@ test.describe('every swept filter and preference control renders its explanation
 
 	test('/segments — the catalogue filters', async ({ page }) => {
 		await page.goto('/segments');
-		const filters = page.locator('.filters');
-		await expect(filters).toBeVisible({ timeout: 15_000 });
-		await assertEveryControlExplained(filters, '/segments');
+		// The search stays on the bar; the rest open in the Filters sheet with
+		// their explanation beside them (#1374).
+		const bar = page.locator('.catalogue-filter-bar');
+		await expect(bar).toBeVisible({ timeout: 15_000 });
+		await assertEveryControlExplained(bar, '/segments (bar)');
+		await page.getByTestId('segment-catalogue-filters-toggle').click();
+		const sheet = page.getByTestId('segment-catalogue-filters-panel');
+		await expect(sheet).toBeVisible();
+		await assertEveryControlExplained(sheet, '/segments (Filters sheet)');
 	});
 
 	test('/races — the calendar filters and the paste-a-result form', async ({ page }) => {

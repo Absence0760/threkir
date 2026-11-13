@@ -649,7 +649,7 @@ The first on-device suite ([decisions § 1820](../architecture/decisions.md)). I
 
 ### `apps/mobile_android/integration_test/home_navigation_test.dart` — 1 test
 
-The same harness with `onboarded` set. It waits for the Home shell and for `DashboardScreen` to be the hit-testable page, then taps You, the hub and Home on the bottom nav, waiting each time for `YouScreen`, `FitnessHubScreen` and `DashboardScreen` to become hit-testable. The hub caption is read off the bar, because it is "Training" rather than "Fitness" while Gym and Nutrition are hidden. It leaves out Run, which asks for location. A debug run may be signed in to the seed account, through `.env.development`'s auto-login, or signed out; nothing asserted depends on which. `app_harness.dart` (the launcher, the real-clock `pumpUntilFound`, `l10nOf`) and `driver.dart` (the `flutter drive --profile` entry) sit beside the two suites and declare no tests.
+The same harness with `onboarded` set. It waits for the Home shell and for `TodayScreen` to be the hit-testable page, then taps You, the hub and Home on the bottom nav, waiting each time for `YouScreen`, `FitnessHubScreen` and `TodayScreen` to become hit-testable. The hub caption is read off the bar, because it is "Training" rather than "Fitness" while Gym and Nutrition are hidden. It leaves out Run, which asks for location. A debug run may be signed in to the seed account, through `.env.development`'s auto-login, or signed out; nothing asserted depends on which. `app_harness.dart` (the launcher, the real-clock `pumpUntilFound`, `l10nOf`) and `driver.dart` (the `flutter drive --profile` entry) sit beside the two suites and declare no tests.
 
 ### `packages/api_client/test/direct_messages_test.dart` — 81 tests
 
@@ -804,7 +804,7 @@ The AI Coach placement tile on Settings → Preferences (decisions § 2227): wit
 
 The "How much detail" tile on Settings → Preferences (#1187, decisions § 2244), the mobile half of web's `disclosure-level-select`: with nothing stored it reads Automatic and its hint names the level Automatic derives, from the stored `primary_goal` (marathon → Everything) and from the device's run index (ten runs → The usual); it reads a stored level, reads an unrecognised one as Automatic, picking a level writes it to the universal bag, picking Automatic writes `null` so the key is deleted, and re-picking the current choice or dismissing writes nothing.
 
-### `apps/mobile_android/test/dashboard_disclosure_level_test.dart` — 11 tests
+### `apps/mobile_android/test/progress_disclosure_level_test.dart` — 11 tests
 
 The Home consumer of `disclosure_level` (#1187, decisions § 2244), web twin `tests-e2e/dashboard/disclosure.spec.ts`; eleven call sites, twelve cases, since one runs once per level. At `simple` the training-load chart folds into a closed **Training load** expander inside the Fitness and form group, still mounted offstage; at `standard` and `full` there is no expander and the chart draws. Opening it writes `dashboard_training_load_expanded: true` (and closing it `false`), a stored `true` opens it on the next mount, a non-bool reads as closed, and a refused write keeps the section the way the reader put it without throwing. With no stored level the derivation decides — nine runs and no goal fold, ten do not, a marathon goal opens from one run, an unrecognised stored value falls through — and a level changed in the bag reaches the mounted screen without a remount, Automatic included.
 

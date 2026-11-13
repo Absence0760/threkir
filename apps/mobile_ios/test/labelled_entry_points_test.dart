@@ -176,7 +176,7 @@ void main() {
   group('dashboard recap entry (#666 I8)', () {
     late String src;
     setUpAll(() {
-      src = File('lib/screens/dashboard_screen.dart').readAsStringSync();
+      src = File('lib/screens/today_screen.dart').readAsStringSync();
     });
 
     test('the recap is no longer a bare calendar glyph', () {

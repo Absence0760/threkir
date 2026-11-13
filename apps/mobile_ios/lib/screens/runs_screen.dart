@@ -16,6 +16,7 @@ import 'package:ui_kit/ui_kit.dart'
         FilterBar,
         HubSelection,
         HubTabBody,
+        ListSummary,
         PrimaryAction,
         SelectionHint,
         SheetScaffold,
@@ -2043,22 +2044,15 @@ class _RunsFilterHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // One line that wraps, as Routes' count row is: the range, the count and
-    // the totals. The controls are all in the FilterBar above the list.
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.xs),
-      child: Text(
-        [
-          rangeLabel,
-          l10n.historyCount(visibleCount),
-          if (summary.runCount > 0) _summaryLine(summary, unit),
-        ].join(' · '),
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+    // The range, the count and the totals, in the one summary line Routes
+    // and Plans draw too. The controls are all in the FilterBar above.
+    return ListSummary(
+      key: const ValueKey('runs-summary'),
+      text: [
+        rangeLabel,
+        l10n.historyCount(visibleCount),
+        if (summary.runCount > 0) _summaryLine(summary, unit),
+      ].join(' · '),
     );
   }
 }

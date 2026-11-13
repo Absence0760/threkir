@@ -17,6 +17,10 @@ class _Api extends ApiClient {
   List<DmBadgeState> states;
   Object? error;
   int reads = 0;
+
+  /// Each read takes the first gate, if any, and answers with what it
+  /// completes with instead of [states].
+  final gates = <Completer<List<DmBadgeState>>>[];
   final _auth = StreamController<String?>.broadcast();
 
   @override
@@ -35,6 +39,7 @@ class _Api extends ApiClient {
     reads++;
     final e = error;
     if (e != null) throw e;
+    if (gates.isNotEmpty) return gates.removeAt(0).future;
     return states;
   }
 }
@@ -129,6 +134,119 @@ void main() {
     DmPendingHides.instance.remove('b');
     await _flush();
     expect(unread.value, 5);
+  });
+
+  test('a pending delete is applied without a read, and its commit re-reads',
+      () async {
+    final api = _Api([_s('a', 2), _s('b', 3)]);
+    unread.bind(api);
+    await _flush();
+    final reads = api.reads;
+
+    DmPendingHides.instance.add('b');
+    expect(unread.value, 2);
+    expect(api.reads, reads);
+
+    api.states = [_s('a', 2)];
+    DmPendingHides.instance.landed('b');
+    await _flush();
+    expect(api.reads, reads + 1);
+    expect(unread.value, 2);
+  });
+
+  test('a read that started before a delete was committed does not count the '
+      'deleted conversation', () async {
+    final api = _Api([_s('a', 3), _s('b', 2)]);
+    unread.bind(api);
+    await _flush();
+    expect(unread.value, 5);
+
+    DmPendingHides.instance.add('a');
+    expect(unread.value, 2);
+
+    // Any removal asks for a read; this one stands in for a resume or a
+    // return from the inbox that is still in flight when the delete commits.
+    final stale = Completer<List<DmBadgeState>>();
+    api.gates.add(stale);
+    DmPendingHides.instance
+      ..add('z')
+      ..remove('z');
+    await _flush();
+
+    api.states = [_s('b', 2)];
+    DmPendingHides.instance.landed('a');
+    await _flush();
+    expect(unread.value, 2);
+
+    stale.complete([_s('a', 3), _s('b', 2)]);
+    await _flush();
+    expect(unread.value, 2);
+  });
+
+  test('a read that lands after the account changed is dropped', () async {
+    final api = _Api([]);
+    final stale = Completer<List<DmBadgeState>>();
+    api.gates.add(stale);
+    unread.bind(api);
+    await _flush();
+
+    api.states = [_s('b', 2)];
+    api.switchTo('u2');
+    await _flush();
+    await _flush();
+    expect(unread.value, 2);
+
+    stale.complete([_s('a', 7)]);
+    await _flush();
+    expect(unread.value, 2, reason: "that read was the previous account's count");
+  });
+
+  test('a landed delete stays out of the count while the read after it is in '
+      'flight, and its marker goes once that read lands', () async {
+    final api = _Api([_s('a', 3), _s('b', 2)]);
+    unread.bind(api);
+    await _flush();
+    expect(unread.value, 5);
+
+    DmPendingHides.instance.add('a');
+    expect(unread.value, 2);
+
+    final fresh = Completer<List<DmBadgeState>>();
+    api.gates.add(fresh);
+    DmPendingHides.instance.landed('a');
+    await _flush();
+    expect(unread.value, 2,
+        reason: 'the count held was read before the delete landed');
+    expect(DmPendingHides.instance.debugHasMarker('a'), isTrue);
+
+    fresh.complete([_s('b', 2)]);
+    await _flush();
+    expect(unread.value, 2);
+    expect(DmPendingHides.instance.debugHasMarker('a'), isFalse);
+  });
+
+  test('signing out lets go of a landed delete the count was keeping',
+      () async {
+    final api = _Api([_s('a', 3)]);
+    unread.bind(api);
+    await _flush();
+
+    final pending = Completer<List<DmBadgeState>>();
+    addTearDown(() {
+      if (!pending.isCompleted) pending.complete(const []);
+    });
+    api.gates.add(pending);
+    DmPendingHides.instance
+      ..add('a')
+      ..landed('a');
+    await _flush();
+    expect(DmPendingHides.instance.debugHasMarker('a'), isTrue,
+        reason: 'the count held was read before the delete landed');
+
+    api.switchTo(null);
+    await _flush();
+    expect(DmPendingHides.instance.debugHasMarker('a'), isFalse);
+    expect(unread.value, 0);
   });
 
   test('unbinding clears the count', () async {

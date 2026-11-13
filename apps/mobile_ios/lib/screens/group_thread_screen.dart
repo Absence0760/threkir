@@ -24,6 +24,7 @@ import '../group_messages.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../widgets/thread_title.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/dm_bubble.dart';
 import '../widgets/dm_photo.dart';
@@ -814,40 +815,23 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
+        toolbarHeight: ThreadTitle.toolbarHeight(context,
+            subtitle: !_notAvailable && _active),
         title: _notAvailable
             ? null
-            : Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: Icon(Icons.group,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          title,
-                          key: const ValueKey('group-title'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (_active)
-                          Text(
-                            l10n.groupsMemberCount(_activeCount),
-                            key: const ValueKey('group-member-count'),
-                            style: Theme.of(context).textTheme.labelSmall,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+            : ThreadTitle(
+                avatar: CircleAvatar(
+                  radius: 16,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Icon(Icons.group,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+                title: title,
+                titleKey: const ValueKey('group-title'),
+                subtitle: _active ? l10n.groupsMemberCount(_activeCount) : null,
+                subtitleKey: const ValueKey('group-member-count'),
               ),
         actions: [
           if (_active) ...[

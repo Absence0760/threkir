@@ -2633,7 +2633,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
+              OverflowBar(
+                alignment: MainAxisAlignment.start,
+                overflowAlignment: OverflowBarAlignment.start,
+                spacing: 8,
                 children: [
                   FilledButton.icon(
                     onPressed: _raceBusy
@@ -2642,7 +2645,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     icon: const Icon(Icons.flag_outlined),
                     label: Text(l10n.eventRaceFireGo),
                   ),
-                  const SizedBox(width: 8),
                   TextButton(
                     onPressed: _raceBusy
                         ? null

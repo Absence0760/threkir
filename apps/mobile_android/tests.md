@@ -19,6 +19,7 @@ Test files in `test/`:
 - `a11y_announce_test.dart` — 3 tests for `lib/a11y_announce.dart`: the countdown announcement marks (hours, ten minutes inside the hour, minutes inside ten, 30 / 10 / 5 s), a crossing announced once even across a skipped tick, and ten minutes of per-second ticks speaking 13 times (#1374 A11Y-2).
 - `live_region_guard_test.dart` — source guard: every `liveRegion:` in `lib/` and ui_kit is registered with the event that changes it, and none sits in a file with a sub-second timer.
 - `slider_semantics_guard_test.dart` — source guard: every `Slider` passes `semanticFormatterCallback` (#1374 A11Y-4).
+- `button_row_guard_test.dart` — source guard: no `Row` holds two or more Material buttons without an `Expanded` / `Flexible` around them, so a pair of actions wraps (an `OverflowBar`) instead of clipping Save off a narrow phone at large text (#1374 TO-7).
 - `checkbox_name_guard_test.dart` — source guard: every bare `Checkbox` in `lib/` carries `semanticLabel`; the rest are `CheckboxListTile`s (#1374 A11Y-13).
 - `chart_semantics_test.dart` — 2 widget tests: the elevation chart's summary label and its stepped cursor moving the linked map marker, and the training-load chart's where-each-line-went label (#1374 A11Y-14).
 - `history_range_calendar_test.dart` — the History range picker's day cells: full date, Material's start / end wording, `selected` for the range, the tap action (#1374 A11Y-10).

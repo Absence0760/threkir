@@ -516,14 +516,15 @@ class _RotationMembersSheetState extends State<_RotationMembersSheet> {
               ),
             ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            overflowAlignment: OverflowBarAlignment.end,
+            spacing: 8,
             children: [
               TextButton(
                 onPressed: _saving ? null : () => Navigator.pop(context),
                 child: Text(l10n.gearCancel),
               ),
-              const SizedBox(width: 8),
               FilledButton(
                 onPressed: _saving ? null : _save,
                 child: Text(l10n.gearRotationDone),

@@ -2968,8 +2968,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                   ),
                 ),
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              OverflowBar(
+                alignment: MainAxisAlignment.end,
+                overflowAlignment: OverflowBarAlignment.end,
+                spacing: 8,
                 children: [
                   TextButton(
                     onPressed: _bulkBusy
@@ -2977,7 +2979,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                         : () => setState(() => _taperPreview = null),
                     child: Text(l10n.planDetailReplanCancel),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _bulkBusy ? null : () => _applyRaceTaper(p),
                     child: Text(l10n.planDetailReplanApply),
@@ -3055,8 +3056,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                   ),
                 ),
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              OverflowBar(
+                alignment: MainAxisAlignment.end,
+                overflowAlignment: OverflowBarAlignment.end,
+                spacing: 8,
                 children: [
                   TextButton(
                     onPressed: _bulkBusy
@@ -3068,7 +3071,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                             }),
                     child: Text(l10n.planDetailReplanCancel),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _bulkBusy ? null : () => _applyReplan(p),
                     child: Text(l10n.planDetailReplanApply),

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show EmptyState, SheetScaffold, StatGrid, StatTile;
+    show EmptyState, ListCard, SheetScaffold, StatGrid, StatTile;
 
 import '../goals.dart';
 import '../l10n/date_format.dart';
@@ -405,16 +405,13 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
           // it shows on that week only.
           if (_showsCurrentWeek) ...[
             const SizedBox(height: 16),
-            Card(
+            ListCard(
               key: const Key('periodSummaryWeekStrip'),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: ThisWeekStrip(
-                  runs: _periodRuns,
-                  unit: unit,
-                  weekStartDay: _weekStartDay,
-                  now: DateTime.now(),
-                ),
+              child: ThisWeekStrip(
+                runs: _periodRuns,
+                unit: unit,
+                weekStartDay: _weekStartDay,
+                now: DateTime.now(),
               ),
             ),
           ],
@@ -422,20 +419,17 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
           // screen's week picker: a tapped column moves the summary to it.
           if (_period == PeriodType.week) ...[
             const SizedBox(height: 16),
-            Card(
+            ListCard(
               key: const Key('periodSummaryHeatmap'),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: ActivityHeatmap(
-                  runs: widget.runStore.summaryRuns,
-                  weekStartDay: _weekStartDay,
-                  onWeekTap: _showWeek,
-                  selectedWeek: periodStart(_period, _anchor,
-                      weekStartDay: _weekStartDay),
-                  weekLabel: (w) => periodTitle(PeriodType.week, w,
-                      localeToTag(Localizations.localeOf(context)),
-                      weekStartDay: _weekStartDay),
-                ),
+              child: ActivityHeatmap(
+                runs: widget.runStore.summaryRuns,
+                weekStartDay: _weekStartDay,
+                onWeekTap: _showWeek,
+                selectedWeek: periodStart(_period, _anchor,
+                    weekStartDay: _weekStartDay),
+                weekLabel: (w) => periodTitle(PeriodType.week, w,
+                    localeToTag(Localizations.localeOf(context)),
+                    weekStartDay: _weekStartDay),
               ),
             ),
           ],
@@ -550,52 +544,49 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
   Widget _buildStatsCard(ThemeData theme, DistanceUnit unit, PeriodStats stats) {
     final l10n = AppLocalizations.of(context);
     final dur = formatDurationCoarse(Duration(seconds: stats.totalDurationSec));
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            StatGrid(
-              cells: [
-                StatTile.large(
-                  label: l10n.periodStatDistance,
-                  value:
-                      UnitFormat.distanceValue(stats.totalDistanceMetres, unit),
-                  unit: UnitFormat.distanceLabel(unit),
-                ),
-                StatTile.large(
-                  label: l10n.periodStatRuns,
-                  value: '${stats.runCount}',
-                ),
-                StatTile.large(
-                  label: l10n.periodStatTime,
-                  value: dur,
-                ),
-              ],
-            ),
-            if (stats.avgPaceSecPerKm != null || stats.totalVertMetres > 0) ...[
-              const SizedBox(height: 16),
-              StatGrid(
-                cells: [
-                  if (stats.avgPaceSecPerKm != null)
-                    StatTile.large(
-                      label: l10n.periodStatAvgPace,
-                      value: UnitFormat.pace(stats.avgPaceSecPerKm, unit),
-                      unit: UnitFormat.paceLabel(unit),
-                    ),
-                  if (stats.totalVertMetres > 0)
-                    StatTile.large(
-                      key: const Key('periodSummaryVert'),
-                      label: metricText(l10n, Metric.vert),
-                      value:
-                          UnitFormat.elevationValue(stats.totalVertMetres, unit),
-                      unit: UnitFormat.elevationLabel(unit),
-                    ),
-                ],
+    return ListCard(
+      child: Column(
+        children: [
+          StatGrid(
+            cells: [
+              StatTile.large(
+                label: l10n.periodStatDistance,
+                value:
+                    UnitFormat.distanceValue(stats.totalDistanceMetres, unit),
+                unit: UnitFormat.distanceLabel(unit),
+              ),
+              StatTile.large(
+                label: l10n.periodStatRuns,
+                value: '${stats.runCount}',
+              ),
+              StatTile.large(
+                label: l10n.periodStatTime,
+                value: dur,
               ),
             ],
+          ),
+          if (stats.avgPaceSecPerKm != null || stats.totalVertMetres > 0) ...[
+            const SizedBox(height: 16),
+            StatGrid(
+              cells: [
+                if (stats.avgPaceSecPerKm != null)
+                  StatTile.large(
+                    label: l10n.periodStatAvgPace,
+                    value: UnitFormat.pace(stats.avgPaceSecPerKm, unit),
+                    unit: UnitFormat.paceLabel(unit),
+                  ),
+                if (stats.totalVertMetres > 0)
+                  StatTile.large(
+                    key: const Key('periodSummaryVert'),
+                    label: metricText(l10n, Metric.vert),
+                    value:
+                        UnitFormat.elevationValue(stats.totalVertMetres, unit),
+                    unit: UnitFormat.elevationLabel(unit),
+                  ),
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

@@ -706,7 +706,7 @@
 	<!--
 		audit/accessibility (May 2026) High — WCAG 1.3.1 + 2.4.6.
 		Run-list page needs an h1; visually-hidden because the
-		page-header already shows the activity-type toolbar as the
+		toolbar already shows the activity-type filter as the
 		visual primary surface.
 	-->
 	<h1 class="visually-hidden">{m('history.heading')}</h1>
@@ -742,7 +742,7 @@
 		<p class="sr-only" role="status">{m('runs.loadingRuns')}</p>
 	{/snippet}
 
-	<header class="page-header">
+	<div class="surface-toolbar">
 		<div class="toolbar">
 			<div class="toolbar-filters">
 			<div class="activity-group seg-group" role="group" aria-label={m('runs.activityTypeGroup')}>
@@ -879,7 +879,7 @@
 					}}>{m('runs.clear')}</button>
 			</div>
 		{/if}
-	</header>
+	</div>
 
 	{#if loading}
 		{#if view === 'list'}
@@ -1172,7 +1172,7 @@
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
 
-	.page-header {
+	.surface-toolbar {
 		margin-bottom: var(--space-xl);
 	}
 

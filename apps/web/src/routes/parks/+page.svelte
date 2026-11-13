@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
@@ -62,10 +63,7 @@
 		<span class="material-symbols" aria-hidden="true">arrow_back</span>
 		{m('races.pageTitle')}
 	</a>
-	<header class="page-header">
-		<h1>{m('parks.title')}</h1>
-		<p class="subtitle">{m('parks.intro')}</p>
-	</header>
+	<PageHeader title={m('parks.title')} subtitle={m('parks.intro')} />
 
 	{#if loading}
 		<p class="state-msg">{m('parks.loading')}</p>
@@ -110,15 +108,6 @@
 		color: var(--color-text-secondary);
 		font-size: 0.85rem;
 		text-decoration: none;
-	}
-	.page-header h1 {
-		margin: 0 0 0.25rem;
-	}
-	.subtitle {
-		margin: 0 0 var(--space-lg);
-		max-width: var(--page-measure);
-		color: var(--color-text-secondary);
-		line-height: 1.5;
 	}
 	.state-msg {
 		color: var(--color-text-tertiary);

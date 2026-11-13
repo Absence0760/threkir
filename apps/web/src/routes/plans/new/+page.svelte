@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { isEntityId } from '#lib/core/entity_id.ts';
@@ -469,12 +470,9 @@
 		</div>
 	{/if}
 
-	<header class="page-header">
-		<h1>{m(headingKey)}</h1>
-		<p class="tagline" id="plan-kind-tagline">
-			{m(taglineKey)}
-		</p>
-	</header>
+	<PageHeader title={m(headingKey)}>
+		{#snippet sub()}<p id="plan-kind-tagline">{m(taglineKey)}</p>{/snippet}
+	</PageHeader>
 
 	{#if kind === 'training'}
 	{#if clubId}
@@ -669,9 +667,6 @@
 	.back-link .material-symbols {
 		font-size: 1.1rem;
 	}
-	.page-header {
-		margin-bottom: var(--space-xl);
-	}
 	.kicker {
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
@@ -679,19 +674,6 @@
 		font-weight: 600;
 		color: var(--color-text-secondary);
 		margin: 0 0 var(--space-sm);
-	}
-	h1 {
-		font-size: 1.75rem;
-		font-weight: 800;
-		line-height: 1.2;
-		margin: 0 0 var(--space-xs);
-	}
-	.tagline {
-		color: var(--color-text-secondary);
-		font-size: 0.95rem;
-		line-height: 1.5;
-		margin: 0;
-		max-width: 44rem;
 	}
 
 	.kind-chooser {

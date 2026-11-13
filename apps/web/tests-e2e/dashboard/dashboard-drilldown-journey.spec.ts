@@ -287,7 +287,7 @@ test.describe('dashboard drilldown journey', () => {
 
 				// Page mounts PeriodSummary in 'week' mode. The kicker confirms
 				// the route resolved type=week.
-				await expect(page.locator('.kicker')).toHaveText('Weekly summary', {
+				await expect(page.getByTestId('page-header-kicker')).toHaveText('Weekly summary', {
 					timeout: 10_000,
 				});
 				await expect(page.locator('.type-toggle .toggle-btn.active')).toHaveText(

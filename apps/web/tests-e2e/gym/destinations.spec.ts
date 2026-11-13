@@ -50,7 +50,7 @@ test.describe('/gym planning destinations', () => {
 			await expect(sessions).toHaveAccessibleDescription(/yoga, pilates and mobility/);
 			await expect(sessions.getByText(/yoga, pilates and mobility/)).toBeVisible();
 
-			await expect(page.locator('.page-header').getByRole('link')).toHaveCount(0);
+			await expect(page.getByTestId('page-header').getByRole('link')).toHaveCount(0);
 			await expect(page.getByRole('link', { name: 'Routines', exact: true })).toHaveCount(0);
 			await expect(page.getByRole('link', { name: 'Sessions', exact: true })).toHaveCount(0);
 		} finally {

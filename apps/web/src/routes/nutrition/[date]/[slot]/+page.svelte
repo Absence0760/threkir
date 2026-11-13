@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -74,10 +75,7 @@
 	{#if !validSlot}
 		<EmptyState icon="search_off" title={m('nutritionMeal.invalidSlot')} />
 	{:else}
-		<header class="page-header">
-			<p class="kicker">{formatDateShort(date)}</p>
-			<h1>{m(`nutrition.slot_${slot}`)}</h1>
-		</header>
+		<PageHeader kicker={formatDateShort(date)} title={m(`nutrition.slot_${slot}`)} />
 
 		{#if loading}
 			<div aria-hidden="true" data-testid="meal-skeleton">
@@ -190,19 +188,6 @@
 		color: var(--color-text-secondary);
 		text-decoration: none;
 		margin-bottom: var(--space-lg);
-	}
-	.page-header {
-		margin-bottom: var(--space-lg);
-	}
-	.kicker {
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		font-size: 0.8rem;
-		margin: 0 0 0.2rem;
-	}
-	.page-header h1 {
-		margin: 0;
 	}
 	.card-elevated {
 		padding: var(--space-lg);

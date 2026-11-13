@@ -720,4 +720,53 @@ test.describe('Heatmap results sidebar — a failed routes read', () => {
 		await error.getByRole('button', { name: 'Retry' }).click();
 		await expect(error).toHaveCount(0, { timeout: 10_000 });
 	});
+
+	test('a failed reload keeps the listed routes and says so, with Retry', async ({ page }) => {
+		let fail = false;
+		await page.route('**/rest/v1/rpc/discoverable_routes_in_bbox*', async (route) => {
+			if (fail) {
+				await route.fulfill({
+					status: 500,
+					contentType: 'application/json',
+					body: JSON.stringify({ message: 'simulated discovery failure' })
+				});
+				return;
+			}
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify([
+					{
+						id: '00000000-0000-4000-8000-0000000fa110',
+						name: 'Stale-list loop',
+						slug: null,
+						is_featured: false,
+						distance_m: 5000,
+						elevation_m: null,
+						surface: 'road',
+						run_count: 0,
+						lng: 0,
+						lat: 0,
+						is_official: false
+					}
+				])
+			});
+		});
+
+		await page.goto('/routes/heatmap');
+		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
+		const list = page.getByTestId('discover-list');
+		await expect(list.getByText('Stale-list loop')).toBeVisible({ timeout: 10_000 });
+
+		fail = true;
+		await page.getByTestId('filters-button').click();
+		await page.getByTestId('lens-chips').locator('[data-filter="official"]').click();
+		const stale = page.getByTestId('discover-stale-error');
+		await expect(stale).toBeVisible({ timeout: 10_000 });
+		await expect(list.getByText('Stale-list loop')).toBeVisible();
+
+		fail = false;
+		await stale.getByRole('button', { name: 'Retry' }).click();
+		await expect(stale).toHaveCount(0, { timeout: 10_000 });
+	});
 });

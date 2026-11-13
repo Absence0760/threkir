@@ -312,7 +312,7 @@ void main() {
     // Issue #1374 NS-9: the feed card for this run read its own stale copy.
     testWidgets('a kudos given here reaches the app-wide engagement cache',
         (tester) async {
-      EngagementCache.instance.debugClear();
+      EngagementCache.instance.clear();
       final api = _SocialApi(kudosCount: 2, viewerHasKudos: false);
       await _pumpApi(tester, api);
       expect(EngagementCache.instance.of('viewer-1', 'fake-run-id')?.kudosCount,

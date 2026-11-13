@@ -198,14 +198,14 @@ const double kIdleStartFadeHeight = 32;
 double idleStartAreaHeight(double buttonSize, double dockInset) =>
     kIdleStartFadeHeight + buttonSize + 16 + dockInset;
 
-/// Main run recording screen with GPS tracking, live stats, sync, audio cues,
-/// auto-pause, countdown, and optional route following.
 /// The backing behind the countdown's "Tap to cancel", over the 0.45 black
 /// scrim: white on it is 11.71:1 over a white basemap (the old 0.7-alpha
 /// white straight on the scrim was 2.46:1).
 @visibleForTesting
 const Color kCountdownHintBacking = Color(0x99000000);
 
+/// Main run recording screen with GPS tracking, live stats, sync, audio cues,
+/// auto-pause, countdown, and optional route following.
 class RunScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final LocalRunStore runStore;

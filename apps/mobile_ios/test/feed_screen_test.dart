@@ -217,7 +217,7 @@ Future<void> _settle(WidgetTester tester) async {
 void main() {
   setUpAll(_ensureSupabase);
   // The cache is app-wide; each test starts from what its own feed loads.
-  setUp(EngagementCache.instance.debugClear);
+  setUp(EngagementCache.instance.clear);
 
   group('FeedScreen — initial render', () {
     testWidgets('renders the Feed app-bar title', (tester) async {

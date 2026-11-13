@@ -342,8 +342,8 @@ void main() {
     // and tapping it sent a second follow.
     testWidgets('a follow made on the profile shows on the row here',
         (tester) async {
-      FollowState.instance.debugClear();
-      addTearDown(FollowState.instance.debugClear);
+      FollowState.instance.clear();
+      addTearDown(FollowState.instance.clear);
       final p = _person(follows: false);
       final api = _FakeApi(suggestions: [p]);
       await tester.pumpWidget(_wrap(PeopleScreen(api: api)));

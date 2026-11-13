@@ -269,7 +269,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       try {
         return await read();
       } catch (e) {
-        debugPrint('heatmap $name refresh failed: $e');
+        debugPrint('heatmap $name refresh failed: ${safeErrorLabel(e)}');
         return null;
       }
     }

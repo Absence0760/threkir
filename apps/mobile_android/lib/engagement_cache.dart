@@ -37,6 +37,11 @@ class EngagementCache extends ChangeNotifier {
     notifyListeners();
   }
 
-  @visibleForTesting
-  void debugClear() => _byRun.clear();
+  /// Forgets everything; the shell calls it on sign-out so the departing
+  /// account's engagement does not linger in memory.
+  void clear() {
+    if (_byRun.isEmpty) return;
+    _byRun.clear();
+    notifyListeners();
+  }
 }

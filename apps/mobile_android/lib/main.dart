@@ -17,7 +17,10 @@ import 'audio_cues.dart';
 import 'auth_stream_error.dart';
 import 'background_sync.dart';
 import 'dev_auto_login.dart';
+import 'dm_drafts.dart';
+import 'engagement_cache.dart';
 import 'firebase_push_messaging.dart';
+import 'follow_state.dart';
 import 'foreign_row_cleanup.dart';
 import 'in_progress_recovery.dart';
 import 'l10n/gen/app_localizations.dart';
@@ -554,6 +557,11 @@ void main() async {
         // The active plan saved for offline reads (today's workout on Home,
         // the Run tab and the dashboard) belongs to the departing account.
         unawaited(clearActivePlanCache());
+        // Unsent message drafts, and the kudos and follows remembered this
+        // session, are the departing account's too (issue #1374 round 2).
+        DmDrafts.clear();
+        EngagementCache.instance.clear();
+        FollowState.instance.clear();
         // So is the week the home-screen widget shows.
         unawaited(TodayWidgetBridge().clear());
         for (final s in <OfflineSyncStore>[gearStore, gymStore, foodStore]) {

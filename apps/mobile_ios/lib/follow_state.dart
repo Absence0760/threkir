@@ -29,6 +29,11 @@ class FollowState extends ChangeNotifier {
     notifyListeners();
   }
 
-  @visibleForTesting
-  void debugClear() => _follows.clear();
+  /// Forgets everything; the shell calls it on sign-out so the departing
+  /// account's follows do not linger in memory.
+  void clear() {
+    if (_follows.isEmpty) return;
+    _follows.clear();
+    notifyListeners();
+  }
 }

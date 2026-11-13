@@ -1687,6 +1687,16 @@
 		</div>
 
 		<ul class="results-list" data-testid="discover-list">
+			{#if routesFailed && routePins.length > 0}
+				<!-- A failed reload keeps the routes already listed (L4) but says
+				     so, rather than leaving a stale list with no signal (FS-10). -->
+				<li class="results-empty results-error" role="alert" data-testid="discover-stale-error">
+					<span>{m('routeHeatmap.loadFailed')}</span>
+					<button type="button" class="btn btn-secondary btn-sm" onclick={() => void refreshPins()}>
+						{m('routeHeatmap.retry')}
+					</button>
+				</li>
+			{/if}
 			{#each routePins as r (r.id)}
 				{@const band = bandForDistance(r.distance_m)}
 				<li class="result-li" class:pinned={pinnedIds.has(r.id)}>

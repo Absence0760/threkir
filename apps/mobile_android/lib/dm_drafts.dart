@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart' show visibleForTesting;
-
 /// What a runner was typing into each conversation, so leaving a thread and
 /// coming back keeps the text (issue #1374 NS-8; web keeps a draft per thread
 /// too). Held in memory for the app's life, like web's.
@@ -20,9 +18,8 @@ abstract final class DmDrafts {
 
   static String read(String key) => _drafts[key] ?? '';
 
-  /// Drops every draft, so one test's typing never opens the next test's
-  /// thread.
-  @visibleForTesting
+  /// Drops every draft: on sign-out, so the departing account's unsent text
+  /// is gone, and between tests.
   static void clear() => _drafts.clear();
 
   /// Stores [text] under [key]; an empty text drops the draft.

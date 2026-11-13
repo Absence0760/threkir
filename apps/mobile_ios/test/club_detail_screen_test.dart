@@ -638,14 +638,7 @@ void main() {
     }
     await drainRealtimeTimers(tester);
   },
-      layoutOnly: true,
-      // The hero's avatar-and-title Row (`_buildHero`) still overflows at 2x
-      // in de and fr; it moves to DetailPage in the same round, and these
-      // two locales join the run when it does. Every list row here was
-      // measured clean in all seven.
-      locales: kWorstCaseLocales
-          .where((l) => l.languageCode != 'de' && l.languageCode != 'fr')
-          .toList());
+      layoutOnly: true);
   setUpAll(_ensureSupabase);
 
   group('ClubDetailScreen — initial render', () {

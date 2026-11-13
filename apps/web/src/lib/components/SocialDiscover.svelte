@@ -88,7 +88,7 @@
 			});
 		}
 		if (cadence) {
-			out.push({ key: 'cadence', label: m(CADENCE_KEY[cadence]), onRemove: () => (cadence = ''), testid: 'discover-chip-cadence' });
+			out.push({ key: 'cadence-filter', label: m(CADENCE_KEY[cadence]), onRemove: () => (cadence = ''), testid: 'discover-chip-cadence' });
 		}
 		if (byday) {
 			out.push({ key: 'day', label: m(WEEKDAY_KEY[byday]), onRemove: () => (byday = ''), testid: 'discover-chip-day' });

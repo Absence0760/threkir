@@ -58,7 +58,7 @@
 		}
 		if (sort !== 'name') {
 			const key = SORTS.find((o) => o.value === sort)?.key;
-			if (key) out.push({ key: 'sort', label: m(key), onRemove: () => (sort = 'name'), testid: 'segment-catalogue-chip-sort' });
+			if (key) out.push({ key: 'sort-order', label: m(key), onRemove: () => (sort = 'name'), testid: 'segment-catalogue-chip-sort' });
 		}
 		return out;
 	});

@@ -6618,25 +6618,29 @@ class RunTopOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: math.max(topInset, MediaQuery.of(context).padding.top),
-      left: 12,
-      right: 12,
-      bottom: bottomClearance,
-      // The band takes only its content's height; the space under it stays
-      // the map's, for taps as well as paint.
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (workoutBand != null) workoutBand!,
-              badges,
-              const SizedBox(height: 4),
-              banners,
-            ],
+    // A top band, bounded below: it takes only its content's height, and
+    // the space under it stays the map's, for taps as well as paint.
+    return Positioned.fill(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          12,
+          math.max(topInset, MediaQuery.of(context).padding.top),
+          12,
+          bottomClearance,
+        ),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (workoutBand != null) workoutBand!,
+                badges,
+                const SizedBox(height: 4),
+                banners,
+              ],
+            ),
           ),
         ),
       ),

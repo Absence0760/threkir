@@ -114,7 +114,9 @@ void main() {
     ));
     await tester.pump();
     final stack = tester.getRect(find.byType(Stack).first);
-    final band = tester.getRect(find.byType(RunTopOverlay));
+    final band = tester.getRect(find.descendant(
+        of: find.byType(RunTopOverlay),
+        matching: find.byType(SingleChildScrollView)));
     expect(band.bottom, lessThanOrEqualTo(stack.bottom - clearance + 0.5));
     final share = find.text(l10nFor(locale).runSafetyNudgeShareAction);
     await tester.ensureVisible(share);

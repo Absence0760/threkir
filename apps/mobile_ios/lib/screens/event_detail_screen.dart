@@ -2274,13 +2274,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       key: const Key('event-courses'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.eventCoursesTitle.toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            letterSpacing: 0.8,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
+        SectionHeader(label: l10n.eventCoursesTitle),
         const SizedBox(height: 6),
         for (final c in _courses) ...[
           Padding(
@@ -3324,12 +3318,14 @@ class _ResultRow extends StatelessWidget {
                 ],
                 if (row.finisherStatus != 'finished') ...[
                   const SizedBox(width: 6),
-                  Text(
-                    row.finisherStatus.toUpperCase(),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.error,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  // The catalogue's label, not the stored value uppercased.
+                  StatusPill(
+                    label: row.finisherStatus == 'dns'
+                        ? l10n.eventResultStatusDns
+                        : l10n.eventResultStatusDnf,
+                    foreground: theme.colorScheme.error,
+                    outline: theme.colorScheme.error,
+                    size: StatusPillSize.compact,
                   ),
                 ],
               ],

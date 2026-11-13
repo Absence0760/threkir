@@ -12,6 +12,7 @@ import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
         MapFirstPage,
+        SectionHeader,
         SheetScaffold,
         StatusPill,
         StatusPillSize;
@@ -1392,14 +1393,7 @@ class _FilterGroupLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 8),
-      child: Text(
-        text.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-      ),
+      child: SectionHeader(label: text),
     );
   }
 }

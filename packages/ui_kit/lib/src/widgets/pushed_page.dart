@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../motion.dart';
@@ -308,10 +309,17 @@ class _PageHeadingState extends State<PageHeading> {
 /// It listens to the scroll notifications that bubble out of the body, so
 /// any scroll view works: a list, a `CustomScrollView`, a
 /// `NestedScrollView` under tabs.
+///
+/// A page whose bar appears by a rule of its own passes [barTitleShown], and
+/// the bar title follows that instead: a root page's header knows when its
+/// heading has gone under its compact bar, which the heading's position
+/// against the body's top edge cannot tell (`RootPage`).
 class PageTitleScope extends StatefulWidget {
-  const PageTitleScope({super.key, required this.child});
+  const PageTitleScope({super.key, required this.child, this.barTitleShown});
 
   final Widget child;
+
+  final ValueListenable<bool>? barTitleShown;
 
   static _PageTitleScopeState? _of(BuildContext context) => context
       .dependOnInheritedWidgetOfExactType<_PageTitleInherited>()
@@ -385,7 +393,11 @@ class _PageTitleScopeState extends State<PageTitleScope> {
     });
   }
 
+  ValueListenable<bool> get _barTitle =>
+      widget.barTitleShown ?? _showBarTitle;
+
   void _measure() {
+    if (widget.barTitleShown != null) return;
     final heading = _headingKey.currentContext?.findRenderObject();
     final body = _bodyKey.currentContext?.findRenderObject();
     final bool show;
@@ -462,7 +474,7 @@ class PageBarTitle extends StatelessWidget {
     final scope = PageTitleScope._of(context);
     if (scope == null) return Text(text);
     return ValueListenableBuilder<bool>(
-      valueListenable: scope._showBarTitle,
+      valueListenable: scope._barTitle,
       builder: (context, show, child) => ExcludeSemantics(
         excluding: !show,
         child: AnimatedOpacity(

@@ -32,6 +32,12 @@ import 'worst_case_layout.dart';
 const _phone = Size(320, 640);
 const _fabKey = ValueKey('test-docked-fab');
 
+/// Today's own list, under the RootPage header's scroll.
+final _todayList = find
+    .descendant(
+        of: find.byType(RefreshIndicator), matching: find.byType(Scrollable))
+    .first;
+
 class _PlanTraining extends TrainingService {
   @override
   Future<ActivePlanOverview?> fetchActiveOverview() async {
@@ -219,7 +225,7 @@ void main() {
       '3-button bar', (tester) async {
     await pumpToday(tester);
     final summary = find.byKey(const Key('todayProgressSummary'));
-    await scrollToEnd(tester, find.byType(Scrollable).first);
+    await scrollToEnd(tester, _todayList);
     expect(tester.getRect(summary).bottom,
         lessThanOrEqualTo(tester.getRect(find.byKey(_fabKey)).top),
         reason: 'the last block scrolls clear of the docked Start');
@@ -231,7 +237,7 @@ void main() {
       (tester) async {
     await pumpToday(tester);
     final summary = find.byKey(const Key('todayProgressSummary'));
-    await scrollToEnd(tester, find.byType(Scrollable).first);
+    await scrollToEnd(tester, _todayList);
     expect(
         find.descendant(of: summary, matching: find.text('Your progress')),
         findsOneWidget);
@@ -248,7 +254,7 @@ void main() {
 
   Future<void> openProgress(WidgetTester tester) async {
     final summary = find.byKey(const Key('todayProgressSummary'));
-    await scrollToEnd(tester, find.byType(Scrollable).first);
+    await scrollToEnd(tester, _todayList);
     await tester.tap(summary);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -297,7 +303,7 @@ void main() {
     await pumpToday(tester, locale: locale, height: 3000);
     tester.view.physicalSize = kWorstCasePhone;
     await tester.pump();
-    await walkScrollable(tester, find.byType(Scrollable).first, 'Today');
+    await walkScrollable(tester, _todayList, 'Today');
     await openProgress(tester);
     final scrollable = find
         .descendant(

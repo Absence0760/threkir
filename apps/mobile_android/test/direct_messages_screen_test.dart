@@ -3004,15 +3004,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('the inbox offers New message, and so does an empty inbox',
+    testWidgets('an empty inbox offers New message once, as the page action',
         (tester) async {
       final api = _FakeApi();
       await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
       await tester.pump();
 
+      expect(find.text(l10n.messagesEmptyTitle), findsOneWidget);
       expect(find.byKey(const ValueKey('inbox-new-message')), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, l10n.messagesNewMessage),
-          findsOneWidget);
+      expect(find.text(l10n.messagesNewMessage), findsOneWidget,
+          reason: 'the empty state must not repeat the page action beside it');
     });
 
     testWidgets('a signed-out inbox offers none', (tester) async {

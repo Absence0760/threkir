@@ -13,6 +13,7 @@ import '../plan_advice.dart' show workoutAdviceKind;
 import '../plan_nudges.dart' show workoutOverrunMetres;
 import '../plan_races.dart';
 import '../relink_candidates.dart';
+import '../start_planned_workout.dart';
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
@@ -627,13 +628,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       );
     }
     if (w.kind == 'rest') return const SizedBox.shrink();
-    // Start pops with the workout row so callers can load it into the
-    // WorkoutRunner; plan detail forwards it to RunScreen across a tab switch.
+    // Start starts the run with this workout armed, from wherever the page
+    // was opened (a plan, Progress, a notification): it returns to the shell
+    // and the recorder begins its countdown (issue #1374). It used to pop the
+    // row to its caller, and only plan detail forwarded it.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FilledButton.icon(
-          onPressed: () => Navigator.of(context).pop(w),
+          key: const Key('workoutDetailStart'),
+          onPressed: () =>
+              unawaited(startPlannedWorkout(Navigator.of(context), w)),
           icon: const Icon(Icons.play_arrow),
           label: Text(l10n.workoutStart),
           style: FilledButton.styleFrom(

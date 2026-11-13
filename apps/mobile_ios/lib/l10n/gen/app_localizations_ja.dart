@@ -964,6 +964,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get navStart => 'スタート';
 
   @override
+  String get navStarting => '開始中';
+
+  @override
+  String get runStartingA11yLabel => 'ランを開始しています';
+
+  @override
+  String navOpenRecorderA11yLabel(String activity) {
+    return '記録画面を開く（$activity）';
+  }
+
+  @override
   String get runCancelStartA11yLabel => 'スタートを取り消す';
 
   @override
@@ -2255,7 +2266,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runWorkoutLoaded(int count) {
-    return 'ワークアウトを読み込みました · $countステップ — GOをタップして開始';
+    return 'ワークアウトを読み込みました · $countステップ';
   }
 
   @override
@@ -2552,7 +2563,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return '「$button」をタップして記録を開始するか、すでに終えたものを追加しましょう';
+    return '「$button」をタップして記録するか、すでに終えたものを追加しましょう';
   }
 
   @override

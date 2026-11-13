@@ -10,6 +10,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:core_models/core_models.dart'
+    show PlanWorkoutRow, TrainingPlanRow;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -99,6 +101,54 @@ Position _pos({required double metresEast, required int secondsFromStart}) {
   );
 }
 
+/// An active plan with an open easy run today, whose plan read (the paces a
+/// workout loads with) waits on [planRead], so a test can hold the load open.
+class _PlanTraining extends TrainingService {
+  final Completer<TrainingPlanRow?> planRead = Completer<TrainingPlanRow?>();
+  late final PlanWorkoutRow today;
+  late final ActivePlanOverview overview;
+
+  _PlanTraining() {
+    final now = DateTime.now();
+    today = PlanWorkoutRow(
+      id: 'wo-today',
+      weekId: 'wk-1',
+      scheduledDate: DateTime(now.year, now.month, now.day),
+      kind: 'easy',
+      targetDistanceM: 5000,
+      manuallyCompleted: false,
+    );
+    overview = ActivePlanOverview(
+      plan: TrainingPlanRow(
+        id: 'plan-1',
+        userId: 'u1',
+        name: 'Spring 10k',
+        goalEvent: '10k',
+        goalDistanceM: 10000,
+        startDate: now.subtract(const Duration(days: 28)),
+        endDate: now.add(const Duration(days: 56)),
+        daysPerWeek: 4,
+        status: 'active',
+        source: 'app',
+        isTemplate: false,
+        isPublicTemplate: false,
+      ),
+      weeks: const [],
+      workouts: [today],
+      todayWorkout: today,
+      completionPct: 0,
+      currentWeekIndex: 0,
+    );
+  }
+
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async => overview;
+
+  @override
+  Future<TrainingPlanRow?> fetchPlanForWorkout(PlanWorkoutRow wo) =>
+      planRead.future;
+}
+
 void main() {
   late _FakeGeolocatorPlatform geolocator;
   final tempDirs = <Directory>[];
@@ -168,7 +218,8 @@ void main() {
 
   /// Mounts the shell for a runner with no lift or meal logged, so the centre
   /// button's tap starts a run — the default a new account sees.
-  Future<LocalRunStore> pumpShell(WidgetTester tester) async {
+  Future<LocalRunStore> pumpShell(WidgetTester tester,
+      {TrainingService? training}) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
     await prefs.init();
@@ -198,7 +249,7 @@ void main() {
           audioCues: AudioCues(),
           social: social,
           raceController: RaceController(social),
-          training: TrainingService(),
+          training: training ?? TrainingService(),
           heartRate: BleHeartRate(),
           treadmill: BleTreadmill(),
         ),
@@ -288,7 +339,7 @@ void main() {
         (tester) async {
       await pumpShell(tester);
       expect(shellPage(tester), 0, reason: 'the app opens on Home');
-      expect(centreLabelled('Start a run'), findsOneWidget);
+      expect(centreLabelled('Open the recording screen (Run)'), findsOneWidget);
 
       await tapCentre(tester);
       expect(shellPage(tester), 2);
@@ -313,8 +364,9 @@ void main() {
       expect(runStore.runs, hasLength(1));
       expect(find.text('Done'), findsOneWidget);
       expect(runRecordingActive.value, isFalse);
-      expect(centreLabelled('Start a run'), findsOneWidget,
-          reason: 'with the run over, the Stop turns back into Start run');
+      expect(centreLabelled('Open the recording screen (Run)'), findsOneWidget,
+          reason: 'with the run over, the Stop turns back into the way to '
+              'the start screen');
 
       await unmount(tester);
     });
@@ -421,6 +473,55 @@ void main() {
       tester.takeException();
       await holdDockedStop(tester);
       expect(runStore.runs, hasLength(1));
+
+      await unmount(tester);
+    });
+  });
+
+  group("a planned workout's Start starts the run (#1374)", () {
+    testWidgets(
+        "Today's workout Start waits for the workout, says Starting, then "
+        'counts down with it armed, and the countdown still cancels',
+        (tester) async {
+      final training = _PlanTraining();
+      final runStore = await pumpShell(tester, training: training);
+      await pumpUntil(
+          tester,
+          () => tester.any(find.byKey(const Key('todaysWorkoutStart'))),
+          describe: "the Today hero's workout Start");
+
+      await tester.tap(find.byKey(const Key('todaysWorkoutStart')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      expect(shellPage(tester), 2);
+      expect(runStartPending.value, isTrue,
+          reason: 'the start waits for the workout it was asked with');
+      expect(centreLabelled('Starting the run'), findsOneWidget);
+      expect(find.text('3'), findsNothing);
+
+      await tester.tap(find.byType(FloatingActionButton), warnIfMissed: false);
+      await tester.pump();
+
+      training.planRead.complete(null);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      expect(find.text('3'), findsOneWidget,
+          reason: 'one Start, one countdown, with the workout loaded first');
+      expect(find.textContaining('Workout loaded'), findsOneWidget);
+      expect(runStartPending.value, isFalse);
+      expect(centreLabelled('Cancel the start'), findsOneWidget);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      tester.takeException();
+      expect(runRecordingActive.value, isFalse,
+          reason: 'the countdown a workout Start began still cancels');
+      expect(runStore.runs, isEmpty);
 
       await unmount(tester);
     });

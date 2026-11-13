@@ -1003,6 +1003,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get navStart => 'Iniciar';
 
   @override
+  String get navStarting => 'Iniciando';
+
+  @override
+  String get runStartingA11yLabel => 'Iniciando la carrera';
+
+  @override
+  String navOpenRecorderA11yLabel(String activity) {
+    return 'Abrir la pantalla de grabación ($activity)';
+  }
+
+  @override
   String get runCancelStartA11yLabel => 'Cancelar el inicio';
 
   @override
@@ -2356,7 +2367,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$count pasos',
       one: '$count paso',
     );
-    return 'Entrenamiento cargado · $_temp0 — toca GO para empezar';
+    return 'Entrenamiento cargado · $_temp0';
   }
 
   @override
@@ -2671,7 +2682,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return 'Toca $button para empezar a grabar o añade una que ya hayas hecho';
+    return 'Toca $button para grabar una o añade una que ya hayas hecho';
   }
 
   @override

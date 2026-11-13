@@ -1571,37 +1571,37 @@ abstract class AppLocalizations {
   /// **'Log an activity'**
   String get logA11yLabel;
 
-  /// Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun "Run", which decisions § 1649 keeps out of the tab-label set
+  /// Caption of the Today hero's quick Start, whose tap starts a run (the countdown with tap-to-cancel). Only a control that starts the run says Start (issue #1374); the centre nav button names the activity instead
   ///
   /// In en, this message translates to:
   /// **'Start run'**
   String get navStartRun;
 
-  /// Caption under the centre nav button when a tap on it starts recording and the default activity is walk. Same slot and rules as navStartRun
+  /// As navStartRun, when the default activity is walk
   ///
   /// In en, this message translates to:
   /// **'Start walk'**
   String get navStartWalk;
 
-  /// Caption under the centre nav button when a tap on it starts recording and the default activity is cycle. Same slot and rules as navStartRun
+  /// As navStartRun, when the default activity is cycle
   ///
   /// In en, this message translates to:
   /// **'Start ride'**
   String get navStartRide;
 
-  /// Caption under the centre nav button when a tap on it starts recording and the default activity is hike (shown as Trail run). Same slot and rules as navStartRun
+  /// As navStartRun, when the default activity is hike (shown as Trail run)
   ///
   /// In en, this message translates to:
   /// **'Start trail run'**
   String get navStartTrailRun;
 
-  /// Caption under the centre nav button when a tap on it starts recording and the default activity is stroller. Same slot and rules as navStartRun
+  /// As navStartRun, when the default activity is stroller
   ///
   /// In en, this message translates to:
   /// **'Start stroller run'**
   String get navStartStroller;
 
-  /// Action that starts recording a run: the centre nav button's screen-reader label and the empty Home's primary button
+  /// Action that starts recording a run: the empty Home's primary button
   ///
   /// In en, this message translates to:
   /// **'Start a run'**
@@ -1660,6 +1660,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start'**
   String get navStart;
+
+  /// Caption under the centre nav button after its Start was tapped on the Run page, while the permission, GPS, background-location and battery checks (or a planned workout loading) stand between the tap and the 3-2-1; a second tap does nothing. Must fit the 72dp centre slot
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get navStarting;
+
+  /// Screen-reader label for the centre nav button while a start is in its pre-countdown checks (navStarting)
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the run'**
+  String get runStartingA11yLabel;
+
+  /// Screen-reader label for the centre nav button away from the Run page, when a tap opens the recording screen (it starts nothing; the caption is the activity name)
+  ///
+  /// In en, this message translates to:
+  /// **'Open the recording screen ({activity})'**
+  String navOpenRecorderA11yLabel(String activity);
 
   /// Screen-reader label for the centre nav button during the 3-2-1 countdown; a tap cancels the start
   ///
@@ -3989,10 +4007,10 @@ abstract class AppLocalizations {
   /// **'This workout has no runnable structure.'**
   String get runWorkoutNoStructure;
 
-  /// Banner shown when a structured workout is loaded and ready to start
+  /// Banner shown when a structured workout is loaded on the recorder, before its run starts (the centre button's Start, or the countdown a Start on the workout already began)
   ///
   /// In en, this message translates to:
-  /// **'Workout loaded · {count, plural, one{{count} step} other{{count} steps}} — tap GO to start'**
+  /// **'Workout loaded · {count, plural, one{{count} step} other{{count} steps}}'**
   String runWorkoutLoaded(int count);
 
   /// Title of the idle-screen card for the plan workout the next run will execute
@@ -4487,10 +4505,10 @@ abstract class AppLocalizations {
   /// **'Add past run'**
   String get historyAddPastRun;
 
-  /// Empty Runs list body when the centre button starts recording, so it names that button by its caption (navStartRun / navStartWalk / ...) rather than Log
+  /// Empty Runs list body when a tap on the centre button opens the recording screen, so it names that button by its caption (the default activity: Run / Walk / ...) rather than Log
   ///
   /// In en, this message translates to:
-  /// **'Tap {button} to start recording, or add one you have already finished'**
+  /// **'Tap {button} to record one, or add one you have already finished'**
   String historyEmptyBodyRunPrimary(String button);
 
   /// Tooltip on the History add button when it logs a lift, a meal, or opens the run/lift/meal picker

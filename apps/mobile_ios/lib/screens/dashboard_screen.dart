@@ -109,11 +109,11 @@ class DashboardScreen extends StatefulWidget {
   /// dead, as with [onStartRun].
   final VoidCallback? onLogLift;
 
-  /// Loads today's open plan workout onto the recorder, from the Start on
-  /// Home's today's-workout card. The host wires it to the same handoff the
-  /// centre button's long-press menu uses (`pendingStartWorkout`), so the
-  /// recorder's own start screen still runs its permission and first-run
-  /// checks. Null leaves that card without a Start.
+  /// Starts the run with today's open plan workout armed, from the Start on
+  /// Home's today's-workout card. The host wires it to the same start the
+  /// centre button's long-press menu uses (`requestPlannedWorkoutStart`), so
+  /// the recorder still runs its permission checks and the cancellable
+  /// 3-2-1. Null leaves that card without a Start.
   final ValueChanged<PlanWorkoutRow>? onStartWorkout;
 
   /// Reads the runner's next club event for the Today block. Null (no social

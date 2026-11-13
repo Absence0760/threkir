@@ -152,6 +152,13 @@ final ValueNotifier<bool> runIdleShowing = ValueNotifier<bool>(true);
 /// button cancels it rather than offering a second Start.
 final ValueNotifier<bool> runCountdownShowing = ValueNotifier<bool>(false);
 
+/// Whether a start is under way but its countdown has not begun: the
+/// permission, GPS, background-location and battery checks (and a planned
+/// workout still loading) sit between the tap and the 3-2-1. The Run page
+/// still shows its start screen then, so the shell's docked Start reads this
+/// to say the start is pending rather than offering a second one.
+final ValueNotifier<bool> runStartPending = ValueNotifier<bool>(false);
+
 /// How far the live pace may sit from the target before the pace cue speaks.
 /// Held against both watches by `scripts/check_shared_constants.mjs`
 /// (decisions § 1716): a ~200 m look-back moves by ~15 s/km on GNSS noise
@@ -998,8 +1005,21 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       return;
     }
     pendingStartWorkout.value = null;
-    _startStructuredWorkout(wo);
+    final load = _startStructuredWorkout(wo);
+    _workoutLoad = load;
+    unawaited(load
+        .catchError((Object e) => debugPrint('workout load failed: $e'))
+        .whenComplete(() {
+      if (identical(_workoutLoad, load)) _workoutLoad = null;
+    }));
   }
+
+  /// A planned workout still loading onto this recorder. A Start that
+  /// arrives with it (Today's workout, a plan's Start) waits for the load,
+  /// so the runner is armed before the 3-2-1 rather than part-way into the
+  /// run; the load ends within [kBackendLoadTimeout] and a failed one leaves
+  /// a plain run to start.
+  Future<void>? _workoutLoad;
 
   /// A guided-run surface elsewhere in the app armed a script for this
   /// recorder. Resolve the parked id against the library for THIS screen's
@@ -1725,6 +1745,29 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   Future<void> _beginCountdown() async {
     if (_startRequested || _state != _ScreenState.idle) return;
     _startRequested = true;
+    runStartPending.value = true;
+    try {
+      await _runStartChecks();
+    } finally {
+      runStartPending.value = false;
+    }
+  }
+
+  /// What stands between a Start and its countdown, then the countdown. Each
+  /// exit clears [_startRequested]; [_beginCountdown] owns [runStartPending].
+  Future<void> _runStartChecks() async {
+    final load = _workoutLoad;
+    if (load != null) {
+      try {
+        await load;
+      } catch (e) {
+        debugPrint('workout load before start failed: $e');
+      }
+      if (!mounted) {
+        _startRequested = false;
+        return;
+      }
+    }
     await _maybeRequestPermission();
     if (!mounted) {
       _startRequested = false;
@@ -4584,6 +4627,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     runSummaryShowing.value = false;
     runIdleShowing.value = true;
     runCountdownShowing.value = false;
+    runStartPending.value = false;
     WidgetsBinding.instance.removeObserver(this);
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);

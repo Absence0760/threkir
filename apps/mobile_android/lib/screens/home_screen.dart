@@ -45,6 +45,7 @@ import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../social_surface_requests.dart';
+import '../start_planned_workout.dart';
 import '../unread_messages.dart';
 import '../training_service.dart';
 import '../today_widget.dart' show TodayWidgetBridge;
@@ -259,6 +260,7 @@ class _HomeScreenState extends State<HomeScreen>
     runRecordingActive,
     runIdleShowing,
     runCountdownShowing,
+    runStartPending,
     widget.preferences,
     widget.gymStore,
     widget.foodStore,
@@ -513,12 +515,17 @@ class _HomeScreenState extends State<HomeScreen>
   /// A route surface (route-detail Start FAB, the public / shared-route
   /// screen) asked to start a run following a route. Drain the handoff and
   /// route into the recorder with the route preselected — `_startRunWithRoute`
-  /// itself pops back to the shell so any pushed route screen is dismissed.
-  void _onPendingStartRunWithRoute() {
+  /// itself pops back to the shell so any pushed route screen is dismissed —
+  /// then ask for the start, because that control says Start run (issue
+  /// #1374): the countdown and its checks are the recorder's own.
+  Future<void> _onPendingStartRunWithRoute() async {
     final route = pendingStartRunWithRoute.value;
     if (route == null || !mounted) return;
     pendingStartRunWithRoute.value = null;
-    _startRunWithRoute(route);
+    if (runSummaryShowing.value) runSummaryDismissRequests.request();
+    if (await _startRunWithRoute(route) && !runRecordingActive.value) {
+      runStartRequests.request(RunStartRequest.start);
+    }
   }
 
   /// A push notification was tapped. Drain the parked target and open the
@@ -1062,13 +1069,14 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  Future<void> _startRunWithRoute(cm.Route route) async {
+  /// Resolves whether the recorder was reached with [route] selected.
+  Future<bool> _startRunWithRoute(cm.Route route) async {
     // Dismiss any screens pushed on top of the shell (RoutesScreen /
     // RouteDetailScreen — "Start run" is reached by pushing those), or the
     // recorder is selected behind them and "Start run" reads as reopening
     // the route page. A form kept through its discard prompt cancels it.
-    if (!mounted) return;
-    if (!await returnToShell(Navigator.of(context)) || !mounted) return;
+    if (!mounted) return false;
+    if (!await returnToShell(Navigator.of(context)) || !mounted) return false;
     // The Run page takes a preselected route via constructor; changing it
     // means rebuilding that page. Cheap — only reached by draining the
     // pendingStartRunWithRoute handoff, not during a swipe.
@@ -1076,6 +1084,7 @@ class _HomeScreenState extends State<HomeScreen>
     setState(_rebuildPages);
     _currentIndex.value = _pageRun;
     _pageController.jumpToPage(_pageRun);
+    return true;
   }
 
   void _goToPage(int index) {
@@ -1176,6 +1185,7 @@ class _HomeScreenState extends State<HomeScreen>
   /// While a run records it is the way back to it instead. Docked over the
   /// Run page it is that page's Start, or the countdown's Cancel.
   void _onLogTap({Offset? anchor}) {
+    if (_centreIsStarting) return;
     if (_centreIsStart) {
       runStartRequests.request(RunStartRequest.start);
       return;
@@ -1201,8 +1211,9 @@ class _HomeScreenState extends State<HomeScreen>
   /// not open a picker over the run.
   void _onLogLongPress() {
     // The countdown is a second away from a run; a picker over it would
-    // outlive the start it was opened from.
-    if (_centreIsCancel) return;
+    // outlive the start it was opened from. So is a start still in its
+    // checks.
+    if (_centreIsCancel || _centreIsStarting) return;
     if (runRecordingActive.value) {
       _performLogAction(LogAction.run);
     } else {
@@ -1281,14 +1292,16 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// The recorder loads a workout only from its start screen, so a finished
-  /// run's summary is closed first, as a Start run tap closes it.
+  /// Today's workout's Start (the Today hero, the runner menu): the run
+  /// starts with the workout armed, behind the recorder's own checks and its
+  /// cancellable countdown (issue #1374). [_onPendingStartWorkout] brings
+  /// the Run page forward.
   void _startTodaysWorkout(cm.PlanWorkoutRow workout) {
-    if (runSummaryShowing.value) runSummaryDismissRequests.request();
-    // Cleared first: the recorder leaves a handoff it could not honour in
-    // place, and writing the same row again would notify nobody.
-    pendingStartWorkout.value = null;
-    pendingStartWorkout.value = workout;
+    if (runRecordingActive.value) {
+      _goToPage(_pageRun);
+      return;
+    }
+    requestPlannedWorkoutStart(workout);
   }
 
   Future<void> _pickRouteToFollow() async {
@@ -1456,6 +1469,12 @@ class _HomeScreenState extends State<HomeScreen>
       !runRecordingActive.value &&
       runIdleShowing.value;
 
+  /// Whether the docked Start was pressed and the recorder is still in its
+  /// pre-countdown checks (a permission or battery prompt, a workout
+  /// loading): the button says so and takes no second tap, so a second
+  /// press is visibly not a second start.
+  bool get _centreIsStarting => _centreIsStart && runStartPending.value;
+
   /// Whether the docked centre button cancels the countdown that its Start
   /// began, so a second tap is the way back rather than a dead button.
   bool get _centreIsCancel =>
@@ -1486,6 +1505,14 @@ class _HomeScreenState extends State<HomeScreen>
         recording: true,
       );
     }
+    if (docked && _centreIsStarting) {
+      return (
+        icon: Icons.hourglass_top,
+        label: l10n.navStarting,
+        semantics: l10n.runStartingA11yLabel,
+        recording: false,
+      );
+    }
     if (docked && _centreIsStart) {
       return (
         icon: Icons.play_arrow,
@@ -1510,17 +1537,21 @@ class _HomeScreenState extends State<HomeScreen>
         recording: true,
       );
     }
-    // The tap records the default activity (RunScreen seeds it from the same
-    // preference), so the caption names that, not always a run.
+    // Off the Run page the tap opens the recorder's start screen and starts
+    // nothing, so the caption names the page, never "Start" (issue #1374:
+    // a control labelled Start always starts the run). The recorder seeds
+    // the default activity from the same preference, so the caption names
+    // that, not always a run.
     final activity =
         cm.ActivityType.fromName(widget.preferences.defaultActivityType);
+    final page = activityTypeLabel(l10n, activity);
     return _runIsPrimary
         ? (
             // Play, not a runner: with Gym and Nutrition hidden the hub
             // beside it wears the runner glyph.
             icon: Icons.play_arrow,
-            label: startActivityCaption(l10n, activity),
-            semantics: startActivityAction(l10n, activity),
+            label: page,
+            semantics: l10n.navOpenRecorderA11yLabel(page),
             recording: false,
           )
         : (
@@ -1781,20 +1812,24 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         final look = _centreLook(l10n, docked: !anchored);
+        final starting = !anchored && _centreIsStarting;
         final scheme = Theme.of(fabContext).colorScheme;
         return GestureDetector(
-          onLongPress: _onLogLongPress,
+          onLongPress: starting ? null : _onLogLongPress,
           child: Semantics(
             button: true,
+            enabled: starting ? false : null,
             label: look.semantics,
             // The long-press is otherwise found only by holding the button.
             // TalkBack announces the hint ("double-tap and hold to show more
             // options"); VoiceOver has no long-press, so the menu is also a
             // custom action in its actions rotor. Mid-run both gestures
             // return to the run, so there is no menu to announce.
-            onLongPress: look.recording ? null : _onLogLongPress,
-            onLongPressHint: look.recording ? null : l10n.logMoreLongPressHint,
-            customSemanticsActions: look.recording
+            onLongPress: look.recording || starting ? null : _onLogLongPress,
+            onLongPressHint: look.recording || starting
+                ? null
+                : l10n.logMoreLongPressHint,
+            customSemanticsActions: look.recording || starting
                 ? null
                 : {
                     CustomSemanticsAction(label: l10n.logMoreTitle):
@@ -1813,7 +1848,8 @@ class _HomeScreenState extends State<HomeScreen>
               child: FloatingActionButton(
                 backgroundColor: look.recording ? scheme.error : null,
                 foregroundColor: look.recording ? scheme.onError : null,
-                onPressed: () => _onLogTap(anchor: anchorOf()),
+                onPressed:
+                    starting ? null : () => _onLogTap(anchor: anchorOf()),
                 child: Icon(look.icon),
               ),
             ),

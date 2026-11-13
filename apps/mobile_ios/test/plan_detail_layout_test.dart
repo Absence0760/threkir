@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/disclosure_state.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/main.dart' show pendingStartWorkout;
+import '../lib/run_stop_dock.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -272,15 +273,20 @@ void main() {
   );
 
   testWidgets(
-    "the owner's today card starts the workout through the Run tab handoff",
+    "the owner's today card starts the run with the workout armed (#1374)",
     (tester) async {
       await _pump(tester);
-      addTearDown(() => pendingStartWorkout.value = null);
+      addTearDown(() {
+        pendingStartWorkout.value = null;
+        runStartRequests.take();
+      });
       final start = find.byKey(const Key('todaysWorkoutStart'));
       expect(start, findsOneWidget);
       await tester.tap(start);
       await tester.pump();
       expect(pendingStartWorkout.value?.id, 'wo-today');
+      expect(runStartRequests.take(), RunStartRequest.start,
+          reason: 'a Start starts the run, not only loads the workout');
     },
   );
 

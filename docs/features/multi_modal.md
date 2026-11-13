@@ -290,11 +290,13 @@ becomes an **action button**, not a tab.
   recorder.
 - **The centre button says what a tap does.** When the tap opens the
   recorder it shows a play icon and names the runner's default activity, which is
-  what the recorder will capture: the caption "Start run" / "Start walk" /
-  "Start ride" / "Start trail run" / "Start stroller run" and the spoken
-  label "Start a run" / "Start a ride" / ... instead of "+ Log" (#1230; the
-  empty Home's primary button and the empty Runs list follow the same
-  preference); while a run records it turns the error colour,
+  what the recorder will capture: the caption "Run" / "Walk" / "Cycle" /
+  "Trail run" / "Stroller" (`activityTypeLabel`) and the spoken label "Open
+  the recording screen (Run)" instead of "+ Log" (#1230; the empty Home's
+  primary button and the empty Runs list follow the same preference). It
+  never says Start there: the tap opens the start screen and starts
+  nothing, and on mobile only a control that starts the run is labelled
+  Start (owner decision 2026-11-12, issue #1374). While a run records it turns the error colour,
   captioned "Recording" and announced "Return to your run". On the Run
   page itself the phone's docked button is the run's **Stop** instead: the
   recorder's 800 ms `HoldToStopButton` with its progress ring, captioned
@@ -307,11 +309,20 @@ becomes an **action button**, not a tab.
   #1374, decisions § 2492): captioned "Start" (announced "Start run"), it
   sends `runStartRequests` and the recorder runs its own permission checks
   and 3-2-1, during which the button is captioned "Cancel" ("Cancel the
-  start"). The docked recorder draws no START circle; the rail, the
+  start"). Between the tap and the countdown, while the recorder's
+  permission, GPS, background-location and battery prompts are up (or a
+  planned workout is still loading), it is captioned "Starting" ("Starting
+  the run") and takes no tap or long-press (`runStartPending`), so a second
+  press is visibly not a second start. The docked recorder draws no START circle; the rail, the
   keyboard-up shell and a recorder with no shell keep it. So "Start run" as
-  a caption now survives only off the Run page, where the tap opens the
-  recorder on its idle page (while `runIsPrimaryLogAction` holds) and the
-  button there then reads "Start", and as the docked Start's spoken label. The Runs list's
+  a caption survives only on controls that start the run: Today's quick
+  Start, and the docked Start's spoken label. Every planned-workout Start
+  (the Today hero, the runner menu's "Start today's workout", plan detail's
+  today card, the workout page from a plan, Progress or a notification) and
+  a route's "Start run" start the countdown with the workout or route
+  armed, through `start_planned_workout.dart` / `runStartRequests`, behind
+  the recorder's own checks. A guided run's "Use this run" only arms the
+  script, and says so. The Runs list's
   manual-entry button reads "Add past run", so the two buttons a thumb apart
   no longer both read as starting one.
 - **The hub's nav label follows modality visibility.** With Gym and

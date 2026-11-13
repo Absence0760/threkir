@@ -1376,7 +1376,7 @@ class _RunsScreenState extends State<RunsScreen>
         illustration: grisnirWaitingOrNull(),
         title: l10n.historyEmptyTitle,
         body: widget.centreStartsRun
-            ? l10n.historyEmptyBodyRunPrimary(startActivityCaption(
+            ? l10n.historyEmptyBodyRunPrimary(activityTypeLabel(
                 l10n,
                 ActivityType.fromName(widget.preferences.defaultActivityType),
               ))

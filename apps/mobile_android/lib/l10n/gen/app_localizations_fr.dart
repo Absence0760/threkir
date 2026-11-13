@@ -1005,6 +1005,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navStart => 'Démarrer';
 
   @override
+  String get navStarting => 'Démarrage';
+
+  @override
+  String get runStartingA11yLabel => 'Démarrage de la course';
+
+  @override
+  String navOpenRecorderA11yLabel(String activity) {
+    return 'Ouvrir l\'écran d\'enregistrement ($activity)';
+  }
+
+  @override
   String get runCancelStartA11yLabel => 'Annuler le départ';
 
   @override
@@ -2364,7 +2375,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$count étapes',
       one: '$count étape',
     );
-    return 'Séance chargée · $_temp0 — touchez GO pour démarrer';
+    return 'Séance chargée · $_temp0';
   }
 
   @override
@@ -2677,7 +2688,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return 'Touchez $button pour lancer l\'enregistrement, ou ajoutez-en une déjà terminée';
+    return 'Touchez $button pour en enregistrer une, ou ajoutez-en une déjà terminée';
   }
 
   @override

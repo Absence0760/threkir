@@ -992,6 +992,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navStart => 'Start';
 
   @override
+  String get navStarting => 'Starting';
+
+  @override
+  String get runStartingA11yLabel => 'Starting the run';
+
+  @override
+  String navOpenRecorderA11yLabel(String activity) {
+    return 'Open the recording screen ($activity)';
+  }
+
+  @override
   String get runCancelStartA11yLabel => 'Cancel the start';
 
   @override
@@ -2333,7 +2344,7 @@ class AppLocalizationsEn extends AppLocalizations {
       other: '$count steps',
       one: '$count step',
     );
-    return 'Workout loaded · $_temp0 — tap GO to start';
+    return 'Workout loaded · $_temp0';
   }
 
   @override
@@ -2642,7 +2653,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return 'Tap $button to start recording, or add one you have already finished';
+    return 'Tap $button to record one, or add one you have already finished';
   }
 
   @override

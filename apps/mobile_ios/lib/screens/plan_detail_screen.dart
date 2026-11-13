@@ -22,17 +22,16 @@ import '../plan_volume_anchor.dart';
 import '../plan_restart.dart';
 import '../planned_size_label.dart';
 import '../rate_limit_message.dart' show rateLimitErrorMessage;
-import '../return_to_shell.dart';
 import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
 import '../cycle_plan_config.dart';
 import '../share_sheet.dart';
+import '../start_planned_workout.dart';
 import '../plan_serialize.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../local_run_store.dart';
-import '../main.dart' show pendingStartWorkout;
 import '../plan_adherence.dart';
 import '../plan_current.dart';
 import '../plan_progress.dart';
@@ -3632,11 +3631,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (ok) await _load();
   }
 
-  /// Push WorkoutDetailScreen, then either kick the structured runner
-  /// (when the user tapped Start) or just refresh the plan. The runner
-  /// lives on the Run tab — popping back to root and signalling
-  /// `pendingStartWorkout` lets HomeScreen switch tabs and RunScreen
-  /// load the workout.
   /// The recap's "Build your next plan": the wizard on the start past the
   /// race's recovery, with the race's 5K equivalent filled but unconfirmed.
   void _openNextPlan(String startIso, int? seed5kSec) {
@@ -3649,9 +3643,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     ));
   }
 
+  /// Push WorkoutDetailScreen, then refresh the plan. Its Start returns to
+  /// the shell and starts the run itself (`start_planned_workout.dart`).
   Future<void> _openWorkout(PlanWorkoutRow wo) async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute<PlanWorkoutRow?>(
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
         builder: (_) => WorkoutDetailScreen(
           training: widget.training,
           planId: widget.planId,
@@ -3661,18 +3657,13 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       ),
     );
     if (!mounted) return;
-    if (result != null) {
-      _startWorkout(result);
-      return;
-    }
     _load();
   }
 
-  Future<void> _startWorkout(PlanWorkoutRow wo) async {
-    if (await returnToShell(Navigator.of(context))) {
-      pendingStartWorkout.value = wo;
-    }
-  }
+  /// Today's card Start: the run starts with the workout armed, behind the
+  /// recorder's own checks and countdown (issue #1374).
+  Future<void> _startWorkout(PlanWorkoutRow wo) =>
+      startPlannedWorkout(Navigator.of(context), wo);
 }
 
 enum _PlanDetailLoadError { timeout, offline, generic }

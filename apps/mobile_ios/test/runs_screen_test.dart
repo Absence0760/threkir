@@ -217,8 +217,8 @@ void main() {
       expect(find.byType(AddRunScreen), findsOneWidget);
     });
 
-    testWidgets('the empty state names the centre button by its run caption '
-        'when a tap on it starts a run', (tester) async {
+    testWidgets('the empty state names the centre button by its caption '
+        'when a tap on it opens the recorder', (tester) async {
       final s = await _makeStores();
       await _pump(tester,
           runStore: s.runStore,
@@ -226,8 +226,11 @@ void main() {
           prefs: s.prefs,
           centreStartsRun: true);
       final empty = tester.widget<EmptyState>(find.byType(EmptyState));
-      expect(empty.body, contains('Start run'));
+      expect(empty.body, contains('Tap Run to record one'));
       expect(empty.body, isNot(contains('Log')));
+      expect(empty.body, isNot(contains('Start')),
+          reason: 'the centre button opens the recorder; only its Start '
+              'starts a run (#1374)');
     });
 
     testWidgets(
@@ -241,7 +244,7 @@ void main() {
           prefs: s.prefs,
           centreStartsRun: true);
       final empty = tester.widget<EmptyState>(find.byType(EmptyState));
-      expect(empty.body, contains('Start trail run'));
+      expect(empty.body, contains('Tap Trail run'));
     });
 
     // The shell's centre button, a thumb away, is the one that records; this

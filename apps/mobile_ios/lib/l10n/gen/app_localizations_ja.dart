@@ -9227,6 +9227,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get discardChangesDiscard => '破棄';
 
   @override
+  String get discardChangesBusy => '保存中です。完了してから戻ってください。';
+
+  @override
   String get prefsTitle => '環境設定';
 
   @override
@@ -10656,9 +10659,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventFormRecurMonthly => '毎月';
 
   @override
-  String get eventFormCancel => 'キャンセル';
-
-  @override
   String get eventFormCreate => 'イベントを作成';
 
   @override
@@ -10725,9 +10725,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get clubFormJoinInvite => '招待制のみ';
-
-  @override
-  String get clubFormCancel => 'キャンセル';
 
   @override
   String get clubFormCreate => '作成';
@@ -11238,9 +11235,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get gearFormNotesLabel => 'メモ';
-
-  @override
-  String get gearFormCancel => 'キャンセル';
 
   @override
   String get gearFormSaving => '保存中…';

@@ -9752,6 +9752,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get discardChangesDiscard => 'Verwerfen';
 
   @override
+  String get discardChangesBusy =>
+      'Wird noch gespeichert. Sie können die Seite verlassen, sobald der Vorgang abgeschlossen ist.';
+
+  @override
   String get prefsTitle => 'Voreinstellungen';
 
   @override
@@ -11224,9 +11228,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventFormRecurMonthly => 'Monatlich';
 
   @override
-  String get eventFormCancel => 'Abbrechen';
-
-  @override
   String get eventFormCreate => 'Veranstaltung erstellen';
 
   @override
@@ -11294,9 +11295,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get clubFormJoinInvite => 'Nur mit Einladung';
-
-  @override
-  String get clubFormCancel => 'Abbrechen';
 
   @override
   String get clubFormCreate => 'Erstellen';
@@ -11824,9 +11822,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get gearFormNotesLabel => 'Notizen';
-
-  @override
-  String get gearFormCancel => 'Abbrechen';
 
   @override
   String get gearFormSaving => 'Wird gespeichert…';

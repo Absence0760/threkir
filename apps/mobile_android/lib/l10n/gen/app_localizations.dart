@@ -15472,6 +15472,12 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get discardChangesDiscard;
 
+  /// Banner shown when the person tries to leave a form while its save or create is still running; the page stays open until it finishes
+  ///
+  /// In en, this message translates to:
+  /// **'Still saving. You can leave when it finishes.'**
+  String get discardChangesBusy;
+
   /// AppBar title for the Settings > Preferences screen
   ///
   /// In en, this message translates to:
@@ -18027,12 +18033,6 @@ abstract class AppLocalizations {
   /// **'Monthly'**
   String get eventFormRecurMonthly;
 
-  /// Button to cancel the event form
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get eventFormCancel;
-
   /// Button to create the event
   ///
   /// In en, this message translates to:
@@ -18164,12 +18164,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invite only'**
   String get clubFormJoinInvite;
-
-  /// Button to cancel the club form
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get clubFormCancel;
 
   /// Button to create the club
   ///
@@ -19100,12 +19094,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notes'**
   String get gearFormNotesLabel;
-
-  /// Button to cancel the gear form
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get gearFormCancel;
 
   /// Button label while the gear is saving
   ///

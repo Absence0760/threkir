@@ -44,6 +44,7 @@ Future<bool?> showNutritionLogSheet({
     context,
     title: title,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) =>
         NutritionLogSheet(key: formKey, store: store, diaryDate: diaryDate),
   );
@@ -120,6 +121,9 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
   final _manualSodium = TextEditingController();
   final _manualSatFat = TextEditingController();
   final _manualCholesterol = TextEditingController();
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
 
   // Only the manual-entry composer holds loseable work: a search query /
   // its results and the meal-slot pick are one tap to recreate, and a
@@ -338,7 +342,17 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // Picking a search result logs it at once; only a manual entry has a
+    // Save to press.
     return FullScreenFormBody(
+      save: _manualOpen
+          ? EditorSave(
+              label: l10n.nutritionAdd,
+              busy: _saving,
+              onPressed:
+                  _manualName.text.trim().isEmpty ? null : _saveManual,
+            )
+          : null,
       children: [
         DropdownButtonFormField<String>(
           initialValue: _mealSlot,
@@ -449,6 +463,8 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
           TextField(
             controller: _manualName,
             decoration: InputDecoration(labelText: l10n.nutritionItemName),
+            // Add is enabled by the name, so it has to rebuild as one is typed.
+            onChanged: (_) => setState(() {}),
           ),
           Row(
             children: [
@@ -484,11 +500,6 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
               const SizedBox(width: 8),
               const Expanded(child: SizedBox()),
             ],
-          ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _saving || _manualName.text.trim().isEmpty ? null : _saveManual,
-            child: Text(l10n.nutritionAdd),
           ),
         ],
       ],

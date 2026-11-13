@@ -573,7 +573,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Discard changes?'), findsOneWidget);
 
-      // The form has its own Cancel button — scope to the dialog's.
       await tester.tap(find.descendant(
           of: find.byType(AlertDialog), matching: find.text('Cancel')));
       await tester.pump();
@@ -609,15 +608,14 @@ void main() {
       expect(find.text('result=<cancelled>'), findsOneWidget);
     });
 
-    testWidgets('typed name: the Cancel button routes through the confirm',
+    testWidgets('typed name: the close button routes through the confirm',
         (tester) async {
       await _openSheet(tester);
       await tester.enterText(
           find.widgetWithText(TextField, 'Name'), 'Sunday Runners');
       await tester.pump();
 
-      await tester.ensureVisible(find.widgetWithText(TextButton, 'Cancel'));
-      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.tap(find.byTooltip('Close'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Discard changes?'), findsOneWidget);

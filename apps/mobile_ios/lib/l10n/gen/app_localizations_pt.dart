@@ -9739,6 +9739,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get discardChangesDiscard => 'Descartar';
 
   @override
+  String get discardChangesBusy =>
+      'Ainda a guardar. Pode sair quando terminar.';
+
+  @override
   String get prefsTitle => 'Preferências';
 
   @override
@@ -11210,9 +11214,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventFormRecurMonthly => 'Mensal';
 
   @override
-  String get eventFormCancel => 'Cancelar';
-
-  @override
   String get eventFormCreate => 'Criar evento';
 
   @override
@@ -11280,9 +11281,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get clubFormJoinInvite => 'Apenas por convite';
-
-  @override
-  String get clubFormCancel => 'Cancelar';
 
   @override
   String get clubFormCreate => 'Criar';
@@ -11811,9 +11809,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get gearFormNotesLabel => 'Notas';
-
-  @override
-  String get gearFormCancel => 'Cancelar';
 
   @override
   String get gearFormSaving => 'A guardar…';
@@ -32358,6 +32353,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get discardChangesDiscard => 'Descartar';
 
   @override
+  String get discardChangesBusy =>
+      'Ainda salvando. Você pode sair quando terminar.';
+
+  @override
   String get prefsTitle => 'Preferências';
 
   @override
@@ -33828,9 +33827,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get eventFormRecurMonthly => 'Mensal';
 
   @override
-  String get eventFormCancel => 'Cancelar';
-
-  @override
   String get eventFormCreate => 'Criar evento';
 
   @override
@@ -33898,9 +33894,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get clubFormJoinInvite => 'Apenas por convite';
-
-  @override
-  String get clubFormCancel => 'Cancelar';
 
   @override
   String get clubFormCreate => 'Criar';
@@ -34430,9 +34423,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get gearFormNotesLabel => 'Notas';
-
-  @override
-  String get gearFormCancel => 'Cancelar';
 
   @override
   String get gearFormSaving => 'Salvando…';

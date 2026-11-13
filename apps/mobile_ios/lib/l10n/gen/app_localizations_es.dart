@@ -9732,6 +9732,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get discardChangesDiscard => 'Descartar';
 
   @override
+  String get discardChangesBusy =>
+      'Todavía se está guardando. Podrás salir cuando termine.';
+
+  @override
   String get prefsTitle => 'Preferencias';
 
   @override
@@ -11207,9 +11211,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventFormRecurMonthly => 'Mensual';
 
   @override
-  String get eventFormCancel => 'Cancelar';
-
-  @override
   String get eventFormCreate => 'Crear evento';
 
   @override
@@ -11277,9 +11278,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clubFormJoinInvite => 'Solo por invitación';
-
-  @override
-  String get clubFormCancel => 'Cancelar';
 
   @override
   String get clubFormCreate => 'Crear';
@@ -11806,9 +11804,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get gearFormNotesLabel => 'Notas';
-
-  @override
-  String get gearFormCancel => 'Cancelar';
 
   @override
   String get gearFormSaving => 'Guardando…';

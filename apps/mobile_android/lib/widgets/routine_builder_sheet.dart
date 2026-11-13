@@ -34,6 +34,7 @@ Future<String?> showRoutineBuilderSheet({
     context,
     title: l10n.gymRoutineEditorNewTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) => RoutineBuilderSheet(
       key: formKey,
       store: store,
@@ -171,6 +172,9 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     }
     return b.toString();
   }
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
 
   bool get isDirty => _snapshot() != _initialSnapshot;
 
@@ -332,6 +336,11 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     final l10n = AppLocalizations.of(context);
 
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.gymRoutineEditorSave,
+        busy: _saving,
+        onPressed: _save,
+      ),
       children: [
         SectionHeader(label: l10n.gymRoutineEditorTitleLabel),
         const SizedBox(height: 8),
@@ -383,21 +392,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
                 ?.copyWith(color: theme.colorScheme.error),
           ),
         ],
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const Spacer(),
-            TextButton(
-              onPressed: _saving ? null : () => Navigator.maybePop(context),
-              child: Text(l10n.gymRoutineEditorCancel),
-            ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(l10n.gymRoutineEditorSave),
-            ),
-          ],
-        ),
       ],
     );
   }

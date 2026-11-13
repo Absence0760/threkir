@@ -40,6 +40,7 @@ Future<bool> showWorkoutEditSheet(
     context,
     title: AppLocalizations.of(context).workoutEditTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) => _WorkoutEditSheet(
       key: formKey,
       workout: workout,
@@ -143,6 +144,9 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
         _hrMaxCtl.text,
       ].join('\u0000');
 
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
+
   bool get isDirty => _snapshot() != _initialSnapshot;
 
   @override
@@ -163,8 +167,12 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    // Heading lives in the host AppBar (showFullScreenForm).
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.workoutEditSave,
+        busy: _saving,
+        onPressed: _save,
+      ),
       children: [
           DropdownButtonFormField<WorkoutKind>(
             initialValue: _kind,
@@ -236,32 +244,6 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
             Text(_error!,
                 style: TextStyle(color: theme.colorScheme.error)),
           ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _saving
-                      ? null
-                      : () => Navigator.of(context).maybePop(false),
-                  child: Text(l10n.workoutEditCancel),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.workoutEditSave),
-                ),
-              ),
-            ],
-          ),
         ],
       );
   }

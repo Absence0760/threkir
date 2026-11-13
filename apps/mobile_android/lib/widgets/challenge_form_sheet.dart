@@ -77,6 +77,7 @@ Future<String?> showChallengeFormSheet(
     context,
     title: AppLocalizations.of(context).challengesCreate,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (_) => _ChallengeForm(key: formKey, social: social),
   );
 }
@@ -151,6 +152,9 @@ class _ChallengeFormState extends State<_ChallengeForm> {
         _starts.toIso8601String(),
         _ends.toIso8601String(),
       ].join('|');
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _busy;
 
   bool get isDirty => _snapshot() != _initialSnapshot;
 
@@ -308,6 +312,11 @@ class _ChallengeFormState extends State<_ChallengeForm> {
     final tag = localeToTag(Localizations.localeOf(context));
     final unit = activeDistanceUnit;
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.challengesCreate,
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
         TextField(
           key: const Key('challenge-title'),
@@ -434,28 +443,6 @@ class _ChallengeFormState extends State<_ChallengeForm> {
                 ?.copyWith(color: theme.colorScheme.error),
           ),
         ],
-        const SizedBox(height: 20),
-        OverflowBar(
-          alignment: MainAxisAlignment.end,
-          overflowAlignment: OverflowBarAlignment.end,
-          spacing: 8,
-          children: [
-            TextButton(
-              onPressed: _busy ? null : () => Navigator.maybePop(context),
-              child: Text(l10n.commonCancel),
-            ),
-            FilledButton(
-              onPressed: _busy ? null : _submit,
-              child: _busy
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(l10n.challengesCreate),
-            ),
-          ],
-        ),
       ],
     );
   }

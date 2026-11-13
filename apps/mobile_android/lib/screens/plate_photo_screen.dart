@@ -44,6 +44,7 @@ Future<bool?> showPlatePhotoScreen({
     context,
     title: AppLocalizations.of(context).platePhotoTitle,
     isDirty: () => key.currentState?.isDirty ?? false,
+    isBusy: () => key.currentState?.isBusy ?? false,
     builder: (_) => PlatePhotoForm(key: key, store: store, diaryDate: diaryDate),
   );
 }
@@ -109,6 +110,9 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
   String _mealSlot = 'lunch';
   PlatePhotoErrorKind? _error;
   String? _saveError;
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
 
   bool get isDirty => _bytes != null || (_drafts?.isNotEmpty ?? false);
 
@@ -239,7 +243,28 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final drafts = _drafts;
+    // One primary action per stage: estimate the photo, then save the
+    // reviewed items.
     return FullScreenFormBody(
+      save: drafts == null
+          ? EditorSave(
+              key: const ValueKey('plate-photo-estimate'),
+              label: _estimating
+                  ? l10n.platePhotoEstimating
+                  : l10n.platePhotoEstimate,
+              busy: _estimating,
+              onPressed: _bytes == null ? null : _estimate,
+            )
+          : drafts.isEmpty
+              ? null
+              : EditorSave(
+                  key: const ValueKey('plate-photo-save'),
+                  label: _saving
+                      ? l10n.platePhotoSaving
+                      : l10n.platePhotoSave(drafts.length),
+                  busy: _saving,
+                  onPressed: _save,
+                ),
       children: [
         Text(l10n.platePhotoIntro, style: theme.textTheme.bodyMedium),
         const SizedBox(height: 16),
@@ -283,11 +308,6 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
               labelText: l10n.platePhotoNoteLabel,
               hintText: l10n.platePhotoNoteHint,
             ),
-          ),
-          FilledButton(
-            key: const ValueKey('plate-photo-estimate'),
-            onPressed: _bytes == null || _estimating ? null : _estimate,
-            child: Text(_estimating ? l10n.platePhotoEstimating : l10n.platePhotoEstimate),
           ),
         ] else if (drafts.isEmpty) ...[
           Text(l10n.platePhotoEmpty),
@@ -353,12 +373,6 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
                 ),
               ),
             ),
-          const SizedBox(height: 12),
-          FilledButton(
-            key: const ValueKey('plate-photo-save'),
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? l10n.platePhotoSaving : l10n.platePhotoSave(drafts.length)),
-          ),
         ],
         if (_error != null) ...[
           const SizedBox(height: 12),

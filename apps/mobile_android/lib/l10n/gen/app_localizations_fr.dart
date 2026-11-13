@@ -9761,6 +9761,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get discardChangesDiscard => 'Ignorer';
 
   @override
+  String get discardChangesBusy =>
+      'Enregistrement en cours. Vous pourrez quitter une fois terminé.';
+
+  @override
   String get prefsTitle => 'Préférences';
 
   @override
@@ -11237,9 +11241,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventFormRecurMonthly => 'Mensuel';
 
   @override
-  String get eventFormCancel => 'Annuler';
-
-  @override
   String get eventFormCreate => 'Créer l\'événement';
 
   @override
@@ -11307,9 +11308,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get clubFormJoinInvite => 'Sur invitation';
-
-  @override
-  String get clubFormCancel => 'Annuler';
 
   @override
   String get clubFormCreate => 'Créer';
@@ -11837,9 +11835,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get gearFormNotesLabel => 'Notes';
-
-  @override
-  String get gearFormCancel => 'Annuler';
 
   @override
   String get gearFormSaving => 'Enregistrement…';

@@ -129,7 +129,7 @@ void main() {
     }
   });
 
-  testWidgets('Cancel returns null and writes nothing', (tester) async {
+  testWidgets('Close returns null and writes nothing', (tester) async {
     final f = await _setup('cancel');
     GearFormResult? result;
     var called = false;
@@ -141,7 +141,8 @@ void main() {
           called = true;
         }),
       );
-      await tester.tap(find.text('Cancel'));
+      expect(find.text('Cancel'), findsNothing);
+      await tester.tap(find.byTooltip('Close'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(called, isTrue);

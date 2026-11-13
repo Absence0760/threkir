@@ -13062,6 +13062,10 @@
   "@discardChangesDiscard": {
     "description": "Confirm button that leaves the form discarding unsaved edits"
   },
+  "discardChangesBusy": "Still saving. You can leave when it finishes.",
+  "@discardChangesBusy": {
+    "description": "Banner shown when the person tries to leave a form while its save or create is still running; the page stays open until it finishes"
+  },
   "prefsTitle": "Preferences",
   "@prefsTitle": {
     "description": "AppBar title for the Settings > Preferences screen"
@@ -15055,10 +15059,6 @@
   "@eventFormRecurMonthly": {
     "description": "Recurrence option: monthly"
   },
-  "eventFormCancel": "Cancel",
-  "@eventFormCancel": {
-    "description": "Button to cancel the event form"
-  },
   "eventFormCreate": "Create event",
   "@eventFormCreate": {
     "description": "Button to create the event"
@@ -15146,10 +15146,6 @@
   "clubFormJoinInvite": "Invite only",
   "@clubFormJoinInvite": {
     "description": "Join policy option: invite only"
-  },
-  "clubFormCancel": "Cancel",
-  "@clubFormCancel": {
-    "description": "Button to cancel the club form"
   },
   "clubFormCreate": "Create",
   "@clubFormCreate": {
@@ -15883,10 +15879,6 @@
   "gearFormNotesLabel": "Notes",
   "@gearFormNotesLabel": {
     "description": "Label for the gear notes field"
-  },
-  "gearFormCancel": "Cancel",
-  "@gearFormCancel": {
-    "description": "Button to cancel the gear form"
   },
   "gearFormSaving": "Saving…",
   "@gearFormSaving": {

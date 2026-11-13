@@ -3918,6 +3918,21 @@ class AppLocalizationsPt extends AppLocalizations {
       'Já há um pino aqui — toque mais distante para adicionar outro.';
 
   @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Ponto $index de $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Ponto $index de $total, partida';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Ponto $index de $total, chegada';
+  }
+
+  @override
   String get routeBuilderTargetTooLong =>
       'Insira uma distância alvo de até 1000 km.';
 
@@ -26553,6 +26568,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get routeBuilderPinAlreadyThere =>
       'Já há um pino aqui — toque mais distante para adicionar outro.';
+
+  @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Ponto $index de $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Ponto $index de $total, largada';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Ponto $index de $total, chegada';
+  }
 
   @override
   String get routeBuilderTargetTooLong =>

@@ -6491,6 +6491,24 @@ abstract class AppLocalizations {
   /// **'Pin already there — tap further apart to add another.'**
   String get routeBuilderPinAlreadyThere;
 
+  /// Screen-reader name of a route-builder waypoint pin between the start and the end
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}'**
+  String routeBuilderWaypoint(int index, int total);
+
+  /// Screen-reader name of the route-builder start pin
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}, start'**
+  String routeBuilderWaypointStart(int index, int total);
+
+  /// Screen-reader name of the route-builder end pin
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}, finish'**
+  String routeBuilderWaypointEnd(int index, int total);
+
   /// Banner shown when the generate-loop target distance is out of range
   ///
   /// In en, this message translates to:

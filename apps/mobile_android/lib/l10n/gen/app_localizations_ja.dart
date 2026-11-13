@@ -3723,6 +3723,21 @@ class AppLocalizationsJa extends AppLocalizations {
       'すでにピンがあります — 別のピンを追加するには離れた場所をタップしてください。';
 
   @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'ポイント $index/$total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'ポイント $index/$total、スタート';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'ポイント $index/$total、ゴール';
+  }
+
+  @override
   String get routeBuilderTargetTooLong => '目標距離は 1000 km まで入力してください。';
 
   @override

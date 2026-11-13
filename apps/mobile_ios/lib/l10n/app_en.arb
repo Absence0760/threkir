@@ -5172,6 +5172,42 @@
   "@routeBuilderPinAlreadyThere": {
     "description": "Banner shown when a tapped waypoint would duplicate an existing one"
   },
+  "routeBuilderWaypoint": "Point {index} of {total}",
+  "@routeBuilderWaypoint": {
+    "description": "Screen-reader name of a route-builder waypoint pin between the start and the end",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "routeBuilderWaypointStart": "Point {index} of {total}, start",
+  "@routeBuilderWaypointStart": {
+    "description": "Screen-reader name of the route-builder start pin",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "routeBuilderWaypointEnd": "Point {index} of {total}, finish",
+  "@routeBuilderWaypointEnd": {
+    "description": "Screen-reader name of the route-builder end pin",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "routeBuilderTargetTooLong": "Enter a target distance up to 1000 km.",
   "@routeBuilderTargetTooLong": {
     "description": "Banner shown when the generate-loop target distance is out of range"

@@ -3877,6 +3877,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pin already there — tap further apart to add another.';
 
   @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Point $index of $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Point $index of $total, start';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Point $index of $total, finish';
+  }
+
+  @override
   String get routeBuilderTargetTooLong =>
       'Enter a target distance up to 1000 km.';
 

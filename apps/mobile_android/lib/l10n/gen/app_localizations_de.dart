@@ -3927,6 +3927,21 @@ class AppLocalizationsDe extends AppLocalizations {
       'Hier ist bereits ein Punkt — tippe weiter entfernt, um einen weiteren hinzuzufügen.';
 
   @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Punkt $index von $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Punkt $index von $total, Start';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Punkt $index von $total, Ziel';
+  }
+
+  @override
   String get routeBuilderTargetTooLong =>
       'Gib eine Zieldistanz von bis zu 1000 km ein.';
 

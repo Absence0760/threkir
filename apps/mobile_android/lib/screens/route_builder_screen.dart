@@ -12,7 +12,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, ChoiceChipOption, ChoiceChipRow, syncMotionLoop;
+    show AppMotion, AppSemanticColors, ChoiceChipOption, ChoiceChipRow, syncMotionLoop;
 import 'package:uuid/uuid.dart';
 
 import '../auth_error.dart';
@@ -1297,6 +1297,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                                   : () => _placeOverMarker(i),
                           child: _WaypointPin(
                             index: i,
+                            total: waypointLatLngs.length,
                             isStart: i == 0,
                             isEnd: i == waypointLatLngs.length - 1 && i > 0,
                             isDragging: _dragIndex == i,
@@ -1953,8 +1954,31 @@ class _DrawStatusCard extends StatelessWidget {
 /// the route is long enough to close as a loop — visual cue for
 /// snap-to-start. While the user is dragging this waypoint, the pin
 /// switches to an amber outline.
+/// The fill and the glyph colour of a route-builder waypoint pin, from the
+/// AA-tuned semantic pairs, so the index or glyph reads on every pin (#1374
+/// A11Y-7). Material's green / red / amber / blueGrey under white measured
+/// 2.78 / 3.68 / 1.63 / 4.37:1. Start and end also differ by glyph, not by
+/// colour alone.
+@visibleForTesting
+({Color fill, Color on}) waypointPinColors(
+  ThemeData theme, {
+  required bool isStart,
+  required bool isEnd,
+  required bool isDragging,
+}) {
+  final semantic = AppSemanticColors.ofTheme(theme);
+  if (isDragging) return (fill: semantic.warning, on: semantic.onWarning);
+  if (isStart) return (fill: semantic.success, on: semantic.onSuccess);
+  if (isEnd) return (fill: semantic.danger, on: semantic.onDanger);
+  return (
+    fill: theme.colorScheme.inverseSurface,
+    on: theme.colorScheme.onInverseSurface,
+  );
+}
+
 class _WaypointPin extends StatefulWidget {
   final int index;
+  final int total;
   final bool isStart;
   final bool isEnd;
   final bool isDragging;
@@ -1962,6 +1986,7 @@ class _WaypointPin extends StatefulWidget {
 
   const _WaypointPin({
     required this.index,
+    required this.total,
     required this.isStart,
     required this.isEnd,
     required this.isDragging,
@@ -1996,13 +2021,14 @@ class _WaypointPinState extends State<_WaypointPin>
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isDragging
-        ? Colors.amber
-        : widget.isStart
-            ? Colors.green
-            : widget.isEnd
-                ? Colors.red
-                : Colors.blueGrey;
+    final l10n = AppLocalizations.of(context);
+    final colors = waypointPinColors(
+      Theme.of(context),
+      isStart: widget.isStart,
+      isEnd: widget.isEnd,
+      isDragging: widget.isDragging,
+    );
+    final color = colors.fill;
     // Drag mode bumps the pin from 22→32 dp + adds a coloured
     // shadow so it visibly "lifts" off the map. Without this the
     // only sign you'd entered drag mode was a colour shift the
@@ -2016,9 +2042,9 @@ class _WaypointPinState extends State<_WaypointPin>
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 2),
         boxShadow: widget.isDragging
-            ? const [
+            ? [
                 BoxShadow(
-                  color: Colors.amber,
+                  color: color,
                   blurRadius: 12,
                   spreadRadius: 2,
                 ),
@@ -2026,24 +2052,40 @@ class _WaypointPinState extends State<_WaypointPin>
             : null,
       ),
       alignment: Alignment.center,
-      child: Text(
-        '${widget.index + 1}',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: widget.isDragging ? 14 : 11,
-        ),
-      ),
+      // Start and end carry a glyph, so they differ by shape as well as
+      // colour; the pins between carry their number.
+      child: widget.isStart || widget.isEnd
+          ? Icon(
+              widget.isStart ? Icons.play_arrow : Icons.sports_score,
+              size: widget.isDragging ? 18 : 14,
+              color: colors.on,
+            )
+          : Text(
+              '${widget.index + 1}',
+              style: TextStyle(
+                color: colors.on,
+                fontWeight: FontWeight.bold,
+                fontSize: widget.isDragging ? 14 : 11,
+              ),
+            ),
     );
+    final n = widget.index + 1;
+    final pinLabel = widget.isStart
+        ? l10n.routeBuilderWaypointStart(n, widget.total)
+        : widget.isEnd
+            ? l10n.routeBuilderWaypointEnd(n, widget.total)
+            : l10n.routeBuilderWaypoint(n, widget.total);
     // Two pulsing-halo paths: the start-pin "snap to close loop"
     // affordance (existing) and the new "drag in progress" affordance.
     // Either reuses the same `_pulse` controller so the animation
     // stays coordinated when both ever overlap (shouldn't, because
     // pulseStart gates on `_dragIndex == null`).
     final shouldPulse = widget.pulseStart || widget.isDragging;
-    if (!shouldPulse) return pin;
-    final ringColor = widget.isDragging ? Colors.amber : Colors.green;
-    return AnimatedBuilder(
+    if (!shouldPulse) {
+      return Semantics(label: pinLabel, excludeSemantics: true, child: pin);
+    }
+    final ringColor = color;
+    final pulsing = AnimatedBuilder(
       animation: _pulse,
       builder: (_, child) {
         final t = _pulse.value;
@@ -2073,6 +2115,7 @@ class _WaypointPinState extends State<_WaypointPin>
       },
       child: pin,
     );
+    return Semantics(label: pinLabel, excludeSemantics: true, child: pulsing);
   }
 }
 

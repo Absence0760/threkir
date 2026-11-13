@@ -13678,6 +13678,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get nutritionSearching => 'A procurar…';
 
   @override
+  String nutritionSearchKcalPer100g(int kcal) {
+    return '$kcal kcal / 100 g';
+  }
+
+  @override
   String get nutritionNoResults =>
       'Sem resultados. Tente outro termo ou insira manualmente abaixo.';
 
@@ -36425,6 +36430,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionSearching => 'Buscando…';
+
+  @override
+  String nutritionSearchKcalPer100g(int kcal) {
+    return '$kcal kcal / 100 g';
+  }
 
   @override
   String get nutritionNoResults =>

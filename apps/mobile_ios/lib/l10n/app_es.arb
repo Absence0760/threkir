@@ -3811,6 +3811,7 @@
   "nutritionLogTitle": "Registrar comida",
   "nutritionSearchHint": "Busca un alimento",
   "nutritionSearching": "Buscando…",
+  "nutritionSearchKcalPer100g": "{kcal} kcal / 100 g",
   "nutritionNoResults": "Sin coincidencias. Prueba otro término o introdúcelo manualmente abajo.",
   "nutritionSearchFailed": "La búsqueda falló. Comprueba tu conexión y vuelve a intentarlo o introdúcelo manualmente abajo.",
   "nutritionSearchRetry": "Reintentar búsqueda",

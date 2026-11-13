@@ -430,7 +430,7 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
                 // The source as the title's badge rather than a trailing
                 // value: it wraps under a long name instead of crowding it.
                 badge: _SourceTag(source: r.source, l10n: l10n),
-                subtitle: '${r.calories100g.round()} kcal / 100 g',
+                subtitle: l10n.nutritionSearchKcalPer100g(r.calories100g.round()),
                 enabled: !_saving,
                 onTap: () => _pick(r),
               ))

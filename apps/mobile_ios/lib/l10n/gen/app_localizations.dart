@@ -22109,6 +22109,12 @@ abstract class AppLocalizations {
   /// **'Searching…'**
   String get nutritionSearching;
 
+  /// A food search result's energy, per 100 g of the food
+  ///
+  /// In en, this message translates to:
+  /// **'{kcal} kcal / 100 g'**
+  String nutritionSearchKcalPer100g(int kcal);
+
   /// No description provided for @nutritionNoResults.
   ///
   /// In en, this message translates to:

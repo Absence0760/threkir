@@ -3811,6 +3811,7 @@
   "nutritionLogTitle": "Essen erfassen",
   "nutritionSearchHint": "Nach einem Lebensmittel suchen",
   "nutritionSearching": "Suche läuft…",
+  "nutritionSearchKcalPer100g": "{kcal} kcal / 100 g",
   "nutritionNoResults": "Keine Treffer. Versuche einen anderen Begriff oder gib es unten manuell ein.",
   "nutritionSearchFailed": "Suche fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut oder gib es unten manuell ein.",
   "nutritionSearchRetry": "Suche wiederholen",

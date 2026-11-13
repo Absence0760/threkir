@@ -13541,6 +13541,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionSearching => 'Searching…';
 
   @override
+  String nutritionSearchKcalPer100g(int kcal) {
+    return '$kcal kcal / 100 g';
+  }
+
+  @override
   String get nutritionNoResults =>
       'No matches. Try another term or enter it manually below.';
 

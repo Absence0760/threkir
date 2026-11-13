@@ -18032,6 +18032,15 @@
   "nutritionLogTitle": "Log food",
   "nutritionSearchHint": "Search for a food",
   "nutritionSearching": "Searching…",
+  "nutritionSearchKcalPer100g": "{kcal} kcal / 100 g",
+  "@nutritionSearchKcalPer100g": {
+    "description": "A food search result's energy, per 100 g of the food",
+    "placeholders": {
+      "kcal": {
+        "type": "int"
+      }
+    }
+  },
   "nutritionNoResults": "No matches. Try another term or enter it manually below.",
   "nutritionSearchFailed": "Search failed. Check your connection, then retry or enter it manually below.",
   "nutritionSearchRetry": "Retry search",

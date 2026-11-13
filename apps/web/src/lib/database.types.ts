@@ -3353,6 +3353,9 @@ export type Database = {
           id: string
           kind: string
           native_push_sent_at: string | null
+          park_course_id: string | null
+          park_course_month: string | null
+          park_course_time_s: number | null
           plan_id: string | null
           read_at: string | null
           refunded: boolean
@@ -3378,6 +3381,9 @@ export type Database = {
           id?: string
           kind: string
           native_push_sent_at?: string | null
+          park_course_id?: string | null
+          park_course_month?: string | null
+          park_course_time_s?: number | null
           plan_id?: string | null
           read_at?: string | null
           refunded?: boolean
@@ -3403,6 +3409,9 @@ export type Database = {
           id?: string
           kind?: string
           native_push_sent_at?: string | null
+          park_course_id?: string | null
+          park_course_month?: string | null
+          park_course_time_s?: number | null
           plan_id?: string | null
           read_at?: string | null
           refunded?: boolean
@@ -3465,6 +3474,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_park_course_id_fkey"
+            columns: ["park_course_id"]
+            isOneToOne: false
+            referencedRelation: "park_courses"
             referencedColumns: ["id"]
           },
           {
@@ -8194,6 +8210,10 @@ export type Database = {
       enqueue_event_reminders: { Args: never; Returns: undefined }
       enqueue_export_blob_reap: { Args: never; Returns: undefined }
       enqueue_lifecycle_drip: { Args: never; Returns: number }
+      enqueue_park_course_month_notices: {
+        Args: { p_now?: string }
+        Returns: number
+      }
       enqueue_route_photo_orphan_sweep: { Args: never; Returns: undefined }
       enqueue_run_rematch: { Args: { p_run_id: string }; Returns: Json }
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
@@ -8464,7 +8484,12 @@ export type Database = {
         }
       }
       global_segment_completions: {
-        Args: { p_limit?: number; p_season?: number; p_segment_id: string }
+        Args: {
+          p_limit?: number
+          p_month?: number
+          p_season?: number
+          p_segment_id: string
+        }
         Returns: {
           avatar_url: string
           completions: number
@@ -8486,6 +8511,7 @@ export type Database = {
           p_club_id?: string
           p_gender?: string
           p_limit?: number
+          p_month?: number
           p_season?: number
           p_segment_id: string
         }
@@ -8993,6 +9019,13 @@ export type Database = {
           target_owner_id: string
         }[]
       }
+      park_course_month_runners: {
+        Args: { p_park_id: string }
+        Returns: {
+          course_id: string
+          runners: number
+        }[]
+      }
       park_course_records: {
         Args: never
         Returns: {
@@ -9014,6 +9047,10 @@ export type Database = {
           reports_resolved: number
           status_before: string
         }[]
+      }
+      park_month: {
+        Args: { p: Database["public"]["Tables"]["parks"]["Row"] }
+        Returns: number
       }
       park_nps_sweep_targets: {
         Args: never
@@ -9512,6 +9549,8 @@ export type Database = {
           course_slug: string
           effort_id: string
           global_segment_id: string
+          month: number
+          month_rank: number
           park_name: string
           park_slug: string
           region_code: string

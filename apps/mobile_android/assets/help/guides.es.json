@@ -3752,8 +3752,8 @@
   {
     "id": "park-courses",
     "lang": "es",
-    "title": "Recorridos de parques: puntos de control, temporadas y clasificaciones",
-    "summary": "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empieza una temporada y cómo ordenan Más rápidos y Más completados.",
+    "title": "Recorridos de parques: puntos de control, temporadas, meses y clasificaciones",
+    "summary": "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empiezan una temporada y un mes y cómo ordenan Más rápidos y Más completados.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3827,7 +3827,7 @@
             "type": "list",
             "items": [
               "**Más rápidos** ordena a cada corredor por su mejor tiempo en el recorrido. Apareces una sola vez, con tu mejor carrera.",
-              "Por defecto muestra este año. Selecciona **Histórico** para ver los mejores tiempos de siempre.",
+              "Por defecto muestra este año. Selecciona **Este mes** para ver lo que va de mes, o **Histórico** para ver los mejores tiempos de siempre.",
               "Filtra por género o por grupo de edad. El filtro de edad solo incluye a quienes han aceptado compartir datos de salud, así que puede ser más corto que la clasificación completa."
             ]
           }
@@ -3839,6 +3839,25 @@
           {
             "type": "p",
             "text": "**Más completados** premia a los habituales. Cuenta los días en que completaste el recorrido, en la zona horaria del parque, así que varias vueltas el mismo día cuentan como una."
+          }
+        ]
+      },
+      {
+        "heading": "Meses: una clasificación nueva cada mes",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Las dos clasificaciones también van mes a mes. Un mes es un mes natural en la zona horaria del parque, desde la medianoche del día 1 hasta la medianoche del día 1 del mes siguiente, así que una carrera a las 23:30 del 31 de octubre en la hora del parque cuenta para octubre."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Selecciona **Este mes** para ver lo que va de mes, y usa las flechas junto al nombre del mes para volver a meses anteriores.",
+              "Cada recorrido en la página de un parque muestra cuántas personas lo han corrido este mes.",
+              "Un tiempo en un recorrido de parque, en la página de tu carrera, muestra su puesto ese mes y ese año, por ejemplo N.º 2 en noviembre, n.º 9 en 2026. La pegatina **Recorrido de parque** de una imagen compartida muestra el puesto del mes, y también el del año cuando está entre los 10 primeros.",
+              "Cuando termina un mes en la hora del parque, recibes en tu bandeja de entrada un aviso con tu mejor tiempo de ese mes en cada recorrido que corriste. Desactívalo con **Meses en recorridos de parque**: en la web, en [[route:/settings/notifications|Notificaciones]]; en la app del móvil, en **Notificaciones**, dentro de la pestaña **Tú**.",
+              "Las insignias de meses de parque cuentan los meses en los que completaste un recorrido de parque, a los 3, 6, 12 y 24 meses. Cuentan recorridos completados, nunca puestos."
+            ]
           }
         ]
       },

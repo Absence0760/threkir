@@ -943,6 +943,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _putUniversal(SettingsKeys.notifyRaceStartingSoon, on ? 'off' : 'on');
   }
 
+  Future<void> _toggleNotifyParkCourseMonth() async {
+    final on = _bagValue<String>(SettingsKeys.notifyParkCourseMonth) != 'off';
+    await _putUniversal(SettingsKeys.notifyParkCourseMonth, on ? 'off' : 'on');
+  }
+
   Future<void> _editEmailLifecycleDrip() async {
     // Opt-IN consent stored as 'on'|'off' (default 'off'); a separate key from
     // both email_notifications and email_weekly_digest — one engagement stream
@@ -2298,6 +2303,16 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                   _bagReady ? (_) => _toggleNotifyRaceStartingSoon() : null,
             ),
             ListRow.toggle(
+              key: const ValueKey('prefs-notify-park-course-month'),
+              title: l10n.prefsNotifyParkCourseMonth,
+              subtitle: l10n.prefsNotifyParkCourseMonthHint,
+              value:
+                  _bagValue<String>(SettingsKeys.notifyParkCourseMonth) !=
+                      'off',
+              onChanged:
+                  _bagReady ? (_) => _toggleNotifyParkCourseMonth() : null,
+            ),
+            ListRow.toggle(
               title: l10n.prefsEmailNewDeviceAlerts,
               subtitle: l10n.prefsEmailNewDeviceAlertsHint,
               value:
@@ -2516,6 +2531,7 @@ List<String> preferencesRowTitles(AppLocalizations l10n, PreferencesPage page) =
           l10n.prefsPushNotifications,
           l10n.prefsNotifyWorkoutReminder,
           l10n.prefsNotifyRaceStartingSoon,
+          l10n.prefsNotifyParkCourseMonth,
           l10n.prefsEmailNewDeviceAlerts,
           l10n.prefsEmailWeeklyDigest,
           l10n.prefsEmailLifecycleDrip,

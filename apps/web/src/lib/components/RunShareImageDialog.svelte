@@ -5,6 +5,7 @@
 	// qualifies for. The preview IS the export: each
 	// change re-renders the PNG that Share and Download hand over. On a photo,
 	// the title-and-stats block is moved and resized right on the preview.
+	import { monthName } from '#lib/format/calendar.ts';
 	import { untrack } from 'svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -106,8 +107,17 @@
 		/// The single-run distance badge this run earned.
 		badge?: { badgeKey: string; tier: AchievementTier } | null;
 		/// The park course time this run set (`pickShareCourse`), with its
-		/// place on that season's board when it holds one.
-		course?: { name: string; park: string; timeS: number; season: number; rank: number | null } | null;
+		/// place on its month's board where the park is, and its place on the
+		/// season's when that is in the top 10 (`shareCoursePlaces`).
+		course?: {
+			name: string;
+			park: string;
+			timeS: number;
+			season: number;
+			month: number;
+			monthRank: number | null;
+			seasonRank: number | null;
+		} | null;
 	}
 
 	let {
@@ -310,6 +320,24 @@
 	}
 
 	/// The occasion sticker for `k`, or null for `stats`, which the layouts draw.
+	/// "#2 in November", or "#2 in November · #9 in 2026" when the year place
+	/// is one the sticker prints; null when the time holds no month place.
+	function courseRankLine(
+		c: { season: number; month: number; monthRank: number | null; seasonRank: number | null },
+		nf: Intl.NumberFormat,
+	): string | null {
+		if (c.monthRank == null) return null;
+		const month = monthName(c.month - 1, currentLocale());
+		return c.seasonRank != null
+			? m('runShare.courseRanks', {
+					monthRank: nf.format(c.monthRank),
+					month,
+					seasonRank: nf.format(c.seasonRank),
+					season: nf.format(c.season),
+				})
+			: m('runShare.courseMonthRank', { rank: nf.format(c.monthRank), month });
+	}
+
 	function occasionBody(k: RunStickerKind, r: PrCardEntry | null): StickerBody | null {
 		const hasRoute = line.length >= 2;
 		switch (k) {
@@ -339,7 +367,7 @@
 						name: c.name,
 						park: c.park,
 						time: formatShareDuration(c.timeS),
-						rank: c.rank != null ? m('runShare.courseRank', { rank: nf.format(c.rank), season: nf.format(c.season) }) : null,
+						rank: courseRankLine(c, nf),
 					},
 					hasRoute,
 				);

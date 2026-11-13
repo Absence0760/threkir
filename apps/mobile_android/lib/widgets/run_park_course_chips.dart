@@ -2,15 +2,17 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 
 import '../backend_timeout.dart';
+import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
-import '../park_courses.dart' show RunParkCourseTime;
+import '../l10n/locale_support.dart';
+import '../park_courses.dart' show BoardPeriod, RunParkCourseTime;
 import '../preferences.dart' show formatEffortTime;
 import '../screens/park_courses_screen.dart';
 import 'top_banner.dart';
 
 /// The owner's park course chips on run detail: one per park course the run
-/// completed, with the time and its place on that season's fastest board,
-/// each opening the course. Mirrors web `RunParkCourseChips.svelte`. Nothing
+/// completed, with the time and its places on that month's and that season's
+/// fastest boards, each opening the course on the effort's month. Mirrors web `RunParkCourseChips.svelte`. Nothing
 /// while loading or when the run completed no course; a failed read is a quiet
 /// line with Retry, so run detail never depends on it.
 class RunParkCourseChips extends StatefulWidget {
@@ -81,6 +83,7 @@ class _RunParkCourseChipsState extends State<RunParkCourseChips> {
           api: widget.api,
           listing: found.park,
           course: found.course,
+          initialPeriod: BoardPeriod.month(t.season, t.month),
         ),
       ));
     } catch (e) {
@@ -138,9 +141,11 @@ class _RunParkCourseChipsState extends State<RunParkCourseChips> {
                   [
                     t.courseName,
                     formatEffortTime(t.timeSeconds.toDouble()),
-                    if (t.seasonRank != null)
-                      l10n.runDetailParkCourseRank(
-                          '${t.seasonRank}', '${t.season}'),
+                    ?parkCourseRankText(
+                      l10n,
+                      t,
+                      localeToTag(Localizations.localeOf(context)),
+                    ),
                   ].join(' · '),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -151,4 +156,28 @@ class _RunParkCourseChipsState extends State<RunParkCourseChips> {
       ),
     );
   }
+}
+
+/// "#2 in November, #9 in 2026": a park course time's place on its month's
+/// board where the park is, then on its season's, each when it holds one;
+/// null when it holds neither. Mirrors web `RunParkCourseChips.rank`.
+String? parkCourseRankText(
+  AppLocalizations l10n,
+  RunParkCourseTime t,
+  String localeTag,
+) {
+  final month = formatMonthName(DateTime(t.season, t.month), localeTag);
+  final monthRank = t.monthRank;
+  final seasonRank = t.seasonRank;
+  if (monthRank != null && seasonRank != null) {
+    return l10n.runDetailParkCourseRanks(
+        '$monthRank', month, '$seasonRank', '${t.season}');
+  }
+  if (monthRank != null) {
+    return l10n.runDetailParkCourseMonthRank('$monthRank', month);
+  }
+  if (seasonRank != null) {
+    return l10n.runDetailParkCourseRank('$seasonRank', '${t.season}');
+  }
+  return null;
 }

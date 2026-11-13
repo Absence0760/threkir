@@ -4636,6 +4636,36 @@
       }
     }
   },
+  "runDetailParkCourseMonthRank": "#{rank} in {month}",
+  "@runDetailParkCourseMonthRank": {
+    "description": "A park course chip's place on that month's fastest board, e.g. #2 in November (runDetail.parkCourseMonthRank)",
+    "placeholders": {
+      "rank": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "runDetailParkCourseRanks": "#{monthRank} in {month}, #{seasonRank} in {season}",
+  "@runDetailParkCourseRanks": {
+    "description": "A park course chip's places on its month's and its season's boards, e.g. #2 in November, #9 in 2026 (runDetail.parkCourseRanks)",
+    "placeholders": {
+      "monthRank": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "seasonRank": {
+        "type": "String"
+      },
+      "season": {
+        "type": "String"
+      }
+    }
+  },
   "runDetailParkCoursesLoadFailed": "Couldn't load your park course times.",
   "@runDetailParkCoursesLoadFailed": {
     "description": "Quiet line on run detail when the park course chips could not be read; a Retry button follows (runDetail.parkCoursesLoadFailed)"
@@ -21690,6 +21720,38 @@
   "@badgesParkPassport10Desc": {
     "description": "Park courses phase 5 (badges.parkPassport10.desc)"
   },
+  "badgesParkMonths3Label": "Park months",
+  "@badgesParkMonths3Label": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths3.label)"
+  },
+  "badgesParkMonths3Desc": "Completed a park course in 3 different months",
+  "@badgesParkMonths3Desc": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths3.desc)"
+  },
+  "badgesParkMonths6Label": "Half a year of parks",
+  "@badgesParkMonths6Label": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths6.label)"
+  },
+  "badgesParkMonths6Desc": "Completed a park course in 6 different months",
+  "@badgesParkMonths6Desc": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths6.desc)"
+  },
+  "badgesParkMonths12Label": "A year of parks",
+  "@badgesParkMonths12Label": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths12.label)"
+  },
+  "badgesParkMonths12Desc": "Completed a park course in 12 different months",
+  "@badgesParkMonths12Desc": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths12.desc)"
+  },
+  "badgesParkMonths24Label": "Two years of parks",
+  "@badgesParkMonths24Label": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths24.label)"
+  },
+  "badgesParkMonths24Desc": "Completed a park course in 24 different months",
+  "@badgesParkMonths24Desc": {
+    "description": "Park course monthly boards (#1343) (badges.parkMonths24.desc)"
+  },
   "racePredictorTitle": "Race-time predictor",
   "@racePredictorTitle": {
     "description": "Title of the dashboard race-time predictor card"
@@ -27836,11 +27898,29 @@
   "@shareCardCourseKicker": {
     "description": "Park courses phase 5 (runShare.courseKicker)"
   },
-  "shareCardCourseRank": "#{rank} in {season}",
-  "@shareCardCourseRank": {
-    "description": "Park courses phase 5 (runShare.courseRank)",
+  "shareCardCourseMonthRank": "#{rank} in {month}",
+  "@shareCardCourseMonthRank": {
+    "description": "Park course monthly boards (#1343): the sticker's month place (runShare.courseMonthRank)",
     "placeholders": {
       "rank": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCardCourseRanks": "#{monthRank} in {month} · #{seasonRank} in {season}",
+  "@shareCardCourseRanks": {
+    "description": "Park course monthly boards (#1343): the sticker's month place with a top-10 year place (runShare.courseRanks)",
+    "placeholders": {
+      "monthRank": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "seasonRank": {
         "type": "String"
       },
       "season": {
@@ -28516,6 +28596,10 @@
   "@parksBoardCompletions": {
     "description": "Park courses (#1313): web key parks.boardCompletions."
   },
+  "parksPeriodThisMonth": "This month",
+  "@parksPeriodThisMonth": {
+    "description": "Park course monthly boards (#1343): web key parks.periodThisMonth."
+  },
   "parksSeasonThisYear": "This year ({year})",
   "@parksSeasonThisYear": {
     "description": "Park courses (#1313): web key parks.seasonThisYear.",
@@ -28529,6 +28613,14 @@
   "@parksSeasonAllTime": {
     "description": "Park courses (#1313): web key parks.seasonAllTime."
   },
+  "parksPeriodPrevMonth": "Previous month",
+  "@parksPeriodPrevMonth": {
+    "description": "Park course monthly boards (#1343): the month arrow back. Web key parks.periodPrevMonth."
+  },
+  "parksPeriodNextMonth": "Next month",
+  "@parksPeriodNextMonth": {
+    "description": "Park course monthly boards (#1343): the month arrow forward. Web key parks.periodNextMonth."
+  },
   "parksCompletionDays": "{n, plural, one {{n} day} other {{n} days}}",
   "@parksCompletionDays": {
     "description": "Park courses (#1313): web key parks.completionDays.",
@@ -28537,6 +28629,19 @@
         "type": "int"
       }
     }
+  },
+  "parksMonthRunners": "{n, plural, one {{n} runner this month} other {{n} runners this month}}",
+  "@parksMonthRunners": {
+    "description": "Park course monthly boards (#1343): how many runners have a time on a course this month, on its park page. Web key parks.monthRunners.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksMonthRunnersFailed": "Couldn't load how many ran each course this month.",
+  "@parksMonthRunnersFailed": {
+    "description": "Park course monthly boards (#1343): the park page could not read how many ran each course this month. Web key parks.monthRunnersFailed."
   },
   "parksNoEfforts": "No times on this board yet. Run the course and yours is the first.",
   "@parksNoEfforts": {
@@ -28956,6 +29061,14 @@
   "prefsNotifyRaceStartingSoonHint": "A push about 10 minutes before a scheduled race you're going to starts, and when its start moves. Never emailed.",
   "@prefsNotifyRaceStartingSoonHint": {
     "description": "Settings switch subtitle for the race-starting-soon push"
+  },
+  "prefsNotifyParkCourseMonth": "Park course months",
+  "@prefsNotifyParkCourseMonth": {
+    "description": "Notifications: the switch for the park course month-close notice (notify_park_course_month). Web key prefs.notifyParkCourseMonth."
+  },
+  "prefsNotifyParkCourseMonthHint": "When a month ends at a park course you ran, a note in your inbox with your best time from it.",
+  "@prefsNotifyParkCourseMonthHint": {
+    "description": "Notifications: hint under the park course month-close switch."
   },
   "clubVerificationStatusTitle": "Official verification",
   "@clubVerificationStatusTitle": {
@@ -29774,6 +29887,25 @@
   "profileNotifParkCourseReport": "A park course was reported",
   "@profileNotifParkCourseReport": {
     "description": "Notification text, app admins only: someone reported a problem with a park course"
+  },
+  "profileNotifParkCourseMonthClosed": "A month has closed on a park course you ran",
+  "@profileNotifParkCourseMonthClosed": {
+    "description": "Notification text: a calendar month closed at a park course you ran, when the course cannot be named (notificationBell.parkCourseMonthClosed)"
+  },
+  "profileNotifParkCourseMonthClosedNamed": "{course}: the {month} board has closed. Your best: {time}",
+  "@profileNotifParkCourseMonthClosedNamed": {
+    "description": "Notification text: a calendar month closed at a park course you ran, with your best time from it; month is a month and year such as November 2026 (notificationBell.parkCourseMonthClosedNamed)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
   },
   "rateLimitReaction": "You're reacting too quickly — please wait {wait} and try again.",
   "@rateLimitReaction": {

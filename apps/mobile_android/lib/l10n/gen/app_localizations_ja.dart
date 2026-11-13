@@ -3375,6 +3375,21 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseMonthRank(String rank, String month) {
+    return '$month $rank位';
+  }
+
+  @override
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '$month $monthRank位、$season年 $seasonRank位';
+  }
+
+  @override
   String get runDetailParkCoursesLoadFailed => '公園コースのタイムを読み込めませんでした。';
 
   @override
@@ -15647,6 +15662,30 @@ class AppLocalizationsJa extends AppLocalizations {
   String get badgesParkPassport10Desc => '10の州でパークパスポートを達成';
 
   @override
+  String get badgesParkMonths3Label => 'パーク3か月';
+
+  @override
+  String get badgesParkMonths3Desc => '異なる3か月でパークコースを完走';
+
+  @override
+  String get badgesParkMonths6Label => 'パーク半年';
+
+  @override
+  String get badgesParkMonths6Desc => '異なる6か月でパークコースを完走';
+
+  @override
+  String get badgesParkMonths12Label => 'パーク1年';
+
+  @override
+  String get badgesParkMonths12Desc => '異なる12か月でパークコースを完走';
+
+  @override
+  String get badgesParkMonths24Label => 'パーク2年';
+
+  @override
+  String get badgesParkMonths24Desc => '異なる24か月でパークコースを完走';
+
+  @override
   String get racePredictorTitle => 'レースタイム予測';
 
   @override
@@ -20216,8 +20255,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardCourseKicker => 'パークコースのタイム';
 
   @override
-  String shareCardCourseRank(String rank, String season) {
-    return '$season年 $rank位';
+  String shareCardCourseMonthRank(String rank, String month) {
+    return '$month $rank位';
+  }
+
+  @override
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '$month $monthRank位 · $season年 $seasonRank位';
   }
 
   @override
@@ -20674,6 +20723,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksBoardCompletions => '完走回数';
 
   @override
+  String get parksPeriodThisMonth => '今月';
+
+  @override
   String parksSeasonThisYear(int year) {
     return '今年（$year年）';
   }
@@ -20682,10 +20734,29 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksSeasonAllTime => '全期間';
 
   @override
+  String get parksPeriodPrevMonth => '前の月';
+
+  @override
+  String get parksPeriodNextMonth => '次の月';
+
+  @override
   String parksCompletionDays(int n) {
     String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n日');
     return '$_temp0';
   }
+
+  @override
+  String parksMonthRunners(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '今月 $n人',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksMonthRunnersFailed => '今月各コースを走った人数を読み込めませんでした。';
 
   @override
   String get parksNoEfforts => 'このランキングにはまだタイムがありません。コースを走れば最初のタイムを残せます。';
@@ -20976,6 +21047,13 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get prefsNotifyRaceStartingSoonHint =>
       '参加予定の予約スタートのレースが始まる約10分前と、スタート時刻が変わったときのプッシュ通知。メールでは送りません。';
+
+  @override
+  String get prefsNotifyParkCourseMonth => '公園コースの月間記録';
+
+  @override
+  String get prefsNotifyParkCourseMonthHint =>
+      '走った公園コースで1か月が終わると、その月のベストタイムを受信箱でお知らせします。';
 
   @override
   String get clubVerificationStatusTitle => '公式認証';
@@ -21506,6 +21584,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get profileNotifParkCourseReport => '公園コースについて報告がありました';
+
+  @override
+  String get profileNotifParkCourseMonthClosed => '走った公園コースの1か月が終わりました';
+
+  @override
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  ) {
+    return '$course：$monthのランキングが確定しました。ベストタイム：$time';
+  }
 
   @override
   String rateLimitReaction(String wait) {

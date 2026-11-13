@@ -13,7 +13,10 @@ import '../entity_link.dart';
 import '../help_destination.dart';
 import '../help_guides.dart' show HelpDestination;
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart';
 import '../notification_groups.dart';
+import '../park_courses.dart' show BoardPeriod;
+import '../park_month_notice_copy.dart';
 import '../preferences.dart';
 import '../race_service.dart';
 import '../settings_destination.dart';
@@ -37,6 +40,7 @@ import 'follow_requests_screen.dart';
 import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
 import 'messages_screen.dart';
+import 'park_courses_screen.dart';
 import 'edit_profile_screen.dart';
 import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
@@ -1645,6 +1649,12 @@ class _ProfileScreenState extends State<ProfileScreen>
       await _openOnWeb('/admin/reports');
     } else if (kind == 'course_alert' && item.row.courseAlertId != null) {
       await _openCourseAlert(item.row.courseAlertId!);
+    } else if (kind == 'park_course_month_closed' &&
+        item.row.parkCourseId != null) {
+      await _openParkCourseMonth(
+        item.row.parkCourseId!,
+        item.row.parkCourseMonth,
+      );
     } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1729,6 +1739,35 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else {
       showTopBanner(context, l10n.courseAlertsNotFound);
     }
+  }
+
+  /// A month-close notice opens its course on the month that closed, as the
+  /// web link's `?period=YYYY-MM` does. A course that is gone says so.
+  Future<void> _openParkCourseMonth(String courseId, DateTime? month) async {
+    final api = widget.api;
+    ({ParkListing park, ParkCourseListing course})? found;
+    try {
+      found = await api.fetchParkCourseById(courseId);
+    } catch (e) {
+      debugPrint('ProfileScreen: park course resolve failed: $e');
+    }
+    if (!mounted) return;
+    if (found == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).runDetailParkCourseOpenFailed);
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ParkCourseScreen(
+          api: api,
+          listing: found!.park,
+          course: found.course,
+          initialPeriod:
+              month == null ? null : BoardPeriod.month(month.year, month.month),
+        ),
+      ),
+    );
   }
 
   String _notifName(AppLocalizations l10n, NotificationView item) =>
@@ -1816,6 +1855,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             : l10n.profileNotifOrganiserDispute;
       case 'park_course_report':
         return l10n.profileNotifParkCourseReport;
+      case 'park_course_month_closed':
+        return parkMonthNoticeText(
+          l10n,
+          courseName: item.parkCourseName,
+          month: item.row.parkCourseMonth,
+          timeS: item.row.parkCourseTimeS,
+          localeTag: activeLocaleTag,
+        );
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)

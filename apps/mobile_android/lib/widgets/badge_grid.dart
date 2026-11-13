@@ -75,6 +75,14 @@ IconData badgeIconData(String name) {
       return Icons.flag_circle;
     case 'map':
       return Icons.map_outlined;
+    case 'calendar_month':
+      return Icons.calendar_month_outlined;
+    case 'event_repeat':
+      return Icons.event_repeat;
+    case 'event_available':
+      return Icons.event_available;
+    case 'date_range':
+      return Icons.date_range;
     default:
       return Icons.military_tech;
   }
@@ -199,6 +207,22 @@ String badgeText(AppLocalizations l10n, String key, String distance) {
       return l10n.badgesParkPassport10Label;
     case 'badgesParkPassport10Desc':
       return l10n.badgesParkPassport10Desc;
+    case 'badgesParkMonths3Label':
+      return l10n.badgesParkMonths3Label;
+    case 'badgesParkMonths3Desc':
+      return l10n.badgesParkMonths3Desc;
+    case 'badgesParkMonths6Label':
+      return l10n.badgesParkMonths6Label;
+    case 'badgesParkMonths6Desc':
+      return l10n.badgesParkMonths6Desc;
+    case 'badgesParkMonths12Label':
+      return l10n.badgesParkMonths12Label;
+    case 'badgesParkMonths12Desc':
+      return l10n.badgesParkMonths12Desc;
+    case 'badgesParkMonths24Label':
+      return l10n.badgesParkMonths24Label;
+    case 'badgesParkMonths24Desc':
+      return l10n.badgesParkMonths24Desc;
     default:
       return key;
   }

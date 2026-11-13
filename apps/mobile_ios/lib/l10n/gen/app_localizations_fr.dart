@@ -3534,6 +3534,21 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String runDetailParkCourseMonthRank(String rank, String month) {
+    return 'N° $rank en $month';
+  }
+
+  @override
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return 'N° $monthRank en $month, n° $seasonRank en $season';
+  }
+
+  @override
   String get runDetailParkCoursesLoadFailed =>
       'Impossible de charger vos temps sur parcours de parc.';
 
@@ -16434,6 +16449,34 @@ class AppLocalizationsFr extends AppLocalizations {
       'Passeport des parcs complété dans 10 États';
 
   @override
+  String get badgesParkMonths3Label => 'Mois au parc';
+
+  @override
+  String get badgesParkMonths3Desc =>
+      'Un parcours de parc terminé pendant 3 mois différents';
+
+  @override
+  String get badgesParkMonths6Label => 'Six mois de parcs';
+
+  @override
+  String get badgesParkMonths6Desc =>
+      'Un parcours de parc terminé pendant 6 mois différents';
+
+  @override
+  String get badgesParkMonths12Label => 'Une année de parcs';
+
+  @override
+  String get badgesParkMonths12Desc =>
+      'Un parcours de parc terminé pendant 12 mois différents';
+
+  @override
+  String get badgesParkMonths24Label => 'Deux années de parcs';
+
+  @override
+  String get badgesParkMonths24Desc =>
+      'Un parcours de parc terminé pendant 24 mois différents';
+
+  @override
   String get racePredictorTitle => 'Prédicteur de temps de course';
 
   @override
@@ -21265,8 +21308,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shareCardCourseKicker => 'Temps sur parcours de parc';
 
   @override
-  String shareCardCourseRank(String rank, String season) {
-    return 'N° $rank en $season';
+  String shareCardCourseMonthRank(String rank, String month) {
+    return 'N° $rank en $month';
+  }
+
+  @override
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return 'N° $monthRank en $month · n° $seasonRank en $season';
   }
 
   @override
@@ -21756,12 +21809,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get parksBoardCompletions => 'Le plus de passages';
 
   @override
+  String get parksPeriodThisMonth => 'Ce mois-ci';
+
+  @override
   String parksSeasonThisYear(int year) {
     return 'Cette année ($year)';
   }
 
   @override
   String get parksSeasonAllTime => 'Depuis toujours';
+
+  @override
+  String get parksPeriodPrevMonth => 'Mois précédent';
+
+  @override
+  String get parksPeriodNextMonth => 'Mois suivant';
 
   @override
   String parksCompletionDays(int n) {
@@ -21773,6 +21835,21 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String parksMonthRunners(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n coureurs ce mois-ci',
+      one: '$n coureur ce mois-ci',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksMonthRunnersFailed =>
+      'Impossible de charger le nombre de coureurs de chaque parcours ce mois-ci.';
 
   @override
   String get parksNoEfforts =>
@@ -22089,6 +22166,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get prefsNotifyRaceStartingSoonHint =>
       'Une notification push environ 10 minutes avant le départ d\'une course programmée à laquelle vous participez, et quand son départ est déplacé. Jamais par e-mail.';
+
+  @override
+  String get prefsNotifyParkCourseMonth => 'Mois sur les parcours de parc';
+
+  @override
+  String get prefsNotifyParkCourseMonthHint =>
+      'Quand un mois se termine sur un parcours de parc que vous avez couru, un message dans votre boîte de réception avec votre meilleur temps du mois.';
 
   @override
   String get clubVerificationStatusTitle => 'Vérification officielle';
@@ -22653,6 +22737,19 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get profileNotifParkCourseReport =>
       'Un parcours de parc a été signalé';
+
+  @override
+  String get profileNotifParkCourseMonthClosed =>
+      'Un mois s\'est terminé sur un parcours de parc que vous avez couru';
+
+  @override
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  ) {
+    return '$course : le classement de $month est clos. Votre meilleur temps : $time';
+  }
 
   @override
   String rateLimitReaction(String wait) {

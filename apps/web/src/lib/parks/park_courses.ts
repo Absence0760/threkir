@@ -332,18 +332,122 @@ export interface RunParkCourseTime {
 	time_seconds: number;
 	season: number;
 	season_rank: number | null;
+	/** The effort's calendar month (1-12) where the park is. */
+	month: number;
+	/** Its place on that month's fastest board, when it is the runner's best that month and in the top 100. */
+	month_rank: number | null;
 }
 
+/** The sticker adds the year's place only when it is this high (issue #1343). */
+export const SHARE_COURSE_YEAR_PLACE_MAX = 10;
+
 /**
- * The course a run's share sticker prints: the best-ranked of its park course
- * times this season, or the first when none is ranked; null when the run
- * completed no park course.
+ * The course a run's share sticker prints: the best month place among its
+ * park course times (the year place breaking a tie), or the first time when
+ * none is placed; null when the run completed no park course.
  */
 export function pickShareCourse<T extends RunParkCourseTime>(rows: readonly T[]): T | null {
 	let best: T | null = null;
 	for (const r of rows) {
-		if (r.season_rank == null) continue;
-		if (best === null || r.season_rank < (best.season_rank as number)) best = r;
+		if (r.month_rank == null) continue;
+		if (
+			best === null ||
+			r.month_rank < (best.month_rank as number) ||
+			(r.month_rank === best.month_rank && (r.season_rank ?? Infinity) < (best.season_rank ?? Infinity))
+		) {
+			best = r;
+		}
 	}
 	return best ?? rows[0] ?? null;
+}
+
+/**
+ * The places a share sticker prints for a course time: the month place, and
+ * the year place only when it is in the top `SHARE_COURSE_YEAR_PLACE_MAX`.
+ */
+export function shareCoursePlaces(t: Pick<RunParkCourseTime, 'month_rank' | 'season_rank'>): {
+	monthRank: number | null;
+	seasonRank: number | null;
+} {
+	return {
+		monthRank: t.month_rank,
+		seasonRank: t.season_rank != null && t.season_rank <= SHARE_COURSE_YEAR_PLACE_MAX ? t.season_rank : null,
+	};
+}
+
+/**
+ * The period a park course board shows (issue #1343): one calendar month or
+ * the year, each where the park is, or all time. A month or year is the
+ * `p_season` / `p_month` pair the boards take.
+ */
+export type BoardPeriod =
+	| { kind: 'month'; season: number; month: number }
+	| { kind: 'year'; season: number }
+	| { kind: 'all' };
+
+/** The earliest season either board accepts (`p_season` between 2000 and 2200). */
+export const BOARD_FIRST_SEASON = 2000;
+
+/** "Now" where the park is, read from `park_season` and `park_month`. */
+export interface ParkNow {
+	season: number;
+	month: number;
+}
+
+/**
+ * Reads a `?period=` value: `YYYY-MM` is that month, `all` is all time.
+ * Anything else, a month outside 1-12, a season the boards refuse, or a month
+ * after the park's current one is null, and the caller shows this year.
+ */
+export function parseBoardPeriod(raw: string | null | undefined, now: ParkNow): BoardPeriod | null {
+	if (raw === 'all') return { kind: 'all' };
+	const m = /^(\d{4})-(\d{2})$/.exec(raw ?? '');
+	if (!m) return null;
+	const season = Number(m[1]);
+	const month = Number(m[2]);
+	if (month < 1 || month > 12 || season < BOARD_FIRST_SEASON) return null;
+	if (season > now.season || (season === now.season && month > now.month)) return null;
+	return { kind: 'month', season, month };
+}
+
+/**
+ * The `?period=` value for a period. Null for the year, the default, so the
+ * page's own URL stays bare; only the park's current year is ever shown.
+ */
+export function boardPeriodParam(period: BoardPeriod): string | null {
+	switch (period.kind) {
+		case 'all':
+			return 'all';
+		case 'year':
+			return null;
+		case 'month':
+			return `${period.season}-${String(period.month).padStart(2, '0')}`;
+	}
+}
+
+/** The `p_season` / `p_month` a board call passes for a period; null leaves the argument out. */
+export function boardPeriodArgs(period: BoardPeriod): { season: number | null; month: number | null } {
+	switch (period.kind) {
+		case 'all':
+			return { season: null, month: null };
+		case 'year':
+			return { season: period.season, month: null };
+		case 'month':
+			return { season: period.season, month: period.month };
+	}
+}
+
+/**
+ * The month `delta` months from a month period, or null when that would pass
+ * the park's current month or come before the first season the boards
+ * accept. Any other period has no neighbour.
+ */
+export function stepBoardMonth(period: BoardPeriod, delta: number, now: ParkNow): BoardPeriod | null {
+	if (period.kind !== 'month') return null;
+	const index = period.season * 12 + (period.month - 1) + delta;
+	const season = Math.floor(index / 12);
+	const month = (index % 12) + 1;
+	if (season < BOARD_FIRST_SEASON) return null;
+	if (season > now.season || (season === now.season && month > now.month)) return null;
+	return { kind: 'month', season, month };
 }

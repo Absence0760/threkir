@@ -5860,6 +5860,23 @@ abstract class AppLocalizations {
   /// **'#{rank} in {season}'**
   String runDetailParkCourseRank(String rank, String season);
 
+  /// A park course chip's place on that month's fastest board, e.g. #2 in November (runDetail.parkCourseMonthRank)
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank} in {month}'**
+  String runDetailParkCourseMonthRank(String rank, String month);
+
+  /// A park course chip's places on its month's and its season's boards, e.g. #2 in November, #9 in 2026 (runDetail.parkCourseRanks)
+  ///
+  /// In en, this message translates to:
+  /// **'#{monthRank} in {month}, #{seasonRank} in {season}'**
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  );
+
   /// Quiet line on run detail when the park course chips could not be read; a Retry button follows (runDetail.parkCoursesLoadFailed)
   ///
   /// In en, this message translates to:
@@ -26506,6 +26523,54 @@ abstract class AppLocalizations {
   /// **'Completed a park passport in 10 states'**
   String get badgesParkPassport10Desc;
 
+  /// Park course monthly boards (#1343) (badges.parkMonths3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park months'**
+  String get badgesParkMonths3Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 3 different months'**
+  String get badgesParkMonths3Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths6.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Half a year of parks'**
+  String get badgesParkMonths6Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths6.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 6 different months'**
+  String get badgesParkMonths6Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths12.label)
+  ///
+  /// In en, this message translates to:
+  /// **'A year of parks'**
+  String get badgesParkMonths12Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths12.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 12 different months'**
+  String get badgesParkMonths12Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths24.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Two years of parks'**
+  String get badgesParkMonths24Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths24.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 24 different months'**
+  String get badgesParkMonths24Desc;
+
   /// Title of the dashboard race-time predictor card
   ///
   /// In en, this message translates to:
@@ -34093,11 +34158,22 @@ abstract class AppLocalizations {
   /// **'Park course time'**
   String get shareCardCourseKicker;
 
-  /// Park courses phase 5 (runShare.courseRank)
+  /// Park course monthly boards (#1343): the sticker's month place (runShare.courseMonthRank)
   ///
   /// In en, this message translates to:
-  /// **'#{rank} in {season}'**
-  String shareCardCourseRank(String rank, String season);
+  /// **'#{rank} in {month}'**
+  String shareCardCourseMonthRank(String rank, String month);
+
+  /// Park course monthly boards (#1343): the sticker's month place with a top-10 year place (runShare.courseRanks)
+  ///
+  /// In en, this message translates to:
+  /// **'#{monthRank} in {month} · #{seasonRank} in {season}'**
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  );
 
   /// Run detail action that opens the share sheet on the PR card
   ///
@@ -34867,6 +34943,12 @@ abstract class AppLocalizations {
   /// **'Most completions'**
   String get parksBoardCompletions;
 
+  /// Park course monthly boards (#1343): web key parks.periodThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get parksPeriodThisMonth;
+
   /// Park courses (#1313): web key parks.seasonThisYear.
   ///
   /// In en, this message translates to:
@@ -34879,11 +34961,35 @@ abstract class AppLocalizations {
   /// **'All time'**
   String get parksSeasonAllTime;
 
+  /// Park course monthly boards (#1343): the month arrow back. Web key parks.periodPrevMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get parksPeriodPrevMonth;
+
+  /// Park course monthly boards (#1343): the month arrow forward. Web key parks.periodNextMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Next month'**
+  String get parksPeriodNextMonth;
+
   /// Park courses (#1313): web key parks.completionDays.
   ///
   /// In en, this message translates to:
   /// **'{n, plural, one {{n} day} other {{n} days}}'**
   String parksCompletionDays(int n);
+
+  /// Park course monthly boards (#1343): how many runners have a time on a course this month, on its park page. Web key parks.monthRunners.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} runner this month} other {{n} runners this month}}'**
+  String parksMonthRunners(int n);
+
+  /// Park course monthly boards (#1343): the park page could not read how many ran each course this month. Web key parks.monthRunnersFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load how many ran each course this month.'**
+  String get parksMonthRunnersFailed;
 
   /// Park courses (#1313): web key parks.noEfforts.
   ///
@@ -35334,6 +35440,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.'**
   String get prefsNotifyRaceStartingSoonHint;
+
+  /// Notifications: the switch for the park course month-close notice (notify_park_course_month). Web key prefs.notifyParkCourseMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Park course months'**
+  String get prefsNotifyParkCourseMonth;
+
+  /// Notifications: hint under the park course month-close switch.
+  ///
+  /// In en, this message translates to:
+  /// **'When a month ends at a park course you ran, a note in your inbox with your best time from it.'**
+  String get prefsNotifyParkCourseMonthHint;
 
   /// Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins
   ///
@@ -36186,6 +36304,22 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A park course was reported'**
   String get profileNotifParkCourseReport;
+
+  /// Notification text: a calendar month closed at a park course you ran, when the course cannot be named (notificationBell.parkCourseMonthClosed)
+  ///
+  /// In en, this message translates to:
+  /// **'A month has closed on a park course you ran'**
+  String get profileNotifParkCourseMonthClosed;
+
+  /// Notification text: a calendar month closed at a park course you ran, with your best time from it; month is a month and year such as November 2026 (notificationBell.parkCourseMonthClosedNamed)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the {month} board has closed. Your best: {time}'**
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  );
 
   /// Rate-limit refusal when the direct-message reaction bucket is spent
   ///

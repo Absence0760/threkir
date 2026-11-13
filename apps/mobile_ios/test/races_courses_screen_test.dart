@@ -75,6 +75,7 @@ ParkListing _park(String id, String name) => ParkListing(
         createdAt: _created,
       ),
       season: 2026,
+      month: 11,
     );
 
 ParkCourseListing _course(

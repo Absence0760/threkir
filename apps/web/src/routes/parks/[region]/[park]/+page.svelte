@@ -7,6 +7,7 @@
 	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchPark,
+		fetchParkCourseMonthRunners,
 		fetchParkCourseRecords,
 		fetchParkCourses,
 		type Park,
@@ -39,6 +40,11 @@
 	// the courses still list, without records. Signed out, there is none.
 	let records = $state<Map<string, ParkCourseRecord>>(new Map());
 	let recordsFailed = $state(false);
+	// How many ran each course this month where the park is, an auxiliary
+	// read of its own like the records. A course nobody ran this month has
+	// no entry and no line.
+	let monthRunners = $state<Map<string, number>>(new Map());
+	let monthRunnersFailed = $state(false);
 	let highlightId = $state<string | null>(null);
 
 	const sorted = $derived(
@@ -68,6 +74,17 @@
 		}
 	}
 
+	async function loadMonthRunners(parkId: string) {
+		monthRunnersFailed = false;
+		if (!auth.loggedIn) return;
+		try {
+			monthRunners = await fetchParkCourseMonthRunners(parkId);
+		} catch (e) {
+			console.error('park course month runners read failed', e);
+			monthRunnersFailed = true;
+		}
+	}
+
 	async function load() {
 		loading = true;
 		loadFailed = false;
@@ -81,7 +98,10 @@
 		} finally {
 			loading = false;
 		}
-		if (park && courses.length > 0) void loadRecords();
+		if (park && courses.length > 0) {
+			void loadRecords();
+			void loadMonthRunners(park.id);
+		}
 	}
 
 	onMount(async () => {
@@ -150,6 +170,14 @@
 							{m('races.anyTimeFastestFailed')}
 						</p>
 					{/if}
+					{#if monthRunnersFailed}
+						<p class="records-failed" role="status" data-testid="park-month-runners-failed">
+							{m('parks.monthRunnersFailed')}
+							<button type="button" class="btn btn-outline btn-sm" onclick={() => park && void loadMonthRunners(park.id)}>
+								{m('parks.retry')}
+							</button>
+						</p>
+					{/if}
 					<ul class="course-list" data-testid="park-courses">
 						{#each sorted as course (course.id)}
 							{@const shapeKey = courseShapeShown(course.course_shape) ? labelKey(SHAPE_LABEL, course.course_shape) : null}
@@ -158,6 +186,7 @@
 							{@const laps = courseLapsChip(course.laps)}
 							{@const gain = Number(course.segment.elevation_m)}
 							{@const record = records.get(course.id)}
+							{@const ranThisMonth = monthRunners.get(course.id) ?? 0}
 							{@const points = pointsOf(course)}
 							<li
 								onmouseenter={() => (highlightId = course.id)}
@@ -199,6 +228,12 @@
 												{:else}
 													{m('races.anyTimeNoTimeYet')}
 												{/if}
+											</span>
+										{/if}
+										{#if ranThisMonth > 0}
+											<span class="course-record" data-testid="park-course-month-runners">
+												<span class="material-symbols month-icon" aria-hidden="true">calendar_month</span>
+												{m('parks.monthRunners', { n: ranThisMonth })}
 											</span>
 										{/if}
 									</span>
@@ -325,6 +360,10 @@
 		color: var(--color-text-tertiary);
 	}
 	.records-failed {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
 		margin: 0 0 var(--space-sm);
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
@@ -412,6 +451,9 @@
 	.course-record .material-symbols {
 		font-size: 1rem;
 		color: var(--color-crown);
+	}
+	.course-record .month-icon {
+		color: var(--color-text-tertiary);
 	}
 	.status-pill {
 		padding: 0.1rem 0.5rem;

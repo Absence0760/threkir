@@ -173,6 +173,16 @@ type NotificationEmailPayload struct {
 	NotificationID string `json:"notification_id"`
 }
 
+// ParkCourseRef is the slug path of a park course, embedded into the
+// notification projections as park_courses(slug, parks(slug, region_code)).
+type ParkCourseRef struct {
+	Slug string `json:"slug"`
+	Park *struct {
+		Slug       string `json:"slug"`
+		RegionCode string `json:"region_code"`
+	} `json:"park"`
+}
+
 // NotificationRow is the projection of `notifications` the email handler
 // reads. The source-link FKs (run_id / event_id / club_id / comment_id /
 // plan_id / achievement_id / challenge_id) are nullable — only the one
@@ -197,6 +207,14 @@ type NotificationRow struct {
 	// about (migration 20271217000001); null on a 1:1 message. copyKeyFor
 	// reads it for the group wording and pathForKind for the group's thread.
 	ConversationID *string `json:"conversation_id"`
+	// ParkCourseID and ParkCourseMonth name the course and the closed month
+	// (the park-local 1st, YYYY-MM-DD) of a 'park_course_month_closed' row
+	// (migration 20271226011343). ParkCourse is the course's slugs, embedded
+	// through the FK, because the notice deep-links to the course's own page
+	// for that month and the web has no id route for a park course.
+	ParkCourseID    *string        `json:"park_course_id"`
+	ParkCourseMonth *string        `json:"park_course_month"`
+	ParkCourse      *ParkCourseRef `json:"park_course"`
 	// Refunded is set on an event_cancel row whose recipient held a paid order
 	// on the cancelled occurrence (migration 20270725000002); copyKeyFor reads
 	// it to pick the copy that says the payment is being refunded.

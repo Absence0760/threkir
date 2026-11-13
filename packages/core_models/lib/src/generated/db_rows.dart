@@ -4808,6 +4808,9 @@ class NotificationRow {
   static const String colEventTitle = 'event_title';
   static const String colCourseAlertId = 'course_alert_id';
   static const String colConversationId = 'conversation_id';
+  static const String colParkCourseId = 'park_course_id';
+  static const String colParkCourseMonth = 'park_course_month';
+  static const String colParkCourseTimeS = 'park_course_time_s';
 
   final String id;
   final String userId;
@@ -4832,6 +4835,9 @@ class NotificationRow {
   final String? eventTitle;
   final String? courseAlertId;
   final String? conversationId;
+  final String? parkCourseId;
+  final DateTime? parkCourseMonth;
+  final int? parkCourseTimeS;
 
   const NotificationRow({
     required this.id,
@@ -4857,6 +4863,9 @@ class NotificationRow {
     this.eventTitle,
     this.courseAlertId,
     this.conversationId,
+    this.parkCourseId,
+    this.parkCourseMonth,
+    this.parkCourseTimeS,
   });
 
   factory NotificationRow.fromJson(Map<String, dynamic> json) => NotificationRow(
@@ -4883,6 +4892,9 @@ class NotificationRow {
     eventTitle: json['event_title'] as String?,
     courseAlertId: json['course_alert_id'] as String?,
     conversationId: json['conversation_id'] as String?,
+    parkCourseId: json['park_course_id'] as String?,
+    parkCourseMonth: parseIsoStrictValue(json['park_course_month']),
+    parkCourseTimeS: (json['park_course_time_s'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4909,6 +4921,9 @@ class NotificationRow {
     colEventTitle: eventTitle,
     colCourseAlertId: courseAlertId,
     colConversationId: conversationId,
+    colParkCourseId: parkCourseId,
+    colParkCourseMonth: parkCourseMonth?.toIso8601String(),
+    colParkCourseTimeS: parkCourseTimeS,
   };
 
   NotificationRow copyWith({
@@ -4935,6 +4950,9 @@ class NotificationRow {
     String? eventTitle,
     String? courseAlertId,
     String? conversationId,
+    String? parkCourseId,
+    DateTime? parkCourseMonth,
+    int? parkCourseTimeS,
   }) => NotificationRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -4959,6 +4977,9 @@ class NotificationRow {
     eventTitle: eventTitle ?? this.eventTitle,
     courseAlertId: courseAlertId ?? this.courseAlertId,
     conversationId: conversationId ?? this.conversationId,
+    parkCourseId: parkCourseId ?? this.parkCourseId,
+    parkCourseMonth: parkCourseMonth ?? this.parkCourseMonth,
+    parkCourseTimeS: parkCourseTimeS ?? this.parkCourseTimeS,
   );
 }
 

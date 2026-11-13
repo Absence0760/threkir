@@ -96,6 +96,7 @@ class _CatalogueApi extends ApiClient {
           createdAt: created,
         ),
         season: 2026,
+        month: 11,
       ),
       course: ParkCourseListing(
         course: ParkCourseRow(
@@ -135,6 +136,7 @@ class _CatalogueApi extends ApiClient {
     String? ageBand,
     String? clubId,
     int? season,
+    int? month,
     int limit = 50,
   }) async =>
       const [];
@@ -170,6 +172,7 @@ class _BoardApi extends _CatalogueApi {
     String? ageBand,
     String? clubId,
     int? season,
+    int? month,
     int limit = 50,
   }) async =>
       board;
@@ -222,6 +225,7 @@ class _ThrowingBoardApi extends _CatalogueApi {
     String? ageBand,
     String? clubId,
     int? season,
+    int? month,
     int limit = 50,
   }) async =>
       throw StateError('leaderboard network down');

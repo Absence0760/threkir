@@ -4,7 +4,7 @@ description: Como um percurso permanente num parque cronometra a sua corrida, po
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-08
+updated: 2026-11-13
 cta:
   feature: parks
 ---
@@ -35,9 +35,15 @@ Cada classificação tem uma época: o ano civil **no fuso horário do próprio 
 
 Uma nova época em cada janeiro dá a todos uma nova oportunidade de se classificarem, e a classificação de sempre guarda os recordes.
 
+## Uma classificação nova todos os meses
+
+As duas classificações também funcionam **mês a mês**, no fuso horário do parque: da meia-noite do dia 1 à meia-noite do dia 1 do mês seguinte, na hora do parque. Uma corrida às 23:30 de 31 de outubro num parque da Virgínia conta para outubro.
+
+Um mês que começa vazio é uma nova oportunidade para todos, não só para quem foi mais rápido em janeiro. Quando um mês termina, recebe na caixa de entrada uma mensagem com o seu melhor tempo desse mês em cada percurso que correu, e cada mês em que conclui um percurso de parque conta para os emblemas de meses de parque.
+
 ## Duas classificações, duas formas de ganhar
 
-- **Mais rápidos** ordena cada corredor pelo seu melhor tempo, uma vez por corredor. Alterne entre este ano e sempre, e filtre por género ou escalão etário.
+- **Mais rápidos** ordena cada corredor pelo seu melhor tempo, uma vez por corredor. Alterne entre este mês, este ano e sempre, e filtre por género ou escalão etário.
 - **Mais conclusões** conta os dias em que concluiu o percurso durante a época. Várias voltas no mesmo dia contam como uma, por isso premeia quem regressa semana após semana, e não um longo dia de voltas.
 
 As corridas privadas continuam privadas: o tempo de uma corrida que os outros não podem ver não lhes é mostrado.

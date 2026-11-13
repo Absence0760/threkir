@@ -402,17 +402,10 @@ class _FakeApi extends ApiClient {
   Object? followsError;
 
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowers(String userId,
-      {int limit = 20, List<Object?>? after}) async {
+  Future<({List<UserProfileRow> followers, List<UserProfileRow> following})>
+      fetchFollowGraph(String userId) async {
     if (followsError != null) throw followsError!;
-    return KeysetPage(followers, null);
-  }
-
-  @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
-      {int limit = 20, List<Object?>? after}) async {
-    if (followsError != null) throw followsError!;
-    return KeysetPage(following, null);
+    return (followers: followers, following: following);
   }
 
   @override

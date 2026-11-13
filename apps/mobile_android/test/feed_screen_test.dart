@@ -118,10 +118,9 @@ class _FakeApi extends ApiClient {
 
   int followingCalls = 0;
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
-      {int limit = 100, List<Object?>? after}) async {
+  Future<List<UserProfileRow>> fetchAllFollowing(String userId) async {
     followingCalls++;
-    return KeysetPage(followees, null);
+    return followees;
   }
 
   @override
@@ -161,14 +160,13 @@ class _ThrowingApi extends _FakeApi {
       throw Exception('feed down');
 }
 
-/// Fake whose author-dropdown fetch (fetchFollowing) throws — the feed
+/// Fake whose author-dropdown fetch (fetchAllFollowing) throws — the feed
 /// entries must still render (issue #506: a dropdown failure can't blank
 /// the whole feed).
 class _FollowingFailApi extends _FakeApi {
   _FollowingFailApi({super.entries, super.engagement});
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 100, List<Object?>? after}) async =>
+  Future<List<UserProfileRow>> fetchAllFollowing(String userId) async =>
       throw Exception('followees down');
 }
 
@@ -312,7 +310,7 @@ void main() {
       expect(find.bySemanticsLabel('Remove kudos'), findsNothing);
     });
 
-    testWidgets('signed-out viewer still loads the feed but skips fetchFollowing',
+    testWidgets('signed-out viewer still loads the feed but skips fetchAllFollowing',
         (tester) async {
       final api = _FakeApi(
         entries: [_runEntry(distanceM: 5000)],

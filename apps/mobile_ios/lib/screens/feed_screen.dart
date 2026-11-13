@@ -114,7 +114,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
     // The activity feed is the one fetch that must succeed — a failure
     // here is a genuine can't-show-a-feed error. The author filter
-    // (fetchFollowing) and the per-run kudos/comment footers
+    // (fetchAllFollowing) and the per-run kudos/comment footers
     // (fetchEngagementSummaries) are adornments on the feed; isolating
     // them means one of those failing can't blank the whole feed the way
     // a single shared try/catch over all three did (issue #506).
@@ -152,14 +152,13 @@ class _FeedScreenState extends State<FeedScreen> {
     });
   }
 
-  // Following list — drives the author filter. Capped at 200 to keep the
-  // payload small. A failure here degrades to no author filter (the
-  // previously-loaded list is kept), never blanks the feed.
+  // Following list — drives the author filter, so it is read whole: a cap
+  // hid everyone past it from the filter. A failure here degrades to the
+  // previously-loaded list, never blanks the feed.
   Future<List<UserProfileRow>> _loadFollowees() async {
     if (widget.api.userId == null) return const [];
     try {
-      return (await widget.api.fetchFollowing(widget.api.userId!, limit: 200))
-          .rows;
+      return await widget.api.fetchAllFollowing(widget.api.userId!);
     } catch (e) {
       debugPrint('feed followees load failed: $e');
       return _followees;

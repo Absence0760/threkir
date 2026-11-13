@@ -7219,7 +7219,7 @@ export const messages = {
 	"badges.shareLinkCopied": "Lien du badge copié dans le presse-papiers",
 	"badges.toggleError": "Impossible de modifier la visibilité. Réessayez.",
 	"badges.loadFailed": "Impossible de charger les accomplissements.",
-	"badges.feedEarned": "{name} a obtenu le badge {badge}",
+	"badges.feedEarned": "{n, plural, =1 {{name} a obtenu le badge {badge}} other {{name} a obtenu # badges}}",
 	"badges.feedLoadFailed": "Impossible de charger les derniers badges des personnes que vous suivez.",
 	"badges.aRunner": "Un coureur",
 	"badges.notif": "Vous avez obtenu un nouveau badge : {badge}",

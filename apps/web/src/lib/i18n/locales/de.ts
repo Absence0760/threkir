@@ -7219,7 +7219,7 @@ export const messages = {
 	"badges.shareLinkCopied": "Abzeichen-Link in die Zwischenablage kopiert",
 	"badges.toggleError": "Sichtbarkeit konnte nicht geändert werden. Versuche es erneut.",
 	"badges.loadFailed": "Erfolge konnten nicht geladen werden.",
-	"badges.feedEarned": "{name} hat das Abzeichen {badge} erhalten",
+	"badges.feedEarned": "{n, plural, =1 {{name} hat das Abzeichen {badge} erhalten} other {{name} hat # Abzeichen erhalten}}",
 	"badges.feedLoadFailed": "Die neuesten Abzeichen von Leuten, denen du folgst, konnten nicht geladen werden.",
 	"badges.aRunner": "Eine läuferin / ein läufer",
 	"badges.notif": "Du hast ein neues Abzeichen erhalten: {badge}",

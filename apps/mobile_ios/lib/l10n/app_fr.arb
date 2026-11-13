@@ -959,6 +959,7 @@
   "runDetailDeleteTitle": "Supprimer la course ?",
   "runDetailDeleteBody": "Cette action est irréversible.",
   "runDetailDeleteQueued": "Échec de la suppression dans le cloud ; la course est conservée pour l'instant — nouvelle tentative une fois en ligne.",
+  "runDetailDeleting": "Suppression de la course…",
   "runDetailSuggestLink": "Associer",
   "runDetailSuggestDismiss": "Ignorer",
   "runDetailSuggestRanRoute": "On dirait que vous avez parcouru ",

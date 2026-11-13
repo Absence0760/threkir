@@ -3544,6 +3544,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Échec de la suppression dans le cloud ; la course est conservée pour l\'instant — nouvelle tentative une fois en ligne.';
 
   @override
+  String get runDetailDeleting => 'Suppression de la course…';
+
+  @override
   String get runDetailSuggestLink => 'Associer';
 
   @override

@@ -3537,6 +3537,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível eliminar da nuvem; a corrida foi mantida por enquanto — será tentado novamente quando estiver online.';
 
   @override
+  String get runDetailDeleting => 'A eliminar a corrida…';
+
+  @override
   String get runDetailSuggestLink => 'Vincular';
 
   @override
@@ -26195,6 +26198,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runDetailDeleteQueued =>
       'Não foi possível excluir da nuvem; a corrida foi mantida por enquanto — será tentado novamente quando você estiver online.';
+
+  @override
+  String get runDetailDeleting => 'Excluindo a corrida…';
 
   @override
   String get runDetailSuggestLink => 'Vincular';

@@ -959,6 +959,7 @@
   "runDetailDeleteTitle": "Lauf löschen?",
   "runDetailDeleteBody": "Dies kann nicht rückgängig gemacht werden.",
   "runDetailDeleteQueued": "Löschen in der Cloud fehlgeschlagen; der Lauf bleibt vorerst erhalten – wird erneut versucht, sobald du wieder online bist.",
+  "runDetailDeleting": "Lauf wird gelöscht…",
   "runDetailSuggestLink": "Verknüpfen",
   "runDetailSuggestDismiss": "Verwerfen",
   "runDetailSuggestRanRoute": "Sieht aus, als wärst du ",

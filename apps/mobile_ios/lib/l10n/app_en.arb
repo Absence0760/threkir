@@ -4680,6 +4680,10 @@
   "@runDetailDeleteQueued": {
     "description": "Banner shown when the cloud-side delete of a run fails: the run stays on the device and the delete is queued for the sync retry"
   },
+  "runDetailDeleting": "Deleting run…",
+  "@runDetailDeleting": {
+    "description": "Screen-reader label of the spinner that replaces the run's overflow menu while a delete is in flight"
+  },
   "runDetailSuggestLink": "Link",
   "@runDetailSuggestLink": {
     "description": "Confirm action on the auto-link route-suggestion banner"

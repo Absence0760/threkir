@@ -959,6 +959,7 @@
   "runDetailDeleteTitle": "Eliminar corrida?",
   "runDetailDeleteBody": "Isto não pode ser desfeito.",
   "runDetailDeleteQueued": "Não foi possível eliminar da nuvem; a corrida foi mantida por enquanto — será tentado novamente quando estiver online.",
+  "runDetailDeleting": "A eliminar a corrida…",
   "runDetailSuggestLink": "Vincular",
   "runDetailSuggestDismiss": "Dispensar",
   "runDetailSuggestRanRoute": "Parece que correu ",

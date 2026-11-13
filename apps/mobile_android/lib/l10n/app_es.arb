@@ -959,6 +959,7 @@
   "runDetailDeleteTitle": "¿Eliminar carrera?",
   "runDetailDeleteBody": "Esto no se puede deshacer.",
   "runDetailDeleteQueued": "No se pudo eliminar de la nube; la carrera se conserva por ahora — se reintentará al volver a estar en línea.",
+  "runDetailDeleting": "Eliminando la carrera…",
   "runDetailSuggestLink": "Vincular",
   "runDetailSuggestDismiss": "Descartar",
   "runDetailSuggestRanRoute": "Parece que corriste ",

@@ -3501,6 +3501,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t delete from the cloud; the run is kept for now — will retry when back online.';
 
   @override
+  String get runDetailDeleting => 'Deleting run…';
+
+  @override
   String get runDetailSuggestLink => 'Link';
 
   @override

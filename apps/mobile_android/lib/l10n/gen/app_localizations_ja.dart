@@ -3388,6 +3388,9 @@ class AppLocalizationsJa extends AppLocalizations {
       'クラウドから削除できませんでした。ランは一時的に保持され、オンライン復帰時に再試行します。';
 
   @override
+  String get runDetailDeleting => 'ランを削除中…';
+
+  @override
   String get runDetailSuggestLink => 'リンク';
 
   @override

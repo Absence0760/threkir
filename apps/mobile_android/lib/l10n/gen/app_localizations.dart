@@ -5903,6 +5903,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t delete from the cloud; the run is kept for now — will retry when back online.'**
   String get runDetailDeleteQueued;
 
+  /// Screen-reader label of the spinner that replaces the run's overflow menu while a delete is in flight
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting run…'**
+  String get runDetailDeleting;
+
   /// Confirm action on the auto-link route-suggestion banner
   ///
   /// In en, this message translates to:

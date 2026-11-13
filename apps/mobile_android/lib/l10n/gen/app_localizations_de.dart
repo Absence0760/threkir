@@ -3542,6 +3542,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Löschen in der Cloud fehlgeschlagen; der Lauf bleibt vorerst erhalten – wird erneut versucht, sobald du wieder online bist.';
 
   @override
+  String get runDetailDeleting => 'Lauf wird gelöscht…';
+
+  @override
   String get runDetailSuggestLink => 'Verknüpfen';
 
   @override

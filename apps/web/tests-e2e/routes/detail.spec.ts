@@ -241,9 +241,12 @@ test.describe('/routes/[id]', () => {
 		// Cleanup: clear the filter + unstar so the next test sees a
 		// clean slate. (filteredRoutes is in localStorage as
 		// `routes_filters_v1`; the search test in routes/list.spec.ts
-		// would otherwise inherit starredOnly=true.) After the first
-		// click above the aria-label flipped to "Show all routes".
-		await page.getByRole('button', { name: /Show all routes/ }).click();
+		// would otherwise inherit starredOnly=true.) The Starred toggle
+		// is a pressed button; a second click releases it.
+		const starredToggle = page.getByTestId('routes-starred');
+		await expect(starredToggle).toHaveAttribute('aria-pressed', 'true');
+		await starredToggle.click();
+		await expect(starredToggle).toHaveAttribute('aria-pressed', 'false');
 		await page.goto(`/routes/${RUNNER_PUBLIC_ROUTE_ID}`);
 		// Not `networkidle`: the page's fetches are sequential, so any 500 ms
 		// gap between them satisfies it, and it says nothing about whether

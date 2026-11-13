@@ -177,7 +177,9 @@ test.describe('/routes', () => {
 		await expect(page.locator('.route-card').first()).toBeVisible({
 			timeout: 10_000
 		});
-		await page.locator('select[aria-label="Surface"]').selectOption('trail');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-surface').selectOption('trail');
+		await page.getByTestId('routes-filters-done').click();
 		// Either trail rows render OR none do — either is valid; the
 		// regression we'd miss is the dropdown not filtering at all
 		// (everything still visible regardless of selection).
@@ -190,7 +192,9 @@ test.describe('/routes', () => {
 		await expect(page.locator('.route-card').first()).toBeVisible({
 			timeout: 10_000
 		});
-		await page.locator('select[aria-label="Sort"]').selectOption('newest');
+		await page.getByTestId('routes-filters-toggle').click();
+		await page.getByTestId('routes-sort').selectOption('newest');
+		await page.getByTestId('routes-filters-done').click();
 		await expect(page.locator('.route-card').first()).toBeVisible();
 	});
 

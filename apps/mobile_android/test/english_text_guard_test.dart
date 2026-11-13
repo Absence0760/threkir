@@ -110,4 +110,26 @@ void main() {
       expect(found[f] ?? 0, 0, reason: f);
     }
   });
+
+  // A stored `activity_type` ("run", "hike") is a database value, not a word
+  // for a reader: it reads as English on every locale, and "hike" is not even
+  // what the app calls it (it says Trail run). A list shows
+  // `activityTypeLabel` / `activityTypeLabelFor`, as written, never
+  // lowercased in code, which turned "Run" into a value-looking "run" on the
+  // run row and is wrong for German nouns (issue #1374, Training → Runs).
+  test('no list shows a raw or code-lowercased activity type', () {
+    final raw = RegExp(r"\$\{[\w.?!]*\.activityType\}");
+    final lowered = RegExp(r'activityTypeLabel(?:For)?\([^)]*\)\.toLowerCase\(\)');
+    final offenders = <String>[];
+    for (final f in Directory('lib').listSync(recursive: true)) {
+      if (f is! File || !f.path.endsWith('.dart')) continue;
+      if (f.path.contains('/l10n/')) continue;
+      final src = f.readAsStringSync();
+      for (final m in [...raw.allMatches(src), ...lowered.allMatches(src)]) {
+        offenders.add('${f.path}: ${m.group(0)}');
+      }
+    }
+    expect(offenders, isEmpty,
+        reason: 'show activityTypeLabelFor(l10n, value) as it is');
+  });
 }

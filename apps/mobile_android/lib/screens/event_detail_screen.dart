@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../column_limits.dart';
 import '../course_gates.dart'
     show CourseGate, PreflightCourse, SessionStartMode, racePreflight;
+import '../activity_type_labels.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../calendar_intent.dart';
@@ -3562,7 +3563,7 @@ class _SubmitTimeSheetState extends State<_SubmitTimeSheet> {
                   '${_dateLabel(r.startedAt, localeToTag(Localizations.localeOf(context)))} · ${formatDistanceForPref(r.distanceM)}',
                 ),
                 subtitle: Text(
-                  '${_ResultRow._formatDuration(r.durationS)} · ${r.activityType}',
+                  '${_ResultRow._formatDuration(r.durationS)} · ${activityTypeLabelFor(l10n, r.activityType)}',
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                 onTap: () => Navigator.of(context).pop(

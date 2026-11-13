@@ -637,7 +637,7 @@ Smoke tests for `CoachAssistConsentSwitch` (issue #1215 Phase 4) over an in-file
 
 ### `apps/mobile_android/test/ai_disclosure_notice_test.dart` — 4 tests
 
-`AiDisclosureNotice`, the one copy of the AI-processing disclosure: the intro (naming Anthropic) and the processing terms (pointing at Settings → Account and the privacy policy); every `coachConsentBullet*` key in `app_en.arb` rendered as a bullet and no other bullet, so a lane added to the catalogue without the notice fails; the lane the current version (`kAiDisclosureCurrentVersion`, the coach assistant) added is among them.
+`AiDisclosureNotice`, the one copy of the AI-processing disclosure: the intro (naming Anthropic) and the processing terms (pointing under Account in the You tab and at the privacy policy); every `coachConsentBullet*` key in `app_en.arb` rendered as a bullet and no other bullet, so a lane added to the catalogue without the notice fails; the lane the current version (`kAiDisclosureCurrentVersion`, the coach assistant) added is among them.
 
 ### `apps/mobile_ios/test/` — 909 files, byte-for-byte
 

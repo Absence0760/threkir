@@ -345,6 +345,7 @@ void main() {
       'lib/screens/privacy_zones_screen.dart',
       'lib/screens/routes_heatmap_screen.dart',
       'lib/screens/run_heatmap_screen.dart',
+      'lib/widgets/explore_routes_map.dart',
     ];
 
     test('the file list is exactly the files that mount a FlutterMap', () {

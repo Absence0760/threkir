@@ -29,6 +29,7 @@ const _handPlaced = <String, int>{
 };
 
 const _migrated = <String>{
+  'lib/screens/explore_routes_screen.dart',
   'lib/screens/live_spectator_screen.dart',
   'lib/screens/privacy_zones_screen.dart',
   'lib/screens/route_builder_screen.dart',

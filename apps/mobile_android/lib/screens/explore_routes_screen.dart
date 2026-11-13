@@ -4,7 +4,9 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' show MapController;
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         ActiveFilter,
@@ -14,6 +16,8 @@ import 'package:ui_kit/ui_kit.dart'
         EmptyState,
         FilterBar,
         HubTabBody,
+        MapFirstPage,
+        MapFirstSheet,
         StatusPill,
         StatusPillSize,
         showFilterSheet;
@@ -30,7 +34,9 @@ import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
 import '../park_course_routes.dart';
+import '../widgets/explore_routes_map.dart';
 import '../widgets/route_track_preview.dart';
+import 'public_route_screen.dart';
 import 'route_detail_screen.dart';
 import '../widgets/top_banner.dart';
 
@@ -43,9 +49,12 @@ enum _SurfaceFilter { any, road, trail, mixed }
 /// Public routes: Routes → Explore on its Routes chip (issue #1374, owner
 /// decision 1), headed by the discovery maps the Routes tab hands it.
 ///
-/// A search, with Near me as the quick chip, and distance, surface, sort,
-/// Featured and tags in the Filters sheet. Mounted on its own (a test) it is
-/// a page titled Explore Routes.
+/// Map-first (issue #1374): the public routes in view are pins on a
+/// full-bleed map, and the search results are the list in its sheet, headed
+/// by the discovery maps. A search, with Near me as the quick chip (which also
+/// moves the map to the runner), and distance, surface, sort, Featured and
+/// tags in the Filters sheet. Mounted on its own (a test) it is a page titled
+/// Explore Routes.
 class ExploreRoutesScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final LocalRouteStore routeStore;
@@ -54,7 +63,7 @@ class ExploreRoutesScreen extends StatefulWidget {
   /// The Routes tab's view row and Explore chips. Null on its own.
   final RoutesExploreChrome? chrome;
 
-  /// The discovery maps, between the controls and the results.
+  /// The discovery maps, heading the list in the sheet.
   final Widget? maps;
 
   /// Test seam for the "Near me" fix. Production callers leave it null and
@@ -77,7 +86,7 @@ class ExploreRoutesScreen extends StatefulWidget {
 
 class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   final _searchController = TextEditingController();
-  final _scrollController = ScrollController();
+  final _map = MapController();
 
   List<cm.Route> _results = [];
   late final ParkCourseRouteLookup _parkCourses = ParkCourseRouteLookup((
@@ -112,7 +121,6 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     // Defer the first search to after the first frame: the signed-out
     // early-return reads AppLocalizations.of(context), which isn't
     // available synchronously during initState.
@@ -150,7 +158,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _scrollController.dispose();
+    _map.dispose();
     _parkCourses.dispose();
     super.dispose();
   }
@@ -159,13 +167,35 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
     _parkCourses.check(_results.where((r) => r.official).map((r) => r.id)),
   );
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
+  /// The sheet's list asks for the next page as it nears its end.
+  bool _onScroll(ScrollNotification n) {
+    if (n.metrics.axis == Axis.vertical &&
+        n.metrics.pixels >= n.metrics.maxScrollExtent - 200 &&
         !_loading &&
         _hasMore) {
       _loadMore();
     }
+    return false;
+  }
+
+  /// Near me moves the map to the runner too, so the pins and the list
+  /// answer the same question. A map that has not laid out yet stays put.
+  void _moveMapTo(Position pos) {
+    try {
+      _map.move(LatLng(pos.latitude, pos.longitude), 12);
+    } catch (e) {
+      debugPrint('ExploreRoutesScreen: map not ready to move: $e');
+    }
+  }
+
+  void _openPin(cm.DiscoverableRoutePin pin) {
+    final api = widget.apiClient;
+    if (api == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PublicRouteScreen(api: api, routeId: pin.id),
+      ),
+    );
   }
 
   Future<void> _search() async {
@@ -309,6 +339,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         return;
       }
 
+      _moveMapTo(pos);
       final results = await api.nearbyPublicRoutes(
         lat: pos.latitude,
         lng: pos.longitude,
@@ -628,74 +659,105 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
     return HubTabBody(
       title: l10n.exploreRoutesTitle,
       filters: widget.chrome?.above(bar) ?? bar,
-      banner: widget.maps,
       onRefresh: _mode == _ExploreMode.nearMe ? _searchNearby : _search,
-      body: _buildBody(theme, unit),
+      // The map keeps the drags that start on it and the Fitness hub swipes
+      // from the controls and the sheet, so Explore is a map inside the
+      // hub's pages rather than a pushed screen (conventions § Mobile
+      // map-first pages).
+      body: MapFirstPage(
+        map: ExploreRoutesMap(
+          api: widget.apiClient,
+          controller: _map,
+          onOpen: _openPin,
+        ),
+        attribution: ExploreRoutesMap.credit(context),
+        bottomClearance: DockedFabInset.of(context),
+        sheet: MapFirstSheet(
+          initialSize: 0.55,
+          minSize: 0.2,
+          maxSize: 0.85,
+          onScroll: _onScroll,
+          slivers: [
+            if (widget.maps case final maps?) SliverToBoxAdapter(child: maps),
+            ..._bodySlivers(theme, unit),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildBody(ThemeData theme, DistanceUnit unit) {
+  List<Widget> _bodySlivers(ThemeData theme, DistanceUnit unit) {
     final l10n = AppLocalizations.of(context);
     if (_error != null) {
-      return AppErrorState(
-        message: _error!,
-        onRetry: _mode == _ExploreMode.nearMe ? _searchNearby : _search,
-      );
+      return [
+        SliverToBoxAdapter(
+          child: AppErrorState(
+            message: _error!,
+            onRetry: _mode == _ExploreMode.nearMe ? _searchNearby : _search,
+          ),
+        ),
+      ];
     }
 
     if (_results.isEmpty && !_loading) {
-      return EmptyState(
-        icon: Icons.explore,
-        title: _searchController.text.isEmpty
-            ? l10n.exploreRoutesEmptyNoPublic
-            : l10n.exploreRoutesEmptyNoMatch,
-        body: l10n.exploreRoutesEmptyBody,
-      );
+      return [
+        SliverToBoxAdapter(
+          child: EmptyState(
+            icon: Icons.explore,
+            title: _searchController.text.isEmpty
+                ? l10n.exploreRoutesEmptyNoPublic
+                : l10n.exploreRoutesEmptyNoMatch,
+            body: l10n.exploreRoutesEmptyBody,
+          ),
+        ),
+      ];
     }
 
-    return ListView.builder(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
-          AppInsets.gutter, fabScrollClearance(context)),
-      itemCount: _results.length + (_loading ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index >= _results.length) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        }
-
-        final route = _results[index];
-
-        return _RouteCard(
-          parkCourses: _parkCourses,
-          route: route,
-          unit: unit,
-          theme: theme,
-          saved: _bookmarkedIds.contains(route.id),
-          onTap: () async {
-            await Navigator.push<void>(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) => RouteDetailScreen(
-                  route: route,
-                  routeStore: widget.routeStore,
-                  preferences: widget.preferences,
-                  apiClient: widget.apiClient,
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(
+            AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
+        sliver: SliverList.builder(
+          itemCount: _results.length + (_loading ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index >= _results.length) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              ),
+              );
+            }
+
+            final route = _results[index];
+
+            return _RouteCard(
+              parkCourses: _parkCourses,
+              route: route,
+              unit: unit,
+              theme: theme,
+              saved: _bookmarkedIds.contains(route.id),
+              onTap: () async {
+                await Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => RouteDetailScreen(
+                      route: route,
+                      routeStore: widget.routeStore,
+                      preferences: widget.preferences,
+                      apiClient: widget.apiClient,
+                    ),
+                  ),
+                );
+                // The detail screen carries its own bookmark toggle.
+                _loadBookmarkedIds();
+              },
+              onToggleBookmark: () => _toggleBookmark(route),
             );
-            // The detail screen carries its own bookmark toggle.
-            _loadBookmarkedIds();
           },
-          onToggleBookmark: () => _toggleBookmark(route),
-        );
-      },
-    );
+        ),
+      ),
+    ];
   }
 }
 
@@ -855,10 +917,14 @@ class _RouteCard extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: theme.colorScheme.outline),
         const SizedBox(width: 3),
-        Text(
-          text,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        // Flexible: at 2x text on a 320 dp phone the card's text column is
+        // about 110 dp, and a distance on one line overflowed it.
+        Flexible(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],

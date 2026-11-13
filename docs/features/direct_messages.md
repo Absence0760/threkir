@@ -11,7 +11,7 @@ Since [decisions § 2227](../architecture/decisions.md) (issue #1215, Phase 1) t
 | Row | `routes/messages/+layout.svelte`, state in `stores/messages_inbox.svelte.ts` | `messages_screen.dart` |
 | Opens | `/messages/coach?plan=<plan of the previewed message>` (or `?plan=none`), the existing `CoachChat` in the conversation pane | `CoachScreen` on that plan |
 | Shown when | `coachEnabled()` | `ProPerks.coach` from `/app-capabilities.json`, and a `TrainingService` is present |
-| Placement | `messages_coach_row` universal setting (`pinned` default / `listed` / `hidden`; [settings.md](../backend/settings.md)); the row's pin button toggles pinned ↔ listed, Settings → Display offers all three | the row's pin button; Settings → Preferences → Messages |
+| Placement | `messages_coach_row` universal setting (`pinned` default / `listed` / `hidden`; [settings.md](../backend/settings.md)); the row's pin button toggles pinned ↔ listed, Settings → Display offers all three | the row's pin button; You → Units & display → Messages |
 
 Ordering and the preview text are the `messages_inbox` parity pair ([parity_pairs.md](../architecture/parity_pairs.md)): a listed row goes before the first conversation whose latest message is strictly older than its own, and after every conversation when it has no message; the preview drops the markdown and is always placed as text.
 
@@ -78,7 +78,7 @@ The AFTER INSERT trigger `direct_messages_request_state` moves the state; `accep
 
 ### Turning requests off
 
-Since migration `20271213121601` ([decisions § 2451](../architecture/decisions.md)) a runner can turn message requests off: web Settings → Privacy → Messages (`message-requests-toggle`), mobile Settings → Preferences → Messages. The setting is `user_settings.dm_requests` ([settings.md](../backend/settings.md)), default on, owner-read.
+Since migration `20271213121601` ([decisions § 2451](../architecture/decisions.md)) a runner can turn message requests off: web Settings → Privacy → Messages (`message-requests-toggle`), mobile You → Privacy & sharing → Messages. The setting is `user_settings.dm_requests` ([settings.md](../backend/settings.md)), default on, owner-read.
 
 It is enforced in the send path, not by hiding a button: with it off, `private.dm_send_admitted` no longer admits the shared-context branch, so nobody without a follow edge (or an active coaching link) can message the runner first, and a request still pending takes no more messages from the requester. A follow edge and a conversation the runner already accepted are unaffected; a pending request already in their Requests list can still be accepted or declined. The refusal is the same 42501 every other refusal is, so a sender cannot tell the switch from a block, a decline or a missing follow (§ 1916), and they cannot read the setting.
 
@@ -103,7 +103,7 @@ A deleted partner's thread offers Archive and Delete but not Mute or Block. The 
 
 ## Read receipts
 
-Since migration `20271113000001` ([decisions § 2371](../architecture/decisions.md)) a sender sees "Seen" and the time under their newest message the other person has read (web `dm-seen`, mobile `ValueKey('dm-seen')`; placed by the `dm_read_receipt` parity pair). A runner who turns read receipts off (web Settings → Privacy → Messages, `read-receipts-toggle`; mobile Settings → Preferences → Messages, `prefsReadReceipts`) neither sends nor sees them. The setting is `user_settings.dm_read_receipts` ([settings.md](../backend/settings.md)), default on.
+Since migration `20271113000001` ([decisions § 2371](../architecture/decisions.md)) a sender sees "Seen" and the time under their newest message the other person has read (web `dm-seen`, mobile `ValueKey('dm-seen')`; placed by the `dm_read_receipt` parity pair). A runner who turns read receipts off (web Settings → Privacy → Messages, `read-receipts-toggle`; mobile You → Privacy & sharing → Messages, `prefsReadReceipts`) neither sends nor sees them. The setting is `user_settings.dm_read_receipts` ([settings.md](../backend/settings.md)), default on.
 
 The server enforces it, not the clients:
 

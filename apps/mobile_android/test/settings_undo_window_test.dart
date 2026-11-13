@@ -55,7 +55,7 @@ Future<void> _pump(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+      home: SettingsPreferencesScreen(page: PreferencesPage.display, preferences: prefs, settingsSync: sync),
     ),
   );
 }

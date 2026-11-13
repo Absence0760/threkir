@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'preferences_page.dart';
+
 /// A Settings sub-screen named as an INTENT rather than as a widget.
 ///
 /// Every settings screen takes some slice of `Preferences` +
@@ -15,14 +17,28 @@ import 'package:flutter/foundation.dart';
 /// not a destination here: it is embedded in the You tab rather than pushed,
 /// so "open Settings" is a tab switch with different back-stack semantics,
 /// and no caller has asked for it.
+///
+/// Preferences is five pages, so a link names the page whose setting it is
+/// about (the HR disclaimer → Training, the nearby list → Privacy), not a
+/// "Preferences" that no longer exists as one screen.
 enum SettingsDestination {
-  preferences,
+  display(PreferencesPage.display),
+  recording(PreferencesPage.recording),
+  training(PreferencesPage.training),
+  privacy(PreferencesPage.privacy),
+  notifications(PreferencesPage.notifications),
   account,
   safety,
   integrations,
   bodyMetrics,
   about,
-  pro,
+  pro;
+
+  const SettingsDestination([this.preferencesPage]);
+
+  /// The Preferences page this destination is, or null for any other
+  /// settings screen.
+  final PreferencesPage? preferencesPage;
 }
 
 /// Cross-screen handoff for "open this Settings sub-screen".

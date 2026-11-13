@@ -1449,9 +1449,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionAccountLegal => 'Account & legal';
 
   @override
-  String get prefsSectionUnitsDisplay => 'Units & display';
-
-  @override
   String get authEmailLabel => 'Email';
 
   @override
@@ -9640,6 +9637,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsTitle => 'Preferences';
 
   @override
+  String get prefsPageDisplay => 'Units & display';
+
+  @override
+  String get prefsPageDisplaySummary =>
+      'Language, theme, distance and weight units, pace format, maps and the undo timer.';
+
+  @override
+  String get prefsPageRecording => 'Recording & voice';
+
+  @override
+  String get prefsPageRecordingSummary =>
+      'The activity a new recording starts as, and what your phone or watch says out loud while you run.';
+
+  @override
+  String get prefsPageTraining => 'Training';
+
+  @override
+  String get prefsPageTrainingSummary =>
+      'Your weekly distance goal, heart rate and heart rate zones, race fuelling and the coach\'s tone.';
+
+  @override
+  String get prefsPagePrivacy => 'Privacy & sharing';
+
+  @override
+  String get prefsPagePrivacySummary =>
+      'Who sees your runs, whether other runners can find you, privacy zones and error reports.';
+
+  @override
+  String get prefsPageNotifications => 'Notifications';
+
+  @override
+  String get prefsPageNotificationsSummary =>
+      'Which emails and push alerts you get, and the optional emails you can sign up for.';
+
+  @override
   String get prefsOfflineNotice =>
       'Offline — edits stay on this device and sync when you reconnect.';
 
@@ -9794,9 +9826,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsCoachAnalytical => 'Analytical';
 
   @override
-  String get prefsSectionNotifications => 'Notifications';
-
-  @override
   String get prefsEmailNotifications => 'Email notifications';
 
   @override
@@ -9913,13 +9942,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsSectionActivityRecording => 'Activity & recording';
 
   @override
-  String get prefsSectionTrainingDemographics => 'Training & demographics';
-
-  @override
-  String get prefsSectionPrivacySharing => 'Privacy & sharing';
-
-  @override
   String get prefsSectionAiCoach => 'AI coach';
+
+  @override
+  String get prefsGroupLanguageTheme => 'Language & theme';
+
+  @override
+  String get prefsGroupUnits => 'Units';
+
+  @override
+  String get prefsGroupMapsPages => 'Maps & pages';
+
+  @override
+  String get prefsGroupVoiceFeedback => 'Voice feedback';
+
+  @override
+  String get prefsGroupWeeklyGoal => 'Weekly goal';
+
+  @override
+  String get prefsGroupHeartRate => 'Heart rate zones';
+
+  @override
+  String get prefsGroupPlans => 'Training plans';
+
+  @override
+  String get prefsGroupYourRuns => 'Your runs';
+
+  @override
+  String get prefsGroupBeingFound => 'Being found';
+
+  @override
+  String get prefsGroupTelemetry => 'Privacy & telemetry';
+
+  @override
+  String get prefsGroupEmailPush => 'Email and push';
+
+  @override
+  String get prefsGroupOptionalEmails => 'Optional emails';
 
   @override
   String get prefsSignInToEdit =>
@@ -12198,10 +12257,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsTabAccountSubtitle =>
       'Sign-in, profile, import and backup, delete account';
-
-  @override
-  String get settingsTabPreferencesSubtitle =>
-      'Units, theme, recording, training, privacy';
 
   @override
   String get settingsTabIntegrationsSubtitle =>

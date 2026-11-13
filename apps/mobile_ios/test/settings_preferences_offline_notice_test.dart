@@ -55,12 +55,13 @@ Future<void> _pump(
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+      home: SettingsPreferencesScreen(page: PreferencesPage.display, preferences: prefs, settingsSync: sync),
     ),
   );
   // The sync settled before the pump; what is left is the locale's catalogue
   // load, and the screen is ready once its title reads in that locale.
-  final title = (await AppLocalizations.delegate.load(locale)).prefsTitle;
+  final title =
+      (await AppLocalizations.delegate.load(locale)).prefsPageDisplay;
   await pumpUntil(tester, () => find.text(title).evaluate().isNotEmpty,
       describe: 'the preferences screen to build in $locale');
 }

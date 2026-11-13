@@ -25,6 +25,7 @@ import 'help_screen.dart';
 import 'line_calibration_screen.dart';
 import 'settings_about_screen.dart';
 import 'settings_account_screen.dart';
+import 'settings_body_metrics_screen.dart';
 import 'settings_integrations_screen.dart';
 import 'settings_preferences_screen.dart';
 import 'settings_pro_screen.dart';
@@ -202,19 +203,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     routeStore: widget.routeStore,
                   )),
             ),
+            // Body metrics sits with the account, as on web (Profile → Body),
+            // now that Preferences is split into pages.
             _tab(
-              icon: Icons.tune,
-              label: l10n.prefsTitle,
-              subtitle: l10n.settingsTabPreferencesSubtitle,
-              onTap: () => _open((_) => SettingsPreferencesScreen(
-                    apiClient: widget.apiClient,
-                    preferences: widget.preferences,
+              icon: Icons.monitor_weight_outlined,
+              label: l10n.bodyMetricsTitle,
+              subtitle: l10n.bodyMetricsTileSubtitle,
+              onTap: () => _openAfterSignIn((_) => SettingsBodyMetricsScreen(
+                    api: widget.apiClient,
                     settingsSync: widget.settingsSync,
-                    gymStore: widget.gymStore,
-                    foodStore: widget.foodStore,
-                    runStore: widget.runStore,
+                    preferences: widget.preferences,
                   )),
             ),
+            for (final page in PreferencesPage.values)
+              _tab(
+                icon: preferencesPageIcon(page),
+                label: preferencesPageTitle(l10n, page),
+                subtitle: preferencesPageSummary(l10n, page),
+                onTap: () => _open((_) => SettingsPreferencesScreen(
+                      page: page,
+                      apiClient: widget.apiClient,
+                      preferences: widget.preferences,
+                      settingsSync: widget.settingsSync,
+                      gymStore: widget.gymStore,
+                      foodStore: widget.foodStore,
+                      runStore: widget.runStore,
+                    )),
+              ),
             _tab(
               icon: Icons.health_and_safety,
               label: l10n.safetyTitle,

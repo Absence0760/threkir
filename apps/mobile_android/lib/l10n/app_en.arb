@@ -1923,10 +1923,6 @@
   "@settingsSectionAccountLegal": {
     "description": "Settings landing section header grouping Pro & support + Licenses"
   },
-  "prefsSectionUnitsDisplay": "Units & display",
-  "@prefsSectionUnitsDisplay": {
-    "description": "Settings > Preferences section header for units, pace format, map style, language, theme"
-  },
   "authEmailLabel": "Email",
   "@authEmailLabel": {
     "description": "Label for the email field on the sign-in and sign-up screens"
@@ -13047,6 +13043,46 @@
   "@prefsTitle": {
     "description": "AppBar title for the Settings > Preferences screen"
   },
+  "prefsPageDisplay": "Units & display",
+  "@prefsPageDisplay": {
+    "description": "Title of the Units & display preferences page and its row on You"
+  },
+  "prefsPageDisplaySummary": "Language, theme, distance and weight units, pace format, maps and the undo timer.",
+  "@prefsPageDisplaySummary": {
+    "description": "What the Units & display page holds, under its row on You"
+  },
+  "prefsPageRecording": "Recording & voice",
+  "@prefsPageRecording": {
+    "description": "Title of the Recording & voice preferences page and its row on You"
+  },
+  "prefsPageRecordingSummary": "The activity a new recording starts as, and what your phone or watch says out loud while you run.",
+  "@prefsPageRecordingSummary": {
+    "description": "What the Recording & voice page holds, under its row on You"
+  },
+  "prefsPageTraining": "Training",
+  "@prefsPageTraining": {
+    "description": "Title of the Training preferences page and its row on You"
+  },
+  "prefsPageTrainingSummary": "Your weekly distance goal, heart rate and heart rate zones, race fuelling and the coach's tone.",
+  "@prefsPageTrainingSummary": {
+    "description": "What the Training page holds, under its row on You"
+  },
+  "prefsPagePrivacy": "Privacy & sharing",
+  "@prefsPagePrivacy": {
+    "description": "Title of the Privacy & sharing preferences page and its row on You"
+  },
+  "prefsPagePrivacySummary": "Who sees your runs, whether other runners can find you, privacy zones and error reports.",
+  "@prefsPagePrivacySummary": {
+    "description": "What the Privacy & sharing page holds, under its row on You"
+  },
+  "prefsPageNotifications": "Notifications",
+  "@prefsPageNotifications": {
+    "description": "Title of the Notifications preferences page and its row on You"
+  },
+  "prefsPageNotificationsSummary": "Which emails and push alerts you get, and the optional emails you can sign up for.",
+  "@prefsPageNotificationsSummary": {
+    "description": "What the Notifications page holds, under its row on You"
+  },
   "prefsOfflineNotice": "Offline — edits stay on this device and sync when you reconnect.",
   "@prefsOfflineNotice": {
     "description": "Notice on the Preferences screen when settings are served from the on-device copy because the server could not be reached"
@@ -13273,10 +13309,6 @@
   "@prefsCoachAnalytical": {
     "description": "Coach-personality option: analytical"
   },
-  "prefsSectionNotifications": "Notifications",
-  "@prefsSectionNotifications": {
-    "description": "Settings section label for notification preferences"
-  },
   "prefsEmailNotifications": "Email notifications",
   "@prefsEmailNotifications": {
     "description": "Tile and picker title for the email-notification preference"
@@ -13432,17 +13464,57 @@
   "@prefsSectionActivityRecording": {
     "description": "Section header for activity and recording settings"
   },
-  "prefsSectionTrainingDemographics": "Training & demographics",
-  "@prefsSectionTrainingDemographics": {
-    "description": "Section header for training and demographics settings"
-  },
-  "prefsSectionPrivacySharing": "Privacy & sharing",
-  "@prefsSectionPrivacySharing": {
-    "description": "Section header for privacy and sharing settings"
-  },
   "prefsSectionAiCoach": "AI coach",
   "@prefsSectionAiCoach": {
     "description": "Section header for AI coach settings"
+  },
+  "prefsGroupLanguageTheme": "Language & theme",
+  "@prefsGroupLanguageTheme": {
+    "description": "Group label on the Units & display page"
+  },
+  "prefsGroupUnits": "Units",
+  "@prefsGroupUnits": {
+    "description": "Group label on the Units & display page"
+  },
+  "prefsGroupMapsPages": "Maps & pages",
+  "@prefsGroupMapsPages": {
+    "description": "Group label on the Units & display page: detail level, home cards, map style, undo"
+  },
+  "prefsGroupVoiceFeedback": "Voice feedback",
+  "@prefsGroupVoiceFeedback": {
+    "description": "Group label on the Recording & voice page"
+  },
+  "prefsGroupWeeklyGoal": "Weekly goal",
+  "@prefsGroupWeeklyGoal": {
+    "description": "Group label on the Training page"
+  },
+  "prefsGroupHeartRate": "Heart rate zones",
+  "@prefsGroupHeartRate": {
+    "description": "Group label on the Training page: date of birth, resting and max HR, zones"
+  },
+  "prefsGroupPlans": "Training plans",
+  "@prefsGroupPlans": {
+    "description": "Group label on the Training page: plan recovery"
+  },
+  "prefsGroupYourRuns": "Your runs",
+  "@prefsGroupYourRuns": {
+    "description": "Group label on the Privacy & sharing page"
+  },
+  "prefsGroupBeingFound": "Being found",
+  "@prefsGroupBeingFound": {
+    "description": "Group label on the Privacy & sharing page: private profile, search, nearby"
+  },
+  "prefsGroupTelemetry": "Privacy & telemetry",
+  "@prefsGroupTelemetry": {
+    "description": "Group label on the Privacy & sharing page over the error-reports switch"
+  },
+  "prefsGroupEmailPush": "Email and push",
+  "@prefsGroupEmailPush": {
+    "description": "Group label on the Notifications page"
+  },
+  "prefsGroupOptionalEmails": "Optional emails",
+  "@prefsGroupOptionalEmails": {
+    "description": "Group label on the Notifications page"
   },
   "prefsSignInToEdit": "Sign in to edit profile-level settings that sync across devices.",
   "@prefsSignInToEdit": {
@@ -16647,10 +16719,6 @@
   "settingsTabAccountSubtitle": "Sign-in, profile, import and backup, delete account",
   "@settingsTabAccountSubtitle": {
     "description": "Settings landing: Account tile subtitle when signed out"
-  },
-  "settingsTabPreferencesSubtitle": "Units, theme, recording, training, privacy",
-  "@settingsTabPreferencesSubtitle": {
-    "description": "Settings landing: Preferences tile subtitle"
   },
   "settingsTabIntegrationsSubtitle": "Strava, race calendar, heart-rate strap, treadmill, watch",
   "@settingsTabIntegrationsSubtitle": {

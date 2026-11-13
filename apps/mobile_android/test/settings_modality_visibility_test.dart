@@ -47,6 +47,7 @@ void main() {
     Preferences prefs, {
     LocalGymStore? gym,
     LocalFoodStore? food,
+    PreferencesPage page = PreferencesPage.display,
   }) async {
     tester.view.physicalSize = const Size(400, 8000) * 2;
     tester.view.devicePixelRatio = 2.0;
@@ -55,6 +56,7 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SettingsPreferencesScreen(
+        page: page,
         preferences: prefs,
         settingsSync: null,
         gymStore: gym,
@@ -64,6 +66,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // The Gym & nutrition switches are on Units & display, the run-primary
+  // switch on Recording & voice, and the readiness switch on Training: each
+  // case mounts the page whose row it reads.
   SwitchListTile row(WidgetTester tester, String title) =>
       tester.widget<SwitchListTile>(
           find.widgetWithText(SwitchListTile, title));
@@ -110,23 +115,18 @@ void main() {
 
   group('rows that only mean something with a modality shown', () {
     SwitchListTile keyed(WidgetTester tester, String key) =>
-        tester.widget<SwitchListTile>(find.byKey(Key(key)));
-
-    // The readiness row sits right under "Week starts on", far down a page
-    // that builds lazily.
-    Future<void> scrollToWeekStart(WidgetTester tester) =>
-        tester.scrollUntilVisible(
-          find.text('Week starts on'),
-          250,
-          scrollable: find.byType(Scrollable).first,
-        );
+        tester.widget<SwitchListTile>(find.descendant(
+          of: find.byKey(Key(key)),
+          matching: find.byType(SwitchListTile),
+        ));
 
     testWidgets('Run as primary action reads on, and cannot be turned off, '
         'while both are hidden', (tester) async {
       // It read Off for a behaviour the runner could see was on: with both
       // hidden a tap on the centre button already starts a run.
       final s = await stores(tester);
-      await pump(tester, s.prefs, gym: s.gym, food: s.food);
+      await pump(tester, s.prefs,
+          gym: s.gym, food: s.food, page: PreferencesPage.recording);
       final primary = keyed(tester, 'prefsKeepRunPrimary');
       expect(primary.value, isTrue);
       expect(primary.onChanged, isNull);
@@ -140,9 +140,10 @@ void main() {
 
     testWidgets('showing a modality gives the switch back', (tester) async {
       final s = await stores(tester);
-      await pump(tester, s.prefs, gym: s.gym, food: s.food);
+      await pump(tester, s.prefs,
+          gym: s.gym, food: s.food, page: PreferencesPage.recording);
 
-      await tester.tap(find.widgetWithText(SwitchListTile, 'Show Nutrition'));
+      await s.prefs.setShowNutrition(true);
       await tester.pumpAndSettle();
 
       final primary = keyed(tester, 'prefsKeepRunPrimary');
@@ -153,8 +154,10 @@ void main() {
     testWidgets('the gym readiness switch is hidden with Gym hidden and no '
         'lift, and back once there is either', (tester) async {
       final s = await stores(tester);
-      await pump(tester, s.prefs, gym: s.gym, food: s.food);
-      await scrollToWeekStart(tester);
+      await pump(tester, s.prefs,
+          gym: s.gym, food: s.food, page: PreferencesPage.training);
+      expect(find.text('Resting heart rate'), findsOneWidget,
+          reason: 'negative control: the readiness row\'s group is built');
       expect(find.byKey(const Key('prefsExcludeGymFromReadiness')),
           findsNothing);
 
@@ -170,8 +173,8 @@ void main() {
       // exclude.
       final s = await stores(tester, loggedLift: true);
       await s.prefs.setShowGym(false);
-      await pump(tester, s.prefs, gym: s.gym, food: s.food);
-      await scrollToWeekStart(tester);
+      await pump(tester, s.prefs,
+          gym: s.gym, food: s.food, page: PreferencesPage.training);
       expect(find.byKey(const Key('prefsExcludeGymFromReadiness')),
           findsOneWidget);
     });
@@ -179,11 +182,11 @@ void main() {
     testWidgets('a mount without the stores keeps both rows as they were',
         (tester) async {
       final s = await stores(tester);
-      await pump(tester, s.prefs);
+      await pump(tester, s.prefs, page: PreferencesPage.recording);
       final primary = keyed(tester, 'prefsKeepRunPrimary');
       expect(primary.value, isFalse);
       expect(primary.onChanged, isNotNull);
-      await scrollToWeekStart(tester);
+      await pump(tester, s.prefs, page: PreferencesPage.training);
       expect(find.byKey(const Key('prefsExcludeGymFromReadiness')),
           findsOneWidget);
     });

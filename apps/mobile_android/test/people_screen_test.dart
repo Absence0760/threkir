@@ -566,7 +566,7 @@ void main() {
       await tester.tap(action);
       await tester.pump();
 
-      expect(pendingSettingsDestination.value, SettingsDestination.preferences);
+      expect(pendingSettingsDestination.value, SettingsDestination.privacy);
     });
 
     testWidgets('the empty-state body no longer recites the Settings path',

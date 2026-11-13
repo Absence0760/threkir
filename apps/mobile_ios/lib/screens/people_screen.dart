@@ -493,7 +493,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
                   // web's empty card links to /settings/preferences here.
                   action: OutlinedButton.icon(
                     onPressed: () =>
-                        openSettings(SettingsDestination.preferences),
+                        openSettings(SettingsDestination.privacy),
                     icon: const Icon(Icons.settings, size: 18),
                     label: Text(l10n.peopleNearbyEmptyAction),
                   ),

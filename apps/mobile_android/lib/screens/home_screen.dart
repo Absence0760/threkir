@@ -630,7 +630,13 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _settingsDestinationScreen(SettingsDestination destination) =>
       switch (destination) {
-        SettingsDestination.preferences => SettingsPreferencesScreen(
+        SettingsDestination.display ||
+        SettingsDestination.recording ||
+        SettingsDestination.training ||
+        SettingsDestination.privacy ||
+        SettingsDestination.notifications =>
+          SettingsPreferencesScreen(
+            page: destination.preferencesPage!,
             apiClient: widget.apiClient,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
@@ -694,21 +700,17 @@ class _HomeScreenState extends State<HomeScreen>
         await _openFitnessTab(FitnessTab.runs);
       case HelpDestination.races:
         await _openFitnessTab(FitnessTab.races);
-      case HelpDestination.integrations:
-        await _pushScreen(
-            _settingsDestinationScreen(SettingsDestination.integrations));
-      case HelpDestination.preferences:
-        await _pushScreen(
-            _settingsDestinationScreen(SettingsDestination.preferences));
-      case HelpDestination.safety:
-        await _pushScreen(
-            _settingsDestinationScreen(SettingsDestination.safety));
-      case HelpDestination.account:
-        await _pushScreen(
-            _settingsDestinationScreen(SettingsDestination.account));
-      case HelpDestination.pro:
-        await _pushScreen(
-            _settingsDestinationScreen(SettingsDestination.pro));
+      case HelpDestination.integrations ||
+            HelpDestination.display ||
+            HelpDestination.recording ||
+            HelpDestination.training ||
+            HelpDestination.privacy ||
+            HelpDestination.notificationSettings ||
+            HelpDestination.bodyMetrics ||
+            HelpDestination.safety ||
+            HelpDestination.account ||
+            HelpDestination.pro:
+        await _pushScreen(_settingsDestinationScreen(destination.settings!));
     }
   }
 

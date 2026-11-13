@@ -2435,12 +2435,6 @@ abstract class AppLocalizations {
   /// **'Account & legal'**
   String get settingsSectionAccountLegal;
 
-  /// Settings > Preferences section header for units, pace format, map style, language, theme
-  ///
-  /// In en, this message translates to:
-  /// **'Units & display'**
-  String get prefsSectionUnitsDisplay;
-
   /// Label for the email field on the sign-in and sign-up screens
   ///
   /// In en, this message translates to:
@@ -15430,6 +15424,66 @@ abstract class AppLocalizations {
   /// **'Preferences'**
   String get prefsTitle;
 
+  /// Title of the Units & display preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Units & display'**
+  String get prefsPageDisplay;
+
+  /// What the Units & display page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Language, theme, distance and weight units, pace format, maps and the undo timer.'**
+  String get prefsPageDisplaySummary;
+
+  /// Title of the Recording & voice preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Recording & voice'**
+  String get prefsPageRecording;
+
+  /// What the Recording & voice page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'The activity a new recording starts as, and what your phone or watch says out loud while you run.'**
+  String get prefsPageRecordingSummary;
+
+  /// Title of the Training preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Training'**
+  String get prefsPageTraining;
+
+  /// What the Training page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Your weekly distance goal, heart rate and heart rate zones, race fuelling and the coach\'s tone.'**
+  String get prefsPageTrainingSummary;
+
+  /// Title of the Privacy & sharing preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & sharing'**
+  String get prefsPagePrivacy;
+
+  /// What the Privacy & sharing page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Who sees your runs, whether other runners can find you, privacy zones and error reports.'**
+  String get prefsPagePrivacySummary;
+
+  /// Title of the Notifications preferences page and its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get prefsPageNotifications;
+
+  /// What the Notifications page holds, under its row on You
+  ///
+  /// In en, this message translates to:
+  /// **'Which emails and push alerts you get, and the optional emails you can sign up for.'**
+  String get prefsPageNotificationsSummary;
+
   /// Notice on the Preferences screen when settings are served from the on-device copy because the server could not be reached
   ///
   /// In en, this message translates to:
@@ -15706,12 +15760,6 @@ abstract class AppLocalizations {
   /// **'Analytical'**
   String get prefsCoachAnalytical;
 
-  /// Settings section label for notification preferences
-  ///
-  /// In en, this message translates to:
-  /// **'Notifications'**
-  String get prefsSectionNotifications;
-
   /// Tile and picker title for the email-notification preference
   ///
   /// In en, this message translates to:
@@ -15922,23 +15970,83 @@ abstract class AppLocalizations {
   /// **'Activity & recording'**
   String get prefsSectionActivityRecording;
 
-  /// Section header for training and demographics settings
-  ///
-  /// In en, this message translates to:
-  /// **'Training & demographics'**
-  String get prefsSectionTrainingDemographics;
-
-  /// Section header for privacy and sharing settings
-  ///
-  /// In en, this message translates to:
-  /// **'Privacy & sharing'**
-  String get prefsSectionPrivacySharing;
-
   /// Section header for AI coach settings
   ///
   /// In en, this message translates to:
   /// **'AI coach'**
   String get prefsSectionAiCoach;
+
+  /// Group label on the Units & display page
+  ///
+  /// In en, this message translates to:
+  /// **'Language & theme'**
+  String get prefsGroupLanguageTheme;
+
+  /// Group label on the Units & display page
+  ///
+  /// In en, this message translates to:
+  /// **'Units'**
+  String get prefsGroupUnits;
+
+  /// Group label on the Units & display page: detail level, home cards, map style, undo
+  ///
+  /// In en, this message translates to:
+  /// **'Maps & pages'**
+  String get prefsGroupMapsPages;
+
+  /// Group label on the Recording & voice page
+  ///
+  /// In en, this message translates to:
+  /// **'Voice feedback'**
+  String get prefsGroupVoiceFeedback;
+
+  /// Group label on the Training page
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly goal'**
+  String get prefsGroupWeeklyGoal;
+
+  /// Group label on the Training page: date of birth, resting and max HR, zones
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate zones'**
+  String get prefsGroupHeartRate;
+
+  /// Group label on the Training page: plan recovery
+  ///
+  /// In en, this message translates to:
+  /// **'Training plans'**
+  String get prefsGroupPlans;
+
+  /// Group label on the Privacy & sharing page
+  ///
+  /// In en, this message translates to:
+  /// **'Your runs'**
+  String get prefsGroupYourRuns;
+
+  /// Group label on the Privacy & sharing page: private profile, search, nearby
+  ///
+  /// In en, this message translates to:
+  /// **'Being found'**
+  String get prefsGroupBeingFound;
+
+  /// Group label on the Privacy & sharing page over the error-reports switch
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & telemetry'**
+  String get prefsGroupTelemetry;
+
+  /// Group label on the Notifications page
+  ///
+  /// In en, this message translates to:
+  /// **'Email and push'**
+  String get prefsGroupEmailPush;
+
+  /// Group label on the Notifications page
+  ///
+  /// In en, this message translates to:
+  /// **'Optional emails'**
+  String get prefsGroupOptionalEmails;
 
   /// Notice shown when the bag-backed settings are not yet available
   ///
@@ -19850,12 +19958,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign-in, profile, import and backup, delete account'**
   String get settingsTabAccountSubtitle;
-
-  /// Settings landing: Preferences tile subtitle
-  ///
-  /// In en, this message translates to:
-  /// **'Units, theme, recording, training, privacy'**
-  String get settingsTabPreferencesSubtitle;
 
   /// Settings landing: Integrations tile subtitle
   ///

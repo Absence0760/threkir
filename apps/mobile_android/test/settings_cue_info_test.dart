@@ -18,7 +18,7 @@ Future<void> _pump(WidgetTester tester, Preferences prefs) {
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: null),
+      home: SettingsPreferencesScreen(page: PreferencesPage.recording, preferences: prefs, settingsSync: null),
     ),
   );
 }
@@ -88,7 +88,13 @@ void main() {
     await tester.tap(infoBtn);
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('The pace you'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.textContaining('The pace you'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('the Splits announce tile info button opens the split-mode help',

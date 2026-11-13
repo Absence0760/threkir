@@ -56,7 +56,7 @@ Future<void> _pump(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
+      home: SettingsPreferencesScreen(page: PreferencesPage.display, preferences: prefs, settingsSync: sync),
     ),
   );
 }
@@ -67,6 +67,8 @@ Future<void> _openMapStyle(WidgetTester tester) async {
     250,
     scrollable: find.byType(Scrollable).first,
   );
+  await tester.ensureVisible(find.text('Map style'));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('Map style'));
   await tester.pumpAndSettle();
 }

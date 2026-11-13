@@ -120,6 +120,7 @@ Future<void> _pumpPrefs(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SettingsPreferencesScreen(
+        page: PreferencesPage.privacy,
         apiClient: api,
         preferences: prefs,
         settingsSync: null,

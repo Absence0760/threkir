@@ -1498,22 +1498,6 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                     : const Icon(Icons.edit_outlined),
                 onTap: _displayNameBusy ? null : _editDisplayName,
               ),
-            SwitchListTile(
-              secondary: const Icon(Icons.bug_report_outlined),
-              title: Text(l10n.settingsAccountSendErrorReports),
-              subtitle: Text(l10n.settingsAccountSendErrorReportsSubtitle),
-              value: !widget.preferences.sentryOptOut,
-              onChanged: (enabled) async {
-                await widget.preferences.setSentryOptOut(!enabled);
-                if (!mounted) return;
-                showTopBanner(
-                  context,
-                  enabled
-                      ? l10n.settingsAccountErrorReportingEnabled
-                      : l10n.settingsAccountErrorReportingDisabled,
-                );
-              },
-            ),
             if (signedIn && !_aiConsentCurrent)
               ListTile(
                 leading: const Icon(Icons.verified_user_outlined),

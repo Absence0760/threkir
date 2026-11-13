@@ -58,6 +58,7 @@ Future<void> _pumpAndReveal(WidgetTester tester, _FakeApi api) async {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SettingsPreferencesScreen(
+        page: PreferencesPage.privacy,
         apiClient: api,
         preferences: await _prefs(),
         settingsSync: null,
@@ -128,6 +129,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SettingsPreferencesScreen(
+          page: PreferencesPage.privacy,
           apiClient: api,
           preferences: await _prefs(),
           settingsSync: null,

@@ -1403,9 +1403,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsSectionAccountLegal => 'アカウントと法的情報';
 
   @override
-  String get prefsSectionUnitsDisplay => '単位と表示';
-
-  @override
   String get authEmailLabel => 'メールアドレス';
 
   @override
@@ -9206,6 +9203,38 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsTitle => '環境設定';
 
   @override
+  String get prefsPageDisplay => '単位と表示';
+
+  @override
+  String get prefsPageDisplaySummary => '言語、テーマ、距離と体重の単位、ペースの表示形式、地図、元に戻せる時間。';
+
+  @override
+  String get prefsPageRecording => '記録と音声';
+
+  @override
+  String get prefsPageRecordingSummary =>
+      '新しい記録の既定のアクティビティと、ラン中にスマートフォンやウォッチが読み上げる内容。';
+
+  @override
+  String get prefsPageTraining => 'トレーニング';
+
+  @override
+  String get prefsPageTrainingSummary => '週間距離の目標、心拍数と心拍ゾーン、レース中の補給、コーチの口調。';
+
+  @override
+  String get prefsPagePrivacy => 'プライバシーと共有';
+
+  @override
+  String get prefsPagePrivacySummary =>
+      'ランを見られる人、他のランナーに見つけてもらうか、プライバシーゾーン、エラーレポート。';
+
+  @override
+  String get prefsPageNotifications => '通知';
+
+  @override
+  String get prefsPageNotificationsSummary => '受け取るメールとプッシュ通知、登録できる任意のメール。';
+
+  @override
   String get prefsOfflineNotice => 'オフライン — 変更はこの端末に保存され、再接続時に同期されます。';
 
   @override
@@ -9358,9 +9387,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsCoachAnalytical => '分析的';
 
   @override
-  String get prefsSectionNotifications => '通知';
-
-  @override
   String get prefsEmailNotifications => 'メール通知';
 
   @override
@@ -9477,13 +9503,43 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsSectionActivityRecording => 'アクティビティと記録';
 
   @override
-  String get prefsSectionTrainingDemographics => 'トレーニングと属性情報';
-
-  @override
-  String get prefsSectionPrivacySharing => 'プライバシーと共有';
-
-  @override
   String get prefsSectionAiCoach => 'AIコーチ';
+
+  @override
+  String get prefsGroupLanguageTheme => '言語とテーマ';
+
+  @override
+  String get prefsGroupUnits => '単位';
+
+  @override
+  String get prefsGroupMapsPages => '地図とページ';
+
+  @override
+  String get prefsGroupVoiceFeedback => '音声フィードバック';
+
+  @override
+  String get prefsGroupWeeklyGoal => '週間目標';
+
+  @override
+  String get prefsGroupHeartRate => '心拍ゾーン';
+
+  @override
+  String get prefsGroupPlans => 'トレーニングプラン';
+
+  @override
+  String get prefsGroupYourRuns => 'あなたのラン';
+
+  @override
+  String get prefsGroupBeingFound => '見つけてもらう設定';
+
+  @override
+  String get prefsGroupTelemetry => 'プライバシーとテレメトリー';
+
+  @override
+  String get prefsGroupEmailPush => 'メールとプッシュ通知';
+
+  @override
+  String get prefsGroupOptionalEmails => '任意のメール';
 
   @override
   String get prefsSignInToEdit => '複数の端末で同期されるプロフィールレベルの設定を編集するには、サインインしてください。';
@@ -11700,9 +11756,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsTabAccountSubtitle => 'サインイン、プロフィール、インポートとバックアップ、アカウント削除';
-
-  @override
-  String get settingsTabPreferencesSubtitle => '単位、テーマ、記録、トレーニング、プライバシー';
 
   @override
   String get settingsTabIntegrationsSubtitle =>

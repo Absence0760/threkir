@@ -536,8 +536,8 @@ abstract class AppLocalizations {
   /// Status after a successful full-backup restore
   ///
   /// In en, this message translates to:
-  /// **'Restored {runs} runs · {tracks} tracks · {routes} routes'**
-  String importStatusBackupRestored(Object runs, Object tracks, Object routes);
+  /// **'Restored {runs, plural, one{{runs} run} other{{runs} runs}} · {tracks, plural, one{{tracks} track} other{{tracks} tracks}} · {routes, plural, one{{routes} route} other{{routes} routes}}'**
+  String importStatusBackupRestored(int runs, int tracks, int routes);
 
   /// Status when restoring from a backup ZIP fails
   ///
@@ -11141,7 +11141,7 @@ abstract class AppLocalizations {
   /// Plan length on the plans list, the library card and the library preview: weeks and training days per week
   ///
   /// In en, this message translates to:
-  /// **'{weeks, plural, one{{weeks} week · {days} days/week} other{{weeks} weeks · {days} days/week}}'**
+  /// **'{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day/week} other{{days} days/week}}'**
   String plansMetaWeeks(int weeks, int days);
 
   /// New-plan wizard AppBar title
@@ -12149,7 +12149,7 @@ abstract class AppLocalizations {
   /// Days-per-week meta on the hero card
   ///
   /// In en, this message translates to:
-  /// **'{count} days/wk'**
+  /// **'{count, plural, one{{count} day/wk} other{{count} days/wk}}'**
   String planDetailDaysPerWeek(int count);
 
   /// Heading for the focused current-week 7-day strip on plan detail
@@ -13871,7 +13871,7 @@ abstract class AppLocalizations {
   /// Persistent notice under the restore tile shown when the restored archive declared itself incomplete
   ///
   /// In en, this message translates to:
-  /// **'That archive said it was incomplete. {runs} runs were restored and nothing was overwritten - restore from a complete backup to fill the gaps.'**
+  /// **'That archive said it was incomplete. {runs, plural, one{{runs} run was} other{{runs} runs were}} restored and nothing was overwritten - restore from a complete backup to fill the gaps.'**
   String settingsAccountRestoreIncompleteArchive(int runs);
 
   /// Banner shown when restore can't run because the local store is missing
@@ -13913,7 +13913,7 @@ abstract class AppLocalizations {
   /// Banner summarising a successful restore; warnings is an optional suffix
   ///
   /// In en, this message translates to:
-  /// **'Restored {runs} runs · {tracks} tracks · {routes} routes{warnings}'**
+  /// **'Restored {runs, plural, one{{runs} run} other{{runs} runs}} · {tracks, plural, one{{tracks} track} other{{tracks} tracks}} · {routes, plural, one{{routes} route} other{{routes} routes}}{warnings}'**
   String settingsAccountRestoreDone(
     int runs,
     int tracks,
@@ -13924,7 +13924,7 @@ abstract class AppLocalizations {
   /// Suffix appended to the restore summary when warnings occurred
   ///
   /// In en, this message translates to:
-  /// **' · {count} warnings'**
+  /// **' · {count, plural, one{{count} warning} other{{count} warnings}}'**
   String settingsAccountRestoreWarningsSuffix(int count);
 
   /// Banner shown when restore fails
@@ -32319,13 +32319,13 @@ abstract class AppLocalizations {
   /// What a distance-based starter plan asks for
   ///
   /// In en, this message translates to:
-  /// **'{weeks} weeks · {days} days a week'**
+  /// **'{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day a week} other{{days} days a week}}'**
   String planNewStarterSummary(int weeks, int days);
 
   /// What a timed (walk-run) starter plan asks for; {min} and {max} are session minutes
   ///
   /// In en, this message translates to:
-  /// **'{weeks} weeks · {days} days a week · {min}–{max} min a session'**
+  /// **'{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day a week} other{{days} days a week}} · {min}–{max} min a session'**
   String planNewStarterSummaryTimed(int weeks, int days, int min, int max);
 
   /// When a starter offered on the empty plans list begins. {date} is a localized short date

@@ -303,8 +303,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importStatusRestoringBackup => 'Restoring backup…';
 
   @override
-  String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
-    return 'Restored $runs runs · $tracks tracks · $routes routes';
+  String importStatusBackupRestored(int runs, int tracks, int routes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs runs',
+      one: '$runs run',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tracks,
+      locale: localeName,
+      other: '$tracks tracks',
+      one: '$tracks track',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: '$routes routes',
+      one: '$routes route',
+    );
+    return 'Restored $_temp0 · $_temp1 · $_temp2';
   }
 
   @override
@@ -6862,10 +6880,16 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       weeks,
       locale: localeName,
-      other: '$weeks weeks · $days days/week',
-      one: '$weeks week · $days days/week',
+      other: '$weeks weeks',
+      one: '$weeks week',
     );
-    return '$_temp0';
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days/week',
+      one: '$days day/week',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
@@ -7546,7 +7570,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planDetailDaysPerWeek(int count) {
-    return '$count days/wk';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days/wk',
+      one: '$count day/wk',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -8644,7 +8674,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsAccountRestoreIncompleteArchive(int runs) {
-    return 'That archive said it was incomplete. $runs runs were restored and nothing was overwritten - restore from a complete backup to fill the gaps.';
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs runs were',
+      one: '$runs run was',
+    );
+    return 'That archive said it was incomplete. $_temp0 restored and nothing was overwritten - restore from a complete backup to fill the gaps.';
   }
 
   @override
@@ -8674,12 +8710,36 @@ class AppLocalizationsEn extends AppLocalizations {
     int routes,
     String warnings,
   ) {
-    return 'Restored $runs runs · $tracks tracks · $routes routes$warnings';
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs runs',
+      one: '$runs run',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tracks,
+      locale: localeName,
+      other: '$tracks tracks',
+      one: '$tracks track',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: '$routes routes',
+      one: '$routes route',
+    );
+    return 'Restored $_temp0 · $_temp1 · $_temp2$warnings';
   }
 
   @override
   String settingsAccountRestoreWarningsSuffix(int count) {
-    return ' · $count warnings';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count warnings',
+      one: '$count warning',
+    );
+    return ' · $_temp0';
   }
 
   @override
@@ -19839,12 +19899,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String planNewStarterSummary(int weeks, int days) {
-    return '$weeks weeks · $days days a week';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '$weeks week',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days a week',
+      one: '$days day a week',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
   String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
-    return '$weeks weeks · $days days a week · $min–$max min a session';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks',
+      one: '$weeks week',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days a week',
+      one: '$days day a week',
+    );
+    return '$_temp0 · $_temp1 · $min–$max min a session';
   }
 
   @override

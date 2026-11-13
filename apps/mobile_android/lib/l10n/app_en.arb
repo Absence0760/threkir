@@ -433,18 +433,18 @@
   "@importStatusRestoringBackup": {
     "description": "Status while restoring from a full-backup ZIP"
   },
-  "importStatusBackupRestored": "Restored {runs} runs · {tracks} tracks · {routes} routes",
+  "importStatusBackupRestored": "Restored {runs, plural, one{{runs} run} other{{runs} runs}} · {tracks, plural, one{{tracks} track} other{{tracks} tracks}} · {routes, plural, one{{routes} route} other{{routes} routes}}",
   "@importStatusBackupRestored": {
     "description": "Status after a successful full-backup restore",
     "placeholders": {
       "runs": {
-        "type": "Object"
+        "type": "int"
       },
       "tracks": {
-        "type": "Object"
+        "type": "int"
       },
       "routes": {
-        "type": "Object"
+        "type": "int"
       }
     }
   },
@@ -9277,7 +9277,7 @@
   "@plansProgressLabel": {
     "description": "Screen-reader label of the calendar progress bar on an active plan card"
   },
-  "plansMetaWeeks": "{weeks, plural, one{{weeks} week · {days} days/week} other{{weeks} weeks · {days} days/week}}",
+  "plansMetaWeeks": "{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day/week} other{{days} days/week}}",
   "@plansMetaWeeks": {
     "description": "Plan length on the plans list, the library card and the library preview: weeks and training days per week",
     "placeholders": {
@@ -10255,7 +10255,7 @@
       }
     }
   },
-  "planDetailDaysPerWeek": "{count} days/wk",
+  "planDetailDaysPerWeek": "{count, plural, one{{count} day/wk} other{{count} days/wk}}",
   "@planDetailDaysPerWeek": {
     "description": "Days-per-week meta on the hero card",
     "placeholders": {
@@ -11721,7 +11721,7 @@
       }
     }
   },
-  "settingsAccountRestoreIncompleteArchive": "That archive said it was incomplete. {runs} runs were restored and nothing was overwritten - restore from a complete backup to fill the gaps.",
+  "settingsAccountRestoreIncompleteArchive": "That archive said it was incomplete. {runs, plural, one{{runs} run was} other{{runs} runs were}} restored and nothing was overwritten - restore from a complete backup to fill the gaps.",
   "@settingsAccountRestoreIncompleteArchive": {
     "description": "Persistent notice under the restore tile shown when the restored archive declared itself incomplete",
     "placeholders": {
@@ -11754,7 +11754,7 @@
   "@settingsAccountRestoring": {
     "description": "Banner shown while a backup is being restored"
   },
-  "settingsAccountRestoreDone": "Restored {runs} runs · {tracks} tracks · {routes} routes{warnings}",
+  "settingsAccountRestoreDone": "Restored {runs, plural, one{{runs} run} other{{runs} runs}} · {tracks, plural, one{{tracks} track} other{{tracks} tracks}} · {routes, plural, one{{routes} route} other{{routes} routes}}{warnings}",
   "@settingsAccountRestoreDone": {
     "description": "Banner summarising a successful restore; warnings is an optional suffix",
     "placeholders": {
@@ -11772,7 +11772,7 @@
       }
     }
   },
-  "settingsAccountRestoreWarningsSuffix": " · {count} warnings",
+  "settingsAccountRestoreWarningsSuffix": " · {count, plural, one{{count} warning} other{{count} warnings}}",
   "@settingsAccountRestoreWarningsSuffix": {
     "description": "Suffix appended to the restore summary when warnings occurred",
     "placeholders": {
@@ -26314,7 +26314,7 @@
   "@planNewThinHistoryWalkRun": {
     "description": "Button on the thin-history note: switch to a walk-run plan"
   },
-  "planNewStarterSummary": "{weeks} weeks · {days} days a week",
+  "planNewStarterSummary": "{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day a week} other{{days} days a week}}",
   "@planNewStarterSummary": {
     "description": "What a distance-based starter plan asks for",
     "placeholders": {
@@ -26326,7 +26326,7 @@
       }
     }
   },
-  "planNewStarterSummaryTimed": "{weeks} weeks · {days} days a week · {min}–{max} min a session",
+  "planNewStarterSummaryTimed": "{weeks, plural, one{{weeks} week} other{{weeks} weeks}} · {days, plural, one{{days} day a week} other{{days} days a week}} · {min}–{max} min a session",
   "@planNewStarterSummaryTimed": {
     "description": "What a timed (walk-run) starter plan asks for; {min} and {max} are session minutes",
     "placeholders": {

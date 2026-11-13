@@ -295,8 +295,23 @@ class AppLocalizationsJa extends AppLocalizations {
   String get importStatusRestoringBackup => 'バックアップを復元中…';
 
   @override
-  String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
-    return 'ラン$runs件 · トラック$tracks件 · ルート$routes件を復元しました';
+  String importStatusBackupRestored(int runs, int tracks, int routes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: 'ラン$runs件',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tracks,
+      locale: localeName,
+      other: 'トラック$tracks件',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: 'ルート$routes件',
+    );
+    return '$_temp0 · $_temp1 · $_temp2を復元しました';
   }
 
   @override
@@ -6560,9 +6575,14 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       weeks,
       locale: localeName,
-      other: '$weeks週間・週$days日',
+      other: '$weeks週間',
     );
-    return '$_temp0';
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '週$days日',
+    );
+    return '$_temp0・$_temp1';
   }
 
   @override
@@ -7219,7 +7239,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planDetailDaysPerWeek(int count) {
-    return '週$count日';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '週$count日',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -8264,7 +8289,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String settingsAccountRestoreIncompleteArchive(int runs) {
-    return 'このアーカイブは不完全であると自己申告しています。$runs 件のランを復元し、何も上書きしていません。欠落を埋めるには完全なバックアップから復元してください。';
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs 件のラン',
+    );
+    return 'このアーカイブは不完全であると自己申告しています。$_temp0を復元し、何も上書きしていません。欠落を埋めるには完全なバックアップから復元してください。';
   }
 
   @override
@@ -8294,12 +8324,32 @@ class AppLocalizationsJa extends AppLocalizations {
     int routes,
     String warnings,
   ) {
-    return '$runs 件のラン・$tracks 件のトラック・$routes 件のルートを復元しました$warnings';
+    String _temp0 = intl.Intl.pluralLogic(
+      runs,
+      locale: localeName,
+      other: '$runs 件のラン',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tracks,
+      locale: localeName,
+      other: '$tracks 件のトラック',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      routes,
+      locale: localeName,
+      other: '$routes 件のルート',
+    );
+    return '$_temp0・$_temp1・$_temp2を復元しました$warnings';
   }
 
   @override
   String settingsAccountRestoreWarningsSuffix(int count) {
-    return ' · 警告 $count 件';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '警告 $count 件',
+    );
+    return ' · $_temp0';
   }
 
   @override
@@ -19110,12 +19160,32 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planNewStarterSummary(int weeks, int days) {
-    return '$weeks週間・週$days日';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks週間',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '週$days日',
+    );
+    return '$_temp0・$_temp1';
   }
 
   @override
   String planNewStarterSummaryTimed(int weeks, int days, int min, int max) {
-    return '$weeks週間・週$days日・1回$min〜$max分';
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks週間',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '週$days日',
+    );
+    return '$_temp0・$_temp1・1回$min〜$max分';
   }
 
   @override

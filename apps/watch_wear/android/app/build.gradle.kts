@@ -7,6 +7,7 @@ plugins {
     // `org.jetbrains.kotlin.android` is built-in from AGP 9.0.
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("io.github.takahirom.roborazzi")
 }
 
 // Gradle-time env reader (repo-wide convention, decisions §137): load the
@@ -122,6 +123,12 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // Robolectric reads the merged resources (strings, the launcher mark) for
+    // the store screenshot tests in `src/test/.../store/`.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
 
     // Release signing config. Matches the pattern used by
@@ -278,9 +285,22 @@ tasks.withType<Test>().configureEach {
 dependencies {
     testImplementation("junit:junit:4.13.2")
 
+
     // Compose
     val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
+
+    // Store screenshots (`WearStoreScreenshotTest`, assets/store/wear/).
+    // `./gradlew recordRoborazziDebug` writes them; a plain test run renders
+    // every screen and writes nothing, so CI keeps the generator compiling and
+    // rendering without committing to pixel comparisons.
+    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.77.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.77.0")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")

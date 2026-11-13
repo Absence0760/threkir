@@ -702,7 +702,7 @@ private fun permissionCostLabel(cost: PermissionCost): Int = when (cost) {
 }
 
 @Composable
-private fun PreRunScreen(
+internal fun PreRunScreen(
     queuedCount: Int,
     queueUnreadable: Boolean,
     rejectedCount: Int,
@@ -1698,7 +1698,7 @@ internal fun InlineTextField(
 
 
 @Composable
-private fun RunningScreen(
+internal fun RunningScreen(
     elapsedMs: Long,
     distanceM: Double,
     paceSecPerKm: Double?,
@@ -2340,7 +2340,7 @@ private fun HoldToStopButton(
 }
 
 @Composable
-private fun PostRunScreen(
+internal fun PostRunScreen(
     summary: com.runapp.watchwear.FinishedSummary?,
     bodyWeightKg: Double?,
     showCalories: Boolean,

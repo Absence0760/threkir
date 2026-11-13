@@ -128,7 +128,7 @@ class _ImportScreenState extends State<ImportScreen> {
   // indistinguishable from 400-of-400.
   int _cloudPushDeferredCount = 0;
   // Runs the last import kept without heart rate, for want of health-data
-  // consent (decisions § 2513).
+  // consent (decisions § 2514).
   int _heartRateDroppedCount = 0;
   // Sessions the last Health Connect import found a route for but wasn't
   // allowed to read. Drives the route-permission offer — the runner is never
@@ -390,7 +390,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
     final log = failures ?? newImportFailureLog();
     final savedRuns = <Run>[];
-    // Heart rate is kept only with health-data consent (decisions § 2513).
+    // Heart rate is kept only with health-data consent (decisions § 2514).
     // Known absent: the runs are stored without it, here and on the server.
     // Unknown (offline): kept on this device, stripped by the upload.
     final heartRateDroppedIds = <String>{};

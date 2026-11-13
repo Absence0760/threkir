@@ -6,7 +6,7 @@ import 'metadata_keys.dart';
 import 'run.dart';
 import 'waypoint.dart';
 
-/// Heart rate is kept only with health-data consent (decisions § 2513).
+/// Heart rate is kept only with health-data consent (decisions § 2514).
 ///
 /// The database strips the heart-rate keys from a run written by a runner
 /// without consent, but it cannot see inside the gzipped track, and the

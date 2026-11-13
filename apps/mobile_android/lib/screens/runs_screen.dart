@@ -1132,7 +1132,7 @@ class _RunsScreenState extends State<RunsScreen>
   Future<void> _openAddMeal() async {
     final store = widget.foodStore;
     if (store == null) return;
-    // A food log is health data, kept only with consent (decisions § 2513).
+    // A food log is health data, kept only with consent (decisions § 2514).
     if (!await ensureFoodLogConsent(context,
             api: widget.apiClient,
             settingsSync: widget.settingsSync,

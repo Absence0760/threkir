@@ -253,7 +253,7 @@
 	});
 
 	// A food log is health data, kept only with health-data consent (decisions
-	// § 2513). Without it the diary reads empty (the rows are hidden, not
+	// § 2514). Without it the diary reads empty (the rows are hidden, not
 	// deleted) and every log is refused, so the page says so once, at the top.
 	let foodConsentAbsent = $state(false);
 	$effect(() => {

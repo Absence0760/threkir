@@ -353,7 +353,7 @@ Deno.test('ingestActivity — a stream that yields no track logs nothing', async
   }
 });
 
-/// Heart rate is kept only with health-data consent (decisions § 2513). The
+/// Heart rate is kept only with health-data consent (decisions § 2514). The
 /// runs trigger strips it in the database too; the importer asks first so the
 /// per-point bpm never reaches the track blob, which SQL cannot see.
 Deno.test('ingestActivity — without health-data consent the run is kept and its heart rate is not', async () => {

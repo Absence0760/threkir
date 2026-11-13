@@ -62,14 +62,14 @@ export interface GarminZipProgress {
 	/// `hr_zone` messages (only happens when the user had none set).
 	hrZonesImported?: boolean;
 	/// Runs imported without their heart rate: the runner has no health-data
-	/// consent (decisions § 2513). The rest of each run was imported.
+	/// consent (decisions § 2514). The rest of each run was imported.
 	heartRateDropped?: number;
 }
 
 /// Collects the first HR-zone set seen across an import so it can seed the
 /// user's settings once (only when they have none), and counts the runs that
 /// were imported without their heart rate because the runner has no
-/// health-data consent (decisions § 2513).
+/// health-data consent (decisions § 2514).
 interface HrZoneCollector {
 	hrZones: FitHrZones | null;
 	heartRateDropped: number;

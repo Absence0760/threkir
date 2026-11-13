@@ -52,7 +52,7 @@ export async function createSagaUsers(
 		baseURL?: string;
 		/// Stamp health-data consent, as a runner who ticked the box would
 		/// have. Off by default, as for a real signup: without it the database
-		/// keeps no heart rate and no food log (decisions § 2513).
+		/// keeps no heart rate and no food log (decisions § 2514).
 		healthConsent?: boolean;
 	}
 ): Promise<SagaUser[]> {

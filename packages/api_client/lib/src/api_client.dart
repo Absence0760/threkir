@@ -2082,7 +2082,7 @@ class ApiClient {
   }) async {
     final path = '$userId/$runId.json.gz';
     // A restored track carries whatever bpm the archive held; without
-    // health-data consent it is uploaded without it (decisions § 2513).
+    // health-data consent it is uploaded without it (decisions § 2514).
     final body = await fetchHealthDataConsented()
         ? gzippedBytes
         : trackBytesWithoutBpm(gzippedBytes);
@@ -9334,7 +9334,7 @@ class ApiClient {
 
   /// Whether the signed-in runner has health-data consent on record, read
   /// through `get_my_profile()`. Heart rate and the food log are kept only
-  /// with it (decisions § 2513). Remembered for 30 s so a batch sync does not
+  /// with it (decisions § 2514). Remembered for 30 s so a batch sync does not
   /// ask once per run; a grant or a withdrawal through this client forgets
   /// it. A failed read falls back to this session's last answer, and with
   /// none it throws rather than guessing: "no" would strip a consenting

@@ -240,7 +240,7 @@ export async function ingestActivity(
 		strava_activity_type: act.type,
 	};
 	// Heart rate is special-category data kept only with health-data consent
-	// (decisions § 2513). The runs trigger strips it anyway; asking here also
+	// (decisions § 2514). The runs trigger strips it anyway; asking here also
 	// keeps the per-point bpm out of the track blob, which the database cannot
 	// see. Fail-closed: an unanswered question keeps no heart rate.
 	let keepHeartRate = false;

@@ -231,7 +231,7 @@
 	let zipProgress = $state<StravaZipProgress | null>(null);
 	let zipError = $state('');
 	// Runs the last import kept without heart rate, for want of health-data
-	// consent (decisions § 2513). Stays on screen with its consent link.
+	// consent (decisions § 2514). Stays on screen with its consent link.
 	let zipHeartRateDropped = $state(0);
 	// Held separately from zipProgress, which self-clears after a few
 	// seconds — the "what didn't import" detail has to outlive the bar.

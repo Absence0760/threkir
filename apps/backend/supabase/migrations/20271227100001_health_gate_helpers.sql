@@ -1,4 +1,4 @@
--- Heart rate and the food log follow health-data consent (decisions § 2513).
+-- Heart rate and the food log follow health-data consent (decisions § 2514).
 --
 -- The privacy policy (§§ 2-3) and the health-data notice (§ 2) say heart
 -- rate and nutrition / food logs are special-category data processed only
@@ -43,7 +43,7 @@ grant execute on function private.health_data_consented(uuid) to authenticated, 
 
 comment on function private.health_data_consented(uuid) is
   'Whether a user has health-data consent (Art 9(2)(a)) on record. The one '
-  'predicate the heart-rate and food-log gates read (decisions § 2513).';
+  'predicate the heart-rate and food-log gates read (decisions § 2514).';
 
 -- The server-side importers' question (the Strava webhook and import Edge
 -- Functions, the Go worker's strava_event and health_hr_erase handlers):
@@ -90,7 +90,7 @@ revoke all on private.withheld_run_hr from public, anon, authenticated;
 grant select, insert, update, delete on private.withheld_run_hr to service_role;
 
 comment on table private.withheld_run_hr is
-  'Heart rate a runner stored before the consent gate (decisions § 2513), '
+  'Heart rate a runner stored before the consent gate (decisions § 2514), '
   'held out of runs while they have no health-data consent. Restored when '
   'consent is given, erased by withdraw_health_data_consent(), purged only '
   'when the health_backlog_purge feature flag is on.';

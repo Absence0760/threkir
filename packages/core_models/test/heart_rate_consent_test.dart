@@ -6,7 +6,7 @@ import 'package:core_models/core_models.dart';
 import 'package:test/test.dart';
 
 // Twin of apps/web/src/lib/core/health_consent.test.ts's stripHeartRate
-// suite (decisions § 2513) — same cases, same count.
+// suite (decisions § 2514) — same cases, same count.
 void main() {
   final t0 = DateTime.utc(2026, 11, 1, 8);
   Run run({Map<String, dynamic>? metadata, List<Waypoint> track = const []}) =>

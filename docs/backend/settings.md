@@ -160,7 +160,7 @@ Default visibility of new runs. Per-run override still wins. **Onboarding wizard
 
 ### Health-data consent also governs heart rate and the food log
 
-`user_profiles.health_data_consent_at` is not a prefs key, but it now gates more than the Art 9 keys above: without it the database keeps no heart rate on runs, gym sessions or race pings and refuses the food log, and `withdraw_health_data_consent()` erases stored heart rate and the whole food log alongside the keys it strips ([decisions § 2513](../architecture/decisions.md), `api_database.md` § Profile, settings & devices). Consent is given on web Settings → Account (the box carries `id="health-data-consent"`, the target of every "Give health-data consent" link) or Body metrics, and on mobile Body metrics. `hr_zones`, `resting_hr_bpm` and `max_hr_bpm` are not gated by this change.
+`user_profiles.health_data_consent_at` is not a prefs key, but it now gates more than the Art 9 keys above: without it the database keeps no heart rate on runs, gym sessions or race pings and refuses the food log, and `withdraw_health_data_consent()` erases stored heart rate and the whole food log alongside the keys it strips ([decisions § 2514](../architecture/decisions.md), `api_database.md` § Profile, settings & devices). Consent is given on web Settings → Account (the box carries `id="health-data-consent"`, the target of every "Give health-data consent" link) or Body metrics, and on mobile Body metrics. `hr_zones`, `resting_hr_bpm` and `max_hr_bpm` are not gated by this change.
 
 ## Device-local pairing prefs (not in the synced bag)
 

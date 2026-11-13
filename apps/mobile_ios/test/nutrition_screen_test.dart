@@ -26,7 +26,7 @@ class _OfflineFakeApi extends ApiClient {
   @override
   String? get userId => null;
 
-  // Logging food needs health-data consent (decisions § 2513); these tests
+  // Logging food needs health-data consent (decisions § 2514); these tests
   // are about the diary, so the runner has given it.
   @override
   Future<bool> fetchHealthDataConsented() async => true;
@@ -1053,7 +1053,7 @@ class _SlowFoodApi extends ApiClient {
   }
 }
 
-/// A signed-in runner without health-data consent (decisions § 2513).
+/// A signed-in runner without health-data consent (decisions § 2514).
 class _NoConsentApi extends ApiClient {
   @override
   String? get userId => null;

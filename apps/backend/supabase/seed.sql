@@ -130,7 +130,7 @@ INSERT INTO auth.identities (
 -- rings render in their untargeted "set your body metrics" state.
 -- health_data_consent_at is stamped here, before any run is inserted: the
 -- runs and food_log gates keep heart rate and food only with consent
--- (decisions § 2513), so a stamp added after the runs (section 3a) would
+-- (decisions § 2514), so a stamp added after the runs (section 3a) would
 -- leave every seeded run without its heart rate.
 INSERT INTO user_profiles (id, display_name, parkrun_number, preferred_unit, subscription_tier,
                            age_confirmed_at, terms_accepted_at, onboarded_at,
@@ -713,7 +713,7 @@ INSERT INTO auth.identities (
 ) ON CONFLICT DO NOTHING;
 
 -- onboarded_at: same reason as the runner profile above.
--- health_data_consent_at before the runs below, as for the runner (§ 2513).
+-- health_data_consent_at before the runs below, as for the runner (§ 2514).
 INSERT INTO user_profiles (id, display_name, preferred_unit, subscription_tier,
                            age_confirmed_at, terms_accepted_at, onboarded_at,
                            health_data_consent_at)
@@ -1110,7 +1110,7 @@ INSERT INTO auth.identities (
 ) ON CONFLICT DO NOTHING;
 
 -- onboarded_at: same reason as the runner profile above.
--- health_data_consent_at before the runs below, as for the runner (§ 2513).
+-- health_data_consent_at before the runs below, as for the runner (§ 2514).
 INSERT INTO user_profiles (id, display_name, preferred_unit, subscription_tier,
                            age_confirmed_at, terms_accepted_at, onboarded_at,
                            health_data_consent_at)

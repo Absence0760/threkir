@@ -1759,7 +1759,7 @@
   "bodyMetricsWithdrawConfirm": "Withdraw & erase",
   "healthConsentFoodTitle": "Your food log is health data",
   "@healthConsentFoodTitle": {
-    "description": "Title of the dialog asking for health-data consent before the first food is logged (decisions § 2513)"
+    "description": "Title of the dialog asking for health-data consent before the first food is logged (decisions § 2514)"
   },
   "healthConsentFoodBody": "Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.",
   "@healthConsentFoodBody": {
@@ -3021,7 +3021,7 @@
   },
   "runHeartRateNotSaved": "Heart rate from this activity wasn't saved: Threkir keeps heart rate only with your health-data consent.",
   "@runHeartRateNotSaved": {
-    "description": "Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2513)"
+    "description": "Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2514)"
   },
   "runDone": "Done",
   "@runDone": {

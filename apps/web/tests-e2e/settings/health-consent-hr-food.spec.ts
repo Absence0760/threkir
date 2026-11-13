@@ -7,7 +7,7 @@ import { readRows } from '../fixtures/db-read';
 
 /**
  * Heart rate and the food log are kept only with health-data consent
- * (decisions § 2513). A fresh saga user has none, as a real signup does.
+ * (decisions § 2514). A fresh saga user has none, as a real signup does.
  *
  *   1. /nutrition says why nothing can be logged, and the Log food dialog
  *      shows the same notice instead of the composer. A food_log insert in

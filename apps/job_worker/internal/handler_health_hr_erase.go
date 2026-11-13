@@ -13,7 +13,7 @@ import (
 )
 
 // HealthHrErasePayload is what private.erase_health_records enqueues for
-// kind='health_hr_erase' (migration 20271227100008, decisions § 2513): one
+// kind='health_hr_erase' (migration 20271227100008, decisions § 2514): one
 // runner whose health-data consent was withdrawn, or whose held backlog the
 // purge erased.
 type HealthHrErasePayload struct {

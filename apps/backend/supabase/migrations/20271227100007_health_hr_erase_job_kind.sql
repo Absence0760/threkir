@@ -1,4 +1,4 @@
--- The `health_hr_erase` job kind (decisions § 2513).
+-- The `health_hr_erase` job kind (decisions § 2514).
 --
 -- Withdrawing health-data consent erases the heart rate a runner has stored.
 -- The rows are erased in the withdrawal's own transaction (20271227100008),

@@ -9,7 +9,7 @@ import 'three_button_nav_bar.dart';
 import 'worst_case_layout.dart';
 
 // Heart rate and the food log are kept only with health-data consent
-// (decisions § 2513). These pin what a runner without it is told.
+// (decisions § 2514). These pin what a runner without it is told.
 
 Widget _summary({VoidCallback? onGiveHealthConsent}) => Scaffold(
       body: FinishedSummary(

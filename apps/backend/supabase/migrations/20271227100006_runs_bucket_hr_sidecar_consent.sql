@@ -1,5 +1,5 @@
 -- The heart-rate sidecar in the runs bucket follows health-data consent
--- (decisions § 2513).
+-- (decisions § 2514).
 --
 -- {user_id}/{run_id}.hr.json.gz is a run's heart-rate series when the track
 -- has no per-point bpm (decisions § 116). The owner-folder policies

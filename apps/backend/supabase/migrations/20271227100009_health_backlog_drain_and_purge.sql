@@ -1,6 +1,6 @@
 -- The heart rate and food stored before the consent gate, by runners without
 -- consent: hidden now, deleted only on request or after counsel approves
--- (decisions § 2513).
+-- (decisions § 2514).
 --
 -- Food needs no move: the select policy (20271227100004) already hides a
 -- runner's rows while they have no consent. Heart rate sits inside runs rows
@@ -150,6 +150,6 @@ select cron.schedule(
 
 comment on function private.purge_health_backlog(integer) is
   'Erases the pre-gate heart rate and food of runners who still have no '
-  'health-data consent (decisions § 2513). Does nothing unless the '
+  'health-data consent (decisions § 2514). Does nothing unless the '
   'health_backlog_purge feature flag is on (counsel sign-off, § 2430). '
   'Scheduled by pg_cron entry `purge-health-backlog` (04:31 UTC daily).';

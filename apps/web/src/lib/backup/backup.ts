@@ -243,7 +243,7 @@ function supabaseRestoreBackend(): RestoreBackend {
 		},
 		async uploadTrack(path, bytes) {
 			// A restored track carries whatever bpm the archive held; without
-			// health-data consent it is uploaded without it (decisions § 2513).
+			// health-data consent it is uploaded without it (decisions § 2514).
 			const body = (await fetchHealthDataConsented()) ? bytes : await trackBytesWithoutBpm(bytes);
 			const { error } = await supabase.storage.from(BUCKETS.runs).upload(path, body, {
 				contentType: 'application/gzip',

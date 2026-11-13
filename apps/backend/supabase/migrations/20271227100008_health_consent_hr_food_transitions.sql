@@ -1,5 +1,5 @@
 -- Giving or withdrawing health-data consent moves heart rate and the food
--- log with it (decisions § 2513).
+-- log with it (decisions § 2514).
 --
 --   * private.erase_health_records(uid) erases every copy of the runner's
 --     heart rate and food log the database holds: the held backlog
@@ -142,7 +142,7 @@ begin
     set health_data_consent_at = null,
         height_cm = null,
         gender = null;
-  -- Heart rate and the food log (§ 2513). With consent on record the
+  -- Heart rate and the food log (§ 2514). With consent on record the
   -- user_profiles transition trigger has just erased them; without it there
   -- was no transition, so a hidden pre-gate backlog is erased here.
   if not coalesce(v_had_consent, false) then

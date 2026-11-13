@@ -207,7 +207,7 @@ type Backend interface {
 	// DownloadRecordedTrack.
 	ReadRunForDurationRepair(ctx context.Context, runID string) (*DurationRepairRun, error)
 	UpdateRunDuration(ctx context.Context, read *DurationRepairRun, durationS int) error
-	// Health-data consent (decisions § 2513). HealthDataConsented answers
+	// Health-data consent (decisions § 2514). HealthDataConsented answers
 	// whether a runner may keep heart rate (the strava_event stream). The
 	// health_hr_erase path pages the runner's runs and rewrites their
 	// Storage objects; sidecars go through DeleteStorageObjects.

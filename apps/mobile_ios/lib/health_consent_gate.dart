@@ -7,7 +7,7 @@ import 'screens/settings_body_metrics_screen.dart';
 import 'settings_sync.dart';
 
 /// Heart rate and the food log are kept only with health-data consent
-/// (decisions § 2513). The database refuses a food-log write and strips a
+/// (decisions § 2514). The database refuses a food-log write and strips a
 /// run's heart rate without it; this file is where the app asks first, so a
 /// runner is told why instead of meeting a refusal.
 

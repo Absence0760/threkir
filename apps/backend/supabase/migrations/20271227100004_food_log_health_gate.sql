@@ -1,4 +1,4 @@
--- The food log is kept only with health-data consent (decisions § 2513).
+-- The food log is kept only with health-data consent (decisions § 2514).
 --
 -- The privacy policy and the health-data notice name nutrition and food logs
 -- as special-category data processed only with explicit consent. Until now
@@ -34,7 +34,7 @@ begin
     raise exception using
       errcode = 'insufficient_privilege',
       message = 'food_log: logging food needs health-data consent',
-      hint = 'call grant_health_data_consent() first (decisions § 2513)';
+      hint = 'call grant_health_data_consent() first (decisions § 2514)';
   end if;
   return new;
 end;

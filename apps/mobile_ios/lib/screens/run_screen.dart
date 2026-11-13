@@ -847,7 +847,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // Health-data consent, read when the run starts so the finish never waits
   // on the network: true / false, or null when it could not be read. Heart
   // rate shows live either way; without consent it is not saved
-  // (decisions § 2513).
+  // (decisions § 2514).
   bool? _healthConsent;
   // The finished run had heart rate that was not saved for want of consent.
   bool _heartRateNotSaved = false;
@@ -4243,7 +4243,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // the recovery path in main.dart. Pinned by
     // architecture_guards_test.dart#_stop saves before clearInProgress.
     // Without health-data consent the heart rate stays on screen during the
-    // run and is not saved (decisions § 2513). Consent unknown (offline at
+    // run and is not saved (decisions § 2514). Consent unknown (offline at
     // the start) keeps it on this device; the upload strips it then.
     final heartRateNotSaved =
         _healthConsent == false && cm.runHasHeartRate(run);
@@ -5949,7 +5949,7 @@ class FinishedSummary extends StatelessWidget {
 
   /// Non-null when the run's heart rate was not saved for want of
   /// health-data consent: the summary says so and this opens the consent
-  /// screen (decisions § 2513).
+  /// screen (decisions § 2514).
   final VoidCallback? onGiveHealthConsent;
 
   final String distanceValue;

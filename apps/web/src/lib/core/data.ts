@@ -1914,7 +1914,7 @@ export async function saveRun(input: {
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	const audience = await runAudienceFor(userId, input);
-	// Heart rate is kept only with health-data consent (decisions § 2513). The
+	// Heart rate is kept only with health-data consent (decisions § 2514). The
 	// database strips the row's keys itself, but not the bpm inside the track
 	// blob, and Storage refuses the HR sidecar, so the input is stripped here.
 	const stripped = (await fetchHealthDataConsented()) ? input : stripHeartRate(input);

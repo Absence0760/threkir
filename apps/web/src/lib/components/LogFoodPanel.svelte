@@ -25,7 +25,7 @@
 	let photoVisible = $derived(showPhoto || photoOpen);
 
 	// A food log is health data, stored only with health-data consent
-	// (decisions § 2513): without it the database refuses the write, so the
+	// (decisions § 2514): without it the database refuses the write, so the
 	// composer is replaced by the notice that says why and where to consent.
 	// A failed read shows the composer; the database still refuses the save.
 	let consent = $state<'unknown' | 'given' | 'absent'>('unknown');

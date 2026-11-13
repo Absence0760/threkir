@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { HEART_RATE_METADATA_KEYS, hasHeartRate, stripHeartRate, trackBytesWithoutBpm } from './heart_rate_consent';
 
 // Twin of packages/core_models/test/heart_rate_consent_test.dart
-// (decisions § 2513) — same cases, same count.
+// (decisions § 2514) — same cases, same count.
 
 test('the heart-rate keys are avg_bpm, max_bpm, hr_coverage and hr_series_url', () => {
 	assert.deepEqual([...HEART_RATE_METADATA_KEYS], ['avg_bpm', 'max_bpm', 'hr_coverage', 'hr_series_url']);

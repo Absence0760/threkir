@@ -182,7 +182,7 @@ class _NutritionScreenState extends State<NutritionScreen>
   }
 
   /// A food log is health data, kept only with health-data consent
-  /// (decisions § 2513): every way of logging asks here first.
+  /// (decisions § 2514): every way of logging asks here first.
   Future<bool> _foodConsent() => ensureFoodLogConsent(context,
       api: widget.api,
       settingsSync: widget.settingsSync,

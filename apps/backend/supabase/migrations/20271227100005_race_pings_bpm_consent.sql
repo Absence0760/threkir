@@ -1,5 +1,5 @@
 -- A race ping carries heart rate only with health-data consent (decisions
--- § 2513).
+-- § 2514).
 --
 -- live_run_pings already drops bpm without consent
 -- (private.live_run_pings_strip_bpm, 20271104000001). race_pings, its

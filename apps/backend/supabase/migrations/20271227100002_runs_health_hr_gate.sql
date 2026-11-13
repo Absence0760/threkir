@@ -1,4 +1,4 @@
--- A run keeps no heart rate without health-data consent (decisions § 2513).
+-- A run keeps no heart rate without health-data consent (decisions § 2514).
 --
 -- BEFORE INSERT OR UPDATE OF metadata, hr_series_url on runs. When the owner
 -- has no health-data consent on record:

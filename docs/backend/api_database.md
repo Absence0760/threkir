@@ -1274,7 +1274,7 @@ create table user_profiles (
 -- auth.users cascade. See decisions § 718 for the two-store rule.
 ```
 
-**Heart rate and the food log follow the same consent** (migrations `20271227100001`-`20271227100009`, [decisions § 2513](../architecture/decisions.md)). One predicate, `private.health_data_consented(uid)`, serves every gate; `public.health_data_consented(p_user_id)` is its service-role-only wrapper for the Strava importers and the Go worker. Without consent on record:
+**Heart rate and the food log follow the same consent** (migrations `20271227100001`-`20271227100009`, [decisions § 2514](../architecture/decisions.md)). One predicate, `private.health_data_consented(uid)`, serves every gate; `public.health_data_consented(p_user_id)` is its service-role-only wrapper for the Strava importers and the Go worker. Without consent on record:
 
 - **`runs`**: BEFORE INSERT OR UPDATE OF `metadata, hr_series_url` trigger `runs_health_hr_gate` strips `avg_bpm`, `max_bpm`, `hr_coverage` (`private.run_hr_metadata_keys()`) and nulls `hr_series_url`; the run is kept. On UPDATE, heart rate the row already held is moved to `private.withheld_run_hr` (`run_id` PK → `runs on delete cascade`, `user_id`, `hr jsonb`, `hr_series_url`, `withheld_at`; RLS on, service role only) rather than lost. Every writer is gated, the service role included.
 - **`gym_workouts`**: `gym_workouts_health_hr_gate` strips the same keys from `metadata` (no writer stores gym heart rate today).

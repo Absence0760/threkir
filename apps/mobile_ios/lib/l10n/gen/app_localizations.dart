@@ -2231,7 +2231,7 @@ abstract class AppLocalizations {
   /// **'Withdraw & erase'**
   String get bodyMetricsWithdrawConfirm;
 
-  /// Title of the dialog asking for health-data consent before the first food is logged (decisions § 2513)
+  /// Title of the dialog asking for health-data consent before the first food is logged (decisions § 2514)
   ///
   /// In en, this message translates to:
   /// **'Your food log is health data'**
@@ -3941,7 +3941,7 @@ abstract class AppLocalizations {
   /// **'Syncing...'**
   String get runSyncing;
 
-  /// Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2513)
+  /// Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2514)
   ///
   /// In en, this message translates to:
   /// **'Heart rate from this activity wasn\'t saved: Threkir keeps heart rate only with your health-data consent.'**

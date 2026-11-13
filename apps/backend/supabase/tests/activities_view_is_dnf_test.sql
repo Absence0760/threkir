@@ -15,7 +15,7 @@ insert into user_profiles (id, display_name) values
   ('00000000-0000-0000-0000-0000d0000001', 'Dee')
 on conflict (id) do nothing;
 
--- Food and heart rate are stored only with health-data consent (decisions § 2513).
+-- Food and heart rate are stored only with health-data consent (decisions § 2514).
 insert into user_profiles (id, health_data_consent_at)
 values
   ('00000000-0000-0000-0000-0000d0000001', now())

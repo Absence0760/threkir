@@ -11,7 +11,7 @@ import (
 )
 
 // HealthDataConsented asks `health_data_consented`, the service-role RPC the
-// heart-rate gates share (migration 20271227100001, decisions § 2513).
+// heart-rate gates share (migration 20271227100001, decisions § 2514).
 func (c *SupabaseClient) HealthDataConsented(ctx context.Context, userID string) (bool, error) {
 	var out bool
 	if err := c.rpc(ctx, "health_data_consented", map[string]any{"p_user_id": userID}, &out); err != nil {

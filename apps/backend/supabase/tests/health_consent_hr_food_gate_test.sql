@@ -1,5 +1,5 @@
 -- pgtap: heart rate and the food log follow health-data consent
--- (migrations 20271227100001-100009, decisions § 2513).
+-- (migrations 20271227100001-100009, decisions § 2514).
 --
 -- Users:
 --   C (…c1) consents throughout.

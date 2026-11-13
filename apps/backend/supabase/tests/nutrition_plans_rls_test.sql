@@ -25,7 +25,7 @@ values
   ('99999999-0000-0000-0000-0000000e0a03', 'authenticated', 'authenticated', 'client@np.local', '', now(), now()),
   ('99999999-0000-0000-0000-0000000e0a04', 'authenticated', 'authenticated', 'assigner@np.local', '', now(), now());
 
--- Food and heart rate are stored only with health-data consent (decisions § 2513).
+-- Food and heart rate are stored only with health-data consent (decisions § 2514).
 insert into user_profiles (id, health_data_consent_at)
 values
   ('99999999-0000-0000-0000-0000000e0a01', now()),

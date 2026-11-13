@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Says why something health-related was not stored, and where consent is
-	// given (decisions § 2513). Heart rate and the food log are kept only with
+	// given (decisions § 2514). Heart rate and the food log are kept only with
 	// health-data consent; the consent itself is the checkbox on the Account
 	// page, so this links there rather than asking again in place.
 	import { m } from '#lib/i18n/store.svelte.ts';

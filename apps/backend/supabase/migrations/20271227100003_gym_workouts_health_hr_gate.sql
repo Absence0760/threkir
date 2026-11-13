@@ -1,5 +1,5 @@
 -- A gym session keeps no heart rate without health-data consent (decisions
--- § 2513).
+-- § 2514).
 --
 -- No writer stores heart rate on gym_workouts today: neither gym_sets nor
 -- the gym_workouts.metadata registry (docs/backend/metadata.md) has a

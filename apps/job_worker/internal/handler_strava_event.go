@@ -217,7 +217,7 @@ func (w *Worker) handleStravaEvent(ctx context.Context, job *Job) error {
 				"err", streamErr, "activity_id", p.ObjectID)
 		} else if streams != nil {
 			// Per-point heart rate is kept only with health-data consent
-			// (decisions § 2513); the database never sees inside the track
+			// (decisions § 2514); the database never sees inside the track
 			// blob, so the stream is dropped here. Fail-closed on a lookup
 			// error: the run keeps its track, without bpm.
 			consented, cErr := w.Backend.HealthDataConsented(ctx, userID)

@@ -54,7 +54,7 @@ export interface StravaZipProgress {
 	// every imported row.
 	droppedPhotos: number;
 	// Runs imported without their heart rate: the runner has no health-data
-	// consent (decisions § 2513). The rest of each run was imported.
+	// consent (decisions § 2514). The rest of each run was imported.
 	droppedHeartRate: number;
 	failed: number;
 	// Per-activity detail behind `failed` — name, start, reason, log-safe

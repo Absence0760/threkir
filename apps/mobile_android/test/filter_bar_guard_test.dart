@@ -18,7 +18,6 @@ import 'package:flutter_test/flutter_test.dart';
 const _unmigratedSearch = <String, int>{
   'lib/screens/clubs_screen.dart': 1,
   'lib/screens/discover_screen.dart': 1,
-  'lib/screens/explore_routes_screen.dart': 1,
   'lib/screens/help_screen.dart': 1,
   'lib/screens/messages_screen.dart': 1,
   'lib/screens/nearby_area_screen.dart': 1,
@@ -44,6 +43,7 @@ const _listTabs = [
   'lib/screens/plans_screen.dart',
   'lib/screens/races_screen.dart',
   'lib/screens/routes_screen.dart',
+  'lib/screens/explore_routes_screen.dart',
   'lib/screens/global_segments_screen.dart',
   'lib/screens/gym_screen.dart',
   'lib/screens/nutrition_screen.dart',

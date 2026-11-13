@@ -6179,11 +6179,29 @@ abstract class AppLocalizations {
   /// **'Star to show on watch'**
   String get routesStarForWatch;
 
-  /// Section header for the Explore / Heatmap discovery strip in the embedded routes view
+  /// Screen-reader name of the strip of discovery maps (routes heatmap, run heatmap) heading Routes → Explore
   ///
   /// In en, this message translates to:
   /// **'Discover'**
   String get routesDiscover;
+
+  /// Screen-reader name of the My routes / Explore chip pair at the top of the Routes tab. Same text as web routesPage.sectionLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Routes section'**
+  String get routesViewGroup;
+
+  /// Chip on the Routes tab showing the runner's own and saved routes ("my routes"), beside Explore. Kept short so both chips fit one line at 2x text on a 360 dp phone. Same text as web routesPage.tabMine
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get routesViewMine;
+
+  /// Chip on the Routes tab showing public routes and the segment catalogue (with Routes / Segments chips). Same text as web routesPage.tabExplore
+  ///
+  /// In en, this message translates to:
+  /// **'Explore'**
+  String get routesViewExplore;
 
   /// Tooltip on the cloud-download sync button in the routes list
   ///
@@ -7575,12 +7593,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Explore Routes'**
   String get exploreRoutesTitle;
-
-  /// Mode-toggle label for the search-by-name mode
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get exploreRoutesModeSearch;
 
   /// Mode-toggle label for the near-me mode
   ///

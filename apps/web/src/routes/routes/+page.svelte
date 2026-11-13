@@ -4,7 +4,6 @@
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { handleTablistKeydown } from '#lib/util/tablist.ts';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { fetchRoutesWithError, setRouteStar } from '#lib/core/data.ts';
@@ -18,13 +17,18 @@
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import RoutesViewNav from '#lib/components/RoutesViewNav.svelte';
 	import RouteExplorer from '#lib/components/RouteExplorer.svelte';
 	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
 	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 	import type { Snapshot } from './$types';
 	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
 
-	let tab = $state<'mine' | 'explore' | 'heatmap'>('mine');
+	// Mine or Explore, read from the URL: the view row is links
+	// (RoutesViewNav), so a link, a refresh and back all reopen the same view.
+	const tab = $derived<'mine' | 'explore'>(
+		page.url.searchParams.get('tab') === 'explore' ? 'explore' : 'mine',
+	);
 	let routes = $state<RouteListItem[]>([]);
 	let loading = $state(true);
 	let fetchError = $state<string | null>(null);
@@ -81,28 +85,8 @@
 		loading = false;
 	}
 
-	function setTab(next: 'mine' | 'explore' | 'heatmap') {
-		// Heatmap moved to its own route (May 2026) so it can own
-		// the full layout column without fighting the routes-page
-		// flex chain — see `/routes/heatmap/+page.svelte` for the
-		// rationale. Tab clicks navigate; the back button still
-		// returns to /routes with the previous tab restored.
-		if (next === 'heatmap') {
-			void goto('/routes/heatmap');
-			return;
-		}
-		tab = next;
-		const path = next === 'mine' ? '/routes' : `/routes?tab=${next}`;
-		goto(path, {
-			replace: true,
-			reset: false,
-		});
-	}
-
 	onMount(() => {
-		const initial = page.url.searchParams.get('tab');
-		if (initial === 'explore') tab = 'explore';
-		else if (initial === 'heatmap') {
+		if (page.url.searchParams.get('tab') === 'heatmap') {
 			// Deep-link compat: `/routes?tab=heatmap` now bounces to
 			// the standalone `/routes/heatmap` page. Use replaceState
 			// so the back button skips the redirect hop.
@@ -249,7 +233,6 @@
 
 	export const snapshot: Snapshot<{
 		routes: RouteListItem[];
-		tab: 'mine' | 'explore' | 'heatmap';
 		search: string;
 		surfaceFilter: SurfaceFilter;
 		distanceFilter: DistanceBucket;
@@ -260,7 +243,6 @@
 	}> = {
 		capture: () => ({
 			routes,
-			tab,
 			search,
 			surfaceFilter,
 			distanceFilter,
@@ -270,7 +252,6 @@
 			listToken: loadedToken,
 		}),
 		restore: (s) => {
-			tab = s.tab;
 			search = s.search;
 			surfaceFilter = s.surfaceFilter;
 			distanceFilter = s.distanceFilter;
@@ -310,43 +291,7 @@
 
 <div class="page">
 	<RunSurfaceTabs active="routes" />
-	<header class="page-header">
-		<!-- tabindex=-1: keydown bubbles here from the focused tab; the
-		     tablist itself is never tab-stopped (the tabs carry the roving
-		     tabindex). Satisfies a11y_interactive_supports_focus. -->
-		<div class="tabs" role="tablist" aria-label={m('routesPage.sectionLabel')} tabindex={-1} onkeydown={handleTablistKeydown}>
-			<button
-				role="tab"
-				class="tab"
-				class:active={tab === 'mine'}
-				aria-selected={tab === 'mine'}
-				tabindex={tab === 'mine' ? 0 : -1}
-				onclick={() => setTab('mine')}
-			>
-				{m('routesPage.tabMine')}
-			</button>
-			<button
-				role="tab"
-				class="tab"
-				class:active={tab === 'explore'}
-				aria-selected={tab === 'explore'}
-				tabindex={tab === 'explore' ? 0 : -1}
-				onclick={() => setTab('explore')}
-			>
-				{m('routesPage.tabExplore')}
-			</button>
-			<button
-				role="tab"
-				class="tab"
-				class:active={tab === 'heatmap'}
-				aria-selected={tab === 'heatmap'}
-				tabindex={tab === 'heatmap' ? 0 : -1}
-				onclick={() => setTab('heatmap')}
-			>
-				{m('routesPage.tabHeatmap')}
-			</button>
-		</div>
-	</header>
+	<RoutesViewNav view={tab === 'explore' ? 'routes' : 'mine'} />
 
 	{#if tab === 'mine'}
 		{#if loading}
@@ -388,14 +333,10 @@
 						<span class="material-symbols" aria-hidden="true">upload_file</span>
 						{m('routesPage.importFile')}
 					</button>
-					<button
-						class="btn btn-outline"
-						type="button"
-						onclick={() => setTab('explore')}
-					>
+					<a class="btn btn-outline" href="/routes?tab=explore">
 						<span class="material-symbols" aria-hidden="true">explore</span>
 						{m('routesPage.browseCommunity')}
-					</button>
+					</a>
 				{/snippet}
 			</EmptyState>
 		{:else}
@@ -555,48 +496,6 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
-	}
-
-	/* Heatmap moved to its own /routes/heatmap route in the May
-	 * 2026 layout fix — the `.page-heatmap` modifier + its
-	 * full-bleed flex chain that used to live here are now in
-	 * `/routes/heatmap/+page.svelte` instead. Dead-code removed. */
-
-	.page-header {
-		margin-bottom: var(--space-xl);
-	}
-
-	.tabs {
-		display: flex;
-		gap: 0.5rem;
-		border-bottom: 1px solid var(--color-border);
-		/* Tabs share one underlined baseline, so they scroll rather than
-		   wrap. Second strip on this route — `.surface-tabs` above it got
-		   the same treatment. */
-		max-width: 100%;
-		overflow-x: auto;
-	}
-
-	.tab {
-		flex: 0 0 auto;
-		background: none;
-		border: none;
-		padding: 0.6rem 0.2rem;
-		margin-inline-end: 1rem;
-		font-size: 0.95rem;
-		color: var(--color-text-secondary);
-		border-bottom: 2px solid transparent;
-		cursor: pointer;
-		font-weight: 500;
-	}
-
-	.tab:hover {
-		color: var(--color-text);
-	}
-
-	.tab.active {
-		color: var(--color-primary);
-		border-bottom-color: var(--color-primary);
 	}
 
 	.error-banner {

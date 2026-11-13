@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show AppSearchField;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
@@ -149,14 +150,32 @@ void main() {
       expect(find.text('Explore Routes'), findsOneWidget);
     });
 
-    testWidgets('renders the Featured filter chip', (tester) async {
+    testWidgets('Featured is in the Filters sheet and shows as a removable '
+        'chip once on', (tester) async {
       // Reason: Featured is the entry point into curated routes —
       // its absence would mean users can't surface non-personal
-      // content from the Explore tab.
+      // content from the Explore tab. It moved into the Filters sheet with
+      // the bar's other filters (issue #1374), so on, it shows on the line.
       final s = await _makeStores();
       await _pump(tester, prefs: s.prefs, routeStore: s.routeStore);
       await tester.pump();
-      expect(find.text('Featured'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('filter-bar-filters')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilterChip, 'Featured'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(InputChip, 'Featured'), findsOneWidget);
+      expect(find.byTooltip('Remove filter: Featured'), findsOneWidget);
+    });
+
+    testWidgets('one search field, with clear, and Near me as the quick chip',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, prefs: s.prefs, routeStore: s.routeStore);
+      await tester.pump();
+      expect(find.byType(AppSearchField), findsOneWidget);
+      expect(find.widgetWithText(FilterChip, 'Near Me'), findsOneWidget);
     });
   });
 

@@ -1421,7 +1421,7 @@ export const messages = {
 	"routeNew.saveFailedError": "Falha ao salvar a rota",
 	"routesPage.pageTitle": "Rotas",
 	"routesPage.sectionLabel": "Seção de rotas",
-	"routesPage.tabMine": "Minhas rotas",
+	"routesPage.tabMine": "Minhas",
 	"routesPage.tabExplore": "Explorar",
 	"routesPage.tabHeatmap": "Mapa de calor",
 	"routesPage.loadingRoutes": "Carregando suas rotas…",

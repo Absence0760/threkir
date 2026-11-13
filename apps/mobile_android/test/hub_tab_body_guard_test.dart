@@ -79,14 +79,45 @@ List<String> _tabBodies(String hub) {
   }.toList();
 }
 
+/// Screens a tab body mounts in place as one of its views, which are hub
+/// tab bodies too: Routes' Explore views (issue #1374, owner decision 1).
+/// Listed rather than scanned, because a body's build also names the screens
+/// it pushes; the test below fails if an entry stops being mounted.
+const _tabViews = {
+  'RoutesScreen': ['ExploreRoutesScreen', 'GlobalSegmentsScreen'],
+};
+
+/// [name]'s widget class with its state class.
+String _withState(Map<String, String> classes, String name) {
+  final widget = classes[name];
+  if (widget == null) return '';
+  final stateName =
+      RegExp(r'createState\(\)\s*=>\s*(\w+)\(').firstMatch(widget)?.group(1);
+  return [widget, if (stateName != null) classes[stateName] ?? ''].join();
+}
+
 void main() {
   final classes = _classes();
   final hub = classes['_FitnessHubScreenState']!;
-  final bodies = _tabBodies(hub);
+  final bodies = [
+    ..._tabBodies(hub),
+    for (final views in _tabViews.values) ...views,
+  ];
 
   test('the scan finds the hub\'s tab bodies', () {
     expect(bodies, containsAll(['RunsScreen', 'PlansScreen', 'GymScreen']));
   });
+
+  for (final MapEntry(key: host, value: views) in _tabViews.entries) {
+    test('$host mounts its views in place', () {
+      expect(_tabBodies(hub), contains(host));
+      final source = _withState(classes, host);
+      for (final view in views) {
+        expect(source, contains('$view('),
+            reason: '$host no longer mounts $view; drop it from _tabViews');
+      }
+    });
+  }
 
   test('the hub hosts each tab in a HubTabScope and shows the one FAB', () {
     expect(hub, contains('HubTabScope('));
@@ -96,11 +127,8 @@ void main() {
 
   for (final name in bodies) {
     test('$name is a HubTabBody with no app bar or Scaffold of its own', () {
-      final widget = classes[name];
-      expect(widget, isNotNull, reason: 'no class $name in lib/');
-      final stateName =
-          RegExp(r'createState\(\)\s*=>\s*(\w+)\(').firstMatch(widget!)?.group(1);
-      final source = [widget, if (stateName != null) classes[stateName]!].join();
+      expect(classes[name], isNotNull, reason: 'no class $name in lib/');
+      final source = _withState(classes, name);
       expect(source, contains('HubTabBody('),
           reason: '$name should build its tab through ui_kit\'s HubTabBody');
       for (final banned in ['AppBar(', 'Scaffold(', 'FloatingActionButton']) {

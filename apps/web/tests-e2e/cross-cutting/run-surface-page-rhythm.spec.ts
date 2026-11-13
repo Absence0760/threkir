@@ -47,7 +47,9 @@ test.describe('run-surface pages share one page rhythm', () => {
 		await acceptCookieConsent(context);
 	});
 
-	test('the surface-tab strip has the same geometry on all five tabs', async ({ page }) => {
+	// Five pages, four tabs: `/segments` is Routes → Explore → Segments since
+	// issue #1374 and carries the strip with Routes marked.
+	test('the surface-tab strip has the same geometry on every run-surface page', async ({ page }) => {
 		const [first, ...rest] = RUN_SURFACES;
 		const baseline = await stripRect(page, first);
 		expect(baseline.width, `${first} laid out no strip to compare against`).toBeGreaterThan(0);

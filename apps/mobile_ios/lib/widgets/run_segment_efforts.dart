@@ -89,10 +89,13 @@ class _RunSegmentEffortsState extends State<RunSegmentEfforts> {
     }
   }
 
+  /// The catalogue is Routes → Explore on its Segments chip, so this selects
+  /// that tab and view rather than pushing a copy (issue #1374).
   void _openCatalogue() {
     openFitnessSurface(
       context,
-      FitnessTab.segments,
+      FitnessTab.routes,
+      routesShow: RoutesShow.segments,
       fallback: () => GlobalSegmentsScreen(api: widget.api),
     );
   }

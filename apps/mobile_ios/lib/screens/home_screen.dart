@@ -213,9 +213,10 @@ class _HomeScreenState extends State<HomeScreen>
     nutritionShown: _nutritionShown,
   ).first);
 
-  /// The Races & courses tab's view, owned here for the same reason: a link
-  /// can ask for the Courses view before that tab has been built.
-  final _racesShow = ValueNotifier<RacesShow>(RacesShow.all);
+  /// The views of the hub's tabs that have them (Races & courses, Routes),
+  /// owned here for the same reason: a link can ask for a view before that
+  /// tab has been built.
+  final _fitnessViews = FitnessHubViews();
 
   /// Current page index. A `ValueNotifier` instead of a `setState` int so
   /// page changes during a swipe only rebuild the bottom bar — not the
@@ -723,13 +724,14 @@ class _HomeScreenState extends State<HomeScreen>
   /// pushable screens: return to the shell and select the tab, as the Log
   /// action does for Gym and Nutrition (decisions § 2437). A form above the
   /// shell is asked to discard first, and keeping it cancels the switch.
-  Future<void> _openFitnessTab(FitnessTab tab, {RacesShow? racesShow}) async {
+  Future<void> _openFitnessTab(FitnessTab tab,
+      {FitnessSurfaceRequest? request}) async {
     if (!mounted) return;
     final shell = ModalRoute.of(context);
     final reached = await returnToShell(Navigator.of(context),
         isShell: (route) => route == shell);
     if (!reached || !mounted) return;
-    if (racesShow != null) _racesShow.value = racesShow;
+    if (request != null) _fitnessViews.apply(request);
     _fitnessTab.value = tab;
     _goToPage(_pageFitness);
   }
@@ -737,7 +739,7 @@ class _HomeScreenState extends State<HomeScreen>
   void _onFitnessSurfaceRequest() {
     final request = fitnessSurfaceRequests.take();
     if (request == null) return;
-    _openFitnessTab(request.tab, racesShow: request.racesShow);
+    _openFitnessTab(request.tab, request: request);
   }
 
   Future<void> _pushScreen(Widget screen) {
@@ -912,7 +914,7 @@ class _HomeScreenState extends State<HomeScreen>
           settingsSync: widget.settingsSync,
           training: widget.training,
           selectedTab: _fitnessTab,
-          racesShow: _racesShow,
+          views: _fitnessViews,
         ),
       ),
       _LazyKeepAliveTab(
@@ -993,7 +995,7 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.dispose();
     _runPageShown.dispose();
     _fitnessTab.dispose();
-    _racesShow.dispose();
+    _fitnessViews.dispose();
     super.dispose();
   }
 

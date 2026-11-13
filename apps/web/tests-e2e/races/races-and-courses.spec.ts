@@ -112,16 +112,16 @@ async function teardown(p: Planted | null) {
 test.describe('races & courses', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('the run-surface strip is five tabs in the mobile order, with no Parks tab', async ({ page }) => {
+	test('the run-surface strip is four tabs in the mobile order, with no Parks or Segments tab', async ({ page }) => {
 		await page.goto('/races');
 		const strip = page.locator('nav.surface-tabs');
 		await expect(strip).toBeVisible({ timeout: 10_000 });
+		// Segments is Routes → Explore since issue #1374 (owner decision 1).
 		await expect(strip.getByRole('link')).toHaveText([
 			'Runs',
 			'Plans',
 			'Races & courses',
 			'Routes',
-			'Segments',
 		]);
 		await expect(strip.getByRole('link', { name: 'Races & courses' })).toHaveAttribute('aria-current', 'page');
 		await expect(strip.locator('a[href="/parks"]')).toHaveCount(0);

@@ -28,6 +28,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../race_service.dart';
 import '../route_surface_label.dart';
+import '../routes_views.dart';
 import '../widgets/error_state.dart';
 import '../widgets/help_button.dart';
 import 'park_courses_screen.dart';
@@ -46,10 +47,18 @@ import '../widgets/old_match_note.dart';
 ///
 /// The catalogue is world-readable, so this screen works signed out — unlike
 /// the leaderboard on [GlobalSegmentDetailScreen].
+///
+/// It is Routes → Explore on its Segments chip (issue #1374, owner decision
+/// 1), which hands it [chrome]; it was a Fitness tab of its own before.
+/// Mounted on its own, where no shell can select that view, it is a page
+/// titled Segments.
 class GlobalSegmentsScreen extends StatefulWidget {
   final ApiClient? api;
 
-  const GlobalSegmentsScreen({super.key, this.api});
+  /// The Routes tab's view row and Explore chips. Null on its own.
+  final RoutesExploreChrome? chrome;
+
+  const GlobalSegmentsScreen({super.key, this.api, this.chrome});
 
   @override
   State<GlobalSegmentsScreen> createState() => _GlobalSegmentsScreenState();
@@ -166,19 +175,19 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final catalogue = _catalogue;
+    final bar = _filterBar(l10n, catalogue).withTrailing([
+      IconButton(
+        key: const Key('segments-parks-link'),
+        tooltip: l10n.parksBrowseLink,
+        icon: const Icon(Icons.park_outlined),
+        onPressed: _openParks,
+      ),
+    ]);
     return HubTabBody(
-      // The tab's own name: "Famous segments" under a tab reading "Segments"
+      // The chip's own name: "Famous segments" under a tab reading "Segments"
       // was two names for one place (issue #1374 report 2).
       title: l10n.runSurfaceTabSegments,
-      actions: [
-        IconButton(
-          key: const Key('segments-parks-link'),
-          tooltip: l10n.parksBrowseLink,
-          icon: const Icon(Icons.park_outlined),
-          onPressed: _openParks,
-        ),
-      ],
-      filters: catalogue.isEmpty ? null : _filterBar(l10n, catalogue),
+      filters: widget.chrome?.above(bar) ?? bar,
       onRefresh: _load,
       body: AsyncView<List<CatalogueSegment>>(
         loading: _loading,
@@ -203,9 +212,17 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
   }
 
   /// Search, then Filters for region, surface and sort, whose non-default
-  /// values show as removable chips. A one-value choice filters nothing, so a
-  /// group with one value is left out of the sheet.
+  /// values show as removable chips, after the Routes · Segments chips when
+  /// the Routes tab hosts this. A one-value choice filters nothing, so a
+  /// group with one value is left out of the sheet. With nothing loaded there
+  /// is nothing to search or filter, and only the chips stay.
   FilterBar _filterBar(AppLocalizations l10n, List<CatalogueSegment> catalogue) {
+    if (catalogue.isEmpty) {
+      return FilterBar(
+        key: const Key('segments-filter-bar'),
+        chips: [...?widget.chrome?.chips],
+      );
+    }
     ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
           label: label,
           onRemove: onRemove,
@@ -227,6 +244,7 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
         clearTooltip: l10n.commonClearSearch,
         onChanged: (v) => setState(() => _query = v),
       ),
+      chips: [...?widget.chrome?.chips],
       activeFilters: filters,
       filtersLabel: l10n.filterBarFilters,
       filtersSemanticLabel:

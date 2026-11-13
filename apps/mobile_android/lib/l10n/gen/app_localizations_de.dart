@@ -3735,6 +3735,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get routesDiscover => 'Entdecken';
 
   @override
+  String get routesViewGroup => 'Routen-Bereich';
+
+  @override
+  String get routesViewMine => 'Meine';
+
+  @override
+  String get routesViewExplore => 'Entdecken';
+
+  @override
   String get routesSyncFromCloud => 'Aus der Cloud synchronisieren';
 
   @override
@@ -4740,9 +4749,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get exploreRoutesTitle => 'Routen erkunden';
-
-  @override
-  String get exploreRoutesModeSearch => 'Suche';
 
   @override
   String get exploreRoutesModeNearMe => 'In meiner Nähe';

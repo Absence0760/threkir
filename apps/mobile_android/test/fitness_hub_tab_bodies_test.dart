@@ -105,7 +105,8 @@ void main() {
 
   // The tabs with a primary action, by the label of the FAB the hub shows.
   // History defers to the shell's centre Log button; Races keeps "Add a
-  // race" in its overflow; Plans and Segments are signed-out here.
+  // race" in its overflow; Plans is signed-out here. Routes' Explore views
+  // have no primary action; they are walked as their own entries below.
   const fabs = {
     'Runs': 'Add past run',
     'Routes': 'Import',
@@ -119,14 +120,30 @@ void main() {
     for (final label in [
       'History',
       'Runs',
+      'Gym',
+      'Nutrition',
       'Plans',
       'Races & courses',
       'Routes',
-      'Segments',
-      'Gym',
-      'Nutrition',
+      'Routes → Explore → Routes',
+      'Routes → Explore → Segments',
     ]) {
-      await openTab(tester, label);
+      if (label.startsWith('Routes →')) {
+        final chip = find.widgetWithText(ChoiceChip, label.split(' → ').last);
+        if (label.endsWith('→ Routes')) {
+          final explore = find.widgetWithText(ChoiceChip, 'Explore');
+          await tester.ensureVisible(explore);
+          await tester.tap(explore);
+          await tester.pump();
+        }
+        // The chip line scrolls sideways at 2x; the chip must be reachable.
+        await tester.ensureVisible(chip);
+        await tester.tap(chip);
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      } else {
+        await openTab(tester, label);
+      }
       expect(tester.takeException(), isNull, reason: '$label overflowed');
       expect(find.byType(AppBar), findsOneWidget,
           reason: '$label drew an app bar under the strip');
@@ -161,5 +178,23 @@ void main() {
     await openTab(tester, 'Races & courses');
     expect(find.byKey(const Key('races-filter-bar')), findsOneWidget);
     expect(find.byType(FilterBar), findsOneWidget);
+  });
+
+  // Routes is Mine · Explore: the view row is a FilterBar of its own over
+  // the view's FilterBar, and nothing else.
+  testWidgets('Routes is the view row over the view\'s own FilterBar',
+      (tester) async {
+    await pumpHub(tester);
+    await openTab(tester, 'Routes');
+    expect(find.byKey(const ValueKey('routes-view-bar')), findsOneWidget);
+    expect(find.byType(FilterBar), findsNWidgets(2));
+    final explore = find.widgetWithText(ChoiceChip, 'Explore');
+    await tester.ensureVisible(explore);
+    await tester.tap(explore);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('explore-routes-filter-bar')),
+        findsOneWidget);
+    expect(find.byType(FilterBar), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
   });
 }

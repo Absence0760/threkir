@@ -1422,7 +1422,7 @@ export const messages = {
 	"routeNew.saveFailedError": "Échec de l'enregistrement de l'itinéraire",
 	"routesPage.pageTitle": "Itinéraires",
 	"routesPage.sectionLabel": "Section itinéraires",
-	"routesPage.tabMine": "Mes itinéraires",
+	"routesPage.tabMine": "Les miens",
 	"routesPage.tabExplore": "Explorer",
 	"routesPage.tabHeatmap": "Carte de chaleur",
 	"routesPage.loadingRoutes": "Chargement de vos itinéraires…",

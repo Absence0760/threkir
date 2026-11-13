@@ -1422,7 +1422,7 @@ export const messages = {
 	"routeNew.saveFailedError": "Route konnte nicht gespeichert werden",
 	"routesPage.pageTitle": "Routen",
 	"routesPage.sectionLabel": "Routen-Bereich",
-	"routesPage.tabMine": "Meine Routen",
+	"routesPage.tabMine": "Meine",
 	"routesPage.tabExplore": "Entdecken",
 	"routesPage.tabHeatmap": "Heatmap",
 	"routesPage.loadingRoutes": "Deine Routen werden geladen…",

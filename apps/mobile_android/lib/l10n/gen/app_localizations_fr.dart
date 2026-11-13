@@ -3737,6 +3737,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routesDiscover => 'Découvrir';
 
   @override
+  String get routesViewGroup => 'Section itinéraires';
+
+  @override
+  String get routesViewMine => 'Les miens';
+
+  @override
+  String get routesViewExplore => 'Explorer';
+
+  @override
   String get routesSyncFromCloud => 'Synchroniser depuis le cloud';
 
   @override
@@ -4739,9 +4748,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get exploreRoutesTitle => 'Explorer les itinéraires';
-
-  @override
-  String get exploreRoutesModeSearch => 'Recherche';
 
   @override
   String get exploreRoutesModeNearMe => 'À proximité';

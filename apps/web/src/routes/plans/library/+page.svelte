@@ -1,6 +1,7 @@
 <script lang="ts">
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { onMount } from 'svelte';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { goto } from '$app/navigation';
 	import {
@@ -88,19 +89,16 @@
 		<ul class="plan-grid" aria-busy={loading}>
 			{#each plans as p (p.id)}
 				<li>
-					<a class="plan-card" href="/plans/library/{p.id}">
-						<span class="plan-name">{p.name}{#if p.is_official}<OfficialBadge />{/if}</span>
-						<span class="plan-author">
-							{m('planLibrary.byAuthor', {
-								author: p.author_handle ?? m('planLibrary.anonymousAuthor'),
-							})}
-						</span>
-						<span class="plan-meta">
+					<ListCard class="plan-card" href="/plans/library/{p.id}" title={p.name} subtitle={m('planLibrary.byAuthor', { author: p.author_handle ?? m('planLibrary.anonymousAuthor') })}>
+						{#snippet badge()}{#if p.is_official}<OfficialBadge />{/if}{/snippet}
+						{#snippet meta()}
+							<span class="plan-meta">
 							<span class="chip">{goalEventLabel(m, formatDistance, p.goal_event, p.goal_distance_m)}</span>
 							<span class="chip">{planLengthLabel(m, weeksOf(p), p.days_per_week)}</span>
-						</span>
-						<span class="plan-cta">{m('planLibrary.preview')}</span>
-					</a>
+							</span>
+						{/snippet}
+						{#snippet trailing()}<span class="plan-cta">{m('planLibrary.preview')}</span>{/snippet}
+					</ListCard>
 				</li>
 			{/each}
 		</ul>
@@ -151,29 +149,6 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
 		gap: 0.75rem;
-	}
-	.plan-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		padding: 1rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.75rem;
-		text-decoration: none;
-		color: inherit;
-		background: var(--color-surface);
-		transition: border-color var(--transition-fast);
-	}
-	.plan-card:hover {
-		border-color: var(--color-primary);
-	}
-	.plan-name {
-		font-weight: 600;
-		font-size: 1.05rem;
-	}
-	.plan-author {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
 	}
 	.plan-meta {
 		display: flex;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ListCard from '#lib/components/ListCard.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -82,21 +83,20 @@
 		<ul class="routine-list" data-testid="routine-list">
 			{#each routines as r (r.id)}
 				<li>
-					<a class="card-elevated routine-row" href="/gym/routines/{r.id}">
-						<div class="row-main">
-							<span class="row-title">{r.title}</span>
-							<span class="row-date">{formatDate(r.last_modified_at)}</span>
-						</div>
-						<div class="row-stats">
+					<ListCard
+						class="routine-row"
+						href="/gym/routines/{r.id}"
+						title={r.title}
+						subtitle={formatDate(r.last_modified_at)}
+						chevron
+					>
+						{#snippet trailing()}
 							<span class="stat">
 								<span class="stat-value">{r.exercise_count}</span>
-								<span class="stat-label section-label"
-									>{t('gym.exercisesLabel')}</span
-								>
+								<span class="stat-label section-label">{t('gym.exercisesLabel')}</span>
 							</span>
-							<span class="material-symbols chevron" aria-hidden="true">chevron_right</span>
-						</div>
-					</a>
+						{/snippet}
+					</ListCard>
 				</li>
 			{/each}
 		</ul>
@@ -130,21 +130,6 @@
 		gap: var(--space-2xs);
 		min-width: 0;
 	}
-	.row-title {
-		font-weight: 600;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.row-date {
-		color: var(--color-text-tertiary);
-		font-size: 0.85rem;
-	}
-	.row-stats {
-		display: flex;
-		align-items: center;
-		gap: var(--space-md);
-	}
 	.stat {
 		display: flex;
 		flex-direction: column;
@@ -152,9 +137,6 @@
 	}
 	.stat-value {
 		font-weight: 600;
-	}
-	.chevron {
-		color: var(--color-text-tertiary);
 	}
 	.error-banner {
 		display: flex;

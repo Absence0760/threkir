@@ -1626,6 +1626,13 @@ The web twins of ui_kit's `FilterBar` / `AppSearchField` (§ Mobile hub tabs and
 - **A page's title block is `PageHeader.svelte`**: optional `back` link and `kicker`, the h1 with a `help` slot beside it, `subtitle` (or a `sub` snippet), extra lines as children, and `actions` at the end of the row. `flush` drops the bottom margin for a page laid out with a flex gap.
 - `apps/web/src/lib/page_chrome_guard.test.ts` fails a hand-built `type="search"` input or a `.page-header` class outside these components. Its allowlist may only shrink: an entry that no longer needs its exemption fails too.
 
+## Web list cards — `ListCard`
+
+The web twin of ui_kit's `ListCard` (§ Mobile list cards), with the same slots (issue #1374).
+
+- **A tappable card in a list is `ListCard.svelte`**: `title` with an optional `badge` snippet, `subtitle`, a `meta` snippet under them, `leading`, and `trailing` or `chevron` at the end; or `children` for any other content inside the standard padding (`dense` for the tight padding, `flush` for none). `href` makes it a link, `onclick` a button; either covers the whole card, and `trailing` and the `actions` snippet sit above it with their own clicks. `selected` tints it and sets `aria-pressed` on its button. Pass a page class (`class="workout-row"`) for layout or a test locator; the title is `.list-card-title`.
+- `apps/web/src/lib/list_card_guard.test.ts` counts, per file, the links and buttons inside an `{#each}` whose class names a card or a row (`card`, `card-elevated`, `*-card`, `*-row`). The counts may only shrink.
+
 ## Web status / accent colour tokens — pick the variant for the JOB
 
 The `--color-warning` / `--color-secondary` / `--color-accent-cyan` (and `--color-success` / `--color-danger`) base tokens in `apps/web/src/app.css` are tuned for **tints, borders and dark mode** — they are *light* accents and FAIL WCAG 1.4.3 as foreground text on a light surface (warning 2.05:1, cyan 2.30:1, secondary 3.06:1 on white; issue #368). Each status/accent has purpose-built variants — use the one matching the job, never the base token, for these two jobs:

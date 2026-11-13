@@ -1,6 +1,7 @@
 <script lang="ts">
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { onMount } from 'svelte';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { fetchPublicGymRoutineLibrary, type PublicGymRoutineEntry } from '#lib/core/data.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -63,18 +64,15 @@
 		<ul class="routine-grid" data-testid="gym-library-list">
 			{#each routines as r (r.id)}
 				<li>
-					<a class="routine-card" href="/gym/routines/library/{r.id}">
-						<span class="routine-name">{r.title}{#if r.is_official}<OfficialBadge />{/if}</span>
-						<span class="routine-author">
-							{t('gymLibrary.byAuthor', {
-								author: r.author_handle ?? t('gymLibrary.anonymousAuthor'),
-							})}
-						</span>
-						<span class="routine-meta">
+					<ListCard class="routine-card" href="/gym/routines/library/{r.id}" title={r.title} subtitle={t('gymLibrary.byAuthor', { author: r.author_handle ?? t('gymLibrary.anonymousAuthor') })}>
+						{#snippet badge()}{#if r.is_official}<OfficialBadge />{/if}{/snippet}
+						{#snippet meta()}
+							<span class="routine-meta">
 							<span class="chip">{t('gymLibrary.exercisesLabel', { count: r.exercise_count })}</span>
-						</span>
-						<span class="routine-cta">{t('gymLibrary.preview')}</span>
-					</a>
+							</span>
+						{/snippet}
+						{#snippet trailing()}<span class="routine-cta">{t('gymLibrary.preview')}</span>{/snippet}
+					</ListCard>
 				</li>
 			{/each}
 		</ul>
@@ -125,29 +123,6 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
 		gap: 0.75rem;
-	}
-	.routine-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		padding: 1rem;
-		border: 1px solid var(--color-border);
-		border-radius: 0.75rem;
-		text-decoration: none;
-		color: inherit;
-		background: var(--color-surface);
-		transition: border-color var(--transition-fast);
-	}
-	.routine-card:hover {
-		border-color: var(--color-primary);
-	}
-	.routine-name {
-		font-weight: 600;
-		font-size: 1.05rem;
-	}
-	.routine-author {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
 	}
 	.routine-meta {
 		display: flex;

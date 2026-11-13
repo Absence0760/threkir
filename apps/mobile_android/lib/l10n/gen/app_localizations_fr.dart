@@ -1313,7 +1313,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'La taille, le poids, la fréquence cardiaque enregistrée avec vos activités et votre journal alimentaire sont des données de santé sensibles, conservées uniquement tant que cette option est activée. Désactivez-la puis enregistrez pour les effacer.';
+      'La taille, le poids, la fréquence cardiaque enregistrée avec vos activités et votre journal alimentaire sont des données de santé sensibles, conservés uniquement tant que cette option est activée. Désactivez-la puis enregistrez pour les effacer.';
 
   @override
   String get bodyMetricsHeight => 'Taille';
@@ -1359,7 +1359,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Cela efface définitivement votre taille enregistrée, votre genre, tout votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités et votre journal alimentaire, et votre date de naissance n\'est plus utilisée pour personnaliser votre entraînement. Vos activités elles-mêmes sont conservées. C\'est irréversible.';
+      'Cela efface définitivement votre taille enregistrée, votre genre, votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités et votre journal alimentaire, et votre date de naissance n\'est plus utilisée pour personnaliser votre entraînement. Vos activités elles-mêmes sont conservées. Cette action est irréversible.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirer et effacer';

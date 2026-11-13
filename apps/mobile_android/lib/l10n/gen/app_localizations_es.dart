@@ -544,7 +544,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$count actividades se importaron sin su frecuencia cardíaca',
       one: '1 actividad se importó sin su frecuencia cardíaca',
     );
-    return '$_temp0: Threkir solo guarda la frecuencia cardíaca con tu consentimiento para datos de salud.';
+    return '$_temp0: Threkir solo guarda la frecuencia cardíaca con tu consentimiento de datos de salud.';
   }
 
   @override
@@ -1311,7 +1311,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'La altura, el peso, la frecuencia cardíaca registrada con tus actividades y tu registro de comidas son datos de salud de categoría especial y solo se guardan mientras esta opción está activada. Desactívala y guarda para borrarlos.';
+      'La altura, el peso, tu registro de comidas y la frecuencia cardíaca registrada con tus actividades son datos de salud de categoría especial y solo se guardan mientras esta opción está activada. Desactívala y guarda para borrarlos.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -1357,7 +1357,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Esto borra permanentemente la altura, el género, el historial de peso, cualquier dato de ciclo o embarazo, la frecuencia cardíaca guardada con tus actividades y tu registro de comidas, y tu fecha de nacimiento deja de usarse para personalizar tu entrenamiento. Tus actividades se conservan. No se puede deshacer.';
+      'Esto borra permanentemente la altura, el género y el historial de peso que tengas guardados, cualquier dato de ciclo o embarazo, tu registro de comidas y la frecuencia cardíaca guardada con tus actividades, y tu fecha de nacimiento deja de usarse para personalizar tu entrenamiento. Tus actividades en sí se conservan. Esto no se puede deshacer.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar y borrar';
@@ -1368,7 +1368,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get healthConsentFoodBody =>
-      'Threkir solo guarda un registro de comidas con tu consentimiento para datos de salud. No se guarda nada hasta que lo des.';
+      'Threkir solo guarda un registro de comidas con tu consentimiento de datos de salud. No se registra nada hasta que lo des.';
 
   @override
   String get healthConsentGiveAction => 'Dar consentimiento';
@@ -2351,7 +2351,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runHeartRateNotSaved =>
-      'La frecuencia cardíaca de esta actividad no se guardó: Threkir solo guarda la frecuencia cardíaca con tu consentimiento para datos de salud.';
+      'La frecuencia cardíaca de esta actividad no se guardó: Threkir solo guarda la frecuencia cardíaca con tu consentimiento de datos de salud.';
 
   @override
   String get runDone => 'Listo';

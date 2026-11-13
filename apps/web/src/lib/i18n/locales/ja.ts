@@ -5881,7 +5881,7 @@ export const messages = {
 	"prefs.demographicsConsentNotice": "これらの項目はGDPR第9条に基づく健康に関連する個人データです。明示的な同意がある場合に限り、セグメントのリーダーボードの性別・年齢区分の表示および栄養目標を提供する目的でのみ処理します。詳しくは",
 	"prefs.privacyPolicyLink": "プライバシーポリシー",
 	"prefs.demographicsConsentNoticeTail": "（利用目的、保存期間、撤回の権利の詳細について）をご覧ください。",
-	"prefs.demographicsConsent": "上記で説明したセグメントのリーダーボードの区分けおよび栄養目標のために、Threkirが私の性別、生年月日、身長、体重を保存すること、ならびにアクティビティとともに記録された心拍数と食事記録を保存することに同意します（GDPR第9条2項(a)）。",
+	"prefs.demographicsConsent": "Threkirが、上記で説明したセグメントのリーダーボードの区分けおよび栄養目標のために私の性別、生年月日、身長、体重を保存すること、ならびにアクティビティとともに記録された心拍数と食事記録を保存することに同意します（GDPR第9条2項(a)）。",
 	"prefs.gender": "性別",
 	"prefs.genderPreferNotToSay": "回答しない",
 	"prefs.genderMale": "男性",

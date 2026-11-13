@@ -1316,7 +1316,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Größe, Gewicht, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz und dein Ernährungstagebuch sind Gesundheitsdaten und gehören zu den besonderen Kategorien personenbezogener Daten. Sie werden nur gespeichert, solange diese Option an ist. Schalte sie aus und speichere, um sie zu löschen.';
+      'Größe, Gewicht, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz und dein Ernährungstagebuch sind Gesundheitsdaten und gehören zu den besonderen Kategorien personenbezogener Daten. Sie werden nur gespeichert, solange diese Option aktiviert ist. Schalte sie aus und speichere, um diese Daten zu löschen.';
 
   @override
   String get bodyMetricsHeight => 'Größe';
@@ -1369,11 +1369,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get healthConsentFoodTitle =>
-      'Dein Ernährungstagebuch sind Gesundheitsdaten';
+      'Dein Ernährungstagebuch zählt zu den Gesundheitsdaten';
 
   @override
   String get healthConsentFoodBody =>
-      'Threkir speichert ein Ernährungstagebuch nur mit deiner Einwilligung zur Verarbeitung von Gesundheitsdaten. Bis du sie erteilst, wird nichts gespeichert.';
+      'Threkir speichert ein Ernährungstagebuch nur mit deiner Einwilligung zur Verarbeitung von Gesundheitsdaten. Bis du sie erteilst, wird nichts erfasst.';
 
   @override
   String get healthConsentGiveAction => 'Einwilligen';

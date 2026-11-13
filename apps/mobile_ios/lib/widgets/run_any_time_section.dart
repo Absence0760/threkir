@@ -4,14 +4,15 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' show Position;
-import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, EmptyState, ListCard, ListSkeleton, SectionHeader;
 
 import '../any_time_courses.dart';
 import '../backend_timeout.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../park_course_distance.dart' show courseLapsChip, courseShapeShown;
 import '../park_courses.dart' show regionName;
-import '../preferences.dart' show formatDistanceForPref, formatEffortTime;
+import '../preferences.dart' show compactDistanceForPref, formatEffortTime;
 import '../quiet_location.dart';
 import '../screens/park_courses_screen.dart';
 
@@ -21,8 +22,10 @@ const int kRunAnyTimeLimit = 8;
 
 /// The "Run any time" half of Races & courses (issue #1352): the park courses
 /// a runner can go and do on any day, nearest first once the phone already
-/// knows where it is, each opening its course page. `ParksScreen` stays the
-/// full index, one tap away at the foot.
+/// knows where it is, each opening its course page. When [limit] cuts the
+/// list short, the heading offers "See all N courses", which opens
+/// `ParksScreen` (the full index) on the same search; a list that is already
+/// whole (the Courses view) has no such link.
 ///
 /// It loads on its own, so a failed race search never hides it and a failed
 /// course read never hides the races above it. This season's records are a
@@ -42,12 +45,23 @@ class RunAnyTimeSection extends StatefulWidget {
   /// the section under the race calendar stays a short list.
   final bool showParks;
 
+  /// The tab's search, already debounced. Every course is loaded, so it is
+  /// matched here on the list rather than asked of the server
+  /// ([parkSearchMatches]: the course, its park and its place).
+  final String query;
+
+  /// Empties the search, offered when nothing matches it. Null offers no
+  /// way out but the field itself.
+  final VoidCallback? onClearQuery;
+
   const RunAnyTimeSection({
     super.key,
     required this.api,
     this.positions,
     this.limit = kRunAnyTimeLimit,
     this.showParks = false,
+    this.query = '',
+    this.onClearQuery,
   });
 
   @override
@@ -173,7 +187,8 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
 
   void _openAll() => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => ParksScreen(api: widget.api),
+          builder: (_) =>
+              ParksScreen(api: widget.api, initialQuery: widget.query.trim()),
         ),
       );
 
@@ -181,36 +196,49 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final matching = _loading || _failed ? const <_Entry>[] : _matching();
+    final limit = widget.limit;
+    final truncated = limit != null && matching.length > limit;
     return Column(
       key: const Key('races-any-time'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-          child: Semantics(
-            header: true,
-            child: Text(l10n.racesSectionAnyTime,
-                style: theme.textTheme.titleMedium),
+          child: SectionHeader.title(
+            label: l10n.racesSectionAnyTime,
+            trailing: truncated
+                ? TextButton(
+                    key: const Key('races-any-time-all'),
+                    onPressed: _openAll,
+                    child: Text(l10n.racesAnyTimeSeeAll(matching.length)),
+                  )
+                : null,
           ),
         ),
-        ..._body(l10n, theme),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: TextButton.icon(
-              key: const Key('races-any-time-all'),
-              onPressed: _openAll,
-              icon: const Icon(Icons.park_outlined),
-              label: Text(l10n.parksBackToParks),
-            ),
-          ),
-        ),
+        ..._body(l10n, theme, matching),
       ],
     );
   }
 
-  List<Widget> _body(AppLocalizations l10n, ThemeData theme) {
+  /// The loaded courses the search keeps, every one when there is none.
+  List<_Entry> _matching() {
+    final terms = parkSearchTerms(widget.query);
+    if (terms.isEmpty) return _courses;
+    return [
+      for (final e in _courses)
+        if (parkSearchMatches(
+          terms,
+          courseName: e.course.segment.name,
+          parkName: e.park.park.name,
+          regionCode: e.park.park.regionCode,
+        ))
+          e,
+    ];
+  }
+
+  List<Widget> _body(
+      AppLocalizations l10n, ThemeData theme, List<_Entry> matching) {
     if (_loading) {
       return [
         Padding(
@@ -229,7 +257,7 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
         ),
       ];
     }
-    final all = orderAnyTimeCourses(_courses, _key, _origin);
+    final all = orderAnyTimeCourses(matching, _key, _origin);
     final limit = widget.limit;
     final ordered = limit == null ? all : all.take(limit);
     // In the order their first course lists, so a fix brings the nearest
@@ -244,6 +272,18 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
             .courses
             .add(e.course);
       }
+    }
+    if (ordered.isEmpty && widget.query.trim().isNotEmpty) {
+      return [
+        EmptyState(
+          key: const Key('races-any-time-no-match'),
+          icon: Icons.search_off,
+          title: l10n.racesAnyTimeNoMatch(widget.query.trim()),
+          ctaLabel: widget.onClearQuery == null ? null : l10n.commonClearSearch,
+          ctaIcon: Icons.close,
+          onCta: widget.onClearQuery,
+        ),
+      ];
     }
     if (ordered.isEmpty) {
       return [
@@ -345,7 +385,7 @@ class _CourseCard extends StatelessWidget {
     final meta = [
       courseDistanceForPref(segment.distanceM),
       if (awayM case final away?)
-        l10n.racesAnyTimeAway(formatDistanceForPref(away)),
+        l10n.racesAnyTimeAway(compactDistanceForPref(away)),
     ].join(' · ');
     final r = record;
     final recordLine = !showRecord

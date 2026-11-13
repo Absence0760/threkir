@@ -96,7 +96,14 @@ void main() {
     final code = src
         .split('\n')
         .where((l) => !l.trimLeft().startsWith('//'))
-        .join('\n');
+        .join('\n')
+        .replaceAll(
+          RegExp(
+            r'_walkFollowPages\(\(after\) => '
+            r'fetchFollow(ers|ing)\(userId, after: after\)\)',
+          ),
+          '',
+        );
     expect(RegExp(r'\.i?like(AllOf|AnyOf)?\(').hasMatch(code), isFalse);
   });
 
@@ -193,19 +200,28 @@ void main() {
     // New message, Send route, the group and share-audience pickers and the
     // feed's author filter filter the whole follow graph on the client; one
     // capped page of it hid everyone past the cap (decisions § 2507). Both
-    // directions go through _walkFollowEdges, which walks by keyset cursor
-    // and lets a failed page throw.
-    final walk = body('Future<List<UserProfileRow>> _walkFollowEdges(');
-    expect(walk, isNotEmpty, reason: '_walkFollowEdges moved or was renamed');
-    expect(walk.contains('await _walk('), isTrue);
-    expect(walk.contains('.limit('), isFalse);
+    // directions go through _walkFollowPages over the public page readers,
+    // so there is one paging path and a test fake of the pages fakes the
+    // walk; it follows each page's cursor and lets a failed page throw.
+    final walk = body('Future<List<UserProfileRow>> _walkFollowPages(');
+    expect(walk, isNotEmpty, reason: '_walkFollowPages moved or was renamed');
+    expect(walk.contains('_client'), isFalse,
+        reason: 'the walk reads through the page methods, not the client');
+    expect(walk.contains('.next'), isTrue);
+    expect(walk.contains('throw StateError('), isTrue);
     final graph = body('fetchFollowGraph(String userId)');
     expect(graph, isNotEmpty, reason: 'fetchFollowGraph moved or was renamed');
-    expect(graph.contains('_walkFollowEdges('), isTrue);
+    expect(
+      graph.contains(
+        '_walkFollowPages((after) => fetchFollowers(userId, after: after))',
+      ),
+      isTrue,
+    );
     expect(graph.contains('fetchAllFollowing(userId)'), isTrue);
     expect(
-      body('Future<List<UserProfileRow>> fetchAllFollowing(')
-          .contains('_walkFollowEdges('),
+      body('Future<List<UserProfileRow>> fetchAllFollowing(').contains(
+        '_walkFollowPages((after) => fetchFollowing(userId, after: after))',
+      ),
       isTrue,
     );
     expect(
@@ -217,7 +233,14 @@ void main() {
     final code = src
         .split('\n')
         .where((l) => !l.trimLeft().startsWith('//'))
-        .join('\n');
+        .join('\n')
+        .replaceAll(
+          RegExp(
+            r'_walkFollowPages\(\(after\) => '
+            r'fetchFollow(ers|ing)\(userId, after: after\)\)',
+          ),
+          '',
+        );
     expect(
       RegExp(r'(?<!Future<KeysetPage<UserProfileRow>> )fetchFollow(ers|ing)\(')
           .hasMatch(code),

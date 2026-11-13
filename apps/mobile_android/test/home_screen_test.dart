@@ -9,7 +9,8 @@ import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show AppTheme, PageBarTitle, PageHeader;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, AppTheme, PageBarTitle, PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
@@ -621,6 +622,10 @@ void main() {
             .where(onScreen);
         expect(headers, isNotEmpty,
             reason: 'root tab $i ($label) has no PageHeader saying "$title"');
+        expect(tester.getRect(headers.first).top, lessThanOrEqualTo(AppSpace.md),
+            reason: 'root tab $i opens on its title, with no bar row above');
+        expect(find.byType(AppBar).hitTestable(), findsNothing,
+            reason: 'root tab $i shows no compact bar at rest');
         expectNoLayoutOverflow(tester, 'root tab $i at rest');
 
         final bars = find.byType(PageBarTitle).evaluate().map(

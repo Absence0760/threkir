@@ -11,7 +11,6 @@ import 'package:ui_kit/ui_kit.dart'
         AppSpace,
         ChartCardHeader,
         ListCard,
-        PageHeader,
         ProgressBar,
         RootPage,
         SectionHeader,
@@ -1109,8 +1108,8 @@ class _TodayScreenState extends State<TodayScreen>
     // The root page's actions: the overflow only (issue #1374). The Feed,
     // bell and Profile glyphs duplicated the Social and You tabs a thumb
     // away, and the notifications and messages they reached live in Social's
-    // top bar now. They sit in the RootPage bar, so they stay reachable once
-    // the title has scrolled away.
+    // top bar now. They sit on the RootPage title row, and in its compact
+    // bar once the title has scrolled away, so they stay reachable.
     final actions = <Widget>[
       // Logging a run after the fact and importing history are occasional
       // jobs, so they sit in the overflow rather than on the week lead, where
@@ -1138,16 +1137,6 @@ class _TodayScreenState extends State<TodayScreen>
         ],
       ),
     ];
-    // Home opened on four glyphs and no title at all — nothing on the screen
-    // said which surface it was, and the bottom-nav label is 700 dp away at
-    // the other end of the phone. The heading sits inside the page's own
-    // gutter, so the title starts where the cards do (it used to add 16 of
-    // its own and start at 32).
-    final actionToolbar = PageHeader(
-      title: l10n.todayTitle,
-      padding: const EdgeInsets.only(top: AppSpace.sm),
-    );
-
     // Active-plan hero + the goals block: both outlive the welcome state,
     // because onboarding can mint a plan and a goal before the first run
     // exists and neither is a derived metric.
@@ -1223,7 +1212,6 @@ class _TodayScreenState extends State<TodayScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         padding: pagePadding,
         children: [
-          actionToolbar,
           pendingBanner,
           const SizedBox(height: 8),
           SkeletonBlock(height: 120, label: l10n.commonLoading),
@@ -1246,7 +1234,7 @@ class _TodayScreenState extends State<TodayScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: AppInsets.gutter),
-                  child: Column(children: [actionToolbar, pendingBanner]),
+                  child: pendingBanner,
                 ),
                 // #272: no "Ask your coach" card on the brand-new zero-runs
                 // welcome screen — it used to dominate above the onboarding
@@ -1421,7 +1409,6 @@ class _TodayScreenState extends State<TodayScreen>
         ListView(
           padding: pagePadding,
           children: [
-            actionToolbar,
             pendingBanner,
             hero,
             _kSectionGap,
@@ -1436,9 +1423,9 @@ class _TodayScreenState extends State<TodayScreen>
       );
     }
 
-    // A root page (ui_kit RootPage): the large title is the body's first
-    // row, and the slim bar above it holds the overflow and says the title
-    // once the heading has scrolled under it.
+    // A root page (ui_kit RootPage): the large title and the overflow share
+    // the row under the status bar, and a compact bar says the title once
+    // the heading has scrolled under it.
     return RootPage(
       title: l10n.todayTitle,
       actions: actions,

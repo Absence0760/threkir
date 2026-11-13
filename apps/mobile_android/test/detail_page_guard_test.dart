@@ -221,15 +221,15 @@ void main() {
       }
     }
     // The four bottom-nav roots are ui_kit RootPages, which own the large
-    // title, its collapse into the bar and the bar's actions; the two with a
-    // scroll view of their own open it with the PageHeader.
+    // title, its row of actions, its collapse into the compact bar and the
+    // bar's actions (decisions § 2517). A root body that opened with a
+    // PageHeader of its own would say the title twice.
     for (final path in const [
       'lib/screens/today_screen.dart',
       'lib/screens/you_screen.dart',
     ]) {
-      final s = _code(File(path).readAsStringSync());
-      if (!s.contains('RootPage(') || !s.contains('PageHeader(')) {
-        bad.add('$path (root page without a RootPage and a PageHeader)');
+      if (!_code(File(path).readAsStringSync()).contains('RootPage(')) {
+        bad.add('$path (root page without a RootPage)');
       }
     }
     for (final path in const [
@@ -238,6 +238,16 @@ void main() {
     ]) {
       if (!_code(File(path).readAsStringSync()).contains('RootPage.tabbed(')) {
         bad.add('$path (root hub without a RootPage.tabbed)');
+      }
+    }
+    for (final path in const [
+      'lib/screens/today_screen.dart',
+      'lib/screens/you_screen.dart',
+      'lib/screens/fitness_hub_screen.dart',
+      'lib/screens/social_screen.dart',
+    ]) {
+      if (_code(File(path).readAsStringSync()).contains('PageHeader(')) {
+        bad.add('$path (a root page says its own title; RootPage does)');
       }
     }
     expect(bad, isEmpty);

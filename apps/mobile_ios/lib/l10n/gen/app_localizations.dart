@@ -1247,6 +1247,144 @@ abstract class AppLocalizations {
   /// **'Resting heart rate'**
   String get readinessContributorRestingHr;
 
+  /// The readiness advice line: the reason, then what to do
+  ///
+  /// In en, this message translates to:
+  /// **'{reason}. {next}'**
+  String readinessAdviceLine(String reason, String next);
+
+  /// Readiness advice with no inputs, below the high band
+  ///
+  /// In en, this message translates to:
+  /// **'Connect sleep + HR data for a real readiness picture.'**
+  String get readinessAdviceNoSignal;
+
+  /// Readiness advice with no inputs, in the high band
+  ///
+  /// In en, this message translates to:
+  /// **'Looks like a good day to push the pace.'**
+  String get readinessAdviceNoSignalHigh;
+
+  /// What the low readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'Consider an easy day or a rest day.'**
+  String get readinessNextLow;
+
+  /// What the moderate readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'A steady or moderate effort fits today.'**
+  String get readinessNextModerate;
+
+  /// What the high readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'You’re primed for a harder effort if planned.'**
+  String get readinessNextHigh;
+
+  /// Why an input moved readiness (heavyFatigue)
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy fatigue — recent training stress is well above your fitness'**
+  String get readinessReasonHeavyFatigue;
+
+  /// Why an input moved readiness (fatigued)
+  ///
+  /// In en, this message translates to:
+  /// **'Fatigued from recent training'**
+  String get readinessReasonFatigued;
+
+  /// Why an input moved readiness (slightFatigue)
+  ///
+  /// In en, this message translates to:
+  /// **'Slight fatigue'**
+  String get readinessReasonSlightFatigue;
+
+  /// Why an input moved readiness (formNeutral)
+  ///
+  /// In en, this message translates to:
+  /// **'Form is neutral'**
+  String get readinessReasonFormNeutral;
+
+  /// Why an input moved readiness (fresh)
+  ///
+  /// In en, this message translates to:
+  /// **'Fresh and well-recovered'**
+  String get readinessReasonFresh;
+
+  /// Why an input moved readiness (veryFresh)
+  ///
+  /// In en, this message translates to:
+  /// **'Very fresh — borderline tapered'**
+  String get readinessReasonVeryFresh;
+
+  /// Why an input moved readiness (overTapered)
+  ///
+  /// In en, this message translates to:
+  /// **'Over-tapered — edge may be blunted'**
+  String get readinessReasonOverTapered;
+
+  /// Why an input moved readiness (veryLittleSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Very little sleep — recovery is compromised'**
+  String get readinessReasonVeryLittleSleep;
+
+  /// Why an input moved readiness (shortSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Short on sleep'**
+  String get readinessReasonShortSleep;
+
+  /// Why an input moved readiness (underSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'A little under target sleep'**
+  String get readinessReasonUnderSleep;
+
+  /// Why an input moved readiness (wellRested)
+  ///
+  /// In en, this message translates to:
+  /// **'Well rested'**
+  String get readinessReasonWellRested;
+
+  /// Why an input moved readiness (extendedSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Extended sleep — recovery should be solid'**
+  String get readinessReasonExtendedSleep;
+
+  /// Why an input moved readiness (hrWellAbove)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR {bpm} bpm above baseline — strong sign of illness or under-recovery'**
+  String readinessReasonHrWellAbove(int bpm);
+
+  /// Why an input moved readiness (hrAbove)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR {bpm} bpm above baseline'**
+  String readinessReasonHrAbove(int bpm);
+
+  /// Why an input moved readiness (hrSlightlyHigh)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR slightly elevated'**
+  String get readinessReasonHrSlightlyHigh;
+
+  /// Why an input moved readiness (hrBaseline)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR at baseline'**
+  String get readinessReasonHrBaseline;
+
+  /// Why an input moved readiness (hrBelow)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR below baseline — well recovered'**
+  String get readinessReasonHrBelow;
+
   /// Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary
   ///
   /// In en, this message translates to:

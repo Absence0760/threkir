@@ -74,7 +74,7 @@ class ReadinessCard extends StatelessWidget {
               size: StatusPillSize.compact,
             ),
             Text(
-              readiness.advice,
+              readinessAdviceText(readiness, l10n),
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -114,7 +114,7 @@ class ReadinessCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              readiness.advice,
+              readinessAdviceText(readiness, l10n),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

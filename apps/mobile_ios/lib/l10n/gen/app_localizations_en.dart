@@ -788,6 +788,88 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readinessContributorRestingHr => 'Resting heart rate';
 
   @override
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason. $next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal =>
+      'Connect sleep + HR data for a real readiness picture.';
+
+  @override
+  String get readinessAdviceNoSignalHigh =>
+      'Looks like a good day to push the pace.';
+
+  @override
+  String get readinessNextLow => 'Consider an easy day or a rest day.';
+
+  @override
+  String get readinessNextModerate => 'A steady or moderate effort fits today.';
+
+  @override
+  String get readinessNextHigh =>
+      'You’re primed for a harder effort if planned.';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      'Heavy fatigue — recent training stress is well above your fitness';
+
+  @override
+  String get readinessReasonFatigued => 'Fatigued from recent training';
+
+  @override
+  String get readinessReasonSlightFatigue => 'Slight fatigue';
+
+  @override
+  String get readinessReasonFormNeutral => 'Form is neutral';
+
+  @override
+  String get readinessReasonFresh => 'Fresh and well-recovered';
+
+  @override
+  String get readinessReasonVeryFresh => 'Very fresh — borderline tapered';
+
+  @override
+  String get readinessReasonOverTapered => 'Over-tapered — edge may be blunted';
+
+  @override
+  String get readinessReasonVeryLittleSleep =>
+      'Very little sleep — recovery is compromised';
+
+  @override
+  String get readinessReasonShortSleep => 'Short on sleep';
+
+  @override
+  String get readinessReasonUnderSleep => 'A little under target sleep';
+
+  @override
+  String get readinessReasonWellRested => 'Well rested';
+
+  @override
+  String get readinessReasonExtendedSleep =>
+      'Extended sleep — recovery should be solid';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return 'Resting HR $bpm bpm above baseline — strong sign of illness or under-recovery';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return 'Resting HR $bpm bpm above baseline';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh => 'Resting HR slightly elevated';
+
+  @override
+  String get readinessReasonHrBaseline => 'Resting HR at baseline';
+
+  @override
+  String get readinessReasonHrBelow =>
+      'Resting HR below baseline — well recovered';
+
+  @override
   String get todayTitle => 'Today';
 
   @override

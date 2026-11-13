@@ -762,6 +762,82 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readinessContributorRestingHr => '安静時心拍数';
 
   @override
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason。$next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal => '睡眠と心拍数のデータを接続すると、コンディションを正確に把握できます。';
+
+  @override
+  String get readinessAdviceNoSignalHigh => 'ペースを上げるのによい日のようです。';
+
+  @override
+  String get readinessNextLow => 'イージーな日か休養日を検討しましょう。';
+
+  @override
+  String get readinessNextModerate => '今日は一定ペースか中程度の強度が合っています。';
+
+  @override
+  String get readinessNextHigh => '予定があれば、強度の高い練習にも対応できる状態です。';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      '強い疲労 — 最近のトレーニング負荷がフィットネスを大きく上回っています';
+
+  @override
+  String get readinessReasonFatigued => '最近のトレーニングで疲労があります';
+
+  @override
+  String get readinessReasonSlightFatigue => '軽い疲労';
+
+  @override
+  String get readinessReasonFormNeutral => '調子は普通です';
+
+  @override
+  String get readinessReasonFresh => '疲労が抜け、よく回復しています';
+
+  @override
+  String get readinessReasonVeryFresh => '疲労がほぼ抜けています — テーパリングに近い状態';
+
+  @override
+  String get readinessReasonOverTapered => 'テーパリングしすぎ — 鋭さが鈍っているかもしれません';
+
+  @override
+  String get readinessReasonVeryLittleSleep => '睡眠がとても少ない — 回復が妨げられています';
+
+  @override
+  String get readinessReasonShortSleep => '睡眠不足';
+
+  @override
+  String get readinessReasonUnderSleep => '目標の睡眠時間を少し下回っています';
+
+  @override
+  String get readinessReasonWellRested => 'よく休めています';
+
+  @override
+  String get readinessReasonExtendedSleep => '長めの睡眠 — しっかり回復できているはずです';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return '安静時心拍数が基準値より$bpm bpm高い — 体調不良や回復不足の強いサインです';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return '安静時心拍数が基準値より$bpm bpm高い';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh => '安静時心拍数がやや高め';
+
+  @override
+  String get readinessReasonHrBaseline => '安静時心拍数は基準値どおり';
+
+  @override
+  String get readinessReasonHrBelow => '安静時心拍数が基準値より低い — よく回復しています';
+
+  @override
   String get todayTitle => '今日';
 
   @override

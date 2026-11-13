@@ -799,6 +799,91 @@ class AppLocalizationsDe extends AppLocalizations {
   String get readinessContributorRestingHr => 'Ruhepuls';
 
   @override
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason. $next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal =>
+      'Verbinde Schlaf- und Herzfrequenzdaten für ein echtes Bild deiner Bereitschaft.';
+
+  @override
+  String get readinessAdviceNoSignalHigh =>
+      'Sieht nach einem guten Tag aus, um aufs Tempo zu drücken.';
+
+  @override
+  String get readinessNextLow =>
+      'Denk über einen lockeren Tag oder einen Ruhetag nach.';
+
+  @override
+  String get readinessNextModerate =>
+      'Ein gleichmäßiger oder moderater Lauf passt heute.';
+
+  @override
+  String get readinessNextHigh =>
+      'Du bist bereit für eine härtere Einheit, falls geplant.';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      'Starke Ermüdung – die Trainingsbelastung der letzten Zeit liegt deutlich über deiner Fitness';
+
+  @override
+  String get readinessReasonFatigued => 'Ermüdet vom letzten Training';
+
+  @override
+  String get readinessReasonSlightFatigue => 'Leichte Ermüdung';
+
+  @override
+  String get readinessReasonFormNeutral => 'Deine Form ist neutral';
+
+  @override
+  String get readinessReasonFresh => 'Frisch und gut erholt';
+
+  @override
+  String get readinessReasonVeryFresh => 'Sehr frisch – fast schon getapert';
+
+  @override
+  String get readinessReasonOverTapered =>
+      'Zu lange getapert – die Schärfe kann nachlassen';
+
+  @override
+  String get readinessReasonVeryLittleSleep =>
+      'Sehr wenig Schlaf – die Erholung leidet';
+
+  @override
+  String get readinessReasonShortSleep => 'Zu wenig Schlaf';
+
+  @override
+  String get readinessReasonUnderSleep => 'Etwas unter deinem Schlafziel';
+
+  @override
+  String get readinessReasonWellRested => 'Gut ausgeruht';
+
+  @override
+  String get readinessReasonExtendedSleep =>
+      'Langer Schlaf – die Erholung sollte gut sein';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return 'Ruhepuls $bpm bpm über deinem Basiswert – ein deutliches Zeichen für Krankheit oder unzureichende Erholung';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return 'Ruhepuls $bpm bpm über deinem Basiswert';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh => 'Ruhepuls leicht erhöht';
+
+  @override
+  String get readinessReasonHrBaseline => 'Ruhepuls im Normalbereich';
+
+  @override
+  String get readinessReasonHrBelow =>
+      'Ruhepuls unter deinem Basiswert – gut erholt';
+
+  @override
   String get todayTitle => 'Heute';
 
   @override

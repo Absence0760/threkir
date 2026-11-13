@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { computeReadiness } from './readiness';
+import { interpolate } from '../i18n/interpolate';
+import { en } from '../i18n/locales/en';
+import type { MessageKey } from '../i18n/messages';
+import { computeReadiness, readinessAdviceText, type Readiness } from './readiness';
+
+const advice = (r: Readiness) =>
+	readinessAdviceText(r, (key: MessageKey, params) => interpolate(en[key], params, 'en'));
 
 test('neutral inputs → 75 baseline, high band', () => {
 	const r = computeReadiness({ tsb: 0 });
@@ -15,7 +21,7 @@ test('all inputs null → 75 baseline, no contributors', () => {
 	assert.equal(r.contributors.length, 0);
 	// Advice is band-driven when no signals are available — 75 is the
 	// "high" band, so we surface the encouraging variant.
-	assert.match(r.advice, /good day|push the pace/i);
+	assert.match(advice(r), /good day|push the pace/i);
 });
 
 test('heavy fatigue + bad sleep → low band', () => {
@@ -23,7 +29,7 @@ test('heavy fatigue + bad sleep → low band', () => {
 	// -20 (TSB) + -25 (sleep) = -45 → 75 - 45 = 30 → low.
 	assert.equal(r.score, 30);
 	assert.equal(r.band, 'low');
-	assert.match(r.advice, /easy|rest/i);
+	assert.match(advice(r), /easy|rest/i);
 });
 
 test('fresh + great sleep → high band', () => {
@@ -36,7 +42,7 @@ test('fresh + great sleep → high band', () => {
 	// 75 + 8 (fresh) + 5 (great sleep) + 3 (HR below baseline) = 91.
 	assert.equal(r.score, 91);
 	assert.equal(r.band, 'high');
-	assert.match(r.advice, /harder effort/);
+	assert.match(advice(r), /harder effort/);
 });
 
 test('clamps to 0..100 on extreme inputs', () => {
@@ -63,7 +69,7 @@ test('TSB > +25 (over-tapered) → small negative not positive', () => {
 	assert.equal(r.score, 75 - 3);
 	const tsb = r.contributors.find((c) => c.kind === 'form');
 	assert.equal(tsb!.delta, -3);
-	assert.match(tsb!.note, /Over-tapered/);
+	assert.equal(tsb!.reason, 'overTapered');
 });
 
 test('resting HR +10 above baseline → strong negative', () => {
@@ -75,14 +81,14 @@ test('resting HR +10 above baseline → strong negative', () => {
 	// 12 above → "Very above baseline" band, -18.
 	assert.equal(r.score, 75 - 18);
 	assert.equal(r.band, 'moderate');
-	assert.match(r.advice, /illness|under-recovery/i);
+	assert.match(advice(r), /illness|under-recovery/i);
 });
 
 test('contributor ordering: dominant input drives the advice line', () => {
 	// Big sleep deficit dominates a mild TSB.
 	const r = computeReadiness({ tsb: -3, sleepHours: 4 });
 	// Sleep contributor (-25) beats TSB (-6).
-	assert.match(r.advice, /Very little sleep|compromised/i);
+	assert.match(advice(r), /Very little sleep|compromised/i);
 });
 
 test('partial inputs — only sleep present', () => {
@@ -109,7 +115,7 @@ test('score is deterministic — same inputs → same output', () => {
 	const b = computeReadiness({ tsb: 5, sleepHours: 7 });
 	assert.equal(a.score, b.score);
 	assert.equal(a.band, b.band);
-	assert.equal(a.advice, b.advice);
+	assert.deepEqual(a.dominant, b.dominant);
 });
 
 test('a tie in |delta| is broken by insertion order, not by the sort', () => {
@@ -121,7 +127,7 @@ test('a tie in |delta| is broken by insertion order, not by the sort', () => {
 	const r = computeReadiness({ tsb: -12, sleepHours: 6 });
 	assert.equal(r.contributors[0].delta, -12);
 	assert.equal(r.contributors[1].delta, -12);
-	assert.match(r.advice, /^Fatigued from recent training\./);
+	assert.match(advice(r), /^Fatigued from recent training\./);
 });
 
 test('an all-zero tie still resolves to the first contributor', () => {
@@ -140,13 +146,13 @@ test('an all-zero tie still resolves to the first contributor', () => {
 		r.contributors.map((c) => c.delta),
 		[0, 0, 0],
 	);
-	assert.match(r.advice, /^Form is neutral\./);
+	assert.match(advice(r), /^Form is neutral\./);
 });
 
 test('the tiebreak does not override a genuinely larger contributor', () => {
 	// Sleep at -25 beats a TSB of -12 even though TSB was added first.
 	const r = computeReadiness({ tsb: -12, sleepHours: 4 });
-	assert.match(r.advice, /^Very little sleep/);
+	assert.match(advice(r), /^Very little sleep/);
 });
 
 // Every comparison is false for NaN, so a NaN fell through to each scorer's

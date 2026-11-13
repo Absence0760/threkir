@@ -1056,6 +1056,116 @@
   "@readinessContributorRestingHr": {
     "description": "Readiness breakdown: the points resting heart rate added to the score"
   },
+  "readinessAdviceLine": "{reason}. {next}",
+  "@readinessAdviceLine": {
+    "description": "The readiness advice line: the reason, then what to do",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "readinessAdviceNoSignal": "Connect sleep + HR data for a real readiness picture.",
+  "@readinessAdviceNoSignal": {
+    "description": "Readiness advice with no inputs, below the high band"
+  },
+  "readinessAdviceNoSignalHigh": "Looks like a good day to push the pace.",
+  "@readinessAdviceNoSignalHigh": {
+    "description": "Readiness advice with no inputs, in the high band"
+  },
+  "readinessNextLow": "Consider an easy day or a rest day.",
+  "@readinessNextLow": {
+    "description": "What the low readiness band suggests"
+  },
+  "readinessNextModerate": "A steady or moderate effort fits today.",
+  "@readinessNextModerate": {
+    "description": "What the moderate readiness band suggests"
+  },
+  "readinessNextHigh": "You’re primed for a harder effort if planned.",
+  "@readinessNextHigh": {
+    "description": "What the high readiness band suggests"
+  },
+  "readinessReasonHeavyFatigue": "Heavy fatigue — recent training stress is well above your fitness",
+  "@readinessReasonHeavyFatigue": {
+    "description": "Why an input moved readiness (heavyFatigue)"
+  },
+  "readinessReasonFatigued": "Fatigued from recent training",
+  "@readinessReasonFatigued": {
+    "description": "Why an input moved readiness (fatigued)"
+  },
+  "readinessReasonSlightFatigue": "Slight fatigue",
+  "@readinessReasonSlightFatigue": {
+    "description": "Why an input moved readiness (slightFatigue)"
+  },
+  "readinessReasonFormNeutral": "Form is neutral",
+  "@readinessReasonFormNeutral": {
+    "description": "Why an input moved readiness (formNeutral)"
+  },
+  "readinessReasonFresh": "Fresh and well-recovered",
+  "@readinessReasonFresh": {
+    "description": "Why an input moved readiness (fresh)"
+  },
+  "readinessReasonVeryFresh": "Very fresh — borderline tapered",
+  "@readinessReasonVeryFresh": {
+    "description": "Why an input moved readiness (veryFresh)"
+  },
+  "readinessReasonOverTapered": "Over-tapered — edge may be blunted",
+  "@readinessReasonOverTapered": {
+    "description": "Why an input moved readiness (overTapered)"
+  },
+  "readinessReasonVeryLittleSleep": "Very little sleep — recovery is compromised",
+  "@readinessReasonVeryLittleSleep": {
+    "description": "Why an input moved readiness (veryLittleSleep)"
+  },
+  "readinessReasonShortSleep": "Short on sleep",
+  "@readinessReasonShortSleep": {
+    "description": "Why an input moved readiness (shortSleep)"
+  },
+  "readinessReasonUnderSleep": "A little under target sleep",
+  "@readinessReasonUnderSleep": {
+    "description": "Why an input moved readiness (underSleep)"
+  },
+  "readinessReasonWellRested": "Well rested",
+  "@readinessReasonWellRested": {
+    "description": "Why an input moved readiness (wellRested)"
+  },
+  "readinessReasonExtendedSleep": "Extended sleep — recovery should be solid",
+  "@readinessReasonExtendedSleep": {
+    "description": "Why an input moved readiness (extendedSleep)"
+  },
+  "readinessReasonHrWellAbove": "Resting HR {bpm} bpm above baseline — strong sign of illness or under-recovery",
+  "@readinessReasonHrWellAbove": {
+    "description": "Why an input moved readiness (hrWellAbove)",
+    "placeholders": {
+      "bpm": {
+        "type": "int"
+      }
+    }
+  },
+  "readinessReasonHrAbove": "Resting HR {bpm} bpm above baseline",
+  "@readinessReasonHrAbove": {
+    "description": "Why an input moved readiness (hrAbove)",
+    "placeholders": {
+      "bpm": {
+        "type": "int"
+      }
+    }
+  },
+  "readinessReasonHrSlightlyHigh": "Resting HR slightly elevated",
+  "@readinessReasonHrSlightlyHigh": {
+    "description": "Why an input moved readiness (hrSlightlyHigh)"
+  },
+  "readinessReasonHrBaseline": "Resting HR at baseline",
+  "@readinessReasonHrBaseline": {
+    "description": "Why an input moved readiness (hrBaseline)"
+  },
+  "readinessReasonHrBelow": "Resting HR below baseline — well recovered",
+  "@readinessReasonHrBelow": {
+    "description": "Why an input moved readiness (hrBelow)"
+  },
   "todayTitle": "Today",
   "@todayTitle": {
     "description": "Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary"

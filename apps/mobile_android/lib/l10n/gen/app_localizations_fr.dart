@@ -796,6 +796,92 @@ class AppLocalizationsFr extends AppLocalizations {
   String get readinessContributorRestingHr => 'Fréquence cardiaque au repos';
 
   @override
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason. $next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal =>
+      'Connectez vos données de sommeil et de fréquence cardiaque pour une vraie mesure de votre disponibilité.';
+
+  @override
+  String get readinessAdviceNoSignalHigh =>
+      'Bonne journée pour accélérer, semble-t-il.';
+
+  @override
+  String get readinessNextLow =>
+      'Envisagez une journée facile ou un jour de repos.';
+
+  @override
+  String get readinessNextModerate =>
+      'Un effort régulier ou modéré convient aujourd\'hui.';
+
+  @override
+  String get readinessNextHigh =>
+      'Vous êtes prêt pour un effort plus intense si c\'est prévu.';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      'Grosse fatigue — la charge d\'entraînement récente dépasse nettement votre forme';
+
+  @override
+  String get readinessReasonFatigued => 'Fatigué par l\'entraînement récent';
+
+  @override
+  String get readinessReasonSlightFatigue => 'Légère fatigue';
+
+  @override
+  String get readinessReasonFormNeutral => 'Fraîcheur neutre';
+
+  @override
+  String get readinessReasonFresh => 'Frais et bien récupéré';
+
+  @override
+  String get readinessReasonVeryFresh => 'Très frais — presque affûté';
+
+  @override
+  String get readinessReasonOverTapered =>
+      'Trop affûté — le tranchant peut s\'émousser';
+
+  @override
+  String get readinessReasonVeryLittleSleep =>
+      'Très peu de sommeil — la récupération en pâtit';
+
+  @override
+  String get readinessReasonShortSleep => 'Manque de sommeil';
+
+  @override
+  String get readinessReasonUnderSleep =>
+      'Un peu en dessous de votre objectif de sommeil';
+
+  @override
+  String get readinessReasonWellRested => 'Bien reposé';
+
+  @override
+  String get readinessReasonExtendedSleep =>
+      'Sommeil prolongé — la récupération devrait être solide';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return 'FC au repos $bpm bpm au-dessus de la normale — signe fort de maladie ou de récupération insuffisante';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return 'FC au repos $bpm bpm au-dessus de la normale';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh => 'FC au repos légèrement élevée';
+
+  @override
+  String get readinessReasonHrBaseline => 'FC au repos à la normale';
+
+  @override
+  String get readinessReasonHrBelow =>
+      'FC au repos sous la normale — bien récupéré';
+
+  @override
   String get todayTitle => 'Aujourd\'hui';
 
   @override

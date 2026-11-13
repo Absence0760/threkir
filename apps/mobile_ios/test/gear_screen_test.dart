@@ -286,22 +286,17 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
 
-        // The Cancel button should be reachable — its global Y must
+        // The pinned Add button should be reachable — its global Y must
         // sit at least gestureBarPx above the screen bottom.
-        final screenHeight = tester.binding.window.physicalSize.height /
-            tester.binding.window.devicePixelRatio;
-        final cancelTopLeft = tester.getTopLeft(
-          find.widgetWithText(TextButton, 'Cancel'),
-        );
-        final cancelBottom = cancelTopLeft.dy +
-            tester
-                .getSize(find.widgetWithText(TextButton, 'Cancel'))
-                .height;
+        final screenHeight = tester.view.physicalSize.height /
+            tester.view.devicePixelRatio;
+        final add = find.widgetWithText(FilledButton, 'Add');
+        final addBottom = tester.getRect(add).bottom;
         expect(
-          screenHeight - cancelBottom,
+          screenHeight - addBottom,
           greaterThanOrEqualTo(gestureBarPx - 1),
           reason:
-              'Cancel button must sit at least gestureBar inset above the screen bottom so it is not hidden by Samsung\'s translucent gesture nav.',
+              'Add must sit at least gestureBar inset above the screen bottom so it is not hidden by Samsung\'s translucent gesture nav.',
         );
       } finally {
         f.dir.deleteSync(recursive: true);

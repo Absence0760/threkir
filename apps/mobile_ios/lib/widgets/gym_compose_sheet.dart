@@ -110,6 +110,7 @@ Future<bool?> showGymComposeSheet({
     context,
     title: existing == null ? l10n.gymEditorNewTitle : l10n.gymEditorEditTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (ctx) => GymComposeSheet(
       key: formKey,
       store: store,
@@ -441,6 +442,9 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     return b.toString();
   }
 
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _saving;
+
   bool get isDirty => _snapshot() != _initialSnapshot;
 
   /// Rebuild exercise blocks from a list of stored set maps. Sets arrive in
@@ -676,6 +680,11 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     final recoverable = _recoverable;
 
     return FullScreenFormBody(
+      save: EditorSave(
+        label: l10n.gymEditorSave,
+        busy: _saving,
+        onPressed: _save,
+      ),
       children: [
         if (recoverable != null) ...[
           _recoverCard(recoverable, theme, l10n),
@@ -720,29 +729,6 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
                     ?.copyWith(color: theme.colorScheme.error),
               ),
             ],
-            const SizedBox(height: 16),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              overflowAlignment: OverflowBarAlignment.end,
-              spacing: 8,
-              children: [
-                TextButton(
-                  onPressed:
-                      _saving ? null : () => Navigator.maybePop(context),
-                  child: Text(l10n.gymEditorCancel),
-                ),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.gymEditorSave),
-                ),
-              ],
-            ),
           ],
         );
   }
@@ -839,6 +825,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
                     Padding(
                       padding: const EdgeInsets.only(left: 44, bottom: 6),
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         key: Key('gym-set-type-$i-$si'),
                         initialValue: ex.sets[si].setType,
                         isDense: true,

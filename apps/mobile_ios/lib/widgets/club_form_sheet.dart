@@ -44,6 +44,7 @@ Future<String?> showClubFormSheet(
         ? AppLocalizations.of(context).clubFormTitle
         : AppLocalizations.of(context).clubFormEditTitle,
     isDirty: () => formKey.currentState?.isDirty ?? false,
+    isBusy: () => formKey.currentState?.isBusy ?? false,
     builder: (_) =>
         _ClubFormScreen(
           key: formKey,
@@ -137,6 +138,9 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
         _isPublic.toString(),
         if (!_isEdit) _joinPolicy,
       ].join('\u0000');
+
+  /// A save in flight; the form cannot be closed until it lands.
+  bool get isBusy => _busy;
 
   bool get isDirty => _snapshot() != _initialSnapshot;
 
@@ -292,8 +296,12 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    // Heading + Scaffold/SafeArea come from the host showFullScreenForm.
     return FullScreenFormBody(
+      save: EditorSave(
+        label: _isEdit ? l10n.clubEditorSaveChanges : l10n.clubFormCreate,
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
               if (!_isEdit && widget.stravaClubId != null) ...[
                 Text(
@@ -407,30 +415,6 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
-              OverflowBar(
-                alignment: MainAxisAlignment.end,
-                overflowAlignment: OverflowBarAlignment.end,
-                spacing: 8,
-                children: [
-                  TextButton(
-                    onPressed:
-                        _busy ? null : () => Navigator.maybePop(context),
-                    child: Text(l10n.clubFormCancel),
-                  ),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(_isEdit ? l10n.clubEditorSaveChanges : l10n.clubFormCreate),
-                  ),
-                ],
-              ),
             ],
           );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import 'confirm_destructive.dart';
+import 'top_banner.dart';
 
 /// Confirm leaving a form whose unsaved edits would be lost. Resolves `true`
 /// when the user chooses to discard, `false` on cancel / barrier dismiss.
@@ -28,15 +29,22 @@ Future<bool> confirmDiscard(BuildContext context, {String? body}) {
 /// through `maybePop` and are intercepted; an in-form Cancel button must call
 /// `Navigator.maybePop` for the same reason. A save path that has already
 /// persisted should keep calling `Navigator.pop`, which bypasses the guard.
+///
+/// [isBusy], when it reports a save or create still running, refuses the pop
+/// outright and says so: leaving then would let the work finish out of sight,
+/// with its result or its failure never shown (issue #1374 NS-7). A refusal
+/// that asks nothing also stops `returnToShell`'s walk (decisions § 2484).
 class DiscardGuard extends StatefulWidget {
   const DiscardGuard({
     super.key,
     required this.isDirty,
     required this.child,
     this.confirmBody,
+    this.isBusy,
   });
 
   final bool Function() isDirty;
+  final bool Function()? isBusy;
   final String? confirmBody;
   final Widget child;
 
@@ -53,6 +61,13 @@ class _DiscardGuardState extends State<DiscardGuard> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop || _confirming) return;
+        if (widget.isBusy?.call() ?? false) {
+          showTopBanner(
+            context,
+            AppLocalizations.of(context).discardChangesBusy,
+          );
+          return;
+        }
         final navigator = Navigator.of(context);
         if (!widget.isDirty()) {
           navigator.pop(result);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,7 @@ import '../lib/season_types.dart';
 import '../lib/training.dart';
 import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
+import 'editor_layout.dart';
 
 const _today = '2026-08-14';
 
@@ -61,6 +64,40 @@ class _FakeTraining extends TrainingService {
     ));
     return _row('plan-$call', name, toIsoDate(startDate),
         toIsoDate(generated.endDate));
+  }
+}
+
+/// Holds every create until [gate] completes.
+class _GatedTraining extends _FakeTraining {
+  final gate = Completer<void>();
+  int started = 0;
+
+  @override
+  Future<TrainingPlanRow> createPlan({
+    required String name,
+    required GoalEvent goalEvent,
+    required double goalDistanceM,
+    int? goalTimeSec,
+    int? recent5kSec,
+    required DateTime startDate,
+    required int daysPerWeek,
+    String? notes,
+    required GeneratedPlan generated,
+    String? raceListingId,
+    PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
+  }) async {
+    started++;
+    await gate.future;
+    return super.createPlan(
+      name: name,
+      goalEvent: goalEvent,
+      goalDistanceM: goalDistanceM,
+      goalTimeSec: goalTimeSec,
+      startDate: startDate,
+      daysPerWeek: daysPerWeek,
+      generated: generated,
+      onOverlap: onOverlap,
+    );
   }
 }
 
@@ -274,7 +311,9 @@ void main() {
         tester, _host(t, _returns([_richmond, _twoOceans, _comrades])));
     await _describeAndPreview(tester);
     await tester.tap(find.byKey(const Key('season-create')));
-    await tester.pumpAndSettle();
+    // Create's spinner runs while the dialog asks, so nothing settles.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(t.created, isEmpty);
@@ -423,5 +462,111 @@ void main() {
     expect(find.textContaining('Recovery after Two Oceans: 21 days'),
         findsOneWidget);
     expect(find.text('Create 2 plans'), findsOneWidget);
+  });
+
+  group('unsaved changes and a create in flight (issue #1374 NS-7)', () {
+    Future<void> pushScreen(WidgetTester tester, TrainingService t) async {
+      await tester.binding.setSurfaceSize(const Size(800, 6000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SeasonPlanScreen(
+                    training: t,
+                    loadAiAvailable: () async => true,
+                    requestSeasonRacesFn:
+                        _returns([_richmond, _twoOceans, _comrades]),
+                    todayIso: () => _today,
+                  ),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> back(WidgetTester tester) async {
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets('an untouched season closes without asking', (tester) async {
+      await pushScreen(tester, _FakeTraining());
+      await back(tester);
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.byType(SeasonPlanScreen), findsNothing);
+    });
+
+    testWidgets('a typed season asks; Cancel keeps it, Discard leaves',
+        (tester) async {
+      await pushScreen(tester, _FakeTraining());
+      await tester.tap(find.byKey(const Key('season-add-race')));
+      await tester.pump();
+      await back(tester);
+      expect(find.text('Discard changes?'), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Cancel')));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeasonPlanScreen), findsOneWidget);
+      expect(find.byKey(const Key('season-no-races')), findsNothing);
+
+      await back(tester);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Discard')));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeasonPlanScreen), findsNothing);
+    });
+
+    testWidgets(
+        'Back while Create runs is refused with a banner, and the plans and '
+        'the result stay in sight', (tester) async {
+      final t = _GatedTraining();
+      await pushScreen(tester, t);
+      await _describeAndPreview(tester);
+      await tester.tap(find.byKey(const Key('season-create')));
+      await tester.pump();
+      await tester.pump();
+      expect(t.started, 1);
+
+      await back(tester);
+      expect(find.byType(SeasonPlanScreen), findsOneWidget);
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.text('Still saving. You can leave when it finishes.'),
+          findsOneWidget);
+      expect(find.text('Creating…'), findsOneWidget);
+
+      t.gate.complete();
+      await tester.pumpAndSettle();
+      expect([for (final c in t.created) c.name],
+          ['Richmond Marathon', 'Comrades']);
+      expect(find.byType(SeasonPlanScreen), findsNothing);
+      // Let the banner's timer run out.
+      await tester.pump(const Duration(seconds: 6));
+    });
+  });
+
+  testWidgets(
+      'the pinned Preview is reachable at 320 dp, 2x text and a 3-button bar, '
+      'with and without the keyboard', (tester) async {
+    await expectEditorSaveReachable(
+      tester,
+      page: () => SeasonPlanScreen(
+        training: _FakeTraining(),
+        loadAiAvailable: () async => true,
+        requestSeasonRacesFn: _returns([_richmond]),
+        todayIso: () => _today,
+      ),
+      save: find.byKey(const Key('season-preview')),
+    );
   });
 }

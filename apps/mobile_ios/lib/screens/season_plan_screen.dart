@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave;
 
 import '../auth_error.dart';
 import '../backend_timeout.dart';
@@ -18,6 +19,7 @@ import '../training.dart';
 import '../training_service.dart';
 import '../typed_decimal.dart';
 import '../widgets/ai_disclosure_notice.dart';
+import '../widgets/confirm_discard.dart';
 import '../widgets/plan_overlap_dialog.dart';
 import 'plan_detail_screen.dart';
 
@@ -104,6 +106,12 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
   final List<({int index, String id})> _created = [];
   int? _failedIndex;
   String? _createError;
+
+  /// Anything typed or added: the screen opens empty with four days a week.
+  bool get _isDirty =>
+      _describeCtrl.text.trim().isNotEmpty ||
+      _rows.isNotEmpty ||
+      _daysPerWeek != 4;
 
   double get _perUnit =>
       activeDistanceUnit == DistanceUnit.mi ? _kMetresPerMile : 1000;
@@ -379,6 +387,10 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
         firstAction = action;
       }
       for (var i = from; i < drafts.length; i++) {
+        // Leaving is refused while this runs, so only an app-level reset
+        // (sign-out) unmounts the screen here; stop rather than create the
+        // rest where no one can see the result.
+        if (!mounted) return;
         final d = drafts[i];
         try {
           final plan = await widget.training
@@ -492,13 +504,44 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     final tag = localeToTag(Localizations.localeOf(context));
     String day(String iso) => formatDateMed(parseIsoDate(iso), tag);
     final preview = _preview;
-    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     final unit = activeDistanceUnit == DistanceUnit.mi ? 'mi' : 'km';
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.seasonPlanTitle)),
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 32 + bottomInset),
-        children: [
+    final createError = _createError;
+    // One pinned action at a time: Preview until a preview of the current
+    // rows stands, then Create.
+    final save = preview != null && preview.ok
+        ? EditorSave(
+            key: const Key('season-create'),
+            label: _creating
+                ? l10n.seasonPlanCreating
+                : _failedIndex != null
+                ? l10n.seasonPlanRetry
+                : l10n.seasonPlanCreateButton(preview.plans.length),
+            busy: _creating,
+            onPressed: () => _create(l10n),
+          )
+        : EditorSave(
+            key: const Key('season-preview'),
+            label: l10n.seasonPlanPreviewButton,
+            onPressed: _rows.isEmpty ? null : () => _confirm(l10n),
+          );
+    return DiscardGuard(
+      isDirty: () => _isDirty,
+      isBusy: () => _creating,
+      child: EditorPage(
+        title: l10n.seasonPlanTitle,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        save: save,
+        status: createError == null
+            ? null
+            : Semantics(
+                liveRegion: true,
+                child: Text(
+                  createError,
+                  key: const Key('season-create-error'),
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+              ),
+        fields: [
           Text(
             l10n.seasonPlanIntro,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -557,12 +600,6 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
               style: TextStyle(color: theme.colorScheme.error),
             ),
           ],
-          const SizedBox(height: 12),
-          FilledButton(
-            key: const Key('season-preview'),
-            onPressed: _rows.isEmpty ? null : () => _confirm(l10n),
-            child: Text(l10n.seasonPlanPreviewButton),
-          ),
           if (preview != null) ...[
             const SizedBox(height: 20),
             _previewSection(theme, l10n, preview, day),
@@ -917,29 +954,6 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
             ),
           ),
         ],
-        if (_createError != null) ...[
-          const SizedBox(height: 8),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              _createError!,
-              key: const Key('season-create-error'),
-              style: TextStyle(color: cs.error),
-            ),
-          ),
-        ],
-        const SizedBox(height: 12),
-        FilledButton(
-          key: const Key('season-create'),
-          onPressed: _creating ? null : () => _create(l10n),
-          child: Text(
-            _creating
-                ? l10n.seasonPlanCreating
-                : _failedIndex != null
-                ? l10n.seasonPlanRetry
-                : l10n.seasonPlanCreateButton(preview.plans.length),
-          ),
-        ),
       ],
     );
   }

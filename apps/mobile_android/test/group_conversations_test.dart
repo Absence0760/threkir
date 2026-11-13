@@ -12,6 +12,7 @@ import '../lib/screens/group_create_screen.dart';
 import '../lib/screens/group_thread_screen.dart';
 import '../lib/screens/messages_screen.dart';
 import '../lib/widgets/group_members_sheet.dart';
+import 'editor_layout.dart';
 import 'pump_until.dart';
 import 'three_button_nav_bar.dart';
 
@@ -502,6 +503,61 @@ void main() {
       expect(api.created?.invitees, ['p-1', 'p-3']);
       expect(popped, 'g-new');
       await _drainBanner(tester);
+    });
+  });
+
+  group('new group: leaving', () {
+    Future<void> open(WidgetTester tester, _FakeApi api) async {
+      await tester.pumpWidget(_app(Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push<String>(
+              MaterialPageRoute(builder: (_) => GroupCreateScreen(api: api))),
+          child: const Text('open'),
+        ),
+      )));
+      await tester.tap(find.text('open'));
+      await pumpUntil(
+          tester, () => _shows(find.byKey(const ValueKey('group-person-p-1'))),
+          describe: 'the follow graph');
+    }
+
+    Future<void> back(WidgetTester tester) async {
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets('an untouched form closes; a typed title asks first',
+        (tester) async {
+      final api = _FakeApi()..followers = [_person('p-1', 'Ada')];
+      await open(tester, api);
+      await back(tester);
+      expect(find.byType(GroupCreateScreen), findsNothing);
+
+      await tester.tap(find.text('open'));
+      await pumpUntil(
+          tester, () => _shows(find.byKey(const ValueKey('group-person-p-1'))),
+          describe: 'the follow graph');
+      await tester.enterText(
+          find.byKey(const ValueKey('group-title-input')), 'Tempo');
+      await back(tester);
+      expect(find.text('Discard changes?'), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Discard')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(GroupCreateScreen), findsNothing);
+    });
+
+    testWidgets(
+        'Create group is reachable at 320 dp, 2x text and a 3-button bar, '
+        'with and without the keyboard', (tester) async {
+      final api = _FakeApi()..followers = [_person('p-1', 'Ada')];
+      await expectEditorSaveReachable(
+        tester,
+        page: () => GroupCreateScreen(api: api),
+        save: find.byKey(const ValueKey('group-create-submit')),
+      );
     });
   });
 

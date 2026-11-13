@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../auth_error.dart';
 import '../coach_share.dart' show parseDmKind;
+import '../dm_drafts.dart';
 import '../dm_edit.dart';
 import '../dm_image.dart';
 import '../dm_image_encode.dart';
@@ -34,11 +35,6 @@ import '../widgets/message_actions_sheet.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/top_banner.dart';
 import 'message_thread_screen.dart' show kMessageThreadPollInterval;
-
-/// What a runner was typing into each group, per account, so leaving a
-/// group and coming back keeps the draft and a draft never follows the
-/// reader into another group's audience (web keeps them per group too).
-final Map<String, String> _groupDrafts = {};
 
 /// A group conversation (issue #1365 slice 3, group_messages.md § 3,
 /// decisions § 2468). Mirrors web's `/messages/group/[id]`.
@@ -131,7 +127,8 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   int _reactionWrites = 0;
   int _reactionReadSeq = 0;
 
-  String get _draftKey => '${widget.api.userId}|${widget.conversationId}';
+  String get _draftKey =>
+      DmDrafts.groupKey(widget.api.userId, widget.conversationId);
 
   bool get _active => _membership == _Membership.active;
 
@@ -145,7 +142,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
     _title = widget.title;
     _muted = widget.initialMuted ?? false;
     _left = widget.initialLeft;
-    _composer.text = _groupDrafts[_draftKey] ?? '';
+    _composer.text = DmDrafts.read(_draftKey);
     _composer.addListener(_onComposerChanged);
     WidgetsBinding.instance.addObserver(this);
     if (widget.api.userId == null) return;
@@ -168,12 +165,7 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   }
 
   void _onComposerChanged() {
-    final text = _composer.text;
-    if (text.isEmpty) {
-      _groupDrafts.remove(_draftKey);
-    } else {
-      _groupDrafts[_draftKey] = text;
-    }
+    DmDrafts.write(_draftKey, _composer.text);
     setState(() {});
   }
 

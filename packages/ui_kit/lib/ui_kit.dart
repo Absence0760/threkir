@@ -10,6 +10,7 @@ export 'src/widgets/star_rating_input.dart';
 export 'src/widgets/chart_card_header.dart';
 export 'src/widgets/choice_chip_row.dart';
 export 'src/widgets/async_view.dart';
+export 'src/widgets/editor_page.dart';
 export 'src/widgets/empty_state.dart';
 export 'src/widgets/error_state.dart';
 export 'src/widgets/filter_bar.dart';

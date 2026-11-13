@@ -144,7 +144,7 @@ test.describe('races & courses', () => {
 			await page.goto('/races');
 			const upcoming = page.getByTestId('races-upcoming');
 			await expect(upcoming.getByRole('heading', { level: 2, name: 'Upcoming races' })).toBeVisible();
-			await expect(upcoming.getByTestId('races-search')).toBeVisible();
+			await expect(page.getByTestId('races-search')).toBeVisible();
 			await expect(
 				upcoming.getByTestId('races-results').or(upcoming.getByTestId('races-empty')),
 			).toBeVisible({ timeout: 10_000 });

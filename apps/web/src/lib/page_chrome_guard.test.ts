@@ -44,11 +44,6 @@ const ALLOW: { file: string; kind: Kind; why: string }[] = [
 		why: 'Social tab bodies move onto FilterBar with the Social hub work (#1374 batch 3), owned there',
 	},
 	{
-		file: 'routes/races/+page.svelte',
-		kind: 'search',
-		why: 'moves onto FilterBar with its filter hints in the sheet (#1374 owner decision)',
-	},
-	{
 		file: 'routes/messages/+layout.svelte',
 		kind: 'search',
 		why: 'Messages moves into Social in #1374 batch 3, which owns its list controls',

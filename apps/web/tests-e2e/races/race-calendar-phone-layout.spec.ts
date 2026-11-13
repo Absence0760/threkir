@@ -79,8 +79,8 @@ test.describe('/races — phone layout', () => {
 		await expect(chip).toHaveAttribute('aria-label', /Half/);
 		await expect(cards).toHaveCount(3, { timeout: 15_000 });
 
-		// Closing the panel keeps the state on screen.
-		await toggle.click();
+		// Closing the sheet keeps the state on screen.
+		await page.getByTestId('races-filters-done').click();
 		await expect(page.getByTestId('races-filters-panel')).toBeHidden();
 		await expect(chip).toBeVisible();
 

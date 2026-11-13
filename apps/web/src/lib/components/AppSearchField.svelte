@@ -50,7 +50,10 @@
 		aria-label={label}
 		aria-describedby={describedby}
 		data-testid={testid}
-		oninput={() => oninput?.(value)}
+		oninput={(e) => {
+			value = e.currentTarget.value;
+			oninput?.(value);
+		}}
 	/>
 	{#if value !== ''}
 		<button

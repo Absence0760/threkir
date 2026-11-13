@@ -4457,6 +4457,114 @@ abstract class AppLocalizations {
   /// **'Record time only'**
   String get runNoGpsStartTimeOnly;
 
+  /// Idle Run page: title when location services are off on the phone
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off'**
+  String get runPreRunLocationOffTitle;
+
+  /// Idle Run page: what location services being off costs, and that a run can still record time
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Location to record your route, distance and pace. Without it, a run records time only.'**
+  String get runPreRunLocationOffBody;
+
+  /// Idle Run page: button that opens the phone's location settings
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Location'**
+  String get runPreRunTurnOnLocation;
+
+  /// Idle Run page: title when the app has not been allowed location access
+  ///
+  /// In en, this message translates to:
+  /// **'Location access needed'**
+  String get runPreRunPermissionTitle;
+
+  /// Idle Run page: why location access is needed, and that a run can still record time without it
+  ///
+  /// In en, this message translates to:
+  /// **'Allow location access to record your route, distance and pace. Without it, a run records time only.'**
+  String get runPreRunPermissionBody;
+
+  /// Idle Run page: button that shows the system location permission prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Allow location'**
+  String get runPreRunAllowLocation;
+
+  /// Idle Run page: title when location access was denied and the system will not ask again
+  ///
+  /// In en, this message translates to:
+  /// **'Location access is blocked'**
+  String get runPreRunPermissionBlockedTitle;
+
+  /// Idle Run page: location access was denied for good; it can only be allowed from the app's system settings page (the button opens it)
+  ///
+  /// In en, this message translates to:
+  /// **'Location access is turned off for this app. Allow it in Settings to record your route, distance and pace. Without it, a run records time only.'**
+  String get runPreRunPermissionBlockedBody;
+
+  /// Idle Run page: location is allowed and on, and no current GPS fix has arrived yet
+  ///
+  /// In en, this message translates to:
+  /// **'Searching for GPS…'**
+  String get runPreRunSearching;
+
+  /// Idle Run page: hint under Searching for GPS
+  ///
+  /// In en, this message translates to:
+  /// **'A clear view of the sky gets a fix faster.'**
+  String get runPreRunSearchingHint;
+
+  /// Idle Run page map chip: a GPS fix is arriving but is too coarse for the recorder to keep; accuracy is a formatted length such as 35 m
+  ///
+  /// In en, this message translates to:
+  /// **'Weak GPS · ±{accuracy}'**
+  String runPreRunGpsWeak(String accuracy);
+
+  /// Screen-reader label for the weak GPS chip on the idle Run page
+  ///
+  /// In en, this message translates to:
+  /// **'Weak GPS, accurate to within {accuracy}'**
+  String runPreRunGpsWeakA11y(String accuracy);
+
+  /// Idle Run page map chip: GPS fixes are good enough to record; accuracy is a formatted length such as 5 m
+  ///
+  /// In en, this message translates to:
+  /// **'GPS ready · ±{accuracy}'**
+  String runPreRunGpsReady(String accuracy);
+
+  /// Screen-reader label for the GPS ready chip on the idle Run page
+  ///
+  /// In en, this message translates to:
+  /// **'GPS ready, accurate to within {accuracy}'**
+  String runPreRunGpsReadyA11y(String accuracy);
+
+  /// Idle Run page: the map preview's tiles all failed to load; recording does not depend on the map
+  ///
+  /// In en, this message translates to:
+  /// **'The map couldn\'t load. Recording still works without it.'**
+  String get runPreRunMapFailed;
+
+  /// Idle Run page: button that reloads the map preview after it failed
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get runPreRunMapRetry;
+
+  /// Idle Run page (Android): the Physical activity permission is off, so the step counter is unavailable. Quote the permission's name as Android shows it in this language
+  ///
+  /// In en, this message translates to:
+  /// **'Physical activity access is off, so steps, cadence and indoor distance won\'t be recorded.'**
+  String get runPreRunActivityOff;
+
+  /// Idle Run page: button that shows the system prompt for a missing permission
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get runPreRunAllow;
+
   /// Title of the dialog shown at Stop when the run has no GPS fix and no step distance
   ///
   /// In en, this message translates to:

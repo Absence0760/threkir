@@ -2568,6 +2568,72 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runNoGpsStartTimeOnly => '時間のみ記録';
 
   @override
+  String get runPreRunLocationOffTitle => '位置情報がオフです';
+
+  @override
+  String get runPreRunLocationOffBody =>
+      'ルート・距離・ペースを記録するには位置情報をオンにしてください。オフのままだと、ランは時間のみを記録します。';
+
+  @override
+  String get runPreRunTurnOnLocation => '位置情報をオンにする';
+
+  @override
+  String get runPreRunPermissionTitle => '位置情報へのアクセスが必要です';
+
+  @override
+  String get runPreRunPermissionBody =>
+      'ルート・距離・ペースを記録するには位置情報へのアクセスを許可してください。許可しない場合、ランは時間のみを記録します。';
+
+  @override
+  String get runPreRunAllowLocation => '位置情報を許可';
+
+  @override
+  String get runPreRunPermissionBlockedTitle => '位置情報へのアクセスがブロックされています';
+
+  @override
+  String get runPreRunPermissionBlockedBody =>
+      'このアプリの位置情報へのアクセスがオフです。ルート・距離・ペースを記録するには、設定で許可してください。許可しない場合、ランは時間のみを記録します。';
+
+  @override
+  String get runPreRunSearching => 'GPSを検索しています…';
+
+  @override
+  String get runPreRunSearchingHint => '空が開けた場所のほうが早く測位できます。';
+
+  @override
+  String runPreRunGpsWeak(String accuracy) {
+    return 'GPSが弱い · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsWeakA11y(String accuracy) {
+    return 'GPSが弱い状態、誤差$accuracy以内';
+  }
+
+  @override
+  String runPreRunGpsReady(String accuracy) {
+    return 'GPS準備完了 · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsReadyA11y(String accuracy) {
+    return 'GPS準備完了、誤差$accuracy以内';
+  }
+
+  @override
+  String get runPreRunMapFailed => '地図を読み込めませんでした。地図がなくても記録はできます。';
+
+  @override
+  String get runPreRunMapRetry => '再試行';
+
+  @override
+  String get runPreRunActivityOff =>
+      '「身体活動」へのアクセスがオフのため、歩数・ケイデンス・屋内の距離は記録されません。';
+
+  @override
+  String get runPreRunAllow => '許可';
+
+  @override
   String get runNoDistanceTitle => '距離が記録されていません';
 
   @override

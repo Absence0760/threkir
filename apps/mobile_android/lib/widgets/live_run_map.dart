@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../basemap_credits.dart' show tileEnv;
 import '../l10n/gen/app_localizations.dart';
+import '../map_tile_readiness.dart' show BasemapHealth;
 import 'package:core_models/core_models.dart' show ActivityType;
 import '../preferences.dart' show activeMapStyle;
 import '../tile_cache.dart';
@@ -613,7 +614,17 @@ class LiveRunMap extends StatefulWidget {
     this.onMarkerPlace,
     this.onMarkerTap,
     this.offlinePackRouteId,
+    this.interactive = true,
+    this.tileHealth,
   });
+
+  /// False for a map that is only a glance inside a scrolling page (the idle
+  /// Run page), so a drag over it scrolls the page rather than the map.
+  final bool interactive;
+
+  /// Told how each basemap tile settled, for a host that says when the map
+  /// could not load.
+  final BasemapHealth? tileHealth;
 
   /// The route this map is showing or following. Its offline pack, if one
   /// was pinned, is read first and the network/LRU cache fills the rest
@@ -1211,8 +1222,10 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                     padding: const EdgeInsets.all(32),
                   )
                 : null,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all,
+            interactionOptions: InteractionOptions(
+              flags: widget.interactive
+                  ? InteractiveFlag.all
+                  : InteractiveFlag.none,
             ),
             onMapReady: () {
               _mapReady = true;
@@ -1251,6 +1264,7 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
               offlinePackRouteId: widget.offlinePackRouteId,
               maxNativeZoom: 19,
               maxZoom: 22,
+              tileBuilder: widget.tileHealth?.observe,
             ),
 
             // On a detail surface the route is the subject and takes the

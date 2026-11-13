@@ -19363,6 +19363,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t refresh. Showing what was last loaded.';
 
   @override
+  String get commonSavedOnPhone =>
+      'Saved on this phone. It will sync when you\'re back online.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Deleted on this phone. It will sync when you\'re back online.';
+
+  @override
   String get planDetailMoreActions => 'More plan actions';
 
   @override

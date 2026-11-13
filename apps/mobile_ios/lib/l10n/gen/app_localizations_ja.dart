@@ -18664,6 +18664,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get commonStaleRefreshFailed => '更新できませんでした。最後に読み込んだ内容を表示しています。';
 
   @override
+  String get commonSavedOnPhone => 'このスマートフォンに保存しました。オンラインに戻ると同期されます。';
+
+  @override
+  String get commonDeletedOnPhone => 'このスマートフォンで削除しました。オンラインに戻ると同期されます。';
+
+  @override
   String get planDetailMoreActions => 'その他のプラン操作';
 
   @override

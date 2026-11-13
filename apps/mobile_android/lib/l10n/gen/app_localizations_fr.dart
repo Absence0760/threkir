@@ -19610,6 +19610,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Actualisation impossible. Affichage des dernières données chargées.';
 
   @override
+  String get commonSavedOnPhone =>
+      'Enregistré sur ce téléphone. La synchronisation se fera dès que vous serez de nouveau en ligne.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Supprimé sur ce téléphone. La synchronisation se fera dès que vous serez de nouveau en ligne.';
+
+  @override
   String get planDetailMoreActions => 'Autres actions du plan';
 
   @override

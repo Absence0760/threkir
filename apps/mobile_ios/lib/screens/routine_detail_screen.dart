@@ -242,11 +242,15 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     }
   }
 
-  Future<void> _maybeSync() async {
+  /// Pushes the local change and answers whether row [id] reached the
+  /// server, waiting only briefly (issue #1374 FS-15).
+  Future<bool> _maybeSync(String id) async {
     final api = widget.api;
-    if (api == null || !_isOnline) return;
-    await widget.store.syncWithServer(api);
+    if (api == null) return true;
+    if (!_isOnline) return false;
+    final synced = await widget.store.syncRowBriefly(api, id);
     if (mounted && widget.store.hasPending) setState(() {});
+    return synced;
   }
 
   Future<void> _delete(StoredRoutine r) async {
@@ -273,9 +277,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         false;
     if (!ok) return;
     await widget.store.deleteLocal(r.id);
-    await _maybeSync();
+    final synced = await _maybeSync(r.id);
     if (mounted) {
-      showTopBanner(context, l10n.gymRoutineDeleted);
+      showTopBanner(context,
+          synced ? l10n.gymRoutineDeleted : l10n.commonDeletedOnPhone);
       Navigator.pop(context);
     }
   }

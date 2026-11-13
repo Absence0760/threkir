@@ -117,11 +117,20 @@ class _GearScreenState extends State<GearScreen> {
   List<Map<String, dynamic>> get _retired =>
       _visible.where((r) => r['retired_at'] != null).toList();
 
-  Future<void> _maybeSync() async {
+  /// Pushes local changes. With [id], waits only briefly and answers whether
+  /// that row reached the server (issue #1374 FS-15).
+  Future<bool> _maybeSync([String? id]) async {
     final api = widget.api;
-    if (api == null || !_isOnline) return;
-    await widget.store.syncWithServer(api);
+    if (api == null) return true;
+    if (!_isOnline) return false;
+    var synced = true;
+    if (id == null) {
+      await widget.store.syncWithServer(api);
+    } else {
+      synced = await widget.store.syncRowBriefly(api, id);
+    }
     if (mounted && widget.store.hasPending) setState(() {});
+    return synced;
   }
 
   Future<void> _create() async {
@@ -214,7 +223,7 @@ class _GearScreenState extends State<GearScreen> {
     } else {
       await widget.store.unretireLocal(row['id'] as String);
     }
-    await _maybeSync();
+    await _maybeSync(row['id'] as String);
   }
 
   Future<void> _delete(Map<String, dynamic> row) async {
@@ -240,9 +249,10 @@ class _GearScreenState extends State<GearScreen> {
         ) ??
         false;
     if (!ok) return;
-    await widget.store.deleteLocal(row['id'] as String);
-    await _maybeSync();
-    if (mounted && !_isOnline) {
+    final id = row['id'] as String;
+    await widget.store.deleteLocal(id);
+    final synced = await _maybeSync(id);
+    if (mounted && !synced) {
       showTopBanner(context, l10n.gearDeletedOffline);
     }
   }

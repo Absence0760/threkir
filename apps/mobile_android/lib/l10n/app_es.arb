@@ -5463,6 +5463,8 @@
   "planCalendarFeedPrivacy": "Quien tenga el enlace puede ver las fechas, tipos y objetivos de tus entrenamientos. No incluye ubicación, notas ni el nombre del plan. Crea un enlace nuevo si lo compartiste por error.",
   "commonStaleOffline": "No tienes conexión. Se muestra lo último que se cargó.",
   "commonStaleRefreshFailed": "No se pudo actualizar. Se muestra lo último que se cargó.",
+  "commonSavedOnPhone": "Guardado en este teléfono. Se sincronizará cuando vuelvas a tener conexión.",
+  "commonDeletedOnPhone": "Eliminado en este teléfono. Se sincronizará cuando vuelvas a tener conexión.",
   "planDetailMoreActions": "Más acciones del plan",
   "planDetailWeekActions": "Acciones de la semana {n}",
   "planDetailShiftDates": "Mover fechas…",

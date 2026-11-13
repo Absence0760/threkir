@@ -19564,6 +19564,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo actualizar. Se muestra lo último que se cargó.';
 
   @override
+  String get commonSavedOnPhone =>
+      'Guardado en este teléfono. Se sincronizará cuando vuelvas a tener conexión.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Eliminado en este teléfono. Se sincronizará cuando vuelvas a tener conexión.';
+
+  @override
   String get planDetailMoreActions => 'Más acciones del plan';
 
   @override

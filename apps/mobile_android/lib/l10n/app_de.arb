@@ -5463,6 +5463,8 @@
   "planCalendarFeedPrivacy": "Wer den Link hat, sieht Datum, Art und Ziele deiner Einheiten. Er enthält keinen Ort, keine Notizen und keinen Plannamen. Erstelle einen neuen Link, wenn du ihn versehentlich geteilt hast.",
   "commonStaleOffline": "Du bist offline. Angezeigt wird der zuletzt geladene Stand.",
   "commonStaleRefreshFailed": "Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt geladene Stand.",
+  "commonSavedOnPhone": "Auf diesem Smartphone gespeichert. Wird synchronisiert, sobald du wieder online bist.",
+  "commonDeletedOnPhone": "Auf diesem Smartphone gelöscht. Wird synchronisiert, sobald du wieder online bist.",
   "planDetailMoreActions": "Weitere Planaktionen",
   "planDetailWeekActions": "Aktionen für Woche {n}",
   "planDetailShiftDates": "Termine verschieben…",

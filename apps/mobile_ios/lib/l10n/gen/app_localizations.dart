@@ -31819,6 +31819,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t refresh. Showing what was last loaded.'**
   String get commonStaleRefreshFailed;
 
+  /// Confirmation after a save that landed on the phone but has not reached the server yet; the sync carries on in the background
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this phone. It will sync when you\'re back online.'**
+  String get commonSavedOnPhone;
+
+  /// Confirmation after a delete that landed on the phone but has not reached the server yet
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted on this phone. It will sync when you\'re back online.'**
+  String get commonDeletedOnPhone;
+
   /// Tooltip on the plan detail app-bar overflow menu
   ///
   /// In en, this message translates to:

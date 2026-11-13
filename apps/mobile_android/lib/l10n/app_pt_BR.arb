@@ -5463,6 +5463,8 @@
   "planCalendarFeedPrivacy": "Quem tiver o link vê as datas, os tipos e as metas dos seus treinos. Ele não traz local, anotações nem o nome do plano. Crie um novo link se você o compartilhou por engano.",
   "commonStaleOffline": "Você está offline. Mostrando o que foi carregado por último.",
   "commonStaleRefreshFailed": "Não foi possível atualizar. Mostrando o que foi carregado por último.",
+  "commonSavedOnPhone": "Salvo neste celular. Será sincronizado quando você voltar a ficar online.",
+  "commonDeletedOnPhone": "Excluído neste celular. Será sincronizado quando você voltar a ficar online.",
   "planDetailMoreActions": "Mais ações do plano",
   "planDetailWeekActions": "Ações da semana {n}",
   "planDetailShiftDates": "Mudar datas…",

@@ -19591,6 +19591,14 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt geladene Stand.';
 
   @override
+  String get commonSavedOnPhone =>
+      'Auf diesem Smartphone gespeichert. Wird synchronisiert, sobald du wieder online bist.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Auf diesem Smartphone gelöscht. Wird synchronisiert, sobald du wieder online bist.';
+
+  @override
   String get planDetailMoreActions => 'Weitere Planaktionen';
 
   @override

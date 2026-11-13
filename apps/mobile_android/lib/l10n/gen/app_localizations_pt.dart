@@ -19574,6 +19574,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível atualizar. A mostrar o que foi carregado por último.';
 
   @override
+  String get commonSavedOnPhone =>
+      'Guardado neste telemóvel. Será sincronizado quando voltar a estar online.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Eliminado neste telemóvel. Será sincronizado quando voltar a estar online.';
+
+  @override
   String get planDetailMoreActions => 'Mais ações do plano';
 
   @override
@@ -42219,6 +42227,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get commonStaleRefreshFailed =>
       'Não foi possível atualizar. Mostrando o que foi carregado por último.';
+
+  @override
+  String get commonSavedOnPhone =>
+      'Salvo neste celular. Será sincronizado quando você voltar a ficar online.';
+
+  @override
+  String get commonDeletedOnPhone =>
+      'Excluído neste celular. Será sincronizado quando você voltar a ficar online.';
 
   @override
   String get planDetailMoreActions => 'Mais ações do plano';

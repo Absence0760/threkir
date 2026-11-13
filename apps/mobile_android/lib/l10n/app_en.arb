@@ -25734,6 +25734,14 @@
   "@commonStaleRefreshFailed": {
     "description": "Top banner when a screen already showing data fails to refresh for a reason other than being offline; the old data stays on screen"
   },
+  "commonSavedOnPhone": "Saved on this phone. It will sync when you're back online.",
+  "@commonSavedOnPhone": {
+    "description": "Confirmation after a save that landed on the phone but has not reached the server yet; the sync carries on in the background"
+  },
+  "commonDeletedOnPhone": "Deleted on this phone. It will sync when you're back online.",
+  "@commonDeletedOnPhone": {
+    "description": "Confirmation after a delete that landed on the phone but has not reached the server yet"
+  },
   "planDetailMoreActions": "More plan actions",
   "@planDetailMoreActions": {
     "description": "Tooltip on the plan detail app-bar overflow menu"

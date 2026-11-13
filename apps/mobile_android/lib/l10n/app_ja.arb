@@ -5463,6 +5463,8 @@
   "planCalendarFeedPrivacy": "リンクを知っている人は誰でも、ワークアウトの日付・種類・目標を見られます。場所、メモ、プラン名は含まれません。誤って共有した場合は新しいリンクを作成してください。",
   "commonStaleOffline": "オフラインです。最後に読み込んだ内容を表示しています。",
   "commonStaleRefreshFailed": "更新できませんでした。最後に読み込んだ内容を表示しています。",
+  "commonSavedOnPhone": "このスマートフォンに保存しました。オンラインに戻ると同期されます。",
+  "commonDeletedOnPhone": "このスマートフォンで削除しました。オンラインに戻ると同期されます。",
   "planDetailMoreActions": "その他のプラン操作",
   "planDetailWeekActions": "第{n}週の操作",
   "planDetailShiftDates": "日付をずらす…",

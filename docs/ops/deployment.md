@@ -354,7 +354,7 @@ it.
 
 ### What runs on a pull request and does not block it
 
-Seven workflows trigger on a pull request and reach nothing the gate waits for.
+Eight workflows trigger on a pull request and reach nothing the gate waits for.
 Each is a decision rather than a backlog item, and the decisions live in code:
 `PR_ADVISORY` in
 [`scripts/check_ci_diagnostics.mjs`](../../scripts/check_ci_diagnostics.mjs)
@@ -403,6 +403,13 @@ dropped, or an entry there this list never mentions, fails `workflow-lint`.
   diffs the PR against its base (section below,
   [§ 2412](../architecture/decisions.md), [§ 2452](../architecture/decisions.md),
   [§ 2457](../architecture/decisions.md)).
+- `store-screenshots.yml` -- it captures the store-listing screens on an
+  emulator against a seeded local stack and composes the captioned panels,
+  which are images for the owner to judge rather than a verdict. Its
+  `pull_request` trigger is filtered to the pipeline's own files. A fold would
+  put a second emulator and a Supabase stack on every PR and gate merges on
+  MapTiler serving tiles, and the capture suite already compiles under the
+  required `dart analyze` (issue #1375).
 
 The register carries each reason in full; the list above is the operator's
 index into it. Apart from the CodeQL and zizmor findings the ruleset blocks on,

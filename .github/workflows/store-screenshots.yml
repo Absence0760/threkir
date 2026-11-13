@@ -1,0 +1,204 @@
+name: Store screenshots
+
+# Captures the store-listing screens from the real app on seeded demo data and
+# composes the captioned Play and App Store panels from them (issue #1375,
+# assets/store/README.md). Run it from Actions → Store screenshots → Run
+# workflow before a listing refresh. It also runs on a PR that touches the
+# pipeline itself, so a broken capture shows up on the change that broke it.
+#
+# Advisory, not part of the merge gate: see `store-screenshots.yml` in
+# PR_ADVISORY (scripts/check_ci_diagnostics.mjs) for why.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/store-screenshots.yml
+      - assets/store/**
+      - assets/fonts/manrope-fontconfig.sh
+      - apps/mobile_android/integration_test/store/**
+      - apps/mobile_ios/integration_test/store/**
+
+concurrency:
+  group: store-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # The start-supabase action logs in to ghcr.io for its image pulls
+  # (start_stack.sh incident 9).
+  packages: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Must equal ci.yml's, like release-android.yml's and release-ios.yml's:
+  # the capture runs the app on the SDK CI validated.
+  # scripts/check_toolchain_pins.mjs fails when they disagree.
+  FLUTTER_VERSION: "3.47.0"
+  # Same reason as ci.yml: ECR Public's anonymous pull cap is shared with every
+  # tenant on a runner's egress IP (start_stack.sh incident 7).
+  SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
+
+jobs:
+  capture:
+    # Runs on a draft too, unlike ci.yml: the panels are what a draft of a
+    # listing refresh is for, and this repo's hosted runners are free.
+    name: Capture on the Android emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # The emulator setup is mobile-android-e2e's (ci.yml), with two
+    # differences: a Pixel 6 hardware profile, so the screens are a current
+    # phone's 1080x2400 rather than the runner's default small screen, under
+    # its own AVD cache key; and the local Supabase stack, which that job
+    # deliberately does not start (decisions § 1838), because this suite signs
+    # in to the demo account.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Cache pub-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.pub-cache
+          key: pub-cache-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-cache-${{ runner.os }}-
+      - run: dart pub global activate melos 7.8.2
+      - run: melos bootstrap
+      - name: Cache Gradle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-mobile-android-${{ hashFiles('apps/mobile_android/android/**/*.gradle*', 'apps/mobile_android/android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            gradle-mobile-android-
+      # A profile build never reads .env.development, but the asset must exist
+      # for the bundle to build; the template carries no credentials.
+      - run: cp apps/mobile_android/.env.example apps/mobile_android/.env.development
+
+      - uses: ./.github/actions/setup-supabase-cli
+        with:
+          version: 2.84.2
+      - name: Start local Supabase stack
+        uses: ./.github/actions/start-supabase
+      - name: Load the store demo account
+        id: demo
+        working-directory: apps/backend
+        run: |
+          DB_URL=$(supabase status -o env | grep '^DB_URL=' | cut -d= -f2- | tr -d '"')
+          ANON_KEY=$(supabase status -o env | grep '^ANON_KEY=' | cut -d= -f2- | tr -d '"')
+          if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f ../../assets/store/demo/store_demo_seed.sql; then
+            echo "::error::assets/store/demo/store_demo_seed.sql did not load into the local stack. A migration has most likely changed a table it writes (training_plans, plan_weeks, plan_workouts, coach_messages, user_profiles, user_settings); fix the seed to match."
+            exit 1
+          fi
+          echo "anon_key=$ANON_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # Copied from mobile-android-e2e: sdkmanager exits 0 on a corrupt
+      # download, so success is judged by the image being on disk.
+      - name: Install the emulator system image
+        run: |
+          sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          image="$ANDROID_SDK_ROOT/system-images/android-34/google_apis/x86_64"
+          yes | "$sdkmanager" --licenses > /dev/null || true
+          for attempt in 1 2 3; do
+            "$sdkmanager" --install 'system-images;android-34;google_apis;x86_64' --channel=0 > /dev/null || true
+            if [ -s "$image/system.img" ]; then
+              echo "system image installed on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::system image missing after attempt $attempt (corrupt download from dl.google.com?); fetching again"
+            rm -rf "$image" "$ANDROID_SDK_ROOT/.temp" "$ANDROID_SDK_ROOT/.downloadIntermediates"
+            sleep $((attempt * 15))
+          done
+          echo "::error::The Android 34 google_apis x86_64 system image did not install after 3 attempts, so no emulator can boot. Nothing here is about the app or its capture."
+          exit 1
+      - name: Cache AVD
+        id: avd-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-34-google_apis-x86_64-pixel_6
+      - name: Create AVD and snapshot it for the cache
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          avd-name: store-pixel-6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD snapshot generated for the cache."
+      # The emulator runner runs each script line as its own command, so the
+      # flutter drive invocation lives in assets/store/capture.sh.
+      - name: Capture the store screens
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        env:
+          SUPABASE_ANON_KEY: ${{ steps.demo.outputs.anon_key }}
+          # Absent on a fork PR, where the map falls back to OSM tiles.
+          MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          avd-name: store-pixel-6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash assets/store/capture.sh emulator-5554 build/store-captures
+      - name: Upload the raw captures
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: store-screenshots-raw
+          path: build/store-captures/
+          if-no-files-found: error
+
+  compose:
+    needs: capture
+    name: Compose the captioned panels
+    # Pinned to a release rather than ubuntu-latest so the apt Inkscape is a
+    # known one (1.2.x on 24.04): the renderer needs 1.2+ for
+    # --export-png-color-mode, and checks every output either way.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: store-screenshots-raw
+          path: build/store-captures
+      - name: Install Inkscape
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends inkscape
+          inkscape --version
+      - name: Render the panels
+        run: bash assets/store/gen-store-screenshots.sh --captures build/store-captures --out build/store-panels
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: store-screenshots-panels
+          path: build/store-panels/
+          if-no-files-found: error

@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, SectionHeader;
+import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, SectionHeader, ListCard, AppSpace;
 
 import '../adaptive_width.dart';
 import '../auth_error.dart';
@@ -309,14 +309,11 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
     );
   }
 
-  Widget _card({required List<Widget> children}) => Card(
+  Widget _card({required List<Widget> children}) => ListCard(
         margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
         ),
       );
 
@@ -349,8 +346,12 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Text(value, style: termStyle),
+          const SizedBox(width: AppSpace.smPlus),
+          // Flexible: at 2x a long value ("+1 250 kcal") squeezed the term
+          // to nothing and still ran 10 dp past the card.
+          Flexible(
+            child: Text(value, style: termStyle, textAlign: TextAlign.end),
+          ),
         ],
       ),
     );
@@ -366,17 +367,15 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
     final factor = NumberFormat.decimalPattern(tag).format(_activityFactor);
     return _card(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SectionHeader(label: l10n.nutritionTargetsTotal),
-            ),
-            Text(
-              '${t.calories} kcal',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(color: theme.colorScheme.primary),
-            ),
-          ],
+        // The total is the header's trailing slot, which drops under the
+        // label when the two do not share a line (2x text, 320 dp).
+        SectionHeader(
+          label: l10n.nutritionTargetsTotal,
+          trailing: Text(
+            '${t.calories} kcal',
+            style: theme.textTheme.titleLarge
+                ?.copyWith(color: theme.colorScheme.primary),
+          ),
         ),
         const SizedBox(height: 4),
         _row(theme,

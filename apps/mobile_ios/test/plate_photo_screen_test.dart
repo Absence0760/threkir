@@ -13,6 +13,7 @@ import '../lib/offline_sync_store.dart' show SyncState;
 import '../lib/plate_photo_client.dart';
 import '../lib/screens/plate_photo_screen.dart';
 import '../lib/settings_destination.dart';
+import 'worst_case_layout.dart';
 
 class _FakeStore extends LocalFoodStore {
   final saved = <Map<String, Object?>>[];
@@ -81,6 +82,32 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
 Future<Uint8List?> _picker(_) async => Uint8List.fromList([1, 2, 3]);
 
 void main() {
+  // Issue #1374: each estimated item is a ListCard holding its fields.
+  worstCaseTestWidgets('Plate photo items', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: PlatePhotoForm(
+          store: _FakeStore(),
+          picker: _picker,
+          estimator: (_, _) async => const PlateEstimate([
+            PlateItem(itemName: 'Rice', calories: 205),
+            PlateItem(itemName: 'Napkin', lowConfidence: true),
+          ], 'dinner'),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('plate-photo-gallery')));
+    await tester.tap(find.byKey(const ValueKey('plate-photo-gallery')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('plate-photo-estimate')));
+    await tester.tap(find.byKey(const ValueKey('plate-photo-estimate')));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Plate photo');
+  });
+
   testWidgets('estimate, remove one, edit one, save only what is kept', (tester) async {
     final store = _FakeStore();
     await _pump(

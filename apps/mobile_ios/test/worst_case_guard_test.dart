@@ -17,7 +17,6 @@ const _wideAtLargeText = <String>{
   'finished_summary_test.dart',
   'grisnir_milestone_test.dart',
   'nutrition_meal_detail_screen_test.dart',
-  'nutrition_rings_card_test.dart',
   'plan_detail_adherence_test.dart',
   'readiness_card_test.dart',
   'run_screen_test.dart',

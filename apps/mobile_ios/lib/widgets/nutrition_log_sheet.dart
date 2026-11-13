@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -424,14 +425,14 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
             child: Text(l10n.nutritionSearching),
           )
         else if (_results.isNotEmpty)
-          ..._results.map((r) => Card(
-                margin: const EdgeInsets.only(bottom: 6),
-                child: ListTile(
-                  title: Text(r.brand == null ? r.name : '${r.name} · ${r.brand}'),
-                  subtitle: Text('${r.calories100g.round()} kcal / 100 g'),
-                  trailing: _SourceTag(source: r.source, l10n: l10n),
-                  onTap: _saving ? null : () => _pick(r),
-                ),
+          ..._results.map((r) => ListCard.row(
+                title: r.brand == null ? r.name : '${r.name} · ${r.brand}',
+                // The source as the title's badge rather than a trailing
+                // value: it wraps under a long name instead of crowding it.
+                badge: _SourceTag(source: r.source, l10n: l10n),
+                subtitle: '${r.calories100g.round()} kcal / 100 g',
+                enabled: !_saving,
+                onTap: () => _pick(r),
               ))
         else if (_searchFailed)
           Padding(

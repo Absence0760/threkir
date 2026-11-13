@@ -3441,6 +3441,38 @@ class ApiClient {
   Future<List<UserProfileRow>> fetchAllFollowing(String userId) =>
       _walkFollowPages((after) => fetchFollowing(userId, after: after));
 
+  /// The ids of everyone `userId` follows, newest follow first, walked to the
+  /// end by keyset cursor — the edges alone, for a read that needs the ids
+  /// and not the profiles. One unranged select stops at PostgREST's
+  /// `db.max-rows` with a 200 and no flag, so a runner following more people
+  /// than that lost everyone past the cap from their feed and badge feed.
+  /// Throws when the walk cannot finish, so a partial set never reads as the
+  /// whole one. Mirrors web `walkFollowEdges` over `FOLLOWING_ORDER`.
+  Future<List<String>> _walkFolloweeIds(String userId) async {
+    final edges = await _walk(
+      _followingOrder,
+      () => _client
+          .from(UserFollowRow.table)
+          .select(
+            '${UserFollowRow.colFolloweeId}, ${UserFollowRow.colFollowedAt}',
+          )
+          .eq(UserFollowRow.colFollowerId, userId),
+    );
+    return [for (final e in edges) e[UserFollowRow.colFolloweeId] as String];
+  }
+
+  /// The followee set a following-feed read is scoped to: everyone the viewer
+  /// follows, or only `authorId` when it is one of them (so the filter can
+  /// narrow the feed but never widen it to a stranger). Empty when signed
+  /// out. Mirrors web `resolveFollowedAuthorIds`.
+  Future<List<String>> _followedAuthorIds(String? authorId) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return const [];
+    final ids = await _walkFolloweeIds(viewerId);
+    if (authorId == null) return ids;
+    return [for (final id in ids) if (id == authorId) id];
+  }
+
   /// Free-text people search. Routes through the
   /// `search_user_profiles` SECURITY DEFINER RPC so the search
   /// honours the `discoverable_in_search` opt-out pref (persona-hunt
@@ -6951,28 +6983,18 @@ class ApiClient {
   /// `FEED_WINDOW_DAYS`). Cursor-paginated on `(started_at desc, id
   /// desc)`. Optional filters scope to a single followee or a single
   /// activity type so the feed toolbar can drive them server-side.
+  /// `authors` is a followee set [fetchFollowingActivityFeed] already
+  /// resolved, so one feed page walks the follow list once rather than once
+  /// per branch; a standalone caller omits it.
   Future<List<FeedEntry>> fetchFollowingFeed({
     int limit = 20,
     ({DateTime startedAt, String id})? cursor,
     String? authorId,
     String? activityType,
     int feedWindowDays = 14,
+    List<String>? authors,
   }) async {
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) return const [];
-
-    final edges = await _client
-        .from(UserFollowRow.table)
-        .select(UserFollowRow.colFolloweeId)
-        .eq(UserFollowRow.colFollowerId, viewerId);
-    final followeeIds = edges
-        .map<String>((e) => e[UserFollowRow.colFolloweeId] as String)
-        .toList();
-    if (followeeIds.isEmpty) return const [];
-
-    final filtered = authorId == null
-        ? followeeIds
-        : followeeIds.where((id) => id == authorId).toList();
+    final filtered = authors ?? await _followedAuthorIds(authorId);
     if (filtered.isEmpty) return const [];
 
     final cutoff = DateTime.now()
@@ -7060,6 +7082,9 @@ class ApiClient {
     final wantsLifts = type == 'all' || type == 'lift' || type == 'gym';
     final wantsRuns = type != 'lift' && type != 'gym';
 
+    final authors = await _followedAuthorIds(authorId);
+    if (authors.isEmpty) return const [];
+
     final runs = wantsRuns
         ? await fetchFollowingFeed(
             limit: limit,
@@ -7067,13 +7092,14 @@ class ApiClient {
             authorId: authorId,
             activityType: activityType,
             feedWindowDays: feedWindowDays,
+            authors: authors,
           )
         : const <FeedEntry>[];
     final lifts = wantsLifts
         ? await _fetchFollowingLifts(
             limit: limit,
             cursor: cursor,
-            authorId: authorId,
+            authors: authors,
             feedWindowDays: feedWindowDays,
           )
         : const <LiftFeedEntry>[];
@@ -7092,25 +7118,10 @@ class ApiClient {
   Future<List<LiftFeedEntry>> _fetchFollowingLifts({
     int limit = 20,
     ({DateTime startedAt, String id})? cursor,
-    String? authorId,
+    required List<String> authors,
     int feedWindowDays = 14,
   }) async {
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) return const [];
-
-    final edges = await _client
-        .from(UserFollowRow.table)
-        .select(UserFollowRow.colFolloweeId)
-        .eq(UserFollowRow.colFollowerId, viewerId);
-    final followeeIds = edges
-        .map<String>((e) => e[UserFollowRow.colFolloweeId] as String)
-        .toList();
-    if (followeeIds.isEmpty) return const [];
-
-    final filtered = authorId == null
-        ? followeeIds
-        : followeeIds.where((id) => id == authorId).toList();
-    if (filtered.isEmpty) return const [];
+    if (authors.isEmpty) return const [];
 
     final cutoff = DateTime.now()
         .toUtc()
@@ -7122,7 +7133,7 @@ class ApiClient {
     // against it returns nothing. The view filters on is_public = true so
     // the explicit eq filter would be redundant.
     final workouts = topByRecency(
-      await readChunked(filtered, (chunk) async {
+      await readChunked(authors, (chunk) async {
         var q = _client
             .from('public_gym_workouts')
             .select('id, user_id, started_at, title, set_count, volume_kg')
@@ -10027,17 +10038,7 @@ class ApiClient {
     DateTime? since,
     String? authorId,
   }) async {
-    final viewerId = _client.auth.currentUser?.id;
-    if (viewerId == null) return const [];
-
-    final edges = await _client
-        .from(UserFollowRow.table)
-        .select(UserFollowRow.colFolloweeId)
-        .eq(UserFollowRow.colFollowerId, viewerId);
-    final authors = edges
-        .map<String>((e) => e[UserFollowRow.colFolloweeId] as String)
-        .where((id) => authorId == null || id == authorId)
-        .toList();
+    final authors = await _followedAuthorIds(authorId);
     if (authors.isEmpty) return const [];
 
     // The followee set is chunked: PostgREST serialises `.inFilter()` into the

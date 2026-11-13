@@ -15,6 +15,10 @@
 // explanation with its `describedby` prop, which it passes on as the input's
 // `aria-describedby`.
 //
+// A `ListRow` switch (`kind="toggle"`) is a control too: its `subtitle` is
+// rendered as the input's `aria-describedby`, and so is its `describedby`
+// prop when the explanation lives elsewhere on the page.
+//
 // A `<textarea>` is deliberately not a control here: its label plus its
 // placeholder is already the whole story on a free-text field, and demanding a
 // line under each one adds the density #905 exists to remove.
@@ -80,8 +84,11 @@ interface Control {
 
 function controls(source: string): Control[] {
 	const found: Control[] = [];
-	for (const m of source.matchAll(/<(input|select|AppSearchField)\b|<div\b[^>]*role="(?:radio)?group"/g)) {
-		found.push({ tag: openingTag(source, m.index!), at: m.index! });
+	for (const m of source.matchAll(/<(input|select|AppSearchField|ListRow)\b|<div\b[^>]*role="(?:radio)?group"/g)) {
+		const tag = openingTag(source, m.index!);
+		// A ListRow is a control only as a switch; a nav row is a link.
+		if (m[1] === 'ListRow' && !/\bkind="toggle"/.test(tag)) continue;
+		found.push({ tag, at: m.index! });
 	}
 	return found;
 }
@@ -94,6 +101,8 @@ function explained(source: string, control: Control): string | null {
 		}
 		return null;
 	}
+	// A ListRow switch renders its subtitle as the input's description.
+	if (control.tag.startsWith('<ListRow') && /\ssubtitle=/.test(control.tag)) return null;
 	if (/type="checkbox"/.test(control.tag)) {
 		const labelEnd = source.indexOf('</label>', control.at);
 		const inLabel = labelEnd >= 0 ? source.slice(control.at, labelEnd) : '';

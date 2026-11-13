@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import { formatDuration } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -150,10 +151,11 @@
 		</ul>
 	{/if}
 	{#if globalEfforts.length > 0}
-		<p class="section-label">
-			{m('segmentEfforts.catalogueHeading')}
-			<a class="browse-link" href="/segments">{m('segments.browseAll')}</a>
-		</p>
+		<SectionHeader label={m('segmentEfforts.catalogueHeading')} level={3} class="segment-catalogue-head">
+			{#snippet trailing()}
+				<a class="browse-link" href="/segments">{m('segments.browseAll')}</a>
+			{/snippet}
+		</SectionHeader>
 		<ul class="efforts">
 			{#each globalEfforts as e (e.effort.id)}
 				<li>
@@ -195,19 +197,11 @@
 	.muted.small {
 		font-size: 0.78rem;
 	}
-	.section-label {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-sm);
+	:global(.segment-catalogue-head) {
 		margin: 0.6rem 0 0.2rem;
-		font-size: 0.72rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
 	}
 	.browse-link {
+		font-size: 0.85rem;
 		font-weight: 500;
 		color: var(--color-primary);
 		text-decoration: none;

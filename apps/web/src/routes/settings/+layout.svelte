@@ -8,6 +8,8 @@
 	import { shareAttributionEnabled } from '#lib/share/share_attribution.ts';
 	import { searchSettings } from '#lib/settings/settings_search.ts';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
+	import ListRow from '#lib/components/ListRow.svelte';
 
 	type Tab = { href: string; label: string; icon: string };
 	type Section = { label: string; tabs: Tab[] };
@@ -95,7 +97,7 @@
 
 <div class="settings-shell">
 	<nav class="settings-nav">
-		<h2>{m('shell.settings')}</h2>
+		<SectionHeader label={m('shell.settings')} class="settings-nav-title" />
 		<div class="settings-search">
 			<AppSearchField bind:value={query} label={m('settingsLayout.searchLabel')} testid="settings-search" />
 		</div>
@@ -103,10 +105,14 @@
 			<ul class="search-results" data-testid="settings-search-results" aria-label={m('settingsLayout.searchLabel')}>
 				{#each results as hit (hit.href + hit.title)}
 					<li>
-						<a href={hit.href} class="nav-item search-hit" onclick={() => (query = '')} data-testid="settings-search-result">
-							<span class="hit-title">{hit.title}</span>
-							<span class="hit-where">{hit.where}</span>
-						</a>
+						<ListRow
+							kind="nav"
+							title={hit.title}
+							subtitle={hit.where}
+							href={hit.href}
+							onclick={() => (query = '')}
+							testid="settings-search-result"
+						/>
 					</li>
 				{/each}
 			</ul>
@@ -115,7 +121,7 @@
 			</p>
 		{:else}
 			{#each sections as section}
-				<div class="nav-section-label">{section.label}</div>
+				<SectionHeader label={section.label} level={3} class="nav-section-label" flush />
 				{#each section.tabs as tab}
 					<a
 						href={tab.href}
@@ -189,12 +195,7 @@
 		height: 100vh;
 		overflow-y: auto;
 	}
-	.settings-nav h2 {
-		font-size: 0.75rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-tertiary);
+	.settings-nav :global(.settings-nav-title) {
 		margin-bottom: var(--space-md);
 	}
 	.settings-search {
@@ -208,16 +209,6 @@
 		flex-direction: column;
 		gap: 0.25rem;
 	}
-	.search-hit {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0;
-	}
-	.hit-where {
-		font-size: 0.78rem;
-		font-weight: 400;
-		color: var(--color-text-secondary);
-	}
 	.search-empty {
 		margin: var(--space-xs) 0.75rem;
 		font-size: 0.85rem;
@@ -226,15 +217,10 @@
 	.search-empty:empty {
 		display: none;
 	}
-	.nav-section-label {
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
+	.settings-nav :global(.nav-section-label) {
 		padding: var(--space-md) 0.75rem var(--space-2xs);
 	}
-	.nav-section-label:first-of-type {
+	.settings-nav :global(.nav-section-label:first-of-type) {
 		padding-top: 0;
 	}
 	.nav-item {
@@ -334,8 +320,8 @@
 			height: auto;
 			overflow-y: visible;
 		}
-		.settings-nav h2,
-		.nav-section-label,
+		.settings-nav :global(.settings-nav-title),
+		.settings-nav :global(.nav-section-label),
 		.legal-links {
 			flex: 0 0 100%;
 			margin: 0;

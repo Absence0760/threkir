@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ListRow from '#lib/components/ListRow.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { effective } from '#lib/settings/settings.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { dbError } from '#lib/core/supabase_error.ts';
@@ -162,7 +164,7 @@
 
 <PrefsPage heading={m('prefs.trainingHeading')} tagline={m('prefs.trainingTagline')} page={prefs}>
 	<section class="card" id="weekly-distance-goal">
-		<h2>{m('prefs.weeklyGoalHeading')}</h2>
+		<SectionHeader label={m('prefs.weeklyGoalHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<label>
 				<span class="label-text">{m('prefs.weeklyDistanceGoal', { unit: preferredUnit })}</span>
@@ -196,22 +198,20 @@
 	</section>
 
 	<section class="card" id="plan-recovery">
-		<h2>{m('prefs.planRecoveryHeading')}</h2>
-		<label class="checkbox-row">
-			<input
-				type="checkbox"
-				bind:checked={extraRecovery}
-				aria-describedby="extra-recovery-hint"
-				data-testid="extra-recovery-toggle"
-				onchange={() => prefs.save({ [EXTRA_RECOVERY_KEY]: extraRecovery })}
-			/>
-			<span>{m('prefs.extraRecovery')}</span>
-		</label>
+		<SectionHeader label={m('prefs.planRecoveryHeading')} class="prefs-section-head" />
+		<ListRow
+			kind="toggle"
+			title={m('prefs.extraRecovery')}
+			bind:checked={extraRecovery}
+			describedby="extra-recovery-hint"
+			testid="extra-recovery-toggle"
+			onchange={() => prefs.save({ [EXTRA_RECOVERY_KEY]: extraRecovery })}
+		/>
 		<p class="hint" id="extra-recovery-hint">{m('prefs.extraRecoveryHint')}</p>
 	</section>
 
 	<section class="card" id="heart-rate-zones">
-		<h2>{m('prefs.heartRateZonesHeading')}</h2>
+		<SectionHeader label={m('prefs.heartRateZonesHeading')} class="prefs-section-head" />
 		<p class="section-desc">{m('prefs.heartRateZonesDesc')}</p>
 		<div class="form-grid">
 			<div class="field">
@@ -245,17 +245,15 @@
 		</div>
 		{#if hrPrescription}
 			<div class="field" data-testid="hr-medication">
-				<label class="checkbox-row">
-					<input
-						type="checkbox"
-						bind:checked={hrMedicationAffected}
-						disabled={!healthConsentGranted && !hrMedicationAffected}
-						aria-describedby="hr-medication-hint"
-						data-testid="hr-medication-toggle"
-						onchange={() => prefs.save({ hr_medication_affected: hrMedicationAffected })}
-					/>
-					<span>{m('prefs.hrMedicationAffected')}</span>
-				</label>
+				<ListRow
+					kind="toggle"
+					title={m('prefs.hrMedicationAffected')}
+					bind:checked={hrMedicationAffected}
+					disabled={!healthConsentGranted && !hrMedicationAffected}
+					describedby="hr-medication-hint"
+					testid="hr-medication-toggle"
+					onchange={() => prefs.save({ hr_medication_affected: hrMedicationAffected })}
+				/>
 				<p class="hint" id="hr-medication-hint">
 					{#if consentCheckFailed}
 						<span data-testid="hr-medication-consent-failed">{m('prefs.hrMedicationConsentCheckFailed')}</span>
@@ -273,17 +271,17 @@
 				{/if}
 			</div>
 		{/if}
-		<label class="checkbox-row">
-			<input type="checkbox" bind:checked={excludeGymFromReadiness} onchange={() => prefs.save({ exclude_gym_from_readiness: excludeGymFromReadiness })} />
-			<span>
-				{m('prefs.excludeGymFromReadiness')}
-				<span class="hint">{m('prefs.excludeGymFromReadinessHint')}</span>
-			</span>
-		</label>
+		<ListRow
+			kind="toggle"
+			title={m('prefs.excludeGymFromReadiness')}
+			subtitle={m('prefs.excludeGymFromReadinessHint')}
+			bind:checked={excludeGymFromReadiness}
+			onchange={() => prefs.save({ exclude_gym_from_readiness: excludeGymFromReadiness })}
+		/>
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.raceFuelingHeading')}</h2>
+		<SectionHeader label={m('prefs.raceFuelingHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<label>
@@ -321,7 +319,7 @@
 	</section>
 
 	<section class="card">
-		<h2>{m('prefs.aiCoachHeading')}</h2>
+		<SectionHeader label={m('prefs.aiCoachHeading')} class="prefs-section-head" />
 		<div class="form-grid">
 			<div class="field">
 				<label>

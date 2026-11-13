@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import {
 		daysUntilRace,
 		evenSplitPacing,
@@ -177,7 +178,7 @@
 		<div class="checklist-grid">
 			{#each checklist as section (section.title)}
 				<div class="checklist-section">
-					<h3>{section.title}</h3>
+					<SectionHeader label={section.title} level={3} tone="inherit" />
 					<ul>
 						{#each section.items as item (item.name)}
 							<li>
@@ -336,14 +337,6 @@
 		background: rgba(0, 0, 0, 0.12);
 		border-radius: var(--radius-md);
 		padding: var(--space-md);
-	}
-	.checklist-section h3 {
-		font-size: 0.78rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		margin: 0 0 var(--space-sm);
-		opacity: 0.95;
 	}
 	.checklist-section ul {
 		list-style: none;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
@@ -296,9 +297,7 @@
 
 {#if parks.length > 0}
 	<section class="badges" data-testid="recap-parks">
-		<header class="badges-head">
-			<h2>{t('recap.parksHeading')}</h2>
-		</header>
+		<SectionHeader label={t('recap.parksHeading')} class="recap-section-head" />
 		<ul class="park-list">
 			{#each parks as p (p.parkId)}
 				<li>
@@ -313,12 +312,13 @@
 
 {#if recap.badges.length > 0}
 	<section class="badges">
-		<header class="badges-head">
-			<h2>{t('recap.trophies')}</h2>
-			<span class="badges-meta">
-				{t('recap.earnedInYear', { n: recap.badges.length, year: recap.year })}
-			</span>
-		</header>
+		<SectionHeader label={t('recap.trophies')} class="recap-section-head">
+			{#snippet trailing()}
+				<span class="badges-meta">
+					{t('recap.earnedInYear', { n: recap.badges.length, year: recap.year })}
+				</span>
+			{/snippet}
+		</SectionHeader>
 		<div class="badge-grid">
 			{#each recap.badges as b (b.id)}
 				{@const text = recapBadgeText(b, t, getUnit(), activeFormatLocale())}
@@ -334,12 +334,13 @@
 
 {#if recap.month == null}
 	<section class="month-chart">
-		<header class="month-chart-head">
-			<h2>{t('recap.distanceByMonth')}</h2>
-			<span class="month-chart-meta">
-				{t('recap.peak', { distance: fmtKm(maxMonthlyDistance(recap.monthly)) })}
-			</span>
-		</header>
+		<SectionHeader label={t('recap.distanceByMonth')} class="recap-section-head">
+			{#snippet trailing()}
+				<span class="month-chart-meta">
+					{t('recap.peak', { distance: fmtKm(maxMonthlyDistance(recap.monthly)) })}
+				</span>
+			{/snippet}
+		</SectionHeader>
 		<div class="bars">
 			{#each recap.monthly as m (m.month)}
 				{@const max = maxMonthlyDistance(recap.monthly)}
@@ -559,20 +560,8 @@
 		padding: var(--space-lg);
 		margin-bottom: var(--space-xl);
 	}
-	.month-chart-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-md);
+	:global(.recap-section-head) {
 		margin-bottom: var(--space-md);
-	}
-	.month-chart h2 {
-		font-size: 0.78rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: 0;
 	}
 	.month-chart-meta {
 		font-size: 0.78rem;
@@ -621,21 +610,6 @@
 
 	.badges {
 		margin-bottom: var(--space-xl);
-	}
-	.badges-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-md);
-		margin-bottom: var(--space-md);
-	}
-	.badges h2 {
-		font-size: 0.78rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: 0;
 	}
 	.badges-meta {
 		font-size: 0.78rem;

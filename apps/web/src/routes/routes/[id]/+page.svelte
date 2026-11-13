@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
 	import { onMount } from 'svelte';
@@ -1183,7 +1184,7 @@
 				 above the page fold. -->
 			{#if displayWaypoints.length > 1}
 				<section class="section preview-section">
-					<h2>{m('routeDetail.previewHeading')}</h2>
+					<SectionHeader label={m('routeDetail.previewHeading')} class="route-section-head" />
 					<RoutePreviewScrubber
 						totalDistanceM={shownDistanceM}
 						fraction={scrubFraction}
@@ -1195,7 +1196,7 @@
 
 			{#if route.elevation_m != null && route.elevation_m > 0}
 				<section class="section">
-					<h2>{m('routeDetail.elevationHeading')}</h2>
+					<SectionHeader label={m('routeDetail.elevationHeading')} class="route-section-head" />
 					<div class="elev-grid">
 						<div class="elev-tile">
 							<span class="elev-label">
@@ -1299,19 +1300,20 @@
 
 			<!-- Reviews -->
 			<section class="section">
-				<div class="reviews-header">
-					<h2>
-						{m('routeDetail.reviewsHeading')}
+				<SectionHeader label={m('routeDetail.reviewsHeading')} class="route-section-head">
+					{#snippet badge()}
 						{#if avgRating}
 							<span class="avg-rating">{m('routeDetail.avgRating', { rating: avgRating })}</span>
 						{/if}
-					</h2>
-					{#if auth.loggedIn}
-						<button class="btn btn-outline btn-sm" onclick={() => showReviewForm = !showReviewForm}>
-							{showReviewForm ? m('routeDetail.cancel') : m('routeDetail.rate')}
-						</button>
-					{/if}
-				</div>
+					{/snippet}
+					{#snippet trailing()}
+						{#if auth.loggedIn}
+							<button class="btn btn-outline btn-sm" onclick={() => showReviewForm = !showReviewForm}>
+								{showReviewForm ? m('routeDetail.cancel') : m('routeDetail.rate')}
+							</button>
+						{/if}
+					{/snippet}
+				</SectionHeader>
 
 				{#if showReviewForm}
 					<div class="review-form">
@@ -1772,13 +1774,8 @@
 		margin-bottom: var(--space-xs);
 	}
 
-	h2 {
-		font-size: 0.85rem;
-		font-weight: 600;
+	:global(.route-section-head) {
 		margin-bottom: var(--space-md);
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
 	}
 
 	.section {
@@ -1965,11 +1962,6 @@
 		font-size: 3rem;
 	}
 
-	.reviews-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
 
 	.avg-rating {
 		font-size: 0.75rem;

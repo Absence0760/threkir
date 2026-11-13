@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -677,7 +678,7 @@
 		{/if}
 
 		{#if retired.length > 0}
-			<h3 class="section-title">{t('settingsGear.retiredSection')}</h3>
+			<SectionHeader label={t('settingsGear.retiredSection')} class="gear-section-head" />
 			<ul class="gear-list retired-list">
 				{#each retired as g (g.id)}
 					{@const prog = progressFor(g)}
@@ -710,7 +711,7 @@
 
 	{#if !loading}
 		<section class="rotations">
-			<h2 class="section-title">{t('settingsGear.rotationsHeading')}</h2>
+			<SectionHeader label={t('settingsGear.rotationsHeading')} class="gear-section-head" />
 			<p class="rotations-hint">{t('settingsGear.rotationsHint')}</p>
 
 			<form
@@ -1232,12 +1233,8 @@
 		font-family: 'Material Symbols Outlined';
 		font-size: 1.3rem;
 	}
-	.section-title {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
-		margin: var(--space-lg) 0 var(--space-sm) 0;
+	:global(.gear-section-head) {
+		margin-top: var(--space-lg);
 	}
 	.gear-form {
 		display: flex;

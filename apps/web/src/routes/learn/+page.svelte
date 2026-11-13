@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { buildLearnCanonical, buildLearnCollectionJsonLd } from '#lib/learn/learn_meta.ts';
 	import { guidesByCategory } from '#lib/learn/guides.ts';
@@ -73,14 +74,14 @@
 
 		{#if featured}
 			<section class="featured-section" aria-labelledby="learn-featured">
-				<h2 id="learn-featured" class="section-label">{m('learn.startHere')}</h2>
+				<SectionHeader label={m('learn.startHere')} id="learn-featured" class="learn-section-head" />
 				<GuideCard guide={featured} featured />
 			</section>
 		{/if}
 
 		{#if rest.length}
 			<section class="all-section" aria-labelledby="learn-all">
-				<h2 id="learn-all" class="section-label">{m('learn.allGuides')}</h2>
+				<SectionHeader label={m('learn.allGuides')} id="learn-all" class="learn-section-head" />
 				<div class="guide-grid">
 					{#each rest as guide (guide.slug)}
 						<GuideCard {guide} />
@@ -133,13 +134,8 @@
 
 
 
-	.section-label {
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--color-text-tertiary);
-		margin: 0 0 var(--space-md);
+	:global(.learn-section-head) {
+		margin-bottom: var(--space-md);
 	}
 
 	/* `auto-fit`, not `auto-fill`: with a short final row auto-fill keeps the

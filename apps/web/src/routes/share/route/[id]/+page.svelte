@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { fetchRouteById } from '#lib/core/data.ts';
@@ -168,7 +169,7 @@
 
 				{#if elevation.profile}
 					<section class="card">
-						<h2>{m('shareRoute.elevationProfile')}</h2>
+						<SectionHeader label={m('shareRoute.elevationProfile')} class="share-route-section-head" />
 						<ElevationProfile
 							elevations={elevation.profile}
 							totalGain={route.elevation_m ? elevation.gain : null}
@@ -235,13 +236,8 @@
 		padding: var(--space-2xl) 0;
 	}
 
-	h2 {
-		font-size: 0.9rem;
-		font-weight: 600;
-		margin: 0 0 var(--space-md);
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+	:global(.share-route-section-head) {
+		margin-bottom: var(--space-md);
 	}
 
 	.route-meta {
@@ -297,8 +293,6 @@
 		font-size: 1.4rem;
 		font-weight: 700;
 		margin: 0 0 var(--space-sm);
-		text-transform: none;
-		letter-spacing: 0;
 		color: var(--color-text);
 	}
 

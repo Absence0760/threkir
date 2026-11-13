@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { NutritionPlan } from '#lib/types.ts';
 	import NutritionPlanCard from './NutritionPlanCard.svelte';
@@ -19,13 +20,14 @@
 
 {#if plans.length > 0}
 	<section class="card-elevated plans-card" data-testid="nutrition-plans">
-		<div class="card-head">
-			<span class="section-label">{m('nutrition.plan.sectionTitle')}</span>
-			<button class="btn btn-outline btn-sm" type="button" onclick={onnew} data-testid="plan-new">
-				<span class="material-symbols" aria-hidden="true">add</span>
-				{m('nutrition.plan.new')}
-			</button>
-		</div>
+		<SectionHeader label={m('nutrition.plan.sectionTitle')} flush>
+			{#snippet trailing()}
+				<button class="btn btn-outline btn-sm" type="button" onclick={onnew} data-testid="plan-new">
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{m('nutrition.plan.new')}
+				</button>
+			{/snippet}
+		</SectionHeader>
 		<ul class="plan-list">
 			{#each plans as plan (plan.id)}
 				<NutritionPlanCard
@@ -44,12 +46,6 @@
 	.plans-card {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-sm);
-	}
-	.card-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
 		gap: var(--space-sm);
 	}
 	.plan-list {

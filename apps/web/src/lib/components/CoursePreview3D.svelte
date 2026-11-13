@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { untrack } from 'svelte';
 	import Modal from './Modal.svelte';
 	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
@@ -898,8 +899,8 @@
 				</div>
 
 				{#if climbs.length > 0}
-					<section class="preview-climbs" aria-labelledby="course-preview-climbs-heading">
-						<h3 id="course-preview-climbs-heading">{m('coursePreview.climbsHeading')}</h3>
+					<section class="preview-climbs" aria-labelledby="course-preview-preview-climbs-heading">
+						<SectionHeader label={m('coursePreview.climbsHeading')} id="course-preview-preview-climbs-heading" level={3} class="preview-climbs-head" />
 						<ul>
 							{#each climbs as c, i (c.startM)}
 								<li>
@@ -1059,12 +1060,8 @@
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text-secondary);
 	}
-	.preview-climbs h3 {
-		margin: 0 0 var(--space-xs);
-		font-size: var(--font-size-section-label);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		color: var(--color-text-secondary);
+	:global(.preview-climbs-head) {
+		margin-bottom: var(--space-xs);
 	}
 	.preview-climbs ul {
 		display: flex;

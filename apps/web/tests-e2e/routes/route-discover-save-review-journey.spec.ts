@@ -180,8 +180,7 @@ test.describe('saga: discover a public route, save it, review it (cross-user)', 
 				).toBeVisible({ timeout: 15_000 });
 
 				// Reviews section starts empty for a freshly-planted route.
-				const reviewsSection = page.locator('.reviews-header');
-				await expect(reviewsSection.locator('h2')).toContainText('Reviews');
+				await expect(page.getByRole('heading', { level: 2, name: /Reviews/ })).toBeVisible();
 				await expect(page.locator('.no-reviews')).toBeVisible({ timeout: 10_000 });
 				// No aggregate yet — the avg-rating chip only renders once a
 				// review exists.

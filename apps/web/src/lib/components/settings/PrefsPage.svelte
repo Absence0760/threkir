@@ -151,13 +151,12 @@
 	   root so it reaches the page's own markup without becoming a global
 	   `.card` (conventions § Web cards). */
 	.prefs-page :global {
-		h2 { font-size: 0.9rem; font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-lg); }
+		.prefs-section-head { margin-bottom: var(--space-lg); }
 		.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-xl); scroll-margin-top: var(--space-lg); }
 		.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: var(--space-md); margin-bottom: var(--space-lg); }
 		.form-grid.zones { grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr)); }
 		.form-stack { display: flex; flex-direction: column; gap: var(--space-md); margin-bottom: var(--space-lg); }
 		.field { display: flex; flex-direction: column; }
-		.checkbox-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; }
 		.hint {
 			display: block;
 			font-size: 0.78rem;

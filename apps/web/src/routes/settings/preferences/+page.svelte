@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import ListRow from '#lib/components/ListRow.svelte';
 	import { goto } from '$app/navigation';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import {
@@ -27,14 +28,7 @@
 	<ul class="prefs-group-list" data-testid="preferences-groups">
 		{#each groups as group (group.href)}
 			<li>
-				<a class="prefs-group" href={group.href}>
-					<span class="material-symbols group-icon" aria-hidden="true">{group.icon}</span>
-					<span class="group-text">
-						<span class="group-label">{m(group.label)}</span>
-						<span class="group-summary">{m(group.summary)}</span>
-					</span>
-					<span class="material-symbols group-chevron" aria-hidden="true">chevron_right</span>
-				</a>
+				<ListRow kind="nav" icon={group.icon} title={m(group.label)} subtitle={m(group.summary)} href={group.href} />
 			</li>
 		{/each}
 	</ul>
@@ -45,27 +39,13 @@
 	.prefs-group-list {
 		list-style: none;
 		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: var(--space-sm);
+		padding: var(--space-2xs);
 		max-width: 44rem;
-	}
-	.prefs-group {
-		display: flex;
-		align-items: center;
-		gap: var(--space-md);
-		padding: var(--space-md) var(--space-lg);
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
-		color: var(--color-text);
-		text-decoration: none;
-		transition: border-color var(--transition-fast);
 	}
-	.prefs-group:hover { border-color: var(--color-primary); }
-	.group-icon { font-size: 1.4rem; color: var(--color-primary); flex-shrink: 0; }
-	.group-text { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; min-width: 0; }
-	.group-label { font-weight: 600; }
-	.group-summary { font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.45; }
-	.group-chevron { color: var(--color-text-tertiary); flex-shrink: 0; }
+	.prefs-group-list li + li {
+		border-top: 1px solid var(--color-border);
+	}
 </style>

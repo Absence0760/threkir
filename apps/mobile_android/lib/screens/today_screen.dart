@@ -5,16 +5,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show
-        AppInsets,
-        AppSemanticColors,
-        AppSpace,
-        ChartCardHeader,
-        ProgressBar,
-        SectionHeader,
-        SkeletonBlock,
-        StatGrid,
-        StatTile;
+    show AppInsets, AppSemanticColors, AppSpace, ChartCardHeader, ListCard, ProgressBar, SectionHeader, SkeletonBlock, StatGrid, StatTile;
 
 import '../activity_type_labels.dart';
 import '../backend_timeout.dart';
@@ -675,45 +666,42 @@ class _TodayScreenState extends State<TodayScreen>
     // trailing slot: "Reprendre le plan" at 2x took about 200 dp of the row
     // there and squeezed the plan's name to a word per line, and as plain
     // text it did not read as something to tap (#1374 TO-11).
-    return Card(
+    return ListCard(
       key: const Key('dashboardPausedPlan'),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.pause_circle_outline,
-                    color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(paused.name, style: theme.textTheme.titleMedium),
-                      Text(
-                        l10n.dashboardPlanPausedBody,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.pause_circle_outline,
+                  color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(paused.name, style: theme.textTheme.titleMedium),
+                    Text(
+                      l10n.dashboardPlanPausedBody,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: TextButton(
-                key: const Key('dashboardPausedPlanResume'),
-                onPressed: open,
-                child: Text(l10n.planDetailResumePlan),
               ),
+            ],
+          ),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              key: const Key('dashboardPausedPlanResume'),
+              onPressed: open,
+              child: Text(l10n.planDetailResumePlan),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1656,88 +1644,82 @@ class _TodayGoalsStrip extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final complete = AppSemanticColors.of(context).success;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: AppInsets.card,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SectionHeader(
-                label: l10n.dashboardGoals,
-                trailing: Icon(Icons.chevron_right,
-                    color: theme.colorScheme.onSurfaceVariant),
-              ),
-              for (final g in goals) ...[
-                const SizedBox(height: AppSpace.smPlus),
-                Builder(builder: (context) {
-                  final period = g.goal.period == GoalPeriod.week
-                      ? l10n.dashboardGoalWeekly
-                      : l10n.dashboardGoalMonthly;
-                  final title =
-                      g.goal.title ?? l10n.dashboardGoalTitleFallback(period);
-                  final percent = (g.progress.overallPercent * 100).round();
-                  return MergeSemantics(
-                    child: Semantics(
-                      label: l10n.dashboardGoalA11y(
-                        period,
-                        g.goal.title ?? l10n.dashboardGoalTapToEdit,
-                        g.progress.complete
-                            ? l10n.dashboardGoalComplete
-                            : l10n.dashboardGoalInProgress,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListCard(
+      onTap: onOpen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeader(
+            label: l10n.dashboardGoals,
+            trailing: Icon(Icons.chevron_right,
+                color: theme.colorScheme.onSurfaceVariant),
+          ),
+          for (final g in goals) ...[
+            const SizedBox(height: AppSpace.smPlus),
+            Builder(builder: (context) {
+              final period = g.goal.period == GoalPeriod.week
+                  ? l10n.dashboardGoalWeekly
+                  : l10n.dashboardGoalMonthly;
+              final title =
+                  g.goal.title ?? l10n.dashboardGoalTitleFallback(period);
+              final percent = (g.progress.overallPercent * 100).round();
+              return MergeSemantics(
+                child: Semantics(
+                  label: l10n.dashboardGoalA11y(
+                    period,
+                    g.goal.title ?? l10n.dashboardGoalTapToEdit,
+                    g.progress.complete
+                        ? l10n.dashboardGoalComplete
+                        : l10n.dashboardGoalInProgress,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ExcludeSemantics(
-                                  child: Text(
-                                    title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                ),
+                          Expanded(
+                            child: ExcludeSemantics(
+                              child: Text(
+                                title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600),
                               ),
-                              const SizedBox(width: AppSpace.sm),
-                              Text(
-                                '$percent%',
-                                style: theme.textTheme.labelLarge?.copyWith(
-                                  color: g.progress.complete
-                                      ? complete
-                                      : theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: AppSpace.xs),
-                          ProgressBar(
-                            value: g.progress.overallPercent.clamp(0.0, 1.0),
-                            fill: g.progress.complete ? complete : null,
+                          const SizedBox(width: AppSpace.sm),
+                          Text(
+                            '$percent%',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: g.progress.complete
+                                  ? complete
+                                  : theme.colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  );
-                }),
-              ],
-              if (more) ...[
-                const SizedBox(height: AppSpace.sm),
-                Text(
-                  l10n.todayGoalsMore,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(height: AppSpace.xs),
+                      ProgressBar(
+                        value: g.progress.overallPercent.clamp(0.0, 1.0),
+                        fill: g.progress.complete ? complete : null,
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ],
-          ),
-        ),
+              );
+            }),
+          ],
+          if (more) ...[
+            const SizedBox(height: AppSpace.sm),
+            Text(
+              l10n.todayGoalsMore,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1766,49 +1748,40 @@ class _ProgressSummaryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final distanceUnit = UnitFormat.distanceLabel(unit);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Semantics(
-        button: true,
-        onTapHint: l10n.progressSummaryOpenHint,
-        child: InkWell(
-          onTap: onOpen,
-          child: Padding(
-            padding: AppInsets.card,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ChartCardHeader(
-                  title: l10n.progressSummaryTitle,
-                  action: Icon(Icons.chevron_right,
-                      color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: AppSpace.smPlus),
-                StatGrid(
-                  cells: [
-                    StatTile.medium(
-                      label: l10n.progressSummaryWeek,
-                      value: UnitFormat.distanceValue(weekMetres, unit),
-                      unit: distanceUnit,
-                    ),
-                    StatTile.medium(
-                      label: l10n.progressSummaryMonth,
-                      value: UnitFormat.distanceValue(monthMetres, unit),
-                      unit: distanceUnit,
-                    ),
-                    StatTile.medium(
-                      label: l10n.dashboardSectionStreak,
-                      value: '$streakDays',
-                      unit: streakDays == 1
-                          ? l10n.dashboardStreakDayUnit
-                          : l10n.dashboardStreakDaysUnit,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    return ListCard(
+      onTap: onOpen,
+      semanticHint: l10n.progressSummaryOpenHint,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ChartCardHeader(
+            title: l10n.progressSummaryTitle,
+            action: Icon(Icons.chevron_right,
+                color: theme.colorScheme.onSurfaceVariant),
           ),
-        ),
+          const SizedBox(height: AppSpace.smPlus),
+          StatGrid(
+            cells: [
+              StatTile.medium(
+                label: l10n.progressSummaryWeek,
+                value: UnitFormat.distanceValue(weekMetres, unit),
+                unit: distanceUnit,
+              ),
+              StatTile.medium(
+                label: l10n.progressSummaryMonth,
+                value: UnitFormat.distanceValue(monthMetres, unit),
+                unit: distanceUnit,
+              ),
+              StatTile.medium(
+                label: l10n.dashboardSectionStreak,
+                value: '$streakDays',
+                unit: streakDays == 1
+                    ? l10n.dashboardStreakDayUnit
+                    : l10n.dashboardStreakDaysUnit,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1909,13 +1882,12 @@ class _RestDayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Card(
+    return ListCard.row(
       key: const Key('dashboardHeroRestDay'),
-      child: ListTile(
-        leading: const Icon(Icons.self_improvement),
-        title: Text(l10n.dashboardHeroRestDay),
-        subtitle: Text(l10n.dashboardHeroRestDayBody),
-      ),
+      leading: const Icon(Icons.self_improvement),
+      title: l10n.dashboardHeroRestDay,
+      subtitle: l10n.dashboardHeroRestDayBody,
+      subtitleMaxLines: 4,
     );
   }
 }

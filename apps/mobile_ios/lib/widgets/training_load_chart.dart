@@ -49,137 +49,134 @@ class TrainingLoadChart extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final last = points.isEmpty ? null : points.last;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ChartCardHeader(title: l10n.trainingLoadTitle),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ChartCardHeader(title: l10n.trainingLoadTitle),
+          const SizedBox(height: 4),
+          MetricSentence(
+            metric: Metric.trimp,
+            sentence: hasHr ? 'hr' : 'volume',
+            args: {'days': '${points.length}'},
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (!hasHr)
+            TextButton(
+              key: const Key('trainingLoadSetHeartRate'),
+              onPressed: () => openSettings(SettingsDestination.training),
+              child: Text(l10n.trainingLoadSetHeartRate),
+            ),
+          if (lowConfidence) ...[
             const SizedBox(height: 4),
-            MetricSentence(
-              metric: Metric.trimp,
-              sentence: hasHr ? 'hr' : 'volume',
-              args: {'days': '${points.length}'},
+            Text(
+              l10n.trainingLoadLowConfidenceMedication,
+              key: const Key('trainingLoadLowConfidence'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            if (!hasHr)
-              TextButton(
-                key: const Key('trainingLoadSetHeartRate'),
-                onPressed: () => openSettings(SettingsDestination.training),
-                child: Text(l10n.trainingLoadSetHeartRate),
-              ),
-            if (lowConfidence) ...[
-              const SizedBox(height: 4),
-              Text(
-                l10n.trainingLoadLowConfidenceMedication,
-                key: const Key('trainingLoadLowConfidence'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-            if (includesLifts) ...[
-              const SizedBox(height: 4),
-              Text(
-                l10n.trainingLoadIncludesLifts,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            if (points.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  l10n.trainingLoadEmpty,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              )
-            else ...[
-              _Legend(last: last!),
-              const SizedBox(height: 12),
-              // The legend above reads only the latest day; the paint says
-              // where each line went, so its node carries that (#1374
-              // A11Y-14).
-              Semantics(
-                key: const Key('trainingLoadChartSemantics'),
-                container: true,
-                excludeSemantics: true,
-                label: _summaryFor(context, l10n, points),
-                child: SizedBox(
-                  height: 180,
-                  width: double.infinity,
-                  child: CustomPaint(
-                    key: const Key('trainingLoadChartPainter'),
-                    painter: _ChartPainter(
-                      points: points,
-                      series: _seriesOf(context),
-                      gridColor: theme.dividerColor,
-                      zeroColor: theme.colorScheme.onSurfaceVariant,
-                      labelStyle: theme.textTheme.labelSmall!.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Text(
-                      formatDateShort(
-                        points.first.date,
-                        localeToTag(Localizations.localeOf(context)),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      formatDateShort(
-                        points.last.date,
-                        localeToTag(Localizations.localeOf(context)),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _readingFor(l10n, last.tsb),
-                  style: theme.textTheme.bodySmall,
-                ),
-              ),
-            ],
           ],
-        ),
+          if (includesLifts) ...[
+            const SizedBox(height: 4),
+            Text(
+              l10n.trainingLoadIncludesLifts,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          if (points.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                l10n.trainingLoadEmpty,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            )
+          else ...[
+            _Legend(last: last!),
+            const SizedBox(height: 12),
+            // The legend above reads only the latest day; the paint says
+            // where each line went, so its node carries that (#1374
+            // A11Y-14).
+            Semantics(
+              key: const Key('trainingLoadChartSemantics'),
+              container: true,
+              excludeSemantics: true,
+              label: _summaryFor(context, l10n, points),
+              child: SizedBox(
+                height: 180,
+                width: double.infinity,
+                child: CustomPaint(
+                  key: const Key('trainingLoadChartPainter'),
+                  painter: _ChartPainter(
+                    points: points,
+                    series: _seriesOf(context),
+                    gridColor: theme.dividerColor,
+                    zeroColor: theme.colorScheme.onSurfaceVariant,
+                    labelStyle: theme.textTheme.labelSmall!.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    formatDateShort(
+                      points.first.date,
+                      localeToTag(Localizations.localeOf(context)),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    formatDateShort(
+                      points.last.date,
+                      localeToTag(Localizations.localeOf(context)),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _readingFor(l10n, last.tsb),
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

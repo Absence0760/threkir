@@ -67,57 +67,54 @@ class _MileageTrendCardState extends State<MileageTrendCard> {
     final latest = periods.last;
     final latestLabel = _latestLabel(l10n, _view);
 
-    return Card(
+    return ListCard(
       // Never name a horizontal margin here: the dashboard ListView already
       // supplies the 16 px gutter, and an explicit `fromLTRB(16, 8, 16, 8)`
       // doubled it — field report: "the Mileage modal looks less wide
       // (thinner) than the other modals on the dashboard."
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ChartCardHeader(
-              title: l10n.mileageTitle,
-              action: _ViewToggle(
-                view: _view,
-                onChanged: (v) => setState(() => _view = v),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ChartCardHeader(
+            title: l10n.mileageTitle,
+            action: _ViewToggle(
+              view: _view,
+              onChanged: (v) => setState(() => _view = v),
+            ),
+          ),
+          // Spotlight headline — the most-recent bucket's value
+          // surfaced once at the top so the bars can drop their
+          // per-bar numeric labels (those overflow into next-line
+          // wraps on the narrow weekly view + look cramped on the
+          // wider yearly view).
+          const SizedBox(height: 8),
+          // A Wrap, so at a large text size the label takes its own line
+          // rather than overflowing beside the figure.
+          Wrap(
+            spacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.end,
+            children: [
+              Text(
+                UnitFormat.distance(latest.distanceM.toDouble(), widget.unit),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            // Spotlight headline — the most-recent bucket's value
-            // surfaced once at the top so the bars can drop their
-            // per-bar numeric labels (those overflow into next-line
-            // wraps on the narrow weekly view + look cramped on the
-            // wider yearly view).
-            const SizedBox(height: 8),
-            // A Wrap, so at a large text size the label takes its own line
-            // rather than overflowing beside the figure.
-            Wrap(
-              spacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.end,
-              children: [
-                Text(
-                  UnitFormat.distance(latest.distanceM.toDouble(), widget.unit),
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              Text(
+                latestLabel,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-                Text(
-                  latestLabel,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _BarChart(
-              periods: periods,
-              maxDistanceM: maxDistance,
-              unit: widget.unit,
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _BarChart(
+            periods: periods,
+            maxDistanceM: maxDistance,
+            unit: widget.unit,
+          ),
+        ],
       ),
     );
   }

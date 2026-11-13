@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChartCardHeader, StatusPill, StatusPillSize;
+import 'package:ui_kit/ui_kit.dart'
+    show AppInsets, AppSemanticColors, ChartCardHeader, ListCard, StatusPill, StatusPillSize;
 
 import '../l10n/gen/app_localizations.dart';
 import '../readiness.dart';
@@ -82,14 +83,15 @@ class ReadinessCard extends StatelessWidget {
       );
     }
 
-    return Card(
+    // Flush: the band's accent stripe runs down the card's own edge.
+    return ListCard.flush(
       child: Container(
         decoration: BoxDecoration(
           border: Border(
             left: BorderSide(color: accent, width: 4),
           ),
         ),
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        padding: AppInsets.cardDense,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

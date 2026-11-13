@@ -12,7 +12,7 @@ import '../map_tile_readiness.dart';
 import '../official_distance.dart';
 import '../preferences.dart';
 import '../share_sheet.dart';
-import 'capture_png.dart';
+import 'share_canvas.dart';
 import 'live_run_map.dart'
     show basemapTileLayer, basemapVoidColour, tileUrlFor;
 import 'map_attribution.dart';
@@ -89,7 +89,7 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
       }
       await WidgetsBinding.instance.endOfFrame;
 
-      final bytes = await capturePngBytes(_cardKey);
+      final bytes = await captureShareCanvas(_cardKey, canvasSize: kRouteShareCanvas);
 
       final tmp = await getTemporaryDirectory();
       final file = File('${tmp.path}/route-${widget.route.id}.png');
@@ -134,15 +134,13 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: AspectRatio(
-                  aspectRatio: 9 / 16,
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: RouteShareCard(
-                      route: widget.route,
-                      preferences: widget.preferences,
-                      tileReadiness: _tiles,
-                    ),
+                child: ShareCanvas(
+                  canvasSize: kRouteShareCanvas,
+                  captureKey: _cardKey,
+                  child: RouteShareCard(
+                    route: widget.route,
+                    preferences: widget.preferences,
+                    tileReadiness: _tiles,
                   ),
                 ),
               ),
@@ -178,6 +176,10 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
 /// Public, like its sibling [RunShareCard], so the card can be mounted on its
 /// own: what it draws is the artifact that goes to social media, and a private
 /// class left that unreachable from a test.
+/// The route share image's canvas: 9:16 for a story, laid out at this size
+/// and exported 1080 px wide (#1374 TO-3).
+const Size kRouteShareCanvas = Size(360, 640);
+
 class RouteShareCard extends StatelessWidget {
   final cm.Route route;
   final Preferences preferences;

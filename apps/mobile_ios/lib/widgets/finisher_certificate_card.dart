@@ -11,7 +11,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../share_sheet.dart';
-import 'capture_png.dart';
+import 'share_canvas.dart';
 import 'top_banner.dart';
 
 /// Opens a modal sheet showing the finisher certificate for an eligible
@@ -80,7 +80,8 @@ class _CertificateSheetState extends State<_CertificateSheet> {
     setState(() => _capturing = true);
     try {
       await WidgetsBinding.instance.endOfFrame;
-      final bytes = await capturePngBytes(_cardKey);
+      final bytes = await captureShareCanvas(_cardKey,
+          canvasSize: kFinisherCertificateCanvas, widthPx: 1400);
 
       final safe = widget.eventTitle
           .replaceAll(RegExp('[^A-Za-z0-9]+'), '-')
@@ -129,19 +130,17 @@ class _CertificateSheetState extends State<_CertificateSheet> {
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: AspectRatio(
-                  aspectRatio: 1400 / 990,
-                  child: RepaintBoundary(
-                    key: _cardKey,
-                    child: FinisherCertificateCard(
-                      eventTitle: widget.eventTitle,
-                      finisherName: widget.finisherName,
-                      durationS: widget.durationS,
-                      distanceM: widget.distanceM,
-                      rank: widget.rank,
-                      date: widget.date,
-                      clubName: widget.clubName,
-                    ),
+                child: ShareCanvas(
+                  canvasSize: kFinisherCertificateCanvas,
+                  captureKey: _cardKey,
+                  child: FinisherCertificateCard(
+                    eventTitle: widget.eventTitle,
+                    finisherName: widget.finisherName,
+                    durationS: widget.durationS,
+                    distanceM: widget.distanceM,
+                    rank: widget.rank,
+                    date: widget.date,
+                    clubName: widget.clubName,
                   ),
                 ),
               ),
@@ -176,6 +175,10 @@ class _CertificateSheetState extends State<_CertificateSheet> {
 /// distance + placing beneath. Wrap in a [RepaintBoundary] and grab via
 /// [RenderRepaintBoundary.toImage] to share as a PNG. Designed for a
 /// 1400:990 aspect ratio (web's CERT_WIDTH:CERT_HEIGHT).
+/// The finisher certificate's canvas: the 1400 x 990 print aspect, laid out
+/// at this size and exported 1400 px wide (#1374 TO-3).
+const Size kFinisherCertificateCanvas = Size(700, 495);
+
 class FinisherCertificateCard extends StatelessWidget {
   final String eventTitle;
   final String finisherName;

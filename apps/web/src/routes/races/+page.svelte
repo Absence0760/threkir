@@ -339,7 +339,7 @@
 		type="button"
 		class="chip active removable"
 		onclick={clearNear}
-		aria-label={m('races.removeFilter', { filter: `${m('discover.nearLabel')}: ${nearLabel}` })}
+		aria-label={m('filterBar.removeFilter', { filter: `${m('discover.nearLabel')}: ${nearLabel}` })}
 		data-testid="races-near-clear"
 	>
 		<span>{m('discover.nearLabel')}: {nearLabel}</span>
@@ -418,12 +418,12 @@
 						class:active={activeCount > 0}
 						aria-expanded={filtersOpen}
 						aria-controls="races-filters-panel"
-						aria-label={activeCount > 0 ? m('races.filtersCount', { count: activeCount }) : m('races.filters')}
+						aria-label={activeCount > 0 ? m('filterBar.filtersCount', { count: activeCount }) : m('filterBar.filters')}
 						onclick={() => (filtersOpen = !filtersOpen)}
 						data-testid="races-filters-toggle"
 					>
 						<span class="material-symbols" aria-hidden="true">tune</span>
-						<span>{m('races.filters')}</span>
+						<span>{m('filterBar.filters')}</span>
 						{#if activeCount > 0}
 							<span class="filter-count" aria-hidden="true" data-testid="races-filter-count">{activeCount}</span>
 						{/if}
@@ -437,7 +437,7 @@
 								type="button"
 								class="chip active removable"
 								onclick={() => (when = 'upcoming')}
-								aria-label={m('races.removeFilter', { filter: m('races.whenRecent') })}
+								aria-label={m('filterBar.removeFilter', { filter: m('races.whenRecent') })}
 								data-testid="races-chip-when"
 							>
 								<span>{m('races.whenRecent')}</span>
@@ -449,7 +449,7 @@
 								type="button"
 								class="chip active removable"
 								onclick={() => (distance = '')}
-								aria-label={m('races.removeFilter', { filter: distanceLabel })}
+								aria-label={m('filterBar.removeFilter', { filter: distanceLabel })}
 								data-testid="races-chip-distance"
 							>
 								<span>{distanceLabel}</span>

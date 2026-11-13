@@ -31,7 +31,7 @@ const LEFT: Record<string, number> = {
 	'lib/components/SocialPeople.svelte': 2,
 	'lib/components/TimelineDayList.svelte': 1,
 	'routes/clubs/[slug]/+page.svelte': 2,
-	'routes/dashboard/+page.svelte': 3,
+	'routes/dashboard/DashboardView.svelte': 3,
 	'routes/guided/+page.svelte': 1,
 	'routes/gym/records/+page.svelte': 1,
 	'routes/help/+page.svelte': 1,

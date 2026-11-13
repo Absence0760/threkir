@@ -33,6 +33,7 @@ import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
 import '../widgets/ai_disclosure_notice.dart';
+import '../widgets/confirm_discard.dart';
 import '../widgets/metric_label.dart';
 import '../widgets/plan_import_sheet.dart';
 import '../widgets/plan_overlap_dialog.dart';
@@ -262,6 +263,30 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   // race the new description no longer mentions; a date the runner picked by
   // hand is left alone.
   DateTime? _aiRaceStart;
+
+  /// The form as it opened, presets and default name applied; Back asks
+  /// before throwing away anything that differs from it (issue #1374 NS-6).
+  String? _initialSnapshot;
+
+  String _snapshot() => [
+    _nameCtrl.text,
+    _goalHoursCtrl.text,
+    _goalMinutesCtrl.text,
+    _goalSecondsCtrl.text,
+    _recent5kMinCtrl.text,
+    _recent5kSecCtrl.text,
+    _weekOverrideCtrl.text,
+    _aiCtrl.text,
+    _ultraDistanceCtrl.text,
+    _goal.name,
+    _ultraChoice ?? '',
+    _startDate.toIso8601String(),
+    _daysPerWeek,
+    _recent5kConfirmed,
+    _beginnerWalkRun,
+    _startingPoint.name,
+    _easeBack,
+  ].join('\u0000');
 
   /// The race day the dates were preset around and the race's name: the plan
   /// ends on that day with the race as its one A race (#1294).
@@ -659,6 +684,11 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _defaultName();
+    _initialSnapshot ??= _snapshot();
+  }
+
+  void _defaultName() {
     // When the wizard opens preselected to a goal (the onboarding "create my
     // training plan" nudge) the name field would otherwise be empty, leaving
     // the Create button silently disabled on arrival — a dead-end tap. Seed a
@@ -1053,11 +1083,20 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             !_beginnerWalkRun
         ? goalAheadOfRecentRuns(_goalDistanceM, _goalTimeSec, _efforts)
         : null;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.planNewTitle)),
-      body: ListView(
+    return DiscardGuard(
+      isDirty: () => _initialSnapshot != null && _snapshot() != _initialSnapshot,
+      isBusy: () => _busy || _cloning || _creatingStarter,
+      child: EditorPage(
+        title: l10n.planNewTitle,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
+        save: EditorSave(
+          key: const Key('plan-new-create'),
+          label: _busy ? l10n.planNewCreating : l10n.planNewCreate,
+          busy: _busy,
+          onPressed: canCreate ? _submit : null,
+        ),
+        status: _actionStatus(theme, l10n, preview, tag),
+        fields: [
           if (_aiPlanAvailable) ...[
             _aiCard(theme, l10n),
             const SizedBox(height: 12),
@@ -1067,9 +1106,16 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           Row(
             children: [
               const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(l10n.planNewBuildOwn, style: muted),
+              Flexible(
+                flex: 4,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    l10n.planNewBuildOwn,
+                    style: muted,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
               const Expanded(child: Divider()),
             ],
@@ -1403,30 +1449,21 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           if (preview != null) _buildPreview(theme, l10n, preview),
         ],
       ),
-      bottomNavigationBar: _actionBar(theme, l10n, preview, canCreate, tag),
     );
   }
 
-  /// Cancel and Create, pinned under the form so neither scrolls out of
-  /// sight, with the plan's length and end date beside them and a create
-  /// failure announced right above.
-  Widget _actionBar(
+  /// Above the pinned Create: the plan's length and end date, and a create
+  /// failure announced where it cannot scroll out of sight.
+  Widget? _actionStatus(
     ThemeData theme,
     AppLocalizations l10n,
     GeneratedPlan? preview,
-    bool canCreate,
     String tag,
   ) {
     final error = _error;
-    return Material(
-      elevation: 3,
-      color: theme.colorScheme.surfaceContainer,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    if (error == null && preview == null) return null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (error != null)
@@ -1463,42 +1500,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                     ),
                   ),
                 ),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(l10n.planNewCancel),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: canCreate ? _submit : null,
-                      child: _busy
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(child: Text(l10n.planNewCreating)),
-                              ],
-                            )
-                          : Text(l10n.planNewCreate),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+              ],
+            );
   }
 
   String _aiAssumptionLabel(AppLocalizations l10n, PlanRequestAssumption a) =>
@@ -2000,10 +2003,12 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          Flexible(
+            child: Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(width: 4),

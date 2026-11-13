@@ -50,7 +50,7 @@ Sample test scope (the first two bullets are what runs today):
 - App cold-launches to onboarding.
 - Permission rationale dialog renders.
 - Sign-in flow completes with the seed user against a `--dart-define=SUPABASE_URL=http://10.0.2.2:24321` stack started by the CI workflow.
-- Tap "Start run" → expect run-screen widget tree.
+- Tap the centre button captioned "Start run" → expect the idle Run page, where the same button now reads "Start"; tap it → expect the 3-2-1 countdown, with the button reading "Cancel" (decisions § 2492).
 
 Per-PR cost: ~15–20 min on an Ubuntu runner (free quota), one full APK build + one emulator boot + the test run. The biggest single time-sink is the emulator boot — `reactivecircus/android-emulator-runner` caches AVD snapshots between runs to amortise that.
 

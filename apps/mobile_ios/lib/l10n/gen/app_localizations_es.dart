@@ -303,7 +303,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Esta copia de seguridad se hizo con una versión más reciente de la app. Actualiza la app y luego restáurala.';
 
   @override
-  String get importStatusRestoringBackup => 'Restaurando copia de seguridad...';
+  String get importStatusRestoringBackup => 'Restaurando copia de seguridad…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {

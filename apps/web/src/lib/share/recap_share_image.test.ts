@@ -126,7 +126,7 @@ test('a story is 1080x1920 with the same stats and the site address', () => {
 test('a German reader gets the German card, not the English one', () => {
 	const svg = buildRecapShareSvg(recapCardText(recap(), 'km', tIn(de, 'de'), { locale: 'de' }));
 	assert.ok(svg.includes('MEIN LAUFJAHR 2026'));
-	assert.ok(svg.includes('über 142 Läufe'));
+	assert.ok(svg.includes('in 142 Läufen'));
 	assert.ok(svg.includes('LÄNGSTER LAUF'));
 	assert.ok(svg.includes('21 Tage'));
 	assert.ok(svg.includes('12.345 m'));

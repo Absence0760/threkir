@@ -292,7 +292,7 @@ class AppLocalizationsJa extends AppLocalizations {
       'このバックアップは新しいバージョンのアプリで作成されています。アプリを更新してから復元してください。';
 
   @override
-  String get importStatusRestoringBackup => 'バックアップを復元中...';
+  String get importStatusRestoringBackup => 'バックアップを復元中…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
@@ -15826,7 +15826,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get lineCalibrationOffsetLabel => '時計のずれ（ms）';
 
   @override
-  String get lineCalibrationOffsetHelper => 'サーバー − 端末';
+  String get lineCalibrationOffsetHelper => 'サーバー − デバイス';
 
   @override
   String get lineCalibrationApproachLabel => '進入角';
@@ -15877,7 +15877,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get lineCalibrationInstantsHelper =>
-      '1行に1つ。時刻はキャプチャ当日のこの端末のタイムゾーンで解釈されます。日付をまたぐ場合や基準時計がUTCを表示している場合は、タイムゾーン付きのISO時刻を入力してください。';
+      '1行に1つ。時刻はキャプチャ当日のこのスマートフォンのタイムゾーンで解釈されます。日付をまたぐ場合や基準時計がUTCを表示している場合は、タイムゾーン付きのISO時刻を入力してください。';
 
   @override
   String get lineCalibrationClockFailed => 'サーバー時計に接続できませんでした。ずれを手動で入力してください。';
@@ -17749,7 +17749,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventFormChargeHint =>
-      '参加登録時に参加費を受け取ります。お金はクラブではなく自分の受け取りアカウントに入金され、対面イベントだけが課金できます。';
+      '参加登録時に参加費を受け取ります。お金はクラブではなく自分の受け取りアカウントに入金されます。参加費を設定できるのは対面イベントだけです。';
 
   @override
   String get eventFormChargeNeedsPayout => 'イベントを有料にするには、ウェブで受け取り口座を設定してください。';
@@ -20056,7 +20056,7 @@ class AppLocalizationsJa extends AppLocalizations {
       'プランが年齢に合わせて生年月日を使うには、健康データの利用への同意が必要です。';
 
   @override
-  String get planNewDobHintHealthDataAction => '同意を確認';
+  String get planNewDobHintHealthDataAction => '同意内容を確認する';
 
   @override
   String get messagesAiTag => 'AI';
@@ -20358,7 +20358,7 @@ class AppLocalizationsJa extends AppLocalizations {
       '心拍数は健康データです。表示するには、健康データの利用に同意してください。';
 
   @override
-  String get streamerOverlayReviewConsent => '同意を確認';
+  String get streamerOverlayReviewConsent => '同意内容を確認する';
 
   @override
   String get streamerOverlaySettingsSaved => 'オーバーレイの設定を保存しました';
@@ -21993,7 +21993,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsInviteDeclineConfirmTitle(String title) {
-    return '$titleへの招待を辞退しますか?';
+    return '$titleへの招待を辞退しますか？';
   }
 
   @override
@@ -22107,7 +22107,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsLeaveConfirmTitle(String title) {
-    return '$titleから退出しますか?';
+    return '$titleから退出しますか？';
   }
 
   @override
@@ -22178,7 +22178,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsTransferConfirmTitle(String name) {
-    return '$nameさんをオーナーにしますか?';
+    return '$nameさんをオーナーにしますか？';
   }
 
   @override
@@ -22195,7 +22195,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsRemoveConfirmTitle(String name) {
-    return '$nameさんをグループから削除しますか?';
+    return '$nameさんをグループから削除しますか？';
   }
 
   @override
@@ -22212,7 +22212,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsCancelInviteConfirmTitle(String name) {
-    return '$nameさんへの招待を取り消しますか?';
+    return '$nameさんへの招待を取り消しますか？';
   }
 
   @override

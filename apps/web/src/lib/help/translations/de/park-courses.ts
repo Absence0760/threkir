@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'park-courses',
 	title: "Parkstrecken: Kontrollpunkte, Saisons, Monate und Bestenlisten",
-	summary: "Wie eine Parkstrecke deinen Lauf misst, warum jeder Kontrollpunkt zählt, wann eine Saison und ein Monat beginnen und wie die Listen Schnellste und Meiste Läufe ranken.",
+	summary: "Wie eine Parkstrecke deinen Lauf misst, warum jeder Kontrollpunkt zählt, wann eine Saison und ein Monat beginnen und wie die Listen Schnellste und Meiste Läufe die Rangfolge bilden.",
 	sections: [
 		{
 			heading: "Was eine Parkstrecke ist",
@@ -63,7 +63,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"Wähle **Dieser Monat**, um den bisherigen Monat zu sehen, und blättere mit den Pfeilen neben dem Monatsnamen zu früheren Monaten zurück.",
 						"Jede Strecke auf der Seite eines Parks zeigt, wie viele Personen sie diesen Monat gelaufen sind.",
-						"Eine Parkstrecken-Zeit auf der Seite deines Laufs zeigt ihren Platz in diesem Monat und in diesem Jahr, etwa Platz 2 im November, Platz 9 in 2026. Der Sticker **Parkstrecke** auf einem geteilten Bild zeigt den Platz im Monat und auch den Platz im Jahr, wenn er unter den ersten 10 ist.",
+						"Eine Parkstrecken-Zeit auf der Seite deines Laufs zeigt ihren Platz in diesem Monat und in diesem Jahr, etwa Platz 2 im November, Platz 9 im Jahr 2026. Der Sticker **Parkstrecke** auf einem geteilten Bild zeigt den Platz im Monat und auch den Platz im Jahr, wenn er unter den ersten 10 ist.",
 						"Wenn dort, wo der Park liegt, ein Monat endet, bekommst du im Posteingang eine Nachricht mit deiner Bestzeit aus dem Monat auf jeder Strecke, die du gelaufen bist. Schalte sie mit **Parkstrecken-Monate** aus: im Web unter [[route:/settings/notifications|Benachrichtigungen]], in der Handy-App unter **Benachrichtigungen** im Tab **Du**.",
 						"Die Abzeichen für Parkmonate zählen die Monate, in denen du eine Parkstrecke absolviert hast, bei 3, 6, 12 und 24 Monaten. Sie zählen absolvierte Strecken, nie Platzierungen.",
 					],

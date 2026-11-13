@@ -300,7 +300,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This backup was made by a newer version of the app. Update the app, then restore it.';
 
   @override
-  String get importStatusRestoringBackup => 'Restoring backup...';
+  String get importStatusRestoringBackup => 'Restoring backup…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {

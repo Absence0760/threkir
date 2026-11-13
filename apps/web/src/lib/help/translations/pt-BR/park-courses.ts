@@ -2,8 +2,8 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'park-courses',
-	title: "Percursos de parques: pontos de controle, temporadas, meses e rankings",
-	summary: "Como um percurso de parque cronometra a sua corrida, por que cada ponto de controle conta, quando uma temporada e um mês começam e como os rankings Mais rápidos e Mais conclusões classificam.",
+	title: "Percursos de parques: pontos de controle, temporadas, meses e classificações",
+	summary: "Como um percurso de parque cronometra sua corrida, por que cada ponto de controle conta, quando começam a temporada e o mês e como as classificações Mais rápidos e Mais conclusões ordenam corredores.",
 	sections: [
 		{
 			heading: "O que é um percurso de parque",
@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 						"O **Guia do percurso** na página do percurso mostra onde estacionar e cada conversão na ordem, com o nome da trilha, além das pontes, vaus, mudanças de piso e subidas. Ele é feito a partir de dados do mapa; enquanto ninguém o conferir no parque, isso aparece acima da lista. O mesmo guia vai no arquivo GPX do percurso.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Um percurso fechado não recebe tempos novos: uma corrida nele enquanto está fechado não é cronometrada, e os tempos que ele já tem continuam nos rankings. Não corra nele até que reabra. A página mostra quando o status foi verificado pela última vez." },
+				{ type: 'note', tone: 'caution', text: "Um percurso fechado não recebe tempos novos: uma corrida nele enquanto está fechado não é cronometrada, e os tempos que ele já tem continuam nas classificações. Não corra nele até que reabra. A página mostra quando o status foi verificado pela última vez." },
 			],
 		},
 		{
@@ -31,33 +31,33 @@ export const translation: GuideTranslation = {
 		{
 			heading: "As temporadas seguem o relógio do parque",
 			blocks: [
-				{ type: 'p', text: "Uma temporada é um ano civil no fuso horário do parque, não no seu. Os rankings recomeçam à meia-noite de 1º de janeiro onde o parque fica." },
+				{ type: 'p', text: "Uma temporada é um ano civil no fuso horário do parque, não no seu. As classificações recomeçam à meia-noite de 1º de janeiro onde o parque fica." },
 				{ type: 'p', text: "Por exemplo, uma corrida que começa às 22:00 de 31 de dezembro em um parque da Virgínia conta para aquele ano, mesmo que o seu celular esteja em um fuso onde já é 1º de janeiro." },
 			],
 		},
 		{
-			heading: "O ranking Mais rápidos",
+			heading: "A classificação Mais rápidos",
 			blocks: [
 				{
 					type: 'list',
 					items: [
 						"**Mais rápidos** ordena cada corredor pelo seu melhor tempo no percurso. Você aparece uma vez, com a sua melhor corrida.",
-						"Por padrão ele mostra este ano. Selecione **Este mês** para ver o mês até agora, ou **Todos os tempos** para ver os melhores tempos de todos os tempos.",
-						"Filtre por gênero ou faixa etária. O filtro de idade só inclui quem concordou em compartilhar dados de saúde, então pode ser menor que o ranking completo.",
+						"Por padrão ela mostra este ano. Selecione **Este mês** para ver o mês até agora, ou **Todos os tempos** para ver os melhores tempos de todos os tempos.",
+						"Filtre por gênero ou faixa etária. O filtro de idade só inclui quem concordou em compartilhar dados de saúde, então pode ser menor que a classificação completa.",
 					],
 				},
 			],
 		},
 		{
-			heading: "O ranking Mais conclusões",
+			heading: "A classificação Mais conclusões",
 			blocks: [
-				{ type: 'p', text: "**Mais conclusões** premia quem volta sempre. Ele conta os dias em que você concluiu o percurso, no fuso horário do parque, então várias voltas no mesmo dia contam como uma." },
+				{ type: 'p', text: "**Mais conclusões** premia quem volta sempre. Ela conta os dias em que você concluiu o percurso, no fuso horário do parque, então várias voltas no mesmo dia contam como uma." },
 			],
 		},
 		{
-			heading: "Meses: um ranking novo todo mês",
+			heading: "Meses: uma classificação nova todo mês",
 			blocks: [
-				{ type: 'p', text: "Os dois rankings também funcionam mês a mês. Um mês é um mês do calendário no fuso horário do parque, da meia-noite do dia 1 à meia-noite do dia 1 do mês seguinte, então uma corrida às 23:30 de 31 de outubro no horário do parque conta para outubro." },
+				{ type: 'p', text: "As duas classificações também funcionam mês a mês. Um mês é um mês do calendário no fuso horário do parque, da meia-noite do dia 1 à meia-noite do dia 1 do mês seguinte, então uma corrida às 23:30 de 31 de outubro no horário do parque conta para outubro." },
 				{
 					type: 'list',
 					items: [
@@ -65,23 +65,23 @@ export const translation: GuideTranslation = {
 						"Cada percurso na página de um parque mostra quantas pessoas o correram este mês.",
 						"Um tempo em um percurso de parque, na página da sua corrida, mostra a posição naquele mês e naquele ano, por exemplo N.º 2 em novembro, n.º 9 em 2026. O adesivo **Percurso de parque** de uma imagem compartilhada mostra a posição do mês, e também a do ano quando ela está entre as 10 primeiras.",
 						"Quando um mês termina no horário do parque, você recebe na caixa de entrada um aviso com seu melhor tempo daquele mês em cada percurso que correu. Desative com **Meses nos percursos de parque**: na web, em [[route:/settings/notifications|Notificações]]; no app do celular, em **Notificações** na aba **Você**.",
-						"Os emblemas de meses de parque contam os meses em que você concluiu um percurso de parque, aos 3, 6, 12 e 24 meses. Contam conclusões, nunca posições.",
+						"As medalhas de meses de parque contam os meses em que você concluiu um percurso de parque, aos 3, 6, 12 e 24 meses. Contam conclusões, nunca posições.",
 					],
 				},
 			],
 		},
 		{
-			heading: "Quem aparece nos rankings",
+			heading: "Quem aparece nas classificações",
 			blocks: [
 				{
 					type: 'list',
 					items: [
-						"Você precisa estar conectado para ver os rankings. Sem entrar na conta, a página do percurso ainda mostra o percurso e um link **Entrar**.",
+						"Você precisa estar conectado para ver as classificações. Sem entrar na conta, a página do percurso ainda mostra o percurso e um link **Entrar**.",
 						"O tempo de uma corrida que outras pessoas não podem ver não é mostrado a elas.",
 						"Você não vê as pessoas que bloqueou, e elas não veem você.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Uma corrida é comparada com os percursos de parque nos nossos servidores logo depois de ser salva ou importada, de qualquer dispositivo. Um novo tempo pode levar alguns minutos para aparecer em um ranking." },
+				{ type: 'note', tone: 'caution', text: "Uma corrida é comparada com os percursos de parque nos nossos servidores logo depois de ser salva ou importada, de qualquer dispositivo. Um novo tempo pode levar alguns minutos para aparecer em uma classificação." },
 			],
 		},
 	],

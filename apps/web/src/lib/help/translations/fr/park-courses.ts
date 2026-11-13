@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						"**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure course.",
-						"Il affiche cette année par défaut. Sélectionnez **Ce mois-ci** pour le mois en cours, ou **Depuis toujours** pour les meilleurs temps de tous les temps.",
+						"Il affiche cette année par défaut. Sélectionnez **Ce mois-ci** pour le mois en cours, ou **Depuis toujours** pour les meilleurs temps jamais réalisés.",
 						"Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont accepté de partager leurs données de santé, il peut donc être plus court que le classement complet.",
 					],
 				},

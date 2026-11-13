@@ -126,8 +126,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'über $count Läufe',
-      one: 'über $count Lauf',
+      other: 'in $count Läufen',
+      one: 'in $count Lauf',
     );
     return '$_temp0';
   }
@@ -304,7 +304,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieses Backup wurde mit einer neueren Version der App erstellt. Aktualisiere die App und stelle es dann wieder her.';
 
   @override
-  String get importStatusRestoringBackup => 'Backup wird wiederhergestellt...';
+  String get importStatusRestoringBackup => 'Backup wird wiederhergestellt…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
@@ -3570,7 +3570,7 @@ class AppLocalizationsDe extends AppLocalizations {
     String seasonRank,
     String season,
   ) {
-    return 'Platz $monthRank im $month, Platz $seasonRank in $season';
+    return 'Platz $monthRank im $month, Platz $seasonRank im Jahr $season';
   }
 
   @override
@@ -19273,7 +19273,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Folge $name, um die Läufe zu sehen und wem diese Person folgt. Diese Person bestätigt jede Anfrage einzeln.';
+    return 'Folge $name, um die Läufe dieser Person zu sehen und wem sie folgt. Diese Person bestätigt jede Anfrage einzeln.';
   }
 
   @override
@@ -21507,7 +21507,7 @@ class AppLocalizationsDe extends AppLocalizations {
     String seasonRank,
     String season,
   ) {
-    return 'Platz $monthRank im $month · Platz $seasonRank in $season';
+    return 'Platz $monthRank im $month · Platz $seasonRank im Jahr $season';
   }
 
   @override
@@ -22934,7 +22934,7 @@ class AppLocalizationsDe extends AppLocalizations {
     String month,
     String time,
   ) {
-    return '$course: Die Wertung für $month ist abgeschlossen. Deine Bestzeit: $time';
+    return '$course: Die Bestenliste für $month ist abgeschlossen. Deine Bestzeit: $time';
   }
 
   @override

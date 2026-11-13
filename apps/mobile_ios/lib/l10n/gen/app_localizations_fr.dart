@@ -22959,7 +22959,7 @@ class AppLocalizationsFr extends AppLocalizations {
     String month,
     String time,
   ) {
-    return '$course : le classement de $month est clos. Votre meilleur temps : $time';
+    return '$course : le classement du mois est clos ($month). Votre meilleur temps : $time';
   }
 
   @override

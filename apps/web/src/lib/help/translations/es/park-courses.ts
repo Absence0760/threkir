@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'park-courses',
 	title: "Recorridos de parques: puntos de control, temporadas, meses y clasificaciones",
-	summary: "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empiezan una temporada y un mes y cómo ordenan Más rápidos y Más completados.",
+	summary: "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empiezan una temporada y un mes y cómo ordenan a los corredores Más rápidos y Más completados.",
 	sections: [
 		{
 			heading: "Qué es un recorrido de parque",

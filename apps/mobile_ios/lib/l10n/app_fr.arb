@@ -6270,7 +6270,7 @@
   "parkCourseReportErrorEmailRequired": "Une demande d'un titulaire de droits nécessite une adresse e-mail pour que nous puissions y répondre.",
   "profileNotifParkCourseReport": "Un parcours de parc a été signalé",
   "profileNotifParkCourseMonthClosed": "Un mois s'est terminé sur un parcours de parc que vous avez couru",
-  "profileNotifParkCourseMonthClosedNamed": "{course} : le classement de {month} est clos. Votre meilleur temps : {time}",
+  "profileNotifParkCourseMonthClosedNamed": "{course} : le classement du mois est clos ({month}). Votre meilleur temps : {time}",
   "rateLimitReaction": "Vous réagissez trop rapidement — veuillez patienter {wait} et réessayer.",
   "rateLimitPhotoUpload": "Vous avez envoyé beaucoup de photos — veuillez patienter {wait} et réessayer.",
   "rateLimitCreateGroup": "Vous créez des groupes trop vite — veuillez patienter {wait} et réessayer.",

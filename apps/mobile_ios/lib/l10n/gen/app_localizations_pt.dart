@@ -7755,7 +7755,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailAdaptiveFitnessHeld =>
-      'Pausado — está a acumular fadiga agora, por isso não é recomendado aumentar o volume.';
+      'Ajuste suspenso — está a acumular fadiga neste momento, por isso não é recomendado aumentar o volume.';
 
   @override
   String get planDetailAdaptiveReasonUnder =>
@@ -8678,7 +8678,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'As informações passaram a abranger mais funcionalidades. Leia-as e aceite-as para utilizar todas as funcionalidades de IA que descrevem.';
 
   @override
-  String get settingsAccountAiConsentGrantTitle => 'Ver o aviso de IA';
+  String get settingsAccountAiConsentGrantTitle => 'Rever o aviso de IA';
 
   @override
   String get settingsAccountAiConsentGrantSubtitle =>
@@ -23721,7 +23721,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Este backup foi feito por uma versão mais recente do app. Atualize o app e depois restaure-o.';
 
   @override
-  String get importStatusRestoringBackup => 'Restaurando backup...';
+  String get importStatusRestoringBackup => 'Restaurando backup…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
@@ -26342,7 +26342,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String historySourceLabel(String source) {
-    return 'Fonte: $source';
+    return 'Origem: $source';
   }
 
   @override
@@ -27955,7 +27955,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailEnhanceUpgradeHint =>
-      'Descrições com IA são um recurso Pro.';
+      'As descrições por IA são um recurso Pro.';
 
   @override
   String get routeDetailDescShapeLoop => 'em circuito';
@@ -28249,9 +28249,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other:
-          '$count esforços de outros corredores nos segmentos dela serão excluídos.',
+          '$count tentativas de outros corredores nos segmentos dela serão excluídas.',
       one:
-          '$count esforço de outros corredores nos segmentos dela será excluído.',
+          '$count tentativa de outros corredores nos segmentos dela será excluída.',
     );
     return '$_temp0';
   }
@@ -34142,7 +34142,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Baseado em volume — defina FC de repouso e máxima e grave com uma cinta para mudar para TRIMP.';
+      'Baseado em volume — defina FC em repouso e máxima e grave com uma cinta para mudar para TRIMP.';
 
   @override
   String get trainingLoadSetHeartRate => 'Definir frequência cardíaca';
@@ -34643,7 +34643,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Os segmentos são associados por rota — vincule esta corrida a uma rota salva para competir nas classificações dela.';
 
   @override
-  String get runSegEffortsEmpty => 'Nenhum esforço de segmento nesta corrida.';
+  String get runSegEffortsEmpty =>
+      'Nenhuma tentativa de segmento nesta corrida.';
 
   @override
   String get workoutReviewTitle => 'Treino';
@@ -34805,11 +34806,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get segmentsPanelLeaderboardEmptyFiltered =>
-      'Nenhum esforço corresponde a este filtro — tente ampliá-lo.';
+      'Nenhuma tentativa corresponde a este filtro — tente ampliá-lo.';
 
   @override
   String get segmentsPanelLeaderboardEmpty =>
-      'Ainda não há esforços — seja o primeiro a correr este segmento.';
+      'Ainda não há tentativas — seja o primeiro a correr este segmento.';
 
   @override
   String get segmentOldMatchNote =>
@@ -38814,7 +38815,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get challengesBadgeEarned => 'Emblema conquistado';
+  String get challengesBadgeEarned => 'Medalha conquistada';
 
   @override
   String challengesUnitDays(int n) {
@@ -39982,7 +39983,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get lineCalibrationLngLabel => 'Longitude do centro da linha';
 
   @override
-  String get lineCalibrationBearingLabel => 'Rumo do percurso (graus)';
+  String get lineCalibrationBearingLabel => 'Rumo de deslocamento (graus)';
 
   @override
   String get lineCalibrationHalfWidthLabel => 'Meia largura (m)';
@@ -40067,7 +40068,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get lineCalibrationLineMissing =>
-      'Insira a linha: centro, direção de deslocamento e meia largura.';
+      'Insira a linha: centro, rumo de deslocamento e meia largura.';
 
   @override
   String get lineCalibrationOffsetMissing =>
@@ -45449,7 +45450,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksSharedUseSaturdayMorningGroup =>
-      'Grupos organizados usam estas trilhas aos sábados de manhã. Dê passagem e evite cronometrar um esforço no meio deles.';
+      'Grupos organizados usam estas trilhas aos sábados de manhã. Dê passagem e evite cronometrar uma tentativa no meio deles.';
 
   @override
   String get parksAttributionOsm =>
@@ -46807,7 +46808,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get filterBarSort => 'Ordenar';
 
   @override
-  String get filterBarSource => 'Fonte';
+  String get filterBarSource => 'Origem';
 
   @override
   String get runsSearchHint => 'Buscar corridas pelo nome';

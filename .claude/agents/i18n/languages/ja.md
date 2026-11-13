@@ -40,7 +40,7 @@ names stay in Latin script.
 
 ## Typography
 
-- Full stop 「。」, comma 「、」; question 「？」 and exclamation 「！」 full-width
+- Full stop 「。」, comma 「、」; question 「？」 and exclamation 「！」 full-width (an ASCII `?` or `!` right after Japanese text fails `ja_fullwidth_parens.test.ts` since #1374 round 4; no space follows 「？」 inside a sentence)
   (6 / 10 `！`; ASCII `!` is a slip).
 - Quotes **「…」**, always, with no space between 」 and the particle after it, e.g.
   `routePickerEmptyNoMatch` 「「{query}」に一致するルートはありません」; 『』 only

@@ -70,7 +70,7 @@
   "importRefusedColumnsMissing": "A la lista de actividades de esta exportación le faltan las columnas necesarias.",
   "importRefusedNotBackup": "Esto no es una copia de seguridad hecha con esta app.",
   "importRefusedBackupTooNew": "Esta copia de seguridad se hizo con una versión más reciente de la app. Actualiza la app y luego restáurala.",
-  "importStatusRestoringBackup": "Restaurando copia de seguridad...",
+  "importStatusRestoringBackup": "Restaurando copia de seguridad…",
   "importStatusBackupRestored": "Restauradas {runs} carreras · {tracks} trazados · {routes} rutas",
   "importBackupFailed": "Error al restaurar la copia de seguridad: {error}",
   "importStatusReadingExport": "Leyendo exportación...",

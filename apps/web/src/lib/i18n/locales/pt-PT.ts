@@ -909,7 +909,7 @@ export const messages = {
 	"plan.overrun": "+{distance}",
 	"plan.overrunAria": "mais {distance} do que o previsto",
 	"planDetail.adaptiveNoSafeChange": "Se desviou do plano recentemente, mas não há um ajuste seguro a fazer agora.",
-	"planDetail.adaptiveFitnessHeld": "Pausado — está a acumular fadiga agora, por isso não é recomendado aumentar o volume.",
+	"planDetail.adaptiveFitnessHeld": "Ajuste suspenso — está a acumular fadiga neste momento, por isso não é recomendado aumentar o volume.",
 	"planDetail.replanDeload": "{from} → {to} — redução de carga enquanto se recupera",
 	"planDetail.adaptiveReasonDeload": "com fadiga profunda",
 	"planDetail.adaptiveReasonUnder": "abaixo do seu plano por várias semanas",

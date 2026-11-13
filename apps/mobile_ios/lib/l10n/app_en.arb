@@ -429,7 +429,7 @@
   "@importRefusedBackupTooNew": {
     "description": "Error detail inside a restore-failed status when the backup was written by a newer app version than this one"
   },
-  "importStatusRestoringBackup": "Restoring backup...",
+  "importStatusRestoringBackup": "Restoring backup…",
   "@importStatusRestoringBackup": {
     "description": "Status while restoring from a full-backup ZIP"
   },

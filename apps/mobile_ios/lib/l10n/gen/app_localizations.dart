@@ -530,7 +530,7 @@ abstract class AppLocalizations {
   /// Status while restoring from a full-backup ZIP
   ///
   /// In en, this message translates to:
-  /// **'Restoring backup...'**
+  /// **'Restoring backup…'**
   String get importStatusRestoringBackup;
 
   /// Status after a successful full-backup restore

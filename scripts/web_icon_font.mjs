@@ -47,6 +47,7 @@
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { dirname, extname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -56,7 +57,21 @@ export const VOCABULARY_FILE = join(REPO_ROOT, 'scripts', 'material_symbols_liga
 export const ASSETS_DIR = join(REPO_ROOT, 'apps', 'web', 'src', 'lib', 'assets');
 export const SUBSET_FONT = join(ASSETS_DIR, 'material-symbols-subset.woff2');
 export const MANIFEST = join(ASSETS_DIR, 'material-symbols-subset.json');
-export const UPSTREAM_PACKAGE = join(REPO_ROOT, 'node_modules', 'material-symbols');
+/// Resolved the way apps/web, which declares it, resolves it: npm workspaces
+/// hoist it to the root `node_modules`, pnpm keeps it under `apps/web`, and a
+/// fixed root path made the generator throw and the upstream-font test skip
+/// on a pnpm install.
+export const UPSTREAM_PACKAGE = (() => {
+	try {
+		return dirname(
+			createRequire(join(REPO_ROOT, 'apps', 'web', 'package.json')).resolve(
+				'material-symbols/package.json',
+			),
+		);
+	} catch {
+		return join(REPO_ROOT, 'node_modules', 'material-symbols');
+	}
+})();
 export const UPSTREAM_FONT = join(UPSTREAM_PACKAGE, 'material-symbols-outlined.woff2');
 
 /// Text sources under apps/web/src that can name an icon. `.svx` and `.md` are

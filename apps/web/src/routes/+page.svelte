@@ -939,7 +939,7 @@
 	/* One dash period (2 + 7) per run, so the last frame is the first. Runs
 	   once the visual is on screen: started at load, it would finish before a
 	   visitor scrolled down to it. */
-	[data-seen] .sync-links path {
+	:global([data-seen]) .sync-links path {
 		animation: flow 1.4s linear 3;
 	}
 
@@ -996,7 +996,7 @@
 
 	/* A ripple that fades out, so it rests hidden rather than snapping back
 	   to a static ring when it ends. */
-	[data-seen] .sync-core::before {
+	:global([data-seen]) .sync-core::before {
 		animation: core-ring 2.4s ease-out 2;
 	}
 
@@ -1112,7 +1112,7 @@
 		box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-primary) 22%, transparent);
 	}
 
-	[data-seen] .day-slot.today {
+	:global([data-seen]) .day-slot.today {
 		animation: today-glow 2.4s ease-in-out 2;
 	}
 
@@ -1188,7 +1188,7 @@
 		background: var(--color-success);
 	}
 
-	[data-seen] .live-dot {
+	:global([data-seen]) .live-dot {
 		animation: live 2s ease-in-out 2;
 	}
 
@@ -1282,16 +1282,16 @@
 		background: rgba(255, 255, 255, 0.06);
 	}
 
-	[data-seen] .topo--apps,
-	[data-seen] .topo--closing {
+	:global([data-seen]) .topo--apps,
+	:global([data-seen]) .topo--closing {
 		animation: topo-drift 5s var(--ease-out) backwards;
 	}
 
-	[data-seen] .closing-glow::before {
+	:global([data-seen]) .closing-glow::before {
 		animation: aurora-b 5s var(--ease-out) backwards;
 	}
 
-	[data-seen] .closing-glow::after {
+	:global([data-seen]) .closing-glow::after {
 		animation: aurora-a 5s var(--ease-out) backwards;
 	}
 

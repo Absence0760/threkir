@@ -1696,14 +1696,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               size: 18,
                               fontSize: 10),
                           const SizedBox(width: 6),
-                          Text(_shownName(l10n, a.displayName, a.userId),
-                              style: theme.textTheme.bodySmall),
+                          // Flexible, so a long name ellipsizes inside the
+                          // chip rather than running past the wrap's edge.
+                          Flexible(
+                            child: Text(
+                                _shownName(l10n, a.displayName, a.userId),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall),
+                          ),
                           if (a.status != 'going') ...[
                             const SizedBox(width: 4),
-                            Text(
-                              l10n.eventAttendeeStatus(a.status),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                            Flexible(
+                              child: Text(
+                                l10n.eventAttendeeStatus(a.status),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
                           ],
@@ -2822,13 +2833,10 @@ class _AdminUpdateComposerState extends State<_AdminUpdateComposer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor),
-      ),
+    return ListCard(
+      margin: EdgeInsets.zero,
+      dense: true,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

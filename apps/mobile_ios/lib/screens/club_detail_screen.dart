@@ -825,13 +825,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   }
 
   Widget _buildPostComposer(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor),
-      ),
+    return ListCard(
+      margin: EdgeInsets.zero,
+      dense: true,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Column(
         children: [
           TextField(

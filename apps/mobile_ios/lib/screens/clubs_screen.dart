@@ -380,21 +380,13 @@ class _ClubTile extends StatelessWidget {
                 // disambiguator.
                 if (c.isVerified) const VerifiedBadge(),
                 if (!(c.isPublic ?? true))
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    child: Text(
-                      AppLocalizations.of(context).clubsBadgePrivate,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        letterSpacing: 0.8,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                  StatusPill(
+                    label: AppLocalizations.of(context).clubsBadgePrivate,
+                    foreground: theme.colorScheme.onSurfaceVariant,
+                    fill: theme.colorScheme.surface,
+                    outline: theme.dividerColor,
+                    icon: Icons.lock_outline,
+                    size: StatusPillSize.compact,
                   ),
               ],
             )

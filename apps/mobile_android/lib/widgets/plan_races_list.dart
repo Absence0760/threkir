@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppRadius;
+import 'package:ui_kit/ui_kit.dart'
+    show AppRadius, ListCard;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -41,13 +42,10 @@ class PlanRacesList extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final tag = localeToTag(Localizations.localeOf(context));
     final next = nextRace(races, todayIso);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
+    return ListCard(
+      margin: EdgeInsets.zero,
+      dense: true,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -57,8 +55,12 @@ class PlanRacesList extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
+          // One reading per race: the card is a semantics container, so
+          // without the merge its rows would read as one block.
           for (final r in races)
-            _row(context, theme, l10n, tag, r, identical(r, next)),
+            MergeSemantics(
+              child: _row(context, theme, l10n, tag, r, identical(r, next)),
+            ),
         ],
       ),
     );

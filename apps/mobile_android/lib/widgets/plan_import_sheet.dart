@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
+import 'package:ui_kit/ui_kit.dart'
+    show ListCard, SheetScaffold;
 
 import '../backend_timeout.dart';
 import '../l10n/date_format.dart';
@@ -236,13 +237,10 @@ class _Preview extends StatelessWidget {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    return Container(
+    return ListCard(
       key: const Key('planImportPreview'),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      margin: EdgeInsets.zero,
+      dense: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

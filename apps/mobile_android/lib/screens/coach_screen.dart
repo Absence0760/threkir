@@ -16,6 +16,7 @@ import 'package:ui_kit/ui_kit.dart'
         PageHeader,
         PushedPage,
         SkeletonBlock,
+        StatusPill,
         reduceMotion,
         syncMotionLoop;
 
@@ -1721,29 +1722,13 @@ class _CoachScreenState extends State<CoachScreen> {
 
   Widget _chip(ColorScheme cs,
       {required IconData icon, required String label, bool muted = false}) {
-    final color = muted ? cs.onSurfaceVariant : cs.onSurface;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          border: Border.all(color: cs.outlineVariant),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(color: color)),
-            ),
-          ],
-        ),
+      child: StatusPill(
+        icon: icon,
+        label: label,
+        foreground: muted ? cs.onSurfaceVariant : cs.onSurface,
+        outline: cs.outlineVariant,
       ),
     );
   }

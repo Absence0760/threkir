@@ -219,12 +219,12 @@ void main() {
           reason: 'mirrors the auto_awesome glyph web pairs with the label');
     });
 
-    test('the toolbar is the title and the overflow, no unlabelled glyphs', () {
+    test('the actions are the overflow alone, no unlabelled glyphs', () {
       // Five unlabelled glyphs once crowded the toolbar. The recap and the
       // coach went first (#666, #921); Feed, the bell and Profile followed
       // when Messages and notifications moved to Social (issue #1374).
       final start = today.indexOf('final actions = <Widget>[');
-      final end = today.indexOf('final actionToolbar', start);
+      final end = today.indexOf('return RootPage(', start);
       expect(start, greaterThan(0));
       expect(end, greaterThan(start));
       final block = today.substring(start, end);
@@ -234,11 +234,14 @@ void main() {
           reason: 'Add run and Import stay in the overflow (decisions § 2281)');
     });
 
-    test('the toolbar names the surface it sits on', () {
-      final at = today.indexOf('final actionToolbar');
-      final block = today.substring(at, at + 600);
-      expect(block.contains('l10n.todayTitle'), isTrue,
-          reason: 'the inline toolbar carries the surface title');
+    test('the title row names the surface it sits on', () {
+      // RootPage draws the title and the actions on one row (decisions
+      // § 2517), so the surface name is the RootPage title.
+      final at = today.indexOf('return RootPage(');
+      expect(at, greaterThan(0));
+      final block = today.substring(at, at + 300);
+      expect(block.contains('title: l10n.todayTitle'), isTrue);
+      expect(block.contains('actions: actions'), isTrue);
     });
   });
 }

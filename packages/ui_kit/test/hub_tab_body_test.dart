@@ -238,6 +238,44 @@ void main() {
       expect(find.text('pushed row'), findsOneWidget);
     });
   });
+
+  testWidgets('the FAB shows its icon only while the list scrolls down, and '
+      'its label again on the way up or at rest at the end', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: _Hub(bodies: [
+        HubTabBody(
+          title: 'Routes',
+          primary:
+              PrimaryAction(label: 'Build', icon: Icons.add, onPressed: () {}),
+          body: ListView(children: [
+            for (var i = 0; i < 40; i++) SizedBox(height: 60, child: Text('row $i')),
+          ]),
+        ),
+      ]),
+    ));
+    await tester.pump();
+    final fab = find.byType(FloatingActionButton);
+    expect(find.descendant(of: fab, matching: find.text('Build')), findsOneWidget);
+
+    final gesture = await tester.startGesture(const Offset(200, 400));
+    await gesture.moveBy(const Offset(0, -200));
+    await tester.pump();
+    expect(find.descendant(of: fab, matching: find.text('Build')), findsNothing,
+        reason: 'collapsed to its icon while the list moves down');
+    expect(find.byTooltip('Build'), findsOneWidget,
+        reason: 'the label becomes the tooltip, so the button keeps its name');
+    await gesture.moveBy(const Offset(0, 80));
+    await tester.pump();
+    expect(find.descendant(of: fab, matching: find.text('Build')), findsOneWidget,
+        reason: 'scrolling back up brings the label back');
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    await tester.fling(find.byType(ListView), const Offset(0, -3000), 3000);
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: fab, matching: find.text('Build')), findsOneWidget,
+        reason: 'at rest at the end the list has scrolled clear of it');
+  });
 }
 
 class _Swap extends StatefulWidget {

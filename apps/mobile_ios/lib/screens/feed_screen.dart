@@ -1,6 +1,7 @@
 import '../widgets/grisnir_moments.dart';
 import '../activity_type_labels.dart';
 import '../engagement_cache.dart';
+import '../fab_clearance.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -323,7 +324,7 @@ class _FeedScreenState extends State<FeedScreen> {
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
-            AppInsets.gutter, AppSpace.md + MediaQuery.paddingOf(context).bottom),
+            AppInsets.gutter, listEndClearance(context)),
         // The window caption leads the list, so it scrolls away with it.
         itemCount: 1 + entries.length + (_exhausted ? 0 : 1),
         separatorBuilder: (_, i) =>

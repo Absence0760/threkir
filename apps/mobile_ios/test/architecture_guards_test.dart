@@ -5834,6 +5834,40 @@ void main() {
               'scroll view, or add the screen to one of the lists above');
     });
 
+    // A hub tab's list sits over the hub's FAB when the tab publishes a
+    // primary action, and always under the shell's docked centre button,
+    // which rises into every page above the bar. A tab body pads its list's
+    // end with fabScrollClearance (it has a primary action) or
+    // listEndClearance (it has none); padding only the system inset left
+    // the last row of Feed, Events and People behind the centre button
+    // (issue #1374). hub_scroll_clearance_test.dart measures it in the frame.
+    test('every hub tab body clears the hub FAB and the docked centre button',
+        () {
+      // Bodies whose subject is a map: MapFirstPage takes the docked button
+      // as its bottomClearance and owns the insets.
+      const mapFirst = {'lib/screens/explore_routes_screen.dart'};
+      final offenders = <String>[];
+      for (final f in Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))) {
+        final src = f.readAsStringSync();
+        if (!src.contains('HubTabBody(') || mapFirst.contains(f.path)) continue;
+        final hasPrimary = RegExp(r'\bprimary:').hasMatch(src);
+        final fab = src.contains('fabScrollClearance(');
+        final end = src.contains('listEndClearance(');
+        if (hasPrimary ? !fab : !(fab || end)) offenders.add(f.path);
+      }
+      expect(offenders, isEmpty,
+          reason: 'pad the end of the tab\'s list with fabScrollClearance '
+              '(a tab with a primary action) or listEndClearance (one with '
+              'none), from fab_clearance.dart');
+      for (final f in mapFirst) {
+        expect(File(f).readAsStringSync(), contains('MapFirstPage('),
+            reason: '$f is exempt only while it is a MapFirstPage');
+      }
+    });
+
     test('no screen hard-codes its own FAB clearance', () {
       final offenders = <String>[];
       for (final f in Directory('lib/screens')

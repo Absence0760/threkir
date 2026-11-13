@@ -114,7 +114,7 @@ Future<void> _pumpHome(WidgetTester tester, _Stores s,
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: DashboardScreen(
+    home: TodayScreen(
       apiClient: null,
       training: null,
       runStore: s.runStore,

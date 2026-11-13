@@ -135,7 +135,7 @@ Future<({Preferences prefs, Directory dir})> _mount(
               preferences: prefs,
               training: training,
             )
-          : DashboardScreen(
+          : TodayScreen(
               runStore: runStore,
               routeStore: LocalRouteStore(),
               gymStore: LocalGymStore(),

@@ -205,7 +205,7 @@ Future<void> _pump(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
+      home: TodayScreen(
         apiClient: api,
         training: training,
         runStore: s.runStore,

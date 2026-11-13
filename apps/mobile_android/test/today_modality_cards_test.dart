@@ -59,7 +59,7 @@ Future<void> _pump(WidgetTester tester, dynamic s) async {
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
+      home: TodayScreen(
         apiClient: null,
         training: null,
         runStore: s.runStore,

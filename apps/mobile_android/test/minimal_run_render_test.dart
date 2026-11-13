@@ -313,7 +313,7 @@ void main() {
               gymStore: gymStore,
               preferences: prefs,
             )
-          : DashboardScreen(
+          : TodayScreen(
               runStore: runStore,
               routeStore: LocalRouteStore(),
               gymStore: gymStore,

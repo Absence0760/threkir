@@ -85,7 +85,7 @@ Future<void> _mount(WidgetTester tester, SocialService social,
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
+      home: TodayScreen(
         runStore: runStore,
         routeStore: LocalRouteStore(),
         gymStore: LocalGymStore(),

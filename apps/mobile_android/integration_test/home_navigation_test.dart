@@ -19,7 +19,7 @@ void main() {
     await pumpUntilFound(tester, find.byType(BottomAppBar),
         describe: 'the cold launch to reach the Home shell');
     final l10n = l10nOf(tester, find.byType(HomeScreen));
-    await pumpUntilFound(tester, find.byType(DashboardScreen).hitTestable(),
+    await pumpUntilFound(tester, find.byType(TodayScreen).hitTestable(),
         describe: 'the dashboard to be the visible page');
 
     Finder navItem(String label) => find.descendant(
@@ -37,7 +37,7 @@ void main() {
     final stops = <(String, Type)>[
       (l10n.navYou, YouScreen),
       (hubLabel, FitnessHubScreen),
-      (l10n.navHome, DashboardScreen),
+      (l10n.navHome, TodayScreen),
     ];
     for (final (label, screen) in stops) {
       await tester.tap(navItem(label));

@@ -127,7 +127,7 @@ void main() {
           builder: (context) => Scaffold(
             body: DockedFabInset(
               height: kDockedFabOverhang,
-              child: DashboardScreen(
+              child: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),

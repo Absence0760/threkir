@@ -88,7 +88,7 @@ const _kPagePadding = EdgeInsets.fromLTRB(
 /// race or club event, the last run and today's lift and meals, a goals strip,
 /// one progress summary card that opens [ProgressScreen], and the Coach row.
 /// Trends, PBs, the streak, the full goals and the recap live on that page.
-class DashboardScreen extends StatefulWidget {
+class TodayScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final TrainingService? training;
   final LocalRunStore runStore;
@@ -129,7 +129,7 @@ class DashboardScreen extends StatefulWidget {
   /// [fetchProPerks], the manifest the Messages inbox's Coach row reads.
   final Future<ProPerks> Function()? loadPerks;
 
-  const DashboardScreen({
+  const TodayScreen({
     super.key,
     this.apiClient,
     this.training,
@@ -148,7 +148,7 @@ class DashboardScreen extends StatefulWidget {
   });
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<TodayScreen> createState() => _TodayScreenState();
 }
 
 enum _HomeMenuAction { addRun, importRuns }
@@ -169,8 +169,8 @@ class _HomeBreak {
   static const none = _HomeBreak(null, PlanBreakState.none);
 }
 
-class _DashboardScreenState extends State<DashboardScreen>
-    with AuthChangeAware<DashboardScreen>, WidgetsBindingObserver {
+class _TodayScreenState extends State<TodayScreen>
+    with AuthChangeAware<TodayScreen>, WidgetsBindingObserver {
   _AccountHistory _history = _AccountHistory.unknown;
 
   /// This build's break state (`_homeBreak`), read by every plan card.
@@ -1338,7 +1338,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       // The adaptive Today hero leads Home (#1187, decisions § 2385); the
       // state comes from the `dashboard_layout` parity pair, the cards from
       // what Home already had.
-      final hero = DashboardTodayHero(
+      final hero = TodayHero(
         key: const Key('dashboardTodayHero'),
         state: heroState,
         children: switch (heroState) {
@@ -1839,10 +1839,10 @@ class _CoachEntryCard extends StatelessWidget {
 /// The adaptive Today hero that leads Home (#1187, decisions § 2385). [state]
 /// is what `todayHeroState` picked; [children] are the cards that state
 /// shows, in order.
-class DashboardTodayHero extends StatelessWidget {
+class TodayHero extends StatelessWidget {
   final TodayHeroState state;
   final List<Widget> children;
-  const DashboardTodayHero(
+  const TodayHero(
       {super.key, required this.state, required this.children});
 
   @override

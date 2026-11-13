@@ -922,7 +922,7 @@ class _HomeScreenState extends State<HomeScreen>
     // until the user actually swipes there.
     _pages = [
       _LazyKeepAliveTab(
-        builder: () => DashboardScreen(
+        builder: () => TodayScreen(
           key: const PageStorageKey('dashboard'),
           apiClient: widget.apiClient,
           training: widget.training,

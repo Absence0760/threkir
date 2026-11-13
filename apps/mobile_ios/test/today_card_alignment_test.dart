@@ -146,7 +146,7 @@ void main() {
             theme: AppTheme.light,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: DashboardScreen(
+            home: TodayScreen(
               runStore: runStore,
               routeStore: LocalRouteStore(),
               gymStore: LocalGymStore(),

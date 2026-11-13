@@ -649,7 +649,7 @@ The first on-device suite ([decisions § 1820](../architecture/decisions.md)). I
 
 ### `apps/mobile_android/integration_test/home_navigation_test.dart` — 1 test
 
-The same harness with `onboarded` set. It waits for the Home shell and for `DashboardScreen` to be the hit-testable page, then taps You, the hub and Home on the bottom nav, waiting each time for `YouScreen`, `FitnessHubScreen` and `DashboardScreen` to become hit-testable. The hub caption is read off the bar, because it is "Training" rather than "Fitness" while Gym and Nutrition are hidden. It leaves out Run, which asks for location. A debug run may be signed in to the seed account, through `.env.development`'s auto-login, or signed out; nothing asserted depends on which. `app_harness.dart` (the launcher, the real-clock `pumpUntilFound`, `l10nOf`) and `driver.dart` (the `flutter drive --profile` entry) sit beside the two suites and declare no tests.
+The same harness with `onboarded` set. It waits for the Home shell and for `TodayScreen` to be the hit-testable page, then taps You, the hub and Home on the bottom nav, waiting each time for `YouScreen`, `FitnessHubScreen` and `TodayScreen` to become hit-testable. The hub caption is read off the bar, because it is "Training" rather than "Fitness" while Gym and Nutrition are hidden. It leaves out Run, which asks for location. A debug run may be signed in to the seed account, through `.env.development`'s auto-login, or signed out; nothing asserted depends on which. `app_harness.dart` (the launcher, the real-clock `pumpUntilFound`, `l10nOf`) and `driver.dart` (the `flutter drive --profile` entry) sit beside the two suites and declare no tests.
 
 ### `packages/api_client/test/direct_messages_test.dart` — 81 tests
 

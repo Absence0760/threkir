@@ -195,7 +195,7 @@ Future<void> _mount(
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
+      home: TodayScreen(
         apiClient: _Api(),
         runStore: runStore,
         routeStore: LocalRouteStore(),

@@ -342,7 +342,7 @@ Future<void> _pump(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
+      home: TodayScreen(
         runStore: runStore,
         routeStore: routeStore,
         gymStore: LocalGymStore(),
@@ -444,7 +444,7 @@ void main() {
     });
   });
 
-  group('DashboardScreen', () {
+  group('TodayScreen', () {
     testWidgets('Dashboard renders no AppBar (actions hoist into the body)',
         (tester) async {
       // The bottom-nav labels this tab "Home"; a duplicate title
@@ -503,7 +503,7 @@ void main() {
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: DashboardScreen(
+          home: TodayScreen(
             runStore: s.runStore,
             routeStore: s.routeStore,
             gymStore: LocalGymStore(),
@@ -529,7 +529,7 @@ void main() {
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: DashboardScreen(
+          home: TodayScreen(
             runStore: s.runStore,
             routeStore: s.routeStore,
             gymStore: LocalGymStore(),
@@ -593,7 +593,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
@@ -720,7 +720,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
@@ -779,7 +779,7 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: DashboardScreen(
+          home: TodayScreen(
             runStore: runStore,
             routeStore: LocalRouteStore(),
             gymStore: LocalGymStore(),
@@ -914,7 +914,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
@@ -978,7 +978,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
@@ -1035,7 +1035,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
@@ -1091,7 +1091,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
@@ -1145,7 +1145,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),
@@ -1191,7 +1191,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 apiClient: api,
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
@@ -1302,7 +1302,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 apiClient: _FakeApi(),
                 training: _FakeTraining(null),
                 runStore: runStore,
@@ -1367,7 +1367,7 @@ void main() {
                 localizationsDelegates:
                     AppLocalizations.localizationsDelegates,
                 supportedLocales: AppLocalizations.supportedLocales,
-                home: DashboardScreen(
+                home: TodayScreen(
                   apiClient: _FakeApi(),
                   training: _FakeTraining(null),
                   runStore: runStore,
@@ -1419,7 +1419,7 @@ void main() {
                 localizationsDelegates:
                     AppLocalizations.localizationsDelegates,
                 supportedLocales: AppLocalizations.supportedLocales,
-                home: DashboardScreen(
+                home: TodayScreen(
                   apiClient: _FakeApi(),
                   training: _FakeTraining(null),
                   runStore: runStore,
@@ -1456,7 +1456,7 @@ void main() {
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: DashboardScreen(
+            home: TodayScreen(
               apiClient: _FakeApi(),
               training: _FakeTraining(null),
               runStore: s.runStore,
@@ -1484,7 +1484,7 @@ void main() {
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: DashboardScreen(
+            home: TodayScreen(
               apiClient: _FakeApi(),
               runStore: s.runStore,
               routeStore: s.routeStore,
@@ -1613,7 +1613,7 @@ void main() {
                     preferences: prefs,
                     training: training,
                   )
-                : DashboardScreen(
+                : TodayScreen(
                     runStore: runStore,
                     routeStore: LocalRouteStore(),
                     gymStore: LocalGymStore(),
@@ -1783,7 +1783,7 @@ void main() {
     });
   });
 
-  group('DashboardScreen — narrow-width overflow (issue #666 V7)', () {
+  group('TodayScreen — narrow-width overflow (issue #666 V7)', () {
     testWidgets(
         'renders a populated dashboard at a narrow width with the '
         'section-header titles bounded so long localized titles ellipsize '
@@ -1814,7 +1814,7 @@ void main() {
             MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: DashboardScreen(
+              home: TodayScreen(
                 runStore: runStore,
                 routeStore: LocalRouteStore(),
                 gymStore: LocalGymStore(),

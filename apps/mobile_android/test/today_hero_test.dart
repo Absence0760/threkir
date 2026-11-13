@@ -165,7 +165,7 @@ Future<_Sync> _mount(
               training: training,
               settingsSync: sync,
             )
-          : DashboardScreen(
+          : TodayScreen(
               runStore: runStore,
               routeStore: LocalRouteStore(),
               gymStore: LocalGymStore(),
@@ -185,7 +185,7 @@ Future<_Sync> _mount(
 }
 
 TodayHeroState _state(WidgetTester tester) =>
-    tester.widget<DashboardTodayHero>(_hero).state;
+    tester.widget<TodayHero>(_hero).state;
 
 double _top(WidgetTester tester, Finder f) => tester.getTopLeft(f).dy;
 

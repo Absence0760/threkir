@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import {
 		amIAdmin,
 		fetchCoachEngagementWeeks,
@@ -71,17 +72,14 @@
 		<p class="muted">…</p>
 	{:else if !isAdmin}
 		<div class="card-elevated not-authorized" data-testid="home-metrics-not-authorized">
-			<h1>{t('admin.homeMetrics.notAuthorized')}</h1>
-			<p class="muted">{t('admin.homeMetrics.notAuthorizedHint')}</p>
+			<PageHeader flush title={t('admin.homeMetrics.notAuthorized')} subtitle={t('admin.homeMetrics.notAuthorizedHint')} />
 		</div>
 	{:else}
-		<header>
-			<h1>{t('admin.homeMetrics.title')}</h1>
-			<p class="muted">{t('admin.homeMetrics.subtitle')}</p>
+		<PageHeader flush title={t('admin.homeMetrics.title')} subtitle={t('admin.homeMetrics.subtitle')}>
 			<p class="muted note">
 				{t('admin.homeMetrics.redesignNote', { date: weekLabel(HOME_REDESIGN_DATE) })}
 			</p>
-		</header>
+		</PageHeader>
 
 		{#if loadError}
 			<EmptyState icon="error" tone="danger" title={loadError} role="alert" data-testid="home-metrics-load-error" />
@@ -177,14 +175,6 @@
 		flex-direction: column;
 		gap: var(--space-lg);
 	}
-	header h1,
-	.not-authorized h1 {
-		margin: 0 0 0.25rem;
-		font-size: 1.4rem;
-	}
-	header p {
-		margin: 0 0 var(--space-xs);
-	}
 	h2 {
 		margin: 0 0 var(--space-xs);
 		font-size: 1.05rem;
@@ -202,9 +192,11 @@
 	.hint {
 		margin: 0 0 var(--space-sm);
 	}
+	.note {
+		margin: 0;
+	}
 	.not-authorized {
 		padding: var(--space-xl);
-		text-align: center;
 	}
 	.table-scroll {
 		overflow-x: auto;

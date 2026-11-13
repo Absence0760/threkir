@@ -222,7 +222,7 @@ class _SocialScreenState extends State<SocialScreen>
             HubTabScope(
               tab: t,
               actions: _actions,
-              child: _KeepAliveTab(child: _body(t, api)),
+              child: KeepAliveTab(child: _body(t, api)),
             ),
         ],
       ),
@@ -260,25 +260,4 @@ class _SocialScreenState extends State<SocialScreen>
             api: api,
           ),
       };
-}
-
-class _KeepAliveTab extends StatefulWidget {
-  final Widget child;
-
-  const _KeepAliveTab({required this.child});
-
-  @override
-  State<_KeepAliveTab> createState() => _KeepAliveTabState();
-}
-
-class _KeepAliveTabState extends State<_KeepAliveTab>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
 }

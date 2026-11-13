@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	// Start a 1:1 conversation from the inbox (issue #1374, decisions § 2493;
 	// twin of mobile's New message). The list is the viewer's follow graph in
 	// both directions, which is exactly who the send gate admits without a
@@ -46,7 +47,9 @@
 			query = '';
 			return;
 		}
-		void load();
+		// Only opening re-reads: a token refresh swaps `auth.user`, and reading
+		// it here would refetch (and flash Loading) while the dialog is open.
+		untrack(() => void load());
 	});
 </script>
 

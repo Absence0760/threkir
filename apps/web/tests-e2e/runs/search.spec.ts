@@ -62,16 +62,23 @@ test.describe('/runs — name search', () => {
 
 	test('clear empties the search, returns focus to it, and the list comes back', async ({ page }) => {
 		const search = page.getByTestId('runs-search');
+		const clear = page.getByRole('button', { name: 'Clear search' });
+		await expect(search).toBeVisible({ timeout: 10_000 });
+		// AppSearchField draws its clear only while there is text to clear.
+		await expect(clear).toHaveCount(0);
+
 		await search.fill(`hill reps ${tag}`);
 		await expect(page.locator(`a[href="/runs/${newId}"]`)).toBeVisible({ timeout: 15_000 });
+		await expect(page.locator(`a[href="/runs/${oldId}"]`)).toHaveCount(0);
 
-		const clear = page.getByRole('button', { name: 'Clear search' });
 		await expect(clear).toBeVisible();
+		await expect(clear).toHaveAttribute('data-testid', 'runs-search-clear');
 		await clear.click();
 		await expect(search).toHaveValue('');
 		await expect(search).toBeFocused();
 		await expect(clear).toHaveCount(0);
 		await expect(page.getByTestId('runs-empty-filtered')).toHaveCount(0);
+		await expect(page.locator(`a[href="/runs/${newId}"]`)).toBeVisible({ timeout: 15_000 });
 	});
 
 	test('a search nothing matches says so, and Show all runs clears it', async ({ page }) => {

@@ -288,8 +288,8 @@ becomes an **action button**, not a tab.
   plan): the menu is a shortcut set, and a long-press cannot be the only way
   to anything. While a run records both gestures still return to the
   recorder.
-- **The centre button says what a tap does.** When the tap starts recording
-  it shows a play icon and names the runner's default activity, which is
+- **The centre button says what a tap does.** When the tap opens the
+  recorder it shows a play icon and names the runner's default activity, which is
   what the recorder will capture: the caption "Start run" / "Start walk" /
   "Start ride" / "Start trail run" / "Start stroller run" and the spoken
   label "Start a run" / "Start a ride" / ... instead of "+ Log" (#1230; the
@@ -302,7 +302,16 @@ becomes an **action button**, not a tab.
   the recorder panel drops its own Stop (decisions § 1750). This holds in
   both Log-button modes. The rail layout docks nothing, so there the
   leading button stays the way back and the panel keeps its Stop. When the
-  run finishes the button reverts. The Runs list's
+  run finishes the button reverts. Before the run, while the Run page shows
+  its idle start screen, the docked button is the run's **Start** (issue
+  #1374, decisions § 2492): captioned "Start" (announced "Start run"), it
+  sends `runStartRequests` and the recorder runs its own permission checks
+  and 3-2-1, during which the button is captioned "Cancel" ("Cancel the
+  start"). The docked recorder draws no START circle; the rail, the
+  keyboard-up shell and a recorder with no shell keep it. So "Start run" as
+  a caption now survives only off the Run page, where the tap opens the
+  recorder on its idle page (while `runIsPrimaryLogAction` holds) and the
+  button there then reads "Start", and as the docked Start's spoken label. The Runs list's
   manual-entry button reads "Add past run", so the two buttons a thumb apart
   no longer both read as starting one.
 - **The hub's nav label follows modality visibility.** With Gym and

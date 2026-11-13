@@ -71,7 +71,7 @@ Web:
 - `apps/web/src/lib/core/data.ts` — all Supabase queries. Existing social helpers to mirror in style: `browseClubs` / `fetchMyClubs` / `fetchClubBySlug` / `enrichClubs` (client-side enrichment join, `1665`), `createClub` (`1704`), `joinClub` (`1833`). `fetchEventResults` / `submitEventResult`. Engagement counts via the `run_engagement_counts` RPC (`4660`) — the no-N+1 precedent.
 - `apps/web/src/lib/runs/race_leaderboard.ts#compareLeaderboard` — deterministic leaderboard tie-break (value desc → tiebreak → id). Reuse the **shape**; challenge ranking is a sibling pure helper.
 - `apps/web/src/lib/runs/streaks.ts#computeRunStreaks` (parity pair with `apps/mobile_android/lib/streaks.dart`) — pure streak math, reuse directly for the streak challenge metric.
-- `/social` hub: `apps/web/src/routes/social/+page.svelte` — ARIA tab strip (Feed / People / Clubs / Discover) with `?tab=` URL state, panels `SocialFeed` / `SocialPeople` / `SocialClubs` / `SocialDiscover` in `apps/web/src/lib/components/`.
+- `/social` hub: `apps/web/src/routes/social/+page.svelte` — ARIA tab strip (`Feed · Clubs · Events · Challenges · People`, the mobile order, decisions § 2493) with `?tab=` URL state (a saved `?tab=discover` is rewritten to `?tab=events`); panels `SocialFeed` / `SocialClubs` / `SocialDiscover` (the Events tab) / `ChallengesPanel` / `SocialPeople` in `apps/web/src/lib/components/`.
 - Create-flow modal pattern + `.modal` / `.editor-form` / `.btn-*` / `.card-elevated` global classes (`app.css`).
 
 Mobile:

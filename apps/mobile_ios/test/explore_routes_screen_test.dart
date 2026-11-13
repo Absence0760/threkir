@@ -10,6 +10,7 @@ import 'package:ui_kit/ui_kit.dart' show AppSearchField;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
+import '../lib/routes_views.dart';
 import '../lib/screens/explore_routes_screen.dart';
 import 'supabase_test_init.dart';
 
@@ -96,6 +97,7 @@ Future<void> _pump(
   required LocalRouteStore routeStore,
   ApiClient? api,
   Future<Position> Function()? locateFn,
+  RoutesExploreChrome? chrome,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -106,6 +108,7 @@ Future<void> _pump(
         routeStore: routeStore,
         preferences: prefs,
         locateFn: locateFn,
+        chrome: chrome,
       ),
     ),
   );
@@ -176,6 +179,46 @@ void main() {
       await tester.pump();
       expect(find.byType(AppSearchField), findsOneWidget);
       expect(find.widgetWithText(FilterChip, 'Near Me'), findsOneWidget);
+    });
+
+    // Under the Routes tab (issue #1374, decisions § 2490) the tab hands this
+    // body its Mine · Explore row and its Routes · Segments chips; both must
+    // sit above the results, the chips leading the body's own.
+    testWidgets('a chrome puts the view row and its chips above the list',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(
+        tester,
+        prefs: s.prefs,
+        routeStore: s.routeStore,
+        api: _BookmarkApi(),
+        chrome: RoutesExploreChrome(
+          viewBar: const SizedBox(key: Key('test-view-bar'), height: 40),
+          chips: [
+            FilterChip(
+              key: const Key('test-chip-routes'),
+              label: const Text('Routes'),
+              selected: true,
+              onSelected: (_) {},
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final viewBar = find.byKey(const Key('test-view-bar'));
+      final chip = find.byKey(const Key('test-chip-routes'));
+      final nearMe = find.widgetWithText(FilterChip, 'Near Me');
+      final row = find.text('Morning loop');
+      expect(viewBar, findsOneWidget);
+      expect(chip, findsOneWidget);
+      expect(row, findsOneWidget);
+      expect(tester.getTopLeft(viewBar).dy,
+          lessThan(tester.getTopLeft(chip).dy));
+      expect(tester.getTopLeft(chip).dy, lessThan(tester.getTopLeft(row).dy));
+      expect(tester.getTopLeft(chip).dx, lessThan(tester.getTopLeft(nearMe).dx),
+          reason: 'the view chips lead the body\'s own');
     });
   });
 

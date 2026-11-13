@@ -12,6 +12,7 @@ import '../lib/fitness_surface_requests.dart';
 import '../lib/screens/global_segments_screen.dart';
 import '../lib/screens/park_courses_screen.dart';
 import '../lib/screens/races_screen.dart';
+import '../lib/routes_views.dart';
 import 'supabase_test_init.dart';
 
 GlobalSegmentRow _segment({
@@ -357,6 +358,48 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(TextField), findsNothing);
+    });
+
+    // Under the Routes tab (issue #1374, decisions § 2490) the catalogue is
+    // Explore → Segments: the tab hands it the Mine · Explore row and the
+    // Routes · Segments chips, which sit above the list, and stay when the
+    // catalogue is empty so the runner can still switch back.
+    RoutesExploreChrome chrome() => RoutesExploreChrome(
+          viewBar: const SizedBox(key: Key('test-view-bar'), height: 40),
+          chips: [
+            FilterChip(
+              key: const Key('test-chip-segments'),
+              label: const Text('Segments'),
+              selected: true,
+              onSelected: (_) {},
+            ),
+          ],
+        );
+
+    testWidgets('a chrome puts the view row and its chips above the list',
+        (tester) async {
+      await tester.pumpWidget(_host(GlobalSegmentsScreen(
+          api: _CatalogueApi(_catalogue), chrome: chrome())));
+      await tester.pumpAndSettle();
+      final viewBar = find.byKey(const Key('test-view-bar'));
+      final chip = find.byKey(const Key('test-chip-segments'));
+      final card = find.text('Champs-Élysées Sprint');
+      expect(viewBar, findsOneWidget);
+      expect(chip, findsOneWidget);
+      expect(card, findsOneWidget);
+      expect(tester.getTopLeft(viewBar).dy,
+          lessThan(tester.getTopLeft(chip).dy));
+      expect(tester.getTopLeft(chip).dy, lessThan(tester.getTopLeft(card).dy));
+    });
+
+    testWidgets('an empty catalogue keeps the view row and its chips',
+        (tester) async {
+      await tester.pumpWidget(
+          _host(GlobalSegmentsScreen(api: _NoParksApi(), chrome: chrome())));
+      await tester.pumpAndSettle();
+      expect(find.byType(EmptyState), findsOneWidget);
+      expect(find.byKey(const Key('test-view-bar')), findsOneWidget);
+      expect(find.byKey(const Key('test-chip-segments')), findsOneWidget);
     });
 
     // Park courses live in Races & courses (decisions § 2480). With no shell

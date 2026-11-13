@@ -4,7 +4,7 @@
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
-	import { RECAP_SITE, recapActiveMonths } from '#lib/share/recap_card_text.ts';
+	import { RECAP_SITE, recapActiveMonths, recapBadgeText } from '#lib/share/recap_card_text.ts';
 	import { formatHoursMinutes } from '#lib/format/time.ts';
 	import type { RecapSlideFormat } from '#lib/share/recap_slideshow.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
@@ -319,10 +319,11 @@
 		</header>
 		<div class="badge-grid">
 			{#each recap.badges as b (b.id)}
+				{@const text = recapBadgeText(b, t)}
 				<div class="badge">
 					<span class="badge-icon material-symbols" aria-hidden="true">{b.icon}</span>
-					<span class="badge-label">{b.label}</span>
-					<span class="badge-detail">{b.detail}</span>
+					<span class="badge-label">{text.label}</span>
+					{#if text.detail}<span class="badge-detail">{text.detail}</span>{/if}
 				</div>
 			{/each}
 		</div>

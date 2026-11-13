@@ -8585,6 +8585,26 @@ export async function fetchFollowing(
 	};
 }
 
+/// One direction of a user's follow edges, walked to the end by keyset cursor.
+function walkFollowEdges<K extends 'follower_id' | 'followee_id'>(
+	userId: string,
+	order: readonly KeysetKey[],
+	anchor: 'followee_id' | 'follower_id',
+	other: K
+) {
+	return walkKeyset(order, (after, limit) => {
+		let q = supabase.from('user_follows').select(`${other}, followed_at`).eq(anchor, userId);
+		if (after) q = q.or(after);
+		for (const k of order) {
+			q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
+		}
+		return q.limit(limit) as unknown as PromiseLike<{
+			data: (Record<K, string> & { followed_at: string })[] | null;
+			error: unknown;
+		}>;
+	});
+}
+
 /// Everyone who follows `userId` and everyone `userId` follows, each direction
 /// walked to its end. A picker that offers "people you can message / share
 /// with / add" filters this list on the client, so one page of it would hide
@@ -8594,25 +8614,9 @@ export async function fetchFollowing(
 export async function fetchFollowGraph(
 	userId: string
 ): Promise<{ followers: PublicProfile[]; following: PublicProfile[] }> {
-	const walkEdges = <K extends 'follower_id' | 'followee_id'>(
-		order: readonly KeysetKey[],
-		anchor: 'followee_id' | 'follower_id',
-		other: K
-	) =>
-		walkKeyset(order, (after, limit) => {
-			let q = supabase.from('user_follows').select(`${other}, followed_at`).eq(anchor, userId);
-			if (after) q = q.or(after);
-			for (const k of order) {
-				q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
-			}
-			return q.limit(limit) as unknown as PromiseLike<{
-				data: (Record<K, string> & { followed_at: string })[] | null;
-				error: unknown;
-			}>;
-		});
 	const [inbound, outbound] = await Promise.all([
-		walkEdges(FOLLOWERS_ORDER, 'followee_id', 'follower_id'),
-		walkEdges(FOLLOWING_ORDER, 'follower_id', 'followee_id'),
+		walkFollowEdges(userId, FOLLOWERS_ORDER, 'followee_id', 'follower_id'),
+		walkFollowEdges(userId, FOLLOWING_ORDER, 'follower_id', 'followee_id'),
 	]);
 	for (const walk of [inbound, outbound]) {
 		if (!walk.complete) throw dbError(walk.error ?? new Error('fetchFollowGraph: the walk ended short'));
@@ -8645,11 +8649,11 @@ async function resolveFollowedAuthorIds(authorId?: string | null): Promise<strin
 	const { data: sessionData } = await supabase.auth.getSession();
 	const userId = sessionData.session?.user?.id;
 	if (!userId) return [];
-	const { data: edges } = await supabase
-		.from('user_follows')
-		.select('followee_id')
-		.eq('follower_id', userId);
-	const followeeIds = (edges ?? []).map((e) => e.followee_id as string);
+	// The whole followee set: a single read stops at PostgREST's max-rows
+	// without saying so, and a failed one used to read as "follows nobody".
+	const walk = await walkFollowEdges(userId, FOLLOWING_ORDER, 'follower_id', 'followee_id');
+	if (!walk.complete) throw dbError(walk.error ?? new Error('resolveFollowedAuthorIds: the walk ended short'));
+	const followeeIds = walk.rows.map((e) => e.followee_id);
 	if (followeeIds.length === 0) return [];
 	const wantedAuthor = authorId ?? null;
 	return wantedAuthor ? followeeIds.filter((id) => id === wantedAuthor) : followeeIds;

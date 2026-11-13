@@ -1427,7 +1427,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ),
       );
     }
-    final desc = describeRecurrence(e.freq, e.byday);
+    final desc = describeRecurrence(e.freq, e.byday, l10n, activeLocaleTag);
     final active = _activeInstance!;
     final isMember = _club?.isMember == true;
     // Slice E: class / social events are attendance-only — no course, no race,

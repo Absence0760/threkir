@@ -55,11 +55,30 @@ export interface RecapWeekTop {
  * personal-record counts the page supplies). Only *earned* badges are
  * emitted; at most one per category (the highest tier reached).
  */
+/// Every badge the trophy grid can earn. The words are not here: the grid
+/// reads them from the reader's catalogue by id (`recapBadgeText`), so a
+/// published snapshot reads in its reader's language, not its author's.
+export const RECAP_BADGE_IDS = [
+	'dist-2000', 'dist-1000', 'dist-500', 'dist-100',
+	'runs-200', 'runs-100', 'runs-50',
+	'long-ultra', 'long-marathon', 'long-half',
+	'streak-30', 'streak-14', 'streak-7',
+	'elev-everest', 'elev-5000',
+	'months-12', 'months-6',
+	'pr-5', 'pr-1',
+	'photo-25', 'photo-1',
+	'variety',
+	'early', 'night',
+] as const;
+export type RecapBadgeId = (typeof RECAP_BADGE_IDS)[number];
+
 export interface RecapBadge {
-	id: string;
+	id: RecapBadgeId;
 	icon: string; // material-symbols glyph name
-	label: string;
-	detail: string;
+	/// The count (streak days, months, records, photos, activity types) or the
+	/// local start time ("05:42") the badge's detail line names; absent when
+	/// the detail names no number.
+	value?: number | string;
 }
 
 /**
@@ -129,57 +148,66 @@ export function computeRecapBadges(i: BadgeInputs): RecapBadge[] {
 	const out: RecapBadge[] = [];
 	const km = i.totalDistanceM / 1000;
 	const pick = (
-		tiers: Array<{ when: boolean; id: string; icon: string; label: string; detail: string }>,
+		tiers: Array<{ when: boolean; id: RecapBadgeId; icon: string; value?: number | string | null }>,
 	) => {
 		const hit = tiers.find((t) => t.when);
-		if (hit) out.push({ id: hit.id, icon: hit.icon, label: hit.label, detail: hit.detail });
+		if (!hit) return;
+		out.push(hit.value == null ? { id: hit.id, icon: hit.icon } : { id: hit.id, icon: hit.icon, value: hit.value });
 	};
 
 	pick([
-		{ when: km >= 2000, id: 'dist-2000', icon: 'public', label: '2,000 km', detail: 'Halfway round the planet' },
-		{ when: km >= 1000, id: 'dist-1000', icon: 'public', label: '1,000 km club', detail: 'A four-figure year' },
-		{ when: km >= 500, id: 'dist-500', icon: 'route', label: '500 km', detail: 'Serious mileage' },
-		{ when: km >= 100, id: 'dist-100', icon: 'route', label: 'Century', detail: '100 km on the year' },
+		{ when: km >= 2000, id: 'dist-2000', icon: 'public' },
+		{ when: km >= 1000, id: 'dist-1000', icon: 'public' },
+		{ when: km >= 500, id: 'dist-500', icon: 'route' },
+		{ when: km >= 100, id: 'dist-100', icon: 'route' },
 	]);
 	pick([
-		{ when: i.runCount >= 200, id: 'runs-200', icon: 'sprint', label: '200 runs', detail: 'Almost every other day' },
-		{ when: i.runCount >= 100, id: 'runs-100', icon: 'sprint', label: 'Centurion', detail: '100 runs logged' },
-		{ when: i.runCount >= 50, id: 'runs-50', icon: 'sprint', label: '50 runs', detail: 'A steady habit' },
+		{ when: i.runCount >= 200, id: 'runs-200', icon: 'sprint' },
+		{ when: i.runCount >= 100, id: 'runs-100', icon: 'sprint' },
+		{ when: i.runCount >= 50, id: 'runs-50', icon: 'sprint' },
 	]);
 	pick([
-		{ when: i.longestRunM >= 50000, id: 'long-ultra', icon: 'military_tech', label: 'Ultra', detail: '50 km+ in one run' },
-		{ when: i.longestRunM >= 42195, id: 'long-marathon', icon: 'military_tech', label: 'Marathon', detail: '42.2 km in one run' },
-		{ when: i.longestRunM >= 21097, id: 'long-half', icon: 'military_tech', label: 'Half marathon', detail: '21.1 km in one run' },
+		{ when: i.longestRunM >= 50000, id: 'long-ultra', icon: 'military_tech' },
+		{ when: i.longestRunM >= 42195, id: 'long-marathon', icon: 'military_tech' },
+		{ when: i.longestRunM >= 21097, id: 'long-half', icon: 'military_tech' },
 	]);
 	pick([
-		{ when: i.bestStreakDays >= 30, id: 'streak-30', icon: 'local_fire_department', label: 'Month-long streak', detail: `${i.bestStreakDays} days in a row` },
-		{ when: i.bestStreakDays >= 14, id: 'streak-14', icon: 'local_fire_department', label: 'Fortnight streak', detail: `${i.bestStreakDays} days in a row` },
-		{ when: i.bestStreakDays >= 7, id: 'streak-7', icon: 'local_fire_department', label: 'Week streak', detail: `${i.bestStreakDays} days in a row` },
+		{ when: i.bestStreakDays >= 30, id: 'streak-30', icon: 'local_fire_department', value: i.bestStreakDays },
+		{ when: i.bestStreakDays >= 14, id: 'streak-14', icon: 'local_fire_department', value: i.bestStreakDays },
+		{ when: i.bestStreakDays >= 7, id: 'streak-7', icon: 'local_fire_department', value: i.bestStreakDays },
 	]);
 	pick([
-		{ when: i.totalElevationM >= 8849, id: 'elev-everest', icon: 'terrain', label: 'Everested', detail: 'Climbed an Everest' },
-		{ when: i.totalElevationM >= 5000, id: 'elev-5000', icon: 'terrain', label: '5,000 m climbed', detail: 'Vertical year' },
+		{ when: i.totalElevationM >= 8849, id: 'elev-everest', icon: 'terrain' },
+		{ when: i.totalElevationM >= 5000, id: 'elev-5000', icon: 'terrain' },
 	]);
 	pick([
-		{ when: i.activeMonths >= 12, id: 'months-12', icon: 'calendar_month', label: 'Every month', detail: 'Active all 12 months' },
-		{ when: i.activeMonths >= 6, id: 'months-6', icon: 'calendar_month', label: 'Half the year', detail: `Active in ${i.activeMonths} months` },
+		{ when: i.activeMonths >= 12, id: 'months-12', icon: 'calendar_month' },
+		{ when: i.activeMonths >= 6, id: 'months-6', icon: 'calendar_month', value: i.activeMonths },
 	]);
 	pick([
-		{ when: i.personalRecordCount >= 5, id: 'pr-5', icon: 'trophy', label: 'Record breaker', detail: `${i.personalRecordCount} personal records` },
-		{ when: i.personalRecordCount >= 1, id: 'pr-1', icon: 'trophy', label: 'New PR', detail: `${i.personalRecordCount} personal record${i.personalRecordCount === 1 ? '' : 's'}` },
+		{ when: i.personalRecordCount >= 5, id: 'pr-5', icon: 'trophy', value: i.personalRecordCount },
+		{ when: i.personalRecordCount >= 1, id: 'pr-1', icon: 'trophy', value: i.personalRecordCount },
 	]);
 	pick([
-		{ when: i.photoCount >= 25, id: 'photo-25', icon: 'photo_camera', label: 'Storyteller', detail: `${i.photoCount} run photos` },
-		{ when: i.photoCount >= 1, id: 'photo-1', icon: 'photo_camera', label: 'Documented', detail: `${i.photoCount} run photo${i.photoCount === 1 ? '' : 's'}` },
+		{ when: i.photoCount >= 25, id: 'photo-25', icon: 'photo_camera', value: i.photoCount },
+		{ when: i.photoCount >= 1, id: 'photo-1', icon: 'photo_camera', value: i.photoCount },
+	]);
+	pick([{ when: i.distinctActivities >= 3, id: 'variety', icon: 'category', value: i.distinctActivities }]);
+	pick([
+		{
+			when: i.earliestStartLocal != null && i.earliestStartLocal < '06:00',
+			id: 'early',
+			icon: 'wb_twilight',
+			value: i.earliestStartLocal,
+		},
 	]);
 	pick([
-		{ when: i.distinctActivities >= 3, id: 'variety', icon: 'category', label: 'All-rounder', detail: `${i.distinctActivities} activity types` },
-	]);
-	pick([
-		{ when: i.earliestStartLocal != null && i.earliestStartLocal < '06:00', id: 'early', icon: 'wb_twilight', label: 'Early bird', detail: `First steps at ${i.earliestStartLocal}` },
-	]);
-	pick([
-		{ when: i.latestStartLocal != null && i.latestStartLocal >= '21:00', id: 'night', icon: 'bedtime', label: 'Night owl', detail: `Out at ${i.latestStartLocal}` },
+		{
+			when: i.latestStartLocal != null && i.latestStartLocal >= '21:00',
+			id: 'night',
+			icon: 'bedtime',
+			value: i.latestStartLocal,
+		},
 	]);
 
 	return out;
@@ -564,16 +592,6 @@ export function buildMonthInRunningRecap(
 		parkCount,
 		badges,
 	};
-}
-
-/** Smallish utility for the share-card copy. */
-export function recapHeadline(recap: YearInRunningRecap, kmOrMi: 'km' | 'mi'): string {
-	if (recap.runCount === 0) return `No runs in ${recap.year} yet.`;
-	const total =
-		kmOrMi === 'mi'
-			? Math.round(recap.totalDistanceM / 1609.344) + ' mi'
-			: Math.round(recap.totalDistanceM / 1000) + ' km';
-	return `${recap.year}: ${total} across ${recap.runCount} runs.`;
 }
 
 export const __TEST_ONLY__ = { mondayOf, extraCount, MS_PER_DAY };

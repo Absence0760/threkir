@@ -765,7 +765,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Das Wiederholungsmuster lässt sich nur beim Erstellen des Events wählen. **Veranstaltung bearbeiten** ändert Titel, Uhrzeit, Treffpunkt und die übrigen Angaben für die ganze Serie, aber nicht, wie oft sie sich wiederholt."
+            "text": "Das Wiederholungsmuster lässt sich nur beim Erstellen des Events wählen. **Event bearbeiten** ändert Titel, Uhrzeit, Treffpunkt und die übrigen Angaben für die ganze Serie, aber nicht, wie oft sie sich wiederholt."
           },
           {
             "type": "p",
@@ -815,7 +815,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Termine absagen und wiederherstellen geht nur im Web. **Veranstaltung löschen** entfernt jeden Termin der Serie, nicht nur einen."
+            "text": "Termine absagen und wiederherstellen geht nur im Web. **Event löschen** entfernt jeden Termin der Serie, nicht nur einen."
           },
           {
             "type": "note",
@@ -1206,7 +1206,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "**Veranstaltung löschen** ist keine Absage. Es entfernt das Event mit allen Terminen und erstattet niemandem, der bezahlt hat. Lösche keinen bezahlten Kurs, der noch Anmeldungen hat."
+            "text": "**Event löschen** ist keine Absage. Es entfernt das Event mit allen Terminen und erstattet niemandem, der bezahlt hat. Lösche keinen bezahlten Kurs, der noch Anmeldungen hat."
           },
           {
             "type": "p",
@@ -1382,7 +1382,7 @@
             "type": "steps",
             "items": [
               "Öffne deinen Club, geh zum Tab **Events** und drücke **Neues Event**.",
-              "Wähle unter **Veranstaltungstyp** die Option **Kurs**. Route, Distanz, Tempo und Rennergebnisse werden bei einem Kurs ausgeblendet.",
+              "Wähle unter **Event-Typ** die Option **Kurs**. Route, Distanz, Tempo und Rennergebnisse werden bei einem Kurs ausgeblendet.",
               "Fülle **Disziplin** aus, zum Beispiel „HIIT“ oder „Bootcamp“, und einen **Titel**, den die Leute im Kalender wiedererkennen.",
               "Setze **Standard-Trainingsdauer** auf die Kurslänge in Minuten. Damit können Teilnehmende den Kurs danach mit einem Tippen erfassen.",
               "Lege **Datum**, **Startzeit**, **Dauer** und **Treffpunkt** fest.",
@@ -1504,7 +1504,7 @@
             "type": "steps",
             "items": [
               "Öffne deinen Club, geh zum Tab **Events** und drücke **Neues Event**.",
-              "Wähle unter **Veranstaltungstyp** die Option **Kurs**. Route, Distanz, Tempo und Rennergebnisse verschwinden, weil ein Kurs sie nicht braucht.",
+              "Wähle unter **Event-Typ** die Option **Kurs**. Route, Distanz, Tempo und Rennergebnisse verschwinden, weil ein Kurs sie nicht braucht.",
               "Fülle **Disziplin** aus, zum Beispiel „Reformer-Pilates“. Damit wird der Stil in der Übersicht benannt.",
               "Lege optional die **Standard-Trainingsdauer** in Minuten fest. Ist eine Disziplin oder eine Dauer gesetzt, bekommen Teilnehmende auf der Kursseite einen Button **Als Training erfassen**.",
               "Wähle optional einen **Session-Plan**, um deine zeitgesteuerte Abfolge anzuhängen. Bleibt **Keiner** eingestellt, läuft der Kurs ohne.",
@@ -1618,12 +1618,12 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Der Veranstalter wählt beim Erstellen eines bezahlten Events eine **Rückerstattungsrichtlinie**. Sie bestimmt, was jemand zurückbekommt, wenn *er selbst* storniert, und sie wird auf der Eventseite angezeigt, bevor jemand bezahlt."
+            "text": "Der Veranstalter wählt beim Erstellen eines bezahlten Events eine **Rückerstattungsrichtlinie**. Sie bestimmt, was jemand zurückbekommt, wenn *er selbst* storniert, und sie wird auf der Event-Seite angezeigt, bevor jemand bezahlt."
           },
           {
             "type": "list",
             "items": [
-              "**Volle Rückerstattung bis zur Startzeit**: Teilnehmende sehen **Kostenlose Stornierung bis zum Beginn der Veranstaltung**.",
+              "**Volle Rückerstattung bis zur Startzeit**: Teilnehmende sehen **Kostenlose Stornierung bis zum Beginn des Events**.",
               "**Volle Rückerstattung bis 24 Std. vorher**: angezeigt als **Kostenlose Stornierung bis 24 Stunden vor Beginn**. Das ist die Voreinstellung.",
               "**Keine Rückerstattung**: angezeigt als **Keine Erstattung bei Stornierung**."
             ]
@@ -1674,7 +1674,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Gelegentlich schickt eine Bank eine Erstattung zurück. Die Eventseite zeigt dann **Deine Erstattung ist nicht angekommen**, und eine Benachrichtigung meldet **Eine Erstattung ist nicht durchgegangen – wir melden uns**. Du musst nicht erneut bezahlen; nutze **Abrechnung kontaktieren**, und du bekommst das Geld auf anderem Weg zurück."
+            "text": "Gelegentlich schickt eine Bank eine Erstattung zurück. Die Event-Seite zeigt dann **Deine Erstattung ist nicht angekommen**, und eine Benachrichtigung meldet **Eine Erstattung ist nicht durchgegangen – wir melden uns**. Du musst nicht erneut bezahlen; nutze **Abrechnung kontaktieren**, und du bekommst das Geld auf anderem Weg zurück."
           }
         ]
       }
@@ -2818,7 +2818,7 @@
             "type": "steps",
             "items": [
               "Öffne deinen Club und wähle **Neues Event**.",
-              "Wähle unter **Veranstaltungstyp** die Option **Gruppenlauf** (oder **Radfahren**). Kurse und Treffen haben keine Route, keine Distanz, keine Rennsteuerung und keine Ergebnisse.",
+              "Wähle unter **Event-Typ** die Option **Gruppenlauf** (oder **Radfahren**). Kurse und Treffen haben keine Route, keine Distanz, keine Rennsteuerung und keine Ergebnisse.",
               "Gib dem Event einen **Titel** und ein **Datum**. Lege eine Wiederholung nur fest, wenn das Rennen wirklich regelmäßig stattfindet; jeder Termin wird separat gelaufen.",
               "Wähle eine **Strecke** und gib die **Distanz** ein. Zusammen bilden sie deine *Hauptstrecke*.",
               "Gib optional unter **Rennstrecken** im Feld **Name der Hauptstrecke** einen Namen ein (zum Beispiel „Halbmarathon“). Lässt du das Feld leer, wird der Name der Route verwendet.",
@@ -2970,7 +2970,7 @@
           },
           {
             "type": "p",
-            "text": "Linien erscheinen, sobald das Event mit mindestens einer Strecke gespeichert ist. Öffne das Event, wähle **Veranstaltung bearbeiten** und suche **Start- und Ziellinien**. Jede Strecke hat eine Karte und eine Zeile pro Linie, die angibt, woher die Linie stammt: **Aus der Route**, **Von einem Organisator gesetzt** oder **Keine**."
+            "text": "Linien erscheinen, sobald das Event mit mindestens einer Strecke gespeichert ist. Öffne das Event, wähle **Event bearbeiten** und suche **Start- und Ziellinien**. Jede Strecke hat eine Karte und eine Zeile pro Linie, die angibt, woher die Linie stammt: **Aus der Route**, **Von einem Organisator gesetzt** oder **Keine**."
           },
           {
             "type": "note",

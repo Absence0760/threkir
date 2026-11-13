@@ -30,7 +30,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Öffne deinen Club, geh zum Tab **Events** und drücke **Neues Event**.',
-						'Wähle unter **Veranstaltungstyp** die Option **Kurs**. Route, Distanz, Tempo und Rennergebnisse verschwinden, weil ein Kurs sie nicht braucht.',
+						'Wähle unter **Event-Typ** die Option **Kurs**. Route, Distanz, Tempo und Rennergebnisse verschwinden, weil ein Kurs sie nicht braucht.',
 						'Fülle **Disziplin** aus, zum Beispiel „Reformer-Pilates“. Damit wird der Stil in der Übersicht benannt.',
 						'Lege optional die **Standard-Trainingsdauer** in Minuten fest. Ist eine Disziplin oder eine Dauer gesetzt, bekommen Teilnehmende auf der Kursseite einen Button **Als Training erfassen**.',
 						'Wähle optional einen **Session-Plan**, um deine zeitgesteuerte Abfolge anzuhängen. Bleibt **Keiner** eingestellt, läuft der Kurs ohne.',

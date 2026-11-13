@@ -3009,12 +3009,9 @@ class ApiClient {
   Future<List<UserProfileRow>> fetchShareCandidates() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw StateError('not signed in');
-    final lists = await Future.wait([
-      fetchFollowers(userId, limit: 500),
-      fetchFollowing(userId, limit: 500),
-    ]);
+    final graph = await fetchFollowGraph(userId);
     final byId = <String, UserProfileRow>{};
-    for (final p in [...lists[0].rows, ...lists[1].rows]) {
+    for (final p in [...graph.followers, ...graph.following]) {
       byId[p.id] = p;
     }
     final people = byId.values.toList()
@@ -3326,7 +3323,16 @@ class ApiClient {
     if (filter != null) query = query.or(filter);
     final edges = await _orderBy(query, order).limit(limit);
     final ids = edges.map<String>((e) => e[otherColumn] as String).toList();
-    if (ids.isEmpty) return KeysetPage(const [], nextCursor(order, edges, limit));
+    return KeysetPage(
+      await _profilesInEdgeOrder(ids),
+      nextCursor(order, edges, limit),
+    );
+  }
+
+  /// The profiles of [ids], in the order given. An id whose profile is
+  /// unreadable is left out rather than failing the list.
+  Future<List<UserProfileRow>> _profilesInEdgeOrder(List<String> ids) async {
+    if (ids.isEmpty) return const [];
     // Cross-user reads must stay inside the granted column set
     // (migration 20260707_001) — a bare select() requests revoked
     // columns and PostgREST rejects the whole read with 42501.
@@ -3341,12 +3347,31 @@ class ApiClient {
       for (final row in profiles)
         row[UserProfileRow.colId] as String: UserProfileRow.fromJson(row),
     };
-    return KeysetPage(
-      [
-        for (final id in ids)
-          if (byId[id] != null) byId[id]!,
-      ],
-      nextCursor(order, edges, limit),
+    return [
+      for (final id in ids)
+        if (byId[id] != null) byId[id]!,
+    ];
+  }
+
+  /// Every follow edge anchored on `userId` in one direction, walked to its
+  /// end by keyset cursor, resolved to profiles in edge order. Throws when the
+  /// walk cannot finish (a failed page, or a server that stops advancing), so
+  /// a partial list never reads as the whole one.
+  Future<List<UserProfileRow>> _walkFollowEdges({
+    required String anchorColumn,
+    required String otherColumn,
+    required List<KeysetKey> order,
+    required String userId,
+  }) async {
+    final edges = await _walk(
+      order,
+      () => _client
+          .from(UserFollowRow.table)
+          .select('$otherColumn, ${UserFollowRow.colFollowedAt}')
+          .eq(anchorColumn, userId),
+    );
+    return _profilesInEdgeOrder(
+      edges.map<String>((e) => e[otherColumn] as String).toList(),
     );
   }
 
@@ -3383,6 +3408,37 @@ class ApiClient {
         userId: userId,
         limit: limit,
         after: after,
+      );
+
+  /// Everyone who follows `userId` and everyone `userId` follows, each
+  /// direction walked to its end. A picker that offers "people you can
+  /// message / share with / add" filters this list on the client, so one page
+  /// of it would hide everyone past the first page from the list AND from its
+  /// search. Throws when either walk cannot finish, so a partial graph never
+  /// reads as "these are all". Mirrors web `fetchFollowGraph` (decisions
+  /// § 2507).
+  Future<({List<UserProfileRow> followers, List<UserProfileRow> following})>
+      fetchFollowGraph(String userId) async {
+    final walks = await Future.wait([
+      _walkFollowEdges(
+        anchorColumn: UserFollowRow.colFolloweeId,
+        otherColumn: UserFollowRow.colFollowerId,
+        order: _followersOrder,
+        userId: userId,
+      ),
+      fetchAllFollowing(userId),
+    ]);
+    return (followers: walks[0], following: walks[1]);
+  }
+
+  /// Everyone `userId` follows, walked to the end (the outbound half of
+  /// [fetchFollowGraph], for a surface that needs only that direction).
+  Future<List<UserProfileRow>> fetchAllFollowing(String userId) =>
+      _walkFollowEdges(
+        anchorColumn: UserFollowRow.colFollowerId,
+        otherColumn: UserFollowRow.colFolloweeId,
+        order: _followingOrder,
+        userId: userId,
       );
 
   /// Free-text people search. Routes through the

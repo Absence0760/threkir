@@ -111,6 +111,42 @@ test.describe('/dashboard/progress — this week leads', () => {
 		}
 	});
 
+	test('Tab out of the Add or import menu closes it while nothing focusable follows', async ({
+		browser
+	}) => {
+		// While the dashboard read is in flight the page under the header is
+		// skeletons, so Tab past the last item leaves the document and the
+		// panel's focusout sees no relatedTarget. The menu must still close.
+		const ctx = await browser.newContext({ storageState: user.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		let release: () => void = () => {};
+		const held = new Promise<void>((r) => (release = r));
+		await page.route('**/rest/v1/runs?*started_at=gte*', async (route) => {
+			if (route.request().method() !== 'GET') return route.fallback();
+			await held;
+			await route.fallback();
+		});
+		try {
+			await page.goto('/dashboard');
+			const trigger = page.getByTestId('dash-actions-trigger');
+			await expect(trigger).toBeVisible({ timeout: 15_000 });
+			await expect(page.getByTestId('dash-skeleton')).toBeVisible();
+			const menu = page.getByRole('menu');
+			await trigger.focus();
+			await page.keyboard.press('ArrowUp');
+			await expect(
+				menu.getByRole('menuitem', { name: 'Import from Strava / Garmin' })
+			).toBeFocused();
+			await page.keyboard.press('Tab');
+			await expect(menu).toHaveCount(0);
+			await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+		} finally {
+			release();
+			await ctx.close();
+		}
+	});
+
 	test('the Add or import menu keeps the menu-button keyboard contract', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		await acceptCookieConsent(ctx);
@@ -119,6 +155,8 @@ test.describe('/dashboard/progress — this week leads', () => {
 			await page.goto('/dashboard');
 			const trigger = page.getByTestId('dash-actions-trigger');
 			await expect(trigger).toBeVisible({ timeout: 15_000 });
+			// Loaded, so Tab out lands on the page's first card.
+			await expect(page.getByTestId('today-progress-summary')).toBeVisible();
 			const menu = page.getByRole('menu');
 			const add = menu.getByRole('menuitem', { name: 'Add a run' });
 			const importLink = menu.getByRole('menuitem', { name: 'Import from Strava / Garmin' });

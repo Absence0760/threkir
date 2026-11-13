@@ -798,6 +798,94 @@ class AppLocalizationsPt extends AppLocalizations {
   String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
 
   @override
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason. $next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal =>
+      'Ligue dados de sono e frequência cardíaca para ver a sua prontidão real.';
+
+  @override
+  String get readinessAdviceNoSignalHigh =>
+      'Parece um bom dia para acelerar o ritmo.';
+
+  @override
+  String get readinessNextLow => 'Considere um dia leve ou de descanso.';
+
+  @override
+  String get readinessNextModerate =>
+      'Hoje, um esforço constante ou moderado é o indicado.';
+
+  @override
+  String get readinessNextHigh =>
+      'Está pronto para um esforço mais duro, se estiver planeado.';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      'Fadiga intensa — a carga de treino recente está bem acima do seu condicionamento';
+
+  @override
+  String get readinessReasonFatigued => 'Cansado do treino recente';
+
+  @override
+  String get readinessReasonSlightFatigue => 'Ligeira fadiga';
+
+  @override
+  String get readinessReasonFormNeutral => 'Forma neutra';
+
+  @override
+  String get readinessReasonFresh => 'Descansado e bem recuperado';
+
+  @override
+  String get readinessReasonVeryFresh =>
+      'Muito descansado — quase em polimento';
+
+  @override
+  String get readinessReasonOverTapered =>
+      'Polimento excessivo — pode perder acutilância';
+
+  @override
+  String get readinessReasonVeryLittleSleep =>
+      'Muito pouco sono — a recuperação fica comprometida';
+
+  @override
+  String get readinessReasonShortSleep => 'Pouco sono';
+
+  @override
+  String get readinessReasonUnderSleep =>
+      'Um pouco abaixo do seu objetivo de sono';
+
+  @override
+  String get readinessReasonWellRested => 'Bem descansado';
+
+  @override
+  String get readinessReasonExtendedSleep =>
+      'Sono prolongado — a recuperação deve estar sólida';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return 'FC em repouso $bpm bpm acima do valor de referência — forte sinal de doença ou recuperação insuficiente';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return 'FC em repouso $bpm bpm acima do valor de referência';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh =>
+      'FC em repouso ligeiramente elevada';
+
+  @override
+  String get readinessReasonHrBaseline =>
+      'FC em repouso no valor de referência';
+
+  @override
+  String get readinessReasonHrBelow =>
+      'FC em repouso abaixo do valor de referência — bem recuperado';
+
+  @override
   String get todayTitle => 'Hoje';
 
   @override
@@ -10703,6 +10791,38 @@ class AppLocalizationsPt extends AppLocalizations {
   String get fitnessTitle => 'Condicionamento';
 
   @override
+  String get fitnessRecoveryAdviceNoData =>
+      'Ainda não há dados suficientes — registe algumas corridas com frequência cardíaca e tente novamente.';
+
+  @override
+  String get fitnessRecoveryAdviceWelcomeBack =>
+      'Bem-vindo de volta. Os seus valores de forma reiniciaram após a pausa — retome aos poucos com corridas leves e regulares antes de qualquer sessão forte.';
+
+  @override
+  String get fitnessRecoveryAdviceHeavyLoad =>
+      'Está com muita carga — hoje, corrida leve ou um dia de descanso.';
+
+  @override
+  String get fitnessRecoveryAdviceBuilding =>
+      'O seu condicionamento ainda está a crescer. Foque-se na regularidade; uma sessão de qualidade por semana chega, por agora.';
+
+  @override
+  String get fitnessRecoveryAdviceLoaded =>
+      'Com carga, mas dentro da fase de construção. Hoje, leve ou ritmo constante é o indicado.';
+
+  @override
+  String get fitnessRecoveryAdviceSweetSpot =>
+      'Ponto ideal — uma corrida constante ou um esforço de tempo resulta bem.';
+
+  @override
+  String get fitnessRecoveryAdviceTapering =>
+      'Polimento / a ganhar frescura — uma prova ou um treino forte vai correr bem nos próximos dias.';
+
+  @override
+  String get fitnessRecoveryAdviceVeryFresh =>
+      'Muito descansado — se está em polimento de propósito, faça a prova em breve. Caso contrário, é altura de voltar a construir.';
+
+  @override
   String get fitnessStatVo2Max => 'VO₂ máx';
 
   @override
@@ -11368,6 +11488,26 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventFormRecurOneOff => 'Único';
+
+  @override
+  String get eventRecurrenceOneOff => 'Evento único';
+
+  @override
+  String get eventRecurrenceMonthly => 'Repete-se todos os meses';
+
+  @override
+  String get eventRecurrenceWeekly => 'Todas as semanas';
+
+  @override
+  String get eventRecurrenceBiweekly => 'Semana sim, semana não';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => ', ';
 
   @override
   String get eventFormRecurWeekly => 'Semanal';
@@ -15427,6 +15567,56 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesTailorWithAi => 'Ajustar com IA';
 
   @override
+  String racePlanDescribeRace(String name, String date) {
+    return 'Prova: $name em $date.';
+  }
+
+  @override
+  String racePlanDescribeDistance(String distance) {
+    return 'Distância: $distance.';
+  }
+
+  @override
+  String racePlanDescribeGoal(String time) {
+    return 'Tempo-objetivo: $time.';
+  }
+
+  @override
+  String racePlanDescribeRecent(String distance, String time, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'há $days dias',
+      one: 'há $days dia',
+      zero: 'hoje',
+    );
+    return 'Esforço recente: $distance em $time, $_temp0.';
+  }
+
+  @override
+  String racePlanDescribeCourse(String parts) {
+    return 'Percurso: $parts.';
+  }
+
+  @override
+  String racePlanDescribeAscent(String climb) {
+    return '$climb de subida';
+  }
+
+  @override
+  String racePlanDescribeDescent(String climb) {
+    return '$climb de descida';
+  }
+
+  @override
+  String racePlanDescribeSurface(String surface) {
+    return 'piso: $surface';
+  }
+
+  @override
+  String get racePlanDescribeListSeparator => ', ';
+
+  @override
   String get racesAddToSeason => 'Adicionar à minha época';
 
   @override
@@ -16662,7 +16852,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get phaseIntentSettle => 'Assentar';
 
   @override
-  String get phaseIntentRace => 'Correr';
+  String get phaseIntentRace => 'Competir';
 
   @override
   String get phaseIntentEven => 'Constante';
@@ -16820,7 +17010,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get watchMetricPacerDelta => 'Diferença para o pacer';
 
   @override
-  String get watchMetricGuidedRunRemaining => 'Aviso da corrida guiada';
+  String get watchMetricGuidedRunRemaining => 'Dica da corrida guiada';
 
   @override
   String get watchMetricWorkoutRemaining => 'Etapa do treino';
@@ -23683,6 +23873,92 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
 
   @override
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason. $next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal =>
+      'Conecte dados de sono e frequência cardíaca para ver sua prontidão real.';
+
+  @override
+  String get readinessAdviceNoSignalHigh =>
+      'Parece um bom dia para acelerar o ritmo.';
+
+  @override
+  String get readinessNextLow => 'Considere um dia leve ou de descanso.';
+
+  @override
+  String get readinessNextModerate =>
+      'Hoje, um esforço constante ou moderado é o indicado.';
+
+  @override
+  String get readinessNextHigh =>
+      'Você está pronto para um esforço mais duro, se estiver planejado.';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      'Fadiga intensa — a carga de treino recente está bem acima do seu condicionamento';
+
+  @override
+  String get readinessReasonFatigued => 'Cansado do treino recente';
+
+  @override
+  String get readinessReasonSlightFatigue => 'Leve fadiga';
+
+  @override
+  String get readinessReasonFormNeutral => 'Forma neutra';
+
+  @override
+  String get readinessReasonFresh => 'Descansado e bem recuperado';
+
+  @override
+  String get readinessReasonVeryFresh =>
+      'Muito descansado — quase em polimento';
+
+  @override
+  String get readinessReasonOverTapered =>
+      'Polimento excessivo — você pode perder o pique';
+
+  @override
+  String get readinessReasonVeryLittleSleep =>
+      'Muito pouco sono — a recuperação fica comprometida';
+
+  @override
+  String get readinessReasonShortSleep => 'Pouco sono';
+
+  @override
+  String get readinessReasonUnderSleep => 'Um pouco abaixo da sua meta de sono';
+
+  @override
+  String get readinessReasonWellRested => 'Bem descansado';
+
+  @override
+  String get readinessReasonExtendedSleep =>
+      'Sono prolongado — a recuperação deve estar sólida';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return 'FC em repouso $bpm bpm acima do valor de referência — forte sinal de doença ou recuperação insuficiente';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return 'FC em repouso $bpm bpm acima do valor de referência';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh => 'FC em repouso levemente elevada';
+
+  @override
+  String get readinessReasonHrBaseline =>
+      'FC em repouso no valor de referência';
+
+  @override
+  String get readinessReasonHrBelow =>
+      'FC em repouso abaixo do valor de referência — bem recuperado';
+
+  @override
   String get todayTitle => 'Hoje';
 
   @override
@@ -24032,7 +24308,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get editProfileUsernameHelp =>
-      'Seu nome de usuário público (@…) — 3 a 30 letras minúsculas, números ou sublinhados. Outros podem te encontrar por ele.';
+      'Seu nome de usuário público (@…) — 3 a 30 letras minúsculas, números ou sublinhados. Outras pessoas podem encontrar você por ele.';
 
   @override
   String get editProfileUsernameTaken => 'Esse nome de usuário já está em uso.';
@@ -26810,9 +27086,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other:
-          'Não foi possível ajustar $count segmentos a uma via. Arraste os pinos afetados para ajustar.',
+          'Não foi possível ajustar $count segmentos a uma via. Arraste os pinos afetados para corrigir.',
       one:
-          'Não foi possível ajustar $count segmento a uma via. Arraste o pino afetado para ajustar.',
+          'Não foi possível ajustar $count segmento a uma via. Arraste o pino afetado para corrigir.',
     );
     return '$_temp0';
   }
@@ -29916,7 +30192,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewAiErrorConsent =>
-      'O assistente de planos precisa do aviso de IA atualizado.';
+      'O assistente de planos precisa que você aceite o aviso de IA atualizado.';
 
   @override
   String get planNewAiReviewDisclosure => 'Ver as informações';
@@ -31420,7 +31696,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'As informações agora cobrem mais recursos. Leia-as e aceite-as para usar todos os recursos de IA que elas descrevem.';
 
   @override
-  String get settingsAccountAiConsentGrantTitle => 'Ver o aviso de IA';
+  String get settingsAccountAiConsentGrantTitle => 'Revisar o aviso de IA';
 
   @override
   String get settingsAccountAiConsentGrantSubtitle =>
@@ -31678,9 +31954,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       count,
       locale: localeName,
       other:
-          '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, então não vai incluí-las — use o backup completo para guardá-las.',
+          '$count corridas ainda não foram sincronizadas. A exportação da conta é criada no servidor, então não vai incluí-las — use Backup completo para guardá-las.',
       one:
-          '$count corrida ainda não foi sincronizada. A exportação da conta é criada no servidor, então não vai incluí-la — use o backup completo para guardá-la.',
+          '$count corrida ainda não foi sincronizada. A exportação da conta é criada no servidor, então não vai incluí-la — use Backup completo para guardá-la.',
     );
     return '$_temp0';
   }
@@ -33575,6 +33851,38 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get fitnessTitle => 'Condicionamento';
 
   @override
+  String get fitnessRecoveryAdviceNoData =>
+      'Ainda não há dados suficientes — registre algumas corridas com frequência cardíaca e tente novamente.';
+
+  @override
+  String get fitnessRecoveryAdviceWelcomeBack =>
+      'Bem-vindo de volta. Seus valores de forma zeraram depois da pausa — retome aos poucos com corridas leves e regulares antes de qualquer sessão forte.';
+
+  @override
+  String get fitnessRecoveryAdviceHeavyLoad =>
+      'Você está com muita carga — hoje, corrida leve ou um dia de descanso.';
+
+  @override
+  String get fitnessRecoveryAdviceBuilding =>
+      'Seu condicionamento ainda está crescendo. Foque na regularidade; uma sessão de qualidade por semana basta, por enquanto.';
+
+  @override
+  String get fitnessRecoveryAdviceLoaded =>
+      'Com carga, mas dentro da fase de construção. Hoje, leve ou ritmo constante é o indicado.';
+
+  @override
+  String get fitnessRecoveryAdviceSweetSpot =>
+      'Ponto ideal — uma corrida constante ou um esforço de tempo funciona bem.';
+
+  @override
+  String get fitnessRecoveryAdviceTapering =>
+      'Polimento / ganhando frescor — uma prova ou um treino forte vai render bem nos próximos dias.';
+
+  @override
+  String get fitnessRecoveryAdviceVeryFresh =>
+      'Muito descansado — se você está em polimento de propósito, faça a prova logo. Se não, é hora de voltar a construir.';
+
+  @override
   String get fitnessStatVo2Max => 'VO₂ máx';
 
   @override
@@ -34240,6 +34548,26 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventFormRecurOneOff => 'Único';
+
+  @override
+  String get eventRecurrenceOneOff => 'Evento único';
+
+  @override
+  String get eventRecurrenceMonthly => 'Repete todo mês';
+
+  @override
+  String get eventRecurrenceWeekly => 'Toda semana';
+
+  @override
+  String get eventRecurrenceBiweekly => 'A cada duas semanas';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => ', ';
 
   @override
   String get eventFormRecurWeekly => 'Semanal';
@@ -36306,7 +36634,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registro por foto do prato precisa do aviso de IA atualizado.';
+      'O registro por foto do prato precisa que você aceite o aviso de IA atualizado.';
 
   @override
   String get platePhotoErrorPro =>
@@ -38295,6 +38623,56 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesTailorWithAi => 'Ajustar com IA';
+
+  @override
+  String racePlanDescribeRace(String name, String date) {
+    return 'Prova: $name em $date.';
+  }
+
+  @override
+  String racePlanDescribeDistance(String distance) {
+    return 'Distância: $distance.';
+  }
+
+  @override
+  String racePlanDescribeGoal(String time) {
+    return 'Tempo-alvo: $time.';
+  }
+
+  @override
+  String racePlanDescribeRecent(String distance, String time, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'há $days dias',
+      one: 'há $days dia',
+      zero: 'hoje',
+    );
+    return 'Esforço recente: $distance em $time, $_temp0.';
+  }
+
+  @override
+  String racePlanDescribeCourse(String parts) {
+    return 'Percurso: $parts.';
+  }
+
+  @override
+  String racePlanDescribeAscent(String climb) {
+    return '$climb de subida';
+  }
+
+  @override
+  String racePlanDescribeDescent(String climb) {
+    return '$climb de descida';
+  }
+
+  @override
+  String racePlanDescribeSurface(String surface) {
+    return 'piso: $surface';
+  }
+
+  @override
+  String get racePlanDescribeListSeparator => ', ';
 
   @override
   String get racesAddToSeason => 'Adicionar à minha temporada';
@@ -41836,7 +42214,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get seasonPlanErrorConsent =>
-      'O assistente de temporada precisa do aviso de IA atualizado. Você ainda pode adicionar suas provas abaixo.';
+      'O assistente de temporada precisa que você aceite o aviso de IA atualizado. Você ainda pode adicionar suas provas abaixo.';
 
   @override
   String get seasonPlanErrorDailyLimit =>

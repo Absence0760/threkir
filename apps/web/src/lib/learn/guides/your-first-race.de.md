@@ -34,4 +34,4 @@ Die Anmeldung für ein organisiertes Rennen ist meist ein kurzes Online-Formular
 - **Starte langsam** (siehe unseren Leitfaden zum Einteilen deines ersten Rennens) und genieße es. Die Menge, die anderen Läufer und die Ziellinie sind der ganze Sinn.
 - **Sauge das Ziel auf.** Deine erste Ziellinie ist ein echter Meilenstein. Was auch immer die Zeit auf der Uhr sagt — du bist jetzt ein Läufer, der ein Rennen bestritten hat.
 
-> Eine Anmerkung zum Finden von Events: Im Rennkalender findest du anstehende Veranstaltungen, die du nach Distanz filtern und in deiner Nähe suchen kannst — und nach dem Lauf importierst du dort dein offizielles Ergebnis. Laufvereine und ihre Events sind der zweite gute Einstieg; mit beidem findest du garantiert dein erstes Rennen.
+> Eine Anmerkung zum Finden von Events: Im Rennkalender findest du anstehende Rennen, die du nach Distanz filtern und in deiner Nähe suchen kannst — und nach dem Lauf importierst du dort dein offizielles Ergebnis. Laufvereine und ihre Events sind der zweite gute Einstieg; mit beidem findest du garantiert dein erstes Rennen.

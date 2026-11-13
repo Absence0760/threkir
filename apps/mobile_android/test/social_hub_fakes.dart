@@ -82,16 +82,14 @@ class SocialHubFakeApi extends ApiClient {
   }
 
   @override
-  Future<KeysetPage<UserProfileRow>> fetchFollowing(String userId,
-          {int limit = 100, List<Object?>? after}) async =>
-      KeysetPage([
+  Future<List<UserProfileRow>> fetchAllFollowing(String userId) async => [
         UserProfileRow(
           profilePrivate: false,
           shadowHidden: false,
           id: 'u-1',
           displayName: 'Alexandra Longname-Runner',
         ),
-      ], null);
+      ];
 
   @override
   Future<Map<String, ({int kudosCount, bool viewerHasKudos, int commentCount})>>

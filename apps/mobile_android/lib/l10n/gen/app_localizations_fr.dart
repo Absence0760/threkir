@@ -775,13 +775,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger les suggestions.';
 
   @override
-  String get readinessCardHeader => 'Forme du jour';
+  String get readinessCardHeader => 'État de forme';
 
   @override
-  String get readinessBandHigh => 'élevée';
+  String get readinessBandHigh => 'élevé';
 
   @override
-  String get readinessBandModerate => 'modérée';
+  String get readinessBandModerate => 'modéré';
 
   @override
   String get readinessBandLow => 'faible';
@@ -794,6 +794,92 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get readinessContributorRestingHr => 'Fréquence cardiaque au repos';
+
+  @override
+  String readinessAdviceLine(String reason, String next) {
+    return '$reason. $next';
+  }
+
+  @override
+  String get readinessAdviceNoSignal =>
+      'Connectez vos données de sommeil et de fréquence cardiaque pour une vraie mesure de votre état de forme.';
+
+  @override
+  String get readinessAdviceNoSignalHigh =>
+      'On dirait une bonne journée pour accélérer.';
+
+  @override
+  String get readinessNextLow =>
+      'Envisagez une journée facile ou un jour de repos.';
+
+  @override
+  String get readinessNextModerate =>
+      'Un effort régulier ou modéré convient aujourd\'hui.';
+
+  @override
+  String get readinessNextHigh =>
+      'Vous êtes prêt pour un effort plus intense si c\'est prévu.';
+
+  @override
+  String get readinessReasonHeavyFatigue =>
+      'Grosse fatigue — la charge d\'entraînement récente dépasse nettement votre forme';
+
+  @override
+  String get readinessReasonFatigued => 'Fatigué par l\'entraînement récent';
+
+  @override
+  String get readinessReasonSlightFatigue => 'Légère fatigue';
+
+  @override
+  String get readinessReasonFormNeutral => 'Fraîcheur neutre';
+
+  @override
+  String get readinessReasonFresh => 'Frais et bien récupéré';
+
+  @override
+  String get readinessReasonVeryFresh => 'Très frais — presque affûté';
+
+  @override
+  String get readinessReasonOverTapered =>
+      'Trop affûté — le tranchant peut s\'émousser';
+
+  @override
+  String get readinessReasonVeryLittleSleep =>
+      'Très peu de sommeil — la récupération en pâtit';
+
+  @override
+  String get readinessReasonShortSleep => 'Manque de sommeil';
+
+  @override
+  String get readinessReasonUnderSleep =>
+      'Un peu en dessous de votre objectif de sommeil';
+
+  @override
+  String get readinessReasonWellRested => 'Bien reposé';
+
+  @override
+  String get readinessReasonExtendedSleep =>
+      'Sommeil prolongé — la récupération devrait être solide';
+
+  @override
+  String readinessReasonHrWellAbove(int bpm) {
+    return 'FC au repos $bpm bpm au-dessus de la normale — signe fort de maladie ou de récupération insuffisante';
+  }
+
+  @override
+  String readinessReasonHrAbove(int bpm) {
+    return 'FC au repos $bpm bpm au-dessus de la normale';
+  }
+
+  @override
+  String get readinessReasonHrSlightlyHigh => 'FC au repos légèrement élevée';
+
+  @override
+  String get readinessReasonHrBaseline => 'FC au repos à la normale';
+
+  @override
+  String get readinessReasonHrBelow =>
+      'FC au repos sous la normale — bien récupéré';
 
   @override
   String get todayTitle => 'Aujourd\'hui';
@@ -884,7 +970,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String dashboardHeroReadiness(int score) {
-    return 'Forme $score';
+    return 'État de forme $score';
   }
 
   @override
@@ -10615,7 +10701,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get periodShareStatAvgPace => 'ALLURE MOY.';
 
   @override
-  String get trainingLoadTitle => 'Forme, Fatigue & Fraîcheur';
+  String get trainingLoadTitle => 'Forme, fatigue et fraîcheur';
 
   @override
   String trainingLoadSubtitleHr(int days) {
@@ -10723,6 +10809,38 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get fitnessTitle => 'Forme';
+
+  @override
+  String get fitnessRecoveryAdviceNoData =>
+      'Pas encore assez de données — enregistrez quelques courses avec la fréquence cardiaque, puis réessayez.';
+
+  @override
+  String get fitnessRecoveryAdviceWelcomeBack =>
+      'Bon retour. Vos chiffres de fraîcheur sont repartis de zéro après la pause — reprenez progressivement avec des courses faciles et régulières avant toute séance difficile.';
+
+  @override
+  String get fitnessRecoveryAdviceHeavyLoad =>
+      'Vous êtes très chargé — course facile ou jour de repos aujourd\'hui.';
+
+  @override
+  String get fitnessRecoveryAdviceBuilding =>
+      'Votre forme est encore en construction. Misez sur la régularité ; une séance de qualité par semaine suffit pour l\'instant.';
+
+  @override
+  String get fitnessRecoveryAdviceLoaded =>
+      'Chargé, mais dans une zone de développement. Facile ou régulier, c\'est ce qu\'il faut aujourd\'hui.';
+
+  @override
+  String get fitnessRecoveryAdviceSweetSpot =>
+      'Zone idéale — une course régulière ou une séance de tempo convient.';
+
+  @override
+  String get fitnessRecoveryAdviceTapering =>
+      'Affûtage / regain de fraîcheur — une épreuve ou une séance dure passera bien dans les prochains jours.';
+
+  @override
+  String get fitnessRecoveryAdviceVeryFresh =>
+      'Très frais — si vous vous affûtez exprès, courez bientôt votre épreuve. Sinon, il est temps de reprendre le développement.';
 
   @override
   String get fitnessStatVo2Max => 'VO₂ max';
@@ -11392,6 +11510,26 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventFormRecurOneOff => 'Unique';
+
+  @override
+  String get eventRecurrenceOneOff => 'Événement ponctuel';
+
+  @override
+  String get eventRecurrenceMonthly => 'Se répète chaque mois';
+
+  @override
+  String get eventRecurrenceWeekly => 'Chaque semaine';
+
+  @override
+  String get eventRecurrenceBiweekly => 'Toutes les deux semaines';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => ', ';
 
   @override
   String get eventFormRecurWeekly => 'Hebdomadaire';
@@ -15453,6 +15591,56 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get racesTailorWithAi => 'L\'adapter avec l\'IA';
+
+  @override
+  String racePlanDescribeRace(String name, String date) {
+    return 'Épreuve : $name le $date.';
+  }
+
+  @override
+  String racePlanDescribeDistance(String distance) {
+    return 'Distance : $distance.';
+  }
+
+  @override
+  String racePlanDescribeGoal(String time) {
+    return 'Temps visé : $time.';
+  }
+
+  @override
+  String racePlanDescribeRecent(String distance, String time, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'il y a $days jours',
+      one: 'il y a $days jour',
+      zero: 'aujourd\'hui',
+    );
+    return 'Effort récent : $distance en $time, $_temp0.';
+  }
+
+  @override
+  String racePlanDescribeCourse(String parts) {
+    return 'Parcours : $parts.';
+  }
+
+  @override
+  String racePlanDescribeAscent(String climb) {
+    return '$climb de dénivelé positif';
+  }
+
+  @override
+  String racePlanDescribeDescent(String climb) {
+    return '$climb de dénivelé négatif';
+  }
+
+  @override
+  String racePlanDescribeSurface(String surface) {
+    return 'revêtement : $surface';
+  }
+
+  @override
+  String get racePlanDescribeListSeparator => ', ';
 
   @override
   String get racesAddToSeason => 'Ajouter à ma saison';

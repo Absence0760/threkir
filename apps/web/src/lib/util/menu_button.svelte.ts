@@ -3,8 +3,9 @@ import { tick } from 'svelte';
 /// The ARIA menu-button contract every hand-rolled menu on the web shares:
 /// ArrowDown / ArrowUp on the trigger open it on the first / last item,
 /// arrow keys cycle, Home / End jump, Escape closes back to the trigger, Tab
-/// or Shift+Tab out closes it where focus went, a click outside closes it,
-/// and a click on the trigger while it is open closes it.
+/// or Shift+Tab out closes it where focus went (even when nothing focusable
+/// follows it), a click outside closes it, and a click on the trigger while
+/// it is open closes it.
 ///
 /// The owner binds `trigger` and `panel`, wires the handlers below, and
 /// calls `listen()` from `onMount` for the document-level Escape and
@@ -67,6 +68,13 @@ export class MenuButton {
 		} else if (e.key === 'End') {
 			e.preventDefault();
 			this.focusItem(all.length - 1);
+		} else if (e.key === 'Tab') {
+			// Closed here rather than left to focusout: Tab past the last item
+			// with nothing focusable after it (a page still loading) leaves the
+			// document, and focusout then carries a null relatedTarget that
+			// reads as the window losing focus. The default action still moves
+			// focus on before the panel unmounts.
+			this.open = false;
 		}
 	};
 

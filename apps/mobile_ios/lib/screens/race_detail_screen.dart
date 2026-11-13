@@ -9,6 +9,7 @@ import 'package:ui_kit/ui_kit.dart'
 import '../course_drive.dart' show DriveMarkerInput, DrivePoint;
 import '../course_drive_flag.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart' show activeLocaleTag;
 import '../preferences.dart'
     show
         activeDistanceUnit,
@@ -820,9 +821,13 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
                 ? null
                 : RacePlanCourse(
                     ascentM: course.ascentM,
-                    surface: course.surface,
+                    surface: (course.surface ?? '').isEmpty
+                        ? null
+                        : routeSurfaceLabel(l, course.surface!),
                   ),
             unit: activeDistanceUnit,
+            l10n: l,
+            localeTag: activeLocaleTag,
           )
         : null;
     final courseParts = <String>[

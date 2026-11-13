@@ -5,6 +5,7 @@
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { renderCoachMarkdown } from '#lib/coach/markdown.ts';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
 	import { payloadSha256Hex } from '#lib/util/payload_hash.ts';
 	import { TABLES } from '#lib/core/schema.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
@@ -633,16 +634,12 @@
 			const ct = res.headers.get('content-type') ?? '';
 			if (!res.ok || !ct.includes('event-stream')) {
 				const j = await res.json().catch(() => ({}));
+				// Every status maps to catalogue copy: the server's `error` /
+				// `message` fields are English and are for logs, not readers.
 				if (res.status === 401) {
-					// Prefer the server's `j.error` message when present —
-					// the e2e test mocks a 401 with a specific body string
-					// and the upstream handler likewise surfaces its own
-					// reason ("not authenticated", "consent required"...).
-					// Fall back to a generic friendly string only when the
-					// body is empty.
-					error = (typeof j.error === 'string' && j.error.length > 0)
-						? j.error
-						: t('coachChat.errorSessionExpired');
+					error = t('coachChat.errorSessionExpired');
+				} else if (res.status === 403 && j.code === AI_DISCLOSURE_ERROR) {
+					error = t('coachChat.errorConsentRequired');
 				} else if (res.status === 404) {
 					error = t('coachChat.errorServerEndpoint');
 				} else if (res.status === 409) {
@@ -658,9 +655,9 @@
 						tierKnown = true;
 					}
 					if (typeof j.limit === 'number') dailyLimit = j.limit;
-					error = j.message ?? t('coachChat.errorDailyLimit', { count: dailyLimit });
+					error = t('coachChat.errorDailyLimit', { count: dailyLimit });
 				} else {
-					error = j.error ?? t('coachChat.errorGeneric', { status: res.status });
+					error = res.status >= 500 ? t('coachChat.errorUnavailable') : t('coachChat.errorGeneric', { status: res.status });
 				}
 				// Roll back the placeholders.
 				messages = messages.slice(0, opts.userText ? assistantIdx - 1 : assistantIdx);

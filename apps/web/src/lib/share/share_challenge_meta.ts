@@ -6,7 +6,7 @@
 /// Locale-neutral on purpose, like every unfurl: a crawler's preview must not
 /// change with whoever triggered the scrape.
 
-import { formatDateStable, formatKmStable, normaliseSiteUrl } from './share_meta';
+import { englishCount, formatDateStable, formatKmStable, normaliseSiteUrl } from './share_meta';
 import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
@@ -28,11 +28,11 @@ export function challengeGoalStable(c: Pick<SharedChallenge, 'metric' | 'goal_va
 		case 'vert':
 			return `${Math.round(v)} m`;
 		case 'activity_count':
-			return `${Math.round(v)} activities`;
+			return englishCount(Math.round(v), 'activity', 'activities');
 		case 'streak_days':
-			return `${Math.round(v)} days`;
+			return englishCount(Math.round(v), 'day', 'days');
 		case 'park_courses':
-			return `${Math.round(v)} park courses`;
+			return englishCount(Math.round(v), 'park course', 'park courses');
 	}
 }
 

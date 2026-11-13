@@ -103,6 +103,7 @@ are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
 | cue (guided run) | **repère** / repères everywhere | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « indication » for a cue |
 | fluid (fuel plan, roadbook) | **liquides** — « Liquides au total », « Liquides selon le poids », « Liquides par heure (ml) » | settled 2026-11-13 (#1374 round 3.5), both surfaces; never « fluide » (a calque) |
 | form (TSB) | **Fraîcheur**; fitness (CTL) « Forme », fatigue (ATL) « Fatigue » | settled 2026-11-13 (#1374 round 3.5), both surfaces; « État de forme » is Readiness only |
+| readiness | **État de forme** (masculine: bands « faible / modéré / élevé »), hero « État de forme {score} » | settled 2026-11-13 (#1374 round 3.6), both surfaces; never « Forme » or « Forme du jour », which is CTL. The TSB label and tooltip, the training-load heading and chart label moved to « Fraîcheur » the same day |
 | race countdown on the plan card | « Épreuve demain », « Épreuve dans N jours » | settled 2026-11-13 (#1374 round 3.5), both surfaces; a race beside the runs on that card is « épreuve » |
 | finish | Arrivée (finish line); Terminé (status); Terminer (action) | |
 | DNF | DNF | web also "ABD" (`liveEvent.statusDnf`) and "Abandon" (`checkpoint.statusDnf`) — inconsistency 6 |

@@ -21,7 +21,7 @@
 	import { bucketWeeklyMileage } from '#lib/core/weekly_mileage.ts';
 	import {
 		computeSnapshot,
-		recoveryAdvice,
+		recoveryAdviceKind,
 		daysUntilNextHardSession,
 		isReturningFromLayoff,
 		isReturningFromGap,
@@ -33,7 +33,7 @@
 
 	// Hide the "Ask the Coach" promo when the Coach is off (rock-bottom deploy).
 	const coachOn = coachEnabled();
-	import { computeReadiness, type ReadinessContributorKind } from '#lib/training/readiness.ts';
+	import { computeReadiness, readinessAdviceText, type ReadinessContributorKind } from '#lib/training/readiness.ts';
 	import { computeTrainingLoadSeries, hasTrimpSignal, isTrimpLowConfidence } from '#lib/training/training_load.ts';
 	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import { planRaceCountdown } from '#lib/training/plan_week.ts';
@@ -1352,10 +1352,10 @@
 				<section class="readiness-card readiness-{readiness.band}" data-testid="hero-readiness-card">
 					<div class="readiness-head">
 						<span class="readiness-label">{m('dash.readinessLabel')}</span>
-						<span class="readiness-band">{readiness.band}</span>
+						<span class="readiness-band">{m(`dash.readinessBand_${readiness.band}`)}</span>
 					</div>
 					<div class="readiness-score">{readiness.score}</div>
-					<p class="readiness-advice">{readiness.advice}</p>
+					<p class="readiness-advice">{readinessAdviceText(readiness, m)}</p>
 					{#if readiness.contributors.length > 0}
 						<ul class="readiness-contribs">
 							{#each readiness.contributors as c (c.kind)}
@@ -1380,8 +1380,8 @@
 			{#if loadNow != null}
 				<p class="hero-readiness readiness-{readiness.band}" data-testid="hero-readiness">
 					<span class="hero-readiness-score">{m('dash.heroReadiness', { score: readiness.score })}</span>
-					<span class="readiness-band">{readiness.band}</span>
-					<span class="hero-readiness-advice">{readiness.advice}</span>
+					<span class="readiness-band">{m(`dash.readinessBand_${readiness.band}`)}</span>
+					<span class="hero-readiness-advice">{readinessAdviceText(readiness, m)}</span>
 				</p>
 			{/if}
 		{/snippet}
@@ -2042,7 +2042,7 @@
 						{/if}
 					</div>
 					<p class="fitness-advice">
-						{recoveryAdvice(loadNow?.tsb ?? null, loadNow?.ctl ?? null, isReturningFromLayoff(runs))}
+						{m(`dash.recoveryAdvice_${recoveryAdviceKind(loadNow?.tsb ?? null, loadNow?.ctl ?? null, isReturningFromLayoff(runs))}`)}
 					</p>
 					{#if daysToHard != null}
 						<p class="fitness-next-hard">

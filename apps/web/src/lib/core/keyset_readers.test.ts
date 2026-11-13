@@ -26,6 +26,14 @@ function body(name: string): string {
 	return source.slice(start, next === -1 ? undefined : next);
 }
 
+/// A non-exported function's body, up to the next top-level declaration.
+function fnBody(name: string): string {
+	const start = source.search(new RegExp(`\\n(?:async )?function ${name}\\b`));
+	assert.ok(start >= 0, `${name} not found`);
+	const next = source.slice(start + 1).search(/\n(?:export |async function |function )/);
+	return source.slice(start, next < 0 ? undefined : start + 1 + next);
+}
+
 const READERS = [
 	'fetchFollowers',
 	'fetchFollowing',
@@ -181,12 +189,20 @@ test('the follow graph a picker filters is walked to its end in both directions'
 	// follow graph on the client. Reading one FOLLOW_PAGE_SIZE page of each
 	// direction hid everyone past the 50th follow from the list and from its
 	// search, with nothing on screen to say so (round 3 review, #1374).
+	const walker = fnBody('walkFollowEdges');
+	assert.match(walker, /return walkKeyset\(order, /, 'the follow-edge walker must walk by cursor');
+	assert.match(walker, /if \(after\) q = q\.or\(after\)/, 'each page must start after the last');
 	const fn = body('fetchFollowGraph');
-	assert.match(fn, /walkKeyset\(order, /, 'fetchFollowGraph must walk by cursor');
-	assert.match(fn, /walkEdges\(FOLLOWERS_ORDER, 'followee_id', 'follower_id'\)/);
-	assert.match(fn, /walkEdges\(FOLLOWING_ORDER, 'follower_id', 'followee_id'\)/);
-	assert.match(fn, /if \(after\) q = q\.or\(after\)/, 'each page must start after the last');
+	assert.match(fn, /walkFollowEdges\(userId, FOLLOWERS_ORDER, 'followee_id', 'follower_id'\)/);
+	assert.match(fn, /walkFollowEdges\(userId, FOLLOWING_ORDER, 'follower_id', 'followee_id'\)/);
 	assert.match(fn, /if \(!walk\.complete\) throw dbError\(/, 'a short walk must fail, not read as everyone');
+	// The feeds' followee set is the same walk: one read stopped at
+	// PostgREST's max-rows without saying so, and an error read as "follows
+	// nobody" (round 3.6).
+	const feed = fnBody('resolveFollowedAuthorIds');
+	assert.match(feed, /walkFollowEdges\(userId, FOLLOWING_ORDER, 'follower_id', 'followee_id'\)/);
+	assert.match(feed, /if \(!walk\.complete\) throw dbError\(/);
+	assert.doesNotMatch(feed, /\.from\('user_follows'\)/, 'resolveFollowedAuthorIds must not read one page of follows');
 
 	const pickers = webSources().filter(([, src]) =>
 		/dmRecipientCandidates\(/.test(src) && !/export function dmRecipientCandidates/.test(src),

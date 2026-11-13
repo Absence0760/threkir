@@ -11,7 +11,7 @@
 /// ignoring the viewer's locale and unit: an unfurl must not change with who
 /// triggered the scrape. See share_meta.ts's header for the argument.
 
-import { normaliseSiteUrl } from './share_meta';
+import { englishCount, normaliseSiteUrl } from './share_meta';
 import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
@@ -57,8 +57,8 @@ export function buildPlanShareDescription(plan: SharedPlan | null | undefined): 
 	if (!plan) return `View a public training plan on ${SITE_NAME}.`;
 	const weeks = plan.weeks.length;
 	const bits: string[] = [`A ${planGoalEnglish(plan)} plan`];
-	if (weeks > 0) bits.push(`${weeks} ${weeks === 1 ? 'week' : 'weeks'}`);
-	if (plan.days_per_week > 0) bits.push(`${plan.days_per_week} days a week`);
+	if (weeks > 0) bits.push(englishCount(weeks, 'week', 'weeks'));
+	if (plan.days_per_week > 0) bits.push(`${englishCount(plan.days_per_week, 'day', 'days')} a week`);
 	const by = planAuthorCredit(plan.author);
 	if (by) bits.push(`by ${by}`);
 	return `${bits.join(' · ')}. Start the same plan on ${SITE_NAME}.`;

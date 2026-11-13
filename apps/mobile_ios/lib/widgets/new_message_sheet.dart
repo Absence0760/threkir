@@ -62,18 +62,15 @@ class _NewMessageSheetState extends State<NewMessageSheet> {
       _error = null;
     });
     try {
-      final pages = await Future.wait([
-        widget.api.fetchFollowers(me, limit: 500),
-        widget.api.fetchFollowing(me, limit: 500),
-      ]);
+      final graph = await widget.api.fetchFollowGraph(me);
       DmCandidateProfile candidate(UserProfileRow p) => DmCandidateProfile(
             id: p.id,
             displayName: p.displayName,
             avatarUrl: p.avatarUrl,
           );
       final candidates = dmRecipientCandidates(
-        pages[0].rows.map(candidate),
-        pages[1].rows.map(candidate),
+        graph.followers.map(candidate),
+        graph.following.map(candidate),
         selfId: me,
       );
       if (!mounted) return;

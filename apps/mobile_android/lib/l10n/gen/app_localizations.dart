@@ -1247,6 +1247,144 @@ abstract class AppLocalizations {
   /// **'Resting heart rate'**
   String get readinessContributorRestingHr;
 
+  /// The readiness advice line: the reason, then what to do
+  ///
+  /// In en, this message translates to:
+  /// **'{reason}. {next}'**
+  String readinessAdviceLine(String reason, String next);
+
+  /// Readiness advice with no inputs, below the high band
+  ///
+  /// In en, this message translates to:
+  /// **'Connect sleep + HR data for a real readiness picture.'**
+  String get readinessAdviceNoSignal;
+
+  /// Readiness advice with no inputs, in the high band
+  ///
+  /// In en, this message translates to:
+  /// **'Looks like a good day to push the pace.'**
+  String get readinessAdviceNoSignalHigh;
+
+  /// What the low readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'Consider an easy day or a rest day.'**
+  String get readinessNextLow;
+
+  /// What the moderate readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'A steady or moderate effort fits today.'**
+  String get readinessNextModerate;
+
+  /// What the high readiness band suggests
+  ///
+  /// In en, this message translates to:
+  /// **'You’re primed for a harder effort if planned.'**
+  String get readinessNextHigh;
+
+  /// Why an input moved readiness (heavyFatigue)
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy fatigue — recent training stress is well above your fitness'**
+  String get readinessReasonHeavyFatigue;
+
+  /// Why an input moved readiness (fatigued)
+  ///
+  /// In en, this message translates to:
+  /// **'Fatigued from recent training'**
+  String get readinessReasonFatigued;
+
+  /// Why an input moved readiness (slightFatigue)
+  ///
+  /// In en, this message translates to:
+  /// **'Slight fatigue'**
+  String get readinessReasonSlightFatigue;
+
+  /// Why an input moved readiness (formNeutral)
+  ///
+  /// In en, this message translates to:
+  /// **'Form is neutral'**
+  String get readinessReasonFormNeutral;
+
+  /// Why an input moved readiness (fresh)
+  ///
+  /// In en, this message translates to:
+  /// **'Fresh and well-recovered'**
+  String get readinessReasonFresh;
+
+  /// Why an input moved readiness (veryFresh)
+  ///
+  /// In en, this message translates to:
+  /// **'Very fresh — borderline tapered'**
+  String get readinessReasonVeryFresh;
+
+  /// Why an input moved readiness (overTapered)
+  ///
+  /// In en, this message translates to:
+  /// **'Over-tapered — edge may be blunted'**
+  String get readinessReasonOverTapered;
+
+  /// Why an input moved readiness (veryLittleSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Very little sleep — recovery is compromised'**
+  String get readinessReasonVeryLittleSleep;
+
+  /// Why an input moved readiness (shortSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Short on sleep'**
+  String get readinessReasonShortSleep;
+
+  /// Why an input moved readiness (underSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'A little under target sleep'**
+  String get readinessReasonUnderSleep;
+
+  /// Why an input moved readiness (wellRested)
+  ///
+  /// In en, this message translates to:
+  /// **'Well rested'**
+  String get readinessReasonWellRested;
+
+  /// Why an input moved readiness (extendedSleep)
+  ///
+  /// In en, this message translates to:
+  /// **'Extended sleep — recovery should be solid'**
+  String get readinessReasonExtendedSleep;
+
+  /// Why an input moved readiness (hrWellAbove)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR {bpm} bpm above baseline — strong sign of illness or under-recovery'**
+  String readinessReasonHrWellAbove(int bpm);
+
+  /// Why an input moved readiness (hrAbove)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR {bpm} bpm above baseline'**
+  String readinessReasonHrAbove(int bpm);
+
+  /// Why an input moved readiness (hrSlightlyHigh)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR slightly elevated'**
+  String get readinessReasonHrSlightlyHigh;
+
+  /// Why an input moved readiness (hrBaseline)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR at baseline'**
+  String get readinessReasonHrBaseline;
+
+  /// Why an input moved readiness (hrBelow)
+  ///
+  /// In en, this message translates to:
+  /// **'Resting HR below baseline — well recovered'**
+  String get readinessReasonHrBelow;
+
   /// Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary
   ///
   /// In en, this message translates to:
@@ -16997,6 +17135,54 @@ abstract class AppLocalizations {
   /// **'Fitness'**
   String get fitnessTitle;
 
+  /// Fitness card advice line when the training-load kind is noData
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough data yet — log a few runs with HR and try again.'**
+  String get fitnessRecoveryAdviceNoData;
+
+  /// Fitness card advice line when the training-load kind is welcomeBack
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back. Your form numbers reset after the break — rebuild gradually with easy, consistent running before any hard sessions.'**
+  String get fitnessRecoveryAdviceWelcomeBack;
+
+  /// Fitness card advice line when the training-load kind is heavyLoad
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re heavily loaded — easy running or a rest day today.'**
+  String get fitnessRecoveryAdviceHeavyLoad;
+
+  /// Fitness card advice line when the training-load kind is building
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness is still building. Focus on consistency; one quality session a week is plenty for now.'**
+  String get fitnessRecoveryAdviceBuilding;
+
+  /// Fitness card advice line when the training-load kind is loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Loaded but within build territory. Easy / steady is right for today.'**
+  String get fitnessRecoveryAdviceLoaded;
+
+  /// Fitness card advice line when the training-load kind is sweetSpot
+  ///
+  /// In en, this message translates to:
+  /// **'Sweet spot — a steady run or a tempo effort works.'**
+  String get fitnessRecoveryAdviceSweetSpot;
+
+  /// Fitness card advice line when the training-load kind is tapering
+  ///
+  /// In en, this message translates to:
+  /// **'Tapering / freshening up — a race or hard workout will land well in the next few days.'**
+  String get fitnessRecoveryAdviceTapering;
+
+  /// Fitness card advice line when the training-load kind is veryFresh
+  ///
+  /// In en, this message translates to:
+  /// **'Very fresh — if you\'ve been tapering on purpose, race soon. Otherwise, it\'s time to build again.'**
+  String get fitnessRecoveryAdviceVeryFresh;
+
   /// Fitness card stat label for VO2 max
   ///
   /// In en, this message translates to:
@@ -18160,6 +18346,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'One-off'**
   String get eventFormRecurOneOff;
+
+  /// How an event repeats, on its detail page (OneOff)
+  ///
+  /// In en, this message translates to:
+  /// **'One-off event'**
+  String get eventRecurrenceOneOff;
+
+  /// How an event repeats, on its detail page (Monthly)
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats monthly'**
+  String get eventRecurrenceMonthly;
+
+  /// How an event repeats, on its detail page (Weekly)
+  ///
+  /// In en, this message translates to:
+  /// **'Every week'**
+  String get eventRecurrenceWeekly;
+
+  /// How an event repeats, on its detail page (Biweekly)
+  ///
+  /// In en, this message translates to:
+  /// **'Every other week'**
+  String get eventRecurrenceBiweekly;
+
+  /// How an event repeats, on its detail page (WithDays)
+  ///
+  /// In en, this message translates to:
+  /// **'{base} · {days}'**
+  String eventRecurrenceWithDays(String base, String days);
+
+  /// How an event repeats, on its detail page (DaySeparator)
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get eventRecurrenceDaySeparator;
 
   /// Recurrence option: weekly
   ///
@@ -24873,6 +25095,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tailor it with AI'**
   String get racesTailorWithAi;
+
+  /// A sentence of the AI plan box prefill a race opens (Race)
+  ///
+  /// In en, this message translates to:
+  /// **'Race: {name} on {date}.'**
+  String racePlanDescribeRace(String name, String date);
+
+  /// A sentence of the AI plan box prefill a race opens (Distance)
+  ///
+  /// In en, this message translates to:
+  /// **'Distance: {distance}.'**
+  String racePlanDescribeDistance(String distance);
+
+  /// A sentence of the AI plan box prefill a race opens (Goal)
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time: {time}.'**
+  String racePlanDescribeGoal(String time);
+
+  /// A sentence of the AI plan box prefill a race opens (Recent)
+  ///
+  /// In en, this message translates to:
+  /// **'Recent effort: {distance} in {time}, {days, plural, =0{today} one{{days} day ago} other{{days} days ago}}.'**
+  String racePlanDescribeRecent(String distance, String time, int days);
+
+  /// A sentence of the AI plan box prefill a race opens (Course)
+  ///
+  /// In en, this message translates to:
+  /// **'Course: {parts}.'**
+  String racePlanDescribeCourse(String parts);
+
+  /// A sentence of the AI plan box prefill a race opens (Ascent)
+  ///
+  /// In en, this message translates to:
+  /// **'{climb} ascent'**
+  String racePlanDescribeAscent(String climb);
+
+  /// A sentence of the AI plan box prefill a race opens (Descent)
+  ///
+  /// In en, this message translates to:
+  /// **'{climb} descent'**
+  String racePlanDescribeDescent(String climb);
+
+  /// A sentence of the AI plan box prefill a race opens (Surface)
+  ///
+  /// In en, this message translates to:
+  /// **'surface: {surface}'**
+  String racePlanDescribeSurface(String surface);
+
+  /// A sentence of the AI plan box prefill a race opens (ListSeparator)
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get racePlanDescribeListSeparator;
 
   /// Race detail: action that builds a plan for this race starting after the runner's current plan ends.
   ///

@@ -236,6 +236,7 @@ test.describe('Legal pages', () => {
 		// requirement: reachable logged-out, a working path to the in-app
 		// deletion, and a fallback for users who can no longer sign in.
 		await page.goto('/delete-account');
+		// The link names the page, not a menu path (decisions § 2496).
 		await expect(
 			page.getByRole('link', { name: 'your Account settings' })
 		).toHaveAttribute('href', '/settings/account');

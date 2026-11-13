@@ -9,7 +9,7 @@ import {
 	thresholdPaceSecPerKmFromVdot,
 	trainingLoad,
 	computeSnapshot,
-	recoveryAdvice,
+	recoveryAdviceKind,
 	daysUntilNextHardSession,
 	HARD_SESSION_TSB_THRESHOLD,
 	isReturningFromLayoff,
@@ -403,47 +403,41 @@ test('computeSnapshot — empty runs yields all-null + zero count', () => {
 	assert.equal(snap.qualifyingRunCount, 0);
 });
 
-// ─────────────── recoveryAdvice ───────────────
+// ─────────────── recoveryAdviceKind ───────────────
 
-test('recoveryAdvice — null inputs yield the no-data string', () => {
-	assert.match(recoveryAdvice(null, null), /Not enough data/);
-	assert.match(recoveryAdvice(null, 50), /Not enough data/);
-	assert.match(recoveryAdvice(0, null), /Not enough data/);
+test('recoveryAdviceKind — null inputs yield noData', () => {
+	assert.equal(recoveryAdviceKind(null, null), 'noData');
+	assert.equal(recoveryAdviceKind(null, 50), 'noData');
+	assert.equal(recoveryAdviceKind(0, null), 'noData');
 });
 
-test('recoveryAdvice — sub-10 CTL yields the consistency-building advice', () => {
-	assert.match(recoveryAdvice(0, 5), /still building|consistency/i);
+test('recoveryAdviceKind — sub-10 CTL yields building', () => {
+	assert.equal(recoveryAdviceKind(0, 5), 'building');
 });
 
-test('recoveryAdvice — heavy overload warns even at low CTL (overreached new runner)', () => {
+test('recoveryAdviceKind — heavy overload warns even at low CTL (overreached new runner)', () => {
 	// ctl=8, tsb=-40 → acute load spiked far above chronic. The low-CTL
-	// "still building" message must NOT mask the rest warning.
-	const advice = recoveryAdvice(-40, 8);
-	assert.match(advice, /heavily loaded|rest day/i);
-	assert.doesNotMatch(advice, /still building|consistency/i);
+	// "still building" advice must NOT mask the rest warning.
+	assert.equal(recoveryAdviceKind(-40, 8), 'heavyLoad');
 });
 
-test('recoveryAdvice — ladder rises through the TSB bands', () => {
-	const heavy = recoveryAdvice(-40, 50);
-	const loaded = recoveryAdvice(-15, 50);
-	const sweet = recoveryAdvice(0, 50);
-	const taper = recoveryAdvice(15, 50);
-	const fresh = recoveryAdvice(40, 50);
-	// Each band should produce a distinct human string.
-	const all = new Set([heavy, loaded, sweet, taper, fresh]);
-	assert.equal(all.size, 5, 'each band should map to a unique message');
-	assert.match(heavy, /easy|rest|recovery/i);
-	assert.match(fresh, /fresh|race|build/i);
+test('recoveryAdviceKind — ladder rises through the TSB bands, boundaries included', () => {
+	assert.equal(recoveryAdviceKind(-40, 50), 'heavyLoad');
+	assert.equal(recoveryAdviceKind(-30, 50), 'loaded');
+	assert.equal(recoveryAdviceKind(-15, 50), 'loaded');
+	assert.equal(recoveryAdviceKind(-10, 50), 'sweetSpot');
+	assert.equal(recoveryAdviceKind(0, 50), 'sweetSpot');
+	assert.equal(recoveryAdviceKind(10, 50), 'tapering');
+	assert.equal(recoveryAdviceKind(15, 50), 'tapering');
+	assert.equal(recoveryAdviceKind(25, 50), 'veryFresh');
+	assert.equal(recoveryAdviceKind(40, 50), 'veryFresh');
 });
 
-test('recoveryAdvice — returning-from-layoff overrides the freshness rungs (comeback #29)', () => {
+test('recoveryAdviceKind — returning-from-layoff overrides the freshness rungs (comeback #29)', () => {
 	// A high TSB + decent CTL would normally read "very fresh — race soon",
 	// which is exactly the wrong call for a returning runner.
-	const normal = recoveryAdvice(40, 50, false);
-	const returning = recoveryAdvice(40, 50, true);
-	assert.notEqual(normal, returning);
-	assert.match(returning, /back|rebuild|gradual|break/i);
-	assert.doesNotMatch(returning, /race soon/i);
+	assert.equal(recoveryAdviceKind(40, 50, false), 'veryFresh');
+	assert.equal(recoveryAdviceKind(40, 50, true), 'welcomeBack');
 });
 
 // ─────────────── daysUntilNextHardSession ───────────────

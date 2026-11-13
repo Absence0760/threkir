@@ -7,7 +7,7 @@
 
 import type { YearInRunningRecap } from '../runs/recap';
 import { VIDEO_FPS } from '../video/frame_clock';
-import { recapActiveMonths, type RecapTranslate } from './recap_card_text';
+import { recapActiveMonths, recapBadgeText, type RecapTranslate } from './recap_card_text';
 
 export interface RecapMonthBar {
 	month: number;
@@ -115,7 +115,7 @@ export function recapSlides(recap: YearInRunningRecap, f: RecapSlideFormat): Rec
 			kind: 'badges',
 			label: t('recap.trophies'),
 			sub: t('recap.earnedInYear', { n: recap.badges.length, year: recap.year }),
-			items: recap.badges.slice(0, MAX_BADGES).map((b) => b.label),
+			items: recap.badges.slice(0, MAX_BADGES).map((b) => recapBadgeText(b, t).label),
 		});
 	}
 	return [

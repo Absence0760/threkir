@@ -141,6 +141,7 @@ twin the same way so the two surfaces read alike. Both rules are guards
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
 | AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está a pensar"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
 | AI disclosure | **o aviso de IA** ("precisa que aceite o aviso de IA atualizado" — keep the consent: the reader accepts the notice, not merely needs it) | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
+| race (the race-strategy phase intent) | **Competir** (`phaseIntentRace`, `runDetail.phaseRace`) | settled 2026-11-13 (#1374 round 3.6); never "Correr", which is just *run* |
 | Pro & support | **Pro e apoio** | *support* here is supporting the app ("apoiar a app"); "suporte" is tech support |
 | sign in | **Iniciar sessão** ("Inicie sessão…", "início de sessão", "sem sessão iniciada"); a bare "Entrar" on a button | never "login" / "Faça login" — guarded |
 | pair (Bluetooth) | **Emparelhar** / emparelhado / emparelhamento | never "parear" — guarded |

@@ -493,26 +493,42 @@ void main() {
     });
   });
 
-  group('recapHeadline', () {
-    test('km vs mi switches the unit string', () {
-      final recap = buildYearInRunningRecap(
-        [
+  group('badge values', () {
+    test('a badge carries the number its detail names, and no words', () {
+      final runs = [
+        for (var d = 0; d < 9; d++)
           _run(
-            id: 'a',
-            startedAt: DateTime(2025, 1, 1, 10),
-            distanceM: 1609344,
-            duration: const Duration(seconds: 540000),
+            id: 'r$d',
+            startedAt: DateTime(2025, 3, 1 + d, 5, 42),
+            distanceM: 12000,
+            duration: const Duration(minutes: 70),
           ),
-        ],
-        2025,
-      );
-      expect(recapHeadline(recap, 'km'), '2025: 1609 km across 1 runs.');
-      expect(recapHeadline(recap, 'mi'), '2025: 1000 mi across 1 runs.');
+      ];
+      final r = buildYearInRunningRecap(runs, 2025,
+          const RecapExtras(photoCount: 1, personalRecordCount: 2));
+      final byId = {for (final b in r.badges) b.id: b.value};
+      expect(byId['dist-100'], isNull);
+      expect(byId['streak-7'], 9);
+      expect(byId['pr-1'], 2);
+      expect(byId['photo-1'], 1);
+      expect(byId['early'], '05:42');
     });
 
-    test('empty recap shows the "no runs" string', () {
-      final recap = buildYearInRunningRecap(const [], 2025);
-      expect(recapHeadline(recap, 'km'), 'No runs in 2025 yet.');
+    test('the snapshot writes id, icon and value only', () {
+      final r = buildYearInRunningRecap([
+        for (var d = 0; d < 7; d++)
+          _run(
+            id: 's$d',
+            startedAt: DateTime(2025, 4, 1 + d, 12),
+            distanceM: 15000,
+            duration: const Duration(minutes: 80),
+          ),
+      ], 2025);
+      final badges = (recapSnapshotJson(r)['badges'] as List).cast<Map>();
+      expect(badges.firstWhere((b) => b['id'] == 'streak-7'),
+          {'id': 'streak-7', 'icon': 'local_fire_department', 'value': 7});
+      expect(badges.firstWhere((b) => b['id'] == 'dist-100'),
+          {'id': 'dist-100', 'icon': 'route'});
     });
   });
 

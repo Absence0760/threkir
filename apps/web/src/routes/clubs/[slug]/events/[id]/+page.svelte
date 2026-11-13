@@ -153,7 +153,7 @@
 	import { deferDestructive, undoStore } from '#lib/stores/undo.svelte.ts';
 	import { hasEventPhotoWindowOpened } from '#lib/social/event_photo_window.ts';
 	import { consent } from '#lib/settings/consent.svelte.ts';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 
 	// An attendee with no display name is shown as their runnerHandle rather
 	// than an indistinguishable "Member" (decisions § 2365).
@@ -429,7 +429,7 @@
 	);
 
 	let recurrenceLabel = $derived(
-		event ? describeRecurrence(event.recurrence_freq, event.recurrence_byday) : ''
+		event ? describeRecurrence(event.recurrence_freq, event.recurrence_byday, m, currentLocale()) : ''
 	);
 
 	let isAdmin = $derived(club?.viewer_role === 'owner' || club?.viewer_role === 'admin');

@@ -400,23 +400,17 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.primary)),
           ),
-          InkWell(
-            onTap: () => setState(() => _snapEnabled = !_snapEnabled),
-            child: Row(
-              children: [
-                Checkbox(
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  value: _snapEnabled,
-                  onChanged: (v) =>
-                      setState(() => _snapEnabled = v ?? _snapEnabled),
-                ),
-                Expanded(
-                  child: Text(l10n.routeMarkerSnapToggle,
-                      style: theme.textTheme.bodySmall),
-                ),
-              ],
-            ),
+          // One named control with a 48 dp row: a row InkWell beside a
+          // shrink-wrapped, unnamed Checkbox gave two tap actions (#1374
+          // A11Y-13).
+          CheckboxListTile(
+            key: const Key('routeMarkerSnapToggle'),
+            value: _snapEnabled,
+            onChanged: (v) => setState(() => _snapEnabled = v ?? _snapEnabled),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.routeMarkerSnapToggle,
+                style: theme.textTheme.bodySmall),
           ),
           Wrap(
             spacing: 4,

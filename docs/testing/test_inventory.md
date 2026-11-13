@@ -484,7 +484,7 @@ Dart mirror of `apps/web/src/lib/training_load.test.ts`. The Dart engine (`lib/t
 
 Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-effort walker in `lib/segments.dart#computeEffortFromTrack`. Same `straightTrack` synthetic helper (meridian-aligned, constant pace) so haversine cumulative distance is predictable. Covers a clean segment, run shorter than segment end, sub-2-point tracks, zero / negative segment windows, sparse-sampling guard (median step > segLen / 5), missing timestamps in the interpolation bracket, mid-segment interpolation, and sample-aligned endpoints. Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone.
 
-### `apps/mobile_android/test/privacy_test.dart` — 18 tests
+### `apps/mobile_android/test/privacy_test.dart` — 20 tests
  Three more pin that a coordinate-less (NaN) fix at either end is dropped without ending the trim, that a fix placed only by its smoothed pair ends it when out, and that an all-coordinate-less track returns empty.
 Dart mirror of `apps/web/src/lib/privacy.test.ts`. Pure tests for `lib/privacy.dart`. Covers `isInAnyZone` (empty zones, centre, far point) and `clipPointsToZones` (empty zones returns input, drops leading + trailing in-zone, keeps interior, every-point-in-zone returns empty, multi-zone union).
 
@@ -639,7 +639,7 @@ Smoke tests for `CoachAssistConsentSwitch` (issue #1215 Phase 4) over an in-file
 
 `AiDisclosureNotice`, the one copy of the AI-processing disclosure: the intro (naming Anthropic) and the processing terms (pointing under Account in the You tab and at the privacy policy); every `coachConsentBullet*` key in `app_en.arb` rendered as a bullet and no other bullet, so a lane added to the catalogue without the notice fails; the lane the current version (`kAiDisclosureCurrentVersion`, the coach assistant) added is among them.
 
-### `apps/mobile_ios/test/` — 930 files, byte-for-byte
+### `apps/mobile_ios/test/` — 935 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -832,7 +832,7 @@ Every control on a swept surface carries a one-line explanation (#905 workstream
 
 The browser half of the guard above: walks the rendered DOM of every swept surface it can reach signed in — the plan-and-run path, the five creator editors, the five gym / session editors, the race and segment filters, `/nutrition/targets` and each step of `/onboarding` — resolves each control's `aria-describedby` (or a checkbox's in-label hint) and fails when it reads back as empty. The source scan can only see that the id exists; a hint behind an `{#if}` that never opens, or a catalogue key resolving to empty, passes it. Several surfaces are read in more than one state, because neither state renders the other's fields: the event editor as a group run and as a class, the routine editor under both progression schemes that carry their own fields, the workout editor as repeats and as one steady effort. The control list comes from the DOM, not a list in the spec.
 
-### `apps/web/src/lib/routes/privacy.test.ts` — 20 tests
+### `apps/web/src/lib/routes/privacy.test.ts` — 22 tests
 
 TypeScript unit tests for the pure privacy-zone clipper (`lib/privacy.ts`, decisions §33). Run with `npx tsx --test src/lib/privacy.test.ts` from `apps/web`.
 
@@ -1055,7 +1055,7 @@ Pure tests for the Open Food Facts client (`food_search.ts`, injectable-fetcher 
 
 Pure tests for the daily nutrition aggregation (`nutrition_totals.ts`; Dart twin `nutrition_totals_test.dart`). `sumMacros` sums fields treating null as zero (zeros for an empty day); `groupByMealSlot` orders slots and omits empty ones (null slot folds into snack); `ringFraction` clamps to [0,1] and returns null on a missing/zero target.
 
-### Mobile nutrition tests (Dart) — `apps/mobile_android/test/food_search_test.dart` (43) · `nutrition_totals_test.dart` (4) · `nutrition_targets_test.dart` (19, mirror) · `nutrition_screen_test.dart` (31 widget) · `nutrition_log_sheet_test.dart` (11 widget)
+### Mobile nutrition tests (Dart) — `apps/mobile_android/test/food_search_test.dart` (43) · `nutrition_totals_test.dart` (4) · `nutrition_targets_test.dart` (19, mirror) · `nutrition_screen_test.dart` (31 widget) · `nutrition_log_sheet_test.dart` (12 widget)
 
 Dart twins of the web nutrition pure logic (equal counts) plus the mobile-only screen/widget coverage: `nutrition_screen_test.dart` (empty state with rings + water cards, a logged meal under its slot with calories, water increment via the `SharedPreferences` mock) and `nutrition_log_sheet_test.dart` (manual entry logs to the store, Open Food Facts results render via the injected fetcher). The iOS twin runs the same files byte-for-byte.
 ### `apps/web/src/lib/runs/age_grade.test.ts` — 12 tests
@@ -1202,7 +1202,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder`'s `GPS_PROVIDER` and `FusedLocationProviderClient` callbacks, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 1096 tests across 108 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 1097 tests across 108 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 
@@ -1508,7 +1508,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,642 declared tests across 690 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,654 declared tests across 694 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

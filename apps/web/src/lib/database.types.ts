@@ -9019,6 +9019,13 @@ export type Database = {
           target_owner_id: string
         }[]
       }
+      park_course_month_runners: {
+        Args: { p_park_id: string }
+        Returns: {
+          course_id: string
+          runners: number
+        }[]
+      }
       park_course_records: {
         Args: never
         Returns: {

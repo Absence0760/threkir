@@ -17,10 +17,12 @@
 --   D  320  2026-10-10 12:00Z                            -> October (D mutes the notice)
 --   A on the second course only in September, so its October is empty.
 -- C has no effort until the late-import case and reads every board.
+-- The park_months badge (42-46) and the park page's runner counts (47-52)
+-- come last, after the notice cases, because they add efforts.
 
 begin;
 
-select plan(41);
+select plan(52);
 
 -- ── Fixture ──
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -449,6 +451,151 @@ select is_empty(
   $$ select 1 from private.park_course_month_notices where month = '2026-01-01' $$,
   'the job sweeps ledger rows whose month can no longer come round'
 );
+
+-- ── park_months badge (distinct park-local months with a completion) ──
+
+reset role;
+
+-- 42. A has September, October (twice, one of them 23:30 on the 31st local)
+--     and November: three months, bronze, and the value names a count.
+select results_eq(
+  $$ select tier, value_num, source_id is null
+       from achievement_tiers_met('00000000-0000-0000-0000-00000000a601')
+      where badge_key = 'park_months' $$,
+  $$ values ('bronze'::text, 3::double precision, true) $$,
+  'park_months: three distinct park-local months is bronze, with no source'
+);
+
+-- 43. The awarder wrote it when the efforts landed.
+select is(
+  (select count(*)::int from achievements
+    where user_id = '00000000-0000-0000-0000-00000000a601' and badge_key = 'park_months'),
+  1,
+  'park_months: the effort trigger awards the badge'
+);
+
+-- 44. Months are read where the park is: 04:30 UTC on 1 December is
+--     23:30 EST on 30 November, so D has October and November (two), where
+--     UTC would count December as a third.
+insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
+values ('b6b6b6b6-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-00000000d604',
+        '2026-12-01T04:30:00Z', 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true);
+insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at)
+values ('a6a6a6a6-0000-0000-0000-0000000000e2', 'b6b6b6b6-0000-0000-0000-0000000000d2',
+        '00000000-0000-0000-0000-00000000d604', 330, '2026-12-01T04:30:00Z');
+select is_empty(
+  $$ select 1 from achievement_tiers_met('00000000-0000-0000-0000-00000000d604')
+      where badge_key = 'park_months' $$,
+  'park_months: a month is the park''s, so 23:30 local on 30 November is not December'
+);
+-- Removed again so the runner counts below see only their own fixture.
+delete from global_segment_efforts where run_id = 'b6b6b6b6-0000-0000-0000-0000000000d2';
+
+-- 45. Six months is silver, and the family returns every tier met.
+insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
+values ('b6b6b6b6-0000-0000-0000-0000000000b6', '00000000-0000-0000-0000-00000000b602',
+        '2026-01-10T12:00:00Z', 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
+       ('b6b6b6b6-0000-0000-0000-0000000000b7', '00000000-0000-0000-0000-00000000b602',
+        '2026-05-10T12:00:00Z', 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, false);
+insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at)
+values ('a6a6a6a6-0000-0000-0000-0000000000e2', 'b6b6b6b6-0000-0000-0000-0000000000b6',
+        '00000000-0000-0000-0000-00000000b602', 420, '2026-01-10T12:00:00Z'),
+       ('a6a6a6a6-0000-0000-0000-0000000000e2', 'b6b6b6b6-0000-0000-0000-0000000000b7',
+        '00000000-0000-0000-0000-00000000b602', 410, '2026-05-10T12:00:00Z');
+select results_eq(
+  $$ select tier from achievement_tiers_met('00000000-0000-0000-0000-00000000b602')
+      where badge_key = 'park_months' order by rank $$,
+  $$ values ('bronze'::text), ('silver'::text) $$,
+  'park_months: six months (a private run among them) is silver'
+);
+
+-- 46. A DNF run does not count.
+update runs set is_dnf = true where id = 'b6b6b6b6-0000-0000-0000-0000000000b7';
+select is(
+  (select max(value_num) from achievement_tiers_met('00000000-0000-0000-0000-00000000b602')
+    where badge_key = 'park_months'),
+  5::double precision,
+  'park_months: a DNF run''s month does not count'
+);
+
+-- ── Runners this month on a park's page ──
+
+-- Efforts in the park's current month: A twice, B once, D (blocked by C)
+-- once on the Month Loop; B on a private run on the Quiet Loop; A on the
+-- Quiet Loop last month.
+insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
+values ('b6b6b6b6-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-00000000a601', now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
+       ('b6b6b6b6-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-00000000a601', now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
+       ('b6b6b6b6-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-00000000b602', now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
+       ('b6b6b6b6-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-00000000d604', now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
+       ('b6b6b6b6-0000-0000-0000-0000000000e5', '00000000-0000-0000-0000-00000000b602', now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, false),
+       ('b6b6b6b6-0000-0000-0000-0000000000e6', '00000000-0000-0000-0000-00000000a601', now() - interval '40 days', 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true);
+insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at)
+select seg, run_id, user_id, 300, at
+from (values
+  ('a6a6a6a6-0000-0000-0000-0000000000e1'::uuid, 'b6b6b6b6-0000-0000-0000-0000000000e1'::uuid, '00000000-0000-0000-0000-00000000a601'::uuid, now()),
+  ('a6a6a6a6-0000-0000-0000-0000000000e1'::uuid, 'b6b6b6b6-0000-0000-0000-0000000000e2'::uuid, '00000000-0000-0000-0000-00000000a601'::uuid, now()),
+  ('a6a6a6a6-0000-0000-0000-0000000000e1'::uuid, 'b6b6b6b6-0000-0000-0000-0000000000e3'::uuid, '00000000-0000-0000-0000-00000000b602'::uuid, now()),
+  ('a6a6a6a6-0000-0000-0000-0000000000e1'::uuid, 'b6b6b6b6-0000-0000-0000-0000000000e4'::uuid, '00000000-0000-0000-0000-00000000d604'::uuid, now()),
+  ('a6a6a6a6-0000-0000-0000-0000000000e2'::uuid, 'b6b6b6b6-0000-0000-0000-0000000000e5'::uuid, '00000000-0000-0000-0000-00000000b602'::uuid, now()),
+  ('a6a6a6a6-0000-0000-0000-0000000000e2'::uuid, 'b6b6b6b6-0000-0000-0000-0000000000e6'::uuid, '00000000-0000-0000-0000-00000000a601'::uuid, now() - interval '40 days')
+) as v(seg, run_id, user_id, at);
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-00000000c603"}';
+
+-- 47. Distinct runners, so A's two runs count once; D, whom C blocked, is
+--     not counted.
+select results_eq(
+  $$ select runners from park_course_month_runners('a6a6a6a6-0000-0000-0000-0000000000a1')
+      where course_id = 'a6a6a6a6-0000-0000-0000-0000000000c1' $$,
+  $$ values (2) $$,
+  'park_course_month_runners: distinct runners this month, without the blocked one'
+);
+
+-- 48. Another runner's private run and last month's effort are not counted,
+--     so the Quiet Loop has no row for C.
+select is_empty(
+  $$ select 1 from park_course_month_runners('a6a6a6a6-0000-0000-0000-0000000000a1')
+      where course_id = 'a6a6a6a6-0000-0000-0000-0000000000c2' $$,
+  'park_course_month_runners: a private run and last month''s effort are not counted'
+);
+
+-- 49. The owner of the private run sees it counted.
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-00000000b602"}';
+select results_eq(
+  $$ select runners from park_course_month_runners('a6a6a6a6-0000-0000-0000-0000000000a1')
+      where course_id = 'a6a6a6a6-0000-0000-0000-0000000000c2' $$,
+  $$ values (1) $$,
+  'park_course_month_runners: a runner''s own private run counts for them'
+);
+
+-- 50. An inactive park returns nothing.
+reset role;
+update parks set is_active = false where id = 'a6a6a6a6-0000-0000-0000-0000000000a1';
+set local role authenticated;
+select is_empty(
+  $$ select 1 from park_course_month_runners('a6a6a6a6-0000-0000-0000-0000000000a1') $$,
+  'park_course_month_runners: a pulled park returns no counts'
+);
+reset role;
+update parks set is_active = true where id = 'a6a6a6a6-0000-0000-0000-0000000000a1';
+
+-- 51. Signed out is refused, as both boards are.
+set local role anon;
+set local "request.jwt.claims" = '{}';
+select throws_ok(
+  $$ select * from park_course_month_runners('a6a6a6a6-0000-0000-0000-0000000000a1') $$,
+  '42501', null, 'anon cannot read the runner counts');
+reset role;
+
+-- 52. An authenticated caller with no subject is refused in the body.
+set local role authenticated;
+set local "request.jwt.claims" = '{}';
+select throws_ok(
+  $$ select * from park_course_month_runners('a6a6a6a6-0000-0000-0000-0000000000a1') $$,
+  '42501', null, 'a caller with no subject is refused');
+reset role;
 
 select * from finish();
 rollback;

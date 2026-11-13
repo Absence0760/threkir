@@ -1595,7 +1595,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       );
     } else if (kind == 'data_export_ready') {
-      // The archive is collected from Settings → Account, which this screen
+      // The archive is collected from the Account page (You tab), which this screen
       // cannot construct (it holds none of that screen's dependencies), so
       // the request is parked for the shell to drain — decisions § 710.
       openSettings(SettingsDestination.account);

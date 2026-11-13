@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show FieldColumn, ListCard;
+import 'package:ui_kit/ui_kit.dart' show FieldColumn, FieldPair, ListCard;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -469,48 +469,30 @@ class _NutritionLogSheetState extends State<NutritionLogSheet> {
               // Add is enabled by the name, so it has to rebuild as one is typed.
               onChanged: (_) => setState(() {}),
             ),
-            Row(
-              children: [
-                Expanded(child: _numField(_manualKcal, l10n.nutritionCalories)),
-                const SizedBox(width: 8),
-                Expanded(child: _numField(_manualProtein, '${l10n.nutritionProtein} (g)')),
-              ],
+            FieldPair(
+              first: _numField(_manualKcal, l10n.nutritionCalories),
+              second: _numField(_manualProtein, '${l10n.nutritionProtein} (g)'),
             ),
-            Row(
-              children: [
-                Expanded(child: _numField(_manualCarbs, '${l10n.nutritionCarbs} (g)')),
-                const SizedBox(width: 8),
-                Expanded(child: _numField(_manualFat, '${l10n.nutritionFat} (g)')),
-              ],
+            FieldPair(
+              first: _numField(_manualCarbs, '${l10n.nutritionCarbs} (g)'),
+              second: _numField(_manualFat, '${l10n.nutritionFat} (g)'),
             ),
-            Row(
-              children: [
-                Expanded(child: _numField(_manualFiber, '${l10n.nutritionFiber} (g)')),
-                const SizedBox(width: 8),
-                Expanded(child: _numField(_manualSugar, '${l10n.nutritionSugar} (g)')),
-              ],
+            FieldPair(
+              first: _numField(_manualFiber, '${l10n.nutritionFiber} (g)'),
+              second: _numField(_manualSugar, '${l10n.nutritionSugar} (g)'),
             ),
-            Row(
-              children: [
-                Expanded(child: _numField(_manualSatFat, '${l10n.nutritionSaturatedFat} (g)')),
-                const SizedBox(width: 8),
-                Expanded(child: _numField(_manualSodium, '${l10n.nutritionSodium} (mg)')),
-              ],
+            FieldPair(
+              first: _numField(_manualSatFat, '${l10n.nutritionSaturatedFat} (g)'),
+              second: _numField(_manualSodium, '${l10n.nutritionSodium} (mg)'),
             ),
-            Row(
-              children: [
-                Expanded(child: _numField(_manualCholesterol, '${l10n.nutritionCholesterol} (mg)')),
-                const SizedBox(width: 8),
-                const Expanded(child: SizedBox()),
-              ],
-            ),
+            _numField(_manualCholesterol, '${l10n.nutritionCholesterol} (mg)'),
           ]),
         ],
       ],
     );
   }
 
-  Widget _numField(TextEditingController c, String label) => TextField(
+  TextField _numField(TextEditingController c, String label) => TextField(
         controller: c,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         decoration: InputDecoration(labelText: label),

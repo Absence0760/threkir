@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
@@ -8,6 +9,7 @@ import 'package:ui_kit/ui_kit.dart'
     show
         AppBarAction,
         AppInsets,
+        AppSearchField,
         AppSemanticColors,
         ChoiceChipOption,
         ChoiceChipRow,
@@ -29,6 +31,7 @@ import 'package:ui_kit/ui_kit.dart'
 import 'package:url_launcher/url_launcher.dart';
 
 import '../adaptive_width.dart';
+import '../any_time_courses.dart' show parkSearchMatches, parkSearchTerms;
 import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../elevation_profile.dart' show elevationSeries;
@@ -62,7 +65,10 @@ import '../widgets/track_preview.dart';
 class ParksScreen extends StatefulWidget {
   final ApiClient? api;
 
-  const ParksScreen({super.key, this.api});
+  /// The search the index opens on, carried from Races & courses' "See all".
+  final String initialQuery;
+
+  const ParksScreen({super.key, this.api, this.initialQuery = ''});
 
   @override
   State<ParksScreen> createState() => _ParksScreenState();
@@ -77,11 +83,54 @@ class _ParksScreenState extends State<ParksScreen> {
   /// with, so a failure leaves the parks listed without their lines.
   Map<String, List<ParkCourseListing>> _coursesByPark = const {};
 
+  late final _searchCtl = TextEditingController(text: widget.initialQuery);
+  Timer? _debounce;
+
+  /// The search once typing pauses. Every park and course is already
+  /// loaded, so it is matched on the list ([parkSearchMatches]).
+  late String _query = widget.initialQuery;
+
   @override
   void initState() {
     super.initState();
     _load();
     _loadCourses();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtl.dispose();
+    super.dispose();
+  }
+
+  void _onSearch(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) setState(() => _query = value);
+    });
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+    _searchCtl.clear();
+    setState(() => _query = '');
+  }
+
+  /// A park is found by its own name and place, or by any of its courses'
+  /// names, so a course name leads to the park that holds it.
+  bool _parkMatches(ParkListing listing, List<String> terms) {
+    final park = listing.park;
+    if (parkSearchMatches(terms,
+        parkName: park.name, regionCode: park.regionCode)) {
+      return true;
+    }
+    return (_coursesByPark[park.id] ?? const []).any((c) => parkSearchMatches(
+          terms,
+          courseName: c.segment.name,
+          parkName: park.name,
+          regionCode: park.regionCode,
+        ));
   }
 
   Future<void> _load() async {
@@ -133,8 +182,14 @@ class _ParksScreenState extends State<ParksScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final terms = parkSearchTerms(_query);
     final groups = groupParksByRegion<ParkListing>(
-      _parks,
+      terms.isEmpty
+          ? _parks
+          : [
+              for (final p in _parks)
+                if (_parkMatches(p, terms)) p,
+            ],
       regionCodeOf: (p) => p.park.regionCode,
       nameOf: (p) => p.park.name,
     );
@@ -178,6 +233,25 @@ class _ParksScreenState extends State<ParksScreen> {
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: AppSearchField(
+                          key: const Key('parks-search'),
+                          controller: _searchCtl,
+                          hint: l10n.parksSearchPlaceholder,
+                          clearTooltip: l10n.commonClearSearch,
+                          onChanged: _onSearch,
+                        ),
+                      ),
+                      if (groups.isEmpty)
+                        EmptyState(
+                          key: const Key('parks-no-match'),
+                          icon: Icons.search_off,
+                          title: l10n.parksNoMatch(_query.trim()),
+                          ctaLabel: l10n.commonClearSearch,
+                          ctaIcon: Icons.close,
+                          onCta: _clearSearch,
+                        ),
                       for (final group in groups) ...[
                         Padding(
                           padding: const EdgeInsets.only(top: 20, bottom: 8),

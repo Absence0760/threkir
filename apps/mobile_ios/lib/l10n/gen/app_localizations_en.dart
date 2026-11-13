@@ -15444,11 +15444,30 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String racesAnyTimeNoMatch(String query) {
+    return 'No courses match “$query”';
+  }
+
+  @override
+  String racesAnyTimeSeeAll(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'See all $n courses',
+      one: 'See all $n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get racesAnyTimeFastestFailed =>
       'Couldn\'t load this season\'s fastest times.';
 
   @override
   String get racesSearchPlaceholder => 'Search races by name…';
+
+  @override
+  String get racesSearchAllPlaceholder => 'Search races, parks and courses…';
 
   @override
   String racesNearChip(String place) {
@@ -21734,6 +21753,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'No park courses yet. The first ones are on their way.';
 
   @override
+  String get parksSearchPlaceholder => 'Search parks and courses…';
+
+  @override
+  String parksNoMatch(String query) {
+    return 'No parks or courses match “$query”';
+  }
+
+  @override
   String parksCourseCount(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -21743,9 +21770,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get parksBackToParks => 'All park courses';
 
   @override
   String get parksParkNotFoundTitle => 'Park not found';

@@ -7,7 +7,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
-import '../preferences.dart' show formatDistanceForPref;
+import '../preferences.dart'
+    show compactDistanceForPref, formatDistanceForPref;
 import '../race_plan_preset.dart';
 import '../race_provider_labels.dart';
 import '../provenance.dart';
@@ -95,6 +96,13 @@ class _RacesScreenState extends State<RacesScreen> {
   int _gen = 0;
 
   String _query = '';
+
+  /// [_query] once typing pauses, which is what filters the park courses.
+  String _settledQuery = '';
+
+  /// The race search has not run since its inputs changed, because the
+  /// Courses view hides the races; it runs when they show again.
+  bool _racesStale = false;
   String _distance = '';
   bool _recent = false;
   String _nearPlace = '';
@@ -115,7 +123,9 @@ class _RacesScreenState extends State<RacesScreen> {
   }
 
   void _onShow() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    if (_racesStale && _show.value != RacesShow.courses) _run();
   }
 
   @override
@@ -128,12 +138,38 @@ class _RacesScreenState extends State<RacesScreen> {
     super.dispose();
   }
 
+  /// One debounce for both lists: the race search is a server call per
+  /// settled query, and the courses refilter on the same beat rather than on
+  /// every keystroke.
   void _schedule() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 250), _run);
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      if (_settledQuery != _query) setState(() => _settledQuery = _query);
+      if (_show.value == RacesShow.courses) {
+        _racesStale = true;
+      } else {
+        _run();
+      }
+    });
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+    _searchCtl.clear();
+    setState(() {
+      _query = '';
+      _settledQuery = '';
+    });
+    if (_show.value == RacesShow.courses) {
+      _racesStale = true;
+    } else {
+      _run();
+    }
   }
 
   Future<void> _run() async {
+    _racesStale = false;
     final gen = ++_gen;
     setState(() {
       _loading = true;
@@ -277,6 +313,8 @@ class _RacesScreenState extends State<RacesScreen> {
                     ? null
                     : kRunAnyTimeLimit,
                 showParks: _show.value == RacesShow.courses,
+                query: _settledQuery,
+                onClearQuery: _clearSearch,
               ),
             ),
           SliverToBoxAdapter(
@@ -287,9 +325,11 @@ class _RacesScreenState extends State<RacesScreen> {
     );
   }
 
-  /// The race search and Filters (hidden with the race calendar in Courses),
-  /// the All · Races · Courses view on the one chip line, and the filters
-  /// that are on as removable chips after it.
+  /// The search, which finds races by name and park courses by name, park and
+  /// place, so it stays in every view (issue #1374: with it gone from Courses
+  /// the help and overflow sat alone on a row); Filters, which only the race
+  /// calendar has, so Courses hides it; the All · Races · Courses view on the
+  /// one chip line; and the filters that are on as removable chips after it.
   FilterBar _filterBar(AppLocalizations l,
       {required ApiClient? api, required bool racesShown}) {
     ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
@@ -299,17 +339,21 @@ class _RacesScreenState extends State<RacesScreen> {
         );
     return FilterBar(
       key: const Key('races-filter-bar'),
-      search: racesShown
-          ? AppSearchField(
-              controller: _searchCtl,
-              hint: l.racesSearchPlaceholder,
-              clearTooltip: l.commonClearSearch,
-              onChanged: (v) {
-                _query = v;
-                _schedule();
-              },
-            )
-          : null,
+      search: AppSearchField(
+        key: const Key('races-search'),
+        controller: _searchCtl,
+        // Says what it finds in the view showing.
+        hint: api == null || _show.value == RacesShow.races
+            ? l.racesSearchPlaceholder
+            : _show.value == RacesShow.courses
+                ? l.parksSearchPlaceholder
+                : l.racesSearchAllPlaceholder,
+        clearTooltip: l.commonClearSearch,
+        onChanged: (v) {
+          _query = v;
+          _schedule();
+        },
+      ),
       chipsLabel: api == null ? null : l.racesShowGroup,
       chips: [
         if (api != null)
@@ -476,10 +520,14 @@ class _RacesScreenState extends State<RacesScreen> {
       );
     }
     if (_results.isEmpty) {
+      final searched = _query.trim().isNotEmpty;
       return SliverToBoxAdapter(
         child: EmptyState(
           icon: Icons.flag_outlined,
           title: _recent ? l.racesEmptyRecent(recentWindowDays) : l.racesEmpty,
+          ctaLabel: searched ? l.commonClearSearch : null,
+          ctaIcon: Icons.close,
+          onCta: searched ? _clearSearch : null,
         ),
       );
     }
@@ -535,7 +583,7 @@ class _RaceCard extends StatelessWidget {
         formatDistanceForPref(race.distanceM!.toDouble()),
       if (race.locationLabel != null) race.locationLabel!,
       if (race.distanceMAway != null)
-        l.racesDistanceAway(formatDistanceForPref(race.distanceMAway!)),
+        l.racesDistanceAway(compactDistanceForPref(race.distanceMAway!)),
     ];
     // The whole card opens the race; the action buttons below stay their own
     // targets because each claims its own tap. A screen reader hears the

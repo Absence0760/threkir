@@ -9,6 +9,8 @@
  */
 
 import { haversineMetres } from '../runs/run_stats.ts';
+import { fold } from '../segments/catalogue_browse.ts';
+import { regionName } from './park_courses.ts';
 
 export interface AnyTimeCourseKey {
 	regionCode: string;
@@ -69,4 +71,32 @@ export function orderAnyTimeCourses<T>(
 		return compareStable(a.k, b.k);
 	});
 	return rows.map(({ course, awayM }) => ({ course, awayM }));
+}
+
+/**
+ * The words of a park or park course search, folded the way the segment
+ * catalogue's search folds (case and accents ignored). A blank query has
+ * none, and no words match everything.
+ */
+export function parkSearchTerms(query: string): string[] {
+	return fold(query)
+		.split(/\s+/)
+		.filter((t) => t.length > 0);
+}
+
+/**
+ * Whether every one of `terms` is in the course's name, its park's name or
+ * the park's place (the region's name or code), so "pocahontas 5k" and
+ * "virginia beaver" both find a course. With no `courseName` it asks about
+ * the park alone.
+ */
+export function parkSearchMatches(
+	terms: readonly string[],
+	target: { courseName?: string; parkName: string; regionCode: string },
+): boolean {
+	if (terms.length === 0) return true;
+	const text = fold(
+		[target.courseName ?? '', target.parkName, regionName(target.regionCode), target.regionCode].join(' '),
+	);
+	return terms.every((t) => text.includes(t));
 }

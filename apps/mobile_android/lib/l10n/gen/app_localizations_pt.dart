@@ -15609,11 +15609,31 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String racesAnyTimeNoMatch(String query) {
+    return 'Nenhum percurso corresponde a “$query”';
+  }
+
+  @override
+  String racesAnyTimeSeeAll(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Ver os $n percursos',
+      one: 'Ver $n percurso',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get racesAnyTimeFastestFailed =>
       'Não foi possível carregar os tempos mais rápidos desta época.';
 
   @override
   String get racesSearchPlaceholder => 'Procurar provas por nome…';
+
+  @override
+  String get racesSearchAllPlaceholder =>
+      'Procurar provas, parques e percursos…';
 
   @override
   String racesNearChip(String place) {
@@ -21970,6 +21990,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ainda não há percursos. Os primeiros estão a caminho.';
 
   @override
+  String get parksSearchPlaceholder => 'Procurar parques e percursos…';
+
+  @override
+  String parksNoMatch(String query) {
+    return 'Nenhum parque ou percurso corresponde a “$query”';
+  }
+
+  @override
   String parksCourseCount(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -21979,9 +22007,6 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get parksBackToParks => 'Todos os percursos';
 
   @override
   String get parksParkNotFoundTitle => 'Parque não encontrado';
@@ -39108,11 +39133,31 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String racesAnyTimeNoMatch(String query) {
+    return 'Nenhum percurso corresponde a “$query”';
+  }
+
+  @override
+  String racesAnyTimeSeeAll(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Ver os $n percursos',
+      one: 'Ver $n percurso',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get racesAnyTimeFastestFailed =>
       'Não foi possível carregar os tempos mais rápidos desta temporada.';
 
   @override
   String get racesSearchPlaceholder => 'Pesquisar corridas por nome…';
+
+  @override
+  String get racesSearchAllPlaceholder =>
+      'Pesquisar corridas, parques e percursos…';
 
   @override
   String racesNearChip(String place) {
@@ -45469,6 +45514,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Ainda não há percursos. Os primeiros estão a caminho.';
 
   @override
+  String get parksSearchPlaceholder => 'Pesquisar parques e percursos…';
+
+  @override
+  String parksNoMatch(String query) {
+    return 'Nenhum parque ou percurso corresponde a “$query”';
+  }
+
+  @override
   String parksCourseCount(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -45478,9 +45531,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return '$_temp0';
   }
-
-  @override
-  String get parksBackToParks => 'Todos os percursos';
 
   @override
   String get parksParkNotFoundTitle => 'Parque não encontrado';

@@ -25023,6 +25023,18 @@ abstract class AppLocalizations {
   /// **'{distance} away'**
   String racesAnyTimeAway(String distance);
 
+  /// Run any time empty state when no park course matches the search. Mirrors web races.anyTimeNoMatch
+  ///
+  /// In en, this message translates to:
+  /// **'No courses match “{query}”'**
+  String racesAnyTimeNoMatch(String query);
+
+  /// Run any time heading action when the list is cut short: opens the full park course index. n is how many courses match. Mirrors web races.anyTimeSeeAll
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {See all {n} course} other {See all {n} courses}}'**
+  String racesAnyTimeSeeAll(int n);
+
   /// Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed
   ///
   /// In en, this message translates to:
@@ -25034,6 +25046,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search races by name…'**
   String get racesSearchPlaceholder;
+
+  /// Placeholder for the Races & courses search in the All view, which finds races by name and park courses by name, park and place. Mirrors web races.searchAllPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search races, parks and courses…'**
+  String get racesSearchAllPlaceholder;
 
   /// Active-filter chip for the near-a-place filter. {place} is what the runner typed.
   ///
@@ -35037,17 +35055,23 @@ abstract class AppLocalizations {
   /// **'No park courses yet. The first ones are on their way.'**
   String get parksEmpty;
 
+  /// Placeholder for the park and park course search (All park courses, and Races & courses in the Courses view). Mirrors web parks.searchPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Search parks and courses…'**
+  String get parksSearchPlaceholder;
+
+  /// All park courses empty state when no park or course matches the search. Mirrors web parks.noMatch
+  ///
+  /// In en, this message translates to:
+  /// **'No parks or courses match “{query}”'**
+  String parksNoMatch(String query);
+
   /// Park courses (#1313): web key parks.courseCount.
   ///
   /// In en, this message translates to:
   /// **'{n, plural, one {{n} course} other {{n} courses}}'**
   String parksCourseCount(int n);
-
-  /// Park courses (#1313): web key parks.backToParks.
-  ///
-  /// In en, this message translates to:
-  /// **'All park courses'**
-  String get parksBackToParks;
 
   /// Park courses (#1313): web key parks.parkNotFoundTitle.
   ///

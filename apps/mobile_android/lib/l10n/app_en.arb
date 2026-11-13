@@ -20471,6 +20471,24 @@
       }
     }
   },
+  "racesAnyTimeNoMatch": "No courses match “{query}”",
+  "@racesAnyTimeNoMatch": {
+    "description": "Run any time empty state when no park course matches the search. Mirrors web races.anyTimeNoMatch",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "racesAnyTimeSeeAll": "{n, plural, one {See all {n} course} other {See all {n} courses}}",
+  "@racesAnyTimeSeeAll": {
+    "description": "Run any time heading action when the list is cut short: opens the full park course index. n is how many courses match. Mirrors web races.anyTimeSeeAll",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "racesAnyTimeFastestFailed": "Couldn't load this season's fastest times.",
   "@racesAnyTimeFastestFailed": {
     "description": "Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed"
@@ -20478,6 +20496,10 @@
   "racesSearchPlaceholder": "Search races by name…",
   "@racesSearchPlaceholder": {
     "description": "Placeholder for the race name search field"
+  },
+  "racesSearchAllPlaceholder": "Search races, parks and courses…",
+  "@racesSearchAllPlaceholder": {
+    "description": "Placeholder for the Races & courses search in the All view, which finds races by name and park courses by name, park and place. Mirrors web races.searchAllPlaceholder"
   },
   "racesNearChip": "Near {place}",
   "@racesNearChip": {
@@ -28704,6 +28726,19 @@
   "@parksEmpty": {
     "description": "Park courses (#1313): web key parks.empty."
   },
+  "parksSearchPlaceholder": "Search parks and courses…",
+  "@parksSearchPlaceholder": {
+    "description": "Placeholder for the park and park course search (All park courses, and Races & courses in the Courses view). Mirrors web parks.searchPlaceholder"
+  },
+  "parksNoMatch": "No parks or courses match “{query}”",
+  "@parksNoMatch": {
+    "description": "All park courses empty state when no park or course matches the search. Mirrors web parks.noMatch",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "parksCourseCount": "{n, plural, one {{n} course} other {{n} courses}}",
   "@parksCourseCount": {
     "description": "Park courses (#1313): web key parks.courseCount.",
@@ -28712,10 +28747,6 @@
         "type": "int"
       }
     }
-  },
-  "parksBackToParks": "All park courses",
-  "@parksBackToParks": {
-    "description": "Park courses (#1313): web key parks.backToParks."
   },
   "parksParkNotFoundTitle": "Park not found",
   "@parksParkNotFoundTitle": {

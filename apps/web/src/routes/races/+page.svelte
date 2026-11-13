@@ -30,8 +30,8 @@
 	import FilterBar, { type ActiveFilter, type FilterChip } from '#lib/components/FilterBar.svelte';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
-	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
-	import { orderAnyTimeCourses } from '#lib/parks/any_time_courses.ts';
+	import { fmtCompactDistance } from '#lib/format/units.svelte.ts';
+	import { orderAnyTimeCourses, parkSearchMatches, parkSearchTerms } from '#lib/parks/any_time_courses.ts';
 	import { anyTimeCourseLimit, parseRacesShow, racesShowSearch, type RacesShow } from '#lib/races/races_show.ts';
 	import { regionName, regionSlug } from '#lib/parks/park_courses.ts';
 	import ParkCard from '#lib/components/parks/ParkCard.svelte';
@@ -65,6 +65,25 @@
 	}
 
 	let query = $state('');
+	// `query` once typing pauses, which is what filters the park courses. Every
+	// course is already loaded, so they are matched on the list rather than
+	// asked of the server.
+	let courseQuery = $state('');
+	let courseQueryTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		const next = query;
+		clearTimeout(courseQueryTimer);
+		courseQueryTimer = setTimeout(() => (courseQuery = next), 250);
+		return () => clearTimeout(courseQueryTimer);
+	});
+	const courseTerms = $derived(parkSearchTerms(courseQuery));
+
+	function clearSearch() {
+		clearTimeout(courseQueryTimer);
+		query = '';
+		courseQuery = '';
+	}
+
 	let distance = $state<'' | RaceDistanceBand>('');
 	let when = $state<'upcoming' | 'recent'>('upcoming');
 	const RECENT_WINDOW_DAYS = 30;
@@ -187,9 +206,21 @@
 	let records = $state<Map<string, ParkCourseRecord>>(new Map());
 	let recordsFailed = $state(false);
 
+	const matchingCourses = $derived(
+		courseTerms.length === 0
+			? courses
+			: courses.filter((c) =>
+					parkSearchMatches(courseTerms, {
+						courseName: c.segment.name,
+						parkName: c.park.name,
+						regionCode: c.park.region_code,
+					}),
+				),
+	);
+
 	const orderedCourses = $derived(
 		orderAnyTimeCourses(
-			courses,
+			matchingCourses,
 			(c) => {
 				const first = c.segment.waypoints[0];
 				return {
@@ -205,6 +236,14 @@
 			center,
 		).slice(0, anyTimeCourseLimit(show) ?? undefined),
 	);
+
+	// The way to the full index, only when the list above is cut short; the
+	// Courses view lists every course and has none (issue #1374).
+	const anyTimeTruncated = $derived.by(() => {
+		const limit = anyTimeCourseLimit(show);
+		return limit !== null && matchingCourses.length > limit;
+	});
+	const seeAllHref = $derived(courseQuery.trim() ? `/parks?q=${encodeURIComponent(courseQuery.trim())}` : '/parks');
 
 	// The Courses view leads with the parks, in the order their first course
 	// lists, so a set place brings the nearest park first too.
@@ -253,11 +292,6 @@
 		void loadCourses();
 		void loadRecords();
 	});
-
-	function fmtDist(metres: number, digits: number): string {
-		const { value, unit } = distanceInPreferred(metres);
-		return `${value.toFixed(digits)} ${unit}`;
-	}
 
 	// A verified club's admin is pointed at the course suggestions waiting for
 	// them (decisions § 2396). Auxiliary: a failed read shows no link.
@@ -381,11 +415,13 @@
 {/snippet}
 
 <!-- The search's explanation is shown in the Filters sheet; a screen reader
-     hears it on the field too, which is the one place it is always present. -->
+     hears it on the field too, which is the one place it is always present.
+     It finds races by name and park courses by name, park and place, so it
+     stays in every view and says what it finds in the one showing. -->
 {#snippet raceSearch()}
 	<AppSearchField
 		bind:value={query}
-		label={m('races.searchPlaceholder')}
+		label={m(show === 'races' ? 'races.searchPlaceholder' : show === 'courses' ? 'parks.searchPlaceholder' : 'races.searchAllPlaceholder')}
 		testid="races-search"
 		describedby="races-search-desc"
 	/>
@@ -490,12 +526,12 @@
 		{/snippet}
 	</PageHeader>
 
-	<!-- The search and Filters belong to the race calendar, so the Courses
-	     view, which hides it, keeps only the Show chips. -->
+	<!-- Filters belong to the race calendar, so the Courses view, which hides
+	     it, keeps the search and the Show chips. -->
 	<div class="races-filter-bar" data-testid="races-filter-bar">
 		<FilterBar
 			idPrefix="races"
-			search={show === 'courses' ? undefined : raceSearch}
+			search={raceSearch}
 			chips={showChips}
 			chipsLabel={m('races.showGroup')}
 			{activeFilters}
@@ -552,7 +588,15 @@
 	{#if show !== 'races'}
 		<section class="races-section" aria-labelledby="races-any-time-heading" data-testid="races-any-time">
 			<div class="section-head">
-				<h2 id="races-any-time-heading">{m('races.sectionAnyTime')}</h2>
+				<div class="section-title-row">
+					<h2 id="races-any-time-heading">{m('races.sectionAnyTime')}</h2>
+					{#if anyTimeTruncated && !coursesLoading && !coursesFailed}
+						<a class="see-all" href={seeAllHref} data-testid="races-any-time-all">
+							{m('races.anyTimeSeeAll', { n: matchingCourses.length })}
+							<span class="material-symbols" aria-hidden="true">arrow_forward</span>
+						</a>
+					{/if}
+				</div>
 				{#if show === 'courses'}
 					<p class="section-intro" id="races-near-hint">{m('races.anyTimeIntroCourses')}</p>
 				{:else}
@@ -581,6 +625,18 @@
 					<span>{m('parks.loadFailed')}</span>
 					<button type="button" class="btn btn-outline" onclick={loadCourses}>{m('parks.retry')}</button>
 				</div>
+			{:else if orderedCourses.length === 0 && courseTerms.length > 0}
+				<EmptyState
+					icon="search_off"
+					title={m('races.anyTimeNoMatch', { query: courseQuery.trim() })}
+					data-testid="races-any-time-no-match"
+				>
+					{#snippet actions()}
+						<button type="button" class="btn btn-outline" onclick={clearSearch} data-testid="races-any-time-clear-search">
+							{m('filterBar.clearSearch')}
+						</button>
+					{/snippet}
+				</EmptyState>
 			{:else if orderedCourses.length === 0}
 				<EmptyState icon="park" title={m('parks.empty')} data-testid="races-any-time-empty" />
 			{:else}
@@ -621,7 +677,7 @@
 								data-testid="races-any-time-park-link"
 							>{course.park.name}, {regionName(course.park.region_code)}</a>
 							<span class="course-meta" data-testid="races-any-time-meta">
-								<span data-testid="races-any-time-distance">{fmtCourseDistance(course.segment.distance_m)}</span>{#if laps}&nbsp;·&nbsp;<span data-testid="races-any-time-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}{#if shapeKey}&nbsp;·&nbsp;{m(shapeKey)}{/if}{#if awayM !== null}&nbsp;·&nbsp;{m('races.anyTimeAway', { distance: fmtDist(awayM, 1) })}{/if}
+								<span data-testid="races-any-time-distance">{fmtCourseDistance(course.segment.distance_m)}</span>{#if laps}&nbsp;·&nbsp;<span data-testid="races-any-time-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}{#if shapeKey}&nbsp;·&nbsp;{m(shapeKey)}{/if}{#if awayM !== null}&nbsp;·&nbsp;{m('races.anyTimeAway', { distance: fmtCompactDistance(awayM) })}{/if}
 							</span>
 							{#if !recordsFailed}
 								<span class="course-record" data-testid="races-any-time-record">
@@ -641,10 +697,6 @@
 					{/each}
 				</ul>
 			{/if}
-			<a class="see-all" href="/parks" data-testid="races-any-time-all">
-				{m('parks.backToParks')}
-				<span class="material-symbols" aria-hidden="true">arrow_forward</span>
-			</a>
 		</section>
 	{/if}
 </div>
@@ -776,11 +828,17 @@
 	.status-pill.closed {
 		color: var(--color-danger-text);
 	}
+	.section-title-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-xs) var(--space-md);
+	}
 	.see-all {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
-		align-self: flex-start;
 		font-weight: 600;
 	}
 	.see-all .material-symbols {

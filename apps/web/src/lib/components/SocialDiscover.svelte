@@ -7,7 +7,7 @@
 		type PublicEventFilters,
 		type EventWeekday,
 	} from '#lib/core/data.ts';
-	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { fmtCompactDistance } from '#lib/format/units.svelte.ts';
 	import { formatPrice } from '#lib/format/format_price.ts';
 	import { fromMinorUnits } from '#lib/format/minor_units.ts';
 	import FilterBar, { type ActiveFilter, type FilterChip } from './FilterBar.svelte';
@@ -215,7 +215,7 @@
 
 	function distanceLabel(r: PublicEventResult): string | null {
 		if (r.distance_m == null) return null;
-		return m('discover.distanceAway', { distance: formatDistance(r.distance_m) });
+		return m('discover.distanceAway', { distance: fmtCompactDistance(r.distance_m) });
 	}
 
 	function categoryLabel(c: string): string {

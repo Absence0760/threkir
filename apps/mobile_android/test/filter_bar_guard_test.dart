@@ -16,8 +16,6 @@ import 'package:flutter_test/flutter_test.dart';
 /// Hand-built search fields (`prefixIcon: Icon(Icons.search)`) still to move
 /// onto `AppSearchField`.
 const _unmigratedSearch = <String, int>{
-  'lib/screens/clubs_screen.dart': 1,
-  'lib/screens/discover_screen.dart': 1,
   'lib/screens/explore_routes_screen.dart': 1,
   'lib/screens/help_screen.dart': 1,
   'lib/screens/messages_screen.dart': 1,
@@ -54,12 +52,9 @@ const _listTabs = [
   'lib/screens/challenges_screen.dart',
 ];
 
-/// Wrapping chip rows still in a list tab's toolbar.
-const _unmigratedChipWraps = <String, int>{
-  'lib/screens/clubs_screen.dart': 1,
-  'lib/screens/discover_screen.dart': 2,
-  'lib/screens/feed_screen.dart': 1,
-};
+/// Wrapping chip rows still in a list tab's toolbar. Empty since the Social
+/// tabs moved onto FilterBar; it stays so a new one fails by name.
+const _unmigratedChipWraps = <String, int>{};
 
 /// [source] with comments removed and every string literal emptied, so a
 /// bracket inside either can't end a scan early. Newlines are kept.

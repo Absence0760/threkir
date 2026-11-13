@@ -104,6 +104,8 @@ Future<void> _pump(WidgetTester tester, SocialService social) {
   );
 }
 
+final _browseChip = find.widgetWithText(ChoiceChip, 'Browse');
+
 void main() {
   setUpAll(() {
     // ClubsScreen._load reads dotenv.env['MAPTILER_KEY']; without a
@@ -119,12 +121,26 @@ void main() {
       expect(find.text('Clubs'), findsOneWidget);
     });
 
-    testWidgets('renders the Browse / My clubs chip row', (tester) async {
+    testWidgets('Browse / My clubs are the quick chips of one FilterBar',
+        (tester) async {
       await _pump(tester, _FakeSocial());
       await tester.pump();
-      expect(find.byType(ChoiceChipRow<int>), findsOneWidget);
-      expect(find.text('Browse'), findsOneWidget);
-      expect(find.text('My clubs'), findsOneWidget);
+      final bar = find.byKey(const ValueKey('clubs-filter-bar'));
+      expect(bar, findsOneWidget);
+      expect(find.descendant(of: bar, matching: _browseChip), findsOneWidget);
+      expect(
+          find.descendant(
+              of: bar, matching: find.widgetWithText(ChoiceChip, 'My clubs')),
+          findsOneWidget);
+    });
+
+    testWidgets('Join with invite code is the control row\'s action, and the '
+        'empty My clubs tab offers it too', (tester) async {
+      await _pump(tester, _FakeSocial());
+      await tester.pump();
+      expect(find.byKey(const ValueKey('clubs-join-with-code')), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Join with invite code'),
+          findsOneWidget);
     });
 
     testWidgets('starts on the My clubs tab — search field is hidden',
@@ -152,7 +168,7 @@ void main() {
       await _pump(tester, _FakeSocial());
       await tester.pump();
       // Tap the "Browse" segment.
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       expect(find.widgetWithText(TextField, 'Search by name or location'),
           findsOneWidget);
@@ -164,7 +180,7 @@ void main() {
       final handle = tester.ensureSemantics();
       await _pump(tester, _FakeSocial());
       await tester.pump();
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       // Semantics wrapper keeps the field named once the hint disappears on
       // typing (web parity: SocialClubs' aria-label).
@@ -252,7 +268,7 @@ void main() {
       await _pump(tester, _FakeSocial(mine: const [], browse: const []));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       // groups is the Browse empty glyph.
@@ -291,7 +307,7 @@ void main() {
       await _pump(tester, social);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
 
       await tester.enterText(
@@ -309,7 +325,7 @@ void main() {
       await _pump(tester, _FakeSocial());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       await tester.enterText(
           find.widgetWithText(TextField, 'Search by name or location'), term);
@@ -353,7 +369,7 @@ void main() {
       await _pump(tester, _ThrowingSocial());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       expect(find.byType(ErrorState), findsOneWidget);
       expect(find.text('Set up your club'), findsNothing);
@@ -365,7 +381,7 @@ void main() {
       final social = _SlowSocial();
       await _pump(tester, social);
       await tester.pump();
-      await tester.tap(find.text('Browse'));
+      await tester.tap(_browseChip);
       await tester.pump();
       expect(find.byType(ListSkeleton), findsOneWidget);
       expect(find.text('Set up your club'), findsNothing);

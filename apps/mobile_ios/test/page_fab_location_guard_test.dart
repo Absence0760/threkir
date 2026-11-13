@@ -103,9 +103,12 @@ void main() {
         offenders.add('$path:$line');
       }
     }
+    // A floor against a broken scan, not a count to keep: every page moved
+    // onto a template (HubTabBody, in ui_kit) takes its Scaffold out of lib/
+    // (issue #1374), so it only ever falls.
     expect(
       scaffoldsWithFab,
-      greaterThan(10),
+      greaterThan(5),
       reason: 'the scan found the Scaffolds it is meant to check',
     );
     expect(

@@ -7,6 +7,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show FilterBar;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/discover_screen.dart';
@@ -100,12 +101,19 @@ Future<void> _settle(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 20));
 }
 
+/// Opens the Filters sheet, where cadence, weekday, time and price live.
+Future<void> _openFilters(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('filter-bar-filters')));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
   testWidgets('renders a result card with discipline title, club, and price',
       (tester) async {
     final api = _FakeApi([_ev()]);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
@@ -127,7 +135,7 @@ void main() {
       ),
     ]);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
@@ -148,7 +156,7 @@ void main() {
       _ev(discipline: null, title: 'Saturday Sunrise 5K', category: 'run'),
     ]);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
     expect(find.text('Saturday Sunrise 5K'), findsOneWidget);
@@ -157,11 +165,11 @@ void main() {
   testWidgets('a free event shows the Free price label', (tester) async {
     final api = _FakeApi([_ev(priceCents: null, currency: null)]);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
-    // The card's price chip + the price-filter "Free" chip → exactly two.
-    expect(find.text('Free'), findsNWidgets(2));
+    // The card's price pill; the price filter is in the Filters sheet now.
+    expect(find.text('Free'), findsOneWidget);
     // …and no currency amount is shown for a free event.
     expect(find.textContaining('18.00'), findsNothing);
   });
@@ -170,7 +178,7 @@ void main() {
       (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
@@ -188,7 +196,7 @@ void main() {
       (tester) async {
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: _FakeApi(const []), social: SocialService(), embedded: true),
+      DiscoverScreen(api: _FakeApi(const []), social: SocialService()),
     ));
     await _settle(tester);
     expect(
@@ -201,7 +209,7 @@ void main() {
   testWidgets('search hint fits on a single line at a narrow field width',
       (tester) async {
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: _FakeApi(const []), social: SocialService(), embedded: true),
+      DiscoverScreen(api: _FakeApi(const []), social: SocialService()),
     ));
     await _settle(tester);
 
@@ -213,7 +221,7 @@ void main() {
   testWidgets('empty results render the empty state', (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
     expect(
@@ -225,12 +233,13 @@ void main() {
       (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
     expect(api.lastArgs['paid'], isNull);
 
-    await tester.tap(find.text('Paid'));
+    await _openFilters(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Paid'));
     await _settle(tester);
     expect(api.lastArgs['paid'], 'paid');
   });
@@ -239,7 +248,7 @@ void main() {
       (tester) async {
     final api = _ThrowingApi();
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
@@ -257,7 +266,7 @@ void main() {
       (tester) async {
     final api = _ThrowingApi();
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
     expect(find.text('Retry'), findsOneWidget);
@@ -275,7 +284,7 @@ void main() {
       (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
@@ -288,14 +297,13 @@ void main() {
       (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
     expect(api.lastArgs['paid'], isNull);
 
-    // The price-filter row has its own "Free" chip (the empty-event card
-    // also shows one only when a result is free — here results are empty).
-    await tester.tap(find.text('Free'));
+    await _openFilters(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Free'));
     await _settle(tester);
     expect(api.lastArgs['paid'], 'free');
   });
@@ -304,14 +312,12 @@ void main() {
       (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
-    // Open the cadence dropdown and pick Weekly.
-    await tester.tap(find.text('Any cadence'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Weekly').last);
+    await _openFilters(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Weekly'));
     await _settle(tester);
     expect(api.lastArgs['cadence'], 'weekly');
   });
@@ -320,14 +326,13 @@ void main() {
       (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
-    await tester.tap(find.text('Any day'));
-    await tester.pumpAndSettle();
+    await _openFilters(tester);
     // "Sat" is the SA byday code's label.
-    await tester.tap(find.text('Sat').last);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Sat'));
     await _settle(tester);
     expect(api.lastArgs['byday'], 'SA');
   });
@@ -336,13 +341,12 @@ void main() {
       (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
-    await tester.tap(find.text('Any time'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Morning').last);
+    await _openFilters(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Morning'));
     await _settle(tester);
     expect(api.lastArgs['time'], 'morning');
   });
@@ -351,7 +355,7 @@ void main() {
       (tester) async {
     final api = _FakeApi(const []);
     await tester.pumpWidget(_wrap(
-      DiscoverScreen(api: api, social: SocialService(), embedded: true),
+      DiscoverScreen(api: api, social: SocialService()),
     ));
     await _settle(tester);
 
@@ -363,5 +367,59 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     await _settle(tester);
     expect(api.lastArgs['query'], 'pilates');
+  });
+
+  testWidgets('a filter from the sheet shows as a removable chip, and '
+      'removing it re-queries without it', (tester) async {
+    final api = _FakeApi(const []);
+    await tester.pumpWidget(_wrap(
+      DiscoverScreen(api: api, social: SocialService()),
+    ));
+    await _settle(tester);
+
+    await _openFilters(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Weekly'));
+    await _settle(tester);
+    await tester.tap(find.byKey(const Key('filter-sheet-done')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final chip = find.widgetWithText(InputChip, 'Weekly');
+    expect(chip, findsOneWidget);
+    // The active chips follow the category chips on the one line, which
+    // scrolls sideways rather than wrapping.
+    await tester.ensureVisible(chip);
+    await tester.pump();
+    await tester.tap(find.byTooltip('Remove filter: Weekly'));
+    await _settle(tester);
+    expect(api.lastArgs['cadence'], isNull);
+    expect(chip, findsNothing);
+  });
+
+  testWidgets('the controls are one FilterBar: no dropdowns before the '
+      'results', (tester) async {
+    await tester.pumpWidget(_wrap(
+      DiscoverScreen(api: _FakeApi([_ev()]), social: SocialService()),
+    ));
+    await _settle(tester);
+    expect(find.byType(FilterBar), findsOneWidget);
+    expect(find.byType(DropdownButton<String>), findsNothing);
+    expect(find.text('Reformer Pilates'), findsOneWidget);
+  });
+
+  testWidgets('a filtered search with no results offers Clear filters',
+      (tester) async {
+    final api = _FakeApi(const []);
+    await tester.pumpWidget(_wrap(
+      DiscoverScreen(api: api, social: SocialService()),
+    ));
+    await _settle(tester);
+    expect(find.text('Clear filters'), findsNothing);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Class'));
+    await _settle(tester);
+    await tester.tap(find.text('Clear filters'));
+    await _settle(tester);
+    expect(api.lastArgs['category'], isNull);
   });
 }

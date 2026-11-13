@@ -5079,6 +5079,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get feedEveryoneYouFollow => 'Todos a quienes sigues';
 
   @override
+  String get feedFilterAuthor => 'Actividad de';
+
+  @override
   String get feedRunnerFallback => 'Corredor';
 
   @override
@@ -5661,7 +5664,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get socialTabRoutes => 'Rutas';
 
   @override
-  String get socialTabDiscover => 'Descubrir';
+  String get socialTabEvents => 'Eventos';
 
   @override
   String get discoverSearchPlaceholder => 'Busca clases, clubes…';
@@ -18166,6 +18169,17 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get messagesEmptyBody =>
       'Abre el perfil de un corredor y toca Mensaje para empezar una conversación.';
+
+  @override
+  String get messagesNewMessage => 'Nuevo mensaje';
+
+  @override
+  String get messagesNewMessageNobody =>
+      'Todavía no hay nadie a quien escribir. Puedes escribir a quienes sigues o te siguen.';
+
+  @override
+  String get messagesNewMessageLoadFailed =>
+      'No se pudieron cargar las personas a las que puedes escribir.';
 
   @override
   String get messagesLoadError => 'No se pudieron cargar tus conversaciones.';

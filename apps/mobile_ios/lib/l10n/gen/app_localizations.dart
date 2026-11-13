@@ -8194,6 +8194,12 @@ abstract class AppLocalizations {
   /// **'Everyone you follow'**
   String get feedEveryoneYouFollow;
 
+  /// Heading of the Feed filter sheet's group that picks whose activity the feed shows: everyone you follow, or one person
+  ///
+  /// In en, this message translates to:
+  /// **'Whose activity'**
+  String get feedFilterAuthor;
+
   /// Fallback name shown in the feed when an author has no display name
   ///
   /// In en, this message translates to:
@@ -9058,11 +9064,11 @@ abstract class AppLocalizations {
   /// **'Routes'**
   String get socialTabRoutes;
 
-  /// Social hub sub-tab label — cross-club activity discovery
+  /// Social hub sub-tab label: club events and classes from every public club, searched across clubs (named Discover before issue #1374)
   ///
   /// In en, this message translates to:
-  /// **'Discover'**
-  String get socialTabDiscover;
+  /// **'Events'**
+  String get socialTabEvents;
 
   /// Discover tab search field placeholder
   ///
@@ -29593,6 +29599,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open a runner\'s profile and tap Message to start a conversation.'**
   String get messagesEmptyBody;
+
+  /// The Messages inbox's primary action and the title of the sheet it opens, which picks the person to write to
+  ///
+  /// In en, this message translates to:
+  /// **'New message'**
+  String get messagesNewMessage;
+
+  /// The New message sheet when the runner follows nobody and nobody follows them
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody to message yet. You can message people you follow or who follow you.'**
+  String get messagesNewMessageNobody;
+
+  /// The New message sheet when the follow lists failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the people you can message.'**
+  String get messagesNewMessageLoadFailed;
 
   /// Inbox failed to load
   ///

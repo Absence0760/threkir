@@ -4,29 +4,42 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:ui_kit/ui_kit.dart' show StatusPill;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        ActiveFilter,
+        AppInsets,
+        AppSearchField,
+        AppSpace,
+        AsyncView,
+        ChoiceChipOption,
+        EmptyState,
+        FilterBar,
+        HubTabBody,
+        LoadingState,
+        StatusPill,
+        buildChoiceChip,
+        showFilterSheet;
 
 import '../l10n/gen/app_localizations.dart';
 import '../social_service.dart';
 import '../widgets/error_state.dart';
 import 'event_detail_screen.dart';
 
-/// Cross-club activity discovery — the Social hub's Discover tab. Mirrors
+/// Cross-club activity search: the Social hub's Events tab (named Discover
+/// until issue #1374). Mirrors
 /// `apps/web/src/lib/components/SocialDiscover.svelte`: a search field plus
 /// category / cadence / weekday / time-of-day / price filters over the
 /// `search_public_events` RPC (public clubs only). Tapping a result opens
-/// that club event's detail. Embedded mode (the SocialScreen TabBar host)
-/// moves the search field inline; the standalone path keeps its own Scaffold.
+/// that club event's detail. A ui_kit `HubTabBody`: in the hub it draws no
+/// app bar, pushed on its own it gets a small titled one.
 class DiscoverScreen extends StatefulWidget {
   final ApiClient api;
   final SocialService social;
-  final bool embedded;
 
   const DiscoverScreen({
     super.key,
     required this.api,
     required this.social,
-    this.embedded = false,
   });
 
   @override
@@ -177,241 +190,229 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
+  String _cadenceFilterLabel(AppLocalizations l10n, String v) => switch (v) {
+        'one_off' => l10n.discoverOneOff,
+        'weekly' => l10n.discoverWeekly,
+        'biweekly' => l10n.discoverBiweekly,
+        'monthly' => l10n.discoverMonthly,
+        _ => l10n.discoverCadenceAny,
+      };
 
-    final filters = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Semantics(
-            textField: true,
-            label: l10n.discoverSearchPlaceholder,
-            child: TextField(
-            controller: _searchCtl,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: l10n.discoverSearchPlaceholder,
-              prefixIcon: const Icon(Icons.search, size: 20),
-              isDense: true,
-              suffixIcon: _query.isNotEmpty
-                  ? IconButton(
-                      tooltip: l10n.commonClearSearch,
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchCtl.clear();
-                        _onQueryChanged('');
-                      },
-                    )
-                  : null,
+  String _timeFilterLabel(AppLocalizations l10n, String v) => switch (v) {
+        'morning' => l10n.discoverMorning,
+        'afternoon' => l10n.discoverAfternoon,
+        'evening' => l10n.discoverEvening,
+        _ => l10n.discoverTimeAny,
+      };
+
+  String _priceFilterLabel(AppLocalizations l10n, String v) => switch (v) {
+        'free' => l10n.discoverFree,
+        'paid' => l10n.discoverPaid,
+        _ => l10n.discoverPriceAny,
+      };
+
+  bool get _filtered =>
+      _query.trim().isNotEmpty ||
+      _category.isNotEmpty ||
+      _cadence.isNotEmpty ||
+      _byday.isNotEmpty ||
+      _time.isNotEmpty ||
+      _paid.isNotEmpty;
+
+  void _set(VoidCallback change) {
+    setState(change);
+    _run();
+  }
+
+  void _clearFilters() {
+    _debounce?.cancel();
+    _searchCtl.clear();
+    _set(() {
+      _query = '';
+      _category = '';
+      _cadence = '';
+      _byday = '';
+      _time = '';
+      _paid = '';
+    });
+  }
+
+  /// Search, the category as the quick chips, and cadence, weekday, time of
+  /// day and price in the Filters sheet, each shown as a removable chip while
+  /// it is on. The always-open block of a field, two chip rows and three
+  /// dropdowns took the first screen before any result (issue #1374).
+  FilterBar _filterBar(AppLocalizations l10n) {
+    ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
+          label: label,
+          onRemove: onRemove,
+          removeTooltip: l10n.filterBarRemoveFilter(label),
+        );
+    final filters = [
+      if (_cadence.isNotEmpty)
+        active(_cadenceFilterLabel(l10n, _cadence),
+            () => _set(() => _cadence = '')),
+      if (_byday.isNotEmpty)
+        active(_weekdayLabel(l10n, _byday), () => _set(() => _byday = '')),
+      if (_time.isNotEmpty)
+        active(_timeFilterLabel(l10n, _time), () => _set(() => _time = '')),
+      if (_paid.isNotEmpty)
+        active(_priceFilterLabel(l10n, _paid), () => _set(() => _paid = '')),
+    ];
+    return FilterBar(
+      key: const ValueKey('events-filter-bar'),
+      search: Semantics(
+        textField: true,
+        label: l10n.discoverSearchPlaceholder,
+        child: AppSearchField(
+          controller: _searchCtl,
+          hint: l10n.discoverSearchPlaceholder,
+          clearTooltip: l10n.commonClearSearch,
+          onChanged: _onQueryChanged,
+        ),
+      ),
+      chips: [
+        for (final c in const ['', 'run', 'cycle', 'class', 'social'])
+          buildChoiceChip<String>(
+            context,
+            ChoiceChipOption(
+              value: c,
+              label: c.isEmpty
+                  ? l10n.discoverActivityAll
+                  : _categoryLabel(l10n, c),
             ),
-            onChanged: _onQueryChanged,
+            _category,
+            (v) => _set(() => _category = v),
           ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final c in const ['', 'run', 'cycle', 'class', 'social'])
-                ChoiceChip(
-                  label: Text(c.isEmpty
-                      ? l10n.discoverActivityAll
-                      : _categoryLabel(l10n, c)),
-                  selected: _category == c,
-                  onSelected: (_) {
-                    setState(() => _category = c);
-                    _run();
-                  },
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              _DropdownField<String>(
-                label: l10n.discoverCadenceLabel,
-                value: _cadence,
-                items: [
-                  DropdownMenuItem(value: '', child: Text(l10n.discoverCadenceAny)),
-                  DropdownMenuItem(value: 'one_off', child: Text(l10n.discoverOneOff)),
-                  DropdownMenuItem(value: 'weekly', child: Text(l10n.discoverWeekly)),
-                  DropdownMenuItem(value: 'biweekly', child: Text(l10n.discoverBiweekly)),
-                  DropdownMenuItem(value: 'monthly', child: Text(l10n.discoverMonthly)),
-                ],
-                onChanged: (v) {
-                  setState(() => _cadence = v ?? '');
-                  _run();
-                },
-              ),
-              _DropdownField<String>(
-                label: l10n.discoverDayLabel,
-                value: _byday,
-                items: [
-                  DropdownMenuItem(value: '', child: Text(l10n.discoverDayAny)),
-                  for (final d in _weekdays)
-                    DropdownMenuItem(value: d, child: Text(_weekdayLabel(l10n, d))),
-                ],
-                onChanged: (v) {
-                  setState(() => _byday = v ?? '');
-                  _run();
-                },
-              ),
-              _DropdownField<String>(
-                label: l10n.discoverTimeLabel,
-                value: _time,
-                items: [
-                  DropdownMenuItem(value: '', child: Text(l10n.discoverTimeAny)),
-                  DropdownMenuItem(value: 'morning', child: Text(l10n.discoverMorning)),
-                  DropdownMenuItem(value: 'afternoon', child: Text(l10n.discoverAfternoon)),
-                  DropdownMenuItem(value: 'evening', child: Text(l10n.discoverEvening)),
-                ],
-                onChanged: (v) {
-                  setState(() => _time = v ?? '');
-                  _run();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(l10n.discoverPriceLabel,
-              style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final p in const ['', 'free', 'paid'])
-                ChoiceChip(
-                  label: Text(switch (p) {
-                    'free' => l10n.discoverFree,
-                    'paid' => l10n.discoverPaid,
-                    _ => l10n.discoverPriceAny,
-                  }),
-                  selected: _paid == p,
-                  onSelected: (_) {
-                    setState(() => _paid = p);
-                    _run();
-                  },
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    final Widget resultsArea;
-    if (_loading) {
-      resultsArea = Padding(
-        padding: const EdgeInsets.all(32),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(strokeWidth: 2),
-              const SizedBox(height: 12),
-              Text(l10n.discoverLoading,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant)),
-            ],
-          ),
-        ),
-      );
-    } else if (_error) {
-      resultsArea = Padding(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-        child: AppErrorState(
-          message: l10n.discoverSearchFailed,
-          onRetry: _run,
-        ),
-      );
-    } else if (_results.isEmpty) {
-      resultsArea = Padding(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-        child: Center(
-          child: Text(
-            l10n.discoverEmpty,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ),
-      );
-    } else {
-      resultsArea = ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        itemCount: _results.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (_, i) => _ResultCard(
-          event: _results[i],
-          title: (_results[i].discipline?.isNotEmpty ?? false)
-              ? _results[i].discipline!
-              : _results[i].title,
-          meta:
-              '${_categoryLabel(l10n, _results[i].category)} · ${_cadenceLabel(l10n, _results[i])}',
-          price: _priceLabel(l10n, _results[i]),
-          free: _results[i].priceCents == null,
-          onTap: () => _openEvent(_results[i]),
-        ),
-      );
-    }
-
-    final body = SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [filters, resultsArea],
-        ),
-      ),
-    );
-
-    if (widget.embedded) return body;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.socialTabDiscover)),
-      body: body,
+      ],
+      activeFilters: filters,
+      filtersLabel: l10n.filterBarFilters,
+      filtersSemanticLabel:
+          filters.isEmpty ? null : l10n.filterBarFiltersCount(filters.length),
+      activeFilterCount: filters.length,
+      onOpenFilters: _openFilters,
     );
   }
-}
 
-class _DropdownField<T> extends StatelessWidget {
-  final String label;
-  final T value;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-
-  const _DropdownField({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
+  Future<void> _openFilters() {
+    final l10n = AppLocalizations.of(context);
+    return showFilterSheet(
+      context: context,
+      title: l10n.filterBarFilters,
+      doneLabel: l10n.filterBarDone,
+      builder: (sheetContext, setSheet) {
+        final theme = Theme.of(sheetContext);
+        Widget group(String heading, List<String> values, String selected,
+                String Function(String) label, ValueChanged<String> onPick) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(heading, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: AppSpace.sm),
+                  Semantics(
+                    container: true,
+                    label: heading,
+                    child: Wrap(
+                      spacing: AppSpace.sm,
+                      children: [
+                        for (final v in values)
+                          ChoiceChip(
+                            label: Text(label(v)),
+                            selected: v == selected,
+                            onSelected: (_) {
+                              onPick(v);
+                              setSheet(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            group(
+              l10n.discoverCadenceLabel,
+              const ['', 'one_off', 'weekly', 'biweekly', 'monthly'],
+              _cadence,
+              (v) => _cadenceFilterLabel(l10n, v),
+              (v) => _set(() => _cadence = v),
+            ),
+            group(
+              l10n.discoverDayLabel,
+              const ['', ..._weekdays],
+              _byday,
+              (v) => v.isEmpty ? l10n.discoverDayAny : _weekdayLabel(l10n, v),
+              (v) => _set(() => _byday = v),
+            ),
+            group(
+              l10n.discoverTimeLabel,
+              const ['', 'morning', 'afternoon', 'evening'],
+              _time,
+              (v) => _timeFilterLabel(l10n, v),
+              (v) => _set(() => _time = v),
+            ),
+            group(
+              l10n.discoverPriceLabel,
+              const ['', 'free', 'paid'],
+              _paid,
+              (v) => _priceFilterLabel(l10n, v),
+              (v) => _set(() => _paid = v),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label,
-            style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 2),
-        DropdownButton<T>(
-          value: value,
-          items: items,
-          onChanged: onChanged,
-          isDense: true,
-          underline: const SizedBox.shrink(),
+    final l10n = AppLocalizations.of(context);
+    return HubTabBody(
+      title: l10n.socialTabEvents,
+      filters: _filterBar(l10n),
+      onRefresh: _run,
+      body: AsyncView<List<PublicEventResult>>(
+        loading: _loading,
+        error: _error ? l10n.discoverSearchFailed : null,
+        data: _results,
+        isEmpty: (r) => r.isEmpty,
+        loadingState: LoadingState.list(
+          label: l10n.discoverLoading,
+          hasLeading: false,
         ),
-      ],
+        errorBuilder: (_, _) =>
+            AppErrorState(message: l10n.discoverSearchFailed, onRetry: _run),
+        empty: EmptyState(
+          icon: Icons.event_busy,
+          title: l10n.discoverEmpty,
+          ctaLabel: _filtered ? l10n.feedClearFilters : null,
+          ctaIcon: Icons.filter_alt_off,
+          onCta: _filtered ? _clearFilters : null,
+        ),
+        builder: (_, results) => ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
+              AppInsets.gutter, AppSpace.md + MediaQuery.paddingOf(context).bottom),
+          itemCount: results.length,
+          separatorBuilder: (_, _) => const SizedBox(height: AppInsets.itemGap),
+          itemBuilder: (_, i) => _ResultCard(
+            event: results[i],
+            title: (results[i].discipline?.isNotEmpty ?? false)
+                ? results[i].discipline!
+                : results[i].title,
+            meta:
+                '${_categoryLabel(l10n, results[i].category)} · ${_cadenceLabel(l10n, results[i])}',
+            price: _priceLabel(l10n, results[i]),
+            free: results[i].priceCents == null,
+            onTap: () => _openEvent(results[i]),
+          ),
+        ),
+      ),
     );
   }
 }

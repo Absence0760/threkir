@@ -6697,6 +6697,10 @@
   "@feedEveryoneYouFollow": {
     "description": "Default option in the feed author-filter dropdown"
   },
+  "feedFilterAuthor": "Whose activity",
+  "@feedFilterAuthor": {
+    "description": "Heading of the Feed filter sheet's group that picks whose activity the feed shows: everyone you follow, or one person"
+  },
   "feedRunnerFallback": "Runner",
   "@feedRunnerFallback": {
     "description": "Fallback name shown in the feed when an author has no display name"
@@ -7565,9 +7569,9 @@
   "@socialTabRoutes": {
     "description": "Social hub sub-tab label — routes"
   },
-  "socialTabDiscover": "Discover",
-  "@socialTabDiscover": {
-    "description": "Social hub sub-tab label — cross-club activity discovery"
+  "socialTabEvents": "Events",
+  "@socialTabEvents": {
+    "description": "Social hub sub-tab label: club events and classes from every public club, searched across clubs (named Discover before issue #1374)"
   },
   "discoverSearchPlaceholder": "Search classes, clubs…",
   "@discoverSearchPlaceholder": {
@@ -23763,6 +23767,18 @@
   "messagesEmptyBody": "Open a runner's profile and tap Message to start a conversation.",
   "@messagesEmptyBody": {
     "description": "Inbox empty state body: how a conversation starts"
+  },
+  "messagesNewMessage": "New message",
+  "@messagesNewMessage": {
+    "description": "The Messages inbox's primary action and the title of the sheet it opens, which picks the person to write to"
+  },
+  "messagesNewMessageNobody": "Nobody to message yet. You can message people you follow or who follow you.",
+  "@messagesNewMessageNobody": {
+    "description": "The New message sheet when the runner follows nobody and nobody follows them"
+  },
+  "messagesNewMessageLoadFailed": "Couldn't load the people you can message.",
+  "@messagesNewMessageLoadFailed": {
+    "description": "The New message sheet when the follow lists failed to load"
   },
   "messagesLoadError": "Couldn't load your conversations.",
   "@messagesLoadError": {

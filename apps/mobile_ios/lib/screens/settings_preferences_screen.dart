@@ -7,6 +7,7 @@ import 'package:ui_kit/ui_kit.dart'
     show
         AppInsets,
         AppSpace,
+        FieldColumn,
         ListRow,
         PageHeader,
         PushedPage,
@@ -1457,19 +1458,18 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     final result = await showDialog<Map<String, int>?>(
       context: context,
       builder: (ctx) => AlertDialog(
+        // Five fields and three actions outgrow a narrow phone at 2x text:
+        // the dialog scrolls rather than pushing Save under the nav bar.
+        scrollable: true,
         title: Text(l10n.prefsHrZonesDialogTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        content: FieldColumn(
           children: [
             for (final entry in controllers.entries)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: TextField(
-                  controller: entry.value,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: entry.key.toUpperCase(),
-                  ),
+              TextField(
+                controller: entry.value,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: entry.key.toUpperCase(),
                 ),
               ),
           ],

@@ -21,23 +21,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Touching fields not yet in a FieldColumn, with the reason each is left.
-const _unmigrated = <String, (int, String)>{
-  'lib/screens/settings_body_metrics_screen.dart': (
-    1,
-    'the settings pages are being reworked by their own lane of issue '
-        '#1374; move the pair onto FieldColumn there',
-  ),
-  'lib/screens/settings_preferences_screen.dart': (
-    1,
-    'the settings pages are being reworked by their own lane of issue '
-        '#1374; move the pair onto FieldColumn there',
-  ),
-  'lib/screens/settings_safety_screen.dart': (
-    1,
-    'the settings pages are being reworked by their own lane of issue '
-        '#1374; move the pair onto FieldColumn there',
-  ),
-};
+const _unmigrated = <String, (int, String)>{};
 
 /// [s] with comments removed and every string literal emptied, keeping the
 /// code inside an interpolation, so neither a bracket in a string nor a

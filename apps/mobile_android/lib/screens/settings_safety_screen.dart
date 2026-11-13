@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        FieldColumn,
         ListSkeleton,
         PageHeader,
         PushedPage,
@@ -483,30 +484,31 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: TextField(
-                    controller: _emailCtl,
-                    keyboardType: TextInputType.emailAddress,
-                    autocorrect: false,
-                    enabled: !_adding,
-                    decoration: InputDecoration(
-                      labelText: l10n.safetyAddLabel,
-                      hintText: l10n.safetyAddHint,
-                    ),
-                    onSubmitted: (_) => _adding ? null : _add(),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: TextField(
-                    controller: _phoneCtl,
-                    keyboardType: TextInputType.phone,
-                    autocorrect: false,
-                    enabled: !_adding,
-                    decoration: InputDecoration(
-                      labelText: l10n.safetyPhoneLabel,
-                      hintText: '+447700900123',
-                    ),
-                    onSubmitted: (_) => _adding ? null : _add(),
+                  child: FieldColumn(
+                    children: [
+                      TextField(
+                        controller: _emailCtl,
+                        keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
+                        enabled: !_adding,
+                        decoration: InputDecoration(
+                          labelText: l10n.safetyAddLabel,
+                          hintText: l10n.safetyAddHint,
+                        ),
+                        onSubmitted: (_) => _adding ? null : _add(),
+                      ),
+                      TextField(
+                        controller: _phoneCtl,
+                        keyboardType: TextInputType.phone,
+                        autocorrect: false,
+                        enabled: !_adding,
+                        decoration: InputDecoration(
+                          labelText: l10n.safetyPhoneLabel,
+                          hintText: '+447700900123',
+                        ),
+                        onSubmitted: (_) => _adding ? null : _add(),
+                      ),
+                    ],
                   ),
                 ),
                 Padding(

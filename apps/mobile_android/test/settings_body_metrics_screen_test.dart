@@ -150,7 +150,17 @@ Future<Preferences> _prefs() async {
   return p;
 }
 
+/// A view tall enough to lay out every section of the page at once: these
+/// tests read the page's order and texts, not how a phone scrolls it, and
+/// the default 600 dp view left the lower sections unbuilt in the lazy list.
+void _tallView(WidgetTester tester) {
+  tester.view.physicalSize = const Size(800, 2400);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+}
+
 Future<void> _pump(WidgetTester tester, Preferences prefs) async {
+  _tallView(tester);
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -542,6 +552,7 @@ void main() {
   group('SettingsBodyMetricsScreen — each section says how it saves', () {
     Future<void> pumpScreen(WidgetTester tester,
         {ApiClient? api, SettingsSyncService? sync}) async {
+      _tallView(tester);
       final prefs = await _prefs();
       await tester.pumpWidget(
         MaterialApp(

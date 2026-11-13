@@ -220,12 +220,12 @@ test.describe('/social?tab=feed — load failure surfaces an error toast', () =>
 		).toBeVisible({ timeout: 10_000 });
 	});
 
-	test('a failed badge-awards read says so with a retry, and the retry recovers', async ({ page }) => {
+	test('a failed badge-awards read says so with a retry, and the retry recovers', async ({ page, mockRoute }) => {
 		// The strip once swallowed this read as "no badges" (§ 2501). Fail the
 		// first followee-awards read only (the `user_id=in.(…)` one), so the
 		// retry reaches the real table and no other achievements read is hit.
 		let failed = false;
-		await page.route('**/rest/v1/achievements*', async (route) => {
+		await mockRoute(page, '**/rest/v1/achievements*', async (route) => {
 			if (failed || !route.request().url().includes('user_id=in.')) return route.fallback();
 			failed = true;
 			await route.fulfill({

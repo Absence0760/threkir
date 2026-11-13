@@ -362,7 +362,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do. Make a backup from Settings → Full backup.';
+      'Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do.';
+
+  @override
+  String get importBackupMakeOne => 'Make a backup';
 
   @override
   String get importBackupButton => 'Restore backup ZIP';
@@ -663,7 +666,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.';
 
   @override
-  String get peopleNearbyEmptyAction => 'Open Preferences';
+  String get peopleNearbyEmptyAction => 'Open privacy settings';
 
   @override
   String get peopleNearbyLoadFailed => 'Could not load runners nearby.';
@@ -867,8 +870,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name is hidden. You can bring it back in Settings.';
+    return '$name is hidden from Progress.';
   }
+
+  @override
+  String get dashboardCardHiddenAction => 'Manage cards';
 
   @override
   String get dashboardHideCardFailed => 'Couldn\'t hide that card. Try again.';
@@ -1707,7 +1713,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.';
+      'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You.';
 
   @override
   String get onboardingAccountCreate => 'Create a free account';
@@ -2848,7 +2854,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyQueuedToSync => 'Queued to sync';
 
   @override
-  String get historySignInToSync => 'Sign in from Settings to sync runs';
+  String get historySignInToSync => 'Sign in on the You tab to sync runs';
 
   @override
   String get historyRefreshFailed =>
@@ -3178,7 +3184,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you\'ve measured your max HR, set it in Preferences for accurate zones.';
+      'Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you\'ve measured your max HR, set it for accurate zones.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Set max HR';
@@ -5809,8 +5815,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get clubDetailNameHintAction =>
-      'You can add your name in your account settings.';
+  String get clubDetailNameHintAction => 'Add your name to your account.';
 
   @override
   String get clubRoleOwner => 'Owner';
@@ -10333,7 +10338,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Volume-based — set resting + max HR in preferences and record with a strap to upgrade to TRIMP.';
+      'Volume-based — set resting + max HR and record with a strap to upgrade to TRIMP.';
+
+  @override
+  String get trainingLoadSetHeartRate => 'Set heart rate';
 
   @override
   String get trainingLoadEmpty =>
@@ -11616,8 +11624,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runGearChipsPickerTitle => 'Tag gear used on this run';
 
   @override
-  String get runGearChipsEmpty =>
-      'You haven\'t registered any gear yet. Add some in Settings → Gear.';
+  String get runGearChipsEmpty => 'You haven\'t registered any gear yet.';
 
   @override
   String get runGearChipsCancel => 'Cancel';
@@ -13082,7 +13089,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.';
+      'The plate-photo logger needs the updated AI disclosure.';
 
   @override
   String get platePhotoErrorPro => 'Logging from a photo is a Pro feature.';
@@ -13236,10 +13243,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Height, weight, date of birth and sex are health data, so they\'re edited in Settings behind their consent gate.';
+      'Height, weight, date of birth and sex are health data, so they\'re edited behind their consent gate.';
 
   @override
-  String get nutritionTargetsEditMetrics => 'Edit in Settings';
+  String get nutritionTargetsEditMetrics => 'Edit body metrics';
 
   @override
   String get nutritionTargetsUnset => 'Not set';
@@ -20166,11 +20173,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsDisclosureLevel => 'How much detail';
 
   @override
-  String get prefsHomeCards => 'Home cards';
+  String get prefsProgressCards => 'Progress cards';
 
   @override
-  String get prefsHomeCardsHint =>
-      'Untick a group to take it off Home. The choice follows you to every device.';
+  String get prefsProgressCardsHint =>
+      'Untick a group to take it off the Progress page. The choice follows you to every device.';
 
   @override
   String get prefsDisclosureAuto => 'Automatic';
@@ -20194,7 +20201,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.';
+      'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it.';
+
+  @override
+  String get dashboardTrainingLoadSectionAction => 'Change how much detail';
 
   @override
   String recapCardKicker(String period) {
@@ -20424,7 +20434,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.';
+      'The route trace and heart rate are turned on in your privacy settings on the web.';
+
+  @override
+  String get streamerOverlayOpenWebSettings => 'Open on the web';
 
   @override
   String get liveSpectatorHeartRate => 'Heart rate';

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
 import '../lib/screens/import_screen.dart';
+import '../lib/settings_destination.dart';
 
 late Directory _runsDir;
 
@@ -53,6 +54,43 @@ void main() {
       await _pump(tester, store);
       expect(find.text('Strava'), findsOneWidget);
       expect(find.textContaining('Strava data export ZIP'), findsOneWidget);
+    });
+
+    testWidgets('the backup card links to where a backup is made',
+        (tester) async {
+      // Full backup lives on the Account page; the card used to recite
+      // "Settings → Full backup", which no longer leads anywhere (§ 2494).
+      pendingSettingsDestination.value = null;
+      addTearDown(() => pendingSettingsDestination.value = null);
+      final store = await _makeStore();
+      await _pump(tester, store);
+      final link = find.byKey(const Key('importBackupMakeOne'));
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      expect(pendingSettingsDestination.value, SettingsDestination.account);
+    });
+
+    testWidgets('the Account page sends Make a backup back to itself',
+        (tester) async {
+      // Opened from Account, the link pops back to the Full backup row
+      // rather than stacking a second Account page.
+      pendingSettingsDestination.value = null;
+      addTearDown(() => pendingSettingsDestination.value = null);
+      final store = await _makeStore();
+      var made = 0;
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ImportScreen(runStore: store, onMakeBackup: () => made++),
+      ));
+      await tester.pump();
+      final link = find.byKey(const Key('importBackupMakeOne'));
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      expect(made, 1);
+      expect(pendingSettingsDestination.value, isNull);
     });
 
     testWidgets('shows Health Connect import card with heading', (tester) async {

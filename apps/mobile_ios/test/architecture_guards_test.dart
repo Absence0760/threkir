@@ -5649,9 +5649,9 @@ void main() {
       'screens/settings_account_screen.dart::l10n.settingsAccountDisplayName': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsTargetPace': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsHrZonesDialogTitle': 1,
-      // Checkboxes that show or hide Home's trend groups; a group hidden here
-      // is ticked back in the same dialog (decisions § 2386).
-      'screens/settings_preferences_screen.dart::l10n.prefsHomeCards': 1,
+      // Checkboxes that show or hide Progress's trend groups; a group hidden
+      // here is ticked back in the same dialog (decisions § 2386, § 2492).
+      'screens/settings_preferences_screen.dart::l10n.prefsProgressCards': 1,
       'screens/settings_preferences_screen.dart::title': 3,
       'screens/settings_safety_screen.dart::l10n.safetyTitle': 1,
       'screens/workout_detail_screen.dart::l10n.workoutRelinkTitle': 1,

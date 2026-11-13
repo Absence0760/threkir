@@ -12,6 +12,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/club_detail_screen.dart';
 import '../lib/widgets/official_badge.dart';
 import '../lib/widgets/error_state.dart';
+import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
@@ -848,10 +849,15 @@ void main() {
         find.text('Club members see you as Runner #ABCD.'),
         findsOneWidget,
       );
-      expect(
-        find.text('You can add your name in your account settings.'),
-        findsOneWidget,
-      );
+      expect(find.text('Add your name to your account.'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the name hint opens the Account page', (tester) async {
+      pendingSettingsDestination.value = null;
+      addTearDown(() => pendingSettingsDestination.value = null);
+      await openMembers(tester);
+      await tester.tap(find.byKey(const Key('club-name-hint')));
+      expect(pendingSettingsDestination.value, SettingsDestination.account);
     });
 
     realtimeWidgetTest('a named member sees no hint', (tester) async {

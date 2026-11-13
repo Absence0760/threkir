@@ -353,7 +353,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'ロスレスで往復できます。サインインなしでも動作し、復元したランは次回サインイン時にアカウントに同期されます。設定 → フルバックアップ からバックアップを作成してください。';
+      'ロスレスで往復できます。サインインなしでも動作し、復元したランは次回サインイン時にアカウントに同期されます。';
+
+  @override
+  String get importBackupMakeOne => 'バックアップを作成';
 
   @override
   String get importBackupButton => 'バックアップZIPを復元';
@@ -642,7 +645,7 @@ class AppLocalizationsJa extends AppLocalizations {
       '「近くのランナーに自分を表示」をオンにし、エリアを設定してください。同じ設定をしたランナーだけがあなたを見つけられます。';
 
   @override
-  String get peopleNearbyEmptyAction => '環境設定を開く';
+  String get peopleNearbyEmptyAction => 'プライバシー設定を開く';
 
   @override
   String get peopleNearbyLoadFailed => '近くのランナーを読み込めませんでした。';
@@ -839,8 +842,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$nameを非表示にしました。設定から再表示できます。';
+    return '$nameを進捗で非表示にしました。';
   }
+
+  @override
+  String get dashboardCardHiddenAction => 'カードを管理';
 
   @override
   String get dashboardHideCardFailed => 'カードを非表示にできませんでした。もう一度お試しください。';
@@ -1649,7 +1655,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'アカウントがあると、ランがウェブアプリや他の端末と同期され、この端末をなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」› 設定で作成できます。';
+      'アカウントがあると、ランがウェブアプリや他の端末と同期され、この端末をなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」で作成できます。';
 
   @override
   String get onboardingAccountCreate => '無料アカウントを作成';
@@ -2750,7 +2756,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyQueuedToSync => '同期待ち';
 
   @override
-  String get historySignInToSync => 'ランを同期するには設定からサインインしてください';
+  String get historySignInToSync => 'ランを同期するには「あなた」タブからサインインしてください';
 
   @override
   String get historyRefreshFailed => '更新できませんでした — 接続を確認してください';
@@ -3071,7 +3077,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'ゾーンは年齢から推定した最大心拍数を使用します。心拍に影響する薬（ベータ遮断薬など）を服用している場合や最大心拍数を測定済みの場合は、環境設定で設定すると正確なゾーンを取得できます。';
+      'ゾーンは年齢から推定した最大心拍数を使用します。心拍に影響する薬（ベータ遮断薬など）を服用している場合や最大心拍数を測定済みの場合は、設定すると正確なゾーンを取得できます。';
 
   @override
   String get runDetailHrDisclaimerAction => '最大心拍数を設定';
@@ -5547,7 +5553,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get clubDetailNameHintAction => 'アカウント設定で名前を追加できます。';
+  String get clubDetailNameHintAction => 'アカウントに名前を追加してください。';
 
   @override
   String get clubRoleOwner => 'オーナー';
@@ -9904,7 +9910,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      '走行量ベース — 設定で安静時・最大心拍を入力し、ストラップで記録するとTRIMPに切り替わります。';
+      '走行量ベース — 安静時・最大心拍を入力し、ストラップで記録するとTRIMPに切り替わります。';
+
+  @override
+  String get trainingLoadSetHeartRate => '心拍数を設定';
 
   @override
   String get trainingLoadEmpty => '数回ランを記録するとフィットネスの推移が見られます。';
@@ -11155,7 +11164,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runGearChipsPickerTitle => 'このランで使用したギアをタグ付け';
 
   @override
-  String get runGearChipsEmpty => 'ギアがまだ登録されていません。設定 → ギア で追加してください。';
+  String get runGearChipsEmpty => 'ギアがまだ登録されていません。';
 
   @override
   String get runGearChipsCancel => 'キャンセル';
@@ -12572,8 +12581,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get platePhotoSaving => '保存中…';
 
   @override
-  String get platePhotoErrorConsent =>
-      '食事写真による記録には、更新されたAIに関する説明への同意が必要です。設定 → アカウントで同意してください。';
+  String get platePhotoErrorConsent => '食事写真による記録には、更新されたAIに関する説明への同意が必要です。';
 
   @override
   String get platePhotoErrorPro => '写真からの記録はProの機能です。';
@@ -12721,10 +12729,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      '身長・体重・生年月日・性別は健康データのため、同意のうえ設定で編集します。';
+      '身長・体重・生年月日・性別は健康データのため、同意のうえで編集します。';
 
   @override
-  String get nutritionTargetsEditMetrics => '設定で編集';
+  String get nutritionTargetsEditMetrics => '身体データを編集';
 
   @override
   String get nutritionTargetsUnset => '未設定';
@@ -19418,11 +19426,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsDisclosureLevel => '表示する情報量';
 
   @override
-  String get prefsHomeCards => 'ホームのカード';
+  String get prefsProgressCards => '進捗のカード';
 
   @override
-  String get prefsHomeCardsHint =>
-      'チェックを外したグループはホームに表示されません。この設定はすべてのデバイスに適用されます。';
+  String get prefsProgressCardsHint =>
+      'チェックを外したグループは進捗ページに表示されません。この設定はすべてのデバイスに適用されます。';
 
   @override
   String get prefsDisclosureAuto => '自動';
@@ -19446,7 +19454,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 環境設定 で「すべて」を選べます。';
+      'フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けます。';
+
+  @override
+  String get dashboardTrainingLoadSectionAction => '表示する情報量を変更';
 
   @override
   String recapCardKicker(String period) {
@@ -19659,7 +19670,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'ルートの軌跡と心拍数は、Web の設定 → プライバシーと共有でオンにできます。';
+      'ルートの軌跡と心拍数は、Web のプライバシー設定でオンにします。';
+
+  @override
+  String get streamerOverlayOpenWebSettings => 'Web で開く';
 
   @override
   String get liveSpectatorHeartRate => '心拍数';

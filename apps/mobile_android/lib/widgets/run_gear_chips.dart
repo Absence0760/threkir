@@ -5,6 +5,7 @@ import 'package:ui_kit/ui_kit.dart' show SheetScaffold;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../settings_destination.dart';
 import 'top_banner.dart';
 
 /// Run-detail gear chips. Mirrors `apps/web/src/lib/components/
@@ -113,9 +114,24 @@ class _RunGearChipsState extends State<RunGearChips> {
                 if (active.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Text(
-                      l10n.runGearChipsEmpty,
-                      style: Theme.of(ctx).textTheme.bodyMedium,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.runGearChipsEmpty,
+                          style: Theme.of(ctx).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          key: const Key('runGearChipsAddGear'),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            openSettings(SettingsDestination.gear);
+                          },
+                          icon: const Icon(Icons.add),
+                          label: Text(l10n.gearAddGear),
+                        ),
+                      ],
                     ),
                   )
                 else

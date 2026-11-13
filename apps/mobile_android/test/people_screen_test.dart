@@ -557,7 +557,7 @@ void main() {
       await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
-      final action = find.widgetWithText(FilledButton, 'Open Preferences');
+      final action = find.widgetWithText(FilledButton, 'Open privacy settings');
       expect(action, findsOneWidget);
       await tester.ensureVisible(action);
       await tester.pump();
@@ -587,7 +587,7 @@ void main() {
       await tester.pumpWidget(_wrap(PeopleScreen(api: api)));
       await _settle(tester);
 
-      expect(find.text('Open Preferences'), findsNothing);
+      expect(find.text('Open privacy settings'), findsNothing);
       expect(pendingSettingsDestination.value, isNull,
           reason: 'the whole surface stays inert behind the sign-off gate');
     });

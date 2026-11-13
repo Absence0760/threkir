@@ -17,6 +17,11 @@ String streamerOverlayUrl(String webBase, String token, {DistanceUnit? unit}) {
   return '$base/live/overlay$query#${Uri.encodeComponent(token)}';
 }
 
+/// Web's Privacy & sharing settings page, where the overlay's route trace and
+/// heart rate are switched on: the mobile sheet sets only the delay.
+Uri streamerOverlayPrivacySettingsUrl(String webBase) =>
+    Uri.parse('${webBase.replaceAll(RegExp(r'/+$'), '')}/settings/privacy');
+
 /// Whether a create / configure failure is the server's closed gate
 /// (`live_overlay_disabled`), which reads differently from a network error.
 bool isLiveOverlayDisabledError(Object error) =>

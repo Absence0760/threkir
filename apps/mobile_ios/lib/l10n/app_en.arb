@@ -541,9 +541,13 @@
   "@importBackupCardSubtitle": {
     "description": "Card subtitle describing the full-backup restore"
   },
-  "importBackupCardDescription": "Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do. Make a backup from Settings → Full backup.",
+  "importBackupCardDescription": "Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do.",
   "@importBackupCardDescription": {
     "description": "Body copy explaining the full-backup restore behaviour"
+  },
+  "importBackupMakeOne": "Make a backup",
+  "@importBackupMakeOne": {
+    "description": "Link on the Restore backup card; opens the Account page, where Full backup makes one"
   },
   "importBackupButton": "Restore backup ZIP",
   "@importBackupButton": {
@@ -911,9 +915,9 @@
   "@peopleNearbyEmptyBody": {
     "description": "Empty-state body for the runners-nearby list, pointing at the opt-in and area setter"
   },
-  "peopleNearbyEmptyAction": "Open Preferences",
+  "peopleNearbyEmptyAction": "Open privacy settings",
   "@peopleNearbyEmptyAction": {
-    "description": "Button on the runners-nearby empty state that opens the Preferences settings screen"
+    "description": "Button on the runners-nearby empty state that opens the Privacy & sharing preferences page"
   },
   "peopleNearbyLoadFailed": "Could not load runners nearby.",
   "@peopleNearbyLoadFailed": {
@@ -1177,9 +1181,9 @@
   },
   "progressHideGroup": "Hide from Progress",
   "@progressHideGroup": {
-    "description": "Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Settings brings it back"
+    "description": "Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Progress cards on the Units & display page brings it back"
   },
-  "dashboardCardHidden": "{name} is hidden. You can bring it back in Settings.",
+  "dashboardCardHidden": "{name} is hidden from Progress.",
   "@dashboardCardHidden": {
     "description": "Banner after hiding a Home trend group; {name} is the group title",
     "placeholders": {
@@ -1187,6 +1191,10 @@
         "type": "String"
       }
     }
+  },
+  "dashboardCardHiddenAction": "Manage cards",
+  "@dashboardCardHiddenAction": {
+    "description": "Action on the banner after hiding a trend group on Progress; opens the Units & display page, where Progress cards brings a group back"
   },
   "dashboardHideCardFailed": "Couldn't hide that card. Try again.",
   "@dashboardHideCardFailed": {
@@ -2249,7 +2257,7 @@
   "@onboardingAccountTitle": {
     "description": "Title of the final onboarding page, which offers account creation before the dashboard"
   },
-  "onboardingAccountBody": "An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.",
+  "onboardingAccountBody": "An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You.",
   "@onboardingAccountBody": {
     "description": "Body of the onboarding account page — what an account buys and that the app works without one"
   },
@@ -3775,7 +3783,7 @@
   "@historyQueuedToSync": {
     "description": "Tooltip on the per-row unsynced icon in the runs list"
   },
-  "historySignInToSync": "Sign in from Settings to sync runs",
+  "historySignInToSync": "Sign in on the You tab to sync runs",
   "@historySignInToSync": {
     "description": "Banner shown when tapping sync while signed out"
   },
@@ -4231,13 +4239,13 @@
       }
     }
   },
-  "runDetailHrDisclaimer": "Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you've measured your max HR, set it in Preferences for accurate zones.",
+  "runDetailHrDisclaimer": "Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you've measured your max HR, set it for accurate zones.",
   "@runDetailHrDisclaimer": {
     "description": "Info note under the run-detail HR-zone breakdown when zones fall back to an age-estimated max HR (no hr_zones or max_hr_bpm override set)"
   },
   "runDetailHrDisclaimerAction": "Set max HR",
   "@runDetailHrDisclaimerAction": {
-    "description": "Button under the HR-zone disclaimer that opens Settings to set max HR / zones"
+    "description": "Button under the HR-zone disclaimer that opens the Training preferences page to set max HR / zones"
   },
   "runDetailSectionSplits": "Splits",
   "@runDetailSectionSplits": {
@@ -7838,9 +7846,9 @@
       }
     }
   },
-  "clubDetailNameHintAction": "You can add your name in your account settings.",
+  "clubDetailNameHintAction": "Add your name to your account.",
   "@clubDetailNameHintAction": {
-    "description": "Second line of the club name hint, pointing at Settings > Account; web clubHome.nameHintAction"
+    "description": "Second line of the club name hint; tapping the hint opens the Account page; web clubHome.nameHintAction"
   },
   "clubRoleOwner": "Owner",
   "@clubRoleOwner": {
@@ -14000,9 +14008,13 @@
       }
     }
   },
-  "trainingLoadSubtitleVolume": "Volume-based — set resting + max HR in preferences and record with a strap to upgrade to TRIMP.",
+  "trainingLoadSubtitleVolume": "Volume-based — set resting + max HR and record with a strap to upgrade to TRIMP.",
   "@trainingLoadSubtitleVolume": {
     "description": "Training-load subtitle when only volume-based load is available"
+  },
+  "trainingLoadSetHeartRate": "Set heart rate",
+  "@trainingLoadSetHeartRate": {
+    "description": "Link under the volume-based training load subtitle; opens the Training preferences page, where resting and max HR are set"
   },
   "trainingLoadEmpty": "Record a few runs to see your fitness trend.",
   "@trainingLoadEmpty": {
@@ -15772,7 +15784,7 @@
   "@runGearChipsPickerTitle": {
     "description": "Header of the tag-gear bottom sheet"
   },
-  "runGearChipsEmpty": "You haven't registered any gear yet. Add some in Settings → Gear.",
+  "runGearChipsEmpty": "You haven't registered any gear yet.",
   "@runGearChipsEmpty": {
     "description": "Empty state in the gear picker"
   },
@@ -17458,7 +17470,7 @@
   "@platePhotoSaving": {
     "description": "Button label while saving"
   },
-  "platePhotoErrorConsent": "The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.",
+  "platePhotoErrorConsent": "The plate-photo logger needs the updated AI disclosure.",
   "@platePhotoErrorConsent": {
     "description": "The endpoint refused for want of AI disclosure v5"
   },
@@ -17556,7 +17568,7 @@
   "nutritionNoTargets": "Add your height, weight, age and sex to see calorie + macro targets.",
   "nutritionAddBodyMetrics": "Add body metrics",
   "@nutritionAddBodyMetrics": {
-    "description": "CTA on the nutrition rings card that opens Settings > Body metrics"
+    "description": "CTA on the nutrition rings card that opens the Body metrics page"
   },
   "nutritionTargetsLink": "Targets",
   "@nutritionTargetsLink": {
@@ -17637,13 +17649,13 @@
   "@nutritionTargetsMetricsHeading": {
     "description": "Heading of the read-only body-metrics card"
   },
-  "nutritionTargetsMetricsHint": "Height, weight, date of birth and sex are health data, so they're edited in Settings behind their consent gate.",
+  "nutritionTargetsMetricsHint": "Height, weight, date of birth and sex are health data, so they're edited behind their consent gate.",
   "@nutritionTargetsMetricsHint": {
-    "description": "Hint explaining that body metrics are health data edited in Settings behind the consent gate"
+    "description": "Hint explaining that body metrics are health data edited behind the consent gate; the Edit body metrics button beside the heading opens them"
   },
-  "nutritionTargetsEditMetrics": "Edit in Settings",
+  "nutritionTargetsEditMetrics": "Edit body metrics",
   "@nutritionTargetsEditMetrics": {
-    "description": "Action opening the consent-gated body-metrics editor in Settings"
+    "description": "Action opening the consent-gated Body metrics page"
   },
   "nutritionTargetsUnset": "Not set",
   "@nutritionTargetsUnset": {
@@ -26703,12 +26715,12 @@
   "planNewDobHintAbsent": "Plans give runners aged 50 and over more recovery automatically.",
   "planNewDobHintAbsentAction": "Add your date of birth",
   "@planNewDobHintAbsentAction": {
-    "description": "Button opening Settings → Preferences, where the date of birth is edited."
+    "description": "Button opening the Training preferences page, where the date of birth is edited."
   },
   "planNewDobHintHealthData": "Plans can only use your date of birth to adjust for age with your consent to health-data use.",
   "planNewDobHintHealthDataAction": "Review consent",
   "@planNewDobHintHealthDataAction": {
-    "description": "Button opening Settings → Body metrics, where health-data consent is reviewed."
+    "description": "Button opening the Body metrics page, where health-data consent is reviewed."
   },
   "messagesAiTag": "AI",
   "@messagesAiTag": {
@@ -26770,13 +26782,13 @@
   "@prefsDisclosureLevel": {
     "description": "Settings > Preferences tile title for the progressive-disclosure level (universal disclosure_level key)"
   },
-  "prefsHomeCards": "Home cards",
-  "@prefsHomeCards": {
-    "description": "Settings row and sheet title listing the Home trend groups to show or hide"
+  "prefsProgressCards": "Progress cards",
+  "@prefsProgressCards": {
+    "description": "Units & display row and dialog title listing the Progress page's trend groups to show or hide"
   },
-  "prefsHomeCardsHint": "Untick a group to take it off Home. The choice follows you to every device.",
-  "@prefsHomeCardsHint": {
-    "description": "Explanation under the Home cards setting"
+  "prefsProgressCardsHint": "Untick a group to take it off the Progress page. The choice follows you to every device.",
+  "@prefsProgressCardsHint": {
+    "description": "Explanation under the Progress cards setting"
   },
   "prefsDisclosureAuto": "Automatic",
   "@prefsDisclosureAuto": {
@@ -26808,9 +26820,13 @@
   "@dashboardTrainingLoadSection": {
     "description": "Title of the Home expander that folds the fitness card and training-load chart at the Just the basics level"
   },
-  "dashboardTrainingLoadSectionHint": "Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.",
+  "dashboardTrainingLoadSectionHint": "Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it.",
   "@dashboardTrainingLoadSectionHint": {
-    "description": "One-line explanation under the Training load expander title on Home; names where the level is changed"
+    "description": "One-line explanation under the Training load expander title on Progress; the link below it opens the page where the level is changed"
+  },
+  "dashboardTrainingLoadSectionAction": "Change how much detail",
+  "@dashboardTrainingLoadSectionAction": {
+    "description": "Link under the folded Training load section on Progress; opens the Units & display page where the How much detail level is set"
   },
   "recapCardKicker": "My {period} in running",
   "@recapCardKicker": {
@@ -27098,9 +27114,13 @@
   "@streamerOverlayUnavailable": {
     "description": "Error when the server has the overlay switched off"
   },
-  "streamerOverlayMapHeartRateNote": "Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.",
+  "streamerOverlayMapHeartRateNote": "The route trace and heart rate are turned on in your privacy settings on the web.",
   "@streamerOverlayMapHeartRateNote": {
-    "description": "Note naming the web settings page where the route trace and heart rate are turned on"
+    "description": "Note that the route trace and heart rate are set on the web; the button below it opens that page"
+  },
+  "streamerOverlayOpenWebSettings": "Open on the web",
+  "@streamerOverlayOpenWebSettings": {
+    "description": "Button under the route-trace and heart-rate note; opens the web app's Privacy & sharing settings page in the browser"
   },
   "liveSpectatorHeartRate": "Heart rate",
   "@liveSpectatorHeartRate": {

@@ -8,6 +8,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../nutrition_totals.dart' show mealSlots;
 import '../plate_photo_client.dart';
+import '../settings_destination.dart';
 import '../typed_decimal.dart';
 import '../widgets/full_screen_form.dart';
 import '../widgets/pro_upsell_link.dart';
@@ -373,6 +374,17 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
               _errorText(l10n, _error!),
               key: const ValueKey('plate-photo-error'),
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+            ),
+          // The Account page accepts the disclosure for every AI feature;
+          // the Coach's own gate only covers the Coach.
+          if (_error == PlatePhotoErrorKind.consent)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                key: const ValueKey('plate-photo-consent-link'),
+                onPressed: () => openSettings(SettingsDestination.account),
+                child: Text(l10n.settingsAccountAiConsentGrantTitle),
+              ),
             ),
         ],
         if (_saveError != null) ...[

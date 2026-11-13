@@ -70,7 +70,10 @@ no tests, builds or generators — you read and grep only.
    `pt-PT` `one`=1 on web but 0 and 1 on the phone (`app_pt.arb` resolves
    through intl's `pt` rule). A literal `1` inside a `one` branch for
    fr / pt-BR / pt-PT is an error (renders "1 …" for 0) — use `{count}` /
-   `#`. A web `#` dropped from a branch is an error the parity guard can't
+   `#`. So, in those locales, is a plural that is the whole message whose
+   `one` branch names no count and has no `=0{…}` sibling ("Invitation
+   envoyée" for 0): name the count or add `=0`. A plural inside a longer
+   sentence is agreement and is fine. A web `#` dropped from a branch is an error the parity guard can't
    see. For web `…One` / `…Other` pairs selected by `n === 1` in code, the
    `…Other` form must read correctly for 0 — and file a `source` finding.
 5. **Units and numbers.** No unit, conversion, number or date format added

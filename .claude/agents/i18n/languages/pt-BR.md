@@ -46,7 +46,7 @@ proparoxytones: `quilômetro`, `gênero`, `oxigênio`, `cronômetro`.
 `contato` (never `contacto`).
 
 House vocabulary (verified in both catalogues): `salvar`, `registrar` /
-`registro`, `compartilhar`, `tela`, `celular`, `arquivo`, `senha`,
+`registro` (logging), `gravar` / `gravação` (GPS recording), `compartilhar`, `tela`, `celular`, `arquivo`, `senha`,
 `ao vivo` (live), `usuário`, `academia` (gym), `esteira` (treadmill),
 `acessar`, `equipe`, `baixar` (download), `café da manhã`, `padrão`
 (default and standard), `o app`.
@@ -93,6 +93,7 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | gym | **Academia** | |
 | nutrition | Nutrição | |
 | log (verb) | Registrar | `navLog` |
+| record (GPS / an activity), recording | **Gravar** / **gravação** — "Gravando", "Gravação e voz", "Começar uma gravação", "corrida gravada", "distância gravada", "grave com uma cinta" | settled 2026-11-12; never *registrar* / *registro* for recording. *Registrar* / *registro* stay for logging (manual entry, diary, gym and food log), records on file (consent, DNF / DNS, weigh-ins, payment records, a DNS record) and a race finish being recorded |
 | streak | Sequência | |
 | goal | Meta / Metas | "Objetivo" occasionally on web |
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
@@ -110,6 +111,7 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
+| Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab, page title, and in paths ("Configurações → Preferências de treino") | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar** | settled 2026-10-21; never "pulado" for the status. Skipping a step or setup is **Pular**; "não pule" stays in coaching advice |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Salvar / Configurações (nav "Config.") / Feed / Seguidores | |

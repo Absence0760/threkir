@@ -1713,11 +1713,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir recolhe a sua localização GPS para registar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da app, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra app. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para gravar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há uma gravação a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da app, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra app. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a gravar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
-      'O Threkir recolhe a sua localização GPS para registar uma corrida, incluindo com o ecrã desligado ou enquanto está noutra app. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. Pode alterar isto a qualquer momento em Definições › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para gravar uma corrida, incluindo com o ecrã desligado ou enquanto está noutra app. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. Pode alterar isto a qualquer momento em Definições › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam a gravar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationDeniedTitle => 'Sem acesso à localização';
@@ -2505,17 +2505,17 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runNoGpsStartServicesOffBody =>
-      'A localização está desligada neste telemóvel, por isso esta corrida só registaria o tempo — sem percurso, distância nem ritmo.';
+      'A localização está desligada neste telemóvel, por isso esta corrida só gravaria o tempo — sem percurso, distância nem ritmo.';
 
   @override
   String get runNoGpsStartPermissionBody =>
-      'O acesso à localização está desligado para esta app, por isso esta corrida só registaria o tempo — sem percurso, distância nem ritmo.';
+      'O acesso à localização está desligado para esta app, por isso esta corrida só gravaria o tempo — sem percurso, distância nem ritmo.';
 
   @override
-  String get runNoGpsStartTimeOnly => 'Registar só o tempo';
+  String get runNoGpsStartTimeOnly => 'Gravar só o tempo';
 
   @override
-  String get runNoDistanceTitle => 'Nenhuma distância registada';
+  String get runNoDistanceTitle => 'Nenhuma distância gravada';
 
   @override
   String get runNoDistanceBody =>
@@ -2526,11 +2526,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runBackgroundLocationPaused =>
-      'O registo foi pausado enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como “Permitir sempre” para continuar a registar em segundo plano.';
+      'A gravação da localização foi pausada enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como “Permitir sempre” para continuar a gravar em segundo plano.';
 
   @override
   String get runPreciseLocationOff =>
-      'A localização exata está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua a ser registado. Ative a localização exata nas Definições para um percurso preciso.';
+      'A localização exata está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua a ser gravado. Ative a localização exata nas Definições para um percurso preciso.';
 
   @override
   String get runGpsSensorFailed =>
@@ -3050,7 +3050,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailIncompleteTooltip =>
-      'O seu relógio reiniciou a meio da corrida. Estes totais são apenas o que tinha registado até esse momento, não a atividade inteira.';
+      'O seu relógio reiniciou a meio da corrida. Estes totais são apenas o que tinha gravado até esse momento, não a atividade inteira.';
 
   @override
   String get runDetailEditTooltip => 'Editar corrida';
@@ -3416,7 +3416,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailRecalculateDistanceDialogMessage =>
-      'A distância desta corrida será recalculada a partir do percurso GPS com o filtro GPS melhorado, que remove a distância a mais causada pelas oscilações do GPS. A distância registada originalmente é mantida e mostrada ao lado da nova.';
+      'A distância desta corrida será recalculada a partir do percurso GPS com o filtro GPS melhorado, que remove a distância a mais causada pelas oscilações do GPS. A distância gravada originalmente é mantida e mostrada ao lado da nova.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Recalcular';
@@ -3432,7 +3432,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailRecalculateDistanceNotOwner =>
-      'Só quem registou esta corrida pode recalcular a distância.';
+      'Só quem gravou esta corrida pode recalcular a distância.';
 
   @override
   String get runDetailRecalculateDistanceNoTrack =>
@@ -3440,7 +3440,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String runDetailOriginallyRecorded(String distance) {
-    return 'Registada originalmente: $distance';
+    return 'Gravada originalmente: $distance';
   }
 
   @override
@@ -6204,7 +6204,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventNoRecentRuns =>
-      'Nenhuma corrida recente encontrada. Registe uma corrida primeiro e volte.';
+      'Nenhuma corrida recente encontrada. Grave uma corrida primeiro e volte.';
 
   @override
   String get eventAddOccurrencePhoto => 'Adicionar fotografia do evento';
@@ -9749,14 +9749,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Idioma, tema, unidades de distância e peso, formato de ritmo, mapas e o tempo para desfazer.';
 
   @override
-  String get prefsPageRecording => 'Registo e voz';
+  String get prefsPageRecording => 'Gravação e voz';
 
   @override
   String get prefsPageRecordingSummary =>
-      'A atividade com que um novo registo começa e o que o telemóvel ou o relógio diz em voz alta durante a corrida.';
+      'A atividade com que uma nova gravação começa e o que o telemóvel ou o relógio diz em voz alta durante a corrida.';
 
   @override
-  String get prefsPageTraining => 'Treino';
+  String get prefsPageTraining => 'Preferências de treino';
 
   @override
   String get prefsPageTrainingSummary =>
@@ -10131,7 +10131,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Regista um trajeto mais detalhado. A distância não muda.';
+      'Grava um trajeto mais detalhado. A distância não muda.';
 
   @override
   String get prefsShowRawTrack => 'Mostrar trajeto GPS bruto';
@@ -10458,14 +10458,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Baseado em volume — defina FC de repouso e máxima e registe com uma cinta para mudar para TRIMP.';
+      'Baseado em volume — defina FC de repouso e máxima e grave com uma cinta para mudar para TRIMP.';
 
   @override
   String get trainingLoadSetHeartRate => 'Definir frequência cardíaca';
 
   @override
   String get trainingLoadEmpty =>
-      'Registe algumas corridas para ver a sua tendência de forma.';
+      'Grave algumas corridas para ver a sua tendência de forma.';
 
   @override
   String get trainingLoadLegendFitness => 'Forma';
@@ -13359,7 +13359,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionTargetsExerciseHint =>
-      'As corridas e sessões de musculação que registares hoje são somadas por cima.';
+      'As corridas e sessões de musculação que registar hoje são somadas por cima.';
 
   @override
   String get nutritionTargetsMacrosHeading => 'Macros';
@@ -15594,7 +15594,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get integrationsStravaInfo =>
-      'O Strava é uma app popular para registar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Inicia sessão no Strava e autoriza o acesso, e pode desligar quando quiser.';
+      'O Strava é uma app popular para gravar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Inicia sessão no Strava e autoriza o acesso, e pode desligar quando quiser.';
 
   @override
   String get integrationsRunsignupInfo =>
@@ -24338,11 +24338,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir coleta sua localização GPS para gravar uma corrida e continua pedindo a localização com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; só com esse acesso, o Android pode parar de enviar sua localização com a tela desligada ou enquanto você está em outro app. Antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir o tempo todo”, que mantém o rastreamento confiável nesses casos. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir coleta sua localização GPS para gravar uma corrida e continua pedindo a localização com a tela desligada — uma notificação mostra que há uma gravação em andamento. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. A próxima solicitação concede o acesso durante o uso do app, que é tudo o que a primeira solicitação do Android pode dar; só com esse acesso, o Android pode parar de enviar sua localização com a tela desligada ou enquanto você está em outro app. Antes da sua primeira corrida, o Threkir oferece a mudança para “Permitir o tempo todo”, que mantém o rastreamento confiável nesses casos. Se recusar, as corridas continuam gravando tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
-      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada ou enquanto você está em outro app. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. Você pode alterar isso quando quiser em Ajustes › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam registrando tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir coleta sua localização GPS para gravar uma corrida, inclusive com a tela desligada ou enquanto você está em outro app. Sua localização fica neste dispositivo enquanto você não sincronizar nem compartilhar uma corrida. Você pode alterar isso quando quiser em Ajustes › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam gravando tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationDeniedTitle => 'Sem acesso à localização';
@@ -25130,17 +25130,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runNoGpsStartServicesOffBody =>
-      'A localização está desativada neste celular, então esta corrida só registraria o tempo — sem trajeto, distância nem ritmo.';
+      'A localização está desativada neste celular, então esta corrida só gravaria o tempo — sem trajeto, distância nem ritmo.';
 
   @override
   String get runNoGpsStartPermissionBody =>
-      'O acesso à localização está desativado para este app, então esta corrida só registraria o tempo — sem trajeto, distância nem ritmo.';
+      'O acesso à localização está desativado para este app, então esta corrida só gravaria o tempo — sem trajeto, distância nem ritmo.';
 
   @override
-  String get runNoGpsStartTimeOnly => 'Registrar só o tempo';
+  String get runNoGpsStartTimeOnly => 'Gravar só o tempo';
 
   @override
-  String get runNoDistanceTitle => 'Nenhuma distância registrada';
+  String get runNoDistanceTitle => 'Nenhuma distância gravada';
 
   @override
   String get runNoDistanceBody =>
@@ -25155,7 +25155,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runPreciseLocationOff =>
-      'A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo registrado. Ative a localização precisa nos Ajustes para um trajeto preciso.';
+      'A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo gravado. Ative a localização precisa nos Ajustes para um trajeto preciso.';
 
   @override
   String get runGpsSensorFailed =>
@@ -25676,7 +25676,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailIncompleteTooltip =>
-      'Seu relógio reiniciou no meio da corrida. Estes totais são apenas o que ele havia registrado até aquele ponto, não a atividade inteira.';
+      'Seu relógio reiniciou no meio da corrida. Estes totais são apenas o que ele havia gravado até aquele ponto, não a atividade inteira.';
 
   @override
   String get runDetailEditTooltip => 'Editar corrida';
@@ -26040,7 +26040,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailRecalculateDistanceDialogMessage =>
-      'A distância desta corrida será recalculada a partir do trajeto GPS com o filtro GPS aprimorado, que remove a distância a mais causada pelas oscilações do GPS. A distância registrada originalmente é mantida e exibida ao lado da nova.';
+      'A distância desta corrida será recalculada a partir do trajeto GPS com o filtro GPS aprimorado, que remove a distância a mais causada pelas oscilações do GPS. A distância gravada originalmente é mantida e exibida ao lado da nova.';
 
   @override
   String get runDetailRecalculateDistanceConfirm => 'Recalcular';
@@ -26056,7 +26056,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailRecalculateDistanceNotOwner =>
-      'Só quem registrou esta corrida pode recalcular a distância.';
+      'Só quem gravou esta corrida pode recalcular a distância.';
 
   @override
   String get runDetailRecalculateDistanceNoTrack =>
@@ -26064,7 +26064,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String runDetailOriginallyRecorded(String distance) {
-    return 'Registrada originalmente: $distance';
+    return 'Gravada originalmente: $distance';
   }
 
   @override
@@ -28828,7 +28828,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventNoRecentRuns =>
-      'Nenhuma corrida recente encontrada. Registre uma corrida primeiro e volte.';
+      'Nenhuma corrida recente encontrada. Grave uma corrida primeiro e volte.';
 
   @override
   String get eventAddOccurrencePhoto => 'Adicionar foto do evento';
@@ -32365,14 +32365,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Idioma, tema, unidades de distância e peso, formato de ritmo, mapas e o tempo para desfazer.';
 
   @override
-  String get prefsPageRecording => 'Registro e voz';
+  String get prefsPageRecording => 'Gravação e voz';
 
   @override
   String get prefsPageRecordingSummary =>
-      'A atividade com que um novo registro começa e o que o celular ou o relógio fala em voz alta durante a corrida.';
+      'A atividade com que uma nova gravação começa e o que o celular ou o relógio fala em voz alta durante a corrida.';
 
   @override
-  String get prefsPageTraining => 'Treino';
+  String get prefsPageTraining => 'Preferências de treino';
 
   @override
   String get prefsPageTrainingSummary =>
@@ -32746,7 +32746,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Registra um trajeto mais detalhado. A distância não muda.';
+      'Grava um trajeto mais detalhado. A distância não muda.';
 
   @override
   String get prefsShowRawTrack => 'Mostrar trajeto GPS bruto';
@@ -33073,14 +33073,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Baseado em volume — defina FC de repouso e máxima e registre com uma cinta para mudar para TRIMP.';
+      'Baseado em volume — defina FC de repouso e máxima e grave com uma cinta para mudar para TRIMP.';
 
   @override
   String get trainingLoadSetHeartRate => 'Definir frequência cardíaca';
 
   @override
   String get trainingLoadEmpty =>
-      'Registre algumas corridas para ver sua tendência de forma.';
+      'Grave algumas corridas para ver sua tendência de forma.';
 
   @override
   String get trainingLoadLegendFitness => 'Forma';
@@ -38209,7 +38209,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get integrationsStravaInfo =>
-      'O Strava é um app popular para registrar e compartilhar corridas. Ao conectar, suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade conforme ela aparece. Você entra no Strava e autoriza o acesso, e pode desconectar quando quiser.';
+      'O Strava é um app popular para gravar e compartilhar corridas. Ao conectar, suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade conforme ela aparece. Você entra no Strava e autoriza o acesso, e pode desconectar quando quiser.';
 
   @override
   String get integrationsRunsignupInfo =>

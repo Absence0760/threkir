@@ -20835,6 +20835,39 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de modifier le délai. Réessayez.';
 
   @override
+  String get streamerOverlayShowMap => 'Afficher le tracé du parcours';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'Dessine le parcours jusqu\'ici, sans vos zones de confidentialité. Aucune tuile de carte n\'est chargée.';
+
+  @override
+  String get streamerOverlayShowHeartRate => 'Afficher la fréquence cardiaque';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      'La fréquence cardiaque est une donnée de santé. Elle n\'est affichée que tant que votre consentement aux données de santé est actif.';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      'La fréquence cardiaque est une donnée de santé. Activez le consentement aux données de santé pour l\'afficher.';
+
+  @override
+  String get streamerOverlayReviewConsent => 'Vérifier le consentement';
+
+  @override
+  String get streamerOverlaySettingsSaved =>
+      'Réglages de l\'overlay enregistrés';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      'Enregistré. Le lien a changé : copiez-le à nouveau dans votre application de streaming.';
+
+  @override
+  String get streamerOverlaySaveFailed =>
+      'Impossible d\'enregistrer les réglages de l\'overlay. Veuillez réessayer.';
+
+  @override
   String get streamerOverlayLoadFailed =>
       'Impossible de charger votre overlay de streaming.';
 
@@ -20844,13 +20877,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get streamerOverlayUnavailable =>
       'L\'overlay de streaming n\'est pas disponible pour le moment.';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'Le tracé du parcours et la fréquence cardiaque s\'activent dans vos réglages de confidentialité sur le web.';
-
-  @override
-  String get streamerOverlayOpenWebSettings => 'Ouvrir sur le web';
 
   @override
   String get liveSpectatorHeartRate => 'Fréquence cardiaque';

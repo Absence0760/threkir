@@ -33577,6 +33577,60 @@ abstract class AppLocalizations {
   /// **'Couldn\'t change the delay. Try again.'**
   String get streamerOverlayDelayFailed;
 
+  /// Switch on the streamer overlay sheet: draw the route trace on the OBS overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Show a route trace'**
+  String get streamerOverlayShowMap;
+
+  /// Under the route-trace switch
+  ///
+  /// In en, this message translates to:
+  /// **'Draws the route so far, with your privacy zones left out. No map tiles are loaded.'**
+  String get streamerOverlayShowMapHelp;
+
+  /// Switch on the streamer overlay sheet: show heart rate on the overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Show heart rate'**
+  String get streamerOverlayShowHeartRate;
+
+  /// Under the heart-rate switch while health-data consent is on
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate is health data. It\'s shown only while your health-data consent is on.'**
+  String get streamerOverlayShowHeartRateHelp;
+
+  /// Under the heart-rate switch while health-data consent is off; a Review consent button follows
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate is health data. Turn on health-data consent to show it.'**
+  String get streamerOverlayHeartRateNeedsConsent;
+
+  /// Button: opens Body metrics, where health-data consent is turned on
+  ///
+  /// In en, this message translates to:
+  /// **'Review consent'**
+  String get streamerOverlayReviewConsent;
+
+  /// Notice after the heart-rate switch is saved
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay settings saved'**
+  String get streamerOverlaySettingsSaved;
+
+  /// Notice after the route-trace switch is saved: the overlay URL now differs
+  ///
+  /// In en, this message translates to:
+  /// **'Saved. The link changed: copy it into your streaming app again.'**
+  String get streamerOverlayLinkChanged;
+
+  /// Notice when saving an overlay switch fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the overlay settings. Please try again.'**
+  String get streamerOverlaySaveFailed;
+
   /// Error when the overlay settings cannot be read
   ///
   /// In en, this message translates to:
@@ -33594,18 +33648,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The streamer overlay isn\'t available right now.'**
   String get streamerOverlayUnavailable;
-
-  /// Note that the route trace and heart rate are set on the web; the button below it opens that page
-  ///
-  /// In en, this message translates to:
-  /// **'The route trace and heart rate are turned on in your privacy settings on the web.'**
-  String get streamerOverlayMapHeartRateNote;
-
-  /// Button under the route-trace and heart-rate note; opens the web app's Privacy & sharing settings page in the browser
-  ///
-  /// In en, this message translates to:
-  /// **'Open on the web'**
-  String get streamerOverlayOpenWebSettings;
 
   /// Live spectator stat label for the runner's current heart rate
   ///

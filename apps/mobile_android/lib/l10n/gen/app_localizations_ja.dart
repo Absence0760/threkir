@@ -19810,6 +19810,37 @@ class AppLocalizationsJa extends AppLocalizations {
   String get streamerOverlayDelayFailed => '遅延を変更できませんでした。もう一度お試しください。';
 
   @override
+  String get streamerOverlayShowMap => 'ルートの軌跡を表示';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'プライバシーゾーンを除いた、ここまでのルートを描きます。地図タイルは読み込みません。';
+
+  @override
+  String get streamerOverlayShowHeartRate => '心拍数を表示';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      '心拍数は健康データです。健康データの利用に同意している間だけ表示されます。';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      '心拍数は健康データです。表示するには、健康データの利用に同意してください。';
+
+  @override
+  String get streamerOverlayReviewConsent => '同意を確認';
+
+  @override
+  String get streamerOverlaySettingsSaved => 'オーバーレイの設定を保存しました';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      '保存しました。リンクが変わったので、配信アプリにもう一度コピーしてください。';
+
+  @override
+  String get streamerOverlaySaveFailed => 'オーバーレイの設定を保存できませんでした。もう一度お試しください。';
+
+  @override
   String get streamerOverlayLoadFailed => '配信用オーバーレイを読み込めませんでした。';
 
   @override
@@ -19817,13 +19848,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get streamerOverlayUnavailable => '配信用オーバーレイは現在利用できません。';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'ルートの軌跡と心拍数は、ウェブのプライバシー設定でオンにします。';
-
-  @override
-  String get streamerOverlayOpenWebSettings => 'ウェブで開く';
 
   @override
   String get liveSpectatorHeartRate => '心拍数';

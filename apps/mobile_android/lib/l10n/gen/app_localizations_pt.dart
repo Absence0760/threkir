@@ -20795,6 +20795,38 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível alterar o atraso. Tente novamente.';
 
   @override
+  String get streamerOverlayShowMap => 'Mostrar o traçado do percurso';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'Desenha o percurso até agora, sem as suas zonas de privacidade. Não são carregados mosaicos de mapa.';
+
+  @override
+  String get streamerOverlayShowHeartRate => 'Mostrar frequência cardíaca';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      'A frequência cardíaca é um dado de saúde. Só é mostrada enquanto o seu consentimento de dados de saúde estiver ativo.';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      'A frequência cardíaca é um dado de saúde. Ative o consentimento de dados de saúde para a mostrar.';
+
+  @override
+  String get streamerOverlayReviewConsent => 'Rever consentimento';
+
+  @override
+  String get streamerOverlaySettingsSaved => 'Definições do overlay guardadas';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      'Guardado. A ligação mudou: copie-a de novo para a sua aplicação de streaming.';
+
+  @override
+  String get streamerOverlaySaveFailed =>
+      'Não foi possível guardar as definições do overlay. Tente novamente.';
+
+  @override
   String get streamerOverlayLoadFailed =>
       'Não foi possível carregar o seu overlay para transmissão.';
 
@@ -20804,13 +20836,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get streamerOverlayUnavailable =>
       'O overlay para transmissão não está disponível neste momento.';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'O traçado do percurso e a frequência cardíaca ativam-se nas suas definições de privacidade na web.';
-
-  @override
-  String get streamerOverlayOpenWebSettings => 'Abrir na web';
 
   @override
   String get liveSpectatorHeartRate => 'Frequência cardíaca';
@@ -43548,6 +43573,38 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Não foi possível alterar o atraso. Tente de novo.';
 
   @override
+  String get streamerOverlayShowMap => 'Mostrar o traçado do percurso';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'Desenha o percurso até agora, sem as suas zonas de privacidade. Nenhum bloco de mapa é carregado.';
+
+  @override
+  String get streamerOverlayShowHeartRate => 'Mostrar frequência cardíaca';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      'A frequência cardíaca é um dado de saúde. Ela só aparece enquanto o seu consentimento de dados de saúde estiver ativo.';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      'A frequência cardíaca é um dado de saúde. Ative o consentimento de dados de saúde para mostrá-la.';
+
+  @override
+  String get streamerOverlayReviewConsent => 'Revisar consentimento';
+
+  @override
+  String get streamerOverlaySettingsSaved => 'Configurações do overlay salvas';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      'Salvo. O link mudou: copie-o de novo no seu app de streaming.';
+
+  @override
+  String get streamerOverlaySaveFailed =>
+      'Não foi possível salvar as configurações do overlay. Tente de novo.';
+
+  @override
   String get streamerOverlayLoadFailed =>
       'Não foi possível carregar seu overlay para transmissão.';
 
@@ -43557,13 +43614,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get streamerOverlayUnavailable =>
       'O overlay para transmissão não está disponível no momento.';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'O traçado do percurso e a frequência cardíaca são ativados nas suas configurações de privacidade na web.';
-
-  @override
-  String get streamerOverlayOpenWebSettings => 'Abrir na web';
 
   @override
   String get liveSpectatorHeartRate => 'Frequência cardíaca';

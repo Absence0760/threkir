@@ -20786,6 +20786,38 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo cambiar el retraso. Inténtalo de nuevo.';
 
   @override
+  String get streamerOverlayShowMap => 'Mostrar el trazado del recorrido';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'Dibuja el recorrido hasta ahora sin tus zonas de privacidad. No se cargan teselas de mapa.';
+
+  @override
+  String get streamerOverlayShowHeartRate => 'Mostrar la frecuencia cardíaca';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      'La frecuencia cardíaca es un dato de salud. Solo se muestra mientras tengas activado el consentimiento de datos de salud.';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      'La frecuencia cardíaca es un dato de salud. Activa el consentimiento de datos de salud para mostrarla.';
+
+  @override
+  String get streamerOverlayReviewConsent => 'Revisar el consentimiento';
+
+  @override
+  String get streamerOverlaySettingsSaved => 'Ajustes del overlay guardados';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      'Guardado. El enlace ha cambiado: vuelve a copiarlo en tu aplicación de streaming.';
+
+  @override
+  String get streamerOverlaySaveFailed =>
+      'No se pudieron guardar los ajustes del overlay. Inténtalo de nuevo.';
+
+  @override
   String get streamerOverlayLoadFailed =>
       'No se pudo cargar tu overlay para streaming.';
 
@@ -20795,13 +20827,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get streamerOverlayUnavailable =>
       'El overlay para streaming no está disponible ahora mismo.';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'El trazado de la ruta y la frecuencia cardíaca se activan en tus ajustes de privacidad en la web.';
-
-  @override
-  String get streamerOverlayOpenWebSettings => 'Abrir en la web';
 
   @override
   String get liveSpectatorHeartRate => 'Frecuencia cardíaca';

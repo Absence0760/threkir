@@ -20574,6 +20574,38 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t change the delay. Try again.';
 
   @override
+  String get streamerOverlayShowMap => 'Show a route trace';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'Draws the route so far, with your privacy zones left out. No map tiles are loaded.';
+
+  @override
+  String get streamerOverlayShowHeartRate => 'Show heart rate';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      'Heart rate is health data. It\'s shown only while your health-data consent is on.';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      'Heart rate is health data. Turn on health-data consent to show it.';
+
+  @override
+  String get streamerOverlayReviewConsent => 'Review consent';
+
+  @override
+  String get streamerOverlaySettingsSaved => 'Overlay settings saved';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      'Saved. The link changed: copy it into your streaming app again.';
+
+  @override
+  String get streamerOverlaySaveFailed =>
+      'Couldn\'t save the overlay settings. Please try again.';
+
+  @override
   String get streamerOverlayLoadFailed =>
       'Couldn\'t load your streamer overlay.';
 
@@ -20583,13 +20615,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get streamerOverlayUnavailable =>
       'The streamer overlay isn\'t available right now.';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'The route trace and heart rate are turned on in your privacy settings on the web.';
-
-  @override
-  String get streamerOverlayOpenWebSettings => 'Open on the web';
 
   @override
   String get liveSpectatorHeartRate => 'Heart rate';

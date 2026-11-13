@@ -27325,6 +27325,42 @@
   "@streamerOverlayDelayFailed": {
     "description": "Error when changing the overlay delay fails"
   },
+  "streamerOverlayShowMap": "Show a route trace",
+  "@streamerOverlayShowMap": {
+    "description": "Switch on the streamer overlay sheet: draw the route trace on the OBS overlay"
+  },
+  "streamerOverlayShowMapHelp": "Draws the route so far, with your privacy zones left out. No map tiles are loaded.",
+  "@streamerOverlayShowMapHelp": {
+    "description": "Under the route-trace switch"
+  },
+  "streamerOverlayShowHeartRate": "Show heart rate",
+  "@streamerOverlayShowHeartRate": {
+    "description": "Switch on the streamer overlay sheet: show heart rate on the overlay"
+  },
+  "streamerOverlayShowHeartRateHelp": "Heart rate is health data. It's shown only while your health-data consent is on.",
+  "@streamerOverlayShowHeartRateHelp": {
+    "description": "Under the heart-rate switch while health-data consent is on"
+  },
+  "streamerOverlayHeartRateNeedsConsent": "Heart rate is health data. Turn on health-data consent to show it.",
+  "@streamerOverlayHeartRateNeedsConsent": {
+    "description": "Under the heart-rate switch while health-data consent is off; a Review consent button follows"
+  },
+  "streamerOverlayReviewConsent": "Review consent",
+  "@streamerOverlayReviewConsent": {
+    "description": "Button: opens Body metrics, where health-data consent is turned on"
+  },
+  "streamerOverlaySettingsSaved": "Overlay settings saved",
+  "@streamerOverlaySettingsSaved": {
+    "description": "Notice after the heart-rate switch is saved"
+  },
+  "streamerOverlayLinkChanged": "Saved. The link changed: copy it into your streaming app again.",
+  "@streamerOverlayLinkChanged": {
+    "description": "Notice after the route-trace switch is saved: the overlay URL now differs"
+  },
+  "streamerOverlaySaveFailed": "Couldn't save the overlay settings. Please try again.",
+  "@streamerOverlaySaveFailed": {
+    "description": "Notice when saving an overlay switch fails"
+  },
   "streamerOverlayLoadFailed": "Couldn't load your streamer overlay.",
   "@streamerOverlayLoadFailed": {
     "description": "Error when the overlay settings cannot be read"
@@ -27336,14 +27372,6 @@
   "streamerOverlayUnavailable": "The streamer overlay isn't available right now.",
   "@streamerOverlayUnavailable": {
     "description": "Error when the server has the overlay switched off"
-  },
-  "streamerOverlayMapHeartRateNote": "The route trace and heart rate are turned on in your privacy settings on the web.",
-  "@streamerOverlayMapHeartRateNote": {
-    "description": "Note that the route trace and heart rate are set on the web; the button below it opens that page"
-  },
-  "streamerOverlayOpenWebSettings": "Open on the web",
-  "@streamerOverlayOpenWebSettings": {
-    "description": "Button under the route-trace and heart-rate note; opens the web app's Privacy & sharing settings page in the browser"
   },
   "liveSpectatorHeartRate": "Heart rate",
   "@liveSpectatorHeartRate": {

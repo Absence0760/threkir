@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
@@ -136,7 +137,7 @@
 		}
 		// One-time migration from the previous localStorage build.
 		try {
-			const raw = localStorage.getItem(legacyStorageKey(userId, planId));
+			const raw = localStore()?.getItem(legacyStorageKey(userId, planId)) ?? null;
 			if (!raw) {
 				threadLoaded = true;
 				return true;
@@ -152,7 +153,7 @@
 				(m) => m && m.role === 'user' && typeof m.content === 'string',
 			);
 			if (legacy.length === 0) {
-				localStorage.removeItem(legacyStorageKey(userId, planId));
+				localStore()?.removeItem(legacyStorageKey(userId, planId));
 				threadLoaded = true;
 				return true;
 			}
@@ -166,7 +167,7 @@
 			);
 			if (!insertErr) {
 				const ok = await loadThread(userId);
-				localStorage.removeItem(legacyStorageKey(userId, planId));
+				localStore()?.removeItem(legacyStorageKey(userId, planId));
 				return ok;
 			}
 			threadLoaded = true;

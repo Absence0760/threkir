@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount, untrack } from 'svelte';
@@ -387,7 +388,7 @@
 				protein: Math.round(proByDay.get(iso) ?? 0),
 			}));
 
-			const stored = localStorage.getItem(waterStorageKey());
+			const stored = localStore()?.getItem(waterStorageKey()) ?? null;
 			waterMl = stored ? Number(stored) || 0 : 0;
 
 			await loadTemplates();
@@ -609,11 +610,20 @@
 
 	function addWater() {
 		waterMl += WATER_UNIT_ML;
-		localStorage.setItem(waterStorageKey(), String(waterMl));
+		saveWater();
 	}
 	function removeWater() {
 		waterMl = Math.max(0, waterMl - WATER_UNIT_ML);
-		localStorage.setItem(waterStorageKey(), String(waterMl));
+		saveWater();
+	}
+	// The count is this device's only record of the day's water, but a full
+	// or blocked storage must not stop the tap from counting on screen.
+	function saveWater() {
+		try {
+			localStore()?.setItem(waterStorageKey(), String(waterMl));
+		} catch (_) {
+			/* quota / private mode — the on-screen count stands */
+		}
 	}
 
 	// A logged entry is the app's most frequently deleted row and is

@@ -185,6 +185,27 @@ void main() {
       },
     );
 
+    test('a dead PKCE sign-in link → linkExpired (Sentry THREKIR-CLIENT-6)',
+        () {
+      // The code exchange of an emailed or OAuth link that was already
+      // spent, expired, or opened where its verifier never was.
+      for (final e in const [
+        _FakeAuthException('code challenge does not exist',
+            statusCode: '404'),
+        _FakeAuthException('invalid flow state, no valid flow state found',
+            code: 'flow_state_not_found', statusCode: '404'),
+        _FakeAuthException('flow state has expired',
+            code: 'flow_state_expired', statusCode: '403'),
+        _FakeAuthException('code challenge does not match previously saved '
+            'code verifier', code: 'bad_code_verifier', statusCode: '400'),
+        _FakeAuthException(
+            'Code verifier could not be found in local storage.'),
+      ]) {
+        expect(classifyAuthError(e), AuthErrorKind.linkExpired,
+            reason: e.message);
+      }
+    });
+
     test('weak_password code → weakPassword', () {
       expect(
         classifyAuthError(

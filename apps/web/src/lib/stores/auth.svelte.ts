@@ -1,3 +1,4 @@
+import { sessionStore } from '../core/browser_storage';
 import { browser } from '$app/env';
 import { supabase } from '#lib/core/supabase.ts';
 import { dbError } from '#lib/core/supabase_error.ts';
@@ -109,8 +110,8 @@ function createAuthStore() {
 	/// so the callback does not mistake this sign-in for that link.
 	function stashOAuthProvider(provider: 'google' | 'apple') {
 		try {
-			sessionStorage.removeItem(OAUTH_LINK_STASH_KEY);
-			sessionStorage.setItem(OAUTH_PROVIDER_STASH_KEY, provider);
+			sessionStore()?.removeItem(OAUTH_LINK_STASH_KEY);
+			sessionStore()?.setItem(OAUTH_PROVIDER_STASH_KEY, provider);
 		} catch (e) {
 			console.error('auth: could not stash the OAuth provider:', e);
 		}

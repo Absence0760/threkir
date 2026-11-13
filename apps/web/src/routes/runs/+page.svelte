@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
@@ -154,7 +155,7 @@
 		// user's in-session filter changes.
 		if (filtersHydrated) return;
 		try {
-			const raw = localStorage.getItem(FILTERS_KEY);
+			const raw = localStore()?.getItem(FILTERS_KEY) ?? null;
 			if (raw) {
 				const saved = JSON.parse(raw);
 				if (saved.sourceFilter) sourceFilter = saved.sourceFilter;
@@ -184,7 +185,7 @@
 	$effect(() => {
 		if (!filtersHydrated) return;
 		try {
-			localStorage.setItem(
+			localStore()?.setItem(
 				FILTERS_KEY,
 				JSON.stringify({ sourceFilter, activityFilter, dateRange, customFrom, customTo, sortKey, view }),
 			);

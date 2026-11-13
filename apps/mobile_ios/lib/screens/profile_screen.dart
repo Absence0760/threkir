@@ -99,7 +99,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
-  late TabController _tabs;
+  late final TabSetController<ProfileTab> _tabs;
 
   bool _loading = true;
   Object? _loadError;
@@ -152,6 +152,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   /// Single source of tab order — the TabBar labels, the TabBarView
   /// children, and the deep-link index all read it, so they cannot drift.
+  /// It follows the live session (Notifications is yours alone), so it can
+  /// change under the open screen; [build] hands each read to [_tabs].
   List<ProfileTab> get _tabOrder => [
     ProfileTab.runs,
     ProfileTab.badges,
@@ -163,14 +165,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void initState() {
     super.initState();
-    final order = _tabOrder;
     // A tab this profile doesn't carry (Notifications on someone else's)
-    // has no index — open on the first tab rather than a nearby one.
-    final requested = order.indexOf(widget.initialTab);
-    _tabs = TabController(
-      length: order.length,
+    // opens on the first tab rather than a nearby one.
+    _tabs = TabSetController(
       vsync: this,
-      initialIndex: requested < 0 ? 0 : requested,
+      tabs: _tabOrder,
+      initial: widget.initialTab,
     );
     _load();
   }
@@ -732,6 +732,15 @@ class _ProfileScreenState extends State<ProfileScreen>
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final order = _tabOrder;
+    // The session can end (or begin) under the open screen, taking
+    // Notifications with it: the controller follows the set it is built
+    // with, or the strip indexes a tab that is gone (Sentry
+    // THREKIR-CLIENT-A).
+    if (_tabs.update(order) &&
+        order.contains(ProfileTab.notifications) &&
+        _notificationsLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadNotifications());
+    }
 
     return DetailPage(
       title: _summary?.displayName ?? l10n.profileTitle,
@@ -774,7 +783,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       // tab's body are what swap. Before § 545 the strip sat in
       // `AppBar.bottom`, where it survived loading and error for free.
       body: CollapsingTabHost(
-        controller: _tabs,
+        controller: _tabs.controller,
         labels: [for (final tab in order) _tabLabel(l10n, tab)],
         header: [
           if (_summary == null)
@@ -990,7 +999,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: InkWell(
         key: key,
         borderRadius: BorderRadius.circular(8),
-        onTap: () => _tabs.animateTo(_tabOrder.indexOf(tab)),
+        onTap: () => _tabs.select(tab),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Column(
@@ -1669,7 +1678,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       );
     } else if (kind == 'achievement') {
-      _tabs.animateTo(_tabOrder.indexOf(ProfileTab.badges));
+      _tabs.select(ProfileTab.badges);
     } else if (kind == 'follow_request') {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(

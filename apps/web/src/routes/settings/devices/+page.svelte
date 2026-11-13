@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
@@ -157,9 +158,9 @@
 		// device-id + any in-flight settings caches. Previously the
 		// row was deleted server-side but the browser kept its minted
 		// device id, so the next write re-created the empty row.
-		if (isSelf && typeof localStorage !== 'undefined') {
+		if (isSelf) {
 			try {
-				localStorage.removeItem('run_app.device_id');
+				localStore()?.removeItem('run_app.device_id');
 			} catch (_) {
 				/* quota / access denied — noop */
 			}

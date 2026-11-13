@@ -14,6 +14,7 @@ import 'package:ui_kit/ui_kit.dart'
         ChoiceChipOption,
         EmptyState,
         FilterBar,
+        FilterToggle,
         HubSelection,
         HubTabBody,
         ListCard,
@@ -780,18 +781,20 @@ class RoutesScreenState extends State<RoutesScreen> {
         chips: _exploreChips(l10n),
       );
 
-  /// My routes · Explore, above every view's own controls. A chip that
-  /// switches the view rather than filtering it, as Races & courses' All ·
-  /// Races · Courses does, and on its own line so the view's filters keep
-  /// theirs.
-  FilterBar _viewBar(AppLocalizations l10n) {
+  /// Mine · Explore, above every view's own controls. A chip that switches
+  /// the view rather than filtering it, as Races & courses' All · Races ·
+  /// Courses does, and on its own line so the view's filters keep theirs.
+  /// [chips] is a view's one quick chip (Mine's Starred), which joins this
+  /// line at its end rather than taking a line of its own.
+  FilterBar _viewBar(AppLocalizations l10n, {List<Widget> chips = const []}) {
     final selected = _show.value.isExplore;
     return FilterBar(
       key: const ValueKey('routes-view-bar'),
-      chipsLabel: l10n.routesViewGroup,
+      viewsLabel: l10n.routesViewGroup,
       padding: const EdgeInsets.fromLTRB(
           AppInsets.gutter, AppSpace.sm, AppInsets.gutter, 0),
-      chips: [
+      chips: chips,
+      views: [
         for (final o in [
           ChoiceChipOption(value: false, label: l10n.routesViewMine),
           ChoiceChipOption(value: true, label: l10n.routesViewExplore),
@@ -1089,9 +1092,17 @@ class RoutesScreenState extends State<RoutesScreen> {
     return HubTabBody(
       title: l10n.fitnessRunsRoutes,
       primary: _show.value == RoutesShow.mine ? _primaryAction(l10n) : null,
-      filters: _chrome(l10n).above(mergedRoutes.isEmpty
-          ? FilterBar(trailing: actions)
-          : _filterBar(theme, l10n).withTrailing(actions)),
+      filters: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _viewBar(l10n,
+              chips: [if (mergedRoutes.isNotEmpty) _starredToggle(l10n)]),
+          mergedRoutes.isEmpty
+              ? FilterBar(trailing: actions)
+              : _filterBar(theme, l10n).withTrailing(actions),
+        ],
+      ),
       selection: _selecting
           ? _selectionBar(visible: routes, ownedIds: ownedIds)
           : null,
@@ -1139,9 +1150,21 @@ class RoutesScreenState extends State<RoutesScreen> {
     if (turningOn) _ensureStarredLoaded();
   }
 
-  /// Search, the Starred chip (the most-toggled filter), and Filters for
-  /// surface, distance and sort, whose non-default values show as removable
-  /// chips on the same line. Mirrors the web `/routes` toolbar's set.
+  /// Starred, the most-toggled filter: Mine's one quick chip, which sits at
+  /// the end of the view row.
+  FilterToggle _starredToggle(AppLocalizations l10n) => FilterToggle(
+        key: const ValueKey('routes-starred-toggle'),
+        label: l10n.routesStarred,
+        icon: Icons.star_border,
+        selectedIcon: Icons.star,
+        selectedColor: AppSemanticColors.of(context).crown,
+        selected: _starredOnly,
+        onChanged: (_) => _toggleStarredOnly(),
+      );
+
+  /// Search, and Filters for surface, distance and sort, whose non-default
+  /// values show as removable chips on the line under it. Starred is on the
+  /// view row ([_starredToggle]). Mirrors the web `/routes` toolbar's set.
   FilterBar _filterBar(ThemeData theme, AppLocalizations l10n) {
     ActiveFilter active(String label, VoidCallback onRemove) => ActiveFilter(
           label: label,
@@ -1172,20 +1195,6 @@ class RoutesScreenState extends State<RoutesScreen> {
           _persistFilters();
         },
       ),
-      chips: [
-        FilterChip(
-          label: Text(l10n.routesStarred),
-          avatar: Icon(
-            _starredOnly ? Icons.star : Icons.star_border,
-            size: 18,
-            color: _starredOnly
-                ? AppSemanticColors.of(context).crown
-                : theme.colorScheme.onSurfaceVariant,
-          ),
-          selected: _starredOnly,
-          onSelected: (_) => _toggleStarredOnly(),
-        ),
-      ],
       activeFilters: filters,
       filtersLabel: l10n.filterBarFilters,
       filtersSemanticLabel:

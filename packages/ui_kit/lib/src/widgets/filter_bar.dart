@@ -110,6 +110,72 @@ class ActiveFilter {
   final String removeTooltip;
 }
 
+/// An on/off quick filter (Starred, Near me). On a chip line it is a
+/// `FilterChip`; where it would be the only chip on a line of its own,
+/// [FilterBar] draws it as a toggle icon button in the search row instead
+/// ([asIconButton]), so a lone chip never spends a whole row (issue #1374).
+///
+/// Its state never rests on colour alone: the glyph swaps between [icon] and
+/// [selectedIcon], and a screen reader hears it as a toggle that is on or off.
+class FilterToggle extends StatelessWidget {
+  const FilterToggle({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.selected,
+    required this.onChanged,
+    this.selectedColor,
+  });
+
+  /// The chip's text, and the icon button's tooltip and name.
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final bool selected;
+  final ValueChanged<bool> onChanged;
+
+  /// The glyph's colour while on. Defaults to the theme's primary.
+  final Color? selectedColor;
+
+  Color _glyphColor(ThemeData theme) => selected
+      ? selectedColor ?? theme.colorScheme.primary
+      : theme.colorScheme.onSurfaceVariant;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return FilterChip(
+      label: Text(label),
+      avatar: Icon(selected ? selectedIcon : icon,
+          size: 18, color: _glyphColor(theme)),
+      selected: selected,
+      showCheckmark: false,
+      onSelected: onChanged,
+    );
+  }
+
+  /// The same toggle as an icon button, for the search row.
+  Widget asIconButton(BuildContext context) {
+    final theme = Theme.of(context);
+    return Semantics(
+      button: true,
+      toggled: selected,
+      label: label,
+      excludeSemantics: true,
+      onTap: () => onChanged(!selected),
+      child: IconButton(
+        key: const Key('filter-bar-toggle'),
+        tooltip: label,
+        isSelected: selected,
+        icon: Icon(icon, color: _glyphColor(theme)),
+        selectedIcon: Icon(selectedIcon, color: _glyphColor(theme)),
+        onPressed: () => onChanged(!selected),
+      ),
+    );
+  }
+}
+
 /// The control row of a list: at most one search field, at most one line of
 /// quick chips that scrolls sideways and never wraps, and a Filters button
 /// with the active count that opens the sheet holding everything else, whose
@@ -120,10 +186,18 @@ class ActiveFilter {
 ///
 /// The Filters button sits beside the search when there is one, and
 /// otherwise leads the chip line inside its scroll.
+///
+/// A line of chips never holds one quick chip on its own (issue #1374, the
+/// owner's Routes → Mine screenshot: "Starred" alone under the search). With
+/// a view row ([views]) the lone chip joins that row, at its end; with none,
+/// a lone [FilterToggle] becomes a toggle icon button in the search row. Two
+/// or more chips keep their own line, which scrolls sideways.
 class FilterBar extends StatelessWidget {
   const FilterBar({
     super.key,
     this.search,
+    this.views = const [],
+    this.viewsLabel,
     this.trailing = const [],
     this.chips = const [],
     this.chipsLabel,
@@ -139,6 +213,13 @@ class FilterBar extends StatelessWidget {
 
   /// Usually an [AppSearchField].
   final Widget? search;
+
+  /// The tab's views (Routes' Mine · Explore), as chips that switch what the
+  /// tab shows rather than filter it. Their own line, above everything else.
+  final List<Widget> views;
+
+  /// Names the view row as a group for a screen reader.
+  final String? viewsLabel;
 
   /// Actions at the end of the bar's first row, after the search: a sort
   /// menu, a labelled secondary action, the tab's overflow. Always a row of
@@ -174,6 +255,8 @@ class FilterBar extends StatelessWidget {
       : FilterBar(
           key: key,
           search: search,
+          views: views,
+          viewsLabel: viewsLabel,
           trailing: [...trailing, ...extra],
           chips: chips,
           chipsLabel: chipsLabel,
@@ -206,13 +289,38 @@ class FilterBar extends StatelessWidget {
         ),
       );
 
+  /// Where the bar puts a single quick chip, so it never sits alone on a
+  /// line: the view row when there is one, else the search row as an icon
+  /// button when it is a [FilterToggle] and that row exists, else its line.
+  static LoneChipPlacement loneChipPlacement({
+    required int chipCount,
+    required bool hasViews,
+    required bool isToggle,
+    required bool hasTopRow,
+    required bool filtersOnLine,
+  }) {
+    if (chipCount != 1 || filtersOnLine) return LoneChipPlacement.line;
+    if (hasViews) return LoneChipPlacement.viewRow;
+    if (isToggle && hasTopRow) return LoneChipPlacement.searchRow;
+    return LoneChipPlacement.line;
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasFilters = onOpenFilters != null;
     final filtersBesideSearch = hasFilters && search != null;
-    final hasLine = (hasFilters && !filtersBesideSearch) ||
-        chips.isNotEmpty ||
-        activeFilters.isNotEmpty;
+    final filtersOnLine = hasFilters && !filtersBesideSearch;
+    final placement = loneChipPlacement(
+      chipCount: chips.length,
+      hasViews: views.isNotEmpty,
+      isToggle: chips.length == 1 && chips.single is FilterToggle,
+      hasTopRow: search != null || trailing.isNotEmpty,
+      filtersOnLine: filtersOnLine,
+    );
+    final lineChips =
+        placement == LoneChipPlacement.line ? chips : const <Widget>[];
+    final hasLine =
+        filtersOnLine || lineChips.isNotEmpty || activeFilters.isNotEmpty;
     final hasTop = search != null || trailing.isNotEmpty;
     Widget spaced(Widget child) => Padding(
           padding: const EdgeInsetsDirectional.only(end: AppSpace.sm),
@@ -223,8 +331,8 @@ class FilterBar extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          if (hasFilters && !filtersBesideSearch) spaced(_filtersButton()),
-          for (final chip in chips) spaced(chip),
+          if (filtersOnLine) spaced(_filtersButton()),
+          for (final chip in lineChips) spaced(chip),
           for (final f in activeFilters)
             spaced(InputChip(
               label: Text(f.label),
@@ -243,11 +351,19 @@ class FilterBar extends StatelessWidget {
         // semantics-children: a group name, read once before the controls inside it
         : Semantics(container: true, label: chipsLabel, child: line);
     final rows = <Widget>[
+      if (views.isNotEmpty)
+        _ViewRow(
+          views: views,
+          label: viewsLabel,
+          end: placement == LoneChipPlacement.viewRow ? chips.single : null,
+        ),
       if (hasTop)
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             if (search case final search?) Expanded(child: search),
+            if (placement == LoneChipPlacement.searchRow)
+              (chips.single as FilterToggle).asIconButton(context),
             if (filtersBesideSearch) _filtersButton(),
             ...trailing,
           ],
@@ -266,6 +382,63 @@ class FilterBar extends StatelessWidget {
             rows[i],
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Where [FilterBar] puts a single quick chip.
+enum LoneChipPlacement {
+  /// On the chip line, with the Filters button or active filters beside it,
+  /// or as the bar's only row.
+  line,
+
+  /// At the end of the view row.
+  viewRow,
+
+  /// As a toggle icon button in the search row.
+  searchRow,
+}
+
+/// The view chips, with an optional quick chip at the line's end. One line
+/// that scrolls sideways when the two do not fit, so at 2x text on a narrow
+/// phone nothing wraps or overflows; when they fit the chip stands at the
+/// end edge.
+class _ViewRow extends StatelessWidget {
+  const _ViewRow({required this.views, this.label, this.end});
+
+  final List<Widget> views;
+  final String? label;
+  final Widget? end;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget viewChips = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < views.length; i++)
+          Padding(
+            padding: EdgeInsetsDirectional.only(
+                end: i == views.length - 1 && end == null ? 0 : AppSpace.sm),
+            child: views[i],
+          ),
+      ],
+    );
+    if (label case final label?) {
+      // semantics-children: a group name, read once before the controls inside it
+      viewChips = Semantics(container: true, label: label, child: viewChips);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        key: const Key('filter-bar-views'),
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [viewChips, ?end],
+          ),
+        ),
       ),
     );
   }

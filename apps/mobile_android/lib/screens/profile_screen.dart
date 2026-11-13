@@ -31,6 +31,7 @@ import '../widgets/error_state.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/run_list_tile.dart';
 import '../widgets/sign_in_required_state.dart';
+import '../widgets/single_flight.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
 import 'challenge_detail_screen.dart';
@@ -126,6 +127,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _notificationsLoading = true;
   Object? _notificationsError;
   List<NotificationView> _notifications = const [];
+  // A notification opens one thing at a time: most resolve their target
+  // over the network before pushing it.
+  final _notifFlight = SingleFlight();
   bool _followBusy = false;
   bool _blocked = false;
   bool _blockBusy = false;
@@ -1415,7 +1419,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ],
       ),
-      onTap: () => _onNotifTap(item),
+      onTap: () => _notifFlight.openOnce(() => _onNotifTap(item)),
     );
   }
 
@@ -1503,7 +1507,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ],
       ),
-      onTap: () => _openGroup(group, viewById),
+      onTap: () => _notifFlight.openOnce(() => _openGroup(group, viewById)),
     );
   }
 
@@ -1728,6 +1732,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final listingId = target?.listingId;
     final routeId = target?.routeId;
     if (listingId != null) {
+      // single-flight: reached only from _onNotifTap, inside _notifFlight.
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
@@ -1757,6 +1762,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           context, AppLocalizations.of(context).runDetailParkCourseOpenFailed);
       return;
     }
+    // single-flight: reached only from _onNotifTap, inside _notifFlight.
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ParkCourseScreen(

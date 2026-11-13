@@ -12,7 +12,10 @@ import '../lib/preferences_page.dart';
 import '../lib/settings_destination.dart';
 
 void main() {
-  setUp(() => pendingSettingsDestination.value = null);
+  setUp(() {
+    pendingSettingsDestination.value = null;
+    takePendingSettingsRow();
+  });
   tearDown(() => pendingSettingsDestination.value = null);
 
   test('openSettings parks the destination for the shell to drain', () {
@@ -31,6 +34,29 @@ void main() {
       PreferencesPage.values,
     );
     expect(SettingsDestination.account.preferencesPage, isNull);
+  });
+
+  test('openSettingsRow parks the page the row is on, and the row', () {
+    // A link about one setting lands on it, not at the top of its page
+    // (decisions § 2494, amended).
+    openSettingsRow(PreferencesRow.showNutrition);
+    expect(pendingSettingsDestination.value, SettingsDestination.display);
+    expect(pendingSettingsRow, PreferencesRow.showNutrition);
+    expect(takePendingSettingsRow(), PreferencesRow.showNutrition);
+    expect(pendingSettingsRow, isNull, reason: 'taken once');
+  });
+
+  test('a page-only request drops a row parked before it', () {
+    openSettingsRow(PreferencesRow.maxHr);
+    pendingSettingsDestination.value = null;
+    openSettings(SettingsDestination.training);
+    expect(pendingSettingsRow, isNull);
+  });
+
+  test('every row has a destination for its page', () {
+    for (final row in PreferencesRow.values) {
+      expect(SettingsDestination.of(row.page).preferencesPage, row.page);
+    }
   });
 
   test('nothing is parked until a surface asks', () {

@@ -462,7 +462,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
                 // web's empty card links to the privacy page here.
                 ctaLabel: l10n.peopleNearbyEmptyAction,
                 ctaIcon: Icons.settings,
-                onCta: () => openSettings(SettingsDestination.privacy),
+                onCta: () => openSettingsRow(PreferencesRow.discoverableNearby),
               ))
             else
               SliverList.separated(

@@ -2577,6 +2577,33 @@ void main() {
       );
     });
 
+    testWidgets('a parked row opens its page landed on that row',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      openSettingsRow(PreferencesRow.maxHr);
+      await openAndSettle(tester);
+
+      final page = tester.widget<SettingsPreferencesScreen>(
+          find.byType(SettingsPreferencesScreen));
+      expect(page.page, PreferencesPage.training);
+      expect(page.focus, PreferencesRow.maxHr);
+      expect(pendingSettingsRow, isNull,
+          reason: 'the row is taken with the destination, once');
+
+      // A page-only request after it lands at the top, not on a stale row.
+      openSettings(SettingsDestination.training);
+      await openAndSettle(tester);
+      expect(
+        tester
+            .widgetList<SettingsPreferencesScreen>(
+                find.byType(SettingsPreferencesScreen, skipOffstage: false))
+            .last
+            .focus,
+        isNull,
+      );
+    });
+
     testWidgets('the shell clears the slot as it navigates', (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);

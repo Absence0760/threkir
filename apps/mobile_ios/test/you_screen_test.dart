@@ -9,12 +9,14 @@ import 'package:core_models/core_models.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show SectionHeader;
+import 'package:ui_kit/ui_kit.dart' show SectionHeader, SettingsAnchor;
 
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/local_food_store.dart';
 import '../lib/local_gear_store.dart';
+import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/parkrun_barcode_cache.dart';
@@ -27,6 +29,7 @@ import '../lib/screens/settings_preferences_screen.dart';
 import '../lib/settings_sync.dart';
 import '../lib/screens/you_screen.dart';
 import 'pump_until.dart';
+import 'three_button_nav_bar.dart';
 import 'worst_case_layout.dart';
 
 /// Signed-in fake so the identity card renders. [displayName] stands in for
@@ -133,6 +136,7 @@ void main() {
     Size? size,
     double textScale = 1.0,
     Locale locale = const Locale('en'),
+    bool navBar = false,
   }) async {
     SharedPreferences.setMockInitialValues(initialPrefs);
     final prefs = Preferences();
@@ -146,6 +150,12 @@ void main() {
     if (size != null) {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+    if (navBar) {
+      tester.view.viewPadding =
+          const FakeViewPadding(bottom: kThreeButtonNavBar);
+      tester.view.padding = const FakeViewPadding(bottom: kThreeButtonNavBar);
       addTearDown(tester.view.reset);
     }
 
@@ -164,6 +174,8 @@ void main() {
         runStore: runStore,
         routeStore: routeStore,
         gearStore: gearStore,
+        gymStore: LocalGymStore(),
+        foodStore: LocalFoodStore(),
         heartRate: BleHeartRate(),
         treadmill: BleTreadmill(),
         settingsSync: _SyncedNoBag(prefs),
@@ -393,7 +405,7 @@ void main() {
       await pump(tester, size: const Size(400, 3000));
       await search(tester, 'zones');
       final hit = find.byKey(ValueKey(
-          'settings-search-result-${en.privacyZonesTitle}'));
+          'settings-search-result-${PreferencesRow.privacyZones.name}'));
       expect(hit, findsOneWidget);
       // The result names the page it is on, and the groups give way.
       expect(
@@ -402,26 +414,72 @@ void main() {
       expect(find.byType(SectionHeader), findsNothing);
       // Case is not what the runner remembers.
       await search(tester, en.prefsHrZones.toUpperCase());
-      expect(find.byKey(ValueKey('settings-search-result-${en.prefsHrZones}')),
+      expect(
+          find.byKey(ValueKey(
+              'settings-search-result-${PreferencesRow.hrZones.name}')),
           findsOneWidget);
 
       await search(tester, 'zones');
       await tester.tap(hit);
       await tester.pumpAndSettle();
+      final opened = tester.widget<SettingsPreferencesScreen>(
+          find.byType(SettingsPreferencesScreen));
+      expect(opened.page, PreferencesPage.privacy);
+      expect(opened.focus, PreferencesRow.privacyZones);
+    });
+
+    // The owner's report: "nut" found Show Nutrition, and tapping it opened
+    // Units & display at the top with the row nowhere in sight.
+    testWidgets('a result lands on its row: in view, highlighted, announced, '
+        'at 320 dp, 2x text and a 3-button bar', (tester) async {
+      await pump(tester,
+          size: kNarrowPhone, textScale: 2.0, navBar: true);
+      await search(tester, 'nut');
+      final hit = find.byKey(ValueKey(
+          'settings-search-result-${PreferencesRow.showNutrition.name}'));
+      expect(hit, findsOneWidget);
+      await tester.ensureVisible(hit);
+      await tester.pump();
+      await tester.tap(hit);
+      // The push, then the scroll to the row; the highlight is still on.
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(tester.takeException(), isNull);
       expect(
         tester
             .widget<SettingsPreferencesScreen>(
                 find.byType(SettingsPreferencesScreen))
             .page,
-        PreferencesPage.privacy,
+        PreferencesPage.display,
       );
+      final anchor = find.byWidgetPredicate((w) =>
+          w is SettingsAnchor && w.id == PreferencesRow.showNutrition.name);
+      expect(anchor, findsOneWidget);
+      final row = find.descendant(
+          of: anchor, matching: find.text(en.prefsShowNutrition));
+      expect(row, findsOneWidget);
+      final rect = tester.getRect(row);
+      final page = tester.getRect(find.byType(SettingsPreferencesScreen));
+      expect(rect.top, greaterThanOrEqualTo(page.top));
+      expectAboveNavBar(tester, row);
+      expect(
+        find.descendant(
+            of: anchor,
+            matching:
+                find.byKey(const ValueKey('settings-anchor-highlight'))),
+        findsOneWidget,
+      );
+      expect(tester.takeAnnouncements().map((a) => a.message),
+          contains(en.prefsShowNutrition));
+      await tester.pumpAndSettle();
     });
 
     testWidgets("finds You's own rows too", (tester) async {
       await pump(tester, size: const Size(400, 3000));
       await search(tester, 'devices');
       expect(
-          find.byKey(ValueKey('settings-search-result-${en.devicesTitle}')),
+          find.byKey(const ValueKey('settings-search-result-you-devices')),
           findsOneWidget);
     });
 

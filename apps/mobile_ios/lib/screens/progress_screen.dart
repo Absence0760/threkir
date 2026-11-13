@@ -307,7 +307,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         context,
         l10n.dashboardCardHidden(title),
         actionLabel: l10n.dashboardCardHiddenAction,
-        onAction: () => openSettings(SettingsDestination.display),
+        onAction: () => openSettingsRow(PreferencesRow.progressCards),
       );
     } catch (e) {
       debugPrint('progress: hiding $id not saved: $e');
@@ -896,7 +896,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton(
                 key: const Key('dashboardDisclosureLevelLink'),
-                onPressed: () => openSettings(SettingsDestination.display),
+                onPressed: () => openSettingsRow(PreferencesRow.disclosureLevel),
                 child: Text(l10n.dashboardTrainingLoadSectionAction),
               ),
             ),

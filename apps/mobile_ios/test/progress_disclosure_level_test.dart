@@ -181,6 +181,7 @@ void main() {
     await tester.ensureVisible(link);
     await tester.tap(link);
     expect(pendingSettingsDestination.value, SettingsDestination.display);
+    expect(pendingSettingsRow, PreferencesRow.disclosureLevel);
   });
 
   testWidgets('hiding a group offers the way back on its banner',
@@ -204,6 +205,7 @@ void main() {
     await tester.tap(find.text('Manage cards'));
     await tester.pump();
     expect(pendingSettingsDestination.value, SettingsDestination.display);
+    expect(pendingSettingsRow, PreferencesRow.progressCards);
     await tester.pump(const Duration(seconds: 4));
   });
 

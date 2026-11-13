@@ -18347,6 +18347,42 @@ abstract class AppLocalizations {
   /// **'One-off'**
   String get eventFormRecurOneOff;
 
+  /// How an event repeats, on its detail page (OneOff)
+  ///
+  /// In en, this message translates to:
+  /// **'One-off event'**
+  String get eventRecurrenceOneOff;
+
+  /// How an event repeats, on its detail page (Monthly)
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats monthly'**
+  String get eventRecurrenceMonthly;
+
+  /// How an event repeats, on its detail page (Weekly)
+  ///
+  /// In en, this message translates to:
+  /// **'Every week'**
+  String get eventRecurrenceWeekly;
+
+  /// How an event repeats, on its detail page (Biweekly)
+  ///
+  /// In en, this message translates to:
+  /// **'Every other week'**
+  String get eventRecurrenceBiweekly;
+
+  /// How an event repeats, on its detail page (WithDays)
+  ///
+  /// In en, this message translates to:
+  /// **'{base} · {days}'**
+  String eventRecurrenceWithDays(String base, String days);
+
+  /// How an event repeats, on its detail page (DaySeparator)
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get eventRecurrenceDaySeparator;
+
   /// Recurrence option: weekly
   ///
   /// In en, this message translates to:

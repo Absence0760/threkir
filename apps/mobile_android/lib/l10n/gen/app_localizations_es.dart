@@ -11481,6 +11481,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventFormRecurOneOff => 'Único';
 
   @override
+  String get eventRecurrenceOneOff => 'Evento único';
+
+  @override
+  String get eventRecurrenceMonthly => 'Se repite cada mes';
+
+  @override
+  String get eventRecurrenceWeekly => 'Cada semana';
+
+  @override
+  String get eventRecurrenceBiweekly => 'Cada dos semanas';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => ', ';
+
+  @override
   String get eventFormRecurWeekly => 'Semanal';
 
   @override

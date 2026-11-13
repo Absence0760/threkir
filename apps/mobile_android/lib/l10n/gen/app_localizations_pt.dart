@@ -11490,6 +11490,26 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventFormRecurOneOff => 'Único';
 
   @override
+  String get eventRecurrenceOneOff => 'Evento único';
+
+  @override
+  String get eventRecurrenceMonthly => 'Repete-se todos os meses';
+
+  @override
+  String get eventRecurrenceWeekly => 'Todas as semanas';
+
+  @override
+  String get eventRecurrenceBiweekly => 'Semana sim, semana não';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => ', ';
+
+  @override
   String get eventFormRecurWeekly => 'Semanal';
 
   @override
@@ -34528,6 +34548,26 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventFormRecurOneOff => 'Único';
+
+  @override
+  String get eventRecurrenceOneOff => 'Evento único';
+
+  @override
+  String get eventRecurrenceMonthly => 'Repete todo mês';
+
+  @override
+  String get eventRecurrenceWeekly => 'Toda semana';
+
+  @override
+  String get eventRecurrenceBiweekly => 'A cada duas semanas';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => ', ';
 
   @override
   String get eventFormRecurWeekly => 'Semanal';

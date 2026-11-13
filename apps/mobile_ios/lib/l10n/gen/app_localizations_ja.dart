@@ -10907,6 +10907,26 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventFormRecurOneOff => '1回のみ';
 
   @override
+  String get eventRecurrenceOneOff => '1回限りのイベント';
+
+  @override
+  String get eventRecurrenceMonthly => '毎月開催';
+
+  @override
+  String get eventRecurrenceWeekly => '毎週';
+
+  @override
+  String get eventRecurrenceBiweekly => '隔週';
+
+  @override
+  String eventRecurrenceWithDays(String base, String days) {
+    return '$base · $days';
+  }
+
+  @override
+  String get eventRecurrenceDaySeparator => '、';
+
+  @override
   String get eventFormRecurWeekly => '毎週';
 
   @override

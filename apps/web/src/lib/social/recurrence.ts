@@ -4,19 +4,19 @@
 // on every event-detail render; no need to materialise instances.
 
 import type { Event, Weekday, RecurrenceFreq } from '../types';
+import type { MessageKey } from '../i18n/messages';
 import { isKnownTimeZone, zoneOffsetMs } from './zoned_time';
 
-const WEEKDAY_LABEL: Record<Weekday, string> = {
-	MO: 'Mon',
-	TU: 'Tue',
-	WE: 'Wed',
-	TH: 'Thu',
-	FR: 'Fri',
-	SA: 'Sat',
-	SU: 'Sun'
-};
-
 const ISO_ORDER: Weekday[] = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+
+/// A weekday's short name in the reader's locale ("Mon", "lun.", "月"), from
+/// `Intl` rather than a table. 2024-01-01 was a Monday.
+export function weekdayLabel(code: Weekday, locale: string): string {
+	const day = new Date(Date.UTC(2024, 0, 1 + ISO_ORDER.indexOf(code), 12));
+	return new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(day);
+}
+
+export type RecurrenceTranslate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
 // A recurring event's instance_start is its per-occurrence capacity key
 // (20261018_001) and the live-race arm key, so every viewer's expansion must
@@ -167,21 +167,21 @@ export function nextInstanceAfter(event: Event, after = new Date()): Date | null
 	return first ?? null;
 }
 
+/// "Every week · Mon, Wed" in the reader's language. Dart twin:
+/// `describeRecurrence` in `recurrence.dart`.
 export function describeRecurrence(
 	freq: RecurrenceFreq | null,
-	byday: Weekday[] | null | undefined
+	byday: Weekday[] | null | undefined,
+	t: RecurrenceTranslate,
+	locale: string
 ): string {
-	if (!freq) return 'One-off event';
-	if (freq === 'monthly') return 'Repeats monthly';
-	const days = (byday ?? []).length
-		? ISO_ORDER.filter((d) => byday!.includes(d)).map((d) => WEEKDAY_LABEL[d]).join(', ')
-		: '';
-	const base = freq === 'biweekly' ? 'Every other week' : 'Every week';
-	return days ? `${base} · ${days}` : base;
+	if (!freq) return t('clubEvent.recurrenceOneOff');
+	if (freq === 'monthly') return t('clubEvent.recurrenceMonthly');
+	const base = t(freq === 'biweekly' ? 'clubEvent.recurrenceBiweekly' : 'clubEvent.recurrenceWeekly');
+	const days = ISO_ORDER.filter((d) => (byday ?? []).includes(d)).map((d) => weekdayLabel(d, locale));
+	return days.length ? t('clubEvent.recurrenceWithDays', { base, days: days.join(t('clubEvent.recurrenceDaySeparator')) }) : base;
 }
 
-export const WEEKDAY_CHOICES: { code: Weekday; label: string }[] = ISO_ORDER.map((code) => ({
-	code,
-	label: WEEKDAY_LABEL[code]
-}));
+/// The weekdays a recurring event can repeat on, Monday first.
+export const WEEKDAY_CODES: readonly Weekday[] = ISO_ORDER;
 

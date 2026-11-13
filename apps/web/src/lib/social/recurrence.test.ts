@@ -4,7 +4,16 @@ import {
 	expandInstances,
 	nextInstanceAfter,
 	describeRecurrence,
+	weekdayLabel,
 } from './recurrence';
+import { interpolate } from '../i18n/interpolate';
+import { en } from '../i18n/locales/en';
+import { messages as ja } from '../i18n/locales/ja';
+import type { MessageKey } from '../i18n/messages';
+
+const tEn = (key: MessageKey, params?: Record<string, string | number>) => interpolate(en[key], params, 'en');
+const describe = (freq: Parameters<typeof describeRecurrence>[0], byday: Parameters<typeof describeRecurrence>[1]) =>
+	describeRecurrence(freq, byday, tEn, 'en-GB');
 import type { Event } from '../types';
 
 // Build a partial Event with just enough fields for recurrence math.
@@ -546,21 +555,27 @@ test('expandInstances — legacy event with no timezone keeps viewer-local behav
 });
 
 test('describeRecurrence — null freq is "One-off event"', () => {
-	assert.equal(describeRecurrence(null, []), 'One-off event');
-	assert.equal(describeRecurrence(null, null), 'One-off event');
+	assert.equal(describe(null, []), 'One-off event');
+	assert.equal(describe(null, null), 'One-off event');
 });
 
 test('describeRecurrence — monthly is "Repeats monthly"', () => {
-	assert.equal(describeRecurrence('monthly', null), 'Repeats monthly');
-	assert.equal(describeRecurrence('monthly', ['MO']), 'Repeats monthly');
+	assert.equal(describe('monthly', null), 'Repeats monthly');
+	assert.equal(describe('monthly', ['MO']), 'Repeats monthly');
 });
 
 test('describeRecurrence — weekly with byday lists days in ISO order', () => {
 	// Even when input order is shuffled, output order is MO,TU,...,SU.
-	assert.equal(describeRecurrence('weekly', ['WE', 'MO']), 'Every week · Mon, Wed');
+	assert.equal(describe('weekly', ['WE', 'MO']), 'Every week · Mon, Wed');
 });
 
 test('describeRecurrence — biweekly without byday is bare', () => {
-	assert.equal(describeRecurrence('biweekly', null), 'Every other week');
-	assert.equal(describeRecurrence('biweekly', []), 'Every other week');
+	assert.equal(describe('biweekly', null), 'Every other week');
+	assert.equal(describe('biweekly', []), 'Every other week');
+});
+
+test("describeRecurrence — reads the reader's catalogue and weekday names", () => {
+	const tJa = (key: MessageKey, params?: Record<string, string | number>) => interpolate(ja[key], params, 'ja');
+	assert.equal(describeRecurrence('weekly', ['WE', 'MO'], tJa, 'ja'), `${ja['clubEvent.recurrenceWeekly']} · 月、水`);
+	assert.equal(weekdayLabel('SU', 'en-GB'), 'Sun');
 });

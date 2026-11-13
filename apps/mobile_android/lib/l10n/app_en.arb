@@ -15371,6 +15371,38 @@
   "@eventFormRecurOneOff": {
     "description": "Recurrence option: one-off"
   },
+  "eventRecurrenceOneOff": "One-off event",
+  "@eventRecurrenceOneOff": {
+    "description": "How an event repeats, on its detail page (OneOff)"
+  },
+  "eventRecurrenceMonthly": "Repeats monthly",
+  "@eventRecurrenceMonthly": {
+    "description": "How an event repeats, on its detail page (Monthly)"
+  },
+  "eventRecurrenceWeekly": "Every week",
+  "@eventRecurrenceWeekly": {
+    "description": "How an event repeats, on its detail page (Weekly)"
+  },
+  "eventRecurrenceBiweekly": "Every other week",
+  "@eventRecurrenceBiweekly": {
+    "description": "How an event repeats, on its detail page (Biweekly)"
+  },
+  "eventRecurrenceWithDays": "{base} · {days}",
+  "@eventRecurrenceWithDays": {
+    "description": "How an event repeats, on its detail page (WithDays)",
+    "placeholders": {
+      "base": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRecurrenceDaySeparator": ", ",
+  "@eventRecurrenceDaySeparator": {
+    "description": "How an event repeats, on its detail page (DaySeparator)"
+  },
   "eventFormRecurWeekly": "Weekly",
   "@eventFormRecurWeekly": {
     "description": "Recurrence option: weekly"

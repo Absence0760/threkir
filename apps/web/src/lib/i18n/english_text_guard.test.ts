@@ -89,7 +89,6 @@ const NOT_YET_LOCALISED: Record<string, number> = {
 	'src/lib/runs/race_day.ts': 5,
 	'src/lib/segments/segments.ts': 1,
 	'src/lib/settings/compare_features.ts': 11,
-	'src/lib/social/recurrence.ts': 1,
 	'src/lib/training/plan_serialize.ts': 3,
 	'src/lib/util/exif_strip.ts': 1,
 	'src/lib/video/encode_video.ts': 1,
@@ -118,6 +117,7 @@ test('the localised helpers stay free of English', () => {
 		'src/lib/training/race_plan_prefill.ts',
 		'src/lib/training/fitness.ts',
 		'src/lib/training/readiness.ts',
+		'src/lib/social/recurrence.ts',
 	]) {
 		assert.equal(found.get(file) ?? 0, 0, file);
 	}

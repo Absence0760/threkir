@@ -10,7 +10,8 @@ import { parse } from 'svelte/compiler';
 // their own `type="search"` input in about five styles, some with no clear
 // button, and twenty routes copied a `.page-header` block whose kicker, title
 // size and subtitle drifted page by page. This fails on a new copy of either:
-// an `<input type="search">` or a `.page-header` class (in markup or a style
+// a hand-built search field (`type="search"`, or a text input that presents
+// itself as search) or a `.page-header` class (in markup or a style
 // rule) in any `.svelte` file other than the components.
 //
 // An ALLOW entry is a file that cannot move yet, with the reason. The list may
@@ -38,6 +39,10 @@ const ALLOW: { file: string; kind: Kind; why: string }[] = [
 		kind: 'search',
 		why: 'a GET form submitted with its own button (`name="q"`), not a live list filter',
 	},
+	...searchAllow(
+		'a place-search combobox over the map: its results dropdown opens on focus and stays open while focus moves into it (`onfocusin` / `onfocusout`), which AppSearchField does not carry',
+		['lib/components/RouteBuilder.svelte', 'lib/components/RouteHeatmap.svelte'],
+	),
 	...h1Allow(
 		'the marketing landing and comparison pages: a hero headline, not an app title block',
 		['routes/+page.svelte', 'routes/compare/+page.svelte'],
@@ -126,35 +131,71 @@ const ALLOW: { file: string; kind: Kind; why: string }[] = [
 	},
 ];
 
+function searchAllow(why: string, files: string[]): { file: string; kind: Kind; why: string }[] {
+	return files.map((file) => ({ file, kind: 'search' as const, why }));
+}
+
 function h1Allow(why: string, files: string[]): { file: string; kind: Kind; why: string }[] {
 	return files.map((file) => ({ file, kind: 'h1' as const, why }));
 }
 
-// `type="search"` on an input element. Svelte's parser finds the elements, so
-// a string in a script or a comment cannot trip it.
+type Attr = { type?: string; name?: string; value?: unknown; start: number; end: number };
+type El = { type?: string; name?: string; attributes?: Attr[]; fragment?: { nodes?: unknown[] } };
+
+// The static text of an attribute (`type="search"`), or '' when it is an
+// expression.
+function staticText(a: Attr): string {
+	const parts = Array.isArray(a.value) ? a.value : [a.value];
+	return parts
+		.map((p) => (p && typeof p === 'object' && 'data' in p ? String((p as { data: unknown }).data) : ''))
+		.join('');
+}
+
+// Attributes that name or describe a field. A search field says "search" in
+// one of them, statically or through its message key
+// (`placeholder={m('socialClubs.searchPlaceholder')}`). Handlers such as
+// `oninput={onSearchInput}` and `bind:` directives are not read.
+const NAMING_ATTRS = new Set(['placeholder', 'aria-label', 'id', 'name', 'class', 'data-testid', 'role', 'enterkeyhint']);
+
+// A Material Symbols `search` glyph among an element's children: the
+// magnifier every hand-built search field drew beside its input.
+function hasSearchGlyph(parent: El | null): boolean {
+	return (parent?.fragment?.nodes ?? []).some((child) => {
+		const c = child as El;
+		if (c.type !== 'RegularElement') return false;
+		const cls = (c.attributes ?? []).find((a) => a.type === 'Attribute' && a.name === 'class');
+		if (!cls || !staticText(cls).split(/\s+/).includes('material-symbols')) return false;
+		return (c.fragment?.nodes ?? []).some(
+			(t) => (t as { type?: string; data?: string }).type === 'Text' && (t as { data: string }).data.trim() === 'search',
+		);
+	});
+}
+
+// A hand-built search field: an `<input type="search">`, or a text input
+// (`type="text"` or no type) that presents itself as search by its role,
+// placeholder, label, id, class or test id, or by a search glyph beside it.
+// `SocialClubs` and four pickers built theirs as `type="text"` and slipped
+// past a `type="search"`-only rule (issue #1374). Svelte's parser finds the
+// elements, so a string in a script or a comment cannot trip it.
 function searchInputs(source: string): number {
 	let n = 0;
-	const visit = (node: unknown): void => {
-		if (Array.isArray(node)) return node.forEach(visit);
+	const visit = (node: unknown, parent: El | null): void => {
+		if (Array.isArray(node)) return node.forEach((child) => visit(child, parent));
 		if (!node || typeof node !== 'object') return;
-		const el = node as {
-			type?: string;
-			name?: string;
-			attributes?: { type?: string; name?: string; value?: unknown }[];
-		};
+		const el = node as El;
 		if (el.type === 'RegularElement' && el.name === 'input') {
-			for (const a of el.attributes ?? []) {
-				if (a.type !== 'Attribute' || a.name !== 'type') continue;
-				const parts = Array.isArray(a.value) ? a.value : [a.value];
-				const text = parts
-					.map((p) => (p && typeof p === 'object' && 'data' in p ? String((p as { data: unknown }).data) : ''))
-					.join('');
-				if (text === 'search') n++;
-			}
+			const attrs = (el.attributes ?? []).filter((a) => a.type === 'Attribute');
+			const typeAttr = attrs.find((a) => a.name === 'type');
+			const type = typeAttr ? staticText(typeAttr) : 'text';
+			const named = attrs.some(
+				(a) => a.name !== undefined && NAMING_ATTRS.has(a.name) && /search/i.test(source.slice(a.start, a.end)),
+			);
+			if (type === 'search' || (type === 'text' && (named || hasSearchGlyph(parent)))) n++;
 		}
-		for (const [key, value] of Object.entries(node)) if (key !== 'metadata') visit(value);
+		const next = el.type === 'RegularElement' ? el : parent;
+		for (const [key, value] of Object.entries(node)) if (key !== 'metadata') visit(value, next);
 	};
-	visit(parse(source, { modern: true }).fragment);
+	visit(parse(source, { modern: true }).fragment, null);
 	return n;
 }
 
@@ -243,6 +284,14 @@ const FIXTURES: { source: string; search: number; header: boolean; why: string }
 	{ source: '<input type="search" />', search: 1, header: false, why: 'a hand-built search input' },
 	{ source: '<input bind:value={q} type="search" placeholder="x" />', search: 1, header: false, why: 'type after other attributes' },
 	{ source: '<input type="text" />', search: 0, header: false, why: 'a text input' },
+	{ source: '<input type="text" placeholder={m(\'x.searchPlaceholder\')} />', search: 1, header: false, why: 'a text input whose placeholder is a search key' },
+	{ source: '<input type="text" aria-label="Search clubs" />', search: 1, header: false, why: 'a text input labelled as search' },
+	{ source: '<input role="searchbox" />', search: 1, header: false, why: 'an untyped input with the searchbox role' },
+	{ source: '<input class="search-input" />', search: 1, header: false, why: 'an untyped input with a search class' },
+	{ source: '<label><span class="material-symbols">search</span><input type="text" bind:value={q} /></label>', search: 1, header: false, why: 'a text input beside a search glyph' },
+	{ source: '<input type="text" oninput={onSearchInput} bind:value={searchQuery} />', search: 0, header: false, why: 'a handler or binding named for search' },
+	{ source: '<input type="checkbox" aria-label="Search nearby" />', search: 0, header: false, why: 'a checkbox' },
+	{ source: '<label><span class="material-symbols">place</span><input type="text" /></label>', search: 0, header: false, why: 'a text input beside another glyph' },
 	{ source: '<AppSearchField label="x" />', search: 0, header: false, why: 'the component' },
 	{ source: '<script>const s = \'<input type="search">\';</script>', search: 0, header: false, why: 'a string in a script' },
 	{ source: '<!-- <input type="search"> --><p>x</p>', search: 0, header: false, why: 'an HTML comment' },
@@ -307,7 +356,7 @@ test('no file builds its own search input, page-header block or route h1', () =>
 	const allowed = new Set(ALLOW.map((a) => `${a.file}|${a.kind}`));
 	const failures = [...offenders].filter((o) => !allowed.has(o)).map((o) => {
 		const [file, kind] = o.split('|');
-		if (kind === 'search') return `  src/${file}: an <input type="search">; render AppSearchField (inside FilterBar for a list)`;
+		if (kind === 'search') return `  src/${file}: a hand-built search field (type="search", or a text input labelled or drawn as search); render AppSearchField (inside FilterBar for a list)`;
 		if (kind === 'h1') return `  src/${file}: a hand-built <h1> title block; render PageHeader`;
 		if (kind === 'toolbar') return `  src/${file}: a filter dropdown on the list's bar; put it in FilterBar's filters sheet`;
 		return `  src/${file}: a .page-header class; render PageHeader`;

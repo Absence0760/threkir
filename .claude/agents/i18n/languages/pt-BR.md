@@ -118,6 +118,11 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | workout | Treino | |
 | Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab, page title, and in paths ("Configurações → Preferências de treino") | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar** | settled 2026-10-21; never "pulado" for the status. Skipping a step or setup is **Pular**; "não pule" stays in coaching advice |
+| readiness | **Prontidão** — "Prontidão {score}", "da sua prontidão para correr", "reduzem a sua prontidão", "Excluir a carga do ginásio da prontidão para correr" | settled 2026-11-13; never "preparo" (Brazilian colloquial, and a second word for one score) |
+| taper (the plan phase and the act) | **Polimento** — phase "Polimento", "Polimento em torno das provas B/C", "está no polimento", "antes do polimento", "o polimento fica como está", "Em polimento — …" | settled 2026-11-13; never "afinamento", "afunilamento" or "redução de carga" for the taper. "Redução de carga" stays for a *deload* (`planDetail.replanDeload`) |
+| a planned gym set that was not performed (status) | **Não atingido** (`gymReviewStatusMissed`, `gym.review.status.missed`), beside "Parcial" | settled 2026-11-13, phone aligned to web; never "Não feito" / "Falhado" |
+| Let it go (missed workout) | button **Deixar passar**; its banner says the same act back: "Você deixou passar. Seu plano continua como estava." | settled 2026-11-13; never a bare "Pronto." / "Feito.", which drops what was let go |
+| unlinking a matched run | "O treino aparecerá como ainda não concluído" on both platforms (`workoutUnlinkBody`, `workoutDetail.unlinkRunMessage`): the planned item is a *treino*, not a *sessão* | settled 2026-11-13 |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Salvar / Configurações (nav "Config.") / Feed / Seguidores | |
 | Arm early / Arm anyway | **Preparar mais cedo** / **Preparar mesmo assim** | settled 2026-11-10; the last "Armar antes" / "Armar mesmo assim" / "Arme antes" / "arma a corrida" strings moved to *Preparar* |

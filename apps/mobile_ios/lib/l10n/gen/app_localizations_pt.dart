@@ -7372,7 +7372,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planImportErrorBadTaperStamp(String value, String date) {
-    return 'Não foi possível ler a data de redução de carga “$value” de $date.';
+    return 'Não foi possível ler a data de polimento “$value” de $date.';
   }
 
   @override
@@ -7716,7 +7716,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planDetailAnchorUnderNote(String km) {
-    return 'A sua última semana de corrida ficou em $km, bem abaixo do plano. Estas semanas passam a reconstruir a partir daí, cerca de 10 % por semana, até o plano voltar a encaixar. O afinamento mantém-se como planeado.';
+    return 'A sua última semana de corrida ficou em $km, bem abaixo do plano. Estas semanas passam a reconstruir a partir daí, cerca de 10 % por semana, até o plano voltar a encaixar. O polimento mantém-se como planeado.';
   }
 
   @override
@@ -7727,7 +7727,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: '$n semanas',
       one: '$n semana',
     );
-    return 'Esteve afastado do plano durante $_temp0. Estas semanas recomeçam em cerca de metade dos $km que correu na sua última semana e sobem cerca de 10 % por semana. O afinamento mantém-se como planeado.';
+    return 'Esteve afastado do plano durante $_temp0. Estas semanas recomeçam em cerca de metade dos $km que correu na sua última semana e sobem cerca de 10 % por semana. O polimento mantém-se como planeado.';
   }
 
   @override
@@ -7893,7 +7893,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutUnlinkBody =>
-      'Desvincular a corrida associada? A sessão voltará a aparecer como não concluída.';
+      'Desvincular a corrida associada? O treino aparecerá como ainda não feito.';
 
   @override
   String get workoutUnlinkError =>
@@ -10583,7 +10583,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get trainingLoadReadingTapered =>
-      'Em afunilamento — uma sessão difícil não vai fazer mal.';
+      'Em polimento — uma sessão difícil não lhe vai fazer mal.';
 
   @override
   String get trainingLoadReadingBalanced =>
@@ -13594,7 +13594,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dashGymReadinessExcluded =>
-      'A carga do ginásio fica de fora do seu preparo para correr.';
+      'A carga do ginásio fica de fora da sua prontidão para correr.';
 
   @override
   String get prefsExcludeGymFromReadiness =>
@@ -13602,7 +13602,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsExcludeGymFromReadinessHint =>
-      'Por predefinição, as sessões de ginásio aumentam a sua fadiga e reduzem o seu preparo, como uma corrida. Ative isto para que o seu condicionamento, fadiga e forma se baseiem apenas nas corridas.';
+      'Por predefinição, as sessões de ginásio aumentam a sua fadiga e reduzem a sua prontidão, como uma corrida. Ative isto para que o seu condicionamento, fadiga e forma se baseiem apenas nas corridas.';
 
   @override
   String get prefsHrMedicationAffected =>
@@ -14059,7 +14059,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get gymReviewStatusPartial => 'Parcial';
 
   @override
-  String get gymReviewStatusMissed => 'Falhado';
+  String get gymReviewStatusMissed => 'Não atingido';
 
   @override
   String get gymReviewStatusExtra => 'Extra';
@@ -19913,9 +19913,9 @@ class AppLocalizationsPt extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'A sua prova passa para $date. São acrescentadas $n semanas de construção antes da redução de carga, que fica como está. As semanas já começadas não mudam.',
+          'A sua prova passa para $date. São acrescentadas $n semanas de construção antes do polimento, que fica como está. As semanas já começadas não mudam.',
       one:
-          'A sua prova passa para $date. É acrescentada $n semana de construção antes da redução de carga, que fica como está. As semanas já começadas não mudam.',
+          'A sua prova passa para $date. É acrescentada $n semana de construção antes do polimento, que fica como está. As semanas já começadas não mudam.',
     );
     return '$_temp0';
   }
@@ -19926,16 +19926,16 @@ class AppLocalizationsPt extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'A sua prova passa para $date. São retiradas $n semanas de construção, e a redução de carga fica como está. As semanas já começadas não mudam.',
+          'A sua prova passa para $date. São retiradas $n semanas de construção, e o polimento fica como está. As semanas já começadas não mudam.',
       one:
-          'A sua prova passa para $date. É retirada $n semana de construção, e a redução de carga fica como está. As semanas já começadas não mudam.',
+          'A sua prova passa para $date. É retirada $n semana de construção, e o polimento fica como está. As semanas já começadas não mudam.',
     );
     return '$_temp0';
   }
 
   @override
   String planDetailRaceDateConfirmSameWeek(String date) {
-    return 'A sua prova passa para $date, na mesma semana. Não são acrescentadas nem retiradas semanas, e a redução de carga fica como está.';
+    return 'A sua prova passa para $date, na mesma semana. Não são acrescentadas nem retiradas semanas, e o polimento fica como está.';
   }
 
   @override
@@ -19948,7 +19948,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planDetailRaceDateTooSoon(String date, String earliest) {
-    return '$date é cedo demais para manter a redução de carga, mesmo retirando a construção. A data de prova mais próxima que este plano alcança é $earliest.';
+    return '$date é cedo demais para manter o polimento, mesmo retirando a construção. A data de prova mais próxima que este plano alcança é $earliest.';
   }
 
   @override
@@ -20030,7 +20030,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dashboardRecent5kBody =>
-      'Crie um plano a partir dele. Antes de definir os ritmos, confirma que ainda reflete o seu condicionamento.';
+      'Crie um plano a partir dele. Antes de definir os ritmos, vai confirmar que ainda reflete o seu condicionamento.';
 
   @override
   String get dashboardRecent5kCta => 'Criar um plano';
@@ -20062,7 +20062,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planBreakHintRace(String date) {
-    return 'Pode retomar o plano onde o deixou. O dia da prova continua a ser $date e o afinamento mantém-se; cada semana que repetir substitui uma semana de desenvolvimento posterior.';
+    return 'Pode retomar o plano onde o deixou. O dia da prova continua a ser $date e o polimento mantém-se; cada semana que repetir substitui uma semana de desenvolvimento posterior.';
   }
 
   @override
@@ -20110,7 +20110,7 @@ class AppLocalizationsPt extends AppLocalizations {
       other: 'São retiradas $n semanas de desenvolvimento posteriores',
       one: 'É retirada $n semana de desenvolvimento posterior',
     );
-    return '$_temp0 para dar espaço; o afinamento não muda.';
+    return '$_temp0 para dar espaço; o polimento não muda.';
   }
 
   @override
@@ -20168,7 +20168,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get missedPromptTaperBody =>
-      'Está no afinamento, por isso deixe passar: chegar fresco ao dia da prova conta mais do que mais um longão.';
+      'Está no polimento, por isso deixe passar: chegar fresco ao dia da prova conta mais do que mais um longão.';
 
   @override
   String get missedPromptRecoveryBody =>
@@ -20189,7 +20189,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get missedPromptLetGoDone =>
-      'Feito. O seu plano continua como estava.';
+      'Deixou passar. O seu plano continua como estava.';
 
   @override
   String missedPromptSaveFailed(String error) {
@@ -20231,7 +20231,7 @@ class AppLocalizationsPt extends AppLocalizations {
     String start,
     String race,
   ) {
-    return 'A semana $n é repetida como semana $copy, a partir de $start. Para manter a prova a $race, sai uma semana posterior antes da redução de carga. Os treinos que já fez ficam como estão.';
+    return 'A semana $n é repetida como semana $copy, a partir de $start. Para manter a prova a $race, sai uma semana posterior antes do polimento. Os treinos que já fez ficam como estão.';
   }
 
   @override
@@ -20244,7 +20244,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailRepeatWeekNoRoom =>
-      'Não resta nenhuma semana antes da redução de carga para abrir espaço, por isso repetir esta semana mudaria o dia da prova. Mude antes a data da prova.';
+      'Não resta nenhuma semana antes do polimento para abrir espaço, por isso repetir esta semana mudaria o dia da prova. Mude antes a data da prova.';
 
   @override
   String get planDetailRepeatWeekInTheWay =>
@@ -30649,7 +30649,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get workoutUnlinkBody =>
-      'Desvincular a corrida associada? A sessão voltará a aparecer como não concluída.';
+      'Desvincular a corrida associada? O treino aparecerá como ainda não concluído.';
 
   @override
   String get workoutUnlinkError =>
@@ -33330,7 +33330,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadReadingTapered =>
-      'Em afunilamento — uma sessão difícil não vai te quebrar.';
+      'Em polimento — uma sessão difícil não vai te quebrar.';
 
   @override
   String get trainingLoadReadingBalanced =>
@@ -36343,15 +36343,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashGymReadinessExcluded =>
-      'A carga da musculação fica de fora do seu preparo para correr.';
+      'A carga da musculação fica de fora da sua prontidão para correr.';
 
   @override
   String get prefsExcludeGymFromReadiness =>
-      'Excluir a carga da musculação do preparo para correr';
+      'Excluir a carga da musculação da prontidão para correr';
 
   @override
   String get prefsExcludeGymFromReadinessHint =>
-      'Por padrão, as sessões de musculação aumentam sua fadiga e reduzem seu preparo, como uma corrida. Ative isto para que seu condicionamento, fadiga e forma se baseiem apenas nas corridas.';
+      'Por padrão, as sessões de musculação aumentam sua fadiga e reduzem sua prontidão, como uma corrida. Ative isto para que seu condicionamento, fadiga e forma se baseiem apenas nas corridas.';
 
   @override
   String get prefsHrMedicationAffected =>
@@ -36807,7 +36807,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get gymReviewStatusPartial => 'Parcial';
 
   @override
-  String get gymReviewStatusMissed => 'Não feito';
+  String get gymReviewStatusMissed => 'Não atingido';
 
   @override
   String get gymReviewStatusExtra => 'Extra';
@@ -42929,7 +42929,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get missedPromptRecommended => 'Recomendado';
 
   @override
-  String get missedPromptLetGoDone => 'Pronto. Seu plano continua como estava.';
+  String get missedPromptLetGoDone =>
+      'Você deixou passar. Seu plano continua como estava.';
 
   @override
   String missedPromptSaveFailed(String error) {

@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/roadbook_screen.dart';
+import 'worst_case_layout.dart';
 
 Route _route() {
   final wps = <Waypoint>[];
@@ -334,5 +335,24 @@ void main() {
         (await SharedPreferences.getInstance())
             .getString(roadbookPlanPrefsKey('route-1')));
     expect(jsonDecode(stored!), {'goal_s': 5400, 'model': 'effort'});
+  });
+
+  worstCaseTestWidgets('the roadbook schedule', (tester, locale) async {
+    final r = _route();
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoadbookScreen(
+        route: r,
+        waypoints: r.waypoints,
+        api: null,
+        initialMarkers: [
+          _marker('aid_station', 'Aid station at the old quarry car park',
+              445, const {}),
+          _marker('water', 'Water', 900, const {}),
+        ],
+      ),
+    ));
+    await _settleStore(tester);
+    await walkScrollable(tester, primaryScrollable(), 'Roadbook');
   });
 }

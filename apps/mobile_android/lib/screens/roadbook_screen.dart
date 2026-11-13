@@ -519,30 +519,42 @@ class _RoadbookScreenState extends State<RoadbookScreen> {
             title: l10n.roadbookTitle,
             padding: const EdgeInsets.only(bottom: AppSpace.sm),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _goal,
-                  keyboardType: TextInputType.datetime,
-                  decoration: InputDecoration(
-                    labelText: l10n.roadbookGoalTime,
-                    hintText: '4:30:00',
-                  ),
-                  onSubmitted: _onGoalSubmit,
-                  onTapOutside: (_) => _onGoalSubmit(_goal.text),
-                ),
+          // The goal field and the start-time button share a line while
+          // the button takes at most half of it; past that (a long label,
+          // large text) the button drops under the field.
+          LayoutBuilder(builder: (context, box) {
+            final goal = TextField(
+              controller: _goal,
+              keyboardType: TextInputType.datetime,
+              decoration: InputDecoration(
+                labelText: l10n.roadbookGoalTime,
+                hintText: '4:30:00',
               ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: _pickStart,
-                icon: const Icon(Icons.schedule, size: 18),
-                label: Text(_startClockMin == null
-                    ? l10n.roadbookStartTime
-                    : _clockLabel(_startClockMin!.toDouble())),
-              ),
-            ],
-          ),
+              onSubmitted: _onGoalSubmit,
+              onTapOutside: (_) => _onGoalSubmit(_goal.text),
+            );
+            final start = OutlinedButton.icon(
+              onPressed: _pickStart,
+              icon: const Icon(Icons.schedule, size: 18),
+              label: Text(_startClockMin == null
+                  ? l10n.roadbookStartTime
+                  : _clockLabel(_startClockMin!.toDouble())),
+            );
+            final textScale = MediaQuery.textScalerOf(context).scale(1);
+            if (box.maxWidth / textScale < 360) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [goal, const SizedBox(height: 8), start],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: goal),
+                const SizedBox(width: 12),
+                Flexible(child: start),
+              ],
+            );
+          }),
           const SizedBox(height: 12),
           ChoiceChipRow<PacingModel>(
             options: [

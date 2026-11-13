@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart' show PageHeader;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/route_picker_screen.dart';
+import 'worst_case_layout.dart';
 
 cm.Route _route(
   String id,
@@ -49,10 +50,10 @@ void main() {
         await _pump(tester, [_route('a', 'Alpha')]);
         expect(find.byType(AppBar), findsOneWidget);
         expect(find.widgetWithText(PageHeader, 'Choose route'), findsOneWidget);
-        // "No route" lives as a trailing AppBar action.
+        // "No route" sits above the list, reachable without scrolling.
         expect(
           find.descendant(
-            of: find.byType(AppBar),
+            of: find.byKey(const ValueKey('route-picker-no-route')),
             matching: find.text('No route'),
           ),
           findsOneWidget,
@@ -159,10 +160,7 @@ void main() {
         await tester.tap(find.text('open'));
         await tester.pumpAndSettle();
         await tester.tap(
-          find.descendant(
-            of: find.byType(AppBar),
-            matching: find.text('No route'),
-          ),
+          find.byKey(const ValueKey('route-picker-no-route')),
         );
         await tester.pumpAndSettle();
         expect(result, isA<NoRoutePicked>());
@@ -262,5 +260,20 @@ void main() {
         expect(find.text('Alpha'), findsOneWidget);
       },
     );
+  });
+
+  worstCaseTestWidgets('the route list', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoutePickerScreen(
+        routes: [
+          _route('a', 'Riverside loop past the old mill and back', starred: true),
+          _route('b', 'Hill repeats', distanceM: 21100),
+        ],
+        unit: DistanceUnit.km,
+      ),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Route picker');
   });
 }

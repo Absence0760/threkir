@@ -4902,6 +4902,7 @@
   "confirmAgeHeading": "Encore une étape",
   "confirmAgeLede": "Avant de commencer, confirmez quelques points. On ne le fait qu'une fois par compte – ça ne réapparaîtra plus.",
   "confirmAgeContinue": "Continuer",
+  "confirmAgeBackHint": "Confirmez les deux pour continuer, ou déconnectez-vous pour quitter.",
   "confirmAgeRecordError": "Impossible d'enregistrer le consentement.",
   "avatarCropTitle": "Ajuster la photo de profil",
   "avatarCropHint": "Faites glisser pour repositionner. Pincez ou utilisez le curseur pour zoomer.",

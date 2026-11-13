@@ -28448,6 +28448,12 @@ abstract class AppLocalizations {
   /// **'Continue'**
   String get confirmAgeContinue;
 
+  /// Top banner (with a Sign out action) when Back is pressed on the age and terms gate, which cannot be dismissed
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm both to continue, or sign out to leave.'**
+  String get confirmAgeBackHint;
+
   /// Consent gate: error shown when recording the confirmations fails
   ///
   /// In en, this message translates to:

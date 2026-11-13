@@ -17425,6 +17425,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get confirmAgeContinue => 'Continuar';
 
   @override
+  String get confirmAgeBackHint =>
+      'Confirma ambas cosas para continuar o cierra sesión para salir.';
+
+  @override
   String get confirmAgeRecordError => 'No se pudo registrar el consentimiento.';
 
   @override

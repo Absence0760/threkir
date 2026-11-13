@@ -17464,6 +17464,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get confirmAgeContinue => 'Continuer';
 
   @override
+  String get confirmAgeBackHint =>
+      'Confirmez les deux pour continuer, ou déconnectez-vous pour quitter.';
+
+  @override
   String get confirmAgeRecordError =>
       'Impossible d\'enregistrer le consentement.';
 

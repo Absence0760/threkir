@@ -4902,6 +4902,7 @@
   "confirmAgeHeading": "Un paso más",
   "confirmAgeLede": "Antes de empezar, confirma un par de cosas. Lo hacemos una vez por cuenta y no volverá a aparecer.",
   "confirmAgeContinue": "Continuar",
+  "confirmAgeBackHint": "Confirma ambas cosas para continuar o cierra sesión para salir.",
   "confirmAgeRecordError": "No se pudo registrar el consentimiento.",
   "avatarCropTitle": "Ajustar foto de perfil",
   "avatarCropHint": "Arrastra para recolocar. Pellizca o usa el control deslizante para hacer zoom.",

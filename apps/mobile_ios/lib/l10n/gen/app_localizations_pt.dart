@@ -17433,6 +17433,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get confirmAgeContinue => 'Continuar';
 
   @override
+  String get confirmAgeBackHint =>
+      'Confirme ambos para continuar ou toque em Sair para sair da conta.';
+
+  @override
   String get confirmAgeRecordError =>
       'Não foi possível registar o consentimento.';
 
@@ -40098,6 +40102,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get confirmAgeContinue => 'Continuar';
+
+  @override
+  String get confirmAgeBackHint =>
+      'Confirme ambos para continuar ou toque em Sair para sair da conta.';
 
   @override
   String get confirmAgeRecordError =>

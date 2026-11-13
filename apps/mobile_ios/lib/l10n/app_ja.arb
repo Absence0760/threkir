@@ -4902,6 +4902,7 @@
   "confirmAgeHeading": "あと一歩です",
   "confirmAgeLede": "始める前に、いくつか確認させてください。アカウントごとに一度だけで、二度と表示されません。",
   "confirmAgeContinue": "続ける",
+  "confirmAgeBackHint": "続けるには両方を確認してください。離れる場合はサインアウトしてください。",
   "confirmAgeRecordError": "同意を記録できませんでした。",
   "avatarCropTitle": "プロフィール写真を調整",
   "avatarCropHint": "ドラッグで位置を調整。ピンチまたはスライダーで拡大縮小。",

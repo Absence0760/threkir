@@ -16632,6 +16632,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get confirmAgeContinue => '続ける';
 
   @override
+  String get confirmAgeBackHint => '続けるには両方を確認してください。離れる場合はサインアウトしてください。';
+
+  @override
   String get confirmAgeRecordError => '同意を記録できませんでした。';
 
   @override

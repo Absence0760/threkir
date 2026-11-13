@@ -7,6 +7,7 @@ import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../legal_links.dart';
 import '../sign_out.dart';
+import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
 
 /// Whether [profile] records both the Art 8 age affirmation and terms
@@ -102,8 +103,20 @@ class _ConfirmAgeScreenState extends State<ConfirmAgeScreen> {
       color: theme.colorScheme.primary,
       decoration: TextDecoration.underline,
     );
+    // The gate cannot be dismissed, but Back must not do nothing: it says
+    // how to go on, and offers the way out (issue #1374 NS-15).
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || _busy) return;
+        showTopBanner(
+          context,
+          l10n.confirmAgeBackHint,
+          duration: kTopBannerMaxDuration,
+          actionLabel: l10n.settingsAccountSignOut,
+          onAction: _signOut,
+        );
+      },
       child: Scaffold(
         body: SafeArea(
           child: ListView(

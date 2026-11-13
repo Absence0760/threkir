@@ -20,19 +20,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// `Card(`s left, and why each is not a `ListCard`.
-const _cardsLeft = <String, (int, String)>{
-  'lib/screens/run_detail_screen.dart': (
-    2,
-    'the "Loading GPS" and "GPS unavailable" chips laid over the hero map; '
-        'they belong to the detail hero, which moves to DetailPage',
-  ),
-  'lib/screens/run_screen.dart': (
-    2,
-    'the "to start line" and race-status pills floating over the recorder '
-        'map: pills, not cards; a card inset would move the recording '
-        'screen, so they wait for an overlay chip',
-  ),
-};
+const _cardsLeft = <String, (int, String)>{};
 
 /// Outlined card look-alikes left, and why each is not a `ListCard`.
 const _lookAlikesLeft = <String, (int, String)>{
@@ -59,8 +47,9 @@ const _lookAlikesLeft = <String, (int, String)>{
   ),
   'lib/screens/route_builder_screen.dart': (2, 'two panels over the builder map'),
   'lib/screens/run_detail_screen.dart': (
-    2,
-    'the route-suggestion banner and the map-match pill over the hero map',
+    1,
+    'the map-match pill: a dark scrim over the hero map with an inline '
+        'Rematch action, which MapOverlayChip has no slot for',
   ),
   'lib/screens/runs_screen.dart': (
     2,

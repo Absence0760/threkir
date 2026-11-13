@@ -26,7 +26,9 @@ import 'package:ui_kit/ui_kit.dart'
         SheetScaffold,
         StatTile,
         StatusPill,
-        motionDuration, ListCard;
+        ListCard,
+        MapOverlayChip,
+        motionDuration;
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -5644,17 +5646,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Center(
-                          child: Card(
+                          child: MapOverlayChip(
                             key: const ValueKey('race-to-start'),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              child: Text(
-                                l10n.runRaceToStartLine(
-                                    UnitFormat.distance(toStart, _unit)),
-                                style: Theme.of(context).textTheme.labelLarge,
-                              ),
-                            ),
+                            label: l10n.runRaceToStartLine(
+                                UnitFormat.distance(toStart, _unit)),
                           ),
                         ),
                       );
@@ -5686,17 +5681,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       }
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Center(
-                          child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              child: Text(text,
-                                  style:
-                                      Theme.of(context).textTheme.labelLarge),
-                            ),
-                          ),
-                        ),
+                        child: Center(child: MapOverlayChip(label: text)),
                       );
                     },
                   ),

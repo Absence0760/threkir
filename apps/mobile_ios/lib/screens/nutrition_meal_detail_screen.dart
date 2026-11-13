@@ -187,41 +187,35 @@ class _NutritionMealDetailScreenState extends State<NutritionMealDetailScreen> {
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
         );
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
+    return ListCard(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHighest,
+      // The total and the three macros share a line while they fit; at large
+      // text the macros wrap under the total instead of overflowing it.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.end,
+        spacing: 16,
+        runSpacing: 8,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+          Text.rich(TextSpan(children: [
+            TextSpan(
+                text: '${macros.calories}',
+                style: theme.textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            TextSpan(
+                text: ' kcal',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ])),
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
             children: [
-              Text('${macros.calories}',
-                  style: theme.textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(width: 3),
-              Text('kcal',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              stat('${macros.proteinG}g', l10n.nutritionMealProtein),
+              stat('${macros.carbsG}g', l10n.nutritionMealCarbs),
+              stat('${macros.fatG}g', l10n.nutritionMealFat),
             ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Flexible(
-                    child: stat('${macros.proteinG}g', l10n.nutritionMealProtein)),
-                const SizedBox(width: 16),
-                Flexible(child: stat('${macros.carbsG}g', l10n.nutritionMealCarbs)),
-                const SizedBox(width: 16),
-                Flexible(child: stat('${macros.fatG}g', l10n.nutritionMealFat)),
-              ],
-            ),
           ),
         ],
       ),
@@ -230,13 +224,9 @@ class _NutritionMealDetailScreenState extends State<NutritionMealDetailScreen> {
 
   Widget _itemsCard(
       ThemeData theme, AppLocalizations l10n, List<FoodEntry> entries) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return ListCard(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -308,13 +298,9 @@ class _NutritionMealDetailScreenState extends State<NutritionMealDetailScreen> {
     double maxCal,
     String tag,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return ListCard(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

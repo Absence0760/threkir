@@ -53,11 +53,6 @@ const _lookAlikesLeft = <String, (int, String)>{
     'the broadcast-concluded panel, which moves to DetailPage with the '
         'spectator page',
   ),
-  'lib/screens/nutrition_meal_detail_screen.dart': (
-    3,
-    'the meal detail page\'s macro, items and trend panels, tinted '
-        'surfaceContainerHighest; they move with the page to DetailPage',
-  ),
   'lib/screens/plan_detail_screen.dart': (
     1,
     'a workout row\'s kind-coloured inset inside the week grid',

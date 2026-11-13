@@ -91,7 +91,7 @@ The GDPR Art 5(1)(e) storage-limitation principle requires retention to be "no l
 | `purge-stale-reports` | 03:59 UTC daily | Resolved `reports` (and their direct-message snapshots) 6 months after `reviewed_at` when dismissed, 12 months when reviewed; never a pending or `legal_hold` report. Gated on `private.feature_flags` `reports_retention_purge` (absent = off), which `20271022000001` switched on after the owner's sign-off ([decisions § 2234](../architecture/decisions.md)) | `20271021000040_reports_keep_on_reporter_delete_retention.sql` |
 | `cleanup-deletion-audit-log` | 03:53 UTC daily | `deletion_audit_log` rows whose `deleted_at` is over 7 years old (six years being the longest ordinary civil limitation period among the jurisdictions served, plus a year of margin; nothing becomes eligible before September 2033) | `20270713000002_deletion_evidence_retention.sql` |
 
-Twenty-three `cron.schedule`d retention jobs are live — every row above except
+Twenty-four `cron.schedule`d retention jobs are live — every row above except
 `cleanup-stale-export-blobs`, which is deliberately unscheduled and is listed
 so nobody re-derives it as missing. Each live one deletes rows, except the
 checkpoint health job (scrubs columns), the export reap and the route-photo
@@ -101,7 +101,7 @@ reports purge. The reports purge and the route-photo orphan sweep each read a
 `private.feature_flags` gate; the reports one is on (`20271022000001`), and the
 route-photo sweep does nothing until its gate is. The park course month-close
 job also raises notices, and both its sweep and its notices wait on its
-`park_course_month_notices` gate (seeded off, `20271226041343`). The other eighteen live schedules are not retention
+`park_course_month_notices` gate (seeded off, `20271226041343`). The health backlog purge reads the `health_backlog_purge` gate, absent (off) and declared off in `ops/prod_config.json` until counsel signs off (decisions § 2514). The other eighteen live schedules are not retention
 jobs and are excluded: `enqueue-token-refresh`, `build-direct-messages-body-trgm`
 (which builds the message-search index online and is a no-op once it exists), `enqueue-event-reminders`,
 `enqueue-workout-reminders`, `race-sessions-tick` (which creates, fires and

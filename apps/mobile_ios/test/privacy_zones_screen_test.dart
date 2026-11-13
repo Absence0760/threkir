@@ -10,6 +10,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/privacy_zones_screen.dart';
 import '../lib/widgets/map_attribution.dart';
 import '../lib/settings_sync.dart';
+import 'package:api_client/api_client.dart' show SettingsService;
 
 Position _fakePosition({double lat = 37.53, double lng = -77.45}) => Position(
   latitude: lat,
@@ -97,6 +98,39 @@ void main() {
       expect(data.value, isNot(contains('%')));
       expect(data.increasedValue, matches(RegExp(r'^\d+ m$')));
       handle.dispose();
+    });
+
+    // #1374 round 3: the phone once offered 50 m; both platforms now offer
+    // 100-1000 m, and a zone saved smaller is read as 100 m, never less.
+    testWidgets('the slider offers 100-1000 m, as web does', (tester) async {
+      final s = await _makeSync();
+      await _pump(tester, sync: s.sync);
+      await tester.pump();
+      final slider = tester.widget<Slider>(find.byType(Slider));
+      expect(slider.min, 100);
+      expect(slider.max, 1000);
+      expect(find.byKey(const ValueKey('privacy-zones-raised-to-floor')),
+          findsNothing);
+    });
+
+    testWidgets('a zone stored under 100 m is drawn at 100 m and says so',
+        (tester) async {
+      final service = _ZonesService([
+        {'lat': 37.53, 'lng': -77.45, 'radius_m': 50},
+        {'lat': 37.6, 'lng': -77.5, 'radius_m': 300},
+      ]);
+      await _pump(tester, sync: _ZonesSync(service));
+      await tester.pump();
+      final circles = tester
+          .widget<CircleLayer>(find.byType(CircleLayer))
+          .circles
+          .map((c) => c.radius)
+          .toList();
+      expect(circles, [100, 300]);
+      expect(
+          find.text('1 zone was smaller than 100 m and now covers 100 m, '
+              'the smallest a zone can be.'),
+          findsOneWidget);
     });
 
     testWidgets('renders the Privacy zones app-bar title', (tester) async {
@@ -335,4 +369,25 @@ void main() {
       await expectClearAllReachable(tester, size, sideBar: 48);
     });
   });
+}
+
+class _ZonesService extends SettingsService {
+  _ZonesService(this._zones)
+      : super(deviceId: 'test-device', platform: 'android');
+  final List<Map<String, dynamic>> _zones;
+
+  @override
+  T? effective<T>(String key, {T? fallback}) =>
+      key == 'privacy_zones' ? _zones as T : fallback;
+}
+
+class _ZonesSync extends SettingsSyncService {
+  _ZonesSync(this._service) : super(preferences: Preferences());
+  final SettingsService _service;
+
+  @override
+  bool get synced => true;
+
+  @override
+  SettingsService? get service => _service;
 }

@@ -15501,6 +15501,12 @@ abstract class AppLocalizations {
   /// **'{meters} m'**
   String privacyZonesRadiusMeters(int meters);
 
+  /// Privacy-zone editor note: zones saved under the 100 m minimum (the app once allowed 50 m) are read as the minimum, never smaller.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} zone was smaller than {meters} m and now covers {meters} m, the smallest a zone can be.} other{{count} zones were smaller than {meters} m and now cover {meters} m, the smallest a zone can be.}}'**
+  String privacyZonesRaisedToFloor(int count, int meters);
+
   /// Footer summarising the number of zones
   ///
   /// In en, this message translates to:

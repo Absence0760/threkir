@@ -2612,6 +2612,7 @@
   "privacyZonesSearchHint": "Procurar lugares…",
   "privacyZonesRadius": "Raio",
   "privacyZonesRadiusMeters": "{meters} m",
+  "privacyZonesRaisedToFloor": "{count, plural, one{{count} zona tinha menos de {meters} m e agora cobre {meters} m, o tamanho mínimo de uma zona.} other{{count} zonas tinham menos de {meters} m e agora cobrem {meters} m, o tamanho mínimo de uma zona.}}",
   "privacyZonesCount": "{count, plural, one{{count} zona — toque num marcador para remover.} other{{count} zonas — toque num marcador para remover.}}",
   "privacyZonesClearAll": "Limpar tudo",
   "privacyZonesRemoveTitle": "Remover zona de privacidade?",

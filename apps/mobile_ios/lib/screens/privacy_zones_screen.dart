@@ -55,7 +55,11 @@ class PrivacyZonesScreen extends StatefulWidget {
 
 class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
   List<PrivacyZone> _zones = [];
-  double _draftRadius = 150;
+  // Web's default, inside the 100-1000 m range both platforms offer.
+  double _draftRadius = 250;
+  // Zones saved under the floor when this app offered 50 m, read as the
+  // floor: what the server enforces, and what the editor says it did.
+  int _raisedToFloor = 0;
   final _mapController = MapController();
   bool _saving = false;
   // Zones are edited in memory and only persisted on Save; a swipe/back
@@ -105,10 +109,16 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
       fallback: const <dynamic>[],
     );
     if (raw != null) {
-      _zones = raw
+      final stored = raw
           .whereType<Map<String, dynamic>>()
           .map(PrivacyZone.fromJson)
           .toList();
+      _raisedToFloor =
+          stored.where((z) => effectiveZoneRadius(z) != z.radiusM).length;
+      _zones = [
+        for (final z in stored)
+          PrivacyZone(lat: z.lat, lng: z.lng, radiusM: effectiveZoneRadius(z)),
+      ];
     }
   }
 
@@ -351,6 +361,16 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
                 ),
               ),
             ),
+            if (_raisedToFloor > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: Text(
+                  l10n.privacyZonesRaisedToFloor(
+                      _raisedToFloor, privacyZoneMinRadiusM.round()),
+                  key: const ValueKey('privacy-zones-raised-to-floor'),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: TextField(
@@ -390,9 +410,9 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
               child: Semantics(
                 label: l10n.privacyZonesRadius,
                 child: Slider(
-                  min: 50,
-                  max: 500,
-                  divisions: 9,
+                  min: privacyZoneMinRadiusM,
+                  max: privacyZoneMaxRadiusM,
+                  divisions: 18,
                   value: _draftRadius,
                   label: l10n.privacyZonesRadiusMeters(_draftRadius.round()),
                   semanticFormatterCallback: (v) =>

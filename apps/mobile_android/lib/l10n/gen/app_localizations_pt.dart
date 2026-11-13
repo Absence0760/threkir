@@ -9768,6 +9768,19 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String privacyZonesRaisedToFloor(int count, int meters) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count zonas tinham menos de $meters m e agora cobrem $meters m, o tamanho mínimo de uma zona.',
+      one:
+          '$count zona tinha menos de $meters m e agora cobre $meters m, o tamanho mínimo de uma zona.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String privacyZonesCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -32513,6 +32526,19 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String privacyZonesRadiusMeters(int meters) {
     return '$meters m';
+  }
+
+  @override
+  String privacyZonesRaisedToFloor(int count, int meters) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count zonas tinham menos de $meters m e agora cobrem $meters m, o tamanho mínimo de uma zona.',
+      one:
+          '$count zona tinha menos de $meters m e agora cobre $meters m, o tamanho mínimo de uma zona.',
+    );
+    return '$_temp0';
   }
 
   @override

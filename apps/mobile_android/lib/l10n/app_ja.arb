@@ -2612,6 +2612,7 @@
   "privacyZonesSearchHint": "場所を検索…",
   "privacyZonesRadius": "半径",
   "privacyZonesRadiusMeters": "{meters} m",
+  "privacyZonesRaisedToFloor": "{count, plural, other{{count} 件のゾーンが {meters} m 未満だったため、ゾーンの最小サイズの {meters} m に広げました。}}",
   "privacyZonesCount": "{count, plural, other{ゾーン {count} 件 — マーカーをタップして削除します。}}",
   "privacyZonesClearAll": "すべて消去",
   "privacyZonesRemoveTitle": "プライバシーゾーンを削除しますか？",

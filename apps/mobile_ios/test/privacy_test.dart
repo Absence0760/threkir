@@ -39,6 +39,27 @@ void main() {
       final p = _offset(_home.lat, _home.lng, 0.01);
       expect(isInAnyZone(p.lat, p.lng, const [_home]), isFalse);
     });
+
+    test('a zone stored under 100 m covers 100 m', () {
+      // This app once offered 50 m. About 80 m east is outside 50 m and
+      // inside the floor; about 110 m east is outside both.
+      final small = PrivacyZone(lat: _home.lat, lng: _home.lng, radiusM: 50);
+      final near = _offset(_home.lat, _home.lng, 0.00095);
+      final far = _offset(_home.lat, _home.lng, 0.0013);
+      expect(isInAnyZone(near.lat, near.lng, [small]), isTrue);
+      expect(isInAnyZone(far.lat, far.lng, [small]), isFalse);
+    });
+  });
+
+  group('effectiveZoneRadius', () {
+    test('keeps a stored radius above the floor and floors the rest', () {
+      expect(privacyZoneMinRadiusM, 100);
+      expect(privacyZoneMaxRadiusM, 1000);
+      PrivacyZone z(double r) => PrivacyZone(lat: 0, lng: 0, radiusM: r);
+      expect(effectiveZoneRadius(z(250)), 250);
+      expect(effectiveZoneRadius(z(50)), 100);
+      expect(effectiveZoneRadius(z(double.nan)), 100);
+    });
   });
 
   group('isFixInAnyZone', () {

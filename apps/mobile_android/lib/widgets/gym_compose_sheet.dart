@@ -4,7 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show dedupeShadowedExercises;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show TextLane;
+import 'package:ui_kit/ui_kit.dart' show SectionHeader, TextLane;
 
 import '../gym_compose_draft.dart';
 import '../gym_prs.dart';
@@ -681,7 +681,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
           _recoverCard(recoverable, theme, l10n),
           const SizedBox(height: 16),
         ],
-        FormSectionLabel(l10n.gymEditorTitleLabel),
+        SectionHeader(label: l10n.gymEditorTitleLabel),
         const SizedBox(height: 8),
             TextField(
               controller: _titleCtl,

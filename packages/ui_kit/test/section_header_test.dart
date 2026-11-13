@@ -102,4 +102,27 @@ void main() {
       greaterThan(tester.getRect(find.text('RECORDING')).left),
     );
   });
+
+  testWidgets('the title form is a titleMedium heading, not an eyebrow',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: SectionHeader.title(label: 'Your roster'),
+        ),
+      ),
+    );
+    expect(find.text('Your roster'), findsOneWidget);
+    expect(find.text('YOUR ROSTER'), findsNothing);
+    final text = tester.widget<Text>(find.text('Your roster'));
+    final theme = Theme.of(tester.element(find.text('Your roster')));
+    expect(text.style?.fontSize, theme.textTheme.titleMedium?.fontSize);
+    expect(
+      tester.getSemantics(find.text('Your roster')),
+      matchesSemantics(label: 'Your roster', isHeader: true),
+    );
+    semantics.dispose();
+  });
 }

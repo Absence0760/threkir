@@ -969,7 +969,7 @@ Every `*_cents` column holds a Stripe amount in the currency's **minor** unit, a
 
 ## Mobile create/edit-entity forms — `showFullScreenForm`
 
-On the Flutter apps, every "add / edit X" form presents as a full-screen dialog built through `showFullScreenForm<T>(context, title:, builder:)` in `lib/widgets/full_screen_form.dart` (see [decisions.md § 129](decisions.md)). It pushes a `MaterialPageRoute(fullscreenDialog: true)` wrapping the body in `Scaffold` + `AppBar(title)` + `SafeArea`; lay the body out with `FullScreenFormBody(children: [...])` and label field groups with `FormSectionLabel`.
+On the Flutter apps, every "add / edit X" form presents as a full-screen dialog built through `showFullScreenForm<T>(context, title:, builder:)` in `lib/widgets/full_screen_form.dart` (see [decisions.md § 129](decisions.md)). It pushes a `MaterialPageRoute(fullscreenDialog: true)` wrapping the body in `Scaffold` + `AppBar(title)` + `SafeArea`; lay the body out with `FullScreenFormBody(children: [...])` and label field groups with ui_kit `SectionHeader` (the duplicate `FormSectionLabel` eyebrow was removed, issue #1374).
 
 **Don't hand-roll a `showModalBottomSheet` or a bare back-arrow page for a create/edit form.** The bottom-sheet shape fought the soft keyboard and dropped its action buttons under the gesture nav bar; the mixed presentations made the same action look different per entry point. Put the heading in the AppBar (not inline in the body). A genuinely complex screen with its own `Scaffold` / `Form` / nested navigation (e.g. `AddRunScreen`) may keep its `Scaffold` but should still be pushed with `fullscreenDialog: true` for the same slide-up + close presentation.
 

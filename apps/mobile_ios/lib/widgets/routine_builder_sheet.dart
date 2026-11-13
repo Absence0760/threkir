@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
 import '../gym_prs.dart' show namesAnExercise, normaliseExerciseName;
 import '../l10n/gen/app_localizations.dart';
@@ -332,7 +333,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
 
     return FullScreenFormBody(
       children: [
-        FormSectionLabel(l10n.gymRoutineEditorTitleLabel),
+        SectionHeader(label: l10n.gymRoutineEditorTitleLabel),
         const SizedBox(height: 8),
         TextField(
           controller: _titleCtl,
@@ -361,7 +362,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           ),
         ),
         const SizedBox(height: 12),
-        FormSectionLabel(l10n.gymRoutineEditorNotesLabel),
+        SectionHeader(label: l10n.gymRoutineEditorNotesLabel),
         const SizedBox(height: 8),
         Semantics(
           label: l10n.gymRoutineEditorNotesLabel,

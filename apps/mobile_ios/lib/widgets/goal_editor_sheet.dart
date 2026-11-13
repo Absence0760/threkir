@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ChoiceChipOption, ChoiceChipRow, TextLane;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, ChoiceChipOption, ChoiceChipRow, SectionHeader, TextLane;
 
 import '../auth_error.dart';
 import '../goals.dart';
@@ -140,7 +141,7 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
     return FullScreenFormBody(
       children: [
         // Heading comes from the host AppBar (showFullScreenForm).
-        FormSectionLabel(l10n.goalEditorNameLabel),
+        SectionHeader(label: l10n.goalEditorNameLabel),
         const SizedBox(height: 8),
             TextField(
               controller: _titleCtl,
@@ -155,7 +156,7 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
               ),
             ),
             const SizedBox(height: 24),
-            FormSectionLabel(l10n.goalEditorPeriod),
+            SectionHeader(label: l10n.goalEditorPeriod),
             const SizedBox(height: 8),
             ChoiceChipRow<GoalPeriod>(
               options: [
@@ -172,7 +173,7 @@ class _GoalEditorSheetState extends State<_GoalEditorSheet> {
               onChanged: (v) => setState(() => _period = v),
             ),
             const SizedBox(height: 24),
-            FormSectionLabel(l10n.goalEditorTargets),
+            SectionHeader(label: l10n.goalEditorTargets),
             const SizedBox(height: 4),
             Text(
               l10n.goalEditorTargetsHelp,

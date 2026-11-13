@@ -193,11 +193,4 @@ void main() {
       expect(find.byType(SingleChildScrollView), findsOneWidget);
     });
   });
-
-  group('FormSectionLabel', () {
-    testWidgets('uppercases the label text', (tester) async {
-      await _open(tester, body: const FormSectionLabel('targets'));
-      expect(find.text('TARGETS'), findsOneWidget);
-    });
-  });
 }

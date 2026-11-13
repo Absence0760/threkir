@@ -371,7 +371,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importRestoreWarnOffline =>
-      'オフラインで復元しました。ランはこの端末に保存され、サインインすると同期されます。プロフィールと設定はスキップされました。';
+      'オフラインで復元しました。ランはこのデバイスに保存され、サインインすると同期されます。プロフィールと設定はスキップされました。';
 
   @override
   String get importRestoreWarnArchiveIncomplete =>
@@ -394,7 +394,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String importRestoreWarnRunPresent(String id) {
-    return 'ラン $id はすでにこの端末にあるため、スキップしました。';
+    return 'ラン $id はすでにこのデバイスにあるため、スキップしました。';
   }
 
   @override
@@ -434,7 +434,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importRestoreWarnRunsSkipped =>
-      'ランは復元されませんでした。この端末のラン保存領域を利用できません。';
+      'ランは復元されませんでした。このデバイスのラン保存領域を利用できません。';
 
   @override
   String importFailuresHeading(int count) {
@@ -501,7 +501,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count件のランをこの端末に保存しました。クラウドへのアップロードは完了していません。次回の同期時に再試行します。',
+      other: '$count件のランをこのデバイスに保存しました。クラウドへのアップロードは完了していません。次回の同期時に再試行します。',
     );
     return '$_temp0';
   }
@@ -1383,7 +1383,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get safetyAutoLiveShareSubtitle =>
-      'この端末でランを開始すると自動的にライブ共有を開始します。進行中のランはリンクを知っている人なら誰でも見られます。ランが終了すると、既定の公開設定に戻ります。';
+      'このスマートフォンでランを開始すると自動的にライブ共有を開始します。進行中のランはリンクを知っている人なら誰でも見られます。ランが終了すると、既定の公開設定に戻ります。';
 
   @override
   String get safetyAutoLiveShareSafetySubtitle =>
@@ -1635,11 +1635,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'Threkir はランを記録するために GPS の位置情報を取得し、画面がオフの間も取得を求め続けます。記録中は通知が表示されます。位置情報は、ランを同期または共有しないかぎりこの端末に残ります。次の確認画面で許可されるのは「アプリの使用中のみ」で、Android の最初の確認ではそれ以上は許可できません。この許可だけでは、画面がオフのときや他のアプリの使用中に Android が位置情報の送信を止めることがあります。最初のランの前に、その間も記録を安定させる「常に許可」への変更を案内します。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
+      'Threkir はランを記録するために GPS の位置情報を取得し、画面がオフの間も取得を求め続けます。記録中は通知が表示されます。位置情報は、ランを同期または共有しないかぎりこのデバイスに残ります。次の確認画面で許可されるのは「アプリの使用中のみ」で、Android の最初の確認ではそれ以上は許可できません。この許可だけでは、画面がオフのときや他のアプリの使用中に Android が位置情報の送信を止めることがあります。最初のランの前に、その間も記録を安定させる「常に許可」への変更を案内します。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
 
   @override
   String get onboardingLocationBodyIos =>
-      'Threkir はランを記録するために GPS の位置情報を取得します。画面がオフの間や他のアプリを使っている間も記録します。位置情報は、ランを同期または共有しないかぎりこの端末に残ります。設定 › プライバシーとセキュリティ › 位置情報サービス › Threkir でいつでも変更できます。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
+      'Threkir はランを記録するために GPS の位置情報を取得します。画面がオフの間や他のアプリを使っている間も記録します。位置情報は、ランを同期または共有しないかぎりこのデバイスに残ります。設定 › プライバシーとセキュリティ › 位置情報サービス › Threkir でいつでも変更できます。許可しない場合も時間と歩数は記録されますが、地図・距離・ペースは記録されません。';
 
   @override
   String get onboardingLocationDeniedTitle => '位置情報が許可されていません';
@@ -1662,11 +1662,11 @@ class AppLocalizationsJa extends AppLocalizations {
       '新しいランの初期設定を選びましょう。設定でいつでも変更でき、個々のランごとに上書きもできます。';
 
   @override
-  String get onboardingAccountTitle => 'この端末の外にもランを残す';
+  String get onboardingAccountTitle => 'このスマートフォンの外にもランを残す';
 
   @override
   String get onboardingAccountBody =>
-      'アカウントがあると、ランがウェブアプリや他の端末と同期され、この端末をなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」タブで作成できます。';
+      'アカウントがあると、ランがウェブアプリや他のデバイスと同期され、このデバイスをなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」タブで作成できます。';
 
   @override
   String get onboardingAccountCreate => '無料アカウントを作成';
@@ -1956,7 +1956,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runExpectedReturnServerNote =>
-      '期限はサーバーに保存されるため、この端末が使えなくなっても有効です。アクティビティを保存すると解除されます。圏外で終えた場合は、同期されるまで通知が送られることがあります。';
+      '期限はサーバーに保存されるため、このスマートフォンが使えなくなっても有効です。アクティビティを保存すると解除されます。圏外で終えた場合は、同期されるまで通知が送られることがあります。';
 
   @override
   String runExpectedReturnOptionMinutes(int minutes) {
@@ -2395,7 +2395,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runNoGpsStartServicesOffBody =>
-      'この端末の位置情報がオフのため、このランは時間のみを記録します（ルート・距離・ペースは記録されません）。';
+      'このスマートフォンの位置情報がオフのため、このランは時間のみを記録します（ルート・距離・ペースは記録されません）。';
 
   @override
   String get runNoGpsStartPermissionBody =>
@@ -2754,7 +2754,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runDetailDropTrackBody =>
-      'トラックはこの端末から削除され、ランは地図なしでアップロードされます。距離・時間・ペース・獲得標高は変わりません。残しておきたい場合は、先にコピーを書き出してください。';
+      'トラックはこのデバイスから削除され、ランは地図なしでアップロードされます。距離・時間・ペース・獲得標高は変わりません。残しておきたい場合は、先にコピーを書き出してください。';
 
   @override
   String get runDetailDropTrackConfirm => 'トラックなしでアップロード';
@@ -4073,11 +4073,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routeDetailSaveForOfflineTitle => 'オフライン用に保存';
 
   @override
-  String get routeDetailOfflinePinnedSubtitle => 'ルートはこの端末に保存され、接続なしで走れます。';
+  String get routeDetailOfflinePinnedSubtitle =>
+      'ルートはこのスマートフォンに保存され、接続なしで走れます。';
 
   @override
   String get routeDetailOfflineUnpinnedSubtitle =>
-      'ネットワークなしで使えるよう、このルートを端末に保存します。';
+      'ネットワークなしで使えるよう、このルートをスマートフォンに保存します。';
 
   @override
   String get routeDetailDescriptionHeading => '説明';
@@ -4697,7 +4698,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runHeatmapSignedOutBody =>
-      'この端末で記録したランはここに表示されます。同期済みのランも含めるにはサインインしてください。';
+      'このデバイスで記録したランはここに表示されます。同期済みのランも含めるにはサインインしてください。';
 
   @override
   String get runHeatmapErrorTitle => 'ヒートマップを読み込めませんでした';
@@ -7942,7 +7943,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountDeleteBody =>
-      'これにより、ラン、ルート、プロフィールがサーバーから完全に削除されます。新しいユーザーとしてサインインしない限り、端末のローカルデータは保持されます。この操作は取り消せません。';
+      'これにより、ラン、ルート、プロフィールがサーバーから完全に削除されます。新しいユーザーとしてサインインしない限り、デバイスのローカルデータは保持されます。この操作は取り消せません。';
 
   @override
   String get settingsAccountDeleteChallengeWord => '削除';
@@ -8056,7 +8057,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountRestoreBodyOffline =>
-      'サインインしていません。ランはこの端末に復元され、次回サインインしたときにアカウントと同期されます。';
+      'サインインしていません。ランはこのデバイスに復元され、次回サインインしたときにアカウントと同期されます。';
 
   @override
   String get settingsAccountRestoreBodyOnline =>
@@ -8095,7 +8096,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsAccountSignedInSync => 'サインイン済み — ランが同期されます';
 
   @override
-  String get settingsAccountSignInToSync => 'サインインすると、複数の端末でランを同期できます';
+  String get settingsAccountSignInToSync => 'サインインすると、複数のデバイスでランを同期できます';
 
   @override
   String get settingsAccountSignOut => 'サインアウト';
@@ -8226,7 +8227,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountExportUnavailable =>
-      'このビルドではアカウントエクスポートのサービスが設定されていません。下の完全バックアップはこの端末で作成され、アカウント記録は含まれません。';
+      'このビルドではアカウントエクスポートのサービスが設定されていません。下の完全バックアップはこのデバイスで作成され、アカウント記録は含まれません。';
 
   @override
   String settingsAccountExportUnsyncedWarning(int count) {
@@ -8235,7 +8236,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountBackupOnDeviceNotice =>
-      '前回の完全バックアップはこの端末で作成されました。ラン、ルート、プロフィール、設定、ジムと食事の記録は含まれますが、アカウント記録は含まれません。完全なコピーはアカウントのエクスポートを使ってください。';
+      '前回の完全バックアップはこのデバイスで作成されました。ラン、ルート、プロフィール、設定、ジムと食事の記録は含まれますが、アカウント記録は含まれません。完全なコピーはアカウントのエクスポートを使ってください。';
 
   @override
   String settingsAccountExportRateLimited(int seconds) {
@@ -8471,7 +8472,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parkrunBarcodeRetry => '再試行';
 
   @override
-  String get parkrunBarcodeOfflineCopy => 'この端末に保存されたコピーを表示しています。';
+  String get parkrunBarcodeOfflineCopy => 'このスマートフォンに保存されたコピーを表示しています。';
 
   @override
   String integrationsImportPartial(int n) {
@@ -8704,7 +8705,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get proRestorePurchases => '購入を復元';
 
   @override
-  String get proRestorePurchasesSubtitle => '以前のインストールや別の端末の購入を再リンク';
+  String get proRestorePurchasesSubtitle => '以前のインストールや別のデバイスの購入を再リンク';
 
   @override
   String get proManageSubscription => 'サブスクリプションを管理';
@@ -8910,10 +8911,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get devicesOverridesSheetTitle => 'デバイスごとのオーバーライド';
 
   @override
-  String get devicesOverridesSheetDesc => 'これらのキーは、この端末でのみ共通設定を上書きします。';
+  String get devicesOverridesSheetDesc => 'これらのキーは、このデバイスでのみ共通設定を上書きします。';
 
   @override
-  String get devicesNoOverrides => 'この端末にオーバーライドはありません。';
+  String get devicesNoOverrides => 'このデバイスにオーバーライドはありません。';
 
   @override
   String get devicesAddOverride => 'オーバーライドを追加';
@@ -9261,7 +9262,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsPageNotificationsSummary => '受け取るメールとプッシュ通知、登録できる任意のメール。';
 
   @override
-  String get prefsOfflineNotice => 'オフライン — 変更はこの端末に保存され、再接続時に同期されます。';
+  String get prefsOfflineNotice => 'オフライン — 変更はこのデバイスに保存され、再接続時に同期されます。';
 
   @override
   String get prefsUnitMetric => 'km、m';
@@ -9271,7 +9272,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String prefsSyncedSuffix(String base) {
-    return '$base · 他の端末と同期済み';
+    return '$base · 他のデバイスと同期済み';
   }
 
   @override
@@ -9568,7 +9569,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsGroupOptionalEmails => '任意のメール';
 
   @override
-  String get prefsSignInToEdit => '複数の端末で同期されるプロフィールレベルの設定を編集するには、サインインしてください。';
+  String get prefsSignInToEdit =>
+      '複数のデバイスで同期されるプロフィールレベルの設定を編集するには、サインインしてください。';
 
   @override
   String get prefsUseMiles => 'マイルを使用';
@@ -16010,7 +16012,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count件の変更をこの端末に保存しました — オンラインになったら同期します',
+      other: '$count件の変更をこのデバイスに保存しました — オンラインになったら同期します',
     );
     return '$_temp0';
   }
@@ -16537,7 +16539,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bleUnavailableUnsupported =>
-      'この端末は Bluetooth LE に対応していないため、心拍ストラップは使用できません。';
+      'このスマートフォンは Bluetooth LE に対応していないため、心拍ストラップは使用できません。';
 
   @override
   String get bleUnavailableLocationOff =>
@@ -19888,7 +19890,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get locationErrorPermissionDenied => '位置情報の許可がオフです';
 
   @override
-  String get locationErrorServicesOff => 'この端末の位置情報がオフです';
+  String get locationErrorServicesOff => 'このデバイスの位置情報がオフです';
 
   @override
   String get locationErrorNoFix => 'まだ位置を取得できません。少し待ってからもう一度お試しください';
@@ -21373,7 +21375,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get groupsLeaveConfirmMessage =>
-      'すぐにグループのメッセージが見えなくなり、戻るには新しい招待が必要です。自分のメッセージは送信取り消しするまでグループに残ります。他のメンバーの端末にすでにあるものはそのまま残ります。';
+      'すぐにグループのメッセージが見えなくなり、戻るには新しい招待が必要です。自分のメッセージは送信取り消しするまでグループに残ります。他のメンバーのデバイスにすでにあるものはそのまま残ります。';
 
   @override
   String groupsLeftToast(String title) {

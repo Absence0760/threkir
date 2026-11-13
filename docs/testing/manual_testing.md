@@ -31,6 +31,7 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 - [Paywall and RevenueCat](#paywall-and-revenuecat)
 - [Backup, restore, account deletion, GDPR export](#backup-restore-account-deletion-gdpr-export)
 - [Navigation, lists and Today (#1374)](#navigation-lists-and-today-1374)
+- [Editors and forms (mobile, #1374)](#editors-and-forms-mobile-1374)
 - [Tablet / expanded-width layouts (mobile)](#tablet--expanded-width-layouts-mobile)
 - [Cross-platform fixture contract](#cross-platform-fixture-contract)
 
@@ -584,6 +585,21 @@ Round 1 of issue #1374 ([decisions § 2490-2494](../architecture/decisions.md)).
 | You's settings search (mobile) | You → type "week" in Search settings → tap the result; then type nonsense | "Week starts on" is offered and opens Units & display. Nonsense says no settings match. Signed out, You shows a sign-in card where the identity card was. |
 | Centre button Start (mobile, phone) | From Today tap the centre button ("Run", or your default activity, when it is the primary action, else Log → Run); on the idle Run page tap it again, then tap it during the 3-2-1; then use Today's quick Start. With location permission not yet granted, tap Start and tap the centre button again while the permission prompt is up | Off the Run page the button never says Start, and a tap only opens the idle Run page. There the button reads "Start" and the page has no START circle; the tap starts the 3-2-1 and the button reads "Cancel"; Cancel returns to idle. While the permission / battery prompts stand before the countdown it reads "Starting" and a second tap does nothing. Today's Start starts the countdown in one tap. On a tablet (rail) the recorder keeps its own START circle. |
 | Planned workout Start starts the run (mobile, #1374) | With an active plan and an open workout today: tap Start on Today's workout; cancel the countdown; then open the plan, tap the workout, tap Start workout; then open a route and tap Start run | Each Start lands on the Run page with the workout (or route) loaded and the 3-2-1 already counting; a tap on the centre button during it cancels and leaves the workout loaded. Offline, the workout still loads and the countdown follows within 15 s. A guided run's "Use this run" only arms the script. |
+
+---
+
+## Editors and forms (mobile, #1374)
+
+Round 2 of issue #1374 (conventions § Mobile editors). Run each on a small phone (or a 320 dp emulator) with 3-button navigation and the largest OS text size, then repeat one in French or German.
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| One pinned Save | Open each form: Add gear, New club, New event, New challenge, a goal, Log gym workout, New routine, Log food → Enter manually, Plate photo, edit a plan workout, Add run, New plan, Season plan, Join with code, New group. Tap into a field so the keyboard comes up | The app bar has only a close X and the title. The form's one action (Save / Create / Add / Join) sits in a bar right above the keyboard, whole and tappable; with the keyboard down it sits above the Back/Home/Recents bar. There is no Cancel button and no second Save in the app bar or at the bottom of the list. The fields scroll under the bar. |
+| Delete beside Save (TO-7) | Edit an existing goal at the largest text size | Delete sits at the left of the bar and Save at the right; when they no longer fit on one line, Save drops under Delete rather than being cut off at the right edge. |
+| Unsaved changes (NS-6) | New plan: type a name and a goal time, then press Back; choose Cancel; press the close X; choose Discard. Then open New plan from a race (name filled in for you) and press Back | Back and the X both ask "Discard changes?"; Cancel keeps everything typed, Discard leaves. The form opened from a race closes without asking until you change something. |
+| Season plan (NS-7) | Season plan: add a race and press Back (asks). Describe three races, tap Find my races, then Confirm races and preview plans, then tap Create 2 plans (or however many it proposes) and press Back straight away (try it on a slow connection) | The first Back asks before discarding. During Create, Back is refused with "Still saving. You can leave when it finishes." and the button reads Creating…; when it finishes the first plan opens, or the "created A, B failed" message shows in the bar with Create the remaining plans. |
+| A message draft survives (NS-8) | Open a 1:1 conversation, type half a reply, go back to the inbox, open another conversation, then reopen the first | The first conversation's composer still holds the text; the other conversation's is empty. Send it: reopening shows an empty composer. A group conversation behaves the same. |
+| Short form under the keyboard (IK-11) | Rotate to landscape, open Social → Clubs → Join with code, tap the code field | The intro and field scroll; Join stays visible above the keyboard and works. |
 
 ---
 

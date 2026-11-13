@@ -1,4 +1,4 @@
-// Each of the nine showFullScreenForm editors, opened the way the app opens
+// Each of the ten showFullScreenForm editors, opened the way the app opens
 // it, keeps its one primary action on screen and tappable on a 320 dp phone
 // at 2.0x text with a 3-button nav bar, with and without the keyboard up
 // (issue #1374 TO-7, IK-11). The layout itself is EditorPage's, pinned in

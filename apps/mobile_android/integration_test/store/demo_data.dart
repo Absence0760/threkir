@@ -15,7 +15,7 @@ const kDemoPlanName = 'Riverside Half Marathon';
 const kDemoCoachPhrase = 'still on track for 1:45';
 
 /// The run the record panel opens: a loop of Central Park's drives, the most
-/// recent run on the device.
+/// recent run that is not a long run.
 const kHeroRunId = '5d000000-0000-4000-8000-0000000000b0';
 
 /// The Monday the seeded plan starts on: five weeks before this one, the same
@@ -23,32 +23,47 @@ const kHeroRunId = '5d000000-0000-4000-8000-0000000000b0';
 /// land on the plan's own training days.
 DateTime demoPlanStart(DateTime today) {
   final day = DateTime(today.year, today.month, today.day);
-  return day.subtract(Duration(days: day.weekday - DateTime.monday + 35));
+  return DateTime(day.year, day.month, day.day - (day.weekday - DateTime.monday) - 35);
 }
 
-/// Every run the plan's completed sessions stand for, oldest first, with the
-/// most recent one carrying [heroLoop]'s track. Distances and paces follow the
-/// seeded weekly shape (quality Tuesday, easy Wednesday, tempo Thursday,
-/// recovery Saturday, long Sunday) with a deterministic wobble so the history
-/// reads like a person rather than a generator.
+/// A session slot in the plan's training week.
+enum DemoSlot { rest, quality, easy, tempo, recovery, long }
+
+/// The slot [day] holds in a plan captured on [today]. Sunday is always the
+/// long run. Monday to Saturday hold rest, quality, easy, tempo, rest and
+/// recovery, rotated so that today is the tempo, so the Today panel shows a
+/// session to start whichever day the capture runs, as its caption promises.
+/// The seed's `v_shift` is the same rotation; change the two together.
+DemoSlot demoSlotFor(DateTime day, DateTime today) {
+  const week = [
+    DemoSlot.rest,
+    DemoSlot.quality,
+    DemoSlot.easy,
+    DemoSlot.tempo,
+    DemoSlot.rest,
+    DemoSlot.recovery,
+  ];
+  if (day.weekday == DateTime.sunday) return DemoSlot.long;
+  final t = today.weekday - DateTime.monday;
+  final shift = today.weekday == DateTime.sunday ? 0 : 3 - t;
+  return week[(day.weekday - DateTime.monday + shift) % 6];
+}
+
+/// Every run on the device, oldest first: six weeks of easy base before the
+/// plan, then one run for each session the plan has had, with a run that
+/// isn't the long run carrying [heroLoop]'s track. The base matters to the
+/// readiness line on Today: five weeks of history from nothing reads as heavy
+/// fatigue (form below -20), which no runner six weeks into a plan has.
+/// Distances and paces follow the seeded sessions with a deterministic wobble
+/// so the history reads like a person rather than a generator; each plan run
+/// is within a few percent of its session's target, so the server's
+/// run-to-workout matcher (decisions § 2079) ticks every past session off.
 List<Run> demoRuns(DateTime now) {
   final today = DateTime(now.year, now.month, now.day);
   final start = demoPlanStart(today);
   final rnd = math.Random(1375);
   final runs = <Run>[];
-  for (var day = start; day.isBefore(today); day = day.add(const Duration(days: 1))) {
-    final week = day.difference(start).inDays ~/ 7;
-    final (double km, int paceSec, String title, int bpm) = switch (day.weekday) {
-      DateTime.tuesday when week >= 4 =>
-        (9.0, 300, 'Track intervals', 162),
-      DateTime.tuesday => (6.0, 352, 'Easy run', 141),
-      DateTime.wednesday => (7.0, 348, 'Easy miles', 143),
-      DateTime.thursday => (8.0 + math.min(week, 8) * 0.25, 296, 'Tempo', 158),
-      DateTime.saturday => (5.0, 366, 'Recovery jog', 135),
-      DateTime.sunday => (10.0 + math.min(week, 9), 342, 'Sunday long run', 149),
-      _ => (0.0, 0, '', 0),
-    };
-    if (km == 0) continue;
+  void add(DateTime day, double km, int paceSec, String title, int bpm) {
     final metres = km * 1000 * (0.98 + rnd.nextDouble() * 0.05);
     final secs = (metres / 1000 * (paceSec + rnd.nextInt(9) - 4)).round();
     final startedAt = DateTime(day.year, day.month, day.day, 7, 10 + rnd.nextInt(20));
@@ -65,8 +80,43 @@ List<Run> demoRuns(DateTime now) {
       },
     ));
   }
-  final last = runs.removeLast();
-  runs.add(heroLoop(last.startedAt));
+
+  // Calendar days, never `add(Duration(days: 1))`: across a DST change that
+  // lands on 23:00 of the same date and repeats a day.
+  for (var i = 42; i > 0; i--) {
+    final day = DateTime(start.year, start.month, start.day - i);
+    final weekBack = (i - 1) ~/ 7;
+    switch (day.weekday) {
+      case DateTime.tuesday:
+        add(day, 6.0, 355, 'Easy run', 140);
+      case DateTime.thursday:
+        add(day, 7.0, 340, 'Steady run', 146);
+      case DateTime.saturday:
+        add(day, 5.0, 365, 'Recovery jog', 134);
+      case DateTime.sunday:
+        add(day, 12.0 - weekBack * 0.5, 350, 'Long run', 147);
+    }
+  }
+  var hero = -1;
+  for (var day = start;
+      day.isBefore(today);
+      day = DateTime(day.year, day.month, day.day + 1)) {
+    final week = (day.difference(start).inHours / 24).round() ~/ 7;
+    final slot = demoSlotFor(day, today);
+    final (double km, int paceSec, String title, int bpm) = switch (slot) {
+      DemoSlot.quality when week >= 4 => (9.0, 300, 'Track intervals', 162),
+      DemoSlot.quality => (6.0, 352, 'Easy run', 141),
+      DemoSlot.easy => (7.0, 348, 'Easy miles', 143),
+      DemoSlot.tempo => (8.0 + math.min(week, 8) * 0.25, 296, 'Tempo', 158),
+      DemoSlot.recovery => (5.0, 366, 'Recovery jog', 135),
+      DemoSlot.long => (10.0 + math.min(week, 9), 342, 'Sunday long run', 149),
+      DemoSlot.rest => (0.0, 0, '', 0),
+    };
+    if (km == 0) continue;
+    if (slot != DemoSlot.long) hero = runs.length;
+    add(day, km, paceSec, title, bpm);
+  }
+  runs[hero] = heroLoop(runs[hero].startedAt);
   return runs;
 }
 

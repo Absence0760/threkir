@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -28,7 +30,10 @@ import 'store_selectors.dart';
 // against a loopback SUPABASE_URL (dev_auto_login.dart). The account, its
 // plan and its coach thread come from assets/store/demo/store_demo_seed.sql;
 // the runs are written into the device's run store here, before launch,
-// because their tracks are files the SQL cannot seed. WEB_BASE_URL points at
+// because their tracks are files the SQL cannot seed. The app pushes them on
+// sign-in, the server links each to its plan session, and the workflow's job
+// worker map-matches them (passthrough, no OSRM), so the capture waits for
+// all three before it photographs anything. WEB_BASE_URL points at
 // a loopback port where nothing listens, so the capability read the coach
 // makes fails closed instead of reaching production. Every screen is dark
 // (the app's default) except the training plan, which is the one light panel.
@@ -47,7 +52,7 @@ void main() {
       await seeded.save(run);
     }
     await seeded.debugWritesSettled();
-    final hero = runs.last;
+    final hero = runs.firstWhere((r) => r.id == kHeroRunId);
 
     await launchApp(onboarded: true);
     await pumpUntilFound(tester, StoreSelectors.shell,
@@ -62,6 +67,29 @@ void main() {
     await pumpUntil(tester, () => api.userId != null,
         describe: 'the dev auto-login to sign in as $kDemoEmail');
 
+    // The sign-in sync pushes the seeded runs; asking again is a no-op while
+    // that push is in flight and a retry if it failed.
+    unawaited(app.syncService.triggerSync('manual'));
+    await pumpUntil(tester, () => runs.every((r) => app.runStore.isSynced(r.id)),
+        describe: 'the ${runs.length} seeded runs to reach the server');
+    final onDevice = app.runStore.summaryRuns.length;
+    if (onDevice != runs.length) {
+      fail('the device holds $onDevice runs where ${runs.length} were seeded: '
+          'every count on Today and Progress would be off');
+    }
+    // The record panel's map reads the run's map-match row once, when it
+    // opens, so the row must have left `pending` first or the map carries a
+    // "Snapping to roads" pill. The workflow's job worker settles it.
+    RunMatchInfo? match;
+    await pumpUntilAsync(tester, () async {
+      match = await api.fetchRunMatchedTrack(kHeroRunId);
+      return match != null && match!.status != MatchStatus.pending;
+    }, describe: 'the job worker to map-match the hero run (is it running?)');
+    if (match!.status != MatchStatus.matched) {
+      fail('the hero run was map-matched as ${match!.status.name}, not '
+          'matched: the record panel would show that status on its map');
+    }
+
     // Android draws Flutter into an image view so the binding can read it
     // back; iOS reads the layer directly.
     if (Platform.isAndroid) {
@@ -69,9 +97,11 @@ void main() {
     }
 
     themeModeNotifier.value = ThemeMode.dark;
-    for (final ready in StoreSelectors.homeReady) {
-      await pumpUntilFound(tester, ready, describe: 'Home to draw $ready');
+    for (final ready in StoreSelectors.todayReady) {
+      await pumpUntilFound(tester, ready, describe: 'Today to draw $ready');
     }
+    await pumpUntil(tester, () => StoreSelectors.todayMissedPrompt.evaluate().isEmpty,
+        describe: 'Today to re-read the plan once the server linked the runs');
     await settle(tester);
     await binding.takeScreenshot('today');
 
@@ -79,11 +109,17 @@ void main() {
         find.descendant(of: find.byType(MaterialApp), matching: find.byType(Navigator)).first);
 
     Future<void> capture(String name, Widget screen, Finder ready,
-        {ThemeMode theme = ThemeMode.dark, Duration settleFor = const Duration(seconds: 3)}) async {
+        {ThemeMode theme = ThemeMode.dark,
+        Duration settleFor = const Duration(seconds: 3),
+        Finder? absent}) async {
       themeModeNotifier.value = theme;
       navigator.push(MaterialPageRoute<void>(builder: (_) => screen));
       await pumpUntilFound(tester, ready, describe: 'the $name screen to load');
       await settle(tester, settleFor);
+      if (absent != null) {
+        expect(absent, findsNothing,
+            reason: 'the $name screen still shows $absent after settling');
+      }
       await binding.takeScreenshot(name);
       navigator.pop();
       themeModeNotifier.value = ThemeMode.dark;
@@ -94,7 +130,9 @@ void main() {
     // Map tiles arrive over the network after the map is laid out.
     await capture('record', StoreSelectors.runDetail(app, fullHero),
         StoreSelectors.runDetailReady,
-        settleFor: const Duration(seconds: 10));
+        settleFor: const Duration(seconds: 10),
+        absent: StoreSelectors.matchPill(
+            l10nOf(tester, StoreSelectors.shell)));
     await capture('train', StoreSelectors.planDetail(app),
         StoreSelectors.planDetailReady,
         theme: ThemeMode.light);
@@ -110,6 +148,30 @@ Future<void> settle(WidgetTester tester,
   final end = DateTime.now().add(duration);
   while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+/// Pump real frames while polling [condition], an async read such as a
+/// server row, about once a second; fails with [describe] at [timeout].
+Future<void> pumpUntilAsync(
+  WidgetTester tester,
+  Future<bool> Function() condition, {
+  required String describe,
+  Duration timeout = const Duration(seconds: 120),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (true) {
+    var met = false;
+    try {
+      met = await condition();
+    } catch (e) {
+      debugPrint('store capture: waiting for $describe: $e');
+    }
+    if (met) return;
+    if (!DateTime.now().isBefore(deadline)) {
+      fail('timed out after ${timeout.inSeconds} s waiting for $describe');
+    }
+    await settle(tester, const Duration(seconds: 1));
   }
 }
 

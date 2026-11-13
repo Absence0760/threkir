@@ -2,10 +2,14 @@
 -- store-screenshots workflow starts. Never applied anywhere else.
 --
 -- What it holds is what the capture photographs: an active half-marathon plan
--- whose window puts today in week 6 with the race six weeks out, every past
--- session done, and one coach conversation on that plan. The runs are not
--- here; the capture writes them into the device's run store, because a run's
--- track is a file in Storage that SQL cannot seed (seed.sql § 3).
+-- whose window puts today in week 6 with the race six weeks out, a tempo on
+-- today whatever weekday the capture runs, and one coach conversation on that
+-- plan. The runs are not here; the capture writes them into the device's run
+-- store, because a run's track is a file in Storage that SQL cannot seed
+-- (seed.sql § 3). No session is ticked off by hand: the app pushes a run for
+-- every past session, and the server's run-to-workout matcher links each one
+-- (decisions § 2079), as it does for a real runner. A hand tick on top of a
+-- run would count that session twice in the week's distance.
 --
 -- Separate from seed.sql's runner@test.com on purpose: that account carries
 -- the owner's name and years of fixture rows other suites assert on, and a
@@ -96,6 +100,12 @@ DECLARE
   v_zone  text;
   v_struct jsonb;
   v_notes text;
+  -- Monday to Saturday rotate so that today is the tempo; Sunday stays the
+  -- long run (and the race). demoSlotFor in demo_data.dart is the same
+  -- rotation.
+  v_today int := extract(isodow from current_date)::int - 1;
+  v_shift int := CASE WHEN v_today = 6 THEN 0 ELSE 3 - v_today END;
+  v_slot  int;
   w int;
   d int;
 BEGIN
@@ -129,10 +139,11 @@ BEGIN
       v_date := v_start + w * 7 + d;
       v_struct := NULL;
       v_notes := NULL;
-      -- Monday rest, Tuesday quality, Wednesday easy, Thursday tempo,
-      -- Friday rest, Saturday recovery, Sunday long; race week tapers into
-      -- the race on its last Sunday.
-      CASE d
+      -- Slots 0-5 are rest, quality, easy, tempo, rest, recovery, laid on
+      -- Monday to Saturday by v_shift; Sunday (6) is the long run, and race
+      -- week tapers into the race on its last Sunday.
+      v_slot := CASE WHEN d = 6 THEN 6 ELSE ((d + v_shift) % 6 + 6) % 6 END;
+      CASE v_slot
         WHEN 0, 4 THEN
           v_kind := 'rest'; v_dist := NULL; v_pace := NULL; v_zone := NULL;
         WHEN 1 THEN
@@ -170,16 +181,12 @@ BEGIN
       INSERT INTO plan_workouts (
         week_id, scheduled_date, kind, target_distance_m, target_pace_sec_per_km,
         target_pace_tolerance_sec, pace_zone, structure, notes,
-        race_name, race_priority,
-        manually_completed, completed_at
+        race_name, race_priority
       ) VALUES (
         v_week, v_date, v_kind, v_dist, v_pace,
         CASE WHEN v_pace IS NULL THEN NULL ELSE 15 END, v_zone, v_struct, v_notes,
         CASE WHEN v_kind = 'race' THEN v_race END,
-        CASE WHEN v_kind = 'race' THEN 'A' END,
-        v_kind <> 'rest' AND v_date < current_date,
-        CASE WHEN v_kind <> 'rest' AND v_date < current_date
-             THEN v_date + time '07:30' END
+        CASE WHEN v_kind = 'race' THEN 'A' END
       );
     END LOOP;
 
@@ -193,13 +200,14 @@ BEGIN
   DELETE FROM coach_messages WHERE user_id = v_user;
   INSERT INTO coach_messages (user_id, plan_id, role, content, created_at) VALUES
     (v_user, v_plan, 'user',
-     'My legs felt heavy on Sunday''s long run. Should I still do Thursday''s tempo?',
+     'My legs felt heavy on Sunday''s long run. Should I still do '
+     || CASE WHEN v_today = 6 THEN 'Thursday''s' ELSE 'today''s' END || ' tempo?',
      now() - interval '14 minutes'),
     (v_user, v_plan, 'assistant',
-     E'You''ve completed every session for five weeks, and Sunday''s long run was right on your easy target, so some heaviness two days later is normal.\n\n'
-     'Keep Thursday''s tempo, with two changes:\n\n'
+     E'You''ve completed every session for five weeks, and Sunday''s long run was right on your easy target, so some heaviness afterwards is normal.\n\n'
+     'Keep ' || CASE WHEN v_today = 6 THEN 'Thursday''s' ELSE 'today''s' END || E' tempo, with two changes:\n\n'
      '- **Warm up for 15 minutes** instead of 10, and only start the 4 km at threshold once your legs feel loose.\n'
-     '- **Hold 4:50/km**, not 4:45. You still get the threshold work without digging a hole before Sunday.\n\n'
+     '- **Hold 4:50/km**, not 4:45. You still get the threshold work without digging a hole before your long run.\n\n'
      'If your legs are still heavy after the first kilometre at pace, make it an easy run. One tempo won''t change race day; arriving tired might.',
      now() - interval '13 minutes'),
     (v_user, v_plan, 'user',

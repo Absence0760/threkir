@@ -453,7 +453,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count activités n\'ont pas été importées',
-      one: '1 activité n\'a pas été importée',
+      one: '$count activité n\'a pas été importée',
     );
     return '$_temp0';
   }
@@ -468,7 +468,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count échecs supplémentaires n\'ont pas été enregistrés.',
-      one: '1 échec supplémentaire n\'a pas été enregistré.',
+      one: '$count échec supplémentaire n\'a pas été enregistré.',
     );
     return '$_temp0';
   }
@@ -517,7 +517,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other:
           '$count courses sont enregistrées sur cet appareil : leur envoi vers le cloud n\'a pas abouti. Il sera retenté à la prochaine synchronisation.',
       one:
-          '1 course est enregistrée sur cet appareil : son envoi vers le cloud n\'a pas abouti. Il sera retenté à la prochaine synchronisation.',
+          '$count course est enregistrée sur cet appareil : son envoi vers le cloud n\'a pas abouti. Il sera retenté à la prochaine synchronisation.',
     );
     return '$_temp0';
   }
@@ -546,7 +546,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other:
           '$count activités importées ont des cartes GPS que Threkir n\'est pas autorisé à lire.',
       one:
-          '1 activité importée a une carte GPS que Threkir n\'est pas autorisé à lire.',
+          '$count activité importée a une carte GPS que Threkir n\'est pas autorisé à lire.',
     );
     return '$_temp0 Santé Connect protège l\'itinéraire d\'une séance par une autorisation distincte.';
   }
@@ -572,7 +572,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: 'Cartes ajoutées à $count activités.',
-      one: 'Carte ajoutée à 1 activité.',
+      one: 'Carte ajoutée à $count activité.',
       zero: 'Aucune carte n\'a pu être ajoutée.',
     );
     return '$_temp0';
@@ -639,7 +639,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count courses publiques',
-      one: '1 course publique',
+      one: '$count course publique',
     );
     return '$_temp0';
   }
@@ -650,7 +650,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count clubs en commun',
-      one: '1 club en commun',
+      one: '$count club en commun',
     );
     return '$_temp0';
   }
@@ -5235,7 +5235,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other:
           '$count de vos courses ne sont pas publiques, elles n\'apparaissent donc pas ici.',
       one:
-          '1 de vos courses n\'est pas publique, elle n\'apparaît donc pas ici.',
+          '$count de vos courses n\'est pas publique, elle n\'apparaît donc pas ici.',
     );
     return '$_temp0';
   }
@@ -7573,7 +7573,7 @@ class AppLocalizationsFr extends AppLocalizations {
       n,
       locale: localeName,
       other: '$n séances ajustées',
-      one: '1 séance ajustée',
+      one: '$n séance ajustée',
     );
     return '$_temp0';
   }
@@ -12105,7 +12105,7 @@ class AppLocalizationsFr extends AppLocalizations {
       min,
       locale: localeName,
       other: '$min minutes',
-      one: '1 minute',
+      one: '$min minute',
     );
     return '$_temp0';
   }
@@ -12441,7 +12441,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count courses',
-      one: '1 course',
+      one: '$count course',
     );
     return '$_temp0';
   }
@@ -12587,7 +12587,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count séances',
-      one: '1 séance',
+      one: '$count séance',
     );
     return '$_temp0';
   }
@@ -12660,7 +12660,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other:
           'Votre calendrier ne peut pas ignorer les dates annulées : $count occurrences annulées apparaîtront quand même.',
       one:
-          'Votre calendrier ne peut pas ignorer les dates annulées : 1 occurrence annulée apparaîtra quand même.',
+          'Votre calendrier ne peut pas ignorer les dates annulées : $count occurrence annulée apparaîtra quand même.',
     );
     return '$_temp0';
   }
@@ -17171,7 +17171,7 @@ class AppLocalizationsFr extends AppLocalizations {
       n,
       locale: localeName,
       other: '$n secondes',
-      one: '1 seconde',
+      one: '$n seconde',
     );
     return '$_temp0';
   }
@@ -17182,7 +17182,7 @@ class AppLocalizationsFr extends AppLocalizations {
       n,
       locale: localeName,
       other: '$n minutes',
-      one: '1 minute',
+      one: '$n minute',
     );
     return '$_temp0';
   }
@@ -17477,7 +17477,7 @@ class AppLocalizationsFr extends AppLocalizations {
       target,
       locale: localeName,
       other: '$done sur $target activités, votre objectif hebdomadaire',
-      one: '$done sur 1 activité, votre objectif hebdomadaire',
+      one: '$done sur $target activité, votre objectif hebdomadaire',
     );
     return '$_temp0';
   }
@@ -17854,7 +17854,7 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other:
           'Annulé. $count personnes inscrites sont remboursées intégralement.',
-      one: 'Annulé. 1 personne inscrite est remboursée intégralement.',
+      one: 'Annulé. $count personne inscrite est remboursée intégralement.',
     );
     return '$_temp0';
   }
@@ -17865,7 +17865,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count remboursements n’ont pas pu être lancés',
-      one: '1 remboursement n’a pas pu être lancé',
+      one: '$count remboursement n’a pas pu être lancé',
     );
     return 'Annulé, mais $_temp0. Réessayez depuis la page de l’événement sur le web.';
   }
@@ -19293,7 +19293,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count semaines précédentes',
-      one: '1 semaine précédente',
+      one: '$count semaine précédente',
     );
     return '$_temp0';
   }
@@ -21406,7 +21406,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other:
           'Carte du parcours avec $n points de contrôle. La légende en dessous explique chaque repère.',
       one:
-          'Carte du parcours avec 1 point de contrôle. La légende en dessous explique chaque repère.',
+          'Carte du parcours avec $n point de contrôle. La légende en dessous explique chaque repère.',
       zero: 'Carte du parcours. La légende en dessous explique chaque repère.',
     );
     return '$_temp0';

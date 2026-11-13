@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 
 /// Pull the real message keys out of a parsed ARB map — drop `@@locale`
 /// and the `@key` metadata entries.
@@ -34,11 +35,34 @@ Set<String> _placeholders(String value) => _IcuArgs(value).parse();
 /// does support `#`, which is how the shorthand keeps arriving in ports.
 bool _hashInPlural(String value) => (_IcuArgs(value)..parse()).hashInPlural;
 
+/// The text of every `one{…}` branch of a `plural` (not `selectordinal`, not
+/// `select`) argument in [value], paired with that argument's name.
+List<(String, String)> _oneBranches(String value) =>
+    (_IcuArgs(value)..parse()).oneBranches;
+
+/// A `1` standing as a number of its own: not part of `10`, `1.5`, `1RM` or
+/// `x1`. A literal count in a `one` branch is what this finds.
+final _literalOne = RegExp(r'(?<![\p{L}\p{N}.,])1(?![\p{L}\p{N}.,])', unicode: true);
+
+/// Whether [locale]'s CLDR `one` category, as gen-l10n's generated getters
+/// resolve it through `Intl.pluralLogic`, covers a count other than 1. In
+/// such a locale (`fr` and `pt` take 0 as well) a `one` branch that spells
+/// out "1" renders "1 …" for a count of 0.
+bool _oneCoversMoreThanOne(String locale) => [
+  for (var n = 0; n <= 100; n++) n,
+].any(
+  (n) =>
+      n != 1 &&
+      Intl.pluralLogic(n, locale: locale, one: 'one', other: 'other') ==
+          'one',
+);
+
 class _IcuArgs {
   _IcuArgs(this.s);
 
   final String s;
   final Set<String> names = {};
+  final List<(String, String)> oneBranches = [];
   var i = 0;
   var _pluralDepth = 0;
   var hashInPlural = false;
@@ -100,13 +124,13 @@ class _IcuArgs {
     final counts = type != 'select';
     if (counts) _pluralDepth++;
     try {
-      _branches();
+      _branches(type == 'plural' ? name : null);
     } finally {
       if (counts) _pluralDepth--;
     }
   }
 
-  void _branches() {
+  void _branches(String? pluralArg) {
     _ws();
     if (i < s.length && s[i] == ',') i++;
     while (true) {
@@ -123,7 +147,11 @@ class _IcuArgs {
         return _skipToClose();
       }
       i++;
+      final start = i;
       _message(nested: true);
+      if (pluralArg != null && selector == 'one') {
+        oneBranches.add((pluralArg, s.substring(start, i)));
+      }
       if (i < s.length) i++;
     }
   }
@@ -192,6 +220,37 @@ void main() {
     );
     expect(_hashInPlural('Lap #3 {n}'), isFalse);
     expect(_hashInPlural('{k, select, a {#1} other {x}}'), isFalse);
+  });
+
+  test('the one-branch scan reads plural one{} branches only', () {
+    expect(_oneBranches('{n, plural, one{1 run} other{{n} runs}}'), [
+      ('n', '1 run'),
+    ]);
+    expect(
+      _oneBranches('{a} {n, plural, =1{x} one{{n} y} other{z}}'),
+      [('n', '{n} y')],
+    );
+    expect(_oneBranches('{n, selectordinal, one{#st} other{#th}}'), isEmpty);
+    expect(_oneBranches('{k, select, one{1} other{2}}'), isEmpty);
+    expect(_literalOne.hasMatch('Filtres, 1 actif'), isTrue);
+    expect(_literalOne.hasMatch('1 minute'), isTrue);
+    for (final ok in ['10 km', '1.5 km', '1RM', 'x1', '{count} actif']) {
+      expect(_literalOne.hasMatch(ok), isFalse, reason: ok);
+    }
+  });
+
+  test('one-category locales are derived from the plural rules', () {
+    // Pins the derivation the plural guard below rests on, so a change in
+    // intl's rules cannot quietly empty the set it checks.
+    expect(
+      [
+        for (final tag in localeTags)
+          if (_oneCoversMoreThanOne(tag)) tag,
+      ],
+      containsAll(['fr', 'pt', 'pt_BR']),
+    );
+    expect(_oneCoversMoreThanOne('en'), isFalse);
+    expect(_oneCoversMoreThanOne('de'), isFalse);
   });
 
   test('no catalogue declares the same key twice', () {
@@ -282,6 +341,27 @@ void main() {
           reason:
               'app_$tag.arb uses # inside a plural; gen-l10n prints it '
               'literally. Name the argument instead: other {{n} weeks}',
+        );
+      });
+
+      // gen-l10n resolves a plural through `Intl.pluralLogic` for the
+      // catalogue's locale, and in fr and pt CLDR's `one` covers 0 as well
+      // as 1. A `one` branch that copies the English "1" therefore renders
+      // "Filtres, 1 actif" when no filter is on. Name the argument instead:
+      // one{{count} actif}. Locales whose `one` is exactly 1 are exempt.
+      test('no plural one branch spells out a literal 1', () {
+        if (!_oneCoversMoreThanOne(tag)) return;
+        final offenders = [
+          for (final key in keys)
+            for (final (arg, text) in _oneBranches(arb[key] as String))
+              if (_literalOne.hasMatch(text)) '$key ($arg): $text',
+        ]..sort();
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'app_$tag.arb: `one` also covers counts other than 1 here, so '
+              'a literal 1 is wrong for them. Use the argument: one{{n} …}',
         );
       });
 

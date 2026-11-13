@@ -2695,6 +2695,75 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runNoGpsStartTimeOnly => 'Gravar só o tempo';
 
   @override
+  String get runPreRunLocationOffTitle => 'A localização está desligada';
+
+  @override
+  String get runPreRunLocationOffBody =>
+      'Ative a localização para gravar o percurso, a distância e o ritmo. Sem ela, a corrida grava só o tempo.';
+
+  @override
+  String get runPreRunTurnOnLocation => 'Ativar localização';
+
+  @override
+  String get runPreRunPermissionTitle => 'Acesso à localização necessário';
+
+  @override
+  String get runPreRunPermissionBody =>
+      'Permita o acesso à localização para gravar o percurso, a distância e o ritmo. Sem ele, a corrida grava só o tempo.';
+
+  @override
+  String get runPreRunAllowLocation => 'Permitir localização';
+
+  @override
+  String get runPreRunPermissionBlockedTitle =>
+      'O acesso à localização está bloqueado';
+
+  @override
+  String get runPreRunPermissionBlockedBody =>
+      'O acesso à localização está desligado para esta app. Permita-o nas definições para gravar o percurso, a distância e o ritmo. Sem ele, a corrida grava só o tempo.';
+
+  @override
+  String get runPreRunSearching => 'A procurar GPS…';
+
+  @override
+  String get runPreRunSearchingHint =>
+      'Com o céu à vista, o GPS obtém sinal mais depressa.';
+
+  @override
+  String runPreRunGpsWeak(String accuracy) {
+    return 'GPS fraco · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsWeakA11y(String accuracy) {
+    return 'GPS fraco, com precisão de $accuracy';
+  }
+
+  @override
+  String runPreRunGpsReady(String accuracy) {
+    return 'GPS pronto · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsReadyA11y(String accuracy) {
+    return 'GPS pronto, com precisão de $accuracy';
+  }
+
+  @override
+  String get runPreRunMapFailed =>
+      'Não foi possível carregar o mapa. A gravação funciona na mesma.';
+
+  @override
+  String get runPreRunMapRetry => 'Tentar novamente';
+
+  @override
+  String get runPreRunActivityOff =>
+      'O acesso a “Atividade física” está desligado, por isso os passos, a cadência e a distância em interiores não serão gravados.';
+
+  @override
+  String get runPreRunAllow => 'Permitir';
+
+  @override
   String get runNoDistanceTitle => 'Nenhuma distância gravada';
 
   @override
@@ -26230,6 +26299,75 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runNoGpsStartTimeOnly => 'Gravar só o tempo';
+
+  @override
+  String get runPreRunLocationOffTitle => 'A localização está desativada';
+
+  @override
+  String get runPreRunLocationOffBody =>
+      'Ative a localização para gravar seu trajeto, distância e ritmo. Sem ela, a corrida grava só o tempo.';
+
+  @override
+  String get runPreRunTurnOnLocation => 'Ativar localização';
+
+  @override
+  String get runPreRunPermissionTitle => 'Acesso à localização necessário';
+
+  @override
+  String get runPreRunPermissionBody =>
+      'Permita o acesso à localização para gravar seu trajeto, distância e ritmo. Sem ele, a corrida grava só o tempo.';
+
+  @override
+  String get runPreRunAllowLocation => 'Permitir localização';
+
+  @override
+  String get runPreRunPermissionBlockedTitle =>
+      'O acesso à localização está bloqueado';
+
+  @override
+  String get runPreRunPermissionBlockedBody =>
+      'O acesso à localização está desativado para este app. Permita nas configurações para gravar seu trajeto, distância e ritmo. Sem ele, a corrida grava só o tempo.';
+
+  @override
+  String get runPreRunSearching => 'Procurando GPS…';
+
+  @override
+  String get runPreRunSearchingHint =>
+      'Com o céu à vista, o GPS encontra o sinal mais rápido.';
+
+  @override
+  String runPreRunGpsWeak(String accuracy) {
+    return 'GPS fraco · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsWeakA11y(String accuracy) {
+    return 'GPS fraco, com precisão de $accuracy';
+  }
+
+  @override
+  String runPreRunGpsReady(String accuracy) {
+    return 'GPS pronto · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsReadyA11y(String accuracy) {
+    return 'GPS pronto, com precisão de $accuracy';
+  }
+
+  @override
+  String get runPreRunMapFailed =>
+      'Não foi possível carregar o mapa. A gravação funciona mesmo assim.';
+
+  @override
+  String get runPreRunMapRetry => 'Tentar novamente';
+
+  @override
+  String get runPreRunActivityOff =>
+      'O acesso a “Atividade física” está desativado, então passos, cadência e distância em ambientes fechados não serão gravados.';
+
+  @override
+  String get runPreRunAllow => 'Permitir';
 
   @override
   String get runNoDistanceTitle => 'Nenhuma distância gravada';

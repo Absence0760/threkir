@@ -2659,6 +2659,74 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runNoGpsStartTimeOnly => 'Record time only';
 
   @override
+  String get runPreRunLocationOffTitle => 'Location is off';
+
+  @override
+  String get runPreRunLocationOffBody =>
+      'Turn on Location to record your route, distance and pace. Without it, a run records time only.';
+
+  @override
+  String get runPreRunTurnOnLocation => 'Turn on Location';
+
+  @override
+  String get runPreRunPermissionTitle => 'Location access needed';
+
+  @override
+  String get runPreRunPermissionBody =>
+      'Allow location access to record your route, distance and pace. Without it, a run records time only.';
+
+  @override
+  String get runPreRunAllowLocation => 'Allow location';
+
+  @override
+  String get runPreRunPermissionBlockedTitle => 'Location access is blocked';
+
+  @override
+  String get runPreRunPermissionBlockedBody =>
+      'Location access is turned off for this app. Allow it in Settings to record your route, distance and pace. Without it, a run records time only.';
+
+  @override
+  String get runPreRunSearching => 'Searching for GPS…';
+
+  @override
+  String get runPreRunSearchingHint =>
+      'A clear view of the sky gets a fix faster.';
+
+  @override
+  String runPreRunGpsWeak(String accuracy) {
+    return 'Weak GPS · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsWeakA11y(String accuracy) {
+    return 'Weak GPS, accurate to within $accuracy';
+  }
+
+  @override
+  String runPreRunGpsReady(String accuracy) {
+    return 'GPS ready · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsReadyA11y(String accuracy) {
+    return 'GPS ready, accurate to within $accuracy';
+  }
+
+  @override
+  String get runPreRunMapFailed =>
+      'The map couldn\'t load. Recording still works without it.';
+
+  @override
+  String get runPreRunMapRetry => 'Try again';
+
+  @override
+  String get runPreRunActivityOff =>
+      'Physical activity access is off, so steps, cadence and indoor distance won\'t be recorded.';
+
+  @override
+  String get runPreRunAllow => 'Allow';
+
+  @override
   String get runNoDistanceTitle => 'No distance recorded';
 
   @override

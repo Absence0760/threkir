@@ -66,6 +66,7 @@ import '../main.dart' show pendingArmGuidedRun, pendingStartWorkout;
 import '../live_cutoff_eta.dart';
 import '../off_route_flag.dart';
 import '../preferences.dart';
+import '../pre_run_status.dart' show PlatformPreRunProbe, PreRunProbe;
 import '../privacy.dart';
 import '../off_route_alert.dart';
 import '../orphaned_recording.dart';
@@ -94,6 +95,7 @@ import '../watch_settings.dart';
 import '../web_base_url.dart';
 import '../widgets/finish_plan_card.dart';
 import '../widgets/idle_setup_chip.dart';
+import '../widgets/pre_run_status.dart';
 import '../widgets/race_strategy_sheet.dart';
 import '../widgets/cutoff_card.dart';
 import '../widgets/route_picker_sheet.dart';
@@ -258,6 +260,10 @@ class RunScreen extends StatefulWidget {
   /// on another device or the web would otherwise stay "to do" here.
   final ValueListenable<bool>? shown;
 
+  /// The platform calls behind the idle page's GPS and permission status.
+  @visibleForTesting
+  final PreRunProbe preRunProbe;
+
   /// The live broadcaster's throttle clock. Tests advance it instead of
   /// sleeping out the real 5 s ping window.
   @visibleForTesting
@@ -283,6 +289,7 @@ class RunScreen extends StatefulWidget {
     this.watchTransportFactory,
     this.initialResumablePartial,
     this.shown,
+    this.preRunProbe = const PlatformPreRunProbe(),
   });
 
   @override
@@ -716,6 +723,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // strip. It cannot ride on `_weakGps`: an approximate grant may deliver no
   // fix at all, so there is nothing for the accuracy gate to reject.
   bool _preciseLocationOff = false;
+
+  /// Whether the idle page may hold a position stream: false from the moment
+  /// a recorder is built until it is torn down ([_newRecorder]).
+  final ValueNotifier<bool> _preRunFixesAllowed = ValueNotifier<bool>(true);
 
   // Foreground-only ("While using the app") location disclosure state.
   // `_leftForegroundAt` is the wall-clock moment the app left the screen
@@ -1479,6 +1490,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // NotificationManager.notify silently no-ops and the lock-screen stats
     // never appear. Idempotent; skipped by the OS on older versions.
     final notif = await Permission.notification.request();
+    // ACTIVITY_RECOGNITION is a runtime grant on Android 10+, and the step
+    // counter delivers nothing without it: steps, cadence and the indoor
+    // pedometer distance (L1a) were silently absent because nothing asked.
+    // The idle page says what is lost while it is off.
+    if (Platform.isAndroid) {
+      try {
+        await Permission.activityRecognition.request();
+      } catch (e) {
+        debugPrint('activity recognition request failed: $e');
+      }
+    }
     // A denied notification permission used to be swallowed: the run still
     // recorded but the live lock-screen notification never showed, with no
     // explanation. Surface a one-time hint so the runner knows why (and that
@@ -1853,11 +1875,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     };
   }
 
-  void _preload() {
-    _recorder = RunRecorder(
+  /// geolocator keeps one position stream per process and hands every later
+  /// caller the stream the first one opened, with the first caller's
+  /// settings. The idle page's GPS preview must therefore let go of its
+  /// stream before the recorder asks for one, or the recorder would record on
+  /// the preview's settings without its foreground service. The notifier's
+  /// listeners run synchronously, so the preview has cancelled by the time
+  /// this returns.
+  RunRecorder _newRecorder() {
+    _preRunFixesAllowed.value = false;
+    return RunRecorder(
       gnssPositions: gnssPositionsForPlatform(),
       gnssStatus: gnssStatusForPlatform(),
     );
+  }
+
+  void _preload() {
+    _recorder = _newRecorder();
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
 
     _wireLockScreenControls();
@@ -2854,10 +2888,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastTickNotified = UnitFormat.activityTicks(
         _displayDistanceMetres, resumeTickInterval);
 
-    _recorder = RunRecorder(
-      gnssPositions: gnssPositionsForPlatform(),
-      gnssStatus: gnssStatusForPlatform(),
-    );
+    _recorder = _newRecorder();
     _snapshotSub = _recorder!.snapshots.listen(_onSnapshot);
     _wireLockScreenControls();
     _subscribeToPedometer();
@@ -4552,6 +4583,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _permissionWatchdogTimer?.cancel();
     _recorder?.dispose();
     _recorder = null;
+    _preRunFixesAllowed.value = true;
     _prepareFuture = null;
     _prepareError = null;
     _stepSamples.clear();
@@ -4705,6 +4737,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _workoutRunner?.dispose();
     _workoutBand.dispose();
     _recorder?.dispose();
+    _preRunFixesAllowed.dispose();
     _statsNotifier.dispose();
     _liveShareActive.dispose();
     super.dispose();
@@ -5090,177 +5123,198 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         return Stack(
           children: [
             Positioned.fill(
-              child: SingleChildScrollView(
+              child: CustomScrollView(
                 key: const ValueKey('run-idle-scroll'),
-                padding: EdgeInsets.fromLTRB(24, 16, 24, 8 + startArea),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 4),
-                    Center(
-                      child: Wrap(
-                        spacing: 8,
-                        children: ActivityType.values.map((t) {
-                          final selected = t == _activityType;
-                          // The icon is the chip's avatar, so the chip lays
-                          // the label out in the width it has; an icon and
-                          // label in a Row as the label overflowed the chip
-                          // by 27 dp at 2x on 320 dp (#1374 TO-6).
-                          return ChoiceChip(
-                            showCheckmark: false,
-                            avatar: Icon(t.icon, size: 16),
-                            label: Text(activityTypeLabel(_l10n, t)),
-                            selected: selected,
-                            onSelected: (_) {
-                              if (_state != _ScreenState.idle) return;
-                              setState(() => _activityType = t);
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.center,
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          IdleSetupChip(
-                            icon: Icons.route,
-                            label: _selectedRoute == null
-                                ? l10n.runChooseRoute
-                                : l10n.runChangeRoute,
-                            isSet: _selectedRoute != null,
-                            onPressed: _selectRoute,
-                          ),
-                          // Armed is the runner's intent, not only a live
-                          // broadcaster: a failed pre-GO begin is retried on
-                          // GO, so the link is still theirs to stop.
-                          ValueListenableBuilder<bool>(
-                            valueListenable: _liveShareActive,
-                            builder: (context, active, _) {
-                              final armed = active || _liveShareRequested;
-                              return IdleSetupChip(
-                                icon: Icons.podcasts,
-                                label: armed
-                                    ? l10n.runLiveShareArmed
-                                    : l10n.runShareLiveLink,
-                                isSet: armed,
-                                onPressed: armed
-                                    ? _onLiveShareIndicatorTap
-                                    : _shareLiveLink,
-                              );
-                            },
-                          ),
-                          IdleSetupChip(
-                            icon: Icons.headset_mic_outlined,
-                            label: _guidedRun?.title ?? l10n.runGuidedRun,
-                            isSet: _guidedRun != null,
-                            onPressed: _pickGuidedRun,
-                            onClear: _guidedRun == null
-                                ? null
-                                : () => _armGuidedRun(null),
-                            clearTooltip: l10n.runClearGuidedRunTooltip,
-                          ),
-                          if (_activityType == ActivityType.run)
-                            IdleSetupChip(
-                              icon: Icons.flag_outlined,
-                              label: _strategyPreset == null
-                                  ? l10n.runRaceStrategy
-                                  : _strategyLabel(l10n, _strategyPreset!),
-                              isSet: _strategyPreset != null,
-                              onPressed: _editRaceStrategy,
-                              // The same as None in the sheet: the typed
-                              // distance and goal stay for the next preset.
-                              onClear: _strategyPreset == null
-                                  ? null
-                                  : () =>
-                                      setState(() => _strategyPreset = null),
-                              clearTooltip: l10n.runClearRaceStrategyTooltip,
+                          const SizedBox(height: 4),
+                          Center(
+                            child: Wrap(
+                              spacing: 8,
+                              children: ActivityType.values.map((t) {
+                                final selected = t == _activityType;
+                                // The icon is the chip's avatar, so the chip lays
+                                // the label out in the width it has; an icon and
+                                // label in a Row as the label overflowed the chip
+                                // by 27 dp at 2x on 320 dp (#1374 TO-6).
+                                return ChoiceChip(
+                                  showCheckmark: false,
+                                  avatar: Icon(t.icon, size: 16),
+                                  label: Text(activityTypeLabel(_l10n, t)),
+                                  selected: selected,
+                                  onSelected: (_) {
+                                    if (_state != _ScreenState.idle) return;
+                                    setState(() => _activityType = t);
+                                  },
+                                );
+                              }).toList(),
                             ),
-                          IdleSetupChip(
-                            isSet: _planOverview != null,
-                            onPressed: () async {
-                              final overview = _planOverview;
-                              if (overview != null) {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => PlanDetailScreen(
-                                      training: widget.training,
-                                      planId: overview.plan.id,
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                await openFitnessSurface(
-                                  context,
-                                  FitnessTab.plans,
-                                  fallback: () => PlansScreen(
-                                    training: widget.training,
-                                    apiClient: widget.apiClient,
-                                  ),
-                                );
-                              }
-                              _refreshPlanOverview();
-                            },
-                            icon: Icons.calendar_month,
-                            // A plan whose dates have run out is not the plan
-                            // this run trains for; the chip asks to file it
-                            // and still opens it, where Finish plan sits.
-                            label: _planOverview == null
-                                ? l10n.runTrainingPlans
-                                : FinishPlanCard.shows(
-                                        status: _planOverview!.plan.status,
-                                        endDate: _planOverview!.plan.endDate,
-                                        now: DateTime.now())
-                                    ? l10n.planFinishAction
-                                    : _planOverview!.plan.name,
                           ),
+                          const SizedBox(height: 12),
+                          Center(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                IdleSetupChip(
+                                  icon: Icons.route,
+                                  label: _selectedRoute == null
+                                      ? l10n.runChooseRoute
+                                      : l10n.runChangeRoute,
+                                  isSet: _selectedRoute != null,
+                                  onPressed: _selectRoute,
+                                ),
+                                // Armed is the runner's intent, not only a live
+                                // broadcaster: a failed pre-GO begin is retried on
+                                // GO, so the link is still theirs to stop.
+                                ValueListenableBuilder<bool>(
+                                  valueListenable: _liveShareActive,
+                                  builder: (context, active, _) {
+                                    final armed = active || _liveShareRequested;
+                                    return IdleSetupChip(
+                                      icon: Icons.podcasts,
+                                      label: armed
+                                          ? l10n.runLiveShareArmed
+                                          : l10n.runShareLiveLink,
+                                      isSet: armed,
+                                      onPressed: armed
+                                          ? _onLiveShareIndicatorTap
+                                          : _shareLiveLink,
+                                    );
+                                  },
+                                ),
+                                IdleSetupChip(
+                                  icon: Icons.headset_mic_outlined,
+                                  label: _guidedRun?.title ?? l10n.runGuidedRun,
+                                  isSet: _guidedRun != null,
+                                  onPressed: _pickGuidedRun,
+                                  onClear: _guidedRun == null
+                                      ? null
+                                      : () => _armGuidedRun(null),
+                                  clearTooltip: l10n.runClearGuidedRunTooltip,
+                                ),
+                                if (_activityType == ActivityType.run)
+                                  IdleSetupChip(
+                                    icon: Icons.flag_outlined,
+                                    label: _strategyPreset == null
+                                        ? l10n.runRaceStrategy
+                                        : _strategyLabel(l10n, _strategyPreset!),
+                                    isSet: _strategyPreset != null,
+                                    onPressed: _editRaceStrategy,
+                                    // The same as None in the sheet: the typed
+                                    // distance and goal stay for the next preset.
+                                    onClear: _strategyPreset == null
+                                        ? null
+                                        : () =>
+                                            setState(() => _strategyPreset = null),
+                                    clearTooltip: l10n.runClearRaceStrategyTooltip,
+                                  ),
+                                IdleSetupChip(
+                                  isSet: _planOverview != null,
+                                  onPressed: () async {
+                                    final overview = _planOverview;
+                                    if (overview != null) {
+                                      await Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => PlanDetailScreen(
+                                            training: widget.training,
+                                            planId: overview.plan.id,
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      await openFitnessSurface(
+                                        context,
+                                        FitnessTab.plans,
+                                        fallback: () => PlansScreen(
+                                          training: widget.training,
+                                          apiClient: widget.apiClient,
+                                        ),
+                                      );
+                                    }
+                                    _refreshPlanOverview();
+                                  },
+                                  icon: Icons.calendar_month,
+                                  // A plan whose dates have run out is not the plan
+                                  // this run trains for; the chip asks to file it
+                                  // and still opens it, where Finish plan sits.
+                                  label: _planOverview == null
+                                      ? l10n.runTrainingPlans
+                                      : FinishPlanCard.shows(
+                                              status: _planOverview!.plan.status,
+                                              endDate: _planOverview!.plan.endDate,
+                                              now: DateTime.now())
+                                          ? l10n.planFinishAction
+                                          : _planOverview!.plan.name,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // Only what this run will carry: the race it is armed
+                          // for, the route it follows and the workout it loads.
+                          // Today's workout, the next club event and the last run
+                          // are Home's (issue #1374); this page used to repeat all
+                          // three under its own Start.
+                          if (widget.raceController != null)
+                            ListenableBuilder(
+                              listenable: widget.raceController!,
+                              builder: (_, __) {
+                                final race = widget.raceController!.active;
+                                if (race == null) return const SizedBox.shrink();
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: RaceBanner(
+                                    race: race,
+                                    controller: widget.raceController!,
+                                    onCountdownCue: _speakRaceCountdown,
+                                  ),
+                                );
+                              },
+                            ),
+                          if (_selectedRoute != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _RoutePreviewCard(
+                                route: _selectedRoute!,
+                                onTap: _selectRoute,
+                                onClear: () => _setFollowedRoute(null),
+                              ),
+                            ),
+                          if (_workoutRunner != null && _activeWorkoutRow != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: LoadedWorkoutCard(
+                                workout: _activeWorkoutRow!,
+                                onUnload: () => setState(_unloadWorkout),
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    // Only what this run will carry: the race it is armed
-                    // for, the route it follows and the workout it loads.
-                    // Today's workout, the next club event and the last run
-                    // are Home's (issue #1374); this page used to repeat all
-                    // three under its own Start.
-                    if (widget.raceController != null)
-                      ListenableBuilder(
-                        listenable: widget.raceController!,
-                        builder: (_, __) {
-                          final race = widget.raceController!.active;
-                          if (race == null) return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: RaceBanner(
-                              race: race,
-                              controller: widget.raceController!,
-                              onCountdownCue: _speakRaceCountdown,
-                            ),
-                          );
-                        },
-                      ),
-                    if (_selectedRoute != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _RoutePreviewCard(
-                          route: _selectedRoute!,
-                          onTap: _selectRoute,
-                          onClear: () => _setFollowedRoute(null),
-                        ),
-                      ),
-                    if (_workoutRunner != null && _activeWorkoutRow != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: LoadedWorkoutCard(
-                          workout: _activeWorkoutRow!,
-                          onUnload: () => setState(_unloadWorkout),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                  // What the next run's GPS will be, in the area the page has
+                  // left: the map once location works, the one fix when it
+                  // does not. It ends above the area Start floats in.
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    sliver: PreRunStatusSliver(
+                      probe: widget.preRunProbe,
+                      shown: widget.shown,
+                      fixesAllowed: _preRunFixesAllowed,
+                      unit: widget.preferences.unit,
+                      plannedRoute: _selectedRoute?.waypoints,
+                      offlinePackRouteId: _selectedRoute?.id,
+                      bottomPadding: 8 + startArea,
+                    ),
+                  ),
+                ],
               ),
             ),
             if (!docked)

@@ -2691,6 +2691,75 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runNoGpsStartTimeOnly => 'Registrar solo el tiempo';
 
   @override
+  String get runPreRunLocationOffTitle => 'La ubicación está desactivada';
+
+  @override
+  String get runPreRunLocationOffBody =>
+      'Activa la ubicación para registrar tu ruta, distancia y ritmo. Sin ella, una carrera solo registra el tiempo.';
+
+  @override
+  String get runPreRunTurnOnLocation => 'Activar ubicación';
+
+  @override
+  String get runPreRunPermissionTitle => 'Se necesita acceso a la ubicación';
+
+  @override
+  String get runPreRunPermissionBody =>
+      'Permite el acceso a la ubicación para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.';
+
+  @override
+  String get runPreRunAllowLocation => 'Permitir ubicación';
+
+  @override
+  String get runPreRunPermissionBlockedTitle =>
+      'El acceso a la ubicación está bloqueado';
+
+  @override
+  String get runPreRunPermissionBlockedBody =>
+      'El acceso a la ubicación está desactivado para esta app. Permítelo en los ajustes para registrar tu ruta, distancia y ritmo. Sin él, una carrera solo registra el tiempo.';
+
+  @override
+  String get runPreRunSearching => 'Buscando GPS…';
+
+  @override
+  String get runPreRunSearchingHint =>
+      'Con el cielo despejado a la vista, el GPS se fija antes.';
+
+  @override
+  String runPreRunGpsWeak(String accuracy) {
+    return 'GPS débil · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsWeakA11y(String accuracy) {
+    return 'GPS débil, con una precisión de $accuracy';
+  }
+
+  @override
+  String runPreRunGpsReady(String accuracy) {
+    return 'GPS listo · ±$accuracy';
+  }
+
+  @override
+  String runPreRunGpsReadyA11y(String accuracy) {
+    return 'GPS listo, con una precisión de $accuracy';
+  }
+
+  @override
+  String get runPreRunMapFailed =>
+      'No se pudo cargar el mapa. La grabación funciona igualmente.';
+
+  @override
+  String get runPreRunMapRetry => 'Reintentar';
+
+  @override
+  String get runPreRunActivityOff =>
+      'El acceso a «Actividad física» está desactivado, así que no se registrarán los pasos, la cadencia ni la distancia en interiores.';
+
+  @override
+  String get runPreRunAllow => 'Permitir';
+
+  @override
   String get runNoDistanceTitle => 'No se registró distancia';
 
   @override

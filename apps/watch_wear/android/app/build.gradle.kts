@@ -60,7 +60,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.threkir.watchwear"
+        // The PHONE app's package. Wear OS ships as a form factor of its Play
+        // listing, and the Wearable Data Layer the session, route and workout
+        // bridges ride on only connects installs whose package name and
+        // signature match across the two devices (decisions § 2480).
+        applicationId = "com.threkir.app"
         // API 30 = Wear OS 3. `androidx.health:health-services-client` requires 30+
         // regardless, so we set it here rather than as a library override.
         minSdk = 30

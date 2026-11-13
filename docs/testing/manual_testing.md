@@ -446,7 +446,7 @@ Plus passes along parallel paths 20 m and 40 m beside the line (none should cros
 2. Cycle **Approach** and **Pace** to the cell (carry is always `wear_wrist`) and tap **Start capture**, then **Close**.
 3. Pre-run Start, make the cell's crossings, Stop. Each recording is kept apart.
 4. Back in Line calibration: **Stop capture**, type the video-timed instants into **True crossing instants**, separated by commas (`HH:MM:SS.fff` in the watch's zone, or an ISO instant with its zone), and tap **Score this capture**. The line it adds reads as the phone's.
-5. **Save CSV** writes `files/line_calibration.csv` in the app's private storage (each save replaces it with every capture scored this session). Take it off the watch with `adb exec-out run-as com.threkir.watchwear cat files/line_calibration.csv > wear_calibration.csv`; it never leaves by sync or share.
+5. **Save CSV** writes `files/line_calibration.csv` in the app's private storage (each save replaces it with every capture scored this session). Take it off the watch with `adb exec-out run-as com.threkir.app cat files/line_calibration.csv > wear_calibration.csv`; it never leaves by sync or share.
 
 **Export.** Share CSV (or Copy CSV) sends one row per crossing (outcome, error in ms, lateral offset from the line's centre, gapped, why a miss was missed) and one summary row per capture. It holds no position and no instant: nothing in it says where the session was.
 

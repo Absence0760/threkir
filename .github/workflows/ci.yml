@@ -469,12 +469,14 @@ jobs:
       # mobile_android release and on play-rollout.yml's cron, against Google
       # Play. This drives both against an in-memory Edits API and pins the
       # wiring in both workflows, so a regression fails a PR instead of a
-      # release (decisions.md § 2478).
+      # release (decisions.md § 2478). The Wear OS release shares the phone's
+      # package, so the same suite pins its upload to the Wear internal track,
+      # its signing key and its version-code range (§ 2480).
       - name: The Android release still goes to Play production as a staged rollout
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/play_release.test.mjs; then
-            echo "::error::scripts/play_release.mjs or its wiring regressed: the release notes it reads from the Release body (the owner-written What's New, at most 500 characters), the staged rollout it starts on production (or the full first release), the ramp it advances, its refusal to resume a halt or cancel a review, or the step order in release-android.yml / play-rollout.yml. Nothing here is about signing or the build."
+            echo "::error::scripts/play_release.mjs or its wiring regressed: the release notes it reads from the Release body (the owner-written What's New, at most 500 characters), the staged rollout it starts on production (or the full first release), the ramp it advances, its refusal to resume a halt or cancel a review, the step order in release-android.yml / play-rollout.yml, or release-watch-wear.yml's upload to the Wear OS internal track of com.threkir.app with the phone's upload key and a version code offset past the phone's. Nothing here builds or signs anything."
             echo "Reproduce with: node --test scripts/play_release.test.mjs (stdlib only, no credentials or network needed)."
             exit 1
           fi

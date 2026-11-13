@@ -612,3 +612,42 @@ test('play-rollout.yml advances daily on its own reviewer-less environment, not 
 	assert.match(ROLLOUT, /node scripts\/play_release\.mjs advance/);
 	assert.ok(ROLLOUT.includes('PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}'));
 });
+
+test("release-watch-wear.yml ships under the phone's package, key and a version-code range the phone's cannot reach", () => {
+	const GRADLE = readFileSync(resolve(root, 'apps/watch_wear/android/app/build.gradle.kts'), 'utf8');
+	assert.match(GRADLE, /^\s+applicationId = "com\.threkir\.app"$/m, 'the watch is not built as the phone app\'s package');
+	assert.match(GRADLE, /^\s+namespace = "com\.runapp\.watchwear"$/m);
+
+	const offset = Number(/^ {2}WEAR_VERSION_CODE_OFFSET: "(\d+)"$/m.exec(WEAR)?.[1]);
+	assert.ok(Number.isSafeInteger(offset), 'WEAR_VERSION_CODE_OFFSET is missing from the workflow env');
+	// Play's ceiling on a version code, and the phone's codes: the commit count,
+	// 5,158 at mobile_android@1.24.0. The phone would need a billion commits to
+	// reach the watch's floor; the watch has 1.1 billion before the ceiling.
+	const PLAY_MAX = 2_100_000_000;
+	assert.ok(offset >= 1_000_000_000, `an offset of ${offset} leaves the watch's codes within reach of the phone's`);
+	assert.ok(offset + 1_000_000_000 <= PLAY_MAX, `an offset of ${offset} runs into Play's ${PLAY_MAX} ceiling`);
+	const parse = step(WEAR, 'Parse version from tag');
+	assert.match(parse.body, /VERSION_CODE=\$\(\(WEAR_VERSION_CODE_OFFSET \+ \$\(git rev-list --count HEAD\)\)\)/);
+	assert.match(step(ANDROID, 'Parse version from tag').body, /VERSION_CODE=\$\(git rev-list --count HEAD\)\n/, "the phone's version code moved; recheck the watch's range against it");
+
+	const keystore = step(WEAR, 'Decode release keystore');
+	for (const name of ['ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_PASSWORD', 'ANDROID_KEY_ALIAS']) {
+		assert.ok(keystore.body.includes(`${name}: \${{ secrets.${name} }}`), `the watch does not sign with ${name}`);
+		assert.ok(step(ANDROID, 'Decode release keystore').body.includes(`${name}: \${{ secrets.${name} }}`), `release-android.yml no longer names ${name}`);
+	}
+	assert.ok(!/WATCH_WEAR_KEY/.test(WEAR), 'the retired Wear upload keystore is still read');
+	assert.ok(step(WEAR, 'Verify keystore credentials').i > keystore.i);
+
+	const build = step(WEAR, 'Build AAB (signed)');
+	const attach = step(WEAR, 'Attach artifacts to the Release');
+	const upload = step(WEAR, 'Upload to the Wear OS internal track');
+	assert.ok(build.i < attach.i && attach.i < upload.i);
+	assert.match(
+		upload.body,
+		/node scripts\/play_release\.mjs upload --package com\.threkir\.app --form-factor wear \\\n\s+--version-code "\$VERSION_CODE" \\\n\s+--bundle apps\/watch_wear\/android\/app\/build\/outputs\/bundle\/release\/app-release\.aab/,
+	);
+	assert.ok(upload.body.includes('PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}'));
+	assert.ok(!/\$\{\{ secrets\./.test(shell(upload.body)), 'a secret is interpolated into the shell');
+	assert.ok(!/uses: r0adkll\/upload-google-play|com\.threkir\.watchwear|play_release\.mjs promote/.test(WEAR), 'the Wear release uploads elsewhere, or promotes on its own');
+	assert.match(WEAR, /environment: production/);
+});

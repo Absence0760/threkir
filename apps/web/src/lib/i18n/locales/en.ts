@@ -3920,6 +3920,7 @@ export const en = {
 	"privacyZonePicker.useCurrentLocation": "Use current location",
 	"privacyZonePicker.locating": "Locating…",
 	"privacyZonePicker.radiusLabel": "Radius",
+	"privacyZonePicker.radiusMeters": "{meters} m",
 	"privacyZonePicker.cancel": "Cancel",
 	"privacyZonePicker.addZone": "Add zone",
 	"privacyZonePicker.geoUnavailable": "Geolocation is not available in this browser.",

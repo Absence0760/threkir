@@ -3902,6 +3902,7 @@ export const messages = {
 	"privacyZonePicker.useCurrentLocation": "現在地を使用",
 	"privacyZonePicker.locating": "位置情報を取得中…",
 	"privacyZonePicker.radiusLabel": "半径",
+	"privacyZonePicker.radiusMeters": "{meters} m",
 	"privacyZonePicker.cancel": "キャンセル",
 	"privacyZonePicker.addZone": "ゾーンを追加",
 	"privacyZonePicker.geoUnavailable": "このブラウザでは位置情報を利用できません。",

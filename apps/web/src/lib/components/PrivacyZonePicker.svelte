@@ -223,8 +223,15 @@
 		</button>
 
 		<label class="radius">
-			<span>{m('privacyZonePicker.radiusLabel')}: <strong>{radius} m</strong></span>
-			<input type="range" min="100" max="1000" step="50" bind:value={radius} />
+			<span>{m('privacyZonePicker.radiusLabel')}: <strong>{m('privacyZonePicker.radiusMeters', { meters: radius })}</strong></span>
+			<input
+				type="range"
+				min="100"
+				max="1000"
+				step="50"
+				bind:value={radius}
+				aria-valuetext={m('privacyZonePicker.radiusMeters', { meters: radius })}
+			/>
 		</label>
 	</div>
 

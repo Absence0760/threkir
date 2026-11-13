@@ -2552,44 +2552,59 @@ class _RoutePreviewScrubber extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.directions_run,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l10n.routeDetailPreview,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+          // "Preview" names the slider, and the slider reads its position as
+          // a distance in the runner's unit, never Slider's bare percentage.
+          // The readout beside the name is the same value, so it is not read
+          // twice.
+          MergeSemantics(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.directions_run,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        l10n.routeDetailPreview,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    // Live distance readout — updates as the user drags.
+                    // Gives feedback in distance terms rather than raw
+                    // percentage so the runner knows "I'm 2.3 km in" not
+                    // "I'm at 43%".
+                    ExcludeSemantics(
+                      child: Text(
+                        reachedLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              // Live distance readout — updates as the user drags.
-              // Gives feedback in distance terms rather than raw
-              // percentage so the runner knows "I'm 2.3 km in" not
-              // "I'm at 43%".
-              Text(
-                reachedLabel,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                Slider(
+                  value: fraction.clamp(0.0, 1.0),
+                  min: 0.0,
+                  max: 1.0,
+                  semanticFormatterCallback: (v) =>
+                      UnitFormat.distance(totalDistanceM * v, unit),
+                  onChangeStart: (_) => onChangeStart(),
+                  onChanged: onChanged,
+                  onChangeEnd: (_) => onChangeEnd(),
                 ),
-              ),
-            ],
-          ),
-          Slider(
-            value: fraction.clamp(0.0, 1.0),
-            min: 0.0,
-            max: 1.0,
-            onChangeStart: (_) => onChangeStart(),
-            onChanged: onChanged,
-            onChangeEnd: (_) => onChangeEnd(),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),

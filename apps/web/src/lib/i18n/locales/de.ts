@@ -3907,6 +3907,7 @@ export const messages = {
 	"privacyZonePicker.useCurrentLocation": "Aktuellen Standort verwenden",
 	"privacyZonePicker.locating": "Standort wird ermittelt…",
 	"privacyZonePicker.radiusLabel": "Radius",
+	"privacyZonePicker.radiusMeters": "{meters} m",
 	"privacyZonePicker.cancel": "Abbrechen",
 	"privacyZonePicker.addZone": "Zone hinzufügen",
 	"privacyZonePicker.geoUnavailable": "Standortbestimmung ist in diesem Browser nicht verfügbar.",

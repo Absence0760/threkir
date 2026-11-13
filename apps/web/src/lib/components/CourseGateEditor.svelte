@@ -355,6 +355,7 @@
 						max={COURSE_GATE_HALF_WIDTH_MAX_M}
 						step="1"
 						bind:value={() => formWidth, (v) => (formWidth = widthEntry = widthFromEntry(v, formWidth))}
+						aria-valuetext="{formWidth} {m('courseLines.metresUnit')}"
 						data-testid="course-gate-width"
 					/>
 					<input

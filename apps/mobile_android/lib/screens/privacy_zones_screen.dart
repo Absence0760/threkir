@@ -374,26 +374,36 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Text(
-                      l10n.privacyZonesRadius,
-                      style: theme.textTheme.labelLarge,
-                    ),
-                    Expanded(
-                      child: Slider(
-                        min: 50,
-                        max: 500,
-                        divisions: 9,
-                        value: _draftRadius,
-                        label: l10n.privacyZonesRadiusMeters(
-                          _draftRadius.round(),
-                        ),
-                        onChanged: (v) => setState(() => _draftRadius = v),
+                // One node: "Radius" names the slider and its value is read
+                // in metres, not as Slider's default percentage.
+                child: MergeSemantics(
+                  child: Row(
+                    children: [
+                      Text(
+                        l10n.privacyZonesRadius,
+                        style: theme.textTheme.labelLarge,
                       ),
-                    ),
-                    Text(l10n.privacyZonesRadiusMeters(_draftRadius.round())),
-                  ],
+                      Expanded(
+                        child: Slider(
+                          min: 50,
+                          max: 500,
+                          divisions: 9,
+                          value: _draftRadius,
+                          label: l10n.privacyZonesRadiusMeters(
+                            _draftRadius.round(),
+                          ),
+                          semanticFormatterCallback: (v) =>
+                              l10n.privacyZonesRadiusMeters(v.round()),
+                          onChanged: (v) => setState(() => _draftRadius = v),
+                        ),
+                      ),
+                      ExcludeSemantics(
+                        child: Text(
+                          l10n.privacyZonesRadiusMeters(_draftRadius.round()),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Expanded(

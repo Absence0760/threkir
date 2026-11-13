@@ -12870,6 +12870,10 @@
   "@gearRotationsEmpty": {
     "description": "Empty-state copy on the rotations screen"
   },
+  "gearRotationsLoadFailed": "Couldn't load your rotations. Nothing has been removed. Check your connection and try again.",
+  "@gearRotationsLoadFailed": {
+    "description": "Rotations screen when the read failed; shown with Retry instead of the empty list"
+  },
   "gearRotationName": "Rotation name",
   "@gearRotationName": {
     "description": "Label/hint for the rotation-name field"
@@ -12931,6 +12935,15 @@
     "placeholders": {
       "error": {
         "type": "Object"
+      }
+    }
+  },
+  "gearRotationDeleteFailed": "Couldn't delete rotation: {error}",
+  "@gearRotationDeleteFailed": {
+    "description": "Banner when deleting a rotation fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
       }
     }
   },

@@ -9482,6 +9482,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No rotations yet. Create one to group a set of shoes or bikes.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Couldn\'t load your rotations. Nothing has been removed. Check your connection and try again.';
+
+  @override
   String get gearRotationName => 'Rotation name';
 
   @override
@@ -9527,6 +9531,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Couldn\'t save rotation: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Couldn\'t delete rotation: $error';
   }
 
   @override

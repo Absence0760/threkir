@@ -9081,6 +9081,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'ローテーションはまだありません。シューズやバイクのセットをまとめるには作成してください。';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'ローテーションを読み込めませんでした。削除されたものはありません。接続を確認して、もう一度お試しください。';
+
+  @override
   String get gearRotationName => 'ローテーション名';
 
   @override
@@ -9124,6 +9128,11 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'ローテーションを保存できませんでした: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'ローテーションを削除できませんでした: $error';
   }
 
   @override

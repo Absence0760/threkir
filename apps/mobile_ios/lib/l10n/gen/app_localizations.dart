@@ -15244,6 +15244,12 @@ abstract class AppLocalizations {
   /// **'No rotations yet. Create one to group a set of shoes or bikes.'**
   String get gearRotationsEmpty;
 
+  /// Rotations screen when the read failed; shown with Retry instead of the empty list
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your rotations. Nothing has been removed. Check your connection and try again.'**
+  String get gearRotationsLoadFailed;
+
   /// Label/hint for the rotation-name field
   ///
   /// In en, this message translates to:
@@ -15309,6 +15315,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t save rotation: {error}'**
   String gearRotationSaveFailed(Object error);
+
+  /// Banner when deleting a rotation fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete rotation: {error}'**
+  String gearRotationDeleteFailed(String error);
 
   /// Save/confirm button in the rotation member-edit sheet
   ///

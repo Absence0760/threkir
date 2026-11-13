@@ -9598,6 +9598,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Noch keine Rotationen. Erstelle eine, um eine Gruppe von Schuhen oder Rädern zusammenzufassen.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Deine Rotationen konnten nicht geladen werden. Es wurde nichts entfernt. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
   String get gearRotationName => 'Name der Rotation';
 
   @override
@@ -9643,6 +9647,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Rotation konnte nicht gespeichert werden: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Rotation konnte nicht gelöscht werden: $error';
   }
 
   @override

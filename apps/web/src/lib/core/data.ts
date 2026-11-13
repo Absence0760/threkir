@@ -10673,7 +10673,9 @@ export interface GearRotationWithMembers extends GearRotation {
 /// Fetch every rotation the signed-in user owns, each with its member
 /// gear ids. Two owner-scoped reads (rotations + the membership join)
 /// stitched client-side — both are tiny (a runner has a handful of
-/// rotations), and RLS scopes each to the owner.
+/// rotations), and RLS scopes each to the owner. Throws on a failed read, so
+/// the gear page shows an error rather than "No rotations yet" (issue #1374
+/// FS-4).
 export async function fetchMyGearRotations(): Promise<GearRotationWithMembers[]> {
 	const { data: rotations, error: rotErr } = await supabase
 		.from(TABLES.gear_rotations)
@@ -10681,14 +10683,14 @@ export async function fetchMyGearRotations(): Promise<GearRotationWithMembers[]>
 		.order('name', { ascending: true });
 	if (rotErr) {
 		console.error('fetchMyGearRotations failed', rotErr);
-		return [];
+		throw dbError(rotErr);
 	}
 	const { data: members, error: memErr } = await supabase
 		.from(TABLES.gear_rotation_members)
 		.select('rotation_id, gear_id');
 	if (memErr) {
 		console.error('fetchMyGearRotations members failed', memErr);
-		return [];
+		throw dbError(memErr);
 	}
 	const byRotation = new Map<string, string[]>();
 	for (const m of (members ?? []) as { rotation_id: string; gear_id: string }[]) {

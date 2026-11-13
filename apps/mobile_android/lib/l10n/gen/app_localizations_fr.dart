@@ -9605,6 +9605,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucune rotation pour l\'instant. Créez-en une pour regrouper un ensemble de chaussures ou de vélos.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Impossible de charger vos rotations. Rien n\'a été supprimé. Vérifiez votre connexion et réessayez.';
+
+  @override
   String get gearRotationName => 'Nom de la rotation';
 
   @override
@@ -9650,6 +9654,11 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Impossible d\'enregistrer la rotation : $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Impossible de supprimer la rotation : $error';
   }
 
   @override

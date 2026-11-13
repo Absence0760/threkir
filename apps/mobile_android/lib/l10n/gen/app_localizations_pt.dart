@@ -9585,6 +9585,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nenhum rodízio ainda. Crie um para agrupar um conjunto de ténis ou bicicletas.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Não foi possível carregar os seus rodízios. Nada foi removido. Verifique a sua ligação e tente novamente.';
+
+  @override
   String get gearRotationName => 'Nome do rodízio';
 
   @override
@@ -9630,6 +9634,11 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Não foi possível guardar o rodízio: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Não foi possível eliminar o rodízio: $error';
   }
 
   @override
@@ -32212,6 +32221,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Nenhum rodízio ainda. Crie um para agrupar um conjunto de tênis ou bicicletas.';
 
   @override
+  String get gearRotationsLoadFailed =>
+      'Não foi possível carregar seus rodízios. Nada foi removido. Verifique sua conexão e tente novamente.';
+
+  @override
   String get gearRotationName => 'Nome do rodízio';
 
   @override
@@ -32257,6 +32270,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String gearRotationSaveFailed(Object error) {
     return 'Não foi possível salvar o rodízio: $error';
+  }
+
+  @override
+  String gearRotationDeleteFailed(String error) {
+    return 'Não foi possível excluir o rodízio: $error';
   }
 
   @override

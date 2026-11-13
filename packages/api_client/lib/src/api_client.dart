@@ -1097,6 +1097,7 @@ class ApiClient {
   Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
+    run = await _runAsConsented(run);
 
     String? trackUrl;
     final existingTrackUrl = run.metadata?['track_url'] as String?;
@@ -1197,6 +1198,7 @@ class ApiClient {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
     if (runs.isEmpty) return const RunPushOutcome();
+    runs = [for (final r in runs) await _runAsConsented(r)];
 
     // Upload tracks in parallel groups. A failure on ANY single
     // upload used to bubble through `Future.wait` and poison the
@@ -2079,9 +2081,14 @@ class ApiClient {
     required Uint8List gzippedBytes,
   }) async {
     final path = '$userId/$runId.json.gz';
+    // A restored track carries whatever bpm the archive held; without
+    // health-data consent it is uploaded without it (decisions § 2513).
+    final body = await fetchHealthDataConsented()
+        ? gzippedBytes
+        : trackBytesWithoutBpm(gzippedBytes);
     await _client.storage.from(StorageBuckets.runs).uploadBinary(
           path,
-          gzippedBytes,
+          body,
           fileOptions: const FileOptions(
             // gzipped JSON bytes — `application/gzip` is the only
             // shape the `runs` bucket MIME allowlist (migration
@@ -9298,6 +9305,7 @@ class ApiClient {
     if (_client.auth.currentUser?.id == null) {
       throw StateError('not signed in');
     }
+    forgetHealthDataConsent();
     final res = await _client.rpc('grant_health_data_consent');
     if (res is! String) return null;
     return parseIsoStrict(res);
@@ -9320,7 +9328,51 @@ class ApiClient {
     if (_client.auth.currentUser?.id == null) {
       throw StateError('not signed in');
     }
+    forgetHealthDataConsent();
     await _client.rpc('withdraw_health_data_consent');
+  }
+
+  /// Whether the signed-in runner has health-data consent on record, read
+  /// through `get_my_profile()`. Heart rate and the food log are kept only
+  /// with it (decisions § 2513). Remembered for 30 s so a batch sync does not
+  /// ask once per run; a grant or a withdrawal through this client forgets
+  /// it. A failed read falls back to this session's last answer, and with
+  /// none it throws rather than guessing: "no" would strip a consenting
+  /// runner's heart rate for good, "yes" would upload it.
+  Future<bool> fetchHealthDataConsented() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return false;
+    final memo = _healthConsentMemo;
+    if (memo != null &&
+        memo.userId == uid &&
+        DateTime.now().difference(memo.at) < _healthConsentMemoTtl) {
+      return memo.consented;
+    }
+    final bool consented;
+    try {
+      consented = (await fetchMyProfile())?.healthDataConsentAt != null;
+    } catch (_) {
+      // Offline: the last answer this session had is still the runner's
+      // own, and an offline-first store must not stop on a dead network.
+      if (memo != null && memo.userId == uid) return memo.consented;
+      rethrow;
+    }
+    _healthConsentMemo = (userId: uid, consented: consented, at: DateTime.now());
+    return consented;
+  }
+
+  /// Drop the remembered answer of [fetchHealthDataConsented].
+  void forgetHealthDataConsent() => _healthConsentMemo = null;
+
+  ({String userId, bool consented, DateTime at})? _healthConsentMemo;
+  static const Duration _healthConsentMemoTtl = Duration(seconds: 30);
+
+  /// [run] as it may be uploaded: without its heart rate when the runner has
+  /// no health-data consent. The database strips the row's heart-rate keys
+  /// itself, but it cannot see the per-point bpm inside the track blob.
+  Future<Run> _runAsConsented(Run run) async {
+    if (!runHasHeartRate(run)) return run;
+    return await fetchHealthDataConsented() ? run : runWithoutHeartRate(run);
   }
 
   /// Set (or clear, when null) the signed-in user's height in centimetres

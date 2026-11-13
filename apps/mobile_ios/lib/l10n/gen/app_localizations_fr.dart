@@ -535,6 +535,17 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count activités ont été importées sans leur fréquence cardiaque',
+      one: '$count activité a été importée sans sa fréquence cardiaque',
+    );
+    return '$_temp0 : Threkir ne conserve la fréquence cardiaque qu\'avec votre consentement au traitement de vos données de santé.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Récupérez les séances enregistrées sur Apple Watch, Nike Run Club, Strava et d\'autres apps qui écrivent dans Apple Santé';
 
@@ -1302,7 +1313,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'La taille et le poids sont des données de santé sensibles. Désactivez cette option puis enregistrez pour les effacer.';
+      'La taille, le poids, la fréquence cardiaque enregistrée avec vos activités et votre journal alimentaire sont des données de santé sensibles, conservées uniquement tant que cette option est activée. Désactivez-la puis enregistrez pour les effacer.';
 
   @override
   String get bodyMetricsHeight => 'Taille';
@@ -1348,10 +1359,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Cela efface définitivement votre taille enregistrée, votre genre, tout votre historique de poids et toute information sur le cycle ou la grossesse, et votre date de naissance n\'est plus utilisée pour personnaliser votre entraînement. C\'est irréversible.';
+      'Cela efface définitivement votre taille enregistrée, votre genre, tout votre historique de poids, toute information sur le cycle ou la grossesse, la fréquence cardiaque enregistrée avec vos activités et votre journal alimentaire, et votre date de naissance n\'est plus utilisée pour personnaliser votre entraînement. Vos activités elles-mêmes sont conservées. C\'est irréversible.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirer et effacer';
+
+  @override
+  String get healthConsentFoodTitle =>
+      'Votre journal alimentaire est une donnée de santé';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir ne conserve un journal alimentaire qu\'avec votre consentement au traitement de vos données de santé. Rien n\'est enregistré tant que vous ne l\'avez pas donné.';
+
+  @override
+  String get healthConsentGiveAction => 'Donner mon consentement';
 
   @override
   String get bodyMetricsSaved => 'Enregistré';
@@ -2332,6 +2354,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runSyncing => 'Synchronisation…';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'La fréquence cardiaque de cette activité n\'a pas été enregistrée : Threkir ne conserve la fréquence cardiaque qu\'avec votre consentement au traitement de vos données de santé.';
 
   @override
   String get runDone => 'Terminé';

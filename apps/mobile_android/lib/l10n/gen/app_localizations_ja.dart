@@ -517,6 +517,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count件のアクティビティを心拍数なしでインポートしました',
+    );
+    return '$_temp0。Threkir は、健康データの利用に同意した場合にのみ心拍数を保存します。';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Apple Watch、Nike Run Club、Strava など、ヘルスケアに書き込む各アプリで記録したワークアウトを取り込みます';
 
@@ -1242,7 +1252,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      '身長と体重は、特別な種類の個人データにあたる健康データです。オフにして保存すると、これらのデータが削除されます。';
+      '身長、体重、アクティビティとともに記録された心拍数、食事記録は、特別な種類の個人データにあたる健康データで、このオプションがオンの間だけ保存されます。オフにして保存すると、これらのデータが削除されます。';
 
   @override
   String get bodyMetricsHeight => '身長';
@@ -1282,10 +1292,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      '保存されている身長、性別、体重の履歴と、月経周期や妊娠に関する情報（ある場合）が完全に削除されます。また、生年月日はトレーニングのパーソナライズに使われなくなります。この操作は元に戻せません。';
+      '保存されている身長、性別、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに保存された心拍数、食事記録が完全に削除されます。また、生年月日はトレーニングのパーソナライズに使われなくなります。アクティビティ自体は残ります。この操作は元に戻せません。';
 
   @override
   String get bodyMetricsWithdrawConfirm => '撤回して削除';
+
+  @override
+  String get healthConsentFoodTitle => '食事記録は健康データです';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir は、健康データの利用に同意した場合にのみ食事記録を保存します。同意するまで何も記録されません。';
+
+  @override
+  String get healthConsentGiveAction => '同意する';
 
   @override
   String get bodyMetricsSaved => '保存しました';
@@ -2224,6 +2244,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSyncing => '同期中…';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'このアクティビティの心拍数は保存されていません。Threkir は、健康データの利用に同意した場合にのみ心拍数を保存します。';
 
   @override
   String get runDone => '完了';

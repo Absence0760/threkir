@@ -17,6 +17,7 @@ import 'package:ui_kit/ui_kit.dart'
         SelectionHint,
         SheetScaffold;
 
+import '../health_consent_gate.dart';
 import '../widgets/grisnir_moments.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
@@ -1131,6 +1132,14 @@ class _RunsScreenState extends State<RunsScreen>
   Future<void> _openAddMeal() async {
     final store = widget.foodStore;
     if (store == null) return;
+    // A food log is health data, kept only with consent (decisions § 2513).
+    if (!await ensureFoodLogConsent(context,
+            api: widget.apiClient,
+            settingsSync: widget.settingsSync,
+            preferences: widget.preferences) ||
+        !mounted) {
+      return;
+    }
     final saved = await showNutritionLogSheet(context: context, store: store);
     if (saved == true) await _drainModalitySync(store.syncWithServer);
   }

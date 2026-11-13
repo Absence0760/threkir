@@ -539,6 +539,17 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count atividades foram importadas sem a frequência cardíaca',
+      one: '$count atividade foi importada sem a frequência cardíaca',
+    );
+    return '$_temp0: o Threkir só guarda a frequência cardíaca com o seu consentimento para dados de saúde.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Importe treinos gravados no Apple Watch, Nike Run Club, Strava e outras apps que gravam na app Saúde';
 
@@ -1305,7 +1316,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Altura e peso são dados de saúde de categoria especial. Desative e guarde para os apagar.';
+      'A altura, o peso, a frequência cardíaca registada com as suas atividades e o seu registo alimentar são dados de saúde de categoria especial, guardados apenas enquanto esta opção estiver ativa. Desative e guarde para os apagar.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -1351,10 +1362,21 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isto apaga permanentemente a sua altura guardada, o seu género, todo o seu histórico de peso e quaisquer dados do ciclo menstrual ou de gravidez, e a sua data de nascimento deixa de ser usada para personalizar o seu treino. Isto não pode ser desfeito.';
+      'Isto apaga permanentemente a sua altura guardada, o seu género, todo o seu histórico de peso, quaisquer dados do ciclo menstrual ou de gravidez, a frequência cardíaca guardada com as suas atividades e o seu registo alimentar, e a sua data de nascimento deixa de ser usada para personalizar o seu treino. As suas atividades mantêm-se. Isto não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
+
+  @override
+  String get healthConsentFoodTitle =>
+      'O seu registo alimentar é um dado de saúde';
+
+  @override
+  String get healthConsentFoodBody =>
+      'O Threkir só guarda um registo alimentar com o seu consentimento para dados de saúde. Nada é registado até o dar.';
+
+  @override
+  String get healthConsentGiveAction => 'Dar consentimento';
 
   @override
   String get bodyMetricsSaved => 'Guardado';
@@ -2331,6 +2353,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runSyncing => 'A sincronizar…';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'A frequência cardíaca desta atividade não foi guardada: o Threkir só guarda a frequência cardíaca com o seu consentimento para dados de saúde.';
 
   @override
   String get runDone => 'Concluído';
@@ -23647,6 +23673,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count atividades foram importadas sem a frequência cardíaca',
+      one: '$count atividade foi importada sem a frequência cardíaca',
+    );
+    return '$_temp0: o Threkir só salva a frequência cardíaca com seu consentimento para dados de saúde.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Importe treinos gravados no Apple Watch, Nike Run Club, Strava e outros apps que gravam no app Saúde';
 
@@ -24411,7 +24448,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Altura e peso são dados de saúde de categoria especial. Desative esta opção e salve para apagá-los.';
+      'Altura, peso, a frequência cardíaca registrada com suas atividades e seu registro alimentar são dados de saúde de categoria especial, salvos apenas enquanto esta opção estiver ativada. Desative esta opção e salve para apagá-los.';
 
   @override
   String get bodyMetricsHeight => 'Altura';
@@ -24457,10 +24494,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Isso apaga permanentemente sua altura salva, seu gênero, todo o seu histórico de peso e quaisquer dados de ciclo ou gravidez, e sua data de nascimento deixa de ser usada para personalizar seu treino. Não pode ser desfeito.';
+      'Isso apaga permanentemente sua altura salva, seu gênero, todo o seu histórico de peso, quaisquer dados de ciclo ou gravidez, a frequência cardíaca salva com suas atividades e seu registro alimentar, e sua data de nascimento deixa de ser usada para personalizar seu treino. Suas atividades continuam salvas. Não pode ser desfeito.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Retirar e apagar';
+
+  @override
+  String get healthConsentFoodTitle =>
+      'Seu registro alimentar é um dado de saúde';
+
+  @override
+  String get healthConsentFoodBody =>
+      'O Threkir só salva um registro alimentar com seu consentimento para dados de saúde. Nada é registrado até você dar esse consentimento.';
+
+  @override
+  String get healthConsentGiveAction => 'Dar consentimento';
 
   @override
   String get bodyMetricsSaved => 'Salvo';
@@ -25438,6 +25486,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runSyncing => 'Sincronizando…';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'A frequência cardíaca desta atividade não foi salva: o Threkir só salva a frequência cardíaca com seu consentimento para dados de saúde.';
 
   @override
   String get runDone => 'Pronto';

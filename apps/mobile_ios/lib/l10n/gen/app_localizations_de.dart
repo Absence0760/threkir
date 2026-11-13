@@ -538,6 +538,17 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aktivitäten wurden ohne Herzfrequenz importiert',
+      one: '1 Aktivität wurde ohne Herzfrequenz importiert',
+    );
+    return '$_temp0: Threkir speichert die Herzfrequenz nur mit deiner Einwilligung zur Verarbeitung von Gesundheitsdaten.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Hole Workouts, die du auf der Apple Watch, in Nike Run Club, Strava und anderen Apps aufgezeichnet hast, die in Apple Health schreiben';
 
@@ -1305,7 +1316,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Größe und Gewicht sind Gesundheitsdaten und gehören zu den besonderen Kategorien personenbezogener Daten. Schalte die Option aus und speichere, um sie zu löschen.';
+      'Größe, Gewicht, die mit deinen Aktivitäten aufgezeichnete Herzfrequenz und dein Ernährungstagebuch sind Gesundheitsdaten und gehören zu den besonderen Kategorien personenbezogener Daten. Sie werden nur gespeichert, solange diese Option an ist. Schalte sie aus und speichere, um sie zu löschen.';
 
   @override
   String get bodyMetricsHeight => 'Größe';
@@ -1351,10 +1362,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'Dadurch werden deine gespeicherte Größe, dein Geschlecht, dein Gewichtsverlauf und alle Angaben zu Zyklus oder Schwangerschaft dauerhaft gelöscht, und dein Geburtsdatum wird nicht mehr verwendet, um dein Training zu personalisieren. Das kann nicht rückgängig gemacht werden.';
+      'Dadurch werden deine gespeicherte Größe, dein Geschlecht, dein Gewichtsverlauf, alle Angaben zu Zyklus oder Schwangerschaft, die zu deinen Aktivitäten gespeicherte Herzfrequenz und dein Ernährungstagebuch dauerhaft gelöscht, und dein Geburtsdatum wird nicht mehr verwendet, um dein Training zu personalisieren. Deine Aktivitäten selbst bleiben erhalten. Das kann nicht rückgängig gemacht werden.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Widerrufen & löschen';
+
+  @override
+  String get healthConsentFoodTitle =>
+      'Dein Ernährungstagebuch sind Gesundheitsdaten';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir speichert ein Ernährungstagebuch nur mit deiner Einwilligung zur Verarbeitung von Gesundheitsdaten. Bis du sie erteilst, wird nichts gespeichert.';
+
+  @override
+  String get healthConsentGiveAction => 'Einwilligen';
 
   @override
   String get bodyMetricsSaved => 'Gespeichert';
@@ -2332,6 +2354,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runSyncing => 'Synchronisiere …';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'Die Herzfrequenz dieser Aktivität wurde nicht gespeichert: Threkir speichert die Herzfrequenz nur mit deiner Einwilligung zur Verarbeitung von Gesundheitsdaten.';
 
   @override
   String get runDone => 'Fertig';

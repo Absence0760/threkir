@@ -533,6 +533,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count activities were imported without their heart rate',
+      one: '1 activity was imported without its heart rate',
+    );
+    return '$_temp0: Threkir keeps heart rate only with your health-data consent.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Pull workouts you\'ve recorded on Apple Watch, Nike Run Club, Strava, and other apps that write to Apple Health';
 
@@ -1284,7 +1295,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Height and weight are special-category health data. Turn this off and save to erase them.';
+      'Height, weight, the heart rate recorded with your activities and your food log are special-category health data, kept only while this is on. Turn it off and save to erase them.';
 
   @override
   String get bodyMetricsHeight => 'Height';
@@ -1328,10 +1339,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'This permanently erases your saved height, gender, weight history and any cycle or pregnancy details, and your date of birth is no longer used to personalise your training. This can\'t be undone.';
+      'This permanently erases your saved height, gender, weight history, any cycle or pregnancy details, the heart rate stored with your activities and your food log, and your date of birth is no longer used to personalise your training. Your activities themselves are kept. This can\'t be undone.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Withdraw & erase';
+
+  @override
+  String get healthConsentFoodTitle => 'Your food log is health data';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.';
+
+  @override
+  String get healthConsentGiveAction => 'Give consent';
 
   @override
   String get bodyMetricsSaved => 'Saved';
@@ -2301,6 +2322,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runSyncing => 'Syncing...';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'Heart rate from this activity wasn\'t saved: Threkir keeps heart rate only with your health-data consent.';
 
   @override
   String get runDone => 'Done';

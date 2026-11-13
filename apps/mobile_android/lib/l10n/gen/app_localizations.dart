@@ -857,6 +857,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{1 run is saved on this device — its upload to the cloud didn\'t go through. It will retry on the next sync.} other{{count} runs are saved on this device — their upload to the cloud didn\'t go through. They will retry on the next sync.}}'**
   String importStatusCloudPushDeferred(int count);
 
+  /// Note after an import whose activities were stored without heart rate, for want of health-data consent
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 activity was imported without its heart rate} other{{count} activities were imported without their heart rate}}: Threkir keeps heart rate only with your health-data consent.'**
+  String importHeartRateNotKept(int count);
+
   /// iOS subtitle naming apps that write to Apple Health
   ///
   /// In en, this message translates to:
@@ -2138,7 +2144,7 @@ abstract class AppLocalizations {
   /// Explanation under the health-data consent toggle
   ///
   /// In en, this message translates to:
-  /// **'Height and weight are special-category health data. Turn this off and save to erase them.'**
+  /// **'Height, weight, the heart rate recorded with your activities and your food log are special-category health data, kept only while this is on. Turn it off and save to erase them.'**
   String get bodyMetricsConsentSubtitle;
 
   /// Label for the height input (centimetres)
@@ -2216,7 +2222,7 @@ abstract class AppLocalizations {
   /// No description provided for @bodyMetricsWithdrawBody.
   ///
   /// In en, this message translates to:
-  /// **'This permanently erases your saved height, gender, weight history and any cycle or pregnancy details, and your date of birth is no longer used to personalise your training. This can\'t be undone.'**
+  /// **'This permanently erases your saved height, gender, weight history, any cycle or pregnancy details, the heart rate stored with your activities and your food log, and your date of birth is no longer used to personalise your training. Your activities themselves are kept. This can\'t be undone.'**
   String get bodyMetricsWithdrawBody;
 
   /// No description provided for @bodyMetricsWithdrawConfirm.
@@ -2224,6 +2230,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Withdraw & erase'**
   String get bodyMetricsWithdrawConfirm;
+
+  /// Title of the dialog asking for health-data consent before the first food is logged (decisions § 2513)
+  ///
+  /// In en, this message translates to:
+  /// **'Your food log is health data'**
+  String get healthConsentFoodTitle;
+
+  /// Body of the dialog asking for health-data consent before food is logged
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.'**
+  String get healthConsentFoodBody;
+
+  /// Button that opens the screen where health-data consent is given
+  ///
+  /// In en, this message translates to:
+  /// **'Give consent'**
+  String get healthConsentGiveAction;
 
   /// Confirmation toast after saving body metrics
   ///
@@ -3916,6 +3940,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Syncing...'**
   String get runSyncing;
+
+  /// Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2513)
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate from this activity wasn\'t saved: Threkir keeps heart rate only with your health-data consent.'**
+  String get runHeartRateNotSaved;
 
   /// Button on the finish summary that dismisses back to the idle run screen
   ///

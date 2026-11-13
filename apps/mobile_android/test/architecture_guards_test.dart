@@ -5739,6 +5739,10 @@ void main() {
       // Cancel undoes from the race card; Cancel and the blocking dialog's OK
       // leave the race unarmed. Nothing is discarded either way.
       'widgets/race_preflight_dialog.dart::blocked': 1,
+      // Asks for health-data consent before the first food is logged
+      // (decisions § 2513). Cancel logs nothing; "Give consent" only opens
+      // the consent screen. Nothing is discarded either way.
+      'health_consent_gate.dart::l10n.healthConsentFoodTitle': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

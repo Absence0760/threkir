@@ -14,7 +14,8 @@ import 'package:ui_kit/ui_kit.dart'
         PageHeader,
         ProgressBar,
         PushedPage,
-        SectionHeader;
+        SectionHeader,
+        TermValueRow;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -488,25 +489,23 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
               hasLeading: false,
             )
           else if (_weeksError)
-            Row(
-              children: [
-                Expanded(child: Text(l10n.planLibraryLoadError)),
-                TextButton(
-                  onPressed: _loadWeeks,
-                  child: Text(l10n.planLibraryRetry),
-                ),
-              ],
+            AppErrorState.inline(
+              message: l10n.planLibraryLoadError,
+              onRetry: _loadWeeks,
             )
           else
+            // A week and its summary share a line while they fit; at large
+            // text the summary drops under the week. A ListTile's trailing
+            // summary took the whole row at 2x on 320 dp and threw.
             for (final w in _weeks)
-              ListTile(
+              Padding(
                 key: Key('planLibraryWeek-${w.weekIndex}'),
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(l10n.planLibraryPreviewWeek(w.weekIndex + 1)),
-                trailing: Text(
-                  _weekSummary(l10n, w.id),
-                  style: theme.textTheme.bodySmall?.copyWith(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: TermValueRow(
+                  term: l10n.planLibraryPreviewWeek(w.weekIndex + 1),
+                  value: _weekSummary(l10n, w.id),
+                  termStyle: theme.textTheme.bodyMedium,
+                  valueStyle: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),

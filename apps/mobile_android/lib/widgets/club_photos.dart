@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show OverlayIconButton;
+import 'package:ui_kit/ui_kit.dart' show ListCard, OverlayIconButton, SectionHeader;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth_error.dart';
@@ -286,36 +286,18 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 8),
-          child: Row(
-            children: [
-              Icon(Icons.photo_library_outlined,
-                  size: 18, color: cs.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(l10n.clubPhotosTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium),
-                    ),
-                    if (_photos.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Text('(${_photos.length})',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant)),
-                    ],
-                  ],
-                ),
-              ),
-              if (widget.canUpload)
-                TextButton.icon(
-                  onPressed: _pending == null ? _pickPhoto : null,
-                  icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-                  label: Text(l10n.clubPhotosAdd),
-                ),
-            ],
+          child: SectionHeader.title(
+            icon: Icons.photo_library_outlined,
+            label: _photos.isEmpty
+                ? l10n.clubPhotosTitle
+                : '${l10n.clubPhotosTitle} (${_photos.length})',
+            trailing: widget.canUpload
+                ? TextButton.icon(
+                    onPressed: _pending == null ? _pickPhoto : null,
+                    icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                    label: Text(l10n.clubPhotosAdd),
+                  )
+                : null,
           ),
         ),
         if (_photos.isEmpty && widget.canUpload && _pending == null)
@@ -326,15 +308,10 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
                     ?.copyWith(color: cs.onSurfaceVariant)),
           ),
         if (_pending != null && widget.canUpload)
-          Container(
+          ListCard(
             margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(
-                  color: cs.outlineVariant, style: BorderStyle.solid),
-              borderRadius: BorderRadius.circular(12),
-              color: cs.surfaceContainerHighest,
-            ),
+            dense: true,
+            color: cs.surfaceContainerHighest,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

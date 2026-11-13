@@ -13,6 +13,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_safety_screen.dart';
 import '../lib/settings_sync.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(WidgetTester tester) async {
   await tester.pumpWidget(
@@ -728,6 +729,9 @@ void main() {
         250,
         scrollable: find.byType(Scrollable).first,
       );
+      // scrollUntilVisible stops once any of it shows; bring it all in.
+      await tester.ensureVisible(confirm);
+      await tester.pumpAndSettle();
       await tester.tap(confirm);
       await tester.pump();
 
@@ -775,7 +779,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -846,6 +850,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _scrollTo(tester, find.byType(DropdownButton<int?>));
       expect(
           tester.widget<DropdownButton<int?>>(find.byType(DropdownButton<int?>))
               .value,
@@ -1076,7 +1081,7 @@ void main() {
     testWidgets('arming the overdue alert turns the unset switch on',
         (tester) async {
       final sync = await pumpGateOpen(tester);
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -1088,7 +1093,7 @@ void main() {
 
     testWidgets('an explicit off wins over the default', (tester) async {
       final sync = await pumpGateOpen(tester);
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
@@ -1112,12 +1117,23 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Off'));
+      await tester.tap(await _scrollTo(tester, find.text('Off')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('30 min').last);
       await tester.pumpAndSettle();
       await _scrollTo(tester, find.text('Auto live share'));
       expect(autoToggle(tester).value, isFalse);
     });
+  });
+
+  worstCaseTestWidgets('the safety page', (tester, locale) async {
+    final sync = await tester.runAsync(_fakeSync);
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SettingsSafetyScreen(api: null, settingsSync: sync),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Safety');
   });
 }

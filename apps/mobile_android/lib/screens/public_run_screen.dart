@@ -321,14 +321,10 @@ class _LiveBanner extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final live = AppSemanticColors.of(context).success;
-    return Container(
+    return ListCard(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: live.withValues(alpha: 0.12),
-        border: Border.all(color: live),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      color: live.withValues(alpha: 0.12),
+      outline: live,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -340,10 +336,12 @@ class _LiveBanner extends StatelessWidget {
                 decoration: BoxDecoration(shape: BoxShape.circle, color: live),
               ),
               const SizedBox(width: 8),
-              Text(
-                l10n.publicRunLiveTitle,
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700, color: live),
+              Flexible(
+                child: Text(
+                  l10n.publicRunLiveTitle,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700, color: live),
+                ),
               ),
             ],
           ),

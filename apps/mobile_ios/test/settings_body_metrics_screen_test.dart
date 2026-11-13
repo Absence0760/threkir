@@ -12,6 +12,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/settings_body_metrics_screen.dart';
 import '../lib/settings_sync.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 /// A settings-sync whose universal-bag write always fails — drives the
 /// _putBag error-surfacing path for the activity / goal pickers.
@@ -683,5 +684,16 @@ void main() {
       expect(find.byType(SettingsBodyMetricsScreen), findsNothing);
       expect(find.text('open'), findsOneWidget);
     });
+  });
+
+  worstCaseTestWidgets('the body metrics form', (tester, locale) async {
+    final prefs = await tester.runAsync(_prefs);
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SettingsBodyMetricsScreen(
+          api: null, settingsSync: null, preferences: prefs!),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Body metrics');
   });
 }

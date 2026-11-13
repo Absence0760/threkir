@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:ui_kit/ui_kit.dart' show SectionHeader;
+import 'package:ui_kit/ui_kit.dart' show PageHeader, PushedPage, SectionHeader;
 
 import '../l10n/gen/app_localizations.dart';
 import '../legal_links.dart';
@@ -105,11 +105,12 @@ class _SettingsAboutScreenState extends State<SettingsAboutScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.aboutTitle)),
+    return PushedPage(
+      title: l10n.aboutTitle,
       body: SafeArea(
         child: ListView(
           children: [
+            PageHeader(title: l10n.aboutTitle),
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: Text(l10n.aboutVersion),

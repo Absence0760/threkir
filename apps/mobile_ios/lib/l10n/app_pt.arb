@@ -1931,7 +1931,6 @@
   "planLibrarySubheading": "Planos publicados por outros corredores. Clone um na sua conta para começar a treinar.",
   "planLibrarySearchHint": "Procurar planos por nome",
   "planLibraryLoadError": "Não foi possível carregar a biblioteca. Tente novamente.",
-  "planLibraryRetry": "Tentar novamente",
   "planLibraryEmpty": "Ainda não há planos publicados.",
   "planLibraryEmptySearch": "Nenhum plano corresponde a “{query}”.",
   "planLibraryByAuthor": "por {author}",

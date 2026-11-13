@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/main.dart' show pendingStartWorkout;
 import '../lib/plan_current.dart' show PlanWorkoutStatus;
@@ -337,15 +338,11 @@ void main() {
         Theme.of(context),
         PlanWorkoutStatus.done,
       );
-      final box =
-          tester
-                  .widget<Container>(
-                    find.byKey(const Key('workoutDetailCompleted')),
-                  )
-                  .decoration!
-              as BoxDecoration;
-      expect(box.color, done.fill);
-      expect((box.border! as Border).top.color, done.outline);
+      final card = tester.widget<ListCard>(
+        find.byKey(const Key('workoutDetailCompleted')),
+      );
+      expect(card.color, done.fill);
+      expect(card.outline, done.outline);
 
       await tester.tap(find.byKey(const Key('workoutDetailMarkNotDone')));
       await pumpUntil(

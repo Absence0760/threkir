@@ -11,6 +11,8 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_routine_store.dart';
 import '../lib/screens/routine_detail_screen.dart';
 import '../lib/social_service.dart';
+import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 Future<({LocalRoutineStore store, LocalGymStore gym, Directory dir})> _fixture(
     String tag) async {
@@ -152,6 +154,77 @@ List<({Map<String, dynamic> routine, List<StoredRoutineExercise> exercises})>
         ];
 
 void main() {
+  worstCaseTestWidgets('Routine detail', (tester, locale) async {
+    final f = await _fixture('wc');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    await tester.runAsync(() => f.store.replaceFromServer([
+          (
+            routine: _row('r-wc',
+                'Upper body strength and conditioning, heavy week four',
+                authorId: 'me'),
+            exercises: [
+              StoredRoutineExercise(
+                exerciseName: 'Barbell Romanian deadlift with pause at knee',
+                exerciseKey: 'romanian_deadlift',
+                supersetGroup: 1,
+                supersetOrder: 0,
+                progression: 'double_progression',
+                sets: [
+                  StoredRoutineSet(
+                      setType: 'warmup', targetRepsMin: 5, targetWeightKg: 60),
+                  StoredRoutineSet(
+                      targetRepsMin: 8,
+                      targetRepsMax: 12,
+                      targetWeightKg: 142.5,
+                      targetRpe: 8.5,
+                      restS: 180),
+                ],
+              ),
+              StoredRoutineExercise(
+                exerciseName: 'Weighted plank hold',
+                exerciseKey: 'plank',
+                supersetGroup: 1,
+                supersetOrder: 1,
+                modality: 'duration',
+                sets: [StoredRoutineSet(targetDurationS: 95)],
+              ),
+              StoredRoutineExercise(
+                exerciseName: 'Rowing machine intervals',
+                exerciseKey: 'row',
+                modality: 'distance_duration',
+                sets: [
+                  StoredRoutineSet(targetDistanceM: 2000, targetDurationS: 480),
+                ],
+              ),
+            ],
+          ),
+        ]));
+    final api = _HistoryApi(
+      aggregate: _aggregate([
+        _session('s1', '2026-05-03T09:00:00Z',
+            title: 'Upper body strength and conditioning, heavy week four',
+            metadata: {'routine_id': 'r-wc', 'gym_adherence': 'partial'}),
+        _session('s2', '2026-04-26T09:00:00Z',
+            metadata: {'routine_id': 'r-wc', 'gym_adherence': 'completed'}),
+      ]),
+    );
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoutineDetailScreen(
+        api: api,
+        store: f.store,
+        gymStore: f.gym,
+        routineId: 'r-wc',
+        social: _FakeSocial(const []),
+        viewerIdOverride: 'me',
+      ),
+    ));
+    await pumpUntil(tester, () => api.calls > 0,
+        describe: 'the routine history read');
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Routine detail');
+  });
+
   testWidgets('renders planned targets + the Start FAB', (tester) async {
     final f = await _fixture('targets');
     try {

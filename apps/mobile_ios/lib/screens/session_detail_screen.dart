@@ -334,6 +334,17 @@ class _SessionRunnerPageState extends State<_SessionRunnerPage> {
     } catch (e) {
       debugPrint('session runner wakelock enable failed: $e');
     }
+  }
+
+  bool _started = false;
+
+  // The first step announces itself in the reader's language, which
+  // initState cannot read yet.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
     _enterStep();
   }
 
@@ -535,25 +546,34 @@ class _SessionRunnerPageState extends State<_SessionRunnerPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title ?? l10n.sessionTitle),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          tooltip: l10n.sessionRunAbandon,
-          onPressed: _confirmAbandon,
+    final title = widget.title ?? l10n.sessionTitle;
+    // Not a PushedPage: its close button abandons the session. It says the
+    // plan's name above the step, and the bar repeats it once that heading
+    // has scrolled away.
+    return PageTitleScope(
+      child: Scaffold(
+        appBar: AppBar(
+          title: PageBarTitle(title),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: l10n.sessionRunAbandon,
+            onPressed: _confirmAbandon,
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: ValueListenableBuilder<SessionBandState>(
-          valueListenable: _band,
-          builder: (_, state, child) => _SessionExecutionBand(
-            state: state,
-            paused: _paused,
-            onDone: () => _advance(SessionStepStatus.completed),
-            onSkip: () => _advance(SessionStepStatus.skipped),
-            onPause: _togglePause,
-            onAbandon: _confirmAbandon,
+        body: PageBody(
+          child: SafeArea(
+            child: ValueListenableBuilder<SessionBandState>(
+              valueListenable: _band,
+              builder: (_, state, child) => _SessionExecutionBand(
+                title: title,
+                state: state,
+                paused: _paused,
+                onDone: () => _advance(SessionStepStatus.completed),
+                onSkip: () => _advance(SessionStepStatus.skipped),
+                onPause: _togglePause,
+                onAbandon: _confirmAbandon,
+              ),
+            ),
           ),
         ),
       ),
@@ -563,6 +583,7 @@ class _SessionRunnerPageState extends State<_SessionRunnerPage> {
 
 class _SessionExecutionBand extends StatelessWidget {
   const _SessionExecutionBand({
+    required this.title,
     required this.state,
     required this.paused,
     required this.onDone,
@@ -571,6 +592,7 @@ class _SessionExecutionBand extends StatelessWidget {
     required this.onAbandon,
   });
 
+  final String title;
   final SessionBandState state;
   final bool paused;
   final VoidCallback onDone;
@@ -608,70 +630,81 @@ class _SessionExecutionBand extends StatelessWidget {
         ? ((target - state.remainingS!) / target).clamp(0.0, 1.0)
         : 0.0;
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            l10n.sessionRunStepCount(state.index + 1, state.total),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.labelMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+    // Centred while it fits, scrolling when it does not: at a large text
+    // size the step, timer, cue and four buttons outgrow a phone.
+    return LayoutBuilder(
+      builder: (context, viewport) => SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: (viewport.maxHeight - 32).clamp(0, double.infinity),
           ),
-          const SizedBox(height: 12),
-          Text(
-            _movementName(l10n, step),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall,
-          ),
-          if (isTimed) ...[
-            const SizedBox(height: 24),
-            Text(
-              l10n.sessionRunRemaining(state.remainingS!),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.displayMedium?.copyWith(
-                fontFeatures: const [FontFeature.tabularFigures()],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PageHeading(title, style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              Text(
+                l10n.sessionRunStepCount(state.index + 1, state.total),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
-            ),
-            const SizedBox(height: 12),
-            ProgressBar(value: progress),
-          ],
-          if (step.cue != null && step.cue!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              step.cue!,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ],
-          const SizedBox(height: 32),
-          FilledButton(
-            onPressed: onDone,
-            child: Text(l10n.sessionRunDone),
+              const SizedBox(height: 12),
+              Text(
+                _movementName(l10n, step),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall,
+              ),
+              if (isTimed) ...[
+                const SizedBox(height: 24),
+                Text(
+                  l10n.sessionRunRemaining(state.remainingS!),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.displayMedium?.copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ProgressBar(value: progress),
+              ],
+              if (step.cue != null && step.cue!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  step.cue!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+              const SizedBox(height: 32),
+              FilledButton(
+                onPressed: onDone,
+                child: Text(l10n.sessionRunDone),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: onSkip,
+                child: Text(l10n.sessionRunSkip),
+              ),
+              if (isTimed) ...[
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: onPause,
+                  child: Text(paused ? l10n.sessionRunResume : l10n.sessionRunPause),
+                ),
+              ],
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: onAbandon,
+                style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error),
+                child: Text(l10n.sessionRunAbandon),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: onSkip,
-            child: Text(l10n.sessionRunSkip),
-          ),
-          if (isTimed) ...[
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: onPause,
-              child: Text(paused ? l10n.sessionRunResume : l10n.sessionRunPause),
-            ),
-          ],
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: onAbandon,
-            style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error),
-            child: Text(l10n.sessionRunAbandon),
-          ),
-        ],
+        ),
       ),
     );
   }

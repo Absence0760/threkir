@@ -22,6 +22,7 @@ import 'package:ui_kit/ui_kit.dart'
         DetailPage,
         KeepAliveChild,
         ListCard,
+        MapOverlayChip,
         StatGrid,
         StatTile,
         StatusPill,
@@ -1451,22 +1452,16 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         if (_loadingTrack)
           Positioned(
             top: 12,
+            left: 12,
             right: 12,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(l10n.runDetailLoadingGps,
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ],
+            child: Align(
+              alignment: AlignmentDirectional.topEnd,
+              child: MapOverlayChip(
+                label: l10n.runDetailLoadingGps,
+                leading: const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
             ),
@@ -1474,20 +1469,14 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         if (_trackFetchFailed && run.track.isEmpty)
           Positioned(
             top: 12,
+            left: 12,
             right: 12,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.cloud_off, size: 14,
-                        color: Theme.of(context).colorScheme.outline),
-                    const SizedBox(width: 8),
-                    Text(l10n.runDetailGpsUnavailable,
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ],
-                ),
+            child: Align(
+              alignment: AlignmentDirectional.topEnd,
+              child: MapOverlayChip(
+                label: l10n.runDetailGpsUnavailable,
+                leading: Icon(Icons.cloud_off,
+                    size: 14, color: Theme.of(context).colorScheme.outline),
               ),
             ),
           ),
@@ -3595,13 +3584,10 @@ class _RouteSuggestBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return ListCard(
+      margin: EdgeInsets.zero,
+      dense: true,
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Row(
         children: [
           Icon(Icons.link, color: theme.colorScheme.primary),

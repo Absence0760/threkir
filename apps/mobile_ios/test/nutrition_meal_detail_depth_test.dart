@@ -88,7 +88,8 @@ void main() {
       expect(find.descendant(of: find.byType(PageHeading), matching: find.text('Snack')),
           findsOneWidget);
       expect(find.text('Almonds'), findsOneWidget);
-      expect(find.text('170 kcal'), findsOneWidget);
+      // The slot's total and the item's own line.
+      expect(find.text('170 kcal', findRichText: true), findsNWidgets(2));
     } finally {
       f.dir.deleteSync(recursive: true);
     }

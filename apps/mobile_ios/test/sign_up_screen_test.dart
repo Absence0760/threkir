@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/sign_up_screen.dart';
+import 'worst_case_layout.dart';
 
 class _FakeApiClient extends ApiClient {
   String? capturedResendEmail;
@@ -848,5 +849,12 @@ void main() {
       expect(find.textContaining('already'), findsNothing);
       await tester.pumpAndSettle(const Duration(seconds: 6));
     });
+  });
+
+  worstCaseTestWidgets('the sign-up form', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+        locale: locale, home: SignUpScreen(apiClient: _FakeApiClient())));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Sign up');
   });
 }

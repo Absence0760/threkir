@@ -8,7 +8,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
+import 'package:ui_kit/ui_kit.dart'
+    show
+        AppSemanticColors,
+        PageHeader,
+        PushedPage;
 
 import '../ai_disclosure.dart';
 import '../ai_disclosure_memo.dart';
@@ -1192,11 +1196,12 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     final theme = Theme.of(context);
     final signedIn = widget.apiClient?.userId != null;
     final email = widget.apiClient?.userEmail ?? '';
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.settingsAccountTitle)),
+    return PushedPage(
+      title: l10n.settingsAccountTitle,
       body: SafeArea(
         child: ListView(
           children: [
+            PageHeader(title: l10n.settingsAccountTitle),
             ListTile(
               leading: CircleAvatar(
                 backgroundColor: signedIn

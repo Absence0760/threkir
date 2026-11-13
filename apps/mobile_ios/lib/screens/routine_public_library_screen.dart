@@ -133,10 +133,15 @@ class _RoutinePublicLibraryScreenState
     final theme = Theme.of(context);
     return PushedPage(
       title: l10n.gymLibraryTitle,
-      body: Column(
+      // The heading scrolls away with the list; the search stays pinned
+      // above it. Fixed, the two took most of a 320 x 640 phone at 2x text.
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(child: PageHeader(title: l10n.gymLibraryTitle)),
+        ],
+        body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PageHeader(title: l10n.gymLibraryTitle),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
@@ -202,6 +207,7 @@ class _RoutinePublicLibraryScreenState
                           ),
           ),
         ],
+      ),
       ),
     );
   }

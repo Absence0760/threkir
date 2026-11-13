@@ -7,6 +7,7 @@ import '../lib/course_drive.dart';
 import '../lib/course_drive_location.dart' show DrivePosition;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/course_drive_screen.dart';
+import 'worst_case_layout.dart';
 
 /// Due north from 37.5,-77.45, one point every ~111 m.
 List<DrivePoint> north(int n) => [
@@ -54,10 +55,19 @@ class _Harness {
   final launched = <Uri>[];
   var acksWritten = 0;
 
-  Widget app() => MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: CourseDriveScreen(
+  Widget app({Locale? worstCase}) {
+    final screen = _screen();
+    return worstCase != null
+        ? worstCaseApp(locale: worstCase, home: screen)
+        : MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: screen,
+          );
+  }
+
+  Widget _screen() => (
+    CourseDriveScreen(
       title: 'Richmond Marathon',
       load: () async =>
           CourseDriveCourse(line: line ?? north(41), markers: _markers),
@@ -74,7 +84,7 @@ class _Harness {
       },
       readNoticeAck: () async => ack,
       writeNoticeAck: () async => acksWritten++,
-    ),
+    )
   );
 }
 
@@ -94,6 +104,24 @@ Future<void> _drive(WidgetTester tester, _Harness h, double totalM) async {
 }
 
 void main() {
+  worstCaseTestWidgets('Drive this course', (tester, locale) async {
+    final h = _Harness(
+      stretches: const [CourseStretch(startM: 1500, endM: 2500)],
+    );
+    await tester.pumpWidget(h.app(worstCase: locale));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Course drive hand-off');
+    final start = find.byKey(const Key('course-drive-start'));
+    await tester.tap(start);
+    await tester.pump();
+    expectNoOverflow(tester, 'Course drive, waiting for the course');
+    await _drive(tester, h, 1200);
+    expectNoOverflow(tester, 'Course drive, driving');
+    await tester.tap(find.byKey(const Key('course-drive-stop')));
+    await tester.pump();
+  });
+
   testWidgets(
     'the first open shows the safety notice, and accepting records it',
     (tester) async {

@@ -428,8 +428,7 @@ void main() {
       await pumpRunScreen(tester, routes: [_loop], initialRoute: _loop);
 
       await openPicker(tester);
-      await tester.tap(find.descendant(
-          of: find.byType(AppBar), matching: find.text('No route')));
+      await tester.tap(find.byKey(const ValueKey('route-picker-no-route')));
       await tester.pumpAndSettle();
 
       expect(find.text('FOLLOWING'), findsNothing);

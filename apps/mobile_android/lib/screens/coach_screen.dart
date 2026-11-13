@@ -13,7 +13,10 @@ import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
         ListSkeleton,
+        PageHeader,
+        PushedPage,
         SkeletonBlock,
+        StatusPill,
         reduceMotion,
         syncMotionLoop;
 
@@ -1215,14 +1218,26 @@ class _CoachScreenState extends State<CoachScreen> {
     // RPC silently default and only learn at send time. Fail closed
     // into the sign-in state instead (issue #237).
     if (widget.api.userId == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.coachTitle)),
-        body: Column(
-          children: [
-            // Guided runs are local scripts with no API behind them, so the
-            // library stays reachable from here signed out.
-            _peerStrip(l10n),
-            Expanded(
+      return PushedPage(
+        title: l10n.coachTitle,
+        // The heading and the peers scroll with the sign-in prompt, so at
+        // large text they never push it off the screen.
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PageHeader(title: l10n.coachTitle),
+                  // Guided runs are local scripts with no API behind them,
+                  // so the library stays reachable from here signed out.
+                  _peerStrip(l10n),
+                ],
+              ),
+            ),
+            // The prompt scrolls itself (it is a pull-to-refresh surface
+            // elsewhere), so it fills what the heading leaves.
+            SliverFillRemaining(
               child: SignInRequiredState(
                   api: widget.api, onSignedIn: _bootstrap),
             ),
@@ -1237,8 +1252,8 @@ class _CoachScreenState extends State<CoachScreen> {
     // Coach rung means the user must accept the disclosure before any
     // chat fans out.
     if (!_consentChecked) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.coachTitle)),
+      return PushedPage(
+        title: l10n.coachTitle,
         body: Column(
           key: const ValueKey('coach-consent-skeleton'),
           children: [
@@ -1369,23 +1384,23 @@ class _CoachScreenState extends State<CoachScreen> {
     // chat surface until the user clicks "I consent". Mirrors the
     // /coach disclosure modal on web. See audit/gdpr (2026-05-25).
     final cs = theme.colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.coachTitle)),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // The disclosure gates the AI chat only; the peers it sits
-            // beside need no consent.
-            _peerStrip(l10n),
-            Expanded(child: _consentBody(theme, l10n, cs)),
-          ],
-        ),
+    return PushedPage(
+      title: l10n.coachTitle,
+      // One scroll: the heading and the peers move with the disclosure.
+      body: ListView(
+        children: [
+          PageHeader(title: l10n.coachTitle),
+          // The disclosure gates the AI chat only; the peers it sits beside
+          // need no consent.
+          _peerStrip(l10n),
+          _consentBody(theme, l10n, cs),
+        ],
       ),
     );
   }
 
   Widget _consentBody(ThemeData theme, AppLocalizations l10n, ColorScheme cs) {
-    return SingleChildScrollView(
+    return Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1707,29 +1722,13 @@ class _CoachScreenState extends State<CoachScreen> {
 
   Widget _chip(ColorScheme cs,
       {required IconData icon, required String label, bool muted = false}) {
-    final color = muted ? cs.onSurfaceVariant : cs.onSurface;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          border: Border.all(color: cs.outlineVariant),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(color: color)),
-            ),
-          ],
-        ),
+      child: StatusPill(
+        icon: icon,
+        label: label,
+        foreground: muted ? cs.onSurfaceVariant : cs.onSurface,
+        outline: cs.outlineVariant,
       ),
     );
   }

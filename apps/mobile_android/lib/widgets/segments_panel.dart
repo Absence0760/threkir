@@ -738,14 +738,11 @@ class _CrownBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final crown = AppSemanticColors.of(context).crown;
-    return Container(
+    return ListCard(
       margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: crown.withValues(alpha: 0.12),
-        border: Border.all(color: crown.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      dense: true,
+      color: crown.withValues(alpha: 0.12),
+      outline: crown.withValues(alpha: 0.35),
       child: Row(
         children: [
           Icon(Icons.emoji_events, color: crown, size: 18),

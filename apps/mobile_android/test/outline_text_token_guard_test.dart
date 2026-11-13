@@ -146,6 +146,10 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
     // label) instead would be a real defect this entry does NOT cover: it is
     // count-pinned at the one site that outlines a pill in the line token.
     'lib/screens/coaching_athlete_screen.dart': 1,
+    // The same `StatusPill(outline:)`: an ungraded session's verdict pill is
+    // outlined in `outlineVariant` and filled with nothing; its label takes
+    // `onSurfaceVariant` through `foreground:`.
+    'lib/screens/routine_detail_screen.dart': 1,
   },
   _Family.palette: {
     // Each of these holds the scale (or one entry of it) in a local and paints

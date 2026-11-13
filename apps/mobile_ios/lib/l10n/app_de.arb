@@ -1931,7 +1931,6 @@
   "planLibrarySubheading": "Von anderen Läufern veröffentlichte Pläne. Klone einen in dein Konto, um zu starten.",
   "planLibrarySearchHint": "Pläne nach Name suchen",
   "planLibraryLoadError": "Bibliothek konnte nicht geladen werden. Erneut versuchen.",
-  "planLibraryRetry": "Erneut versuchen",
   "planLibraryEmpty": "Noch keine veröffentlichten Pläne.",
   "planLibraryEmptySearch": "Keine Pläne passen zu „{query}“.",
   "planLibraryByAuthor": "von {author}",

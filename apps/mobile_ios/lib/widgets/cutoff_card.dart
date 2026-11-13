@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, StatusPill;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, SectionHeader, StatusPill;
 
 import '../l10n/gen/app_localizations.dart';
 import '../live_cutoff_eta.dart';
@@ -70,14 +71,7 @@ class CutoffCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l10n.liveCutoffTitle.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.8,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          SectionHeader(label: l10n.liveCutoffTitle),
           const SizedBox(height: 6),
           Text(
             title,

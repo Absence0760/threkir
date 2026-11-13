@@ -20,78 +20,47 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// `Card(`s left, and why each is not a `ListCard`.
-const _cardsLeft = <String, (int, String)>{
-  'lib/screens/run_detail_screen.dart': (
-    2,
-    'the "Loading GPS" and "GPS unavailable" chips laid over the hero map; '
-        'they belong to the detail hero, which moves to DetailPage',
-  ),
-  'lib/screens/run_screen.dart': (
-    2,
-    'the "to start line" and race-status pills floating over the recorder '
-        'map: pills, not cards; a card inset would move the recording '
-        'screen, so they wait for an overlay chip',
-  ),
-  'lib/screens/workout_detail_screen.dart': (
-    1,
-    'the page hero (date, heading, tagline, metrics), which moves to '
-        'DetailPage',
-  ),
-};
+const _cardsLeft = <String, (int, String)>{};
 
 /// Outlined card look-alikes left, and why each is not a `ListCard`.
 const _lookAlikesLeft = <String, (int, String)>{
   'lib/help_illustration.dart': (1, 'a drawing of a screen in a help guide'),
   'lib/screens/club_detail_screen.dart': (
-    2,
-    'the next-event card is a gradient, which ListCard has no slot for; the '
-        'post composer is a text field, not a list item',
+    1,
+    'the next-event card is a gradient, which ListCard has no slot for '
+        '(decisions § 2504)',
   ),
-  'lib/screens/clubs_screen.dart': (1, 'a small outlined tag inside the club row'),
-  'lib/screens/coach_screen.dart': (3, 'context, plan and suggestion chips'),
-  'lib/screens/event_detail_screen.dart': (
+  'lib/screens/coach_screen.dart': (
     2,
-    'attendee chips, and the inline post form',
+    'the context and plan chips, each holding a dropdown or opening a '
+        'menu of its own',
+  ),
+  'lib/screens/event_detail_screen.dart': (
+    1,
+    'an attendee chip carrying its own attendance toggle, a 48 dp '
+        'button inside the chip',
   ),
   'lib/screens/live_spectator_screen.dart': (
     1,
-    'the broadcast-concluded panel, which moves to DetailPage with the '
-        'spectator page',
-  ),
-  'lib/screens/nutrition_meal_detail_screen.dart': (
-    3,
-    'the meal detail page\'s macro, items and trend panels, tinted '
-        'surfaceContainerHighest; they move with the page to DetailPage',
+    'the broadcast-concluded panel, marked by a status accent on its '
+        'start edge, which ListCard has no slot for',
   ),
   'lib/screens/plan_detail_screen.dart': (
     1,
     'a workout row\'s kind-coloured inset inside the week grid',
   ),
-  'lib/screens/public_run_screen.dart': (
-    1,
-    'the live-broadcast banner, tinted with the live colour',
-  ),
   'lib/screens/route_builder_screen.dart': (2, 'two panels over the builder map'),
-  'lib/screens/routine_detail_screen.dart': (1, 'the progression verdict chip'),
   'lib/screens/run_detail_screen.dart': (
-    2,
-    'the route-suggestion banner and the map-match pill over the hero map',
+    1,
+    'the map-match pill: a dark scrim over the hero map with an inline '
+        'Rematch action, which MapOverlayChip has no slot for',
   ),
   'lib/screens/runs_screen.dart': (
     2,
     'the month / year navigation group and the date-range endpoint chips',
   ),
-  'lib/screens/workout_detail_screen.dart': (
-    1,
-    'the status strip under the hero',
-  ),
   'lib/widgets/activity_heatmap.dart': (1, 'a heatmap cell'),
   'lib/widgets/badge_grid.dart': (1, 'a badge tile in a grid, drawn as Ink'),
-  'lib/widgets/club_photos.dart': (1, 'the photo upload composer'),
-  'lib/widgets/coach_share_card.dart': (
-    1,
-    'a shared plan inside a message bubble',
-  ),
   'lib/widgets/cutoff_card.dart': (
     1,
     'the cutoff panel over the recorder and spectator maps',
@@ -105,31 +74,12 @@ const _lookAlikesLeft = <String, (int, String)>{
     1,
     'a dev-only hint over the map',
   ),
-  'lib/widgets/pacing_strategy_section.dart': (
-    1,
-    'the split table\'s frame inside a detail section',
-  ),
   'lib/widgets/plan_card.dart': (
     1,
     'planCardDecoration, the plan week grid\'s emphasised day frame',
   ),
   'lib/widgets/plan_day_cell.dart': (2, 'a plan calendar day cell'),
-  'lib/widgets/plan_import_sheet.dart': (
-    1,
-    'the import preview inside a sheet',
-  ),
-  'lib/widgets/plan_races_list.dart': (
-    1,
-    'a tinted panel holding the plan\'s races as rows',
-  ),
   'lib/widgets/race_banner.dart': (1, 'the race banner on the recorder'),
-  'lib/widgets/route_conditions.dart': (1, 'the conditions report composer'),
-  'lib/widgets/route_photos.dart': (1, 'the photo upload composer'),
-  'lib/widgets/run_photos.dart': (1, 'the photo upload composer'),
-  'lib/widgets/segments_panel.dart': (
-    1,
-    'the crown banner over the leaderboard',
-  ),
   'lib/widgets/this_week_strip.dart': (1, 'a day cell in the week strip'),
   'lib/widgets/undo_bar.dart': (1, 'the floating undo bar'),
   'lib/widgets/upcoming_event_card.dart': (
@@ -139,10 +89,6 @@ const _lookAlikesLeft = <String, (int, String)>{
   'lib/widgets/workout_execution_band.dart': (
     1,
     'the translucent band pinned over the recorder',
-  ),
-  'lib/widgets/workout_review_section.dart': (
-    1,
-    'the review table\'s frame inside a detail section',
   ),
 };
 

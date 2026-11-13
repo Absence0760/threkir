@@ -11472,12 +11472,6 @@ abstract class AppLocalizations {
   /// Public plan library
   ///
   /// In en, this message translates to:
-  /// **'Retry'**
-  String get planLibraryRetry;
-
-  /// Public plan library
-  ///
-  /// In en, this message translates to:
   /// **'No published plans yet.'**
   String get planLibraryEmpty;
 

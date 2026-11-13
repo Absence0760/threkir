@@ -10,6 +10,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/watch_live_screen.dart';
 import '../lib/sim_watch_sync.dart';
 import '../lib/watch_status_link.dart';
+import 'worst_case_layout.dart';
 
 /// Stands in for the radio: [open] hands back a controller the test drives,
 /// [close] ends it — the same fake shape `watch_status_link_test.dart` uses,
@@ -201,6 +202,34 @@ Future<void> _deliver(
 }
 
 void main() {
+  worstCaseTestWidgets('Watch live, relaying', (tester, locale) async {
+    final source = _FakeSource();
+    final clock = _Clock();
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: WatchLiveScreen(
+        apiClient: _FakeApi(),
+        linkFactory: () => WatchStatusLink(source),
+        transportFactory: _FakeTransport.new,
+        runSink: (_) async {},
+        now: clock.call,
+      ),
+    ));
+    await walkScrollable(tester, primaryScrollable(), 'Watch live, idle');
+    tester.state<ScrollableState>(primaryScrollable()).position.jumpTo(0);
+    await tester.pump();
+    final start = find.text(l10nFor(locale).watchLiveStart);
+    await tester.scrollUntilVisible(start, 200,
+        scrollable: primaryScrollable());
+    await tester.ensureVisible(start);
+    await tester.pump();
+    await tester.tap(start);
+    await _settle(tester);
+    await _deliver(tester, source, 10);
+    await walkScrollable(tester, primaryScrollable(), 'Watch live, relaying');
+    await _real(tester, () => tester.pumpWidget(const SizedBox()));
+  });
+
   testWidgets('reads as not connected before the relay is started',
       (tester) async {
     final source = _FakeSource();

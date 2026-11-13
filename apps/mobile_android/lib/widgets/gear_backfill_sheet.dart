@@ -165,37 +165,27 @@ class _GearBackfillSheetState extends State<_GearBackfillSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Checkbox(
-                value: allSelected,
-                tristate: false,
-                onChanged: _saving ? null : (v) => _selectAll(v ?? false),
+          // One control: the checkbox and its label were two stops, and the
+          // checkbox had no name (#1374 A11Y-13).
+          CheckboxListTile(
+            key: const Key('gearBackfillSelectAll'),
+            value: allSelected,
+            onChanged: _saving ? null : (v) => _selectAll(v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              allSelected
+                  ? l10n.gearBackfillSelectNone
+                  : l10n.gearBackfillSelectAll,
+              style: theme.textTheme.bodyMedium,
+            ),
+            secondary: Text(
+              l10n.gearBackfillSelectedCount(
+                  _selected.length, widget.candidates.length),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  child: GestureDetector(
-                    onTap: _saving ? null : () => _selectAll(!allSelected),
-                    child: Text(
-                      allSelected
-                          ? l10n.gearBackfillSelectNone
-                          : l10n.gearBackfillSelectAll,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
-              ),
-              Text(
-                l10n.gearBackfillSelectedCount(
-                    _selected.length, widget.candidates.length),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+            ),
           ),
           const Divider(height: 1),
           Flexible(

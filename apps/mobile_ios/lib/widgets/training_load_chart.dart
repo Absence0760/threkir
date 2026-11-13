@@ -105,18 +105,27 @@ class TrainingLoadChart extends StatelessWidget {
             else ...[
               _Legend(last: last!),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 180,
-                width: double.infinity,
-                child: CustomPaint(
-                  key: const Key('trainingLoadChartPainter'),
-                  painter: _ChartPainter(
-                    points: points,
-                    series: _seriesOf(context),
-                    gridColor: theme.dividerColor,
-                    zeroColor: theme.colorScheme.onSurfaceVariant,
-                    labelStyle: theme.textTheme.labelSmall!.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+              // The legend above reads only the latest day; the paint says
+              // where each line went, so its node carries that (#1374
+              // A11Y-14).
+              Semantics(
+                key: const Key('trainingLoadChartSemantics'),
+                container: true,
+                excludeSemantics: true,
+                label: _summaryFor(context, l10n, points),
+                child: SizedBox(
+                  height: 180,
+                  width: double.infinity,
+                  child: CustomPaint(
+                    key: const Key('trainingLoadChartPainter'),
+                    painter: _ChartPainter(
+                      points: points,
+                      series: _seriesOf(context),
+                      gridColor: theme.dividerColor,
+                      zeroColor: theme.colorScheme.onSurfaceVariant,
+                      labelStyle: theme.textTheme.labelSmall!.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
@@ -127,8 +136,10 @@ class TrainingLoadChart extends StatelessWidget {
                 children: [
                   Flexible(
                     child: Text(
-                      formatDateShort(points.first.date,
-                          localeToTag(Localizations.localeOf(context))),
+                      formatDateShort(
+                        points.first.date,
+                        localeToTag(Localizations.localeOf(context)),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall?.copyWith(
@@ -138,8 +149,10 @@ class TrainingLoadChart extends StatelessWidget {
                   ),
                   Flexible(
                     child: Text(
-                      formatDateShort(points.last.date,
-                          localeToTag(Localizations.localeOf(context))),
+                      formatDateShort(
+                        points.last.date,
+                        localeToTag(Localizations.localeOf(context)),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall?.copyWith(
@@ -151,7 +164,10 @@ class TrainingLoadChart extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
@@ -165,6 +181,26 @@ class TrainingLoadChart extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  static String _summaryFor(
+    BuildContext context,
+    AppLocalizations l10n,
+    List<TrainingLoadPoint> points,
+  ) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    String n(double v) => v.round().toString();
+    final a = points.first, b = points.last;
+    return l10n.trainingLoadChartSummary(
+      n(a.ctl),
+      n(b.ctl),
+      n(a.atl),
+      n(b.atl),
+      n(a.tsb),
+      n(b.tsb),
+      formatDateShort(a.date, tag),
+      formatDateShort(b.date, tag),
     );
   }
 
@@ -236,8 +272,9 @@ class _LegendKey extends StatelessWidget {
         // swatch instead of running 55 dp past the card (issue #1374).
         Flexible(
           child: Text(
-            AppLocalizations.of(context)
-                .trainingLoadLegendEntry(label, value.round()),
+            AppLocalizations.of(
+              context,
+            ).trainingLoadLegendEntry(label, value.round()),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -260,10 +297,10 @@ double trainingLoadTickStep(double span, {int maxTicks = 4}) {
   final mult = norm <= 1
       ? 1.0
       : norm <= 2
-          ? 2.0
-          : norm <= 5
-              ? 5.0
-              : 10.0;
+      ? 2.0
+      : norm <= 5
+      ? 5.0
+      : 10.0;
   // Labels print `tick.round()`, so a sub-1 step (a near-zero load, e.g. one
   // 10 s run) labels neighbouring gridlines with the same number.
   return math.max(1.0, mult * mag);
@@ -276,9 +313,7 @@ List<int> trainingLoadTickValues(double min, double max) {
   if (!min.isFinite || !max.isFinite || max < min) return const [];
   final step = trainingLoadTickStep(max - min);
   final out = <int>[];
-  for (var v = (min / step).ceil() * step;
-      v <= max + step * 0.001;
-      v += step) {
+  for (var v = (min / step).ceil() * step; v <= max + step * 0.001; v += step) {
     out.add(v.round());
   }
   return out;
@@ -360,10 +395,7 @@ class _ChartPainter extends CustomPainter {
         text: TextSpan(text: tick.toString(), style: labelStyle),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: padL - 4);
-      label.paint(
-        canvas,
-        Offset(padL - 4 - label.width, y - label.height / 2),
-      );
+      label.paint(canvas, Offset(padL - 4 - label.width, y - label.height / 2));
     }
 
     // Zero line — dashed, so the TSB sign stays distinct from the grid without

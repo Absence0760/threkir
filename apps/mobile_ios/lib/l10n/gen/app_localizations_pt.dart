@@ -2299,6 +2299,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runA11yStarted => 'Corrida iniciada';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Começa dentro de $seconds segundos. Toque para cancelar.',
+      one: 'Começa dentro de $seconds segundo. Toque para cancelar.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'Corrida retomada';
 
   @override
@@ -2566,6 +2577,21 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runWorkoutAbandon => 'Abandonar';
+
+  @override
+  String get workoutPaceOnPace => 'No ritmo';
+
+  @override
+  String get workoutPaceAhead => 'À frente do ritmo';
+
+  @override
+  String get workoutPaceBehind => 'Atrás do ritmo';
+
+  @override
+  String get workoutPaceWayAhead => 'Bem à frente do ritmo';
+
+  @override
+  String get workoutPaceWayBehind => 'Bem atrás do ritmo';
 
   @override
   String get runWorkoutMoreActions => 'Mais ações do treino';
@@ -3147,6 +3173,21 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailSectionElevation => 'Elevação';
+
+  @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return 'Perfil de elevação em $distance: mínimo $min, máximo $max, $gain de subida';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$elevation aos $distance';
+  }
 
   @override
   String get runDetailPaceBandFaster => 'Mais depressa';
@@ -3916,6 +3957,21 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get routeBuilderPinAlreadyThere =>
       'Já há um pino aqui — toque mais distante para adicionar outro.';
+
+  @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Ponto $index de $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Ponto $index de $total, partida';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Ponto $index de $total, chegada';
+  }
 
   @override
   String get routeBuilderTargetTooLong =>
@@ -10494,6 +10550,20 @@ class AppLocalizationsPt extends AppLocalizations {
       'Grave algumas corridas para ver a tendência do seu condicionamento.';
 
   @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'Condicionamento de $ctlFrom para $ctlTo, fadiga de $atlFrom para $atlTo, forma de $tsbFrom para $tsbTo, de $from a $to';
+  }
+
+  @override
   String get trainingLoadLegendFitness => 'Condicionamento';
 
   @override
@@ -11901,6 +11971,17 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get notificationBellTooltip => 'Notificações';
+
+  @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Notificações, $count não lidas',
+      one: 'Notificações, $count não lida',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get liveRunMapWaitingGps => 'A aguardar GPS...';
@@ -24976,6 +25057,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runA11yStarted => 'Corrida iniciada';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Começa em $seconds segundos. Toque para cancelar.',
+      one: 'Começa em $seconds segundo. Toque para cancelar.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'Corrida retomada';
 
   @override
@@ -25242,6 +25334,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runWorkoutAbandon => 'Abandonar';
+
+  @override
+  String get workoutPaceOnPace => 'No ritmo';
+
+  @override
+  String get workoutPaceAhead => 'À frente do ritmo';
+
+  @override
+  String get workoutPaceBehind => 'Atrás do ritmo';
+
+  @override
+  String get workoutPaceWayAhead => 'Bem à frente do ritmo';
+
+  @override
+  String get workoutPaceWayBehind => 'Bem atrás do ritmo';
 
   @override
   String get runWorkoutMoreActions => 'Mais ações do treino';
@@ -25824,6 +25931,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailSectionElevation => 'Elevação';
+
+  @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return 'Perfil de elevação em $distance: mínimo $min, máximo $max, $gain de subida';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$elevation em $distance';
+  }
 
   @override
   String get runDetailPaceBandFaster => 'Mais rápido';
@@ -26590,6 +26712,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get routeBuilderPinAlreadyThere =>
       'Já há um pino aqui — toque mais distante para adicionar outro.';
+
+  @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Ponto $index de $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Ponto $index de $total, largada';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Ponto $index de $total, chegada';
+  }
 
   @override
   String get routeBuilderTargetTooLong =>
@@ -33160,6 +33297,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Grave algumas corridas para ver a tendência do seu condicionamento.';
 
   @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'Condicionamento de $ctlFrom para $ctlTo, fadiga de $atlFrom para $atlTo, forma de $tsbFrom para $tsbTo, de $from a $to';
+  }
+
+  @override
   String get trainingLoadLegendFitness => 'Condicionamento';
 
   @override
@@ -34568,6 +34719,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get notificationBellTooltip => 'Notificações';
+
+  @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Notificações, $count não lidas',
+      one: 'Notificações, $count não lida',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get liveRunMapWaitingGps => 'Aguardando GPS...';

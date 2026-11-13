@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/geocoding.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/race_service.dart';
 import '../lib/widgets/run_race_section.dart';
+import 'worst_case_layout.dart';
 
 class _FakeRaceService extends RaceService {
   final RaceResultForRun? result;
@@ -111,6 +113,49 @@ void main() {
     expect(find.text('Award place'), findsOneWidget);
     expect(find.text('2 (M Masters)'), findsOneWidget);
     expect(find.text('Age-group place'), findsNothing);
+  });
+
+  // #1374 TO-5: "Classement dans la catégorie primée" took the row and left
+  // the place zero width from 1.5x. Every result line keeps its value whole at
+  // the worst case, in every locale.
+  worstCaseTestWidgets('The official result', (tester, locale) async {
+    final service = _FakeRaceService(
+      result: const RaceResultForRun(
+        listing: null,
+        raceName: 'Richmond Marathon presented by a very long sponsor name',
+        bib: '41234',
+        chipTime: '3:02:10',
+        gunTime: '3:04:55',
+        overallPlace: 1209,
+        ageGroupPlace: 12,
+        ageGroup: 'F40-44',
+        divisionAwardPlace: 2,
+        divisionAward: 'F Masters',
+      ),
+    );
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: RunRaceSection(
+            service: service,
+            runId: 'run-1',
+            startedAt: '2027-11-13T13:00:00.000Z',
+            distanceM: 42195,
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    for (final value in ['3:02:10', '3:04:55', '1209', '41234']) {
+      final f = find.text(value);
+      expect(f, findsOneWidget, reason: value);
+      expect(tester.getSize(f).width, greaterThan(0), reason: value);
+      expect(tester.renderObject<RenderParagraph>(f).didExceedMaxLines, isFalse,
+          reason: '$value is cut');
+    }
   });
 
   testWidgets('offers the auto-match prompt for a same-day, same-band listing',

@@ -2203,6 +2203,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runA11yStarted => 'ランを開始しました';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: '$seconds 秒後に開始します。タップしてキャンセル。',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'ランを再開しました';
 
   @override
@@ -2454,6 +2464,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runWorkoutAbandon => '中止';
+
+  @override
+  String get workoutPaceOnPace => 'ペース通り';
+
+  @override
+  String get workoutPaceAhead => '目標ペースより速い';
+
+  @override
+  String get workoutPaceBehind => '目標ペースより遅い';
+
+  @override
+  String get workoutPaceWayAhead => '目標ペースよりかなり速い';
+
+  @override
+  String get workoutPaceWayBehind => '目標ペースよりかなり遅い';
 
   @override
   String get runWorkoutMoreActions => 'ワークアウトのその他の操作';
@@ -3014,6 +3039,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runDetailSectionElevation => '獲得標高';
+
+  @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return '$distance の標高：最低 $min、最高 $max、獲得標高 $gain';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$distance 地点で $elevation';
+  }
 
   @override
   String get runDetailPaceBandFaster => '速い';
@@ -3721,6 +3761,21 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get routeBuilderPinAlreadyThere =>
       'すでにピンがあります — 別のピンを追加するには離れた場所をタップしてください。';
+
+  @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'ポイント $index/$total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'ポイント $index/$total、スタート';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'ポイント $index/$total、ゴール';
+  }
 
   @override
   String get routeBuilderTargetTooLong => '目標距離は 1000 km まで入力してください。';
@@ -9962,6 +10017,20 @@ class AppLocalizationsJa extends AppLocalizations {
   String get trainingLoadEmpty => '数回ランを記録するとフィットネスの推移が見られます。';
 
   @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'フィットネス $ctlFrom→$ctlTo、疲労 $atlFrom→$atlTo、調子 $tsbFrom→$tsbTo（$from〜$to）';
+  }
+
+  @override
   String get trainingLoadLegendFitness => 'フィットネス';
 
   @override
@@ -11327,6 +11396,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get notificationBellTooltip => '通知';
+
+  @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '通知、未読$count件',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get liveRunMapWaitingGps => 'GPS を待っています...';

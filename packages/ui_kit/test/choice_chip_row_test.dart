@@ -271,4 +271,14 @@ void main() {
     await tester.tap(find.text('Two'));
     expect(picked, 2);
   });
+
+  // #1374 A11Y-15: the chips were compact and shrink-wrapped, 24-32 dp.
+  testWidgets('every chip is a 48 dp target', (tester) async {
+    await _pump(tester, width: 360, textScale: 1.0, labels: ['Week', 'Month', 'Year']);
+    for (final chip in find.byType(ChoiceChip).evaluate()) {
+      expect(tester.getSize(find.byWidget(chip.widget)).height, greaterThanOrEqualTo(48));
+    }
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+  });
 }
+

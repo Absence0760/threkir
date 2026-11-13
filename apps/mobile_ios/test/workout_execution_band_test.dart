@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +8,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/widgets/workout_execution_band.dart';
 import 'package:run_recorder/run_recorder.dart';
+import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, AppTheme;
 
 WorkoutStep _step({
   WorkoutStepKind kind = WorkoutStepKind.rep,
@@ -294,6 +297,55 @@ void main() {
       // Header shows the rounded target as "4m".
       expect(find.textContaining('4m'), findsOneWidget);
     });
+
+    // #1374 A11Y-8: on pace / off / way off was told by the dot's hue alone,
+    // and the pip had no name.
+    for (final (adherence, glyph, status) in [
+      (PaceAdherence.onPace, Icons.check, 'On pace'),
+      (PaceAdherence.ahead, Icons.keyboard_arrow_up, 'Ahead of pace'),
+      (PaceAdherence.behind, Icons.keyboard_arrow_down, 'Behind pace'),
+      (PaceAdherence.wayAhead, Icons.keyboard_double_arrow_up, 'Well ahead of pace'),
+      (PaceAdherence.wayBehind, Icons.keyboard_double_arrow_down, 'Well behind pace'),
+    ]) {
+      testWidgets('$adherence has its own glyph and is named "$status"',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        await _pumpBand(
+          tester,
+          state: WorkoutBandState(
+            step: _step(),
+            totalSteps: 3,
+            currentIndex: 0,
+            progress: 0.5,
+            remainingMetres: 200,
+            actualPaceSecPerKm: 252,
+            adherence: adherence,
+            complete: false,
+            abandoned: false,
+          ),
+        );
+        final pip = find.byKey(const Key('workoutBandPacePip'));
+        expect(find.descendant(of: pip, matching: find.byIcon(glyph)), findsOneWidget);
+        final data = tester.getSemantics(pip).getSemanticsData();
+        expect(data.label, status);
+        expect(data.value, isNotEmpty, reason: 'the signed delta');
+        handle.dispose();
+      });
+    }
+
+    for (final (name, theme) in [('light', AppTheme.light), ('dark', AppTheme.dark)]) {
+      test('$name: every pip colour reads at AA on the band over any backdrop', () {
+        final semantic = AppSemanticColors.ofTheme(theme);
+        for (final backdrop in [Colors.white, Colors.black]) {
+          final band = Color.alphaBlend(
+              theme.colorScheme.surface.withValues(alpha: 0.95), backdrop);
+          for (final c in [semantic.success, semantic.warning, theme.colorScheme.error]) {
+            expect(_contrast(c, band), greaterThanOrEqualTo(4.5),
+                reason: '$c on the band over $backdrop');
+          }
+        }
+      });
+    }
 
     testWidgets('pace pip uses an em-dash when actual pace is null',
         (tester) async {
@@ -657,4 +709,16 @@ void main() {
       handle.dispose();
     });
   });
+}
+
+double _luminance(Color c) {
+  double chan(double v) =>
+      v <= 0.03928 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+  return 0.2126 * chan(c.r) + 0.7152 * chan(c.g) + 0.0722 * chan(c.b);
+}
+
+double _contrast(Color a, Color b) {
+  final la = _luminance(a);
+  final lb = _luminance(b);
+  return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
 }

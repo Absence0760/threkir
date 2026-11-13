@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -836,49 +838,82 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              IdentityAvatar(
-                seed: s.id,
-                name: s.displayName,
-                size: 80,
-                imageUrl: s.avatarUrl,
+          // The counts sit beside the avatar while every label fits whole;
+          // otherwise they move under it, and wrap if even the full width
+          // cannot hold them. A fixed share beside the avatar cut "Followers"
+          // and "Following" both to "Follow…" at 1.0x on 320 dp, and from
+          // 1.3x on 360 dp, so two counts that open different tabs read the
+          // same (#1374 TO-2).
+          LayoutBuilder(builder: (context, box) {
+            final avatar = IdentityAvatar(
+              seed: s.id,
+              name: s.displayName,
+              size: 80,
+              imageUrl: s.avatarUrl,
+            );
+            // The user_follows select is authenticated-only, so a signed-out
+            // viewer's counts are always zero — hide them rather than present
+            // the zeros as fact.
+            final stats = <({Key key, String value, String label, ProfileTab tab})>[
+              (
+                key: const ValueKey('profile-stat-runs'),
+                value: runsLabel,
+                label: l10n.profileTabRuns,
+                tab: ProfileTab.runs,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Row(
+              if (signedIn) ...[
+                (
+                  key: const ValueKey('profile-stat-followers'),
+                  value: '${s.followerCount}',
+                  label: l10n.profileTabFollowers,
+                  tab: ProfileTab.followers,
+                ),
+                (
+                  key: const ValueKey('profile-stat-following'),
+                  value: '${s.followingCount}',
+                  label: l10n.profileTabFollowing,
+                  tab: ProfileTab.following,
+                ),
+              ],
+            ];
+            final cellWidth = stats
+                .map((x) => _statLabelWidth(context, theme, x.label))
+                .fold<double>(0, math.max);
+            final cells = [
+              for (final x in stats)
+                _stat(theme,
+                    key: x.key, value: x.value, label: x.label, tab: x.tab),
+            ];
+            final beside = box.maxWidth - 80 - 12;
+            if (cellWidth * cells.length <= beside) {
+              return Row(
+                children: [
+                  avatar,
+                  const SizedBox(width: 12),
+                  for (final c in cells) Expanded(child: c),
+                ],
+              );
+            }
+            final perRow = (box.maxWidth / cellWidth)
+                .floor()
+                .clamp(1, cells.length);
+            return Column(
+              key: const ValueKey('profile-stats-stacked'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                avatar,
+                const SizedBox(height: 12),
+                Wrap(
                   children: [
-                    _stat(
-                      theme,
-                      key: const ValueKey('profile-stat-runs'),
-                      value: runsLabel,
-                      label: l10n.profileTabRuns,
-                      tab: ProfileTab.runs,
-                    ),
-                    // The user_follows select is authenticated-only, so a
-                    // signed-out viewer's counts are always zero — hide them
-                    // rather than present the zeros as fact.
-                    if (signedIn) ...[
-                      _stat(
-                        theme,
-                        key: const ValueKey('profile-stat-followers'),
-                        value: '${s.followerCount}',
-                        label: l10n.profileTabFollowers,
-                        tab: ProfileTab.followers,
-                      ),
-                      _stat(
-                        theme,
-                        key: const ValueKey('profile-stat-following'),
-                        value: '${s.followingCount}',
-                        label: l10n.profileTabFollowing,
-                        tab: ProfileTab.following,
-                      ),
-                    ],
+                    for (final c in cells)
+                      SizedBox(
+                          width: (box.maxWidth / perRow).floorToDouble(),
+                          child: c),
                   ],
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          }),
           if (!_isSelf) ...[
             const SizedBox(height: 16),
             Row(
@@ -944,11 +979,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     required String label,
     required ProfileTab tab,
   }) {
-    // Each count takes an equal share and shrinks rather than overflowing:
-    // three labels at a large OS text scale do not fit beside an 80 dp avatar
-    // on a 360 dp phone.
-    return Expanded(
-      child: MergeSemantics(
+    // The header decides the cell's width from [_statLabelWidth], so the
+    // label is never cut.
+    return MergeSemantics(
       child: InkWell(
         key: key,
         borderRadius: BorderRadius.circular(8),
@@ -979,8 +1012,21 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       ),
-      ),
     );
+  }
+
+  /// The width a count's cell needs to show [label] whole: the label at the
+  /// reader's text scale plus the cell's padding.
+  double _statLabelWidth(BuildContext context, ThemeData theme, String label) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: theme.textTheme.bodySmall),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+      maxLines: 1,
+    )..layout();
+    final width = painter.width.ceilToDouble() + 16;
+    painter.dispose();
+    return width;
   }
 
   String _tabLabel(AppLocalizations l10n, ProfileTab tab) => switch (tab) {

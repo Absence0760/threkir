@@ -14,6 +14,7 @@ import '../lib/widgets/plan_calendar.dart';
 import '../lib/widgets/todays_workout_card.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 const _owner = 'owner-uuid';
 
@@ -90,22 +91,28 @@ class _FakeSocial extends SocialService {
       const [];
 }
 
-Future<void> _pump(WidgetTester tester, {String viewerId = _owner}) async {
-  tester.view.physicalSize = const Size(420, 4000);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.reset);
+Future<void> _pump(WidgetTester tester,
+    {String viewerId = _owner, Locale? locale}) async {
+  final screen = PlanDetailScreen(
+    training: _FakeTraining(),
+    planId: 'plan-1',
+    social: _FakeSocial(),
+    viewerIdOverride: viewerId,
+    now: () => _today,
+  );
+  if (locale == null) {
+    tester.view.physicalSize = const Size(420, 4000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+  }
   await tester.pumpWidget(
-    MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: PlanDetailScreen(
-        training: _FakeTraining(),
-        planId: 'plan-1',
-        social: _FakeSocial(),
-        viewerIdOverride: viewerId,
-        now: () => _today,
-      ),
-    ),
+    locale != null
+        ? worstCaseApp(locale: locale, home: screen)
+        : MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: screen,
+          ),
   );
   await pumpUntil(
     tester,
@@ -132,6 +139,36 @@ const _sections = [
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  // Issue #1374 TO-6 / TO-9: plan detail with every section open, walked at
+  // the worst case in every locale. The week cards' heading lost its phase
+  // label at 2x on 320 dp.
+  worstCaseTestWidgets('Plan detail', (tester, locale) async {
+    await _pump(tester, locale: locale);
+    final list = primaryScrollable();
+    for (var i = 0; i < 8; i++) {
+      final shut = find.byIcon(Icons.expand_more);
+      if (shut.evaluate().isEmpty) {
+        final position = tester.state<ScrollableState>(list).position;
+        if (position.pixels >= position.maxScrollExtent) break;
+        position.jumpTo(position.pixels + position.viewportDimension * 0.8);
+        await tester.pump();
+        continue;
+      }
+      await tester.ensureVisible(shut.first);
+      await tester.pump();
+      if (shut.evaluate().isEmpty) continue;
+      await tester.tap(shut.first);
+      await tester.pump();
+      expectNoOverflow(tester, 'opening a plan section');
+    }
+    await walkScrollable(tester, list, 'Plan detail');
+    final phase = find.byKey(const ValueKey('planDetailWeekPhase-0'));
+    await tester.scrollUntilVisible(phase, -300, scrollable: list);
+    expect(phase, findsOneWidget);
+    expect(tester.getSize(phase).width, greaterThan(0),
+        reason: 'the phase label keeps its width');
+  });
 
   testWidgets(
     'today and this week lead, and every other section follows as a named '

@@ -3297,7 +3297,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       children: [
         Icon(icon, size: AppIconSize.dense, color: theme.colorScheme.outline),
         const SizedBox(width: 3),
-        Text(text, style: theme.textTheme.bodySmall),
+        // Flexible, so a long fact wraps inside the line rather than running
+        // off it at 2x on 320 dp (#1374 TO-6).
+        Flexible(child: Text(text, style: theme.textTheme.bodySmall)),
       ],
     );
   }
@@ -3396,19 +3398,31 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         children: [
           Row(
             children: [
-              Text(l10n.planDetailWeek(w.weekIndex + 1),
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(width: 8),
+              // The week and its phase share a line while they fit and the
+              // phase drops under the week when they don't. As an Expanded
+              // beside an unflexed "Semaine 12" the phase got 0 dp at 2x on
+              // 320 dp, and it is the card's only training-block cue
+              // (#1374 TO-9).
               Expanded(
-                child: Text(planPhaseLabel(l10n, phase).toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      letterSpacing: 0.6,
-                      fontWeight: FontWeight.w700,
-                    )),
+                child: Wrap(
+                  key: ValueKey('planDetailWeekHeading-${w.weekIndex}'),
+                  spacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(l10n.planDetailWeek(w.weekIndex + 1),
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(planPhaseLabel(l10n, phase).toUpperCase(),
+                        key: ValueKey('planDetailWeekPhase-${w.weekIndex}'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          letterSpacing: 0.6,
+                          fontWeight: FontWeight.w700,
+                        )),
+                  ],
+                ),
               ),
               if (weekJudgedByDistance(workouts.map((x) => x.kind)))
                 Text(fmtKm(w.targetVolumeM, 0),
@@ -3523,33 +3537,47 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: isToday ? FontWeight.w700 : null,
                   ))),
+          // The kind, then its size and any overrun at the end of the line
+          // while they fit; at large text the size drops under the kind
+          // rather than pushing the row off the card (#1374 TO-6).
           Expanded(
-            child: Text(
-              workoutKindLabel(l10n, kind),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: (isRest || isSkipped)
-                    ? theme.colorScheme.onSurfaceVariant
-                    : null,
-                fontWeight: isRest ? FontWeight.w400 : FontWeight.w600,
-                decoration: isSkipped ? TextDecoration.lineThrough : null,
-              ),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              children: [
+                Text(
+                  workoutKindLabel(l10n, kind),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: (isRest || isSkipped)
+                        ? theme.colorScheme.onSurfaceVariant
+                        : null,
+                    fontWeight: isRest ? FontWeight.w400 : FontWeight.w600,
+                    decoration: isSkipped ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                if (size != null || overrun != null)
+                  Wrap(
+                    spacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (size != null)
+                        Text(size,
+                            key: ValueKey('planDetailWorkoutSize-${wo.id}'),
+                            style: theme.textTheme.bodySmall),
+                      if (overrun != null)
+                        Text(
+                          l10n.planWorkoutOverrun(overrun),
+                          key: ValueKey('planDetailOverrun-${wo.id}'),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                    ],
+                  ),
+              ],
             ),
           ),
-          if (size != null) ...[
-            Text(size,
-                key: ValueKey('planDetailWorkoutSize-${wo.id}'),
-                style: theme.textTheme.bodySmall),
-            const SizedBox(width: 6),
-          ],
-          if (overrun != null) ...[
-            Text(
-              l10n.planWorkoutOverrun(overrun),
-              key: ValueKey('planDetailOverrun-${wo.id}'),
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(width: 6),
-          ],
+          const SizedBox(width: 6),
           if (look.glyph != null)
             Icon(look.glyph, color: look.glyphColor, size: AppIconSize.inline),
         ],

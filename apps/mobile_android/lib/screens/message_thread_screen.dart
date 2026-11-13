@@ -27,6 +27,7 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../undo_queue.dart';
+import '../widgets/thread_title.dart';
 import '../widgets/coach_share_card.dart';
 import '../widgets/dm_bubble.dart';
 import '../widgets/dm_photo.dart';
@@ -1080,25 +1081,17 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
-        title: Row(
-          children: [
-            IdentityAvatar(
-              seed: widget.partnerId ?? widget.deletedPartnerKey!,
-              name: _partnerName,
-              imageUrl: widget.partnerAvatarUrl,
-              size: 32,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                widget.partnerId == null
-                    ? l10n.messagesDeletedAccount
-                    : _partnerName ?? l10n.profileRunnerFallback,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        toolbarHeight: ThreadTitle.toolbarHeight(context, subtitle: false),
+        title: ThreadTitle(
+          avatar: IdentityAvatar(
+            seed: widget.partnerId ?? widget.deletedPartnerKey!,
+            name: _partnerName,
+            imageUrl: widget.partnerAvatarUrl,
+            size: 32,
+          ),
+          title: widget.partnerId == null
+              ? l10n.messagesDeletedAccount
+              : _partnerName ?? l10n.profileRunnerFallback,
         ),
         actions: [
           if (signedIn && widget.partnerId != null)

@@ -376,19 +376,30 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
                       style: theme.textTheme.labelLarge,
                     ),
                   ),
-                  Text(l10n.privacyZonesRadiusMeters(_draftRadius.round())),
+                  // The slider below reads the same value in metres.
+                  ExcludeSemantics(
+                    child: Text(
+                        l10n.privacyZonesRadiusMeters(_draftRadius.round())),
+                  ),
                 ],
               ),
             ),
-            Slider(
-              min: 50,
-              max: 500,
-              divisions: 9,
-              value: _draftRadius,
-              label: l10n.privacyZonesRadiusMeters(_draftRadius.round()),
-              semanticFormatterCallback: (v) =>
-                  l10n.privacyZonesRadiusMeters(v.round()),
-              onChanged: (v) => setState(() => _draftRadius = v),
+            // One node named "Radius" whose value is read in metres, not as
+            // Slider's default percentage (issue #1374 A11Y-4).
+            MergeSemantics(
+              child: Semantics(
+                label: l10n.privacyZonesRadius,
+                child: Slider(
+                  min: 50,
+                  max: 500,
+                  divisions: 9,
+                  value: _draftRadius,
+                  label: l10n.privacyZonesRadiusMeters(_draftRadius.round()),
+                  semanticFormatterCallback: (v) =>
+                      l10n.privacyZonesRadiusMeters(v.round()),
+                  onChanged: (v) => setState(() => _draftRadius = v),
+                ),
+              ),
             ),
           ],
         ),

@@ -18,7 +18,7 @@ import '../local_route_store.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
-import '../widgets/capture_png.dart';
+import '../widgets/share_canvas.dart';
 import 'run_detail_screen.dart';
 import '../widgets/activity_heatmap.dart';
 import '../widgets/run_list_tile.dart';
@@ -430,6 +430,11 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
                   runs: widget.runStore.summaryRuns,
                   weekStartDay: _weekStartDay,
                   onWeekTap: _showWeek,
+                  selectedWeek: periodStart(_period, _anchor,
+                      weekStartDay: _weekStartDay),
+                  weekLabel: (w) => periodTitle(PeriodType.week, w,
+                      localeToTag(Localizations.localeOf(context)),
+                      weekStartDay: _weekStartDay),
                 ),
               ),
             ),
@@ -652,7 +657,7 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
       // `finisher_certificate_card`, the other tile-free card.
       await WidgetsBinding.instance.endOfFrame;
 
-      final bytes = await capturePngBytes(_cardKey);
+      final bytes = await captureShareCanvas(_cardKey, canvasSize: kPeriodShareCanvas);
 
       final tmp = await getTemporaryDirectory();
       final file = File(
@@ -692,16 +697,16 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: AspectRatio(
-              aspectRatio: 4 / 3,
-              child: RepaintBoundary(
-                key: _cardKey,
-                child: _PeriodShareCard(
-                  periodTitle: widget.periodTitle,
-                  periodLabel: widget.periodLabel,
-                  stats: widget.stats,
-                  unit: widget.unit,
-                ),
+            // A fixed canvas with text scaling off, so the shared PNG is the
+            // same at any OS text size (issue #1374 TO-3).
+            child: ShareCanvas(
+              canvasSize: kPeriodShareCanvas,
+              captureKey: _cardKey,
+              child: _PeriodShareCard(
+                periodTitle: widget.periodTitle,
+                periodLabel: widget.periodLabel,
+                stats: widget.stats,
+                unit: widget.unit,
               ),
             ),
           ),
@@ -741,6 +746,10 @@ class _PeriodShareSheetState extends State<_PeriodShareSheet> {
 }
 
 // ── Share card ──────────────────────────────────────────────────────────
+
+/// The period summary share image's canvas: 4:3, laid out at this size and
+/// exported 1080 px wide (#1374 TO-3).
+const Size kPeriodShareCanvas = Size(480, 360);
 
 class _PeriodShareCard extends StatelessWidget {
   final String periodTitle;

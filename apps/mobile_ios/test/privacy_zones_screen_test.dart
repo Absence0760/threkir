@@ -84,6 +84,21 @@ void main() {
       expectCreditsAboveNavBar(tester);
     });
 
+    // #1374 A11Y-4: the radius slider read "33%, slider" with no name.
+    testWidgets('the radius slider is named Radius and reads its value in metres',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      final s = await _makeSync();
+      await _pump(tester, sync: s.sync);
+      await tester.pump();
+      final data = tester.getSemantics(find.byType(Slider)).getSemanticsData();
+      expect(data.label, contains('Radius'));
+      expect(data.value, matches(RegExp(r'^\d+ m$')));
+      expect(data.value, isNot(contains('%')));
+      expect(data.increasedValue, matches(RegExp(r'^\d+ m$')));
+      handle.dispose();
+    });
+
     testWidgets('renders the Privacy zones app-bar title', (tester) async {
       final s = await _makeSync();
       await _pump(tester, sync: s.sync);

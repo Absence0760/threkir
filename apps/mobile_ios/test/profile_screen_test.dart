@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,7 @@ import '../lib/help_guides.dart' show HelpDestination;
 import '../lib/screens/profile_screen.dart';
 import '../lib/widgets/error_state.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 /// Signed-in viewer looking at their own profile — the five-tab shape
 /// that carries Notifications.
@@ -489,18 +491,56 @@ void main() {
           reason: 'a longer display name still eats the tab bodies');
     });
 
-    Future<void> pumpOther(WidgetTester tester, ApiClient api) async {
+    Future<void> pumpOther(WidgetTester tester, ApiClient api,
+        {Locale? locale}) async {
       await _ensureSupabase();
+      final screen = ProfileScreen(api: api, userId: 'other');
       await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: ProfileScreen(api: api, userId: 'other'),
-        ),
+        locale != null
+            ? worstCaseApp(locale: locale, home: screen)
+            : MaterialApp(
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: screen,
+              ),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
     }
+
+    // #1374 TO-2: at 1.0x on 320 dp both "Followers" and "Following" read
+    // "Follow…". Every count's label is whole at the worst case, in every
+    // locale, and the counts move under the avatar to get there.
+    worstCaseTestWidgets('The profile header', (tester, locale) async {
+      await pumpOther(tester, _OtherApi(), locale: locale);
+      for (final key in const [
+        'profile-stat-runs',
+        'profile-stat-followers',
+        'profile-stat-following',
+      ]) {
+        final label = find
+            .descendant(of: find.byKey(ValueKey(key)), matching: find.byType(Text))
+            .last;
+        expect(tester.renderObject<RenderParagraph>(label).didExceedMaxLines,
+            isFalse,
+            reason: '$key\'s label is cut');
+      }
+      expect(find.byKey(const ValueKey('profile-stats-stacked')), findsOneWidget,
+          reason: 'at 2x on 320 dp the counts cannot sit beside the avatar');
+    });
+
+    // Where the labels fit (a wide surface here: the test font's fixed
+    // advance is wider than Roboto, so a phone-width fit is not a claim this
+    // harness can make, § 500), the counts keep their place beside the avatar.
+    testWidgets('counts that fit stay beside the avatar', (tester) async {
+      tester.view.physicalSize = const Size(800, 780);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpOther(tester, _OtherApi());
+      final avatar = tester.getRect(find.byType(IdentityAvatar));
+      final runs = tester.getRect(find.byKey(const ValueKey('profile-stat-runs')));
+      expect(runs.left, greaterThan(avatar.right));
+    });
 
     testWidgets('the counts select the tab that lists them', (tester) async {
       await pumpOther(tester, _OtherApi());

@@ -616,18 +616,26 @@ class _EntryCard extends StatelessWidget {
           const Divider(height: 1),
           // Track thumbnail — banner-style preview of the run shape so
           // the card's most distinctive signal sits above the fold.
+          // The thumbnail opens the run, as the stats row below does; the
+          // stats row is the one a screen reader stops on, named by what it
+          // reads, so this one is not a second unnamed "button" (#1374
+          // A11Y-12).
           if (entry.run.trackUrl != null && entry.run.trackUrl!.isNotEmpty)
-            InkWell(
-              onTap: onCardTap,
-              child: Container(
-                height: 120,
-                color: theme.colorScheme.surfaceContainerHighest,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: RunTrackPreview(
-                  runId: entry.run.id,
-                  trackUrl: entry.run.trackUrl,
-                  api: api,
-                  ownerUserId: entry.author.id,
+            ExcludeSemantics(
+              key: const Key('feedCardTrackThumb'),
+              child: InkWell(
+                onTap: onCardTap,
+                child: Container(
+                  height: 120,
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: RunTrackPreview(
+                    runId: entry.run.id,
+                    trackUrl: entry.run.trackUrl,
+                    api: api,
+                    ownerUserId: entry.author.id,
+                  ),
                 ),
               ),
             ),

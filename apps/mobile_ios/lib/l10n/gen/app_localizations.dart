@@ -3899,6 +3899,12 @@ abstract class AppLocalizations {
   /// **'Run started'**
   String get runA11yStarted;
 
+  /// Screen-reader announcement when the 3-2-1 countdown before a recording begins
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds, plural, one{Starting in {seconds} second. Tap to cancel.} other{Starting in {seconds} seconds. Tap to cancel.}}'**
+  String runA11yStartingIn(int seconds);
+
   /// Screen-reader status announcement when a paused run resumes
   ///
   /// In en, this message translates to:
@@ -4330,6 +4336,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Abandon'**
   String get runWorkoutAbandon;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'On pace'**
+  String get workoutPaceOnPace;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Ahead of pace'**
+  String get workoutPaceAhead;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Behind pace'**
+  String get workoutPaceBehind;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Well ahead of pace'**
+  String get workoutPaceWayAhead;
+
+  /// Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph
+  ///
+  /// In en, this message translates to:
+  /// **'Well behind pace'**
+  String get workoutPaceWayBehind;
 
   /// Tooltip and accessibility label of the workout band overflow menu that holds Abandon
   ///
@@ -5266,6 +5302,23 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Elevation'**
   String get runDetailSectionElevation;
+
+  /// Screen-reader summary of the elevation chart on run detail and park courses
+  ///
+  /// In en, this message translates to:
+  /// **'Elevation over {distance}: lowest {min}, highest {max}, {gain} climbed'**
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  );
+
+  /// Screen-reader value of the elevation chart's cursor as it is stepped along the track
+  ///
+  /// In en, this message translates to:
+  /// **'{elevation} at {distance}'**
+  String elevationChartPoint(String elevation, String distance);
 
   /// Fast end of the run-detail map's pace-colour legend
   ///
@@ -6490,6 +6543,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pin already there — tap further apart to add another.'**
   String get routeBuilderPinAlreadyThere;
+
+  /// Screen-reader name of a route-builder waypoint pin between the start and the end
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}'**
+  String routeBuilderWaypoint(int index, int total);
+
+  /// Screen-reader name of the route-builder start pin
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}, start'**
+  String routeBuilderWaypointStart(int index, int total);
+
+  /// Screen-reader name of the route-builder end pin
+  ///
+  /// In en, this message translates to:
+  /// **'Point {index} of {total}, finish'**
+  String routeBuilderWaypointEnd(int index, int total);
 
   /// Banner shown when the generate-loop target distance is out of range
   ///
@@ -16767,6 +16838,21 @@ abstract class AppLocalizations {
   /// **'Record a few runs to see your fitness trend.'**
   String get trainingLoadEmpty;
 
+  /// Screen-reader summary of the training-load chart: where each line started and ended over the window
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness {ctlFrom} to {ctlTo}, fatigue {atlFrom} to {atlTo}, form {tsbFrom} to {tsbTo}, {from} to {to}'**
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  );
+
   /// Legend label for the CTL (fitness) series
   ///
   /// In en, this message translates to:
@@ -19250,6 +19336,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notifications'**
   String get notificationBellTooltip;
+
+  /// Tooltip and screen-reader name of the notifications bell when there are unread notifications
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Notifications, {count} unread} other{Notifications, {count} unread}}'**
+  String notificationBellUnread(int count);
 
   /// Overlay shown while waiting for the first GPS fix
   ///

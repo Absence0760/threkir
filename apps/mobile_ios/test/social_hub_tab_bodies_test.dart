@@ -30,6 +30,7 @@ import '../lib/training_service.dart';
 import '../lib/widgets/error_state.dart';
 import 'social_hub_fakes.dart';
 import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
+import 'worst_case_layout.dart';
 
 const _phone = Size(320, 640);
 
@@ -52,6 +53,7 @@ void main() {
     ApiClient? api,
     SocialService? social,
     double textScale = 2.0,
+    Locale locale = const Locale('en'),
   }) async {
     tester.view.physicalSize = _phone;
     tester.view.devicePixelRatio = 1;
@@ -61,6 +63,7 @@ void main() {
     final routeStore = LocalRouteStore();
     await routeStore.init(overrideDirectory: tmp);
     await tester.pumpWidget(MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
@@ -116,6 +119,24 @@ void main() {
       } else {
         expect(fab, findsNothing, reason: '$label has no primary action');
       }
+    }
+  });
+
+  // The same walk in every shipped locale (issue #1374 TO-6), tab by
+  // position so no label is spelled in English.
+  worstCaseTestWidgets('every Social tab', (tester, locale) async {
+    await pumpHub(tester, locale: locale);
+    final tabs = find.descendant(of: find.byType(TabBar), matching: find.byType(Tab));
+    final count = tabs.evaluate().length;
+    expect(count, 5);
+    for (var i = 0; i < count; i++) {
+      final tab = tabs.at(i);
+      await tester.ensureVisible(tab);
+      await tester.tap(tab);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expectNoOverflow(tester, 'Social tab $i');
     }
   });
 

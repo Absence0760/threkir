@@ -58,9 +58,11 @@ class ChoiceChipRow<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No run spacing: each chip's padded 48 dp target already leaves 16 dp
+    // between the drawn chips of two runs.
     return Wrap(
       spacing: 6,
-      runSpacing: 6,
+      runSpacing: 0,
       alignment: alignment,
       children: [
         for (final option in options)
@@ -103,6 +105,8 @@ Widget buildChoiceChip<T>(
       showCheckmark: false,
       selected: option.value == selected,
       onSelected: onChanged == null ? null : (_) => onChanged(option.value),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      // The theme's density and a padded tap target: compact and shrink-wrap
+      // made each chip a 24-32 dp target (#1374 A11Y-15). The padding is
+      // vertical, so a run of chips keeps its spacing.
+      materialTapTargetSize: MaterialTapTargetSize.padded,
     );

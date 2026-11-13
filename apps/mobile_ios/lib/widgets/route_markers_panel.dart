@@ -373,19 +373,17 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(l10n.routeMarkerHeading,
-                  style: theme.textTheme.titleMedium),
-            ),
-            if (_canAdd && !_placing)
-              TextButton.icon(
-                onPressed: _startAdd,
-                icon: const Icon(Icons.add_location_alt, size: 18),
-                label: Text(l10n.routeMarkerAdd),
-              ),
-          ],
+        // The shared heading: its action drops under the title when the two
+        // do not share a line (a Row overflowed at 2x on 320 dp, #1374 TO-6).
+        SectionHeader.title(
+          label: l10n.routeMarkerHeading,
+          trailing: _canAdd && !_placing
+              ? TextButton.icon(
+                  onPressed: _startAdd,
+                  icon: const Icon(Icons.add_location_alt, size: 18),
+                  label: Text(l10n.routeMarkerAdd),
+                )
+              : null,
         ),
         if (_saving)
           const Padding(
@@ -399,23 +397,17 @@ class RouteMarkersPanelState extends State<RouteMarkersPanel> {
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.primary)),
           ),
-          InkWell(
-            onTap: () => setState(() => _snapEnabled = !_snapEnabled),
-            child: Row(
-              children: [
-                Checkbox(
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  value: _snapEnabled,
-                  onChanged: (v) =>
-                      setState(() => _snapEnabled = v ?? _snapEnabled),
-                ),
-                Expanded(
-                  child: Text(l10n.routeMarkerSnapToggle,
-                      style: theme.textTheme.bodySmall),
-                ),
-              ],
-            ),
+          // One named control with a 48 dp row: a row InkWell beside a
+          // shrink-wrapped, unnamed Checkbox gave two tap actions (#1374
+          // A11Y-13).
+          CheckboxListTile(
+            key: const Key('routeMarkerSnapToggle'),
+            value: _snapEnabled,
+            onChanged: (v) => setState(() => _snapEnabled = v ?? _snapEnabled),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.routeMarkerSnapToggle,
+                style: theme.textTheme.bodySmall),
           ),
           Wrap(
             spacing: 4,

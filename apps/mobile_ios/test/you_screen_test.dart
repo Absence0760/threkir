@@ -27,6 +27,7 @@ import '../lib/screens/settings_preferences_screen.dart';
 import '../lib/settings_sync.dart';
 import '../lib/screens/you_screen.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 /// Signed-in fake so the identity card renders. [displayName] stands in for
 /// the profile read the card makes; [failProfile] makes it throw, as an
@@ -131,6 +132,7 @@ void main() {
     Map<String, Object> initialPrefs = const {},
     Size? size,
     double textScale = 1.0,
+    Locale locale = const Locale('en'),
   }) async {
     SharedPreferences.setMockInitialValues(initialPrefs);
     final prefs = Preferences();
@@ -148,6 +150,7 @@ void main() {
     }
 
     await tester.pumpWidget(MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
@@ -245,6 +248,16 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text(en.helpTitle), findsOneWidget);
     });
+  });
+
+  // Issue #1374 TO-6: the whole of You at the worst case, in every locale.
+  worstCaseTestWidgets('You', (tester, locale) async {
+    await pump(tester, size: kWorstCasePhone, textScale: kWorstCaseTextScale, locale: locale);
+    useWorstCasePhone(tester);
+    await pumpUntil(
+        tester, () => find.text('Ada Lovelace').evaluate().isNotEmpty,
+        describe: 'the display name');
+    await walkScrollable(tester, find.byType(Scrollable).first, 'You');
   });
 
   group('the identity card', () {

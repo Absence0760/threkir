@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, IdentityAvatar;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSemanticColors, IdentityAvatar, SectionHeader;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -240,24 +241,21 @@ class _SegmentsPanelState extends State<SegmentsPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(l10n.segmentsPanelTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium),
-              ),
-              if (widget.canCreate)
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      setState(() => _showCreate = !_showCreate),
-                  icon: Icon(_showCreate ? Icons.close : Icons.add, size: 18),
-                  label: Text(_showCreate
-                      ? l10n.segmentsPanelCancel
-                      : l10n.segmentsPanelNew),
-                ),
-            ],
+          // The shared heading: its action drops under the title when the
+          // two do not share a line (a Row overflowed at 2x on 320 dp,
+          // #1374 TO-6).
+          SectionHeader.title(
+            label: l10n.segmentsPanelTitle,
+            trailing: widget.canCreate
+                ? OutlinedButton.icon(
+                    onPressed: () =>
+                        setState(() => _showCreate = !_showCreate),
+                    icon: Icon(_showCreate ? Icons.close : Icons.add, size: 18),
+                    label: Text(_showCreate
+                        ? l10n.segmentsPanelCancel
+                        : l10n.segmentsPanelNew),
+                  )
+                : null,
           ),
           if (_showCreate) ...[
             const SizedBox(height: 8),

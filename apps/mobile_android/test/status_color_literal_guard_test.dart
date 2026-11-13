@@ -101,12 +101,6 @@ const _dataPalettes = <String, Map<String, int>>{
   'lib/widgets/track_preview.dart': {'22C55E': 1, 'EF4444': 1},
   // Course start/finish checkpoint hues beside the kindSpec marker catalogue.
   'lib/screens/roadbook_screen.dart': {'22C55E': 1, 'EF4444': 1},
-  // Waypoint pins on the builder map: start/end/drag states.
-  'lib/screens/route_builder_screen.dart': {
-    'Colors.amber': 3,
-    'Colors.green': 2,
-    'Colors.red': 1,
-  },
 };
 
 final _hexPattern = RegExp(

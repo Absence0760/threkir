@@ -657,26 +657,63 @@ class _TodayScreenState extends State<TodayScreen>
     final svc = widget.training;
     if (paused == null || svc == null) return null;
     final l10n = AppLocalizations.of(context);
+    Future<void> open() async {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlanDetailScreen(
+            training: svc,
+            planId: paused.id,
+            openResume: true,
+          ),
+        ),
+      );
+      _refreshPlanOverview();
+    }
+
+    final theme = Theme.of(context);
+    // The action is a button under the text, not plain text in a ListTile's
+    // trailing slot: "Reprendre le plan" at 2x took about 200 dp of the row
+    // there and squeezed the plan's name to a word per line, and as plain
+    // text it did not read as something to tap (#1374 TO-11).
     return Card(
       key: const Key('dashboardPausedPlan'),
       clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        leading: const Icon(Icons.pause_circle_outline),
-        title: Text(paused.name),
-        subtitle: Text(l10n.dashboardPlanPausedBody),
-        trailing: Text(l10n.planDetailResumePlan),
-        onTap: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => PlanDetailScreen(
-                training: svc,
-                planId: paused.id,
-                openResume: true,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.pause_circle_outline,
+                    color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(paused.name, style: theme.textTheme.titleMedium),
+                      Text(
+                        l10n.dashboardPlanPausedBody,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                key: const Key('dashboardPausedPlanResume'),
+                onPressed: open,
+                child: Text(l10n.planDetailResumePlan),
               ),
             ),
-          );
-          _refreshPlanOverview();
-        },
+          ],
+        ),
       ),
     );
   }

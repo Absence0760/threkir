@@ -25,6 +25,7 @@ import 'package:ui_kit/ui_kit.dart'
         AppSemanticColors,
         SheetScaffold,
         StatTile,
+        StatusPill,
         motionDuration;
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -199,6 +200,12 @@ double idleStartAreaHeight(double buttonSize, double dockInset) =>
 
 /// Main run recording screen with GPS tracking, live stats, sync, audio cues,
 /// auto-pause, countdown, and optional route following.
+/// The backing behind the countdown's "Tap to cancel", over the 0.45 black
+/// scrim: white on it is 11.71:1 over a white basemap (the old 0.7-alpha
+/// white straight on the scrim was 2.46:1).
+@visibleForTesting
+const Color kCountdownHintBacking = Color(0x99000000);
+
 class RunScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final LocalRunStore runStore;
@@ -1799,6 +1806,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       _setScreenState(_ScreenState.countdown);
       _countdownValue = 3;
     });
+    // The big digits are drawn, not read: say once that the run is about to
+    // start and how to stop it (#1374 A11Y-11).
+    _announceA11yState(_l10n.runA11yStartingIn(_countdownValue));
 
     // Warm up everything that would otherwise delay the start of the run —
     // GPS stream, pedometer sensor, wakelock — while the countdown ticks.
@@ -5070,16 +5080,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                         spacing: 8,
                         children: ActivityType.values.map((t) {
                           final selected = t == _activityType;
+                          // The icon is the chip's avatar, so the chip lays
+                          // the label out in the width it has; an icon and
+                          // label in a Row as the label overflowed the chip
+                          // by 27 dp at 2x on 320 dp (#1374 TO-6).
                           return ChoiceChip(
                             showCheckmark: false,
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(t.icon, size: 16),
-                                const SizedBox(width: 4),
-                                Text(activityTypeLabel(_l10n, t)),
-                              ],
-                            ),
+                            avatar: Icon(t.icon, size: 16),
+                            label: Text(activityTypeLabel(_l10n, t)),
                             selected: selected,
                             onSelected: (_) {
                               if (_state != _ScreenState.idle) return;
@@ -5464,14 +5472,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       bottom: 48,
                       left: 0,
                       right: 0,
+                      // On its own backing, so its contrast does not depend
+                      // on the tile under the scrim: white at 0.7 over the
+                      // scrim over a white basemap was about 2.5:1.
                       child: Center(
-                        child: Text(
-                          l10n.runTapToCancel,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
-                          ),
+                        child: StatusPill(
+                          key: const Key('runCountdownCancelHint'),
+                          label: l10n.runTapToCancel,
+                          foreground: Colors.white,
+                          fill: kCountdownHintBacking,
                         ),
                       ),
                     ),

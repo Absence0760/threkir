@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../a11y_announce.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart' show formatDistanceForPref;
 import '../quiet_location.dart';
@@ -56,6 +57,7 @@ class _RaceBannerState extends State<RaceBanner> {
   StreamSubscription<Position>? _positions;
   Position? _here;
   int? _lastCountdownS;
+  int? _lastAnnouncedS;
 
   DateTime _now() => (widget.now ?? DateTime.now)();
 
@@ -93,7 +95,21 @@ class _RaceBannerState extends State<RaceBanner> {
         debugPrint('RaceBanner countdown cue failed: $e');
       }
     }
+    _announceCountdown(secs);
     setState(() {});
+  }
+
+  /// The countdown text changes every second, so it is not a live region:
+  /// TalkBack would read every second over the whole recorder. The screen
+  /// reader hears it once when the race arms and at the coarse marks
+  /// [countdownAnnouncementDue] picks.
+  void _announceCountdown(int? secs) {
+    final previous = _lastAnnouncedS;
+    _lastAnnouncedS = secs;
+    if (secs == null || !countdownAnnouncementDue(previous, secs)) return;
+    final l10n = AppLocalizations.of(context);
+    final label = widget.race.eventTitle ?? l10n.runRaceFallbackTitle;
+    announceForAccessibility(context, l10n.runRaceStartsIn(label, _fmt(secs)));
   }
 
   /// A self-timed banner refreshes the runner's position every 20 s while
@@ -216,14 +232,11 @@ class _RaceBannerState extends State<RaceBanner> {
                     letterSpacing: 0.8,
                   ),
                 ),
-                Semantics(
-                  liveRegion: race.startMode == SessionStartMode.scheduled && armed,
-                  child: Text(
-                    body,
-                    key: const ValueKey('race-banner-body'),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                Text(
+                  body,
+                  key: const ValueKey('race-banner-body'),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 if (toStartM != null)

@@ -393,3 +393,37 @@ test('accessibility: the tap-target tokens sit above the bars they clear', () =>
 			'for the same reason.',
 	);
 });
+
+// #1374 A11Y-4. A range input's value is read as its bare number ("300")
+// unless aria-valuetext gives it the unit the page shows. The mobile twin
+// is `slider_semantics_guard_test.dart`.
+test('accessibility: every range input carries aria-valuetext', () => {
+	const roots = [resolve(__dirname), resolve(__dirname, '..', 'routes')];
+	const offenders: string[] = [];
+	const walk = (dir: string) => {
+		for (const e of readdirSync(dir, { withFileTypes: true })) {
+			const p = resolve(dir, e.name);
+			if (e.isDirectory()) walk(p);
+			else if (e.name.endsWith('.svelte')) {
+				const src = readFileSync(p, 'utf-8');
+				for (const m of src.matchAll(/type="range"/g)) {
+					const start = src.lastIndexOf('<input', m.index);
+					// The tag ends at the first `>` outside a `{…}` expression,
+					// since an arrow function in a binding holds one.
+					let depth = 0;
+					let end = start;
+					for (; end < src.length; end++) {
+						const c = src[end];
+						if (c === '{') depth++;
+						else if (c === '}') depth--;
+						else if (c === '>' && depth === 0) break;
+					}
+					if (!/aria-valuetext=/.test(src.slice(start, end))) offenders.push(p);
+				}
+			}
+		}
+	};
+	roots.forEach(walk);
+	assert.deepEqual(offenders, [], `range inputs without aria-valuetext:\n${offenders.join('\n')}`);
+});
+

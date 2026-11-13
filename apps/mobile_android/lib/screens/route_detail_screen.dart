@@ -539,35 +539,49 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (_lineLoading) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _lineFailed ? Icons.cloud_off : Icons.route,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _lineFailed ? l10n.routeDetailLineLoadFailed : l10n.routeDetailLineEmpty,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            if (_lineFailed) ...[
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: _retryDisplayWaypoints,
-                child: Text(l10n.routeDetailLineRetry),
+    // The map's box has a fixed height, and at large text in a long
+    // translation the message and its Retry outgrow it (by 35 dp in German at
+    // 2x on 320 dp, issue #1374 TO-6), so the message scrolls inside the box
+    // rather than overflowing it, and stays centred while it fits.
+    return LayoutBuilder(
+      builder: (context, box) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: box.maxHeight),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _lineFailed ? Icons.cloud_off : Icons.route,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _lineFailed
+                        ? l10n.routeDetailLineLoadFailed
+                        : l10n.routeDetailLineEmpty,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  if (_lineFailed) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _retryDisplayWaypoints,
+                      child: Text(l10n.routeDetailLineRetry),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ],
+            ),
+          ),
         ),
       ),
     );
   }
+
 
   /// The "Describe this route" surface shown when the route has no
   /// stored description. Before generation: a single button. After: the
@@ -2504,44 +2518,59 @@ class _RoutePreviewScrubber extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.directions_run,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l10n.routeDetailPreview,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+          // "Preview" names the slider, and the slider reads its position as
+          // a distance in the runner's unit, never Slider's bare percentage.
+          // The readout beside the name is the same value, so it is not read
+          // twice.
+          MergeSemantics(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.directions_run,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        l10n.routeDetailPreview,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    // Live distance readout — updates as the user drags.
+                    // Gives feedback in distance terms rather than raw
+                    // percentage so the runner knows "I'm 2.3 km in" not
+                    // "I'm at 43%".
+                    ExcludeSemantics(
+                      child: Text(
+                        reachedLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              // Live distance readout — updates as the user drags.
-              // Gives feedback in distance terms rather than raw
-              // percentage so the runner knows "I'm 2.3 km in" not
-              // "I'm at 43%".
-              Text(
-                reachedLabel,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                Slider(
+                  value: fraction.clamp(0.0, 1.0),
+                  min: 0.0,
+                  max: 1.0,
+                  semanticFormatterCallback: (v) =>
+                      UnitFormat.distance(totalDistanceM * v, unit),
+                  onChangeStart: (_) => onChangeStart(),
+                  onChanged: onChanged,
+                  onChangeEnd: (_) => onChangeEnd(),
                 ),
-              ),
-            ],
-          ),
-          Slider(
-            value: fraction.clamp(0.0, 1.0),
-            min: 0.0,
-            max: 1.0,
-            onChangeStart: (_) => onChangeStart(),
-            onChanged: onChanged,
-            onChangeEnd: (_) => onChangeEnd(),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -2681,14 +2710,15 @@ class _RouteTagsRowState extends State<_RouteTagsRow> {
       child: Wrap(
         alignment: WrapAlignment.center,
         spacing: 6,
-        runSpacing: 6,
+        runSpacing: 0,
         children: [
+          // The delete "x" is the only way to remove a tag, so the chip keeps
+          // a padded 48 dp target (#1374 A11Y-15).
           for (final t in _tags)
             Chip(
               label: Text(t, style: theme.textTheme.labelMedium),
               onDeleted: widget.isOwner && !_saving ? () => _remove(t) : null,
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              materialTapTargetSize: MaterialTapTargetSize.padded,
             ),
           if (widget.isOwner)
             SizedBox(

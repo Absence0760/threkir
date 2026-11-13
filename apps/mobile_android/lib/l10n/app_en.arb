@@ -2997,6 +2997,15 @@
   "@runA11yStarted": {
     "description": "Screen-reader status announcement when recording begins"
   },
+  "runA11yStartingIn": "{seconds, plural, one{Starting in {seconds} second. Tap to cancel.} other{Starting in {seconds} seconds. Tap to cancel.}}",
+  "@runA11yStartingIn": {
+    "description": "Screen-reader announcement when the 3-2-1 countdown before a recording begins",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "runA11yResumed": "Run resumed",
   "@runA11yResumed": {
     "description": "Screen-reader status announcement when a paused run resumes"
@@ -3375,6 +3384,26 @@
   "runWorkoutAbandon": "Abandon",
   "@runWorkoutAbandon": {
     "description": "Button to abandon the structured workout and continue as a free run"
+  },
+  "workoutPaceOnPace": "On pace",
+  "@workoutPaceOnPace": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
+  },
+  "workoutPaceAhead": "Ahead of pace",
+  "@workoutPaceAhead": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
+  },
+  "workoutPaceBehind": "Behind pace",
+  "@workoutPaceBehind": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
+  },
+  "workoutPaceWayAhead": "Well ahead of pace",
+  "@workoutPaceWayAhead": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
+  },
+  "workoutPaceWayBehind": "Well behind pace",
+  "@workoutPaceWayBehind": {
+    "description": "Live workout band: how the current pace compares with the step's target, read by a screen reader beside the signed delta and shown as a glyph"
   },
   "runWorkoutMoreActions": "More workout actions",
   "@runWorkoutMoreActions": {
@@ -4134,6 +4163,36 @@
   "runDetailSectionElevation": "Elevation",
   "@runDetailSectionElevation": {
     "description": "Section header for the elevation chart on run-detail"
+  },
+  "elevationChartSummary": "Elevation over {distance}: lowest {min}, highest {max}, {gain} climbed",
+  "@elevationChartSummary": {
+    "description": "Screen-reader summary of the elevation chart on run detail and park courses",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      },
+      "gain": {
+        "type": "String"
+      }
+    }
+  },
+  "elevationChartPoint": "{elevation} at {distance}",
+  "@elevationChartPoint": {
+    "description": "Screen-reader value of the elevation chart's cursor as it is stepped along the track",
+    "placeholders": {
+      "elevation": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
   },
   "runDetailPaceBandFaster": "Faster",
   "@runDetailPaceBandFaster": {
@@ -5171,6 +5230,42 @@
   "routeBuilderPinAlreadyThere": "Pin already there — tap further apart to add another.",
   "@routeBuilderPinAlreadyThere": {
     "description": "Banner shown when a tapped waypoint would duplicate an existing one"
+  },
+  "routeBuilderWaypoint": "Point {index} of {total}",
+  "@routeBuilderWaypoint": {
+    "description": "Screen-reader name of a route-builder waypoint pin between the start and the end",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "routeBuilderWaypointStart": "Point {index} of {total}, start",
+  "@routeBuilderWaypointStart": {
+    "description": "Screen-reader name of the route-builder start pin",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "routeBuilderWaypointEnd": "Point {index} of {total}, finish",
+  "@routeBuilderWaypointEnd": {
+    "description": "Screen-reader name of the route-builder end pin",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
   },
   "routeBuilderTargetTooLong": "Enter a target distance up to 1000 km.",
   "@routeBuilderTargetTooLong": {
@@ -14072,6 +14167,36 @@
   "@trainingLoadEmpty": {
     "description": "Empty-state text for the training-load chart"
   },
+  "trainingLoadChartSummary": "Fitness {ctlFrom} to {ctlTo}, fatigue {atlFrom} to {atlTo}, form {tsbFrom} to {tsbTo}, {from} to {to}",
+  "@trainingLoadChartSummary": {
+    "description": "Screen-reader summary of the training-load chart: where each line started and ended over the window",
+    "placeholders": {
+      "ctlFrom": {
+        "type": "String"
+      },
+      "ctlTo": {
+        "type": "String"
+      },
+      "atlFrom": {
+        "type": "String"
+      },
+      "atlTo": {
+        "type": "String"
+      },
+      "tsbFrom": {
+        "type": "String"
+      },
+      "tsbTo": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
   "trainingLoadLegendFitness": "Fitness",
   "@trainingLoadLegendFitness": {
     "description": "Legend label for the CTL (fitness) series"
@@ -16008,6 +16133,15 @@
   "notificationBellTooltip": "Notifications",
   "@notificationBellTooltip": {
     "description": "Tooltip on the notification bell"
+  },
+  "notificationBellUnread": "{count, plural, one{Notifications, {count} unread} other{Notifications, {count} unread}}",
+  "@notificationBellUnread": {
+    "description": "Tooltip and screen-reader name of the notifications bell when there are unread notifications",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "liveRunMapWaitingGps": "Waiting for GPS...",
   "@liveRunMapWaitingGps": {

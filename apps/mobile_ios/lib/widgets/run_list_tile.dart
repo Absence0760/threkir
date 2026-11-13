@@ -181,7 +181,7 @@ class RunListTile extends StatelessWidget {
       dur,
       trailingMetric,
       if (vertMetres > 0)
-        '${UnitFormat.elevation(vertMetres, unit)} elevation gain',
+        l10n.racesCourseGain(UnitFormat.elevation(vertMetres, unit)),
       if (isBlocked)
         l10n.historyBlockedRowSemantics
       else if (isUnsynced)
@@ -216,10 +216,16 @@ class RunListTile extends StatelessWidget {
           )
         : null;
 
+    // One node carrying the whole row: without excludeSemantics the texts
+    // and the sync tooltip below merged in after this label and TalkBack read
+    // the row twice (#1374 A11Y-9). The node keeps the row's actions.
     return Semantics(
       label: semanticsLabel,
       button: true,
       selected: selected,
+      excludeSemantics: true,
+      onTap: onTap,
+      onLongPress: onLongPress,
       child: Card(
         color: selected
             ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)

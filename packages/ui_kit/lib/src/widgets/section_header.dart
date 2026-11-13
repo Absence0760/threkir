@@ -49,7 +49,8 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
+    final heading = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[
           Icon(icon,
@@ -57,7 +58,7 @@ class SectionHeader extends StatelessWidget {
               color: iconColor ?? theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
         ],
-        Expanded(
+        Flexible(
           child: _title
               ? Semantics(
                   header: true,
@@ -78,8 +79,23 @@ class SectionHeader extends StatelessWidget {
                   ),
                 ),
         ),
-        if (trailing != null) trailing!,
       ],
+    );
+    final action = trailing;
+    if (action == null) {
+      return Row(children: [Expanded(child: heading)]);
+    }
+    // The heading and its action share a line while they fit, the action at
+    // the end; when they do not (a long translation, large text) the action
+    // drops under the heading instead of pushing it off the row. A Row here
+    // overflowed by 39 dp in German at 2x on 320 dp (issue #1374 TO-6).
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [heading, action],
+      ),
     );
   }
 }

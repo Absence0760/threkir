@@ -7,10 +7,11 @@ import '../screens/profile_screen.dart';
 /// Notification bell icon for the dashboard action toolbar. Mirrors
 /// `apps/web/src/lib/components/NotificationBell.svelte`. Tapping
 /// navigates to the user's own ProfileScreen with the Notifications
-/// tab pre-selected. A red dot covers the bell when
-/// the unread count is non-zero — the actual count text is hosted on
-/// the Notifications tab itself, so the dashboard surface stays a
-/// glance.
+/// tab pre-selected. Unread notifications show as a Material `Badge`
+/// carrying the count (9+ past nine, as web's badge does), and the
+/// tooltip, which is also the button's accessible name, says how many:
+/// a colour-only dot told neither a screen reader nor a colour-blind
+/// reader anything (#1374 A11Y-5).
 ///
 /// The unread count is fetched on mount via
 /// `ApiClient.fetchUnreadNotificationCount`. Failures are swallowed
@@ -65,33 +66,21 @@ class _NotificationBellState extends State<NotificationBell> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          tooltip: AppLocalizations.of(context).notificationBellTooltip,
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: _open,
+    final l10n = AppLocalizations.of(context);
+    final unread = _unread > 0;
+    return IconButton(
+      tooltip: unread
+          ? l10n.notificationBellUnread(_unread)
+          : l10n.notificationBellTooltip,
+      icon: Badge.count(
+        count: _unread,
+        maxCount: 9,
+        isLabelVisible: unread,
+        child: Icon(
+          unread ? Icons.notifications_active : Icons.notifications_outlined,
         ),
-        if (_unread > 0)
-          Positioned(
-            right: 8,
-            top: 8,
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.error,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: theme.colorScheme.surface,
-                  width: 1.5,
-                ),
-              ),
-            ),
-          ),
-      ],
+      ),
+      onPressed: _open,
     );
   }
 }

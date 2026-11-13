@@ -2305,6 +2305,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runA11yStarted => 'Course démarrée';
 
   @override
+  String runA11yStartingIn(int seconds) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seconds,
+      locale: localeName,
+      other: 'Départ dans $seconds secondes. Touchez pour annuler.',
+      one: 'Départ dans $seconds seconde. Touchez pour annuler.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get runA11yResumed => 'Course reprise';
 
   @override
@@ -2572,6 +2583,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runWorkoutAbandon => 'Abandonner';
+
+  @override
+  String get workoutPaceOnPace => 'Dans l\'allure';
+
+  @override
+  String get workoutPaceAhead => 'En avance sur l\'allure';
+
+  @override
+  String get workoutPaceBehind => 'En retard sur l\'allure';
+
+  @override
+  String get workoutPaceWayAhead => 'Nettement en avance sur l\'allure';
+
+  @override
+  String get workoutPaceWayBehind => 'Nettement en retard sur l\'allure';
 
   @override
   String get runWorkoutMoreActions => 'Autres actions de la séance';
@@ -3157,6 +3183,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runDetailSectionElevation => 'Dénivelé';
+
+  @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return 'Profil d\'altitude sur $distance : point le plus bas $min, point le plus haut $max, $gain de dénivelé positif';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$elevation à $distance';
+  }
 
   @override
   String get runDetailPaceBandFaster => 'Plus rapide';
@@ -3925,6 +3966,21 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get routeBuilderPinAlreadyThere =>
       'Un point est déjà là — touchez un endroit plus éloigné pour en ajouter un autre.';
+
+  @override
+  String routeBuilderWaypoint(int index, int total) {
+    return 'Point $index sur $total';
+  }
+
+  @override
+  String routeBuilderWaypointStart(int index, int total) {
+    return 'Point $index sur $total, départ';
+  }
+
+  @override
+  String routeBuilderWaypointEnd(int index, int total) {
+    return 'Point $index sur $total, arrivée';
+  }
 
   @override
   String get routeBuilderTargetTooLong =>
@@ -10519,6 +10575,20 @@ class AppLocalizationsFr extends AppLocalizations {
       'Enregistrez quelques courses pour voir votre tendance de forme.';
 
   @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'Forme de $ctlFrom à $ctlTo, fatigue de $atlFrom à $atlTo, fraîcheur de $tsbFrom à $tsbTo, du $from au $to';
+  }
+
+  @override
   String get trainingLoadLegendFitness => 'Forme';
 
   @override
@@ -11928,6 +11998,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get notificationBellTooltip => 'Notifications';
+
+  @override
+  String notificationBellUnread(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Notifications, $count non lues',
+      one: 'Notifications, $count non lue',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get liveRunMapWaitingGps => 'En attente du GPS...';

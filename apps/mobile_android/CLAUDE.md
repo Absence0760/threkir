@@ -101,6 +101,8 @@ Guides are web's (`apps/web/src/lib/help/guides/`), generated into `assets/help/
 
 **The per-suite inventory is [`tests.md`](tests.md)** — what each of the 106 suites under `test/` covers. Read it before adding a suite so the case lands in the file that already owns that surface.
 
+**Every new or migrated screen has a worst-case widget test**: `worstCaseTestWidgets` from `test/worst_case_layout.dart` runs it on a 320 x 640 dp phone at text scale 2.0 with the 48 dp 3-button bar, once per shipped locale, and fails on any overflow, naming the widget; `walkScrollable(tester, primaryScrollable(), …)` lays out a lazy list a viewport at a time. Don't hand-roll a raised text scale on the default 800 dp surface: `worst_case_guard_test.dart` fails it. The shapes that fix what it finds (`SectionHeader` with `trailing:`, `TermValueRow`, a `Wrap` or one `Text.rich` for a row of facts, `ThreadTitle`, `ShareCanvas`) and the a11y rules with their guards (live regions, sliders, checkboxes, hand-built and chip tap targets, colour-only state) are in [conventions.md § Mobile accessibility](../../docs/architecture/conventions.md) and the section after it.
+
 ## Running it locally
 
 See [local_testing.md](local_testing.md). Short version: `cd apps/mobile_android && flutter run -d <device>`. The seed user in local Supabase is `runner@test.com` / `testtest`.

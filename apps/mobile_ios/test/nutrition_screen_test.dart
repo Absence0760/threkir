@@ -20,6 +20,7 @@ import '../lib/widgets/nutrition_log_sheet.dart';
 import '../lib/widgets/undo_bar.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 class _OfflineFakeApi extends ApiClient {
   @override
@@ -96,7 +97,9 @@ Future<void> _tapDelete(WidgetTester tester) async {
   await tester.tap(find.byTooltip('Delete'));
 }
 
-Widget _app(LocalFoodStore store, {double textScale = 1.0}) => MaterialApp(
+Widget _app(LocalFoodStore store, {double textScale = 1.0, Locale? locale}) =>
+    MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
@@ -115,6 +118,27 @@ void main() {
   setUpAll(() => initializeDateFormatting());
   setUp(() => SharedPreferences.setMockInitialValues({}));
   tearDown(debugResetUndo);
+
+  // Issue #1374 TO-6 / TO-10: the day with a meal and water logged, walked at
+  // the worst case in every locale. The water row's label, amount and
+  // remaining pill shared one Row, and overflowed from 1.5x on 320 dp.
+  worstCaseTestWidgets('Nutrition', (tester, locale) async {
+    final f = await _store('worstcase_');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    await tester.runAsync(() async {
+      await f.store.createLocal(
+        startedAt: DateTime.now(),
+        itemName: 'Porridge with banana and honey',
+        mealSlot: 'breakfast',
+        calories: 2450,
+      );
+    });
+    await tester.pumpWidget(
+        _app(f.store, textScale: kWorstCaseTextScale, locale: locale));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await walkScrollable(tester, primaryScrollable(), 'Nutrition');
+  });
 
   testWidgets('renders the empty state when nothing is logged today',
       (tester) async {

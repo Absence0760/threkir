@@ -581,4 +581,20 @@ void main() {
       },
     );
   });
+
+  // #1374 A11Y-15: the Undo / Retry action was a shrink-wrapped TextButton
+  // about 28 dp tall, on a banner that times out.
+  testWidgets('the banner action is a 48 dp target', (tester) async {
+    await tester.pumpWidget(_BannerHost(
+      onReady: (ctx) => showTopBanner(ctx, 'Run deleted',
+          actionLabel: 'Undo', onAction: () {}),
+    ));
+    await tester.pump();
+    final action = find.byKey(const Key('topBannerAction'));
+    expect(action, findsOneWidget);
+    expect(tester.getSize(action).height, greaterThanOrEqualTo(48));
+    await tester.pump(kTopBannerMaxDuration);
+    await tester.pump(const Duration(milliseconds: 500));
+  });
 }
+

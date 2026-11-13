@@ -27,6 +27,7 @@ import '../lib/widgets/mileage_trend_card.dart';
 import '../lib/widgets/activity_heatmap.dart';
 import '../lib/widgets/run_list_tile.dart';
 import '../lib/widgets/todays_workout_card.dart';
+import 'worst_case_layout.dart';
 
 /// The Coach live on this deploy, so the gated coach entry can render.
 Future<ProPerks> _coachLive() async =>
@@ -1073,6 +1074,44 @@ void main() {
       await tester.pump(const Duration(seconds: 6));
     });
 
+    // #1374 TO-11 at the worst case: "Reprendre le plan" as trailing text
+    // squeezed the plan name to a word per line at 2x.
+    worstCaseTestWidgets('The paused plan card', (tester, locale) async {
+      final dir = Directory.systemTemp.createTempSync('paused_plan_worst_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      await tester.runAsync(() async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+        final seedStore = LocalRunStore();
+        await seedStore.init(overrideDirectory: dir);
+        await seedStore.save(_run(id: 'r1'));
+        final runStore = LocalRunStore();
+        await runStore.init(overrideDirectory: dir);
+        await tester.pumpWidget(worstCaseApp(
+          locale: locale,
+          home: TodayScreen(
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            gymStore: LocalGymStore(),
+            foodStore: LocalFoodStore(),
+            preferences: prefs,
+            training: _PausedTraining(),
+          ),
+        ));
+      });
+      await tester.pump();
+      await tester.pump();
+      final card = find.byKey(const Key('dashboardPausedPlan'));
+      await tester.scrollUntilVisible(card, 200, scrollable: primaryScrollable());
+      expectNoOverflow(tester, 'paused plan card');
+      final name = tester.getRect(
+          find.descendant(of: card, matching: find.text('Autumn Half')));
+      final resume = tester.getRect(find.byKey(const Key('dashboardPausedPlanResume')));
+      expect(resume.top, greaterThanOrEqualTo(name.bottom),
+          reason: 'the action sits under the text, not beside it');
+    });
+
     testWidgets('a paused plan stays on Home and opens with the resume confirm',
         (tester) async {
       await tester.runAsync(() async {
@@ -1111,7 +1150,11 @@ void main() {
           expect(find.descendant(of: card, matching: find.text('Autumn Half')),
               findsOneWidget);
 
-          await tester.tap(card);
+          // #1374 TO-11: the way back is a button, not plain trailing text.
+          final resume = find.descendant(
+              of: card, matching: find.widgetWithText(TextButton, 'Resume plan'));
+          expect(resume, findsOneWidget);
+          await tester.tap(resume);
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 400));
           final detail =

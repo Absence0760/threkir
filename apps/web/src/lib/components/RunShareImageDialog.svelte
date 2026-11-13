@@ -13,7 +13,7 @@
 	import { formatPaceNoSuffix, getUnit } from '#lib/format/units.svelte.ts';
 	import type { Split } from '#lib/runs/run_stats.ts';
 	import type { AchievementTier } from '#lib/types.ts';
-	import { tierFor } from '#lib/social/badges.ts';
+	import { badgeWords } from '#lib/social/badges.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { TrackPoint } from '#lib/types.ts';
@@ -345,10 +345,10 @@
 				);
 			}
 			case 'badge': {
-				const t = tierFor(badge!.badgeKey, badge!.tier);
+				const w = badgeWords(badge!.badgeKey, badge!.tier, m, getUnit(), currentLocale());
 				return badgeStickerBody({
 					kicker: m('runShare.badgeKicker'),
-					name: t ? m(t.labelKey) : badge!.badgeKey,
+					name: w?.label ?? badge!.badgeKey,
 					tier: m(`badges.tier.${badge!.tier}` as MessageKey),
 				});
 			}

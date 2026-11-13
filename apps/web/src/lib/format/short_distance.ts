@@ -21,3 +21,19 @@ export function formatShortDistance(metres: number, unit: 'km' | 'mi', locale?: 
 	if (metres >= 1000) return `${formatDecimal(metres / 1000, 2, locale)} km`;
 	return `${formatInteger(Math.round(metres), locale)} m`;
 }
+
+/// A badge or milestone threshold in the reader's unit: "42.2 km" / "26.2 mi",
+/// "50 km" / "31.1 mi", "1,000 km" / "621 mi". `digits` is 1 for a race
+/// distance and 0 for a total; a value that rounds to a whole number drops its
+/// ".0". Dart twin: `UnitFormat.thresholdDistance`.
+export function formatThresholdDistance(
+	metres: number,
+	unit: 'km' | 'mi',
+	digits: 0 | 1,
+	locale?: string,
+): string {
+	const v = unit === 'mi' ? metres / METRES_PER_MILE : metres / 1000;
+	const r = digits === 0 ? Math.round(v) : Math.round(v * 10) / 10;
+	const n = Number.isInteger(r) ? formatInteger(r, locale) : formatDecimal(r, 1, locale);
+	return `${n} ${unit}`;
+}

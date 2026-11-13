@@ -15456,49 +15456,73 @@ class AppLocalizationsJa extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => '初めての5K';
 
   @override
-  String get badgesDistanceSingle5kDesc => '1回のランで5km走破';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'ハーフマラソン';
 
   @override
-  String get badgesDistanceSingleHalfDesc => '1回のランで21.1km走破';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'マラソン';
 
   @override
-  String get badgesDistanceSingleMarathonDesc => '1回のランで42.2km走破';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'ウルトラ';
 
   @override
-  String get badgesDistanceSingleUltraDesc => '1回のランで50km以上走破';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return '1回のランで$distance以上走破';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => '100kmクラブ';
+  String badgesDistanceLifetime100Label(String distance) {
+    return '$distanceクラブ';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '通算100kmを記録';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '通算500kmを記録';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => '1,000kmクラブ';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return '$distanceクラブ';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '通算1,000kmを記録';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5,000km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '通算5,000kmを記録';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
   String get badgesStreak7Label => '週間連続';

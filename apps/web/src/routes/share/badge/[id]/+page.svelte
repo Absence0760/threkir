@@ -2,7 +2,9 @@
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import { badgeWords, type AchievementTier } from '#lib/social/badges.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
+	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { formatDateStable } from '#lib/share/share_meta.ts';
 	import { buildBadgeOgImageUrl } from '#lib/share/share_badge_meta.ts';
 
@@ -10,12 +12,14 @@
 
 	// The reader's own language. The crawler-facing head is English, but the
 	// share Lambda writes that (share_badge_meta.ts); this is the page a person
-	// reads. Resolving through m() rather than englishBadge() also keeps the
-	// whole English catalogue out of the client graph (decisions § 1802).
-	let resolved = $derived.by(() => {
-		const t = data.badge ? tierFor(data.badge.badge_key, data.badge.tier as AchievementTier) : null;
-		return t ? { label: m(t.labelKey), desc: m(t.descKey), icon: t.icon } : null;
-	});
+	// reads, in the reader's unit. Resolving through m() rather than
+	// englishBadge() also keeps the whole English catalogue out of the client
+	// graph (decisions § 1802).
+	let resolved = $derived(
+		data.badge
+			? badgeWords(data.badge.badge_key, data.badge.tier as AchievementTier, m, getUnit(), activeFormatLocale())
+			: null
+	);
 	let hasBadge = $derived(!!data.badge && !!resolved);
 	let label = $derived(resolved?.label ?? '');
 	let title = $derived(

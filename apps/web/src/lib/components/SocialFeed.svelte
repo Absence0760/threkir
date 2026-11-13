@@ -3,7 +3,7 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
-	import { formatDuration, formatRelativeTime } from '#lib/format/time.ts';
+	import { activeFormatLocale, formatDuration, formatRelativeTime } from '#lib/format/time.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
@@ -20,11 +20,11 @@
 		type BadgeAwardFeedEntry,
 	} from '#lib/core/data.ts';
 
-	import { formatDistance, formatPace, formatWeight } from '#lib/format/units.svelte.ts';
+	import { formatDistance, formatPace, formatWeight, getUnit } from '#lib/format/units.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
-	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import { badgeWords, tierFor, type AchievementTier } from '#lib/social/badges.ts';
 	import { ACTIVITY_TYPE_ICONS, activityTypeKey } from '#lib/runs/activity_type.ts';
 
 	// `all` and `lift` are not `activity_type` values — they are feed scopes, so
@@ -79,8 +79,8 @@
 	}
 
 	function badgeLabel(b: BadgeAwardFeedEntry): string {
-		const t = tierFor(b.badge.badge_key, b.badge.tier as AchievementTier);
-		return t ? m(t.labelKey) : b.badge.badge_key;
+		const w = badgeWords(b.badge.badge_key, b.badge.tier as AchievementTier, m, getUnit(), activeFormatLocale());
+		return w?.label ?? b.badge.badge_key;
 	}
 	function badgeIcon(b: BadgeAwardFeedEntry): string {
 		const t = tierFor(b.badge.badge_key, b.badge.tier as AchievementTier);

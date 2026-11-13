@@ -215,6 +215,10 @@ export function computeRecapBadges(i: BadgeInputs): RecapBadge[] {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/// The fastest-pace card only counts runs longer than this, so a 200 m stroll
+/// cannot set it; the page names the bound in the reader's unit.
+export const FASTEST_PACE_MIN_M = 500;
+
 function isWithinYear(d: Date, year: number): boolean {
 	return d.getFullYear() === year;
 }
@@ -341,7 +345,7 @@ export function buildYearInRunningRecap(
 
 		// Pace, in s/km, only on runs with non-trivial distance so a 200 m
 		// stroll doesn't dominate.
-		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0 && isPlausibleRunDuration(r.duration_s)) {
+		if (isRunFamily && r.distance_m > FASTEST_PACE_MIN_M && r.duration_s > 0 && isPlausibleRunDuration(r.duration_s)) {
 			const pace = r.duration_s / (r.distance_m / 1000);
 			if (fastestPaceSecPerKm == null || pace < fastestPaceSecPerKm) {
 				fastestPaceSecPerKm = pace;
@@ -504,7 +508,7 @@ export function buildMonthInRunningRecap(
 		totalElevation += storedElevationGainM(r) ?? 0;
 		const isRunFamily = (r.activity_type ?? 'run') !== 'cycle';
 		if (isRunFamily && r.distance_m > longest) longest = r.distance_m;
-		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0 && isPlausibleRunDuration(r.duration_s)) {
+		if (isRunFamily && r.distance_m > FASTEST_PACE_MIN_M && r.duration_s > 0 && isPlausibleRunDuration(r.duration_s)) {
 			const pace = r.duration_s / (r.distance_m / 1000);
 			if (fastestPaceSecPerKm == null || pace < fastestPaceSecPerKm) fastestPaceSecPerKm = pace;
 		}

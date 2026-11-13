@@ -32,4 +32,21 @@ void main() {
     expect(km(5234, 'de'), '5,23 km');
     expect(mi(1371.6, 'de'), '1.500 yd');
   });
+
+  String thr(double m, DistanceUnit u, int digits, [String tag = 'en']) =>
+      UnitFormat.thresholdDistance(m, u, digits, tag);
+
+  test('threshold: one decimal for a race distance, dropped when whole', () {
+    expect(thr(5000, DistanceUnit.km, 1), '5 km');
+    expect(thr(21097, DistanceUnit.km, 1), '21.1 km');
+    expect(thr(42195, DistanceUnit.mi, 1), '26.2 mi');
+    expect(thr(50000, DistanceUnit.mi, 1), '31.1 mi');
+  });
+
+  test('threshold: a whole number for a total, grouped by the locale', () {
+    expect(thr(1000000, DistanceUnit.km, 0), '1,000 km');
+    expect(thr(1000000, DistanceUnit.mi, 0), '621 mi');
+    expect(thr(5000000, DistanceUnit.mi, 0, 'de'), '3.107 mi');
+    expect(thr(21097, DistanceUnit.km, 1, 'de'), '21,1 km');
+  });
 }

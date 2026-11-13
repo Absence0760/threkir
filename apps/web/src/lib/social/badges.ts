@@ -24,6 +24,7 @@
 import type { MessageKey } from '#lib/i18n/messages.ts';
 import type { AchievementTier, AchievementSourceKind } from '#lib/types.ts';
 import { en } from '../i18n/locales/en';
+import { formatThresholdDistance } from '../format/short_distance';
 
 export type { AchievementTier, AchievementSourceKind };
 
@@ -44,6 +45,12 @@ export interface Badge {
 	/** Stable catalogue id, matches the DB `badge_key`. */
 	id: string;
 	sourceKind: AchievementSourceKind;
+	/**
+	 * A distance family's words carry its threshold as `{distance}`, printed in
+	 * the reader's unit to this many decimals: 1 for a race distance (42.2), 0
+	 * for a lifetime total.
+	 */
+	distanceDigits?: 0 | 1;
 	/** Ordered low → high; `evaluateBadges` returns the highest tier met. */
 	tiers: BadgeTier[];
 }
@@ -90,6 +97,7 @@ export const BADGE_CATALOGUE: Badge[] = [
 	{
 		id: 'distance_single',
 		sourceKind: 'distance',
+		distanceDigits: 1,
 		tiers: [
 			{ tier: 'bronze', threshold: 5000, icon: 'directions_run', labelKey: 'badges.distanceSingle5k.label', descKey: 'badges.distanceSingle5k.desc' },
 			{ tier: 'silver', threshold: 21097, icon: 'military_tech', labelKey: 'badges.distanceSingleHalf.label', descKey: 'badges.distanceSingleHalf.desc' },
@@ -100,6 +108,7 @@ export const BADGE_CATALOGUE: Badge[] = [
 	{
 		id: 'distance_lifetime',
 		sourceKind: 'distance',
+		distanceDigits: 0,
 		tiers: [
 			{ tier: 'bronze', threshold: 100000, icon: 'route', labelKey: 'badges.distanceLifetime100.label', descKey: 'badges.distanceLifetime100.desc' },
 			{ tier: 'silver', threshold: 500000, icon: 'route', labelKey: 'badges.distanceLifetime500.label', descKey: 'badges.distanceLifetime500.desc' },
@@ -229,17 +238,47 @@ export function tierFor(badgeKey: string, tier: AchievementTier): BadgeTier | nu
 	return badge.tiers.find((t) => t.tier === tier) ?? null;
 }
 
+export type BadgeTranslate = (key: MessageKey, params?: Record<string, string | number>) => string;
+
+/**
+ * An award's label and description in the reader's words and unit, or null
+ * for a badge or tier this build does not know. A distance family's words
+ * name its threshold, so "Ran {distance} in a single run" reads "Ran 26.2 mi
+ * in a single run" for a miles reader. Dart twin: `badgeWords` in
+ * apps/mobile_android/lib/widgets/badge_grid.dart over `badgeDistanceDigits`.
+ */
+export function badgeWords(
+	badgeKey: string,
+	tier: AchievementTier,
+	t: BadgeTranslate,
+	unit: 'km' | 'mi',
+	locale?: string,
+): { label: string; desc: string; icon: string } | null {
+	const badge = BADGE_CATALOGUE.find((b) => b.id === badgeKey);
+	const bt = badge?.tiers.find((x) => x.tier === tier);
+	if (!badge || !bt) return null;
+	const params =
+		badge.distanceDigits == null
+			? undefined
+			: { distance: formatThresholdDistance(bt.threshold, unit, badge.distanceDigits, locale) };
+	return { label: t(bt.labelKey, params), desc: t(bt.descKey, params), icon: bt.icon };
+}
+
 /**
  * Server-safe English label/desc for a stored award — used by the share page
  * meta + OG card, which run under SSR/Lambda with no i18n runtime. Reads the
  * static English catalogue directly so the wire output is locale-independent
- * (the live grid still localises via `m(labelKey)`).
+ * (the live grid still localises through `badgeWords`). Its distances are
+ * metric: a share head is cached on its path alone and a crawler sends no
+ * reader preference (decisions § 2509), so there is no reader unit to use.
  */
 export function englishBadge(
 	badgeKey: string,
 	tier: AchievementTier,
 ): { label: string; desc: string; icon: string } | null {
-	const t = tierFor(badgeKey, tier);
-	if (!t) return null;
-	return { label: en[t.labelKey] ?? badgeKey, desc: en[t.descKey] ?? '', icon: t.icon };
+	const englishT: BadgeTranslate = (key, params) =>
+		(en[key] ?? badgeKey).replace(/\{(\w+)\}/g, (whole, name: string) =>
+			params?.[name] == null ? whole : String(params[name]),
+		);
+	return badgeWords(badgeKey, tier, englishT, 'km', 'en');
 }

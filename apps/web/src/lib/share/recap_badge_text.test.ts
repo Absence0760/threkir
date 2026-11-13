@@ -46,6 +46,8 @@ test('a badge that names a distance names it in the reader\'s unit and number fo
 	assert.equal(recapBadgeText({ id: 'dist-2000', icon: 'x' }, tEn, 'km', 'en').label, '2,000 km');
 	assert.equal(recapBadgeText({ id: 'dist-2000', icon: 'x' }, tEn, 'mi', 'en').label, '1,243 mi');
 	assert.equal(recapBadgeText({ id: 'dist-100', icon: 'x' }, tEn, 'mi', 'en').detail, '62 mi on the year');
+	assert.equal(recapBadgeText({ id: 'elev-5000', icon: 'x' }, tEn, 'km', 'en').label, '5,000 m climbed');
+	assert.equal(recapBadgeText({ id: 'elev-5000', icon: 'x' }, tEn, 'mi', 'en').label, '16,404 ft climbed');
 	assert.equal(recapBadgeText({ id: 'long-marathon', icon: 'x' }, tFr, 'km', 'fr').detail, '42,2 km en une course');
 	assert.equal(recapBadgeText({ id: 'dist-1000', icon: 'x' }, tFr, 'km', 'fr').label, 'Club des 1\u202f000 km');
 });

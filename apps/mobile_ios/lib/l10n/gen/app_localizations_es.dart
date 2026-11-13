@@ -16200,52 +16200,73 @@ class AppLocalizationsEs extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => 'Primeros 5 km';
 
   @override
-  String get badgesDistanceSingle5kDesc => 'Corriste 5 km en una sola carrera';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return 'Corriste $distance en una sola carrera';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'Media maratón';
 
   @override
-  String get badgesDistanceSingleHalfDesc =>
-      'Corriste 21,1 km en una sola carrera';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return 'Corriste $distance en una sola carrera';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'Maratón';
 
   @override
-  String get badgesDistanceSingleMarathonDesc =>
-      'Corriste 42,2 km en una sola carrera';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return 'Corriste $distance en una sola carrera';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'Ultra';
 
   @override
-  String get badgesDistanceSingleUltraDesc =>
-      'Corriste 50 km o más en una sola carrera';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return 'Corriste $distance o más en una sola carrera';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => 'Club de los 100 km';
+  String badgesDistanceLifetime100Label(String distance) {
+    return 'Club de los $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '100 km registrados en total';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return '$distance registrados en total';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500 km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '500 km registrados en total';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return '$distance registrados en total';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => 'Club de los 1000 km';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return 'Club de los $distance';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '1000 km registrados en total';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return '$distance registrados en total';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5000 km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '5000 km registrados en total';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return '$distance registrados en total';
+  }
 
   @override
   String get badgesStreak7Label => 'Racha semanal';

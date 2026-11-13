@@ -1134,6 +1134,24 @@ class UnitFormat {
 
   static const _yardsPerMetre = 1.09361;
 
+  /// A badge or milestone threshold in the reader's unit: "42.2 km" /
+  /// "26.2 mi", "50 km" / "31.1 mi", "1,000 km" / "621 mi". [digits] is 1 for
+  /// a race distance and 0 for a total; a value that rounds to a whole number
+  /// drops its ".0". The one-decimal case is a race distance, far below the
+  /// thousand where [formatFixed]'s lack of grouping would show. Twin of web's
+  /// `formatThresholdDistance` in apps/web/src/lib/format/short_distance.ts.
+  static String thresholdDistance(double metres, DistanceUnit unit, int digits,
+      [String? localeTag]) {
+    final tag = localeTag ?? activeLocaleTag;
+    final v = unit == DistanceUnit.mi ? metres / kMetresPerMile : metres / 1000;
+    // floor(x + 0.5) is JS Math.round; Dart's round() takes -0.5 to -1.
+    final r = digits == 0 ? (v + 0.5).floorToDouble() : (v * 10 + 0.5).floor() / 10;
+    final n = r == r.truncateToDouble()
+        ? formatInteger(r, tag)
+        : formatFixed(r, 1, tag);
+    return '$n ${distanceLabel(unit)}';
+  }
+
   /// Distance unit label.
   static String distanceLabel(DistanceUnit unit) =>
       unit == DistanceUnit.mi ? 'mi' : 'km';

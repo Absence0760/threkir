@@ -140,6 +140,8 @@ test('the streak, climb and records slides use the page formatters and plurals',
 	const s = recapSlides(recap({ month: 3, personalRecordCount: 2, topWeek: null, fastestPaceSecPerKm: null }), fmt);
 	const values = s.filter((x) => x.kind === 'stat').map((x) => (x as { value: string }).value);
 	assert.deepEqual(values, ['42.2 km', '21 days', '12,345 m', '2']);
+	const mi = recapSlides(recap({ month: 3, personalRecordCount: 2, topWeek: null, fastestPaceSecPerKm: null }), { ...fmt, unit: 'mi' });
+	assert.ok(mi.some((x) => x.kind === 'stat' && (x as { value: string }).value === '40,502 ft'));
 });
 
 test('the timeline gives each kind its seconds and runs end to end with no gaps', () => {

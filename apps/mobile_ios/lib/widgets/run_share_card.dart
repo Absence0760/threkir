@@ -383,7 +383,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         final badge = _badge!;
         return badgeStickerBody(
           kicker: l10n.shareCardBadgeKicker,
-          name: badgeLabelFor(l10n, badge.badgeKey, badge.tier),
+          name: badgeLabelFor(l10n, badge.badgeKey, badge.tier,
+              unit: widget.preferences.unit),
           tier: badgeTierLabel(l10n, badge.tier),
         );
       case RunStickerKind.route:

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatShortDistance } from './short_distance';
+import { formatShortDistance, formatThresholdDistance } from './short_distance';
 
 // Mirrored case for case by apps/mobile_android/test/unit_format_short_distance_test.dart.
 
@@ -26,4 +26,18 @@ test('a 5 mi step 15 s in reads in miles, not 8779 yd (issue #1300)', () => {
 test('follows the locale separators', () => {
 	assert.equal(formatShortDistance(5234, 'km', 'de'), '5,23 km');
 	assert.equal(formatShortDistance(1371.6, 'mi', 'de'), '1.500 yd');
+});
+
+test('threshold: one decimal for a race distance, dropped when whole', () => {
+	assert.equal(formatThresholdDistance(5000, 'km', 1, 'en'), '5 km');
+	assert.equal(formatThresholdDistance(21097, 'km', 1, 'en'), '21.1 km');
+	assert.equal(formatThresholdDistance(42195, 'mi', 1, 'en'), '26.2 mi');
+	assert.equal(formatThresholdDistance(50000, 'mi', 1, 'en'), '31.1 mi');
+});
+
+test('threshold: a whole number for a total, grouped by the locale', () => {
+	assert.equal(formatThresholdDistance(1000000, 'km', 0, 'en'), '1,000 km');
+	assert.equal(formatThresholdDistance(1000000, 'mi', 0, 'en'), '621 mi');
+	assert.equal(formatThresholdDistance(5000000, 'mi', 0, 'de'), '3.107 mi');
+	assert.equal(formatThresholdDistance(21097, 'km', 1, 'de'), '21,1 km');
 });

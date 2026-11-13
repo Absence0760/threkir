@@ -3,10 +3,15 @@ import assert from 'node:assert/strict';
 import {
 	BADGE_CATALOGUE,
 	TIER_ORDER,
+	badgeWords,
+	englishBadge,
 	evaluateBadges,
 	tierFor,
 	type BadgeInput,
+	type BadgeTranslate,
 } from './badges';
+import { en } from '../i18n/locales/en';
+import { messages as fr } from '../i18n/locales/fr';
 
 const ZERO: BadgeInput = {
 	longestRunM: 0,
@@ -159,4 +164,41 @@ test('tierFor resolves a stored award to its catalogue tier', () => {
 	assert.equal(t?.threshold, 100);
 	assert.equal(tierFor('nope', 'bronze'), null);
 	assert.equal(tierFor('streak', 'platinum')?.threshold, 365);
+});
+
+// Mirrored by the badgeWords cases in apps/mobile_android/test/badge_grid_test.dart.
+function translator(dict: Record<string, string>): BadgeTranslate {
+	return (key, params) =>
+		dict[key].replace(/\{(\w+)\}/g, (whole, name: string) => (params?.[name] == null ? whole : String(params[name])));
+}
+
+test('badgeWords: a distance badge names its threshold in the reader\'s unit', () => {
+	const tEn = translator(en);
+	assert.equal(badgeWords('distance_single', 'gold', tEn, 'km', 'en')?.desc, 'Ran 42.2 km in a single run');
+	assert.equal(badgeWords('distance_single', 'gold', tEn, 'mi', 'en')?.desc, 'Ran 26.2 mi in a single run');
+	assert.equal(badgeWords('distance_single', 'bronze', tEn, 'mi', 'en')?.desc, 'Ran 3.1 mi in a single run');
+	assert.equal(badgeWords('distance_lifetime', 'gold', tEn, 'km', 'en')?.label, '1,000 km club');
+	assert.equal(badgeWords('distance_lifetime', 'gold', tEn, 'mi', 'en')?.label, '621 mi club');
+	assert.equal(badgeWords('distance_lifetime', 'platinum', tEn, 'mi', 'en')?.desc, '3,107 mi logged all-time');
+});
+
+test('badgeWords: other families take no distance, and an unknown award is null', () => {
+	const tEn = translator(en);
+	assert.deepEqual(badgeWords('streak', 'bronze', tEn, 'mi', 'en'), {
+		label: en['badges.streak7.label'],
+		desc: en['badges.streak7.desc'],
+		icon: 'local_fire_department',
+	});
+	assert.equal(badgeWords('nope', 'bronze', tEn, 'km'), null);
+	assert.equal(badgeWords('streak', 'platinum', tEn, 'km')?.icon, 'whatshot');
+});
+
+test('badgeWords: the number follows the reader\'s locale', () => {
+	assert.equal(badgeWords('distance_lifetime', 'gold', translator(fr), 'km', 'fr')?.label, 'Club des 1\u202f000 km');
+});
+
+test('englishBadge: the crawler-facing words are English and metric', () => {
+	assert.equal(englishBadge('distance_single', 'silver')?.desc, 'Ran 21.1 km in a single run');
+	assert.equal(englishBadge('distance_lifetime', 'bronze')?.label, '100 km club');
+	assert.equal(englishBadge('nope', 'gold'), null);
 });

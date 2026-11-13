@@ -111,7 +111,7 @@ test.describe('Legal pages', () => {
 		// pseudonymous user id, which matched none of them.
 		await page.goto('/privacy');
 		const body = await page.locator('.legal-page').innerText();
-		expect(body).toContain('Settings → Account → Send error reports');
+		expect(body).toMatch(/Send error reports on the\s+Privacy & sharing page, in Preferences on the app's You tab/);
 		expect(body).toMatch(/iPhone and Android apps it is on by default/);
 		expect(body).toMatch(/website, client-side error monitoring stays off until\s+you accept/);
 		expect(body).not.toContain('pseudonymous user id');

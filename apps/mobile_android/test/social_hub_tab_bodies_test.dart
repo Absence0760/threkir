@@ -5,18 +5,29 @@
 // the strip) and the one FAB; this walks every tab with a row on each, fails
 // on an overflow, and checks the hub's FAB sits clear of the nav bar wherever
 // a tab has a primary action.
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSearchField, FilterBar;
+import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart';
+import 'package:ui_kit/ui_kit.dart'
+    show AppSearchField, EmptyState, FilterBar, LoadingState;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
+import '../lib/screens/challenges_screen.dart';
+import '../lib/screens/clubs_screen.dart';
+import '../lib/screens/discover_screen.dart';
+import '../lib/screens/feed_screen.dart';
+import '../lib/screens/people_screen.dart';
 import '../lib/screens/social_screen.dart';
+import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/error_state.dart';
 import 'social_hub_fakes.dart';
 import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
 
@@ -36,7 +47,12 @@ void main() {
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
 
-  Future<void> pumpHub(WidgetTester tester) async {
+  Future<void> pumpHub(
+    WidgetTester tester, {
+    ApiClient? api,
+    SocialService? social,
+    double textScale = 2.0,
+  }) async {
     tester.view.physicalSize = _phone;
     tester.view.devicePixelRatio = 1;
     tester.view.viewPadding = const FakeViewPadding(bottom: kThreeButtonNavBar);
@@ -49,12 +65,12 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context)
-            .copyWith(textScaler: const TextScaler.linear(2.0)),
+            .copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
       home: SocialScreen(
-        api: SocialHubFakeApi(),
-        social: SocialHubFakeService(),
+        api: api ?? SocialHubFakeApi(),
+        social: social ?? SocialHubFakeService(),
         training: TrainingService(),
         routeStore: routeStore,
         selectedTab: ValueNotifier(SocialTab.feed),
@@ -133,4 +149,148 @@ void main() {
     expect(find.byTooltip('Notifications'), findsOneWidget);
     expect(tester.getRect(messages).right, lessThanOrEqualTo(_phone.width));
   });
+
+  // Each tab's first read, held, answering nothing, or failing, and what the
+  // tab must show for each. A failed read that drew the empty state would
+  // tell the runner they have no clubs or no feed when the truth is that
+  // nothing could be read (issue #1374 NS-4).
+  final screens = <String, Type>{
+    'Feed': FeedScreen,
+    'Clubs': ClubsScreen,
+    'Events': DiscoverScreen,
+    'Challenges': ChallengesScreen,
+    'People': PeopleScreen,
+  };
+
+  for (final read in _Read.values) {
+    for (final MapEntry(key: label, value: screen) in screens.entries) {
+      testWidgets('$label shows its ${read.name} state for ${read.cause}',
+          (tester) async {
+        final reads = _Reads(read);
+        await pumpHub(
+          tester,
+          api: _StateApi(reads),
+          social: _StateService(reads),
+          textScale: 1.0,
+        );
+        await openTab(tester, label);
+        Finder inTab(Type t) =>
+            find.descendant(of: find.byType(screen), matching: find.byType(t));
+
+        switch (read) {
+          case _Read.loading:
+            expect(inTab(LoadingState), findsWidgets,
+                reason: '$label shows no loading state while its read runs');
+            expect(inTab(EmptyState), findsNothing,
+                reason: '$label called an unfinished read empty');
+            expect(inTab(AppErrorState), findsNothing);
+          case _Read.empty:
+            expect(inTab(EmptyState), findsOneWidget,
+                reason: '$label shows no empty state for an empty answer');
+            expect(inTab(AppErrorState), findsNothing);
+            expect(inTab(LoadingState), findsNothing);
+          case _Read.error:
+            expect(inTab(AppErrorState), findsOneWidget,
+                reason: '$label hides a failed read');
+            expect(inTab(EmptyState), findsNothing,
+                reason: '$label showed a failed read as empty');
+            expect(inTab(LoadingState), findsNothing);
+        }
+
+        reads.release();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+      });
+    }
+  }
+}
+
+enum _Read {
+  loading('a read in flight'),
+  empty('an empty answer'),
+  error('a failed read');
+
+  const _Read(this.cause);
+
+  final String cause;
+}
+
+/// Answers every tab's first read the one way [mode] names. A held read is
+/// released with an empty answer at the end of the case, so no timer is left
+/// pending.
+class _Reads {
+  _Reads(this.mode);
+
+  final _Read mode;
+  final _held = <void Function()>[];
+
+  Future<T> answer<T>(T empty) {
+    switch (mode) {
+      case _Read.loading:
+        final c = Completer<T>();
+        _held.add(() {
+          if (!c.isCompleted) c.complete(empty);
+        });
+        return c.future;
+      case _Read.empty:
+        return Future.value(empty);
+      case _Read.error:
+        return Future.error(Exception('read failed'));
+    }
+  }
+
+  void release() {
+    for (final r in _held) {
+      r();
+    }
+  }
+}
+
+class _StateApi extends SocialHubFakeApi {
+  _StateApi(this.reads);
+
+  final _Reads reads;
+
+  @override
+  Future<List<ActivityFeedEntry>> fetchFollowingActivityFeed({
+    int limit = 20,
+    ({DateTime startedAt, String id})? cursor,
+    String? authorId,
+    String? activityType,
+    int feedWindowDays = 14,
+  }) =>
+      reads.answer(const <ActivityFeedEntry>[]);
+
+  @override
+  Future<List<PublicEventResult>> searchPublicEvents({
+    String? query,
+    String? category,
+    String? cadence,
+    String? byday,
+    String? paid,
+    String? time,
+    int limit = 60,
+  }) =>
+      reads.answer(const <PublicEventResult>[]);
+
+  @override
+  Future<List<PeopleSuggestion>> fetchSuggestedPeople({int limit = 12}) =>
+      reads.answer(const <PeopleSuggestion>[]);
+}
+
+class _StateService extends SocialHubFakeService {
+  _StateService(this.reads);
+
+  final _Reads reads;
+
+  @override
+  Future<List<ClubView>> browseClubs({String? query}) =>
+      reads.answer(const <ClubView>[]);
+
+  @override
+  Future<List<ClubView>> fetchMyClubs() => reads.answer(const <ClubView>[]);
+
+  @override
+  Future<List<ChallengeView>> fetchChallenges() =>
+      reads.answer(const <ChallengeView>[]);
 }

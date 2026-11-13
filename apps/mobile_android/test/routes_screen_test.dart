@@ -983,6 +983,71 @@ void main() {
           reason: 'Explore reopens on the chip it was left on');
     });
 
+    // Each view is its own body in an IndexedStack (decisions § 2490), so a
+    // round trip through Explore must not reset what the runner typed or
+    // chose in a view they left.
+    testWidgets('Mine to Explore to Segments and back keeps each view\'s '
+        'search text and filters', (tester) async {
+      final prefs = await _makePrefs();
+      final show = ValueNotifier(RoutesShow.mine);
+      addTearDown(show.dispose);
+      // ignore: invalid_use_of_visible_for_testing_member
+      final routeStore = LocalRouteStore()
+        ..debugSeed(_namedRoutes(['Zürich Lakeside', 'Riverside Way']));
+      await _pump(tester,
+          prefs: prefs, api: _FakeApi(), routeStore: routeStore, show: show);
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('Filters'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('A–Z').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'zurich');
+      await tester.pump();
+      expect(find.byTooltip('Remove filter: A–Z'), findsOneWidget);
+      expect(find.text('Riverside Way'), findsNothing);
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Explore'));
+      await tester.pump();
+      expect(show.value, RoutesShow.routes);
+      await tester.enterText(
+          find.descendant(
+              of: find.byType(ExploreRoutesScreen),
+              matching: find.byType(TextField)),
+          'harbour');
+      await tester.pump();
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Segments'));
+      await tester.pump();
+      expect(show.value, RoutesShow.segments);
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Routes'));
+      await tester.pump();
+      expect(show.value, RoutesShow.routes);
+      expect(
+          tester
+              .widget<TextField>(find.descendant(
+                  of: find.byType(ExploreRoutesScreen),
+                  matching: find.byType(TextField)))
+              .controller!
+              .text,
+          'harbour',
+          reason: 'Explore\'s search survives a trip to Segments');
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Mine'));
+      await tester.pump(const Duration(seconds: 1));
+      expect(show.value, RoutesShow.mine);
+      expect(
+          tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+          'zurich');
+      expect(find.byTooltip('Remove filter: A–Z'), findsOneWidget,
+          reason: 'Mine\'s filters survive the round trip');
+      expect(find.text('Zürich Lakeside'), findsOneWidget);
+      expect(find.text('Riverside Way'), findsNothing);
+    });
+
     testWidgets('a host notifier opens Explore on Segments with nothing pushed',
         (tester) async {
       final prefs = await _makePrefs();

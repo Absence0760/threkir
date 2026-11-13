@@ -1380,8 +1380,8 @@ reading the **stored** `set_count` + `volume_kg` columns on
 - [ ] Each screen has exactly one primary action.
 - [ ] A hub has one tab strip: a section is a tab, never a second strip of
       pushed peers inside one tab (decisions § 2437).
-- [ ] A hub owns the only app bar (its strip, no title under it) and the one
-      FAB; a tab body is ui_kit's `HubTabBody` and hands the hub its one
+- [ ] A hub owns the only app bar (a ui_kit `RootPage.tabbed`: its large
+      title, collapsing into the bar, over its strip) and the one FAB; a tab body is ui_kit's `HubTabBody` and hands the hub its one
       primary action (decisions § 2486). Mobile only; web's run-surface strip
       has no per-tab toolbar to remove.
 - [ ] A list's search and filters are one `FilterBar`: one search with clear,

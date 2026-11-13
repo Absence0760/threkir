@@ -79,11 +79,11 @@ test.describe('/runs run list', () => {
 		// (decisions §63 amendment): full list + filters + Add run + Heatmap,
 		// parallel to /gym + /nutrition. /history is now the unified timeline.
 		// Assert /runs stays put (no bounce) and the run list mounts (its
-		// visually-hidden h1 + source-filter toolbar anchor the page).
+		// PageHeader h1 + source-filter toolbar anchor the page).
 		await page.goto('/runs');
 		await expect(page).toHaveURL(/\/runs$/);
 		await expect(
-			page.getByRole('heading', { level: 1, name: 'Run history' })
+			page.getByRole('heading', { level: 1, name: 'Runs' })
 		).toBeAttached();
 		await expect(page.getByLabel('Source')).toBeVisible({ timeout: 10_000 });
 	});

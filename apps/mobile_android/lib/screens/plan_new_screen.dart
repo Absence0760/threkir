@@ -1217,55 +1217,56 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                   const SizedBox(height: 4),
                   Text(l10n.planNewGoalRaceHint, style: muted),
                 ],
-                if (_showGoalRace && _ultraChoice != null) ...[
-                  const SizedBox(height: 12),
-                  TextField(
-                    key: const Key('plan-new-ultra-distance'),
-                    controller: _ultraDistanceCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: l10n.planNewUltraDistance(
-                        UnitFormat.distanceLabel(activeDistanceUnit),
-                      ),
-                      helperText: l10n.planNewUltraDistanceHint,
-                      helperMaxLines: 4,
-                      errorText: _ultraDistanceInvalid
-                          ? l10n.planNewUltraDistanceTooShort
-                          : null,
-                      errorMaxLines: 3,
-                    ),
-                    onChanged: (s) {
-                      final n = double.tryParse(
-                        s.trim().replaceAll(',', '.'),
-                      );
-                      setState(
-                        () => _ultraDistanceM =
-                            n == null || !n.isFinite || n <= 0
-                            ? null
-                            : n * _metresPerUnit,
-                      );
-                    },
-                  ),
-                ],
                 const SizedBox(height: 16),
-                InkWell(
-                  key: const Key('plan-new-start-date'),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  onTap: _pickStartDate,
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: l10n.planNewStartDate,
-                      helperText: _beginnerWalkRun
-                          ? l10n.planNewStartDateHintWalkRun
-                          : l10n.planNewStartDateHint,
-                      helperMaxLines: 3,
-                      suffixIcon: const Icon(Icons.calendar_today),
+                FieldColumn(children: [
+                  if (_showGoalRace && _ultraChoice != null) ...[
+                    TextField(
+                      key: const Key('plan-new-ultra-distance'),
+                      controller: _ultraDistanceCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: l10n.planNewUltraDistance(
+                          UnitFormat.distanceLabel(activeDistanceUnit),
+                        ),
+                        helperText: l10n.planNewUltraDistanceHint,
+                        helperMaxLines: 4,
+                        errorText: _ultraDistanceInvalid
+                            ? l10n.planNewUltraDistanceTooShort
+                            : null,
+                        errorMaxLines: 3,
+                      ),
+                      onChanged: (s) {
+                        final n = double.tryParse(
+                          s.trim().replaceAll(',', '.'),
+                        );
+                        setState(
+                          () => _ultraDistanceM =
+                              n == null || !n.isFinite || n <= 0
+                              ? null
+                              : n * _metresPerUnit,
+                        );
+                      },
                     ),
-                    child: Text(formatDateMed(_startDate, tag)),
+                  ],
+                  InkWell(
+                    key: const Key('plan-new-start-date'),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    onTap: _pickStartDate,
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: l10n.planNewStartDate,
+                        helperText: _beginnerWalkRun
+                            ? l10n.planNewStartDateHintWalkRun
+                            : l10n.planNewStartDateHint,
+                        helperMaxLines: 3,
+                        suffixIcon: const Icon(Icons.calendar_today),
+                      ),
+                      child: Text(formatDateMed(_startDate, tag)),
+                    ),
                   ),
-                ),
+                ]),
                 const SizedBox(height: 12),
                 _SectionLabel(l10n.planNewDaysPerWeek),
                 Wrap(

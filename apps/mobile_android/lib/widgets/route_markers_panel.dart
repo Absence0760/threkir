@@ -1031,65 +1031,64 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<String>(
-              initialValue: _kind,
-              decoration: InputDecoration(labelText: l10n.routeMarkerKindLabel),
-              items: [
-                for (final k in routeMarkerKinds)
-                  DropdownMenuItem(
-                    value: k.kind,
-                    child: Text(_kindLabel(l10n, k.kind)),
-                  ),
-              ],
-              onChanged: (v) => setState(() => _kind = v ?? _kind),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _label,
-              maxLength: 120,
-              decoration: InputDecoration(
-                labelText: l10n.routeMarkerNameLabel,
-                hintText: l10n.routeMarkerNamePlaceholder,
+            FieldColumn(children: [
+              DropdownButtonFormField<String>(
+                initialValue: _kind,
+                decoration: InputDecoration(labelText: l10n.routeMarkerKindLabel),
+                items: [
+                  for (final k in routeMarkerKinds)
+                    DropdownMenuItem(
+                      value: k.kind,
+                      child: Text(_kindLabel(l10n, k.kind)),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _kind = v ?? _kind),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _lat,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true, signed: true),
-                    decoration: InputDecoration(
-                      labelText: l10n.routeMarkerLatLabel,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _lng,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true, signed: true),
-                    decoration: InputDecoration(
-                      labelText: l10n.routeMarkerLngLabel,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (_canPlaceByDistance) ...[
-              const SizedBox(height: 12),
               TextField(
-                controller: _distanceAlong,
-                keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true),
+                controller: _label,
+                maxLength: 120,
                 decoration: InputDecoration(
-                  labelText: l10n.routeMarkerDistanceAlongLabel,
-                  suffixText: UnitFormat.distanceLabel(activeDistanceUnit),
+                  labelText: l10n.routeMarkerNameLabel,
+                  hintText: l10n.routeMarkerNamePlaceholder,
                 ),
               ),
-            ],
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _lat,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
+                      decoration: InputDecoration(
+                        labelText: l10n.routeMarkerLatLabel,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _lng,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true, signed: true),
+                      decoration: InputDecoration(
+                        labelText: l10n.routeMarkerLngLabel,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_canPlaceByDistance) ...[
+                TextField(
+                  controller: _distanceAlong,
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true),
+                  decoration: InputDecoration(
+                    labelText: l10n.routeMarkerDistanceAlongLabel,
+                    suffixText: UnitFormat.distanceLabel(activeDistanceUnit),
+                  ),
+                ),
+              ],
+            ]),
             if (spec.hasServices) ...[
               const SizedBox(height: 4),
               Text(l10n.routeMarkerServicesLabel,
@@ -1152,29 +1151,30 @@ class _MarkerEditorSheetState extends State<_MarkerEditorSheet> {
                 _target.clear();
               }),
             ),
-            TextField(
-              controller: _target,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                _MaskedTimeFormatter(
-                    _targetClock ? formatClockDigits : formatElapsedDigits)
-              ],
-              decoration: InputDecoration(
-                labelText: l10n.routeMarkerTargetLabel,
-                hintText: _targetClock ? 'HH:MM' : 'h:mm:ss',
-                helperText:
-                    _targetClock ? null : l10n.routeMarkerTargetHelper,
-              ),
-            ),
-            if (_kind == 'note' || _kind == 'hazard') ...[
-              const SizedBox(height: 12),
+            FieldColumn(children: [
               TextField(
-                controller: _note,
-                maxLength: 280,
-                maxLines: 2,
-                decoration: InputDecoration(labelText: l10n.routeMarkerNoteLabel),
+                controller: _target,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  _MaskedTimeFormatter(
+                      _targetClock ? formatClockDigits : formatElapsedDigits)
+                ],
+                decoration: InputDecoration(
+                  labelText: l10n.routeMarkerTargetLabel,
+                  hintText: _targetClock ? 'HH:MM' : 'h:mm:ss',
+                  helperText:
+                      _targetClock ? null : l10n.routeMarkerTargetHelper,
+                ),
               ),
-            ],
+              if (_kind == 'note' || _kind == 'hazard') ...[
+                TextField(
+                  controller: _note,
+                  maxLength: 280,
+                  maxLines: 2,
+                  decoration: InputDecoration(labelText: l10n.routeMarkerNoteLabel),
+                ),
+              ],
+            ]),
           ],
         ),
     );

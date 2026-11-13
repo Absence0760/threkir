@@ -21841,6 +21841,248 @@
   "@racePredictorFootnote": {
     "description": "Race predictor explanatory footnote"
   },
+  "lineCalibrationEntryTitle": "Line calibration",
+  "@lineCalibrationEntryTitle": {
+    "description": "Debug-build Settings row that opens the timing-line calibration tool"
+  },
+  "lineCalibrationEntrySubtitle": "Debug build: timing-line error figures",
+  "@lineCalibrationEntrySubtitle": {
+    "description": "Subtitle of the debug-build calibration row"
+  },
+  "lineCalibrationTitle": "Line calibration (debug)",
+  "@lineCalibrationTitle": {
+    "description": "Title of the debug-build timing-line calibration screen"
+  },
+  "lineCalibrationIntro": "Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.",
+  "@lineCalibrationIntro": {
+    "description": "How a calibration session runs; the quoted tab is navRun"
+  },
+  "lineCalibrationCapturing": "{count, plural, one{Capturing: {count} fix} other{Capturing: {count} fixes}}",
+  "@lineCalibrationCapturing": {
+    "description": "Capture status while recording; count is GPS fixes held",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lineCalibrationIdle": "{count, plural, one{Idle: {count} fix held} other{Idle: {count} fixes held}}",
+  "@lineCalibrationIdle": {
+    "description": "Capture status while stopped; count is GPS fixes held",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lineCalibrationStart": "Start capture",
+  "@lineCalibrationStart": {
+    "description": "Button that starts a calibration capture"
+  },
+  "lineCalibrationStop": "Stop capture",
+  "@lineCalibrationStop": {
+    "description": "Button that stops a calibration capture"
+  },
+  "lineCalibrationRefresh": "Refresh",
+  "@lineCalibrationRefresh": {
+    "description": "Button that redraws the capture status"
+  },
+  "lineCalibrationLatLabel": "Line centre latitude",
+  "@lineCalibrationLatLabel": {
+    "description": "Field label: latitude of the timing line centre"
+  },
+  "lineCalibrationLngLabel": "Line centre longitude",
+  "@lineCalibrationLngLabel": {
+    "description": "Field label: longitude of the timing line centre"
+  },
+  "lineCalibrationBearingLabel": "Bearing of travel (degrees)",
+  "@lineCalibrationBearingLabel": {
+    "description": "Field label: compass bearing a runner crosses the line in, in degrees"
+  },
+  "lineCalibrationHalfWidthLabel": "Half-width (m)",
+  "@lineCalibrationHalfWidthLabel": {
+    "description": "Field label: half the timing line width, in metres"
+  },
+  "lineCalibrationHere": "Centre at my position",
+  "@lineCalibrationHere": {
+    "description": "Button that fills the line centre from the current position"
+  },
+  "lineCalibrationMeasure": "{count, plural, one{Measure server clock ({count} round trip)} other{Measure server clock ({count} round trips)}}",
+  "@lineCalibrationMeasure": {
+    "description": "Button that measures the device-to-server clock offset over count round trips",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lineCalibrationOffsetLabel": "Clock offset (ms)",
+  "@lineCalibrationOffsetLabel": {
+    "description": "Field label: the clock offset, in milliseconds"
+  },
+  "lineCalibrationOffsetHelper": "Server minus device",
+  "@lineCalibrationOffsetHelper": {
+    "description": "Helper under the clock offset field: which clock is subtracted from which"
+  },
+  "lineCalibrationApproachLabel": "Approach",
+  "@lineCalibrationApproachLabel": {
+    "description": "Dropdown label: the angle the runner approaches the line at"
+  },
+  "lineCalibrationApproach90": "At 90° to the line",
+  "@lineCalibrationApproach90": {
+    "description": "Approach option: crossing square to the line"
+  },
+  "lineCalibrationApproach30": "At 30° to the line",
+  "@lineCalibrationApproach30": {
+    "description": "Approach option: crossing at a shallow angle"
+  },
+  "lineCalibrationApproachParallel20": "Parallel, 20 m away",
+  "@lineCalibrationApproachParallel20": {
+    "description": "Approach option: running alongside the line 20 m off it, never crossing"
+  },
+  "lineCalibrationApproachParallel40": "Parallel, 40 m away",
+  "@lineCalibrationApproachParallel40": {
+    "description": "Approach option: running alongside the line 40 m off it, never crossing"
+  },
+  "lineCalibrationApproachStanding": "Standing on the line",
+  "@lineCalibrationApproachStanding": {
+    "description": "Approach option: standing still on the line"
+  },
+  "lineCalibrationPaceLabel": "Pace",
+  "@lineCalibrationPaceLabel": {
+    "description": "Dropdown label: how fast the tester moves"
+  },
+  "lineCalibrationPaceWalk": "Walk",
+  "@lineCalibrationPaceWalk": {
+    "description": "Pace option"
+  },
+  "lineCalibrationPaceRun": "Run",
+  "@lineCalibrationPaceRun": {
+    "description": "Pace option"
+  },
+  "lineCalibrationPaceStill": "Standing still",
+  "@lineCalibrationPaceStill": {
+    "description": "Pace option: not moving"
+  },
+  "lineCalibrationCarryLabel": "Carry",
+  "@lineCalibrationCarryLabel": {
+    "description": "Dropdown label: where the phone is carried"
+  },
+  "lineCalibrationCarryHand": "Phone in hand",
+  "@lineCalibrationCarryHand": {
+    "description": "Carry option"
+  },
+  "lineCalibrationCarryPocket": "Phone in pocket",
+  "@lineCalibrationCarryPocket": {
+    "description": "Carry option"
+  },
+  "lineCalibrationInstantsLabel": "True crossing instants",
+  "@lineCalibrationInstantsLabel": {
+    "description": "Field label: the true crossing times, typed one per line"
+  },
+  "lineCalibrationInstantsHint": "{time} or {instant}",
+  "@lineCalibrationInstantsHint": {
+    "description": "Field hint: two example formats, a time of day and an ISO-8601 instant",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "instant": {
+        "type": "String"
+      }
+    }
+  },
+  "lineCalibrationInstantsHelper": "One per line. A time of day is read in this phone's time zone on the capture day; give an ISO instant with its zone across midnight or when the reference clock shows UTC.",
+  "@lineCalibrationInstantsHelper": {
+    "description": "Field helper: how a bare time of day is read"
+  },
+  "lineCalibrationClockFailed": "Could not reach the server clock; enter the offset by hand.",
+  "@lineCalibrationClockFailed": {
+    "description": "Problem: the server clock could not be reached"
+  },
+  "lineCalibrationNoFix": "No position fix.",
+  "@lineCalibrationNoFix": {
+    "description": "Problem: no GPS position for Centre at my position"
+  },
+  "lineCalibrationLineMissing": "Enter the line: centre, bearing of travel, half-width.",
+  "@lineCalibrationLineMissing": {
+    "description": "Problem: the line fields are empty or invalid"
+  },
+  "lineCalibrationOffsetMissing": "Measure or enter the clock offset.",
+  "@lineCalibrationOffsetMissing": {
+    "description": "Problem: no clock offset"
+  },
+  "lineCalibrationInstantsInvalid": "One instant per line: {time} or ISO-8601.",
+  "@lineCalibrationInstantsInvalid": {
+    "description": "Problem: the instants do not parse; time is the HH:MM:SS.fff pattern",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "lineCalibrationFewFixes": "The capture holds fewer than two fixes.",
+  "@lineCalibrationFewFixes": {
+    "description": "Problem: the capture has fewer than two GPS fixes"
+  },
+  "lineCalibrationLineUnusable": "That line is not usable.",
+  "@lineCalibrationLineUnusable": {
+    "description": "Problem: the line geometry is degenerate"
+  },
+  "lineCalibrationScore": "Score this capture",
+  "@lineCalibrationScore": {
+    "description": "Button that scores the capture against the entered instants"
+  },
+  "lineCalibrationResult": "{matched} of {total} matched, {missed} missed, {falseCount} false, {near} near; median {median} ms, |err| p50 {p50} ms, p95 {p95} ms; offset ±{offset} ms",
+  "@lineCalibrationResult": {
+    "description": "One scored capture's figures; median, p50, p95 and offset are a number or a dash",
+    "placeholders": {
+      "matched": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "missed": {
+        "type": "int"
+      },
+      "falseCount": {
+        "type": "int"
+      },
+      "near": {
+        "type": "int"
+      },
+      "median": {
+        "type": "String"
+      },
+      "p50": {
+        "type": "String"
+      },
+      "p95": {
+        "type": "String"
+      },
+      "offset": {
+        "type": "String"
+      }
+    }
+  },
+  "lineCalibrationNothingMatched": "Nothing matched, yet detections sit a median {ms} ms from the truths: check the clock, the offset and the time zone.",
+  "@lineCalibrationNothingMatched": {
+    "description": "Under a result that matched nothing: detections sit a median of ms milliseconds from the true crossings",
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "lineCalibrationShare": "Share CSV",
+  "@lineCalibrationShare": {
+    "description": "Button that shares the results CSV"
+  },
+  "lineCalibrationCopy": "Copy CSV",
+  "@lineCalibrationCopy": {
+    "description": "Button that copies the results CSV"
+  },
   "settingsSectionDeveloper": "Developer",
   "settingsTabSimWatchSubtitle": "Live status from the simulated custom watch",
   "simWatchTitle": "Sim watch link",
@@ -30598,6 +30840,10 @@
   "filterBarSort": "Sort",
   "@filterBarSort": {
     "description": "Heading of the sort-order choices in a list's filter sheet"
+  },
+  "filterBarSource": "Source",
+  "@filterBarSource": {
+    "description": "Heading of the run-source choices (recorded, watch, Strava, parkrun, Health) in the run list's filter sheet"
   },
   "runsSearchHint": "Search run names",
   "@runsSearchHint": {

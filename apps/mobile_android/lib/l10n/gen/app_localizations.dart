@@ -26685,6 +26685,286 @@ abstract class AppLocalizations {
   /// **'Riegel equivalence from your best recent effort, recency-weighted. Closer distances are more reliable.'**
   String get racePredictorFootnote;
 
+  /// Debug-build Settings row that opens the timing-line calibration tool
+  ///
+  /// In en, this message translates to:
+  /// **'Line calibration'**
+  String get lineCalibrationEntryTitle;
+
+  /// Subtitle of the debug-build calibration row
+  ///
+  /// In en, this message translates to:
+  /// **'Debug build: timing-line error figures'**
+  String get lineCalibrationEntrySubtitle;
+
+  /// Title of the debug-build timing-line calibration screen
+  ///
+  /// In en, this message translates to:
+  /// **'Line calibration (debug)'**
+  String get lineCalibrationTitle;
+
+  /// How a calibration session runs; the quoted tab is navRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.'**
+  String get lineCalibrationIntro;
+
+  /// Capture status while recording; count is GPS fixes held
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Capturing: {count} fix} other{Capturing: {count} fixes}}'**
+  String lineCalibrationCapturing(int count);
+
+  /// Capture status while stopped; count is GPS fixes held
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Idle: {count} fix held} other{Idle: {count} fixes held}}'**
+  String lineCalibrationIdle(int count);
+
+  /// Button that starts a calibration capture
+  ///
+  /// In en, this message translates to:
+  /// **'Start capture'**
+  String get lineCalibrationStart;
+
+  /// Button that stops a calibration capture
+  ///
+  /// In en, this message translates to:
+  /// **'Stop capture'**
+  String get lineCalibrationStop;
+
+  /// Button that redraws the capture status
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get lineCalibrationRefresh;
+
+  /// Field label: latitude of the timing line centre
+  ///
+  /// In en, this message translates to:
+  /// **'Line centre latitude'**
+  String get lineCalibrationLatLabel;
+
+  /// Field label: longitude of the timing line centre
+  ///
+  /// In en, this message translates to:
+  /// **'Line centre longitude'**
+  String get lineCalibrationLngLabel;
+
+  /// Field label: compass bearing a runner crosses the line in, in degrees
+  ///
+  /// In en, this message translates to:
+  /// **'Bearing of travel (degrees)'**
+  String get lineCalibrationBearingLabel;
+
+  /// Field label: half the timing line width, in metres
+  ///
+  /// In en, this message translates to:
+  /// **'Half-width (m)'**
+  String get lineCalibrationHalfWidthLabel;
+
+  /// Button that fills the line centre from the current position
+  ///
+  /// In en, this message translates to:
+  /// **'Centre at my position'**
+  String get lineCalibrationHere;
+
+  /// Button that measures the device-to-server clock offset over count round trips
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Measure server clock ({count} round trip)} other{Measure server clock ({count} round trips)}}'**
+  String lineCalibrationMeasure(int count);
+
+  /// Field label: the clock offset, in milliseconds
+  ///
+  /// In en, this message translates to:
+  /// **'Clock offset (ms)'**
+  String get lineCalibrationOffsetLabel;
+
+  /// Helper under the clock offset field: which clock is subtracted from which
+  ///
+  /// In en, this message translates to:
+  /// **'Server minus device'**
+  String get lineCalibrationOffsetHelper;
+
+  /// Dropdown label: the angle the runner approaches the line at
+  ///
+  /// In en, this message translates to:
+  /// **'Approach'**
+  String get lineCalibrationApproachLabel;
+
+  /// Approach option: crossing square to the line
+  ///
+  /// In en, this message translates to:
+  /// **'At 90° to the line'**
+  String get lineCalibrationApproach90;
+
+  /// Approach option: crossing at a shallow angle
+  ///
+  /// In en, this message translates to:
+  /// **'At 30° to the line'**
+  String get lineCalibrationApproach30;
+
+  /// Approach option: running alongside the line 20 m off it, never crossing
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel, 20 m away'**
+  String get lineCalibrationApproachParallel20;
+
+  /// Approach option: running alongside the line 40 m off it, never crossing
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel, 40 m away'**
+  String get lineCalibrationApproachParallel40;
+
+  /// Approach option: standing still on the line
+  ///
+  /// In en, this message translates to:
+  /// **'Standing on the line'**
+  String get lineCalibrationApproachStanding;
+
+  /// Dropdown label: how fast the tester moves
+  ///
+  /// In en, this message translates to:
+  /// **'Pace'**
+  String get lineCalibrationPaceLabel;
+
+  /// Pace option
+  ///
+  /// In en, this message translates to:
+  /// **'Walk'**
+  String get lineCalibrationPaceWalk;
+
+  /// Pace option
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get lineCalibrationPaceRun;
+
+  /// Pace option: not moving
+  ///
+  /// In en, this message translates to:
+  /// **'Standing still'**
+  String get lineCalibrationPaceStill;
+
+  /// Dropdown label: where the phone is carried
+  ///
+  /// In en, this message translates to:
+  /// **'Carry'**
+  String get lineCalibrationCarryLabel;
+
+  /// Carry option
+  ///
+  /// In en, this message translates to:
+  /// **'Phone in hand'**
+  String get lineCalibrationCarryHand;
+
+  /// Carry option
+  ///
+  /// In en, this message translates to:
+  /// **'Phone in pocket'**
+  String get lineCalibrationCarryPocket;
+
+  /// Field label: the true crossing times, typed one per line
+  ///
+  /// In en, this message translates to:
+  /// **'True crossing instants'**
+  String get lineCalibrationInstantsLabel;
+
+  /// Field hint: two example formats, a time of day and an ISO-8601 instant
+  ///
+  /// In en, this message translates to:
+  /// **'{time} or {instant}'**
+  String lineCalibrationInstantsHint(String time, String instant);
+
+  /// Field helper: how a bare time of day is read
+  ///
+  /// In en, this message translates to:
+  /// **'One per line. A time of day is read in this phone\'s time zone on the capture day; give an ISO instant with its zone across midnight or when the reference clock shows UTC.'**
+  String get lineCalibrationInstantsHelper;
+
+  /// Problem: the server clock could not be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the server clock; enter the offset by hand.'**
+  String get lineCalibrationClockFailed;
+
+  /// Problem: no GPS position for Centre at my position
+  ///
+  /// In en, this message translates to:
+  /// **'No position fix.'**
+  String get lineCalibrationNoFix;
+
+  /// Problem: the line fields are empty or invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the line: centre, bearing of travel, half-width.'**
+  String get lineCalibrationLineMissing;
+
+  /// Problem: no clock offset
+  ///
+  /// In en, this message translates to:
+  /// **'Measure or enter the clock offset.'**
+  String get lineCalibrationOffsetMissing;
+
+  /// Problem: the instants do not parse; time is the HH:MM:SS.fff pattern
+  ///
+  /// In en, this message translates to:
+  /// **'One instant per line: {time} or ISO-8601.'**
+  String lineCalibrationInstantsInvalid(String time);
+
+  /// Problem: the capture has fewer than two GPS fixes
+  ///
+  /// In en, this message translates to:
+  /// **'The capture holds fewer than two fixes.'**
+  String get lineCalibrationFewFixes;
+
+  /// Problem: the line geometry is degenerate
+  ///
+  /// In en, this message translates to:
+  /// **'That line is not usable.'**
+  String get lineCalibrationLineUnusable;
+
+  /// Button that scores the capture against the entered instants
+  ///
+  /// In en, this message translates to:
+  /// **'Score this capture'**
+  String get lineCalibrationScore;
+
+  /// One scored capture's figures; median, p50, p95 and offset are a number or a dash
+  ///
+  /// In en, this message translates to:
+  /// **'{matched} of {total} matched, {missed} missed, {falseCount} false, {near} near; median {median} ms, |err| p50 {p50} ms, p95 {p95} ms; offset ±{offset} ms'**
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  );
+
+  /// Under a result that matched nothing: detections sit a median of ms milliseconds from the true crossings
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matched, yet detections sit a median {ms} ms from the truths: check the clock, the offset and the time zone.'**
+  String lineCalibrationNothingMatched(int ms);
+
+  /// Button that shares the results CSV
+  ///
+  /// In en, this message translates to:
+  /// **'Share CSV'**
+  String get lineCalibrationShare;
+
+  /// Button that copies the results CSV
+  ///
+  /// In en, this message translates to:
+  /// **'Copy CSV'**
+  String get lineCalibrationCopy;
+
   /// No description provided for @settingsSectionDeveloper.
   ///
   /// In en, this message translates to:
@@ -37070,6 +37350,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sort'**
   String get filterBarSort;
+
+  /// Heading of the run-source choices (recorded, watch, Strava, parkrun, Health) in the run list's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get filterBarSource;
 
   /// Placeholder of the Runs tab's search field, which matches the names runners give their runs
   ///

@@ -228,10 +228,9 @@ test('accessibility: every top-level page renders an h1 (WCAG 1.3.1 + 2.4.6)', (
 	// English copy still names the route. Same heading-by-headings anchor.
 	const en = read('src/lib/i18n/locales/en.ts');
 	for (const [path, key, expectedText] of [
-		// /history is the unified cross-modal timeline; the dedicated
-		// run-list page moved to /runs in the §63-amendment restructure.
-		['src/routes/history/+page.svelte', 'history.timelineHeading', 'History'],
-		['src/routes/runs/+page.svelte', 'history.heading', 'Run history'],
+		// /history and /runs say their name in a visible PageHeader now
+		// (issue #1374); page_chrome_guard.test.ts holds every sidebar root
+		// to that.
 		// The Coach is a conversation in Messages (decisions § 2227): the
 		// layout's h1 names Messages, the pane's h2 names the Coach.
 		['src/routes/messages/+layout.svelte', 'messages.heading', 'Messages'],

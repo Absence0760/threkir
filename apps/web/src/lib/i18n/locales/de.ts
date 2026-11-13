@@ -1773,8 +1773,6 @@ export const messages = {
 	"history.emptyTimeline": "In dieser Ansicht ist noch nichts erfasst.",
 	"history.loadFailed": "Dein Aktivitätsverlauf konnte nicht geladen werden.",
 	"history.retry": "Erneut versuchen",
-	"history.heading": "Laufverlauf",
-	"history.timelineHeading": "Verlauf",
 	"history.timelineTitle": "Verlauf — Threkir",
 	"history.viewAll": "Alle ansehen",
 	"runs.activityTypeGroup": "Aktivitätstyp",

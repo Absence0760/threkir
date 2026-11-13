@@ -9,7 +9,7 @@ import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show AppTheme;
+import 'package:ui_kit/ui_kit.dart' show AppTheme, PageBarTitle, PageHeader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
@@ -584,6 +584,68 @@ void main() {
             lessThanOrEqualTo(kWorstCasePhone.height - kThreeButtonNavBar));
       }
       expect(find.byKey(const ValueKey('navUnreadDot')), findsOneWidget);
+      tester.takeException();
+    }, layoutOnly: true);
+
+    // Every root page has a title (issue #1374, owner findings 5 and 11):
+    // each bottom-nav destination opens on a large PageHeader that says the
+    // bar's label for it (Home's page is Today, as web's /dashboard is), and
+    // the title collapses into the slim bar as the page scrolls, the page's
+    // actions staying in reach.
+    worstCaseTestWidgets('every root tab, at rest and collapsed',
+        (tester, locale) async {
+      final s = await _makeStores();
+      await tester.pumpWidget(shell(s, locale));
+      await tester.pump();
+      final l10n = l10nFor(locale);
+      const width = 320.0;
+      bool onScreen(Finder f) {
+        final r = tester.getRect(f);
+        return r.left >= 0 && r.right <= width + 0.5;
+      }
+
+      final destinations = find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.byType(NavigationDestination));
+      for (var i = 0; i < 4; i++) {
+        final destination = destinations.at(i);
+        await tester.tap(destination);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        final label = tester.widget<NavigationDestination>(destination).label;
+        final title = i == 0 ? l10n.todayTitle : label;
+        final headers = find
+            .byWidgetPredicate((w) => w is PageHeader && w.title == title)
+            .evaluate()
+            .map((e) => find.byWidget(e.widget))
+            .where(onScreen);
+        expect(headers, isNotEmpty,
+            reason: 'root tab $i ($label) has no PageHeader saying "$title"');
+        expectNoLayoutOverflow(tester, 'root tab $i at rest');
+
+        final bars = find.byType(PageBarTitle).evaluate().map(
+            (e) => find.byWidget(e.widget)).where(onScreen).toList();
+        expect(bars, hasLength(1), reason: 'root tab $i has one slim bar');
+        double opacity() => tester
+            .widget<AnimatedOpacity>(find.descendant(
+                of: bars.single, matching: find.byType(AnimatedOpacity)))
+            .opacity;
+        expect(opacity(), 0, reason: 'at rest the title is the large one');
+
+        // Social signed out is one sign-in prompt with nothing to scroll.
+        if (i == 2) continue;
+        await tester.dragFrom(const Offset(width / 2, 400), const Offset(0, -300));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expectNoLayoutOverflow(tester, 'root tab $i collapsed');
+        expect(opacity(), 1,
+            reason: 'collapsed, root tab $i says its title in the bar');
+        if (i == 0) {
+          expect(find.byKey(const Key('dashboardMoreMenu')).hitTestable(),
+              findsOneWidget,
+              reason: "Today's overflow stays in reach when collapsed");
+        }
+      }
       tester.takeException();
     }, layoutOnly: true);
 
@@ -1728,7 +1790,17 @@ void main() {
     // Through the controller: at a large text size the scrolling strip can
     // hold the tab off-screen, and the geometry under test is the FAB's.
     Future<void> selectTab(WidgetTester tester, String tab) async {
-      final bar = find.byType(TabBar).hitTestable().first;
+      // The showing hub's strip, by where it is rather than by a hit test:
+      // the offline "Could not refresh" banner slides over the top of the
+      // page in this environment, and at 2x it covers the strip, which now
+      // sits under the hub's large title.
+      final width = tester.view.physicalSize.width /
+          tester.view.devicePixelRatio;
+      final bar = find.byWidgetPredicate((w) => w is TabBar).evaluate().where(
+          (e) {
+        final r = tester.getRect(find.byWidget(e.widget));
+        return r.left >= 0 && r.right <= width + 0.5;
+      }).map((e) => find.byWidget(e.widget)).first;
       final labels = find
           .descendant(of: bar, matching: find.byType(Text))
           .evaluate()

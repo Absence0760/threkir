@@ -1768,8 +1768,6 @@ export const messages = {
 	"history.emptyTimeline": "このビューにはまだ記録がありません。",
 	"history.loadFailed": "アクティビティ履歴を読み込めませんでした。",
 	"history.retry": "再試行",
-	"history.heading": "ランの履歴",
-	"history.timelineHeading": "履歴",
 	"history.timelineTitle": "履歴 — Threkir",
 	"history.viewAll": "すべて表示",
 	"runs.activityTypeGroup": "アクティビティの種類",

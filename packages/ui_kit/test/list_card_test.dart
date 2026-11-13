@@ -221,6 +221,74 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    group('the badge sits inline after the title (issue #1374)', () {
+      const globe = Icon(Icons.public, key: Key('globe'), size: 16);
+      // The owner's screenshot: a two-line route name with the public globe
+      // alone on a third line under it.
+      Future<void> pumpRoute(WidgetTester tester, String title,
+              {double scale = 1, int maxLines = 2}) =>
+          _pump(
+            tester,
+            ListCard.row(
+              title: title,
+              titleMaxLines: maxLines,
+              badge: globe,
+              subtitle: '21.32 km · 189 m',
+              leading: const SizedBox(width: 64, height: 40),
+              trailing: IconButton(
+                  onPressed: () {}, icon: const Icon(Icons.star_border)),
+              onTap: () {},
+            ),
+            size: const Size(320, 640),
+            textScale: scale,
+          );
+
+      for (final scale in [1.0, 2.0]) {
+        testWidgets('a title that wraps carries the badge on its last line, '
+            'at ${scale}x', (tester) async {
+          await pumpRoute(tester, 'Pocahontas Lakeview Loop', scale: scale);
+          expect(tester.takeException(), isNull);
+          final title = tester.getRect(find.text('Pocahontas Lakeview Loop'));
+          final badge = tester.getRect(find.byKey(const Key('globe')));
+          // One line of titleMedium (16 px, height 1.5) at this scale.
+          final line = 16 * 1.5 * scale;
+          expect(title.height, greaterThan(line * 1.5),
+              reason: 'the title wraps, which is the case that broke');
+          expect(badge.bottom, lessThanOrEqualTo(title.bottom + 0.5),
+              reason: 'the badge sits inside the title block, not under it');
+          expect(badge.top, greaterThanOrEqualTo(title.bottom - line - 0.5),
+              reason: 'on the title\'s last line');
+          expect(badge.left, greaterThan(title.left),
+              reason: 'beside a word, never alone at the line start');
+          expect(badge.right, lessThanOrEqualTo(title.right + 0.5));
+        });
+      }
+
+      testWidgets('a title cut by the ellipsis keeps the badge', (tester) async {
+        await pumpRoute(
+            tester,
+            'Pocahontas State Park Lakeview Loop by the Swift Creek Reservoir '
+            'and back over the dam',
+            scale: 2,
+            maxLines: 2);
+        expect(tester.takeException(), isNull);
+        final title = tester.getRect(find.textContaining('Pocahontas'));
+        final badge = tester.getRect(find.byKey(const Key('globe')));
+        expect(title.contains(badge.center), isTrue,
+            reason: 'the badge is drawn inside the two lines');
+      });
+
+      testWidgets('the title is found and read as the title it is',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        await pumpRoute(tester, 'Buttermilk Trail');
+        expect(find.text('Buttermilk Trail'), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('Buttermilk Trail')),
+            findsWidgets);
+        handle.dispose();
+      });
+    });
+
     testWidgets('a wide leading or trailing is capped, not pushed off the row',
         (tester) async {
       await _pump(

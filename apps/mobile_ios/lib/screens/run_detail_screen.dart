@@ -20,6 +20,7 @@ import 'package:ui_kit/ui_kit.dart'
         ChartPalette,
         DetailHero,
         DetailPage,
+        FieldColumn,
         KeepAliveChild,
         ListCard,
         MapOverlayChip,
@@ -954,16 +955,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(
-                controller: titleCtl,
-                decoration: InputDecoration(labelText: l10n.runDetailFieldTitle),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: notesCtl,
-                decoration: InputDecoration(labelText: l10n.runDetailFieldNotes),
-                maxLines: 4,
-              ),
+              FieldColumn(children: [
+                TextField(
+                  controller: titleCtl,
+                  decoration: InputDecoration(labelText: l10n.runDetailFieldTitle),
+                ),
+                TextField(
+                  controller: notesCtl,
+                  decoration: InputDecoration(labelText: l10n.runDetailFieldNotes),
+                  maxLines: 4,
+                ),
+              ]),
               if (canEditStats) ...[
                 const SizedBox(height: 16),
                 TextField(

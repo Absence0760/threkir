@@ -23,6 +23,7 @@ import 'package:ui_kit/ui_kit.dart'
         ChoiceChipOption,
         ChoiceChipRow,
         EmptyState,
+        FieldColumn,
         ListCard,
         ListSkeleton,
         PageHeader,
@@ -575,11 +576,10 @@ class _ScreenCard extends StatelessWidget {
               onChanged: onLayout,
             ),
           ),
-          const SizedBox(height: 8),
-          for (var slot = 0; slot < draft.metrics.length; slot++)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
+          const SizedBox(height: 16),
+          FieldColumn(children: [
+            for (var slot = 0; slot < draft.metrics.length; slot++)
+              Row(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<WatchMetric>(
@@ -618,7 +618,7 @@ class _ScreenCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+          ]),
         ],
       ),
     );

@@ -16,6 +16,7 @@ import 'package:ui_kit/ui_kit.dart'
         SectionHeader;
 
 import '../auth_error.dart';
+import '../fab_clearance.dart';
 import '../follow_state.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../nearby.dart';
@@ -479,7 +480,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
               ),
           ],
           SliverToBoxAdapter(
-            child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
+            child: SizedBox(height: listEndClearance(context)),
           ),
         ],
       ),

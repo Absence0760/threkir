@@ -697,39 +697,41 @@ class _RaceListingFormState extends State<_RaceListingForm> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: _name,
-              decoration: InputDecoration(labelText: l.racesFieldName),
-              onChanged: (_) => setState(() {}),
-            ),
-            TextField(
-              controller: _date,
-              readOnly: true,
-              onTap: _pickDate,
-              decoration: InputDecoration(
-                labelText: l.racesFieldDate,
-                suffixIcon: const Icon(Icons.calendar_today),
+            FieldColumn(children: [
+              TextField(
+                controller: _name,
+                decoration: InputDecoration(labelText: l.racesFieldName),
+                onChanged: (_) => setState(() {}),
               ),
-            ),
-            TextField(
-              controller: _distance,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: l.racesFieldDistance),
-            ),
-            TextField(
-              controller: _location,
-              decoration: InputDecoration(labelText: l.racesFieldLocation),
-            ),
-            TextField(
-              controller: _entryUrl,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(labelText: l.racesFieldEntryUrl, hintText: 'https://'),
-            ),
-            TextField(
-              controller: _resultsUrl,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(labelText: l.racesFieldResultsUrl, hintText: 'https://'),
-            ),
+              TextField(
+                controller: _date,
+                readOnly: true,
+                onTap: _pickDate,
+                decoration: InputDecoration(
+                  labelText: l.racesFieldDate,
+                  suffixIcon: const Icon(Icons.calendar_today),
+                ),
+              ),
+              TextField(
+                controller: _distance,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l.racesFieldDistance),
+              ),
+              TextField(
+                controller: _location,
+                decoration: InputDecoration(labelText: l.racesFieldLocation),
+              ),
+              TextField(
+                controller: _entryUrl,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(labelText: l.racesFieldEntryUrl, hintText: 'https://'),
+              ),
+              TextField(
+                controller: _resultsUrl,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(labelText: l.racesFieldResultsUrl, hintText: 'https://'),
+              ),
+            ]),
           ],
         ),
       ),
@@ -932,26 +934,28 @@ class _RaceImportFormState extends State<_RaceImportForm> {
             ],
             const SizedBox(height: 8),
             Text(l.racesPasteResultHint, style: Theme.of(context).textTheme.bodySmall),
-            TextField(
-              controller: _bib,
-              decoration: InputDecoration(labelText: l.racesBib),
-              onChanged: (_) => setState(() {}),
-            ),
-            TextField(
-              controller: _chip,
-              decoration: InputDecoration(labelText: l.racesChipTime, hintText: '1:47:23'),
-              onChanged: (_) => setState(() {}),
-            ),
-            TextField(
-              controller: _gun,
-              decoration: InputDecoration(labelText: l.racesGunTime, hintText: '1:48:01'),
-              onChanged: (_) => setState(() {}),
-            ),
-            TextField(
-              controller: _place,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: l.racesOverallPlace),
-            ),
+            FieldColumn(children: [
+              TextField(
+                controller: _bib,
+                decoration: InputDecoration(labelText: l.racesBib),
+                onChanged: (_) => setState(() {}),
+              ),
+              TextField(
+                controller: _chip,
+                decoration: InputDecoration(labelText: l.racesChipTime, hintText: '1:47:23'),
+                onChanged: (_) => setState(() {}),
+              ),
+              TextField(
+                controller: _gun,
+                decoration: InputDecoration(labelText: l.racesGunTime, hintText: '1:48:01'),
+                onChanged: (_) => setState(() {}),
+              ),
+              TextField(
+                controller: _place,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l.racesOverallPlace),
+              ),
+            ]),
           ],
         ),
       ),

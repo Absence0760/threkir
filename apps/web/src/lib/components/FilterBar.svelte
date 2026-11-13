@@ -8,6 +8,10 @@
 		pressed: boolean;
 		onclick: () => void;
 		testid?: string;
+		/// A Material Symbols ligature. A chip with one, alone on the bar,
+		/// is drawn as a toggle icon button in the top row instead of on a
+		/// line of its own (issue #1374).
+		icon?: string;
 	}
 
 	/// A filter that is on, shown as a removable chip on the same line so
@@ -24,7 +28,7 @@
 	import type { Snippet } from 'svelte';
 	import Modal from './Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import { filtersButtonLabel } from './filter_bar.ts';
+	import { filtersButtonLabel, loneChipInTopRow } from './filter_bar.ts';
 
 	// The control row of a list, the web twin of ui_kit's `FilterBar`
 	// (conventions.md § Web lists — FilterBar and PageHeader): at most one
@@ -70,7 +74,11 @@
 	const tid = (part: string) => (idPrefix ? `${idPrefix}-${part}` : undefined);
 	const label = $derived(filtersLabel ?? m('filterBar.filters'));
 	const hasTop = $derived(!!search || !!trailing || !!filters);
-	const hasLine = $derived(chips.length > 0 || activeFilters.length > 0);
+	const toggle = $derived(
+		loneChipInTopRow(chips.length, !!chips[0]?.icon, hasTop) ? chips[0] : undefined,
+	);
+	const lineChips = $derived(toggle ? [] : chips);
+	const hasLine = $derived(lineChips.length > 0 || activeFilters.length > 0);
 </script>
 
 {#if hasTop || hasLine}
@@ -78,6 +86,20 @@
 		{#if hasTop}
 			<div class="fb-top">
 				{#if search}{@render search()}{/if}
+				{#if toggle}
+					<button
+						type="button"
+						class="fb-toggle"
+						class:active={toggle.pressed}
+						aria-pressed={toggle.pressed}
+						aria-label={toggle.label}
+						title={toggle.label}
+						onclick={toggle.onclick}
+						data-testid={toggle.testid ?? tid('toggle')}
+					>
+						<span class="material-symbols" class:filled={toggle.pressed} aria-hidden="true">{toggle.icon}</span>
+					</button>
+				{/if}
 				{#if filters}
 					<button
 						type="button"
@@ -103,9 +125,9 @@
 		{/if}
 		{#if hasLine}
 			<div class="fb-line" data-testid={tid('chip-line')}>
-				{#if chips.length > 0}
+				{#if lineChips.length > 0}
 					<div class="fb-chips" role="group" aria-label={chipsLabel} data-testid={tid('chips')}>
-						{#each chips as chip (chip.key)}
+						{#each lineChips as chip (chip.key)}
 							<button
 								type="button"
 								class="fb-chip"
@@ -212,6 +234,31 @@
 		font-weight: 600;
 		cursor: pointer;
 		white-space: nowrap;
+	}
+	/* State is the filled glyph and aria-pressed, not the colour alone. */
+	.fb-toggle {
+		appearance: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: var(--tap-target-min);
+		min-width: var(--tap-target-min);
+		border: 1.5px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+		cursor: pointer;
+	}
+	.fb-toggle.active {
+		border-color: var(--color-primary);
+		color: var(--color-primary);
+	}
+	.fb-toggle .material-symbols.filled {
+		font-variation-settings: 'FILL' 1;
+	}
+	.fb-toggle:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
 	}
 	.fb-filters.active {
 		border-color: var(--color-primary);

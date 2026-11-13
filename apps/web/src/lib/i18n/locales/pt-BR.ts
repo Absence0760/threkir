@@ -1772,8 +1772,6 @@ export const messages = {
 	"history.emptyTimeline": "Nada registrado nesta visualização ainda.",
 	"history.loadFailed": "Não foi possível carregar seu histórico de atividades.",
 	"history.retry": "Tentar novamente",
-	"history.heading": "Histórico de corridas",
-	"history.timelineHeading": "Histórico",
 	"history.timelineTitle": "Histórico — Threkir",
 	"history.viewAll": "Ver tudo",
 	"runs.activityTypeGroup": "Tipo de atividade",

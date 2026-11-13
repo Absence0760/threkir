@@ -160,7 +160,10 @@ void main() {
 
         // The title used to add a 16 px inset of its own inside the list's,
         // and started at 32 while the cards started at 16 (issue #1374).
-        expect(tester.getTopLeft(find.text('Today')).dx, 16.0);
+        expect(
+            tester.getTopLeft(find.descendant(
+                of: find.byType(PageHeader), matching: find.text('Today'))).dx,
+            16.0);
 
         // Measure the painted surface, not the Card element: the Card's own
         // render object spans its margin box, so a card that insets itself

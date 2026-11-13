@@ -199,6 +199,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       expect(find.text('resoled outsole'), findsOneWidget);
 
+      // Below the fold since the form's fields carry the field gap.
+      await tester.ensureVisible(find.byTooltip('Delete observation'));
+      await tester.pump();
       await tester.tap(find.byTooltip('Delete observation'));
       await tester.pump();
       expect(find.byType(AlertDialog), findsNothing);
@@ -230,6 +233,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       expect(find.text('resoled outsole'), findsOneWidget);
 
+      // Below the fold since the form's fields carry the field gap.
+      await tester.ensureVisible(find.byTooltip('Delete observation'));
+      await tester.pump();
       await tester.tap(find.byTooltip('Delete observation'));
       await tester.pump();
       expect(api.deleteCalls, 0,

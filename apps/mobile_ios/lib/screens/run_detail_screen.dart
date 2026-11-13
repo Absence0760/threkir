@@ -1123,6 +1123,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     String label, {
     bool hours = false,
   }) {
+    // semantics-children: names a field that shows no label or hint of its own
     return Semantics(
       label: label,
       child: TextField(

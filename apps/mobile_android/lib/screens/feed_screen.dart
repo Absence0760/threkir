@@ -478,6 +478,7 @@ class _FeedScreenState extends State<FeedScreen> {
           children: [
             Text(l10n.feedFilterAuthor, style: theme.textTheme.titleSmall),
             const SizedBox(height: AppSpace.sm),
+            // semantics-children: a group name, read once before the controls inside it
             Semantics(
               container: true,
               label: l10n.feedFilterAuthor,
@@ -809,6 +810,9 @@ class _EngagementFooterState extends State<_EngagementFooter> {
       child: Row(
         children: [
           Semantics(
+            excludeSemantics: true,
+            onTap: _busy ? null : _toggle,
+            value: '${_eng.kudosCount}',
             button: true,
             label: _eng.viewerHasKudos
                 ? AppLocalizations.of(context).kudosRemoveLabel
@@ -831,6 +835,9 @@ class _EngagementFooterState extends State<_EngagementFooter> {
             ),
           ),
           Semantics(
+            excludeSemantics: true,
+            onTap: widget.onCommentTap,
+            value: '${_eng.commentCount}',
             button: true,
             label: AppLocalizations.of(context).kudosViewCommentsLabel,
             child: TextButton.icon(

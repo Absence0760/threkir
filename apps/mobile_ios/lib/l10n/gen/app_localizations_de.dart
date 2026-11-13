@@ -1134,6 +1134,34 @@ class AppLocalizationsDe extends AppLocalizations {
   String get youEditProfile => 'Profil bearbeiten';
 
   @override
+  String get editProfileSubtitle => 'Foto, Name und Benutzername';
+
+  @override
+  String get editProfileUsername => 'Benutzername';
+
+  @override
+  String get editProfileUsernameHelp =>
+      'Dein öffentlicher @Benutzername — 3–30 Kleinbuchstaben, Zahlen oder Unterstriche. Andere können dich darüber finden.';
+
+  @override
+  String get editProfileUsernameTaken =>
+      'Dieser Benutzername ist bereits vergeben.';
+
+  @override
+  String get editProfileUsernameInvalid =>
+      'Verwende 3–30 Kleinbuchstaben, Zahlen oder Unterstriche.';
+
+  @override
+  String get editProfileSaving => 'Wird gespeichert…';
+
+  @override
+  String get editProfileSaved => 'Profil gespeichert';
+
+  @override
+  String get editProfileSaveFailed =>
+      'Dein Profil konnte nicht gespeichert werden. Bitte versuche es erneut.';
+
+  @override
   String get logSheetTitle => 'Erfassen';
 
   @override
@@ -9779,6 +9807,19 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String privacyZonesRadiusMeters(int meters) {
     return '$meters m';
+  }
+
+  @override
+  String privacyZonesRaisedToFloor(int count, int meters) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Zonen waren kleiner als $meters m und decken jetzt $meters m ab, die kleinste mögliche Größe.',
+      one:
+          '$count Zone war kleiner als $meters m und deckt jetzt $meters m ab, die kleinste mögliche Größe.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -20805,6 +20846,39 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Verzögerung konnte nicht geändert werden. Versuch es noch einmal.';
 
   @override
+  String get streamerOverlayShowMap => 'Streckenverlauf anzeigen';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'Zeichnet die bisherige Strecke ohne deine Datenschutzzonen. Es werden keine Kartenkacheln geladen.';
+
+  @override
+  String get streamerOverlayShowHeartRate => 'Herzfrequenz anzeigen';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      'Die Herzfrequenz ist ein Gesundheitsdatum. Sie wird nur angezeigt, solange deine Einwilligung für Gesundheitsdaten aktiv ist.';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      'Die Herzfrequenz ist ein Gesundheitsdatum. Erteile die Einwilligung für Gesundheitsdaten, um sie anzuzeigen.';
+
+  @override
+  String get streamerOverlayReviewConsent => 'Einwilligung prüfen';
+
+  @override
+  String get streamerOverlaySettingsSaved =>
+      'Overlay-Einstellungen gespeichert';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      'Gespeichert. Der Link hat sich geändert: Kopiere ihn erneut in deine Streaming-App.';
+
+  @override
+  String get streamerOverlaySaveFailed =>
+      'Die Overlay-Einstellungen konnten nicht gespeichert werden. Bitte versuche es erneut.';
+
+  @override
   String get streamerOverlayLoadFailed =>
       'Dein Streamer-Overlay konnte nicht geladen werden.';
 
@@ -20814,13 +20888,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get streamerOverlayUnavailable =>
       'Das Streamer-Overlay ist gerade nicht verfügbar.';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'Streckenverlauf und Herzfrequenz schaltest du im Web in deinen Datenschutzeinstellungen ein.';
-
-  @override
-  String get streamerOverlayOpenWebSettings => 'Im Web öffnen';
 
   @override
   String get liveSpectatorHeartRate => 'Herzfrequenz';

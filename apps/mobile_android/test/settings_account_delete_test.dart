@@ -116,7 +116,12 @@ void main() {
     await _openDialog(tester, _DeleteApi());
 
     expect(find.text('Type "DELETE" to confirm'), findsOneWidget);
-    expect(find.textContaining(_relayEmail), findsNothing);
+    // Scoped to the dialog: the page behind it shows the signed-in email.
+    expect(
+        find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.textContaining(_relayEmail)),
+        findsNothing);
   });
 
   testWidgets('the account email does not enable Delete', (tester) async {

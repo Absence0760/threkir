@@ -37,6 +37,7 @@ import 'follow_requests_screen.dart';
 import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
 import 'messages_screen.dart';
+import 'edit_profile_screen.dart';
 import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
 import 'race_detail_screen.dart';
@@ -710,6 +711,14 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  Future<void> _editProfile() async {
+    // The photo saves on pick, before any Save, so re-read on every return.
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => EditProfileScreen(apiClient: widget.api)),
+    );
+    if (mounted) await _loadSummary();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -722,6 +731,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       // Report and Block are rare and one is destructive, so both sit in the
       // overflow (web keeps them as header buttons; there is room there).
       actions: [
+        // Your own profile edits from where you see it (issue #1374).
+        if (_isSelf)
+          AppBarAction(
+            key: const ValueKey('profile-edit'),
+            icon: const Icon(Icons.edit_outlined),
+            label: l10n.youEditProfile,
+            onPressed: _editProfile,
+          ),
         if (!_isSelf) ...[
           AppBarAction(
             key: const ValueKey('profile-report'),
@@ -1374,6 +1391,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           // notification has no count, so it takes the dot.
           if (unread)
             Semantics(
+              excludeSemantics: true,
               label: AppLocalizations.of(context).profileNotifUnread,
               child: Container(
                 width: 8,

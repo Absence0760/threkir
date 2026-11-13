@@ -570,6 +570,7 @@ class _PhotoTile extends StatelessWidget {
           // unlabelled roleless rectangle. The caption and uploader below are
           // separate nodes, so without this the tappable thing itself carries
           // no name and no role.
+          // semantics-children: the child draws no text, and keeps its own tap
           Semantics(
             button: true,
             image: true,

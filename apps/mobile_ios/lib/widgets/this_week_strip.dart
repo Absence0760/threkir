@@ -63,7 +63,6 @@ class ThisWeekStrip extends StatelessWidget {
     final countLabel = l10n.dashboardWeekStripCount(week.totalCount);
 
     return Semantics(
-      label: l10n.dashboardWeekStripTitle,
       container: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,6 +155,7 @@ class _DayCell extends StatelessWidget {
         : theme.colorScheme.surface;
 
     return Semantics(
+      excludeSemantics: true,
       label: logged
           ? l10n.dashboardWeekStripDayAria(dow, distLabel!)
           : l10n.dashboardWeekStripDayRestAria(dow),

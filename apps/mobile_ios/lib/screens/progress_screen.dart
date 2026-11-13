@@ -1260,41 +1260,39 @@ class _EmptyGoalsCta extends StatelessWidget {
     // CTA so a screen-reader user understands what activates.
     return ListCard(
       onTap: onAdd,
-      child: Semantics(
-        label: l10n.dashboardSetWeeklyGoalA11y,
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: theme.colorScheme.primaryContainer,
-              ),
-              child: Icon(Icons.flag_outlined,
-                  color: theme.colorScheme.primary),
+      semanticLabel: l10n.dashboardSetWeeklyGoalA11y,
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.primaryContainer,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.dashboardSetFirstGoal,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.dashboardSetFirstGoalBody,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+            child: Icon(Icons.flag_outlined,
+                color: theme.colorScheme.primary),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.dashboardSetFirstGoal,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.dashboardSetFirstGoalBody,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-          ],
-        ),
+          ),
+          Icon(Icons.chevron_right, color: theme.colorScheme.outline),
+        ],
       ),
     );
   }
@@ -1341,70 +1339,68 @@ class _GoalCard extends StatelessWidget {
 
     return ListCard(
       onTap: onTap,
-      child: Semantics(
-        label: a11yLabel,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        customTitle ??
-                            l10n.dashboardGoalTitleFallback(periodLabel),
-                        style: (customTitle != null
-                                ? theme.textTheme.titleMedium
-                                : theme.textTheme.labelMedium)
-                            ?.copyWith(
-                          color: customTitle != null
-                              ? null
-                              : theme.colorScheme.onSurfaceVariant,
-                          letterSpacing: customTitle != null ? 0 : 1.1,
-                          fontWeight: customTitle != null
-                              ? FontWeight.w700
-                              : FontWeight.normal,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+      semanticLabel: a11yLabel,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customTitle ??
+                          l10n.dashboardGoalTitleFallback(periodLabel),
+                      style: (customTitle != null
+                              ? theme.textTheme.titleMedium
+                              : theme.textTheme.labelMedium)
+                          ?.copyWith(
+                        color: customTitle != null
+                            ? null
+                            : theme.colorScheme.onSurfaceVariant,
+                        letterSpacing: customTitle != null ? 0 : 1.1,
+                        fontWeight: customTitle != null
+                            ? FontWeight.w700
+                            : FontWeight.normal,
                       ),
-                      if (customTitle != null)
-                        Text(
-                          periodLabel,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            letterSpacing: 1.1,
-                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (customTitle != null)
+                      Text(
+                        periodLabel,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          letterSpacing: 1.1,
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
-                Text(
-                  '${(progress.overallPercent * 100).round()}%',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(Icons.edit_outlined,
-                    size: 14, color: theme.colorScheme.outline),
-              ],
-            ),
-            const SizedBox(height: 14),
-            for (int i = 0; i < GoalTargetKind.values.length; i++) ...[
-              if (i > 0) const SizedBox(height: 12),
-              _TargetRow(
-                kind: GoalTargetKind.values[i],
-                target: byKind[GoalTargetKind.values[i]],
-                unit: unit,
               ),
+              Text(
+                '${(progress.overallPercent * 100).round()}%',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.edit_outlined,
+                  size: 14, color: theme.colorScheme.outline),
             ],
+          ),
+          const SizedBox(height: 14),
+          for (int i = 0; i < GoalTargetKind.values.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            _TargetRow(
+              kind: GoalTargetKind.values[i],
+              target: byKind[GoalTargetKind.values[i]],
+              unit: unit,
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

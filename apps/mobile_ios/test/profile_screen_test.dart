@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/help_destination.dart';
 import '../lib/help_guides.dart' show HelpDestination;
+import '../lib/screens/edit_profile_screen.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/widgets/error_state.dart';
 import 'supabase_test_init.dart';
@@ -143,6 +144,29 @@ void main() {
       expect(find.text('Followers'), findsOneWidget);
       expect(find.text('Following'), findsOneWidget);
       expect(find.text('Notifications'), findsNothing);
+    });
+  });
+
+  // #1374 finding 10: your own profile had no way to edit it.
+  group('ProfileScreen — Edit on your own profile', () {
+    testWidgets('your own profile has Edit, which opens Edit profile',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ProfileScreen(api: _SelfApi(), userId: 'me'),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('profile-edit')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(EditProfileScreen), findsOneWidget);
+    });
+
+    testWidgets("someone else's profile has no Edit", (tester) async {
+      await _pump(tester, userId: 'someone-else');
+      await tester.pump();
+      expect(find.byKey(const ValueKey('profile-edit')), findsNothing);
     });
   });
 

@@ -34,10 +34,27 @@ class PrivacyZone {
 /// Settings-bag key matching web's `PRIVACY_ZONES_KEY`.
 const String privacyZonesKey = 'privacy_zones';
 
+/// The radius range a zone is created with, on every platform. The floor is
+/// also applied when a zone is READ: this app once offered 50 m, and a zone
+/// saved then covers 100 m now rather than the 50 it was stored with, so
+/// aligning the range never shrank anyone's privacy (decisions § 33). The
+/// server's `privacy_in_any_zone` and the live hub apply the same floor.
+const double privacyZoneMinRadiusM = 100;
+const double privacyZoneMaxRadiusM = 1000;
+
+/// The radius [zone] covers: what was stored, never less than
+/// [privacyZoneMinRadiusM]. A non-finite radius is the floor.
+double effectiveZoneRadius(PrivacyZone zone) {
+  final r = zone.radiusM;
+  return r.isFinite && r > privacyZoneMinRadiusM ? r : privacyZoneMinRadiusM;
+}
+
 /// True when [point] is within the radius of any of [zones].
 bool isInAnyZone(double lat, double lng, List<PrivacyZone> zones) {
   for (final z in zones) {
-    if (haversineMetres(lat, lng, z.lat, z.lng) <= z.radiusM) return true;
+    if (haversineMetres(lat, lng, z.lat, z.lng) <= effectiveZoneRadius(z)) {
+      return true;
+    }
   }
   return false;
 }

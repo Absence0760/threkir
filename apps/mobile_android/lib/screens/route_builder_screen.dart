@@ -1729,6 +1729,7 @@ class _WaypointListSheetState extends State<WaypointListSheet> {
                 ReorderableDragStartListener(
                   index: i,
                   child: Semantics(
+                    excludeSemantics: true,
                     label: l10n.routeBuilderReorderPoint(i + 1),
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
@@ -1795,6 +1796,7 @@ class _GenerateLoopDialogState extends State<_GenerateLoopDialog> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
+          // semantics-children: names a field that shows no label or hint of its own
           Semantics(
             label: l10n.routeBuilderLoopDialogBody,
             child: TextField(

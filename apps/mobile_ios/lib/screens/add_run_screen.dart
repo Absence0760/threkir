@@ -422,6 +422,7 @@ class _AddRunScreenState extends State<AddRunScreen> {
           const SizedBox(height: 20),
           Text(l10n.addRunSectionDistance, style: theme.textTheme.labelLarge),
           const SizedBox(height: 8),
+          // semantics-children: names a field that shows no label or hint of its own
           Semantics(
             label: l10n.addRunSectionDistance,
             child: TextFormField(
@@ -537,6 +538,7 @@ class _AddRunScreenState extends State<AddRunScreen> {
     String label, {
     bool hours = false,
   }) {
+    // semantics-children: names a field that shows no label or hint of its own
     return Semantics(
       label: label,
       textField: true,

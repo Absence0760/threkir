@@ -645,6 +645,7 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
                 row,
                 const SizedBox(height: 6),
                 Semantics(
+                  excludeSemantics: true,
                   key: ValueKey('coach-run-map-${r.id}'),
                   image: true,
                   label: l10n.coachingAthleteRunMapLabel(

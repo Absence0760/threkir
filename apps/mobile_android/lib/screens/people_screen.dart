@@ -380,16 +380,12 @@ class _PeopleScreenState extends State<PeopleScreen> {
       title: l10n.socialTabPeople,
       filters: FilterBar(
         key: const ValueKey('people-filter-bar'),
-        search: Semantics(
-          textField: true,
-          label: l10n.peopleSearchHint,
-          child: AppSearchField(
+        search: AppSearchField(
             controller: _searchCtl,
             hint: l10n.peopleSearchHint,
             clearTooltip: l10n.peopleClearSearchTooltip,
             onChanged: _onSearchChanged,
           ),
-        ),
       ),
       onRefresh: _refresh,
       body: CustomScrollView(

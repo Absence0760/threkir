@@ -903,16 +903,13 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
     }
 
     if (_datalistNames.isEmpty) {
-      return Semantics(
-        label: l10n.gymEditorExercisePlaceholder,
-        child: TextField(
+      return TextField(
           controller: ex.name,
           focusNode: ex.nameFocus,
           textCapitalization: TextCapitalization.words,
           decoration: deco(),
           onChanged: clearNeedExercise,
-        ),
-      );
+        );
     }
     return RawAutocomplete<String>(
       textEditingController: ex.name,
@@ -924,9 +921,7 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
             .where((s) => normaliseExerciseName(s).contains(q))
             .take(6);
       },
-      fieldViewBuilder: (context, controller, focusNode, onSubmit) => Semantics(
-        label: l10n.gymEditorExercisePlaceholder,
-        child: TextField(
+      fieldViewBuilder: (context, controller, focusNode, onSubmit) => TextField(
           controller: controller,
           focusNode: focusNode,
           textCapitalization: TextCapitalization.words,
@@ -934,7 +929,6 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
           onChanged: clearNeedExercise,
           onSubmitted: (_) => onSubmit(),
         ),
-      ),
       optionsViewBuilder: (context, onSelected, options) => Align(
         alignment: Alignment.topLeft,
         child: Material(

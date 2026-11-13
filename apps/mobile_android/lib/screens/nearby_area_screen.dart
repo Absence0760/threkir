@@ -229,21 +229,17 @@ class _NearbyAreaScreenState extends State<NearbyAreaScreen> {
               ],
             ),
           const SizedBox(height: 24),
-          Semantics(
-            textField: true,
-            label: l10n.nearbyAreaSearchHint,
-            child: TextField(
-              controller: _searchCtl,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: l10n.nearbyAreaSearchHint,
-                prefixIcon: const Icon(Icons.search, size: 20),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          TextField(
+            controller: _searchCtl,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: l10n.nearbyAreaSearchHint,
+              prefixIcon: const Icon(Icons.search, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              onChanged: _onSearchChanged,
             ),
+            onChanged: _onSearchChanged,
           ),
           if (_searching)
             const Padding(

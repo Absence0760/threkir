@@ -489,7 +489,7 @@ void main() {
       addTearDown(tester.view.reset);
       final runStore = await pumpShell(tester);
       expect(find.byType(NavigationRail), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
       expect(centreLabelled('Open the recording screen (Run)'), findsOneWidget);
 
       await tapRailFab(tester);
@@ -552,7 +552,7 @@ void main() {
       tester.view.physicalSize = portrait;
       addTearDown(tester.view.reset);
       final runStore = await pumpShell(tester);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
 
       await tapCentre(tester);
       await recordARun(tester);
@@ -577,7 +577,7 @@ void main() {
       ]);
 
       await resize(tester, portrait);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
       expect(tester.state(find.byType(RunScreen)), same(recorder),
           reason: 'turning back is the same recorder too');
       expect(runRecordingActive.value, isTrue);

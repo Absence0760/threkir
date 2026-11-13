@@ -5296,6 +5296,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // wraps the whole circle so the button is announced
     // as a discrete control with a meaningful label.
     return Semantics(
+      excludeSemantics: true,
+      onTap: _beginCountdown,
       key: const ValueKey('run-idle-start'),
       button: true,
       label: l10n.runStartA11yLabel,
@@ -5801,6 +5803,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// a direct `setState` would assert "Build scheduled during frame"; the
   /// change lands in a post-frame callback instead.
   void _onStatsOverlaySized(Size size) {
+    // Includes the transparent strip above the panel that is the stats
+    // handle's touch target (`CollapsiblePanel.handleOverhang`), so the map
+    // credit and the floating cards stay clear of it rather than under it.
     final h = size.height;
     if ((h - _statsOverlayHeight).abs() <= 1) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -6233,6 +6238,7 @@ class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
         children: [
           _clock(context, theme, l10n),
           const SizedBox(height: _gap),
+          // semantics-children: the stat values on the page stay readable under the pager
           Semantics(
             container: true,
             button: true,
@@ -6411,6 +6417,8 @@ class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
         // couldn't end the run from this control.
         // Semantics(button: true, label:) is the Flutter idiom.
         Semantics(
+          excludeSemantics: true,
+          onTap: widget.onDiscard,
           button: true,
           enabled: true,
           label: l10n.runDiscardA11yLabel,
@@ -6438,6 +6446,8 @@ class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
         // audit/accessibility (May 2026) Critical — see
         // above. Toggle label reflects current state.
         Semantics(
+          excludeSemantics: true,
+          onTap: widget.onPauseToggle,
           button: true,
           enabled: true,
           toggled: paused,
@@ -6478,6 +6488,8 @@ class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
         // pattern. Lap count is announced so a screen-reader
         // user knows how many laps the gesture produced.
         Semantics(
+          excludeSemantics: true,
+          onTap: widget.onLap,
           button: true,
           enabled: true,
           label: lapCount > 0

@@ -22,7 +22,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/parkrun_barcode_screen.dart';
 import '../lib/screens/follow_requests_screen.dart';
 import '../lib/screens/profile_screen.dart';
-import '../lib/screens/settings_account_screen.dart';
+import '../lib/screens/edit_profile_screen.dart';
 import '../lib/screens/settings_preferences_screen.dart';
 import '../lib/settings_sync.dart';
 import '../lib/screens/you_screen.dart';
@@ -307,7 +307,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('you-edit-profile')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.byType(SettingsAccountScreen), findsOneWidget);
+      expect(find.byType(EditProfileScreen), findsOneWidget);
     });
 
     testWidgets('reacts to sign-out and an account switch (#223)',

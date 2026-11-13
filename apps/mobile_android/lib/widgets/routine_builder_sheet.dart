@@ -373,6 +373,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
         const SizedBox(height: 12),
         SectionHeader(label: l10n.gymRoutineEditorNotesLabel),
         const SizedBox(height: 8),
+        // semantics-children: names a field that shows no label or hint of its own
         Semantics(
           label: l10n.gymRoutineEditorNotesLabel,
           child: TextField(
@@ -690,16 +691,13 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
     }
 
     if (widget.suggestions.isEmpty) {
-      return Semantics(
-        label: l10n.gymEditorExercisePlaceholder,
-        child: TextField(
+      return TextField(
           controller: ex.name,
           focusNode: ex.nameFocus,
           textCapitalization: TextCapitalization.words,
           decoration: deco(),
           onChanged: clearNeedExercise,
-        ),
-      );
+        );
     }
     return RawAutocomplete<String>(
       textEditingController: ex.name,
@@ -711,9 +709,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             .where((s) => normaliseExerciseName(s).contains(q))
             .take(6);
       },
-      fieldViewBuilder: (context, controller, focusNode, onSubmit) => Semantics(
-        label: l10n.gymEditorExercisePlaceholder,
-        child: TextField(
+      fieldViewBuilder: (context, controller, focusNode, onSubmit) => TextField(
           controller: controller,
           focusNode: focusNode,
           textCapitalization: TextCapitalization.words,
@@ -721,7 +717,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           onChanged: clearNeedExercise,
           onSubmitted: (_) => onSubmit(),
         ),
-      ),
       optionsViewBuilder: (context, onSelected, options) => Align(
         alignment: Alignment.topLeft,
         child: Material(

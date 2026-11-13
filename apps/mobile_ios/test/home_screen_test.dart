@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:ui' show Tristate;
 import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ui_kit/ui_kit.dart' show AppTheme;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
@@ -57,6 +60,8 @@ import '../lib/screens/settings_pro_screen.dart';
 import '../lib/screens/settings_safety_screen.dart';
 import '../lib/screens/setup_wizard_screen.dart';
 import 'pump_until.dart';
+import 'three_button_nav_bar.dart' show kThreeButtonNavBar;
+import 'worst_case_layout.dart';
 
 /// Drives auth transitions for the setup-wizard gate (#232): a fresh
 /// account (onboarded_at null) signs in after launch.
@@ -429,27 +434,35 @@ void main() {
         (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      expect(find.byIcon(Icons.dynamic_feed_outlined), findsNothing);
-      expect(find.byIcon(Icons.person_outline), findsNothing);
-      expect(find.byIcon(Icons.notifications_outlined), findsNothing);
+      // Scoped off the nav bar, whose You destination is a person glyph.
+      Finder inPage(IconData icon) => find.byWidgetPredicate((w) =>
+          w is Icon &&
+          w.icon == icon &&
+          find
+              .ancestor(
+                  of: find.byWidget(w), matching: find.byType(NavigationBar))
+              .evaluate()
+              .isEmpty);
+      expect(inPage(Icons.dynamic_feed_outlined), findsNothing);
+      expect(inPage(Icons.person_outline), findsNothing);
+      expect(inPage(Icons.notifications_outlined), findsNothing);
       expect(find.byKey(const Key('dashboardMoreMenu')), findsOneWidget);
     });
   });
 
   group('the Social nav item (issue #1374)', () {
-    Finder socialItem() => find.ancestor(
-        of: find.descendant(
-            of: find.byType(BottomAppBar), matching: find.text('Social')),
-        matching: find.byWidgetPredicate(
-            (w) => w is Semantics && w.properties.label == 'Social'));
+    SemanticsNode socialNode(WidgetTester tester) => tester.getSemantics(
+        find.descendant(
+            of: find.byType(NavigationBar), matching: find.text('Social')));
 
     testWidgets('carries a dot while messages wait unread, said in its value',
         (tester) async {
+      final handle = tester.ensureSemantics();
       final unread = _FakeUnread();
       final s = await _makeStores();
       await _pump(tester, s, socialUnread: unread);
       expect(find.byKey(const ValueKey('navUnreadDot')), findsNothing);
-      expect(tester.widget<Semantics>(socialItem()).properties.value, isNull);
+      expect(socialNode(tester).value, isEmpty);
 
       unread.count = 3;
       await tester.pump();
@@ -457,12 +470,14 @@ void main() {
       expect(dot, findsOneWidget);
       expect(tester.widget<Badge>(dot).isLabelVisible, isTrue,
           reason: 'a dot, a shape on the icon, not a tint');
-      expect(tester.widget<Semantics>(socialItem()).properties.value,
-          '3 unread messages');
+      expect(socialNode(tester).value, '3 unread messages');
+      expect(socialNode(tester).label, contains('Social'),
+          reason: 'the badge rides on the destination that hosts messages');
 
       unread.count = 0;
       await tester.pump();
       expect(find.byKey(const ValueKey('navUnreadDot')), findsNothing);
+      handle.dispose();
     });
 
     testWidgets('re-reads the count on launch and on every page change',
@@ -477,39 +492,168 @@ void main() {
       tester.takeException();
     });
 
-    testWidgets('the selected destination wears a pill, not only a colour',
+    testWidgets('selection is a pill and a filled glyph, not only a colour',
         (tester) async {
+      final handle = tester.ensureSemantics();
       final s = await _makeStores();
       await _pump(tester, s);
-      final pill = find.byKey(const ValueKey('navSelectedIndicator'));
-      expect(pill, findsOneWidget);
-      expect(
-          find.ancestor(
-              of: pill,
-              matching: find.byWidgetPredicate((w) =>
-                  w is Semantics &&
-                  w.properties.label == 'Home' &&
-                  w.properties.selected == true)),
+      final bar = find.byType(NavigationBar);
+      expect(tester.widget<NavigationBar>(bar).selectedIndex, 0);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.dashboard)),
           findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.public)),
+          findsNothing);
+      expect(
+          find.descendant(of: bar, matching: find.byIcon(Icons.public_outlined)),
+          findsOneWidget);
+      expect(
+          tester
+              .getSemantics(find.descendant(of: bar, matching: find.text('Home')))
+              .flagsCollection
+              .isSelected,
+          Tristate.isTrue);
+
       await tester.tap(find.text('Social'));
       await tester.pump();
-      expect(find.descendant(of: socialItem(), matching: pill), findsOneWidget,
-          reason: 'the pill follows the selection');
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.widget<NavigationBar>(bar).selectedIndex, 3);
+      expect(find.descendant(of: bar, matching: find.byIcon(Icons.public)),
+          findsOneWidget,
+          reason: 'the filled glyph follows the selection');
+      expect(
+          find.descendant(of: bar, matching: find.byIcon(Icons.dashboard_outlined)),
+          findsOneWidget);
       tester.takeException();
+      handle.dispose();
+    });
+
+    testWidgets('the bar is themed from app_theme, the rail likewise',
+        (tester) async {
+      // The navigationBarTheme sat unused while a hand-rolled bar drew its
+      // own pill (issue #1374 finding 12).
+      final theme = AppTheme.light;
+      expect(theme.navigationBarTheme.indicatorColor,
+          theme.navigationRailTheme.indicatorColor);
+      expect(
+          theme.navigationBarTheme.iconTheme!
+              .resolve({WidgetState.selected})!
+              .color,
+          theme.navigationRailTheme.selectedIconTheme!.color);
+    });
+  });
+
+  // #1374 finding 12: the bar at its worst case, with the 3-button bar.
+  group('the NavigationBar at its worst case', () {
+    Widget shell(dynamic s, Locale locale) => worstCaseApp(
+          locale: locale,
+          home: HomeScreen(
+            apiClient: null,
+            runStore: s.runStore,
+            routeStore: s.routeStore,
+            gearStore: s.gearStore,
+            gymStore: s.gymStore,
+            foodStore: s.foodStore,
+            preferences: s.prefs,
+            audioCues: s.audioCues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+            socialUnread: _FakeUnread()..count = 2,
+          ),
+        );
+
+    worstCaseTestWidgets('the shell nav bar', (tester, locale) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await tester.pumpWidget(shell(s, locale));
+      await tester.pump();
+      final bar = tester.getRect(find.byType(NavigationBar));
+      expect(bar.bottom, lessThanOrEqualTo(kWorstCasePhone.height),
+          reason: 'the bar pads itself above the 3-button bar');
+      final destinations = find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.byType(NavigationDestination));
+      expect(destinations, findsNWidgets(4));
+      for (final e in destinations.evaluate()) {
+        final r = tester.getRect(find.byWidget(e.widget));
+        expect(r.height, greaterThanOrEqualTo(48));
+        expect(r.width, greaterThanOrEqualTo(48));
+        expect(r.bottom,
+            lessThanOrEqualTo(kWorstCasePhone.height - kThreeButtonNavBar));
+      }
+      expect(find.byKey(const ValueKey('navUnreadDot')), findsOneWidget);
+      tester.takeException();
+    }, layoutOnly: true);
+
+    // Below 1.6x the labels show, clamped at 1.3x by the bar; they must fit a
+    // fifth of a 320 dp phone in every locale.
+    for (final locale in kWorstCaseLocales) {
+      testWidgets(
+          'labels fit at 1.5x on 320 dp [${locale.toLanguageTag()}]',
+          (tester) async {
+        tester.view.physicalSize = kWorstCasePhone;
+        tester.view.devicePixelRatio = 1;
+        tester.view.viewPadding =
+            const FakeViewPadding(bottom: kThreeButtonNavBar);
+        tester.view.padding = const FakeViewPadding(bottom: kThreeButtonNavBar);
+        tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final s = await _makeStores();
+        await _pump(tester, s);
+        final errors = <String>[];
+        Object? e;
+        while ((e = tester.takeException()) != null) {
+          if ('$e'.contains('overflowed')) errors.add('$e');
+        }
+        expect(errors, isEmpty);
+        final bar = tester.getRect(find.byType(NavigationBar));
+        for (final label in find
+            .descendant(
+                of: find.byType(NavigationBar), matching: find.byType(Text))
+            .evaluate()) {
+          final r = tester.getRect(find.byWidget(label.widget));
+          expect(r.top, greaterThanOrEqualTo(bar.top));
+          expect(r.bottom, lessThanOrEqualTo(bar.bottom));
+        }
+      });
+    }
+
+    testWidgets('the Run page is the centre tab: named, and selected there',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      SemanticsNode centre() => tester
+          .getSemantics(find.byKey(const ValueKey('navCentreCaption')));
+      expect(centre().label, 'Run');
+      expect(centre().flagsCollection.isSelected, isNot(Tristate.isTrue));
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.widget<NavigationBar>(find.byType(NavigationBar))
+          .selectedIndex, 2);
+      expect(centre().flagsCollection.isSelected, Tristate.isTrue);
+      tester.takeException();
+      handle.dispose();
     });
   });
 
   group('HomeScreen multi-modal shell', () {
-    testWidgets('uses a BottomAppBar + a centre Log FAB, not a NavigationBar',
+    testWidgets('uses Material 3 NavigationBar + a docked centre FAB',
         (tester) async {
       // Phase 4 reshape (multi_modal.md § Bottom nav): Run leaves the nav as
-      // a top-level destination; the centre slot becomes the raised Log
-      // action button.
+      // a labelled destination; the centre slot is the raised Log button.
+      // The bar itself is M3's NavigationBar under the app theme (#1374).
       final s = await _makeStores();
       await _pump(tester, s);
-      expect(find.byType(BottomAppBar), findsOneWidget);
-      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(BottomAppBar), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(tester.widget<NavigationBar>(find.byType(NavigationBar))
+          .destinations, hasLength(5));
     });
 
     testWidgets(
@@ -518,12 +662,12 @@ void main() {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       for (final label in ['Home', 'Fitness', 'Social', 'You']) {
         expect(
           find.descendant(of: bar, matching: find.text(label)),
           findsOneWidget,
-          reason: 'expected "$label" nav label inside BottomAppBar',
+          reason: 'expected "$label" nav label inside NavigationBar',
         );
       }
       // History is absorbed into Fitness → All; Settings folds into You;
@@ -544,14 +688,18 @@ void main() {
       // routes, plans and races, and a runner scanned past a gym icon.
       final s = await _makeStores();
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(find.descendant(of: bar, matching: find.text('Training')),
           findsOneWidget);
       expect(find.descendant(of: bar, matching: find.text('Fitness')),
           findsNothing);
-      expect(find.descendant(of: bar, matching: find.byIcon(Icons.directions_run)),
+      expect(
+          find.descendant(
+              of: bar, matching: find.byIcon(Icons.directions_run_outlined)),
           findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+      expect(
+          find.descendant(
+              of: bar, matching: find.byIcon(Icons.fitness_center_outlined)),
           findsNothing);
 
       // Switching a modality on brings Fitness back, without a restart.
@@ -559,7 +707,9 @@ void main() {
       await tester.pump();
       expect(find.descendant(of: bar, matching: find.text('Fitness')),
           findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.byIcon(Icons.fitness_center)),
+      expect(
+          find.descendant(
+              of: bar, matching: find.byIcon(Icons.fitness_center_outlined)),
           findsOneWidget);
     });
 
@@ -571,7 +721,7 @@ void main() {
       final s = await _makeStores();
       await _seedLoggedLift(tester, s);
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(
         find.descendant(of: bar, matching: find.text('Log')),
         findsOneWidget,
@@ -596,7 +746,7 @@ void main() {
       // starts the run says Start.
       final s = await _makeStores();
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(find.descendant(of: bar, matching: find.text('Run')),
           findsOneWidget);
       expect(find.descendant(of: bar, matching: find.textContaining('Start')),
@@ -620,7 +770,7 @@ void main() {
       final s = await _makeStores();
       await tester.runAsync(() => s.prefs.setDefaultActivityType('cycle'));
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(find.descendant(of: bar, matching: find.text('Cycle')),
           findsOneWidget);
       expect(find.descendant(of: bar, matching: find.text('Run')),
@@ -640,7 +790,7 @@ void main() {
         (tester) async {
       final s = await _makeStores();
       await _pump(tester, s);
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(find.descendant(of: bar, matching: find.text('Run')),
           findsOneWidget);
 
@@ -785,7 +935,7 @@ void main() {
       // no title bar under it (issue #1374).
       expect(find.text('Gym'), findsOneWidget);
       expect(find.byType(GymScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
     });
 
     testWidgets('picking Log food lands on the Nutrition dwell-in page',
@@ -802,7 +952,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Nutrition'), findsOneWidget);
       expect(find.byType(NutritionScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
     });
 
     testWidgets(
@@ -883,7 +1033,7 @@ void main() {
   });
 
   group('HomeScreen expanded (tablet) shell', () {
-    testWidgets('expanded swaps the BottomAppBar for a NavigationRail',
+    testWidgets('expanded swaps the NavigationBar for a NavigationRail',
         (tester) async {
       tester.view.physicalSize = const Size(2560, 1440);
       tester.view.devicePixelRatio = 2.0;
@@ -891,7 +1041,7 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s);
       expect(find.byType(NavigationRail), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.text('Home'), findsWidgets);
       // A pure runner's hub label; the rail derives it as the bar does.
@@ -928,7 +1078,7 @@ void main() {
       final s = await _makeStores();
       await _pump(tester, s);
       expect(find.byType(NavigationRail), findsNothing);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
     });
 
     // The derivation, not a dp figure: whichever shell is up, a page reads the
@@ -956,11 +1106,11 @@ void main() {
 
       addTearDown(tester.view.reset);
       final phone = await bottomPaddingOn(const Size(390, 844));
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
       final tablet = await bottomPaddingOn(const Size(1280, 800));
       expect(find.byType(NavigationRail), findsOneWidget);
 
-      expect(phone, 0, reason: 'the BottomAppBar already spent the inset');
+      expect(phone, 0, reason: 'the NavigationBar already spent the inset');
       expect(
         tablet,
         phone,
@@ -1026,7 +1176,7 @@ void main() {
       runRecordingActive.value = true;
       await tester.pump();
 
-      final bar = find.byType(BottomAppBar);
+      final bar = find.byType(NavigationBar);
       expect(find.descendant(of: bar, matching: find.text('Recording')),
           findsOneWidget);
       expect(_semanticsLabelled('Return to your run'), findsOneWidget);
@@ -1087,7 +1237,7 @@ void main() {
     }
 
     Finder caption(String text) => find.descendant(
-        of: find.byType(BottomAppBar), matching: find.text(text));
+        of: find.byType(NavigationBar), matching: find.text(text));
 
     for (final fanMode in [false, true]) {
       final mode = fanMode ? 'the "+" fan' : 'run-primary';
@@ -1291,7 +1441,7 @@ void main() {
     }
 
     Finder caption(String text) =>
-        find.descendant(of: find.byType(BottomAppBar), matching: find.text(text));
+        find.descendant(of: find.byType(NavigationBar), matching: find.text(text));
 
     // Identical whether the Log button is run-primary (Gym and Nutrition
     // hidden) or the "+" fan (a modality shown): mid-run the centre button is
@@ -1593,12 +1743,10 @@ void main() {
     }
 
     Future<void> openPage(WidgetTester tester, String nav, String tab) async {
-      // By the item's semantics label: past text scale 1.6 the bar drops
-      // its visible labels.
-      await tester.tap(find.descendant(
-          of: find.byType(BottomAppBar),
-          matching: find.byWidgetPredicate(
-              (w) => w is Semantics && w.properties.label == nav)));
+      // By the destination's label: past text scale 1.6 the bar drops its
+      // visible labels.
+      await tester.tap(find.byWidgetPredicate(
+          (w) => w is NavigationDestination && w.label == nav));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await selectTab(tester, tab);
@@ -1645,10 +1793,12 @@ void main() {
         (tester) async {
       await pumpPhone(tester, textScale: 2.0);
       expect(tester.takeException(), isNull);
+      // M3 keeps hidden labels in the tree for their semantics; it draws
+      // none of them.
       expect(
-          find.descendant(
-              of: find.byType(BottomAppBar), matching: find.byType(Text)),
-          findsNothing);
+          tester.widget<NavigationBar>(find.byType(NavigationBar)).labelBehavior,
+          NavigationDestinationLabelBehavior.alwaysHide);
+      expect(find.byKey(const ValueKey('navCentreCaption')), findsNothing);
     });
 
     testWidgets('the rail docks nothing, so a page FAB stays at endFloat',
@@ -2364,7 +2514,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Nutrition'), findsOneWidget);
       expect(find.byType(NutritionScreen), findsOneWidget);
-      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
       expect(shellPage(tester), 1);
     });
   });

@@ -424,6 +424,7 @@ class _ClubPhotosState extends State<ClubPhotos> with WidgetsBindingObserver {
               // browsed or opened without sight. Web already ships this as a
               // <button aria-label> wrapping an <img alt>; this is mobile
               // catching up to it.
+              // semantics-children: the child draws no text, and keeps its own tap
               child: Semantics(
                 button: true,
                 image: true,

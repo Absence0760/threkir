@@ -127,6 +127,7 @@ class _ChallengeInviteScreenState extends State<ChallengeInviteScreen> {
     if (!_loaded) {
       body = Center(
         child: Semantics(
+          excludeSemantics: true,
           label: l10n.commonLoading,
           child: const CircularProgressIndicator(),
         ),

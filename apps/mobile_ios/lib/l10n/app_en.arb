@@ -1512,6 +1512,38 @@
   "@youEditProfile": {
     "description": "Button on the You tab identity card that opens the name and photo editor"
   },
+  "editProfileSubtitle": "Photo, name and username",
+  "@editProfileSubtitle": {
+    "description": "Account row subtitle: what the Edit profile page edits"
+  },
+  "editProfileUsername": "Username",
+  "@editProfileUsername": {
+    "description": "Edit profile: label of the public @username field (web settingsAccount.handleLabel)"
+  },
+  "editProfileUsernameHelp": "Your public @username — 3–30 lowercase letters, numbers, or underscores. Others can find you by it.",
+  "@editProfileUsernameHelp": {
+    "description": "Edit profile: help under the username field"
+  },
+  "editProfileUsernameTaken": "That username is already taken.",
+  "@editProfileUsernameTaken": {
+    "description": "Edit profile: the username belongs to someone else"
+  },
+  "editProfileUsernameInvalid": "Use 3–30 lowercase letters, numbers, or underscores.",
+  "@editProfileUsernameInvalid": {
+    "description": "Edit profile: the username breaks the 3-30 [a-z0-9_] rule"
+  },
+  "editProfileSaving": "Saving…",
+  "@editProfileSaving": {
+    "description": "Edit profile: the Save button while saving"
+  },
+  "editProfileSaved": "Profile saved",
+  "@editProfileSaved": {
+    "description": "Banner after Edit profile saves"
+  },
+  "editProfileSaveFailed": "Couldn't save your profile. Please try again.",
+  "@editProfileSaveFailed": {
+    "description": "Banner when Edit profile's save fails for a reason other than the username"
+  },
   "logSheetTitle": "Log",
   "@logSheetTitle": {
     "description": "Title of the Log capture bottom sheet"
@@ -13144,6 +13176,18 @@
   "@privacyZonesRadiusMeters": {
     "description": "Radius value in metres",
     "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "privacyZonesRaisedToFloor": "{count, plural, one{{count} zone was smaller than {meters} m and now covers {meters} m, the smallest a zone can be.} other{{count} zones were smaller than {meters} m and now cover {meters} m, the smallest a zone can be.}}",
+  "@privacyZonesRaisedToFloor": {
+    "description": "Privacy-zone editor note: zones saved under the 100 m minimum (the app once allowed 50 m) are read as the minimum, never smaller.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
       "meters": {
         "type": "int"
       }
@@ -27322,6 +27366,42 @@
   "@streamerOverlayDelayFailed": {
     "description": "Error when changing the overlay delay fails"
   },
+  "streamerOverlayShowMap": "Show a route trace",
+  "@streamerOverlayShowMap": {
+    "description": "Switch on the streamer overlay sheet: draw the route trace on the OBS overlay"
+  },
+  "streamerOverlayShowMapHelp": "Draws the route so far, with your privacy zones left out. No map tiles are loaded.",
+  "@streamerOverlayShowMapHelp": {
+    "description": "Under the route-trace switch"
+  },
+  "streamerOverlayShowHeartRate": "Show heart rate",
+  "@streamerOverlayShowHeartRate": {
+    "description": "Switch on the streamer overlay sheet: show heart rate on the overlay"
+  },
+  "streamerOverlayShowHeartRateHelp": "Heart rate is health data. It's shown only while your health-data consent is on.",
+  "@streamerOverlayShowHeartRateHelp": {
+    "description": "Under the heart-rate switch while health-data consent is on"
+  },
+  "streamerOverlayHeartRateNeedsConsent": "Heart rate is health data. Turn on health-data consent to show it.",
+  "@streamerOverlayHeartRateNeedsConsent": {
+    "description": "Under the heart-rate switch while health-data consent is off; a Review consent button follows"
+  },
+  "streamerOverlayReviewConsent": "Review consent",
+  "@streamerOverlayReviewConsent": {
+    "description": "Button: opens Body metrics, where health-data consent is turned on"
+  },
+  "streamerOverlaySettingsSaved": "Overlay settings saved",
+  "@streamerOverlaySettingsSaved": {
+    "description": "Notice after the heart-rate switch is saved"
+  },
+  "streamerOverlayLinkChanged": "Saved. The link changed: copy it into your streaming app again.",
+  "@streamerOverlayLinkChanged": {
+    "description": "Notice after the route-trace switch is saved: the overlay URL now differs"
+  },
+  "streamerOverlaySaveFailed": "Couldn't save the overlay settings. Please try again.",
+  "@streamerOverlaySaveFailed": {
+    "description": "Notice when saving an overlay switch fails"
+  },
   "streamerOverlayLoadFailed": "Couldn't load your streamer overlay.",
   "@streamerOverlayLoadFailed": {
     "description": "Error when the overlay settings cannot be read"
@@ -27333,14 +27413,6 @@
   "streamerOverlayUnavailable": "The streamer overlay isn't available right now.",
   "@streamerOverlayUnavailable": {
     "description": "Error when the server has the overlay switched off"
-  },
-  "streamerOverlayMapHeartRateNote": "The route trace and heart rate are turned on in your privacy settings on the web.",
-  "@streamerOverlayMapHeartRateNote": {
-    "description": "Note that the route trace and heart rate are set on the web; the button below it opens that page"
-  },
-  "streamerOverlayOpenWebSettings": "Open on the web",
-  "@streamerOverlayOpenWebSettings": {
-    "description": "Button under the route-trace and heart-rate note; opens the web app's Privacy & sharing settings page in the browser"
   },
   "liveSpectatorHeartRate": "Heart rate",
   "@liveSpectatorHeartRate": {

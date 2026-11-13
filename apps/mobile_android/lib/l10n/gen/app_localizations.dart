@@ -1871,6 +1871,54 @@ abstract class AppLocalizations {
   /// **'Edit profile'**
   String get youEditProfile;
 
+  /// Account row subtitle: what the Edit profile page edits
+  ///
+  /// In en, this message translates to:
+  /// **'Photo, name and username'**
+  String get editProfileSubtitle;
+
+  /// Edit profile: label of the public @username field (web settingsAccount.handleLabel)
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get editProfileUsername;
+
+  /// Edit profile: help under the username field
+  ///
+  /// In en, this message translates to:
+  /// **'Your public @username — 3–30 lowercase letters, numbers, or underscores. Others can find you by it.'**
+  String get editProfileUsernameHelp;
+
+  /// Edit profile: the username belongs to someone else
+  ///
+  /// In en, this message translates to:
+  /// **'That username is already taken.'**
+  String get editProfileUsernameTaken;
+
+  /// Edit profile: the username breaks the 3-30 [a-z0-9_] rule
+  ///
+  /// In en, this message translates to:
+  /// **'Use 3–30 lowercase letters, numbers, or underscores.'**
+  String get editProfileUsernameInvalid;
+
+  /// Edit profile: the Save button while saving
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get editProfileSaving;
+
+  /// Banner after Edit profile saves
+  ///
+  /// In en, this message translates to:
+  /// **'Profile saved'**
+  String get editProfileSaved;
+
+  /// Banner when Edit profile's save fails for a reason other than the username
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your profile. Please try again.'**
+  String get editProfileSaveFailed;
+
   /// Title of the Log capture bottom sheet
   ///
   /// In en, this message translates to:
@@ -15500,6 +15548,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{meters} m'**
   String privacyZonesRadiusMeters(int meters);
+
+  /// Privacy-zone editor note: zones saved under the 100 m minimum (the app once allowed 50 m) are read as the minimum, never smaller.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} zone was smaller than {meters} m and now covers {meters} m, the smallest a zone can be.} other{{count} zones were smaller than {meters} m and now cover {meters} m, the smallest a zone can be.}}'**
+  String privacyZonesRaisedToFloor(int count, int meters);
 
   /// Footer summarising the number of zones
   ///
@@ -33577,6 +33631,60 @@ abstract class AppLocalizations {
   /// **'Couldn\'t change the delay. Try again.'**
   String get streamerOverlayDelayFailed;
 
+  /// Switch on the streamer overlay sheet: draw the route trace on the OBS overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Show a route trace'**
+  String get streamerOverlayShowMap;
+
+  /// Under the route-trace switch
+  ///
+  /// In en, this message translates to:
+  /// **'Draws the route so far, with your privacy zones left out. No map tiles are loaded.'**
+  String get streamerOverlayShowMapHelp;
+
+  /// Switch on the streamer overlay sheet: show heart rate on the overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Show heart rate'**
+  String get streamerOverlayShowHeartRate;
+
+  /// Under the heart-rate switch while health-data consent is on
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate is health data. It\'s shown only while your health-data consent is on.'**
+  String get streamerOverlayShowHeartRateHelp;
+
+  /// Under the heart-rate switch while health-data consent is off; a Review consent button follows
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate is health data. Turn on health-data consent to show it.'**
+  String get streamerOverlayHeartRateNeedsConsent;
+
+  /// Button: opens Body metrics, where health-data consent is turned on
+  ///
+  /// In en, this message translates to:
+  /// **'Review consent'**
+  String get streamerOverlayReviewConsent;
+
+  /// Notice after the heart-rate switch is saved
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay settings saved'**
+  String get streamerOverlaySettingsSaved;
+
+  /// Notice after the route-trace switch is saved: the overlay URL now differs
+  ///
+  /// In en, this message translates to:
+  /// **'Saved. The link changed: copy it into your streaming app again.'**
+  String get streamerOverlayLinkChanged;
+
+  /// Notice when saving an overlay switch fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the overlay settings. Please try again.'**
+  String get streamerOverlaySaveFailed;
+
   /// Error when the overlay settings cannot be read
   ///
   /// In en, this message translates to:
@@ -33594,18 +33702,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The streamer overlay isn\'t available right now.'**
   String get streamerOverlayUnavailable;
-
-  /// Note that the route trace and heart rate are set on the web; the button below it opens that page
-  ///
-  /// In en, this message translates to:
-  /// **'The route trace and heart rate are turned on in your privacy settings on the web.'**
-  String get streamerOverlayMapHeartRateNote;
-
-  /// Button under the route-trace and heart-rate note; opens the web app's Privacy & sharing settings page in the browser
-  ///
-  /// In en, this message translates to:
-  /// **'Open on the web'**
-  String get streamerOverlayOpenWebSettings;
 
   /// Live spectator stat label for the runner's current heart rate
   ///

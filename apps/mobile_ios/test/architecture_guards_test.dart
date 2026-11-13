@@ -5636,7 +5636,6 @@ void main() {
       // A race director's result correction form: the save is the edit, and
       // the same form makes the next one.
       'screens/event_detail_screen.dart::l10n.eventResultEditTitle(widget.name)': 1,
-      'screens/settings_account_screen.dart::l10n.settingsAccountDisplayName': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsTargetPace': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsHrZonesDialogTitle': 1,
       // Checkboxes that show or hide Progress's trend groups; a group hidden

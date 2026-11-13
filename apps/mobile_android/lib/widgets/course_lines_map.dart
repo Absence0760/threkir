@@ -109,6 +109,7 @@ class CourseLinesMap extends StatelessWidget {
       ],
     ];
     final l10n = AppLocalizations.of(context);
+    // semantics-children: the map's credit line keeps its own node
     return Semantics(
       label: start != null && finish != null
           ? l10n.eventCourseLinesMapBoth

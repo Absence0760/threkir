@@ -171,6 +171,8 @@ class _ExploreRoutesMapState extends State<ExploreRoutesMap> {
                   height: 48,
                   child: c.isCluster
                       ? Semantics(
+                          excludeSemantics: true,
+                          onTap: () => _zoomInto(c),
                           button: true,
                           label: l10n.heatmapRouteCount(c.count),
                           child: GestureDetector(
@@ -196,6 +198,7 @@ class _ExploreRoutesMapState extends State<ExploreRoutesMap> {
                             ),
                           ),
                         )
+                      // semantics-children: the child draws no text, and keeps its own tap
                       : Semantics(
                           button: true,
                           label: c.first.name,

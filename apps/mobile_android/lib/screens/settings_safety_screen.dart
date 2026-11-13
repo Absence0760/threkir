@@ -697,8 +697,10 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                       ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                      child: OverflowBar(
+                        alignment: MainAxisAlignment.end,
+                        overflowAlignment: OverflowBarAlignment.end,
+                        spacing: 4,
                         children: [
                           TextButton(
                             onPressed: _respondingId != null
@@ -706,7 +708,6 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                                 : () => _decline(req),
                             child: Text(l10n.safetyDecline),
                           ),
-                          const SizedBox(width: 4),
                           FilledButton(
                             onPressed: _respondingId != null
                                 ? null

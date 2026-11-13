@@ -167,6 +167,7 @@ class ParkCourseMap extends StatelessWidget {
     final shared = courseEndsShared(line);
     final step = math.max(_lineMetres(pts) / kParkCourseChevrons, 25.0);
     final chevrons = computeChevrons(pts, stepMetres: step);
+    // semantics-children: the map's credit line keeps its own node
     return Semantics(
       container: true,
       label: l10n.parksMapCourseLabel(checkpoints.length),
@@ -291,6 +292,7 @@ class ParkCourseMapLegend extends StatelessWidget {
             ],
           ),
         );
+    // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
       label: l10n.parksLegendTitle,
@@ -390,6 +392,7 @@ class ParkOverviewMap extends StatelessWidget {
       for (final l in drawn)
         for (final w in l) _ll(w),
     ];
+    // semantics-children: the map's credit line keeps its own node
     return Semantics(
       container: true,
       label: l10n.parksMapParkLabel(drawn.length),

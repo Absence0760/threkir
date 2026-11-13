@@ -22,7 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// Hand-built rows still on the pages not yet moved to `SettingsList`.
 const _rowsLeft = <String, int>{
   'lib/screens/settings_about_screen.dart': 8,
-  'lib/screens/settings_account_screen.dart': 15,
+  'lib/screens/settings_account_screen.dart': 13,
   'lib/screens/settings_body_metrics_screen.dart': 3,
   'lib/screens/settings_integrations_screen.dart': 11,
   'lib/screens/settings_pro_screen.dart': 7,

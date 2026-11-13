@@ -29,6 +29,7 @@ class LiveShareIndicator extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Semantics(
+          excludeSemantics: true,
           button: true,
           label: l10n.runLiveShareActiveSemantics,
           child: Container(

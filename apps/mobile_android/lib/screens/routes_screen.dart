@@ -1212,6 +1212,7 @@ class RoutesScreenState extends State<RoutesScreen> {
                 children: [
                   Text(heading, style: theme.textTheme.titleSmall),
                   const SizedBox(height: AppSpace.sm),
+                  // semantics-children: a group name, read once before the controls inside it
                   Semantics(
                     container: true,
                     label: heading,
@@ -1320,6 +1321,7 @@ class RoutesScreenState extends State<RoutesScreen> {
       ),
     ];
 
+    // semantics-children: a group name, read once before the controls inside it
     return Semantics(
       container: true,
       explicitChildNodes: true,

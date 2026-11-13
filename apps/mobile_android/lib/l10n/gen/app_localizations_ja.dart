@@ -1087,6 +1087,31 @@ class AppLocalizationsJa extends AppLocalizations {
   String get youEditProfile => 'プロフィールを編集';
 
   @override
+  String get editProfileSubtitle => '写真、名前、ユーザー名';
+
+  @override
+  String get editProfileUsername => 'ユーザー名';
+
+  @override
+  String get editProfileUsernameHelp =>
+      '公開される @ユーザー名 — 半角英小文字・数字・アンダースコアで3〜30文字。他の人がこれで検索できます。';
+
+  @override
+  String get editProfileUsernameTaken => 'そのユーザー名は既に使われています。';
+
+  @override
+  String get editProfileUsernameInvalid => '半角英小文字・数字・アンダースコアで3〜30文字を使用してください。';
+
+  @override
+  String get editProfileSaving => '保存中…';
+
+  @override
+  String get editProfileSaved => 'プロフィールを保存しました';
+
+  @override
+  String get editProfileSaveFailed => 'プロフィールを保存できませんでした。もう一度お試しください。';
+
+  @override
   String get logSheetTitle => '記録';
 
   @override
@@ -9257,6 +9282,16 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String privacyZonesRadiusMeters(int meters) {
     return '$meters m';
+  }
+
+  @override
+  String privacyZonesRaisedToFloor(int count, int meters) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 件のゾーンが $meters m 未満だったため、ゾーンの最小サイズの $meters m に広げました。',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -19805,6 +19840,37 @@ class AppLocalizationsJa extends AppLocalizations {
   String get streamerOverlayDelayFailed => '遅延を変更できませんでした。もう一度お試しください。';
 
   @override
+  String get streamerOverlayShowMap => 'ルートの軌跡を表示';
+
+  @override
+  String get streamerOverlayShowMapHelp =>
+      'プライバシーゾーンを除いた、ここまでのルートを描きます。地図タイルは読み込みません。';
+
+  @override
+  String get streamerOverlayShowHeartRate => '心拍数を表示';
+
+  @override
+  String get streamerOverlayShowHeartRateHelp =>
+      '心拍数は健康データです。健康データの利用に同意している間だけ表示されます。';
+
+  @override
+  String get streamerOverlayHeartRateNeedsConsent =>
+      '心拍数は健康データです。表示するには、健康データの利用に同意してください。';
+
+  @override
+  String get streamerOverlayReviewConsent => '同意を確認';
+
+  @override
+  String get streamerOverlaySettingsSaved => 'オーバーレイの設定を保存しました';
+
+  @override
+  String get streamerOverlayLinkChanged =>
+      '保存しました。リンクが変わったので、配信アプリにもう一度コピーしてください。';
+
+  @override
+  String get streamerOverlaySaveFailed => 'オーバーレイの設定を保存できませんでした。もう一度お試しください。';
+
+  @override
   String get streamerOverlayLoadFailed => '配信用オーバーレイを読み込めませんでした。';
 
   @override
@@ -19812,13 +19878,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get streamerOverlayUnavailable => '配信用オーバーレイは現在利用できません。';
-
-  @override
-  String get streamerOverlayMapHeartRateNote =>
-      'ルートの軌跡と心拍数は、ウェブのプライバシー設定でオンにします。';
-
-  @override
-  String get streamerOverlayOpenWebSettings => 'ウェブで開く';
 
   @override
   String get liveSpectatorHeartRate => '心拍数';

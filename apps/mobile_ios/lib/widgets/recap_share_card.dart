@@ -425,6 +425,7 @@ class _RecapShareSheetState extends State<_RecapShareSheet> {
             // Fixed canvas scaled into the preview, text scaling pinned off:
             // the OS text size is the viewer's setting, not part of the image.
             Semantics(
+              excludeSemantics: true,
               label: l10n.recapSharePreviewLabel,
               child: SizedBox(
                 height: previewHeight,

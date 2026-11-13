@@ -3236,7 +3236,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Zonen beruhen auf einem altersgeschätzten Maximalpuls. Wenn du Medikamente nimmst, die die Herzfrequenz beeinflussen (z. B. Betablocker), oder deinen Maximalpuls gemessen hast, lege ihn fest, um genaue Zonen zu erhalten.';
 
   @override
-  String get runDetailHrDisclaimerAction => 'Max. HF festlegen';
+  String get runDetailHrDisclaimerAction => 'Maximalpuls festlegen';
 
   @override
   String get runDetailSectionSplits => 'Splits';
@@ -8026,7 +8026,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Deine Distanzeinheit, deine Ruheherzfrequenz und deine maximale Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
+      'Deine Distanzeinheit, dein Ruhe- und Maximalpuls (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
 
   @override
   String get coachConsentBulletLifts =>
@@ -13528,7 +13528,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsHrMedicationSetMaxHr =>
-      'Trag eine gemessene maximale Herzfrequenz ein, aus einer harten Belastung oder einem Test, damit deine Zonen zu dir passen.';
+      'Trag einen gemessenen Maximalpuls ein, aus einer harten Belastung oder einem Test, damit deine Zonen zu dir passen.';
 
   @override
   String get nutritionEmptyTitle => 'Heute noch nichts erfasst';

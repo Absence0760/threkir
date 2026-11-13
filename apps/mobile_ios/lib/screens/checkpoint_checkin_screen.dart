@@ -199,28 +199,46 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
           onPressed: _busy ? null : _refresh,
         ),
       ],
-      // The title stays above every state (loading, failed, empty) so the
-      // bar never has to carry it, cut, on a narrow phone (TO-12); the
-      // unsynced count rides under it rather than squeezing the toolbar.
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          PageHeader(
-            title: l10n.checkpointCheckinTitle,
-            subtitle: _store.hasPending ? l10n.checkpointPending : null,
-          ),
-          Expanded(child: _buildBody(l10n, theme)),
-        ],
+      // The title heads every state (loading, failed, empty) so the bar
+      // never has to carry it, cut, on a narrow phone (TO-12); the unsynced
+      // count rides under it rather than squeezing the toolbar. It scrolls
+      // with the form: fixed above it, the heading and its subtitle took
+      // half of a 320 x 640 phone at 2x text and left the Stamp buttons
+      // under the fold.
+      body: _buildBody(
+        l10n,
+        theme,
+        PageHeader(
+          title: l10n.checkpointCheckinTitle,
+          subtitle: _store.hasPending ? l10n.checkpointPending : null,
+          padding: EdgeInsets.zero,
+        ),
       ),
     );
   }
 
-  Widget _buildBody(AppLocalizations l10n, ThemeData theme) {
+  /// A failed or empty read: the heading, then [child] centred in the rest.
+  Widget _state(Widget header, Widget child) => CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(child: header),
+          ),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: child),
+          ),
+        ],
+      );
+
+  Widget _buildBody(AppLocalizations l10n, ThemeData theme, Widget header) {
     if (_loading) {
       return ListView(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          header,
+          const SizedBox(height: 16),
           const FractionallySizedBox(
             alignment: AlignmentDirectional.centerStart,
             widthFactor: 0.3,
@@ -241,8 +259,9 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
       );
     }
     if (_loadError != null) {
-      return Center(
-        child: Padding(
+      return _state(
+        header,
+        Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -258,8 +277,9 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
       );
     }
     if (_checkpoints.isEmpty) {
-      return Center(
-        child: Padding(
+      return _state(
+        header,
+        Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
             l10n.checkpointNone,
@@ -282,10 +302,16 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          header,
+          const SizedBox(height: 16),
           SectionHeader(label: l10n.checkpointPickLabel),
           const SizedBox(height: 8),
+          // Expanded, so a long checkpoint name ("Rucky Chucky river
+          // crossing, far side") ellipsizes in the field rather than
+          // overflowing it; the menu still lists each name in full.
           DropdownButtonFormField<String>(
             initialValue: selected?.id,
+            isExpanded: true,
             items: [
               for (final cp in _checkpoints)
                 DropdownMenuItem(
@@ -333,13 +359,7 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          Text(
-            l10n.checkpointLoggedHere(stamped.length),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.8,
-            ),
-          ),
+          SectionHeader(label: l10n.checkpointLoggedHere(stamped.length)),
           const SizedBox(height: 6),
           if (stamped.isEmpty)
             Text(

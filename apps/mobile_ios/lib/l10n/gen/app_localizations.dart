@@ -16997,6 +16997,54 @@ abstract class AppLocalizations {
   /// **'Fitness'**
   String get fitnessTitle;
 
+  /// Fitness card advice line when the training-load kind is noData
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough data yet — log a few runs with HR and try again.'**
+  String get fitnessRecoveryAdviceNoData;
+
+  /// Fitness card advice line when the training-load kind is welcomeBack
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back. Your form numbers reset after the break — rebuild gradually with easy, consistent running before any hard sessions.'**
+  String get fitnessRecoveryAdviceWelcomeBack;
+
+  /// Fitness card advice line when the training-load kind is heavyLoad
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re heavily loaded — easy running or a rest day today.'**
+  String get fitnessRecoveryAdviceHeavyLoad;
+
+  /// Fitness card advice line when the training-load kind is building
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness is still building. Focus on consistency; one quality session a week is plenty for now.'**
+  String get fitnessRecoveryAdviceBuilding;
+
+  /// Fitness card advice line when the training-load kind is loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Loaded but within build territory. Easy / steady is right for today.'**
+  String get fitnessRecoveryAdviceLoaded;
+
+  /// Fitness card advice line when the training-load kind is sweetSpot
+  ///
+  /// In en, this message translates to:
+  /// **'Sweet spot — a steady run or a tempo effort works.'**
+  String get fitnessRecoveryAdviceSweetSpot;
+
+  /// Fitness card advice line when the training-load kind is tapering
+  ///
+  /// In en, this message translates to:
+  /// **'Tapering / freshening up — a race or hard workout will land well in the next few days.'**
+  String get fitnessRecoveryAdviceTapering;
+
+  /// Fitness card advice line when the training-load kind is veryFresh
+  ///
+  /// In en, this message translates to:
+  /// **'Very fresh — if you\'ve been tapering on purpose, race soon. Otherwise, it\'s time to build again.'**
+  String get fitnessRecoveryAdviceVeryFresh;
+
   /// Fitness card stat label for VO2 max
   ///
   /// In en, this message translates to:
@@ -24873,6 +24921,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tailor it with AI'**
   String get racesTailorWithAi;
+
+  /// A sentence of the AI plan box prefill a race opens (Race)
+  ///
+  /// In en, this message translates to:
+  /// **'Race: {name} on {date}.'**
+  String racePlanDescribeRace(String name, String date);
+
+  /// A sentence of the AI plan box prefill a race opens (Distance)
+  ///
+  /// In en, this message translates to:
+  /// **'Distance: {distance}.'**
+  String racePlanDescribeDistance(String distance);
+
+  /// A sentence of the AI plan box prefill a race opens (Goal)
+  ///
+  /// In en, this message translates to:
+  /// **'Goal time: {time}.'**
+  String racePlanDescribeGoal(String time);
+
+  /// A sentence of the AI plan box prefill a race opens (Recent)
+  ///
+  /// In en, this message translates to:
+  /// **'Recent effort: {distance} in {time}, {days, plural, =0{today} one{{days} day ago} other{{days} days ago}}.'**
+  String racePlanDescribeRecent(String distance, String time, int days);
+
+  /// A sentence of the AI plan box prefill a race opens (Course)
+  ///
+  /// In en, this message translates to:
+  /// **'Course: {parts}.'**
+  String racePlanDescribeCourse(String parts);
+
+  /// A sentence of the AI plan box prefill a race opens (Ascent)
+  ///
+  /// In en, this message translates to:
+  /// **'{climb} ascent'**
+  String racePlanDescribeAscent(String climb);
+
+  /// A sentence of the AI plan box prefill a race opens (Descent)
+  ///
+  /// In en, this message translates to:
+  /// **'{climb} descent'**
+  String racePlanDescribeDescent(String climb);
+
+  /// A sentence of the AI plan box prefill a race opens (Surface)
+  ///
+  /// In en, this message translates to:
+  /// **'{surface} surface'**
+  String racePlanDescribeSurface(String surface);
+
+  /// A sentence of the AI plan box prefill a race opens (ListSeparator)
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get racePlanDescribeListSeparator;
 
   /// Race detail: action that builds a plan for this race starting after the runner's current plan ends.
   ///

@@ -134,8 +134,8 @@ function parseInput(raw: unknown): ParsedInput | null {
 }
 
 const SYSTEM_PROMPT =
-	'You translate a runner\'s plain-English description of the training plan ' +
-	'they want into the fields of a plan-builder form. You do NOT write plans, ' +
+	'You translate a runner\'s plain-language description of the training plan ' +
+	'they want, in whatever language they wrote it, into the fields of a plan-builder form. You do NOT write plans, ' +
 	'workouts, mileage or advice — the app builds the plan itself from these ' +
 	'fields. Your only job is extraction. Always call the extract_plan_inputs ' +
 	'tool exactly once. Include ONLY fields the description actually states; ' +

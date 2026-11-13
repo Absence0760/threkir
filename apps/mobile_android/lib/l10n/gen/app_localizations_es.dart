@@ -10694,6 +10694,38 @@ class AppLocalizationsEs extends AppLocalizations {
   String get fitnessTitle => 'Estado físico';
 
   @override
+  String get fitnessRecoveryAdviceNoData =>
+      'Aún no hay datos suficientes: registra algunas carreras con frecuencia cardíaca y vuelve a intentarlo.';
+
+  @override
+  String get fitnessRecoveryAdviceWelcomeBack =>
+      'Bienvenido de nuevo. Tus cifras de forma se reiniciaron tras el descanso: vuelve poco a poco con carreras suaves y constantes antes de cualquier sesión dura.';
+
+  @override
+  String get fitnessRecoveryAdviceHeavyLoad =>
+      'Llevas mucha carga: hoy toca carrera suave o un día de descanso.';
+
+  @override
+  String get fitnessRecoveryAdviceBuilding =>
+      'Tu estado físico aún se está construyendo. Céntrate en la constancia; una sesión de calidad a la semana basta por ahora.';
+
+  @override
+  String get fitnessRecoveryAdviceLoaded =>
+      'Con carga, pero dentro de la fase de construcción. Hoy toca suave o a ritmo constante.';
+
+  @override
+  String get fitnessRecoveryAdviceSweetSpot =>
+      'Punto óptimo: te va bien una carrera constante o un esfuerzo de tempo.';
+
+  @override
+  String get fitnessRecoveryAdviceTapering =>
+      'Puesta a punto / recuperando frescura: una carrera o un entrenamiento duro te sentará bien en los próximos días.';
+
+  @override
+  String get fitnessRecoveryAdviceVeryFresh =>
+      'Muy fresco: si estabas en puesta a punto a propósito, compite pronto. Si no, es hora de volver a construir.';
+
+  @override
   String get fitnessStatVo2Max => 'VO₂ máx';
 
   @override
@@ -15416,6 +15448,56 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get racesTailorWithAi => 'Ajustarlo con IA';
+
+  @override
+  String racePlanDescribeRace(String name, String date) {
+    return 'Prueba: $name el $date.';
+  }
+
+  @override
+  String racePlanDescribeDistance(String distance) {
+    return 'Distancia: $distance.';
+  }
+
+  @override
+  String racePlanDescribeGoal(String time) {
+    return 'Tiempo objetivo: $time.';
+  }
+
+  @override
+  String racePlanDescribeRecent(String distance, String time, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'hace $days días',
+      one: 'hace $days día',
+      zero: 'hoy',
+    );
+    return 'Esfuerzo reciente: $distance en $time, $_temp0.';
+  }
+
+  @override
+  String racePlanDescribeCourse(String parts) {
+    return 'Recorrido: $parts.';
+  }
+
+  @override
+  String racePlanDescribeAscent(String climb) {
+    return '$climb de subida';
+  }
+
+  @override
+  String racePlanDescribeDescent(String climb) {
+    return '$climb de bajada';
+  }
+
+  @override
+  String racePlanDescribeSurface(String surface) {
+    return 'superficie: $surface';
+  }
+
+  @override
+  String get racePlanDescribeListSeparator => ', ';
 
   @override
   String get racesAddToSeason => 'Añadir a mi temporada';

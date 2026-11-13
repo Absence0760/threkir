@@ -9,15 +9,20 @@
 /// `racePlanHref` has no twin: the phone opens `PlanNewScreen` with the same
 /// fields as constructor arguments.
 ///
-/// The description is English, and in the runner's own distance unit: it
+/// The description is in the reader's language and their own distance unit: it
 /// prefills a box the runner reads and edits before it goes to the plan
-/// extractor, which reads either unit. It carries only what the AI plan
+/// extractor, which reads any language and either unit. The sentences come
+/// from the catalogue (`racePlanDescribe*`); this module only chooses, orders
+/// and caps them. It carries only what the AI plan
 /// consent bullet names — the goal race, a target time and a recent time.
 /// Weekly volume and the longest recent run are deliberately left out: the
 /// bullet does not cover them (decisions § 2154, units amended by § 2292).
 library;
 
 import 'package:core_models/core_models.dart' show DistanceUnit, kMetresPerMile;
+import 'package:intl/intl.dart' show NumberFormat;
+
+import 'l10n/gen/app_localizations.dart';
 
 import 'race_plan_preset.dart';
 import 'season_plan.dart' show seasonRecoveryDays;
@@ -47,6 +52,8 @@ class RacePlanRace {
 class RacePlanCourse {
   final num? ascentM;
   final num? descentM;
+
+  /// The surface as the reader's catalogue names it (`routeSurfaceLabel`).
   final String? surface;
 
   const RacePlanCourse({this.ascentM, this.descentM, this.surface});
@@ -178,15 +185,16 @@ int? racePlanGoalTimeS(List<RacePlanOwnPlan> plans, String raceDateIso) {
   return null;
 }
 
-/// A distance to one decimal, without a trailing `.0`.
-String _distanceText(num metres, DistanceUnit unit) {
+/// A distance to one decimal, without a trailing zero, in the reader's
+/// decimal mark, with its unit.
+String _distanceText(num metres, DistanceUnit unit, String decimal) {
   final tenths = (unit == DistanceUnit.mi
           ? metres * 10 / kMetresPerMile
           : metres / 100)
       .round();
   final whole = tenths ~/ 10;
   final frac = tenths % 10;
-  return frac == 0 ? '$whole' : '$whole.$frac';
+  return '${frac == 0 ? '$whole' : '$whole$decimal$frac'} ${unit.name}';
 }
 
 String _clockText(num totalS) {
@@ -219,18 +227,21 @@ String racePlanDescribe({
   RacePlanCourse? course,
   DistanceUnit unit = DistanceUnit.km,
   int maxChars = kRacePlanDescribeMax,
+  required AppLocalizations l10n,
+  required String localeTag,
 }) {
-  final label = unit.name;
+  final decimal = NumberFormat.decimalPattern(localeTag).symbols.DECIMAL_SEP;
   String climb(num m) => unit == DistanceUnit.mi
       ? '${(m * _feetPerMetre).round()} ft'
       : '${m.round()} m';
   final name = _cut(_collapse(race.name), kRacePlanDescribeNameMax).trim();
-  final sentences = <String>['Race: $name on ${race.raceDateIso}.'];
+  final sentences = <String>[l10n.racePlanDescribeRace(name, race.raceDateIso)];
   if (_positive(race.distanceM)) {
-    sentences.add('Distance: ${_distanceText(race.distanceM!, unit)} $label.');
+    sentences.add(l10n
+        .racePlanDescribeDistance(_distanceText(race.distanceM!, unit, decimal)));
   }
   if (_positive(goalTimeS)) {
-    sentences.add('Goal time: ${_clockText(goalTimeS!)}.');
+    sentences.add(l10n.racePlanDescribeGoal(_clockText(goalTimeS!)));
   }
   final e = recentEffort;
   if (e != null &&
@@ -238,24 +249,28 @@ String racePlanDescribe({
       _positive(e.durationS) &&
       e.ageDays.isFinite) {
     final days = e.ageDays.round() < 0 ? 0 : e.ageDays.round();
-    final when = days == 0
-        ? 'today'
-        : days == 1
-            ? '1 day ago'
-            : '$days days ago';
-    sentences.add(
-        'Recent effort: ${_distanceText(e.distanceM, unit)} $label in ${_clockText(e.durationS)}, $when.');
+    sentences.add(l10n.racePlanDescribeRecent(
+        _distanceText(e.distanceM, unit, decimal),
+        _clockText(e.durationS),
+        days));
   }
   final c = course;
   if (c != null) {
     final parts = <String>[];
-    if (_positive(c.ascentM)) parts.add('${climb(c.ascentM!)} ascent');
-    if (_positive(c.descentM)) parts.add('${climb(c.descentM!)} descent');
+    if (_positive(c.ascentM)) {
+      parts.add(l10n.racePlanDescribeAscent(climb(c.ascentM!)));
+    }
+    if (_positive(c.descentM)) {
+      parts.add(l10n.racePlanDescribeDescent(climb(c.descentM!)));
+    }
     final surface = c.surface == null
         ? ''
         : _cut(_collapse(c.surface!), kRacePlanSurfaceMax).trim();
-    if (surface.isNotEmpty) parts.add('$surface surface');
-    if (parts.isNotEmpty) sentences.add('Course: ${parts.join(', ')}.');
+    if (surface.isNotEmpty) parts.add(l10n.racePlanDescribeSurface(surface));
+    if (parts.isNotEmpty) {
+      sentences.add(l10n
+          .racePlanDescribeCourse(parts.join(l10n.racePlanDescribeListSeparator)));
+    }
   }
   var out = _cut(sentences.first, maxChars);
   for (final s in sentences.skip(1)) {

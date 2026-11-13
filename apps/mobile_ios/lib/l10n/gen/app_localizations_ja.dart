@@ -10151,6 +10151,38 @@ class AppLocalizationsJa extends AppLocalizations {
   String get fitnessTitle => 'フィットネス';
 
   @override
+  String get fitnessRecoveryAdviceNoData =>
+      'まだデータが足りません。心拍数付きのランをいくつか記録してから、もう一度確認してください。';
+
+  @override
+  String get fitnessRecoveryAdviceWelcomeBack =>
+      'おかえりなさい。休止期間で調子の数値がリセットされました。ハードなセッションの前に、イージーランを継続して少しずつ戻していきましょう。';
+
+  @override
+  String get fitnessRecoveryAdviceHeavyLoad =>
+      '負荷がかなり高い状態です。今日はイージーランか休養日にしましょう。';
+
+  @override
+  String get fitnessRecoveryAdviceBuilding =>
+      'フィットネスはまだ積み上げの途中です。継続を優先し、今は週1回の質の高いセッションで十分です。';
+
+  @override
+  String get fitnessRecoveryAdviceLoaded =>
+      '負荷はありますが、積み上げの範囲内です。今日はイージーか一定ペースが適しています。';
+
+  @override
+  String get fitnessRecoveryAdviceSweetSpot =>
+      'ちょうどよい状態です。一定ペースのランやテンポ走が向いています。';
+
+  @override
+  String get fitnessRecoveryAdviceTapering =>
+      'テーパリング中・疲労が抜けてきています。数日以内のレースやハードな練習に向いています。';
+
+  @override
+  String get fitnessRecoveryAdviceVeryFresh =>
+      '疲労がほぼ抜けています。意図的にテーパリングしているなら、近いうちにレースを。そうでなければ、再び積み上げる時期です。';
+
+  @override
   String get fitnessStatVo2Max => 'VO₂ max';
 
   @override
@@ -14703,6 +14735,55 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get racesTailorWithAi => 'AIで調整する';
+
+  @override
+  String racePlanDescribeRace(String name, String date) {
+    return 'レース：$name（$date）。';
+  }
+
+  @override
+  String racePlanDescribeDistance(String distance) {
+    return '距離：$distance。';
+  }
+
+  @override
+  String racePlanDescribeGoal(String time) {
+    return '目標タイム：$time。';
+  }
+
+  @override
+  String racePlanDescribeRecent(String distance, String time, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days日前',
+      zero: '今日',
+    );
+    return '最近の記録：$distanceを$time、$_temp0。';
+  }
+
+  @override
+  String racePlanDescribeCourse(String parts) {
+    return 'コース：$parts。';
+  }
+
+  @override
+  String racePlanDescribeAscent(String climb) {
+    return '上り$climb';
+  }
+
+  @override
+  String racePlanDescribeDescent(String climb) {
+    return '下り$climb';
+  }
+
+  @override
+  String racePlanDescribeSurface(String surface) {
+    return '路面：$surface';
+  }
+
+  @override
+  String get racePlanDescribeListSeparator => '、';
 
   @override
   String get racesAddToSeason => 'シーズンに追加';

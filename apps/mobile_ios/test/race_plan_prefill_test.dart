@@ -1,7 +1,11 @@
 import 'package:core_models/core_models.dart' show DistanceUnit;
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/race_plan_prefill.dart';
+
+final _en = lookupAppLocalizations(const Locale('en'));
 
 const _today = '2026-08-14'; // a Friday
 const _richmond = RacePlanRace(
@@ -25,6 +29,8 @@ RacePlanOwnPlan _plan(
     );
 
 String _full({int maxChars = kRacePlanDescribeMax}) => racePlanDescribe(
+      l10n: _en,
+      localeTag: 'en',
       race: _richmond,
       goalTimeS: 13500,
       recentEffort:
@@ -45,7 +51,7 @@ void main() {
 
   test('describe: no fitness and no course fall back to the race and goal', () {
     expect(
-      racePlanDescribe(race: _richmond, goalTimeS: 13500),
+      racePlanDescribe(l10n: _en, localeTag: 'en', race: _richmond, goalTimeS: 13500),
       'Race: Richmond Marathon on 2026-11-14. Distance: 42.2 km. Goal time: 3:45:00.',
     );
   });
@@ -55,6 +61,8 @@ void main() {
         RacePlanRace(name: 'Mystery Trail', raceDateIso: '2026-11-14');
     expect(
       racePlanDescribe(
+        l10n: _en,
+        localeTag: 'en',
         race: mystery,
         goalTimeS: 0,
         recentEffort:
@@ -63,12 +71,14 @@ void main() {
       ),
       'Race: Mystery Trail on 2026-11-14.',
     );
-    expect(racePlanDescribe(race: mystery, goalTimeS: double.nan),
+    expect(racePlanDescribe(l10n: _en, localeTag: 'en', race: mystery, goalTimeS: double.nan),
         'Race: Mystery Trail on 2026-11-14.');
   });
 
   test('describe: the 600-char cap holds for an absurd listing', () {
     final out = racePlanDescribe(
+      l10n: _en,
+      localeTag: 'en',
       race: RacePlanRace(
           name: 'x' * 1000, raceDateIso: '2026-11-14', distanceM: 42195),
       goalTimeS: 13500,
@@ -97,6 +107,8 @@ void main() {
         name: 'Two  Oceans\nHalf', raceDateIso: '2027-04-04', distanceM: 21097.5);
     expect(
       racePlanDescribe(
+        l10n: _en,
+        localeTag: 'en',
         race: race,
         goalTimeS: 5999,
         recentEffort:
@@ -107,6 +119,8 @@ void main() {
     );
     expect(
       racePlanDescribe(
+        l10n: _en,
+        localeTag: 'en',
         race: race,
         recentEffort:
             const RacePlanEffort(distanceM: 5000, durationS: 1500, ageDays: 0.2),
@@ -118,6 +132,8 @@ void main() {
   test('describe: a miles runner reads miles and feet', () {
     expect(
       racePlanDescribe(
+        l10n: _en,
+        localeTag: 'en',
         race: _richmond,
         goalTimeS: 13500,
         recentEffort: const RacePlanEffort(
@@ -133,6 +149,8 @@ void main() {
 
   test('describe: mile distances round the same on both platforms', () {
     String at(num distanceM) => racePlanDescribe(
+          l10n: _en,
+          localeTag: 'en',
           race: RacePlanRace(
               name: 'R', raceDateIso: '2027-04-04', distanceM: distanceM),
           unit: DistanceUnit.mi,
@@ -143,12 +161,30 @@ void main() {
     expect(at(160934.4), 'Race: R on 2027-04-04. Distance: 100 mi.');
     expect(
       racePlanDescribe(
+        l10n: _en,
+        localeTag: 'en',
         race: const RacePlanRace(name: 'R', raceDateIso: '2027-04-04'),
         recentEffort: const RacePlanEffort(
             distanceM: 1609.344, durationS: 400, ageDays: 1),
         unit: DistanceUnit.mi,
       ).endsWith('Recent effort: 1 mi in 6:40, 1 day ago.'),
       isTrue,
+    );
+  });
+
+  test("describe: reads the reader's catalogue, decimal mark and plural", () {
+    expect(
+      racePlanDescribe(
+        l10n: lookupAppLocalizations(const Locale('de')),
+        localeTag: 'de',
+        race: const RacePlanRace(
+            name: 'Two Oceans Half', raceDateIso: '2027-04-04', distanceM: 21097.5),
+        recentEffort:
+            const RacePlanEffort(distanceM: 5000, durationS: 1499.6, ageDays: 0.6),
+        course: const RacePlanCourse(ascentM: 120, surface: 'Asphalt'),
+      ),
+      'Rennen: Two Oceans Half am 2027-04-04. Distanz: 21,1 km. '
+      'Letzte Leistung: 5 km in 25:00, vor 1 Tag. Strecke: 120 m Aufstieg, Untergrund: Asphalt.',
     );
   });
 

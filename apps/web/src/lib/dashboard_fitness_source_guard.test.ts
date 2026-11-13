@@ -28,13 +28,13 @@ test('dashboard derives loadNow from the training-load series', () => {
 test('recovery advice reads the training-load series, not computeSnapshot', () => {
 	assert.match(
 		SOURCE,
-		/recoveryAdvice\(loadNow\?\.tsb/,
-		'recoveryAdvice must be fed loadNow.tsb',
+		/recoveryAdviceKind\(loadNow\?\.tsb/,
+		'recoveryAdviceKind must be fed loadNow.tsb',
 	);
 	assert.doesNotMatch(
 		SOURCE,
-		/recoveryAdvice\(liveSnap\./,
-		'recoveryAdvice must not read liveSnap (computeSnapshot) any more',
+		/recoveryAdviceKind\(liveSnap\./,
+		'recoveryAdviceKind must not read liveSnap (computeSnapshot) any more',
 	);
 });
 

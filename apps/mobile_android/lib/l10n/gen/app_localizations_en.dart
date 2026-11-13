@@ -10589,6 +10589,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fitnessTitle => 'Fitness';
 
   @override
+  String get fitnessRecoveryAdviceNoData =>
+      'Not enough data yet — log a few runs with HR and try again.';
+
+  @override
+  String get fitnessRecoveryAdviceWelcomeBack =>
+      'Welcome back. Your form numbers reset after the break — rebuild gradually with easy, consistent running before any hard sessions.';
+
+  @override
+  String get fitnessRecoveryAdviceHeavyLoad =>
+      'You\'re heavily loaded — easy running or a rest day today.';
+
+  @override
+  String get fitnessRecoveryAdviceBuilding =>
+      'Fitness is still building. Focus on consistency; one quality session a week is plenty for now.';
+
+  @override
+  String get fitnessRecoveryAdviceLoaded =>
+      'Loaded but within build territory. Easy / steady is right for today.';
+
+  @override
+  String get fitnessRecoveryAdviceSweetSpot =>
+      'Sweet spot — a steady run or a tempo effort works.';
+
+  @override
+  String get fitnessRecoveryAdviceTapering =>
+      'Tapering / freshening up — a race or hard workout will land well in the next few days.';
+
+  @override
+  String get fitnessRecoveryAdviceVeryFresh =>
+      'Very fresh — if you\'ve been tapering on purpose, race soon. Otherwise, it\'s time to build again.';
+
+  @override
   String get fitnessStatVo2Max => 'VO₂ max';
 
   @override
@@ -15266,6 +15298,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get racesTailorWithAi => 'Tailor it with AI';
+
+  @override
+  String racePlanDescribeRace(String name, String date) {
+    return 'Race: $name on $date.';
+  }
+
+  @override
+  String racePlanDescribeDistance(String distance) {
+    return 'Distance: $distance.';
+  }
+
+  @override
+  String racePlanDescribeGoal(String time) {
+    return 'Goal time: $time.';
+  }
+
+  @override
+  String racePlanDescribeRecent(String distance, String time, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days ago',
+      one: '$days day ago',
+      zero: 'today',
+    );
+    return 'Recent effort: $distance in $time, $_temp0.';
+  }
+
+  @override
+  String racePlanDescribeCourse(String parts) {
+    return 'Course: $parts.';
+  }
+
+  @override
+  String racePlanDescribeAscent(String climb) {
+    return '$climb ascent';
+  }
+
+  @override
+  String racePlanDescribeDescent(String climb) {
+    return '$climb descent';
+  }
+
+  @override
+  String racePlanDescribeSurface(String surface) {
+    return '$surface surface';
+  }
+
+  @override
+  String get racePlanDescribeListSeparator => ', ';
 
   @override
   String get racesAddToSeason => 'Add to my season';

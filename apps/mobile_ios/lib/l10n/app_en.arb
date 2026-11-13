@@ -14313,6 +14313,38 @@
   "@fitnessTitle": {
     "description": "Title of the dashboard fitness card"
   },
+  "fitnessRecoveryAdviceNoData": "Not enough data yet — log a few runs with HR and try again.",
+  "@fitnessRecoveryAdviceNoData": {
+    "description": "Fitness card advice line when the training-load kind is noData"
+  },
+  "fitnessRecoveryAdviceWelcomeBack": "Welcome back. Your form numbers reset after the break — rebuild gradually with easy, consistent running before any hard sessions.",
+  "@fitnessRecoveryAdviceWelcomeBack": {
+    "description": "Fitness card advice line when the training-load kind is welcomeBack"
+  },
+  "fitnessRecoveryAdviceHeavyLoad": "You're heavily loaded — easy running or a rest day today.",
+  "@fitnessRecoveryAdviceHeavyLoad": {
+    "description": "Fitness card advice line when the training-load kind is heavyLoad"
+  },
+  "fitnessRecoveryAdviceBuilding": "Fitness is still building. Focus on consistency; one quality session a week is plenty for now.",
+  "@fitnessRecoveryAdviceBuilding": {
+    "description": "Fitness card advice line when the training-load kind is building"
+  },
+  "fitnessRecoveryAdviceLoaded": "Loaded but within build territory. Easy / steady is right for today.",
+  "@fitnessRecoveryAdviceLoaded": {
+    "description": "Fitness card advice line when the training-load kind is loaded"
+  },
+  "fitnessRecoveryAdviceSweetSpot": "Sweet spot — a steady run or a tempo effort works.",
+  "@fitnessRecoveryAdviceSweetSpot": {
+    "description": "Fitness card advice line when the training-load kind is sweetSpot"
+  },
+  "fitnessRecoveryAdviceTapering": "Tapering / freshening up — a race or hard workout will land well in the next few days.",
+  "@fitnessRecoveryAdviceTapering": {
+    "description": "Fitness card advice line when the training-load kind is tapering"
+  },
+  "fitnessRecoveryAdviceVeryFresh": "Very fresh — if you've been tapering on purpose, race soon. Otherwise, it's time to build again.",
+  "@fitnessRecoveryAdviceVeryFresh": {
+    "description": "Fitness card advice line when the training-load kind is veryFresh"
+  },
   "fitnessStatVo2Max": "VO₂ max",
   "@fitnessStatVo2Max": {
     "description": "Fitness card stat label for VO2 max"
@@ -20336,6 +20368,91 @@
   "racesTailorWithAi": "Tailor it with AI",
   "@racesTailorWithAi": {
     "description": "Race detail: secondary action opening the AI plan assistant prefilled with this race. Shown only while the AI plan assistant is live."
+  },
+  "racePlanDescribeRace": "Race: {name} on {date}.",
+  "@racePlanDescribeRace": {
+    "description": "A sentence of the AI plan box prefill a race opens (Race)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeDistance": "Distance: {distance}.",
+  "@racePlanDescribeDistance": {
+    "description": "A sentence of the AI plan box prefill a race opens (Distance)",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeGoal": "Goal time: {time}.",
+  "@racePlanDescribeGoal": {
+    "description": "A sentence of the AI plan box prefill a race opens (Goal)",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeRecent": "Recent effort: {distance} in {time}, {days, plural, =0{today} one{{days} day ago} other{{days} days ago}}.",
+  "@racePlanDescribeRecent": {
+    "description": "A sentence of the AI plan box prefill a race opens (Recent)",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "racePlanDescribeCourse": "Course: {parts}.",
+  "@racePlanDescribeCourse": {
+    "description": "A sentence of the AI plan box prefill a race opens (Course)",
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeAscent": "{climb} ascent",
+  "@racePlanDescribeAscent": {
+    "description": "A sentence of the AI plan box prefill a race opens (Ascent)",
+    "placeholders": {
+      "climb": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeDescent": "{climb} descent",
+  "@racePlanDescribeDescent": {
+    "description": "A sentence of the AI plan box prefill a race opens (Descent)",
+    "placeholders": {
+      "climb": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeSurface": "{surface} surface",
+  "@racePlanDescribeSurface": {
+    "description": "A sentence of the AI plan box prefill a race opens (Surface)",
+    "placeholders": {
+      "surface": {
+        "type": "String"
+      }
+    }
+  },
+  "racePlanDescribeListSeparator": ", ",
+  "@racePlanDescribeListSeparator": {
+    "description": "A sentence of the AI plan box prefill a race opens (ListSeparator)"
   },
   "racesAddToSeason": "Add to my season",
   "@racesAddToSeason": {

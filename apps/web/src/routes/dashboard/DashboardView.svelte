@@ -21,7 +21,7 @@
 	import { bucketWeeklyMileage } from '#lib/core/weekly_mileage.ts';
 	import {
 		computeSnapshot,
-		recoveryAdvice,
+		recoveryAdviceKind,
 		daysUntilNextHardSession,
 		isReturningFromLayoff,
 		isReturningFromGap,
@@ -2042,7 +2042,7 @@
 						{/if}
 					</div>
 					<p class="fitness-advice">
-						{recoveryAdvice(loadNow?.tsb ?? null, loadNow?.ctl ?? null, isReturningFromLayoff(runs))}
+						{m(`dash.recoveryAdvice_${recoveryAdviceKind(loadNow?.tsb ?? null, loadNow?.ctl ?? null, isReturningFromLayoff(runs))}`)}
 					</p>
 					{#if daysToHard != null}
 						<p class="fitness-next-hard">

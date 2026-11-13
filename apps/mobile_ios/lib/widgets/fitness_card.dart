@@ -55,11 +55,20 @@ class FitnessCard extends StatelessWidget {
         ? series.last
         : null;
     final returningFromLayoff = isReturningFromLayoff(runs, now: now);
-    final advice = recoveryAdvice(
+    final advice = switch (recoveryAdviceKind(
       load?.tsb,
       load?.ctl,
       returningFromLayoff: returningFromLayoff,
-    );
+    )) {
+      RecoveryAdviceKind.noData => l10n.fitnessRecoveryAdviceNoData,
+      RecoveryAdviceKind.welcomeBack => l10n.fitnessRecoveryAdviceWelcomeBack,
+      RecoveryAdviceKind.heavyLoad => l10n.fitnessRecoveryAdviceHeavyLoad,
+      RecoveryAdviceKind.building => l10n.fitnessRecoveryAdviceBuilding,
+      RecoveryAdviceKind.loaded => l10n.fitnessRecoveryAdviceLoaded,
+      RecoveryAdviceKind.sweetSpot => l10n.fitnessRecoveryAdviceSweetSpot,
+      RecoveryAdviceKind.tapering => l10n.fitnessRecoveryAdviceTapering,
+      RecoveryAdviceKind.veryFresh => l10n.fitnessRecoveryAdviceVeryFresh,
+    };
     // Forward-looking companion to the advice line: days of easy running
     // until the next hard session. Shown only when currently loaded
     // (≥1 day out) and not a comeback (advice already says rebuild slowly).

@@ -88,9 +88,18 @@ class RootPage extends StatelessWidget {
                       children: [
                         AppTabBar(controller: controller, labels: labels),
                         Expanded(
-                          child: TabBarView(
-                            controller: controller,
-                            children: children,
+                          // The key keeps the strip's page apart from the
+                          // header's scroll offset in PageStorage: with no
+                          // key between them the two share an identifier,
+                          // and the pager restored the header's 0.0 as its
+                          // page, opening on the first tab whatever the
+                          // controller said.
+                          child: KeyedSubtree(
+                            key: const PageStorageKey<String>('root-page-tabs'),
+                            child: TabBarView(
+                              controller: controller,
+                              children: children,
+                            ),
                           ),
                         ),
                       ],

@@ -22,17 +22,18 @@ double _barOpacity(WidgetTester tester) => tester
     .opacity;
 
 class _Hub extends StatefulWidget {
-  const _Hub({this.onAction});
+  const _Hub({this.onAction, this.initialIndex = 0});
 
   final VoidCallback? onAction;
+  final int initialIndex;
 
   @override
   State<_Hub> createState() => _HubState();
 }
 
 class _HubState extends State<_Hub> with SingleTickerProviderStateMixin {
-  late final TabController _controller =
-      TabController(length: 2, vsync: this);
+  late final TabController _controller = TabController(
+      length: 2, vsync: this, initialIndex: widget.initialIndex);
 
   @override
   void dispose() {
@@ -157,5 +158,17 @@ void main() {
     expect(_barOpacity(tester), 1);
     expect(find.byKey(const ValueKey('you-action')).hitTestable(),
         findsOneWidget);
+  });
+
+  testWidgets('a hub opens on the tab its controller names', (tester) async {
+    // In the app shell the strip's pager and the header's scroll shared a
+    // PageStorage identifier, and the pager restored the header's 0.0 as its
+    // page; home_screen_test's Log lift / Log food cases pin that in the
+    // shell, where the stored offset exists.
+    await _phone(tester);
+    await tester.pumpWidget(_app(const _Hub(initialIndex: 1)));
+    await tester.pump();
+    expect(find.text('two row 0'), findsOneWidget);
+    expect(find.text('one row 0'), findsNothing);
   });
 }

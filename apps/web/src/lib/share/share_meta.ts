@@ -17,6 +17,13 @@ import { serialiseJsonLd } from '../util/json_ld';
 
 const SITE_NAME = 'Threkir';
 
+/// "1 activity" / "3 activities" for the crawler-facing English of the share
+/// heads, which stay one language by design (decisions § 205 and
+/// `share_english_guard.test.ts`): a count still agrees with its noun.
+export function englishCount(n: number, one: string, other: string): string {
+	return `${n} ${n === 1 ? one : other}`;
+}
+
 export type ShareRunMeta = {
 	distance_m?: number | null;
 	duration_s?: number | null;

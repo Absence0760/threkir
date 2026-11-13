@@ -29,6 +29,7 @@ export type RecapOgInput = {
 import { OG_CARD_DARK } from './og_card_palette';
 import { OG_FONT_STACK } from './og_card_font';
 import { escapeXml } from '../util/html_escape';
+import { englishCount } from './share_meta';
 import { grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
 const W = 1200;
@@ -93,7 +94,7 @@ export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): 
 	// Stat row along the bottom — three headline cells.
 	const cells: Array<{ label: string; value: string }> = [
 		{ label: 'LONGEST', value: fmtDistanceKm(input.longestRunM, unit) },
-		{ label: 'BEST STREAK', value: `${Math.max(0, Math.trunc(input.bestStreakDays ?? 0))} days` },
+		{ label: 'BEST STREAK', value: englishCount(Math.max(0, Math.trunc(input.bestStreakDays ?? 0)), 'day', 'days') },
 		{ label: 'TOP WEEK', value: fmtDistanceKm(input.topWeekDistanceM, unit) },
 	];
 	const rowY = H - PAD - 40;

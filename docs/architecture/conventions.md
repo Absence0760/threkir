@@ -311,6 +311,29 @@ additive, like a suggestion chip or an attached-plan panel, degrades to absent
 rather than failing the page — but say so in a comment, because from the
 outside a degraded auxiliary read and a swallowed primary one look identical.
 
+### A write that failed keeps what the person typed, and a timeout is for reads
+
+The other half of the rule above (issue #1374 FS-8, FS-11, FS-14).
+
+- **A failed write never loses the person's input.** An editor stays open
+  with a spinner until the write settles, and closes only on success; on
+  failure the typed text is still there to retry. An optimistic toggle rolls
+  back to the value it had when the write fails.
+- **A failure after a write has landed is not a failed write.** Split the
+  write from its follow-ups (a store sync, a re-read for hydration, a list
+  refresh): once the write returns, report success, and give each follow-up
+  its own catch. A refresh that fails after a successful write shows the
+  stale-refresh banner (`showStaleRefreshBanner` on mobile), never "couldn't
+  save".
+- **`kBackendLoadTimeout` (and web's load timeouts) wrap reads, not
+  non-idempotent writes.** A client timeout cannot cancel a write the server
+  may still land, so "failed" over a write that succeeded invites a retry that
+  makes a second copy. A create, clone, publish or adopt either carries no
+  client timeout (the button stays busy until the server answers), or passes a
+  client-generated id the server de-duplicates on, so a retry is a no-op. An
+  action whose result is already stored (Adopt, Publish) disables itself once
+  it has succeeded.
+
 ### A read-only RPC goes out as a GET
 
 supabase-js sends every `.rpc()` as a POST unless the call passes
@@ -1178,7 +1201,7 @@ The page structure is owned by ui_kit components, so a screen supplies content a
 - **A hub tab body is a `HubTabBody`, never a `Scaffold` with its own `AppBar` or FAB.** The hub owns the only app bar (its strip, no title) and the one FAB: the body hands its one `PrimaryAction` to the hub, keeps secondary actions in its control row, and owns pull-to-refresh. A tab with no create verb passes no primary action; a rare action (Add a race) goes in the overflow. The tab's label is its surface's name, and pushed on its own the body titles itself with that same name ([decisions § 2486](decisions.md)). `hub_tab_body_guard_test.dart` reads the tab bodies off both hubs (Fitness and Social) and fails one that builds `AppBar(`, `Scaffold(` or a FAB. The Social hub's app bar is the one place a hub carries actions of its own (Messages with the unread count, and the notifications bell); a tab body never does.
 - **A link to a hub tab selects it; it never pushes a copy.** Ask the shell through the hub's channel (`openFitnessSurface` in `fitness_surface_requests.dart`, `openSocialSurface` in `social_surface_requests.dart`), which falls back to pushing the screen only where no shell is listening. A hub tab is kept alive by wrapping its body in ui_kit's `KeepAliveChild` (or the screen's own `AutomaticKeepAliveClientMixin`), so a swipe away and back keeps its search and filters.
 - **A list's search and filters are one `FilterBar`.** One `AppSearchField` (it always has clear), at most one line of quick chips that scrolls sideways and never wraps (a chip filters; it never navigates), everything else in the sheet `showFilterSheet` opens, with the Filters icon carrying the count and the active filters as removable chips on the line ([decisions § 2487](decisions.md)). `filter_bar_guard_test.dart` counts the hand-built search fields and the wrapping toolbar chip rows left; both maps may only shrink.
-- **A read's states go through `AsyncView`**: rows when there are rows, else `LoadingState`, else `ErrorState` (ui_kit; `AppErrorState` in `lib/widgets` fills the Retry label), else `EmptyState` with a way forward. A failed read is never drawn as empty ([decisions § 2488](decisions.md)).
+- **A read's states go through `AsyncView`**: rows when there are rows, else `LoadingState`, else `ErrorState` (ui_kit; `AppErrorState` in `lib/widgets` fills the Retry label), else `EmptyState` with a way forward. A failed read is never drawn as empty ([decisions § 2488](decisions.md)) Outside a hub tab, pass `onRefresh` so the empty and error states can be pulled as well as the rows; a list that came back empty or failed is never a dead end (FS-3). Inside `HubTabBody`, leave it null: the body already owns the tab's pull. A refresh that fails over rows on screen keeps them and calls `showStaleRefreshBanner` (`lib/widgets/stale_refresh_banner.dart`), which tells offline apart from any other failure.
 - **Spacing in new and migrated code comes from `AppSpace` / `AppInsets`**, whose names are web's `--space-*` rungs (`AppSpace.md` = `--space-md` = 16) plus the mobile-only `smPlus` (12).
 - **Every migrated tab is tested at the worst case**: 320 dp, 2x text and the 3-button nav bar (`test/three_button_nav_bar.dart`), with the hub's FAB above the bar (`fitness_hub_tab_bodies_test.dart`, `social_hub_tab_bodies_test.dart`).
 - **A tab with views switches them with chips, not a second strip.** Routes is `Mine · Explore`, and Explore carries `Routes · Segments` (issue #1374, owner decision 1). The view row is a `FilterBar` of chips over the view's own `FilterBar`; the Explore chips lead that view's chip line. Each view is its own `HubTabBody` under an `IndexedStack`, built the first time it is shown and kept after, and only the view with a create verb publishes a primary action. The view is a value (`RoutesShow`, like `RacesShow`) the shell can set through `FitnessHubViews`, so a link to the segment catalogue selects Routes on Explore → Segments rather than pushing a copy. A nested `TabBar` is not the answer: `tab_strip_guard_test.dart` keeps every strip on `AppTabBar`, and a second strip under the hub's is what decisions § 2437 removed. `hub_tab_body_guard_test.dart` checks the views a body mounts (`_tabViews`) as tab bodies too.

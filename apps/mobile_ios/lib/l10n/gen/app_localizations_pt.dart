@@ -12942,7 +12942,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get gymLibraryAdopting => 'A adotar…';
 
   @override
+  String get gymLibraryAdopted => 'Adicionada às minhas rotinas';
+
+  @override
   String get gymLibraryAdoptFailed => 'Não foi possível adotar a rotina.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Adicionada às suas rotinas. Aparecerá lá quando este telemóvel sincronizar.';
 
   @override
   String get gymRoutineDelete => 'Eliminar';
@@ -35583,7 +35590,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get gymLibraryAdopting => 'Adotando…';
 
   @override
+  String get gymLibraryAdopted => 'Adicionada às minhas rotinas';
+
+  @override
   String get gymLibraryAdoptFailed => 'Não foi possível adotar a rotina.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Adicionada às suas rotinas. Ela aparecerá lá quando este celular sincronizar.';
 
   @override
   String get gymRoutineDelete => 'Excluir';

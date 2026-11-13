@@ -2087,9 +2087,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
 
     try {
+      // No client timeout: the publish is a multi-row insert a timeout cannot
+      // cancel, so "failed" over a template that landed invited a duplicate
+      // (issue #1374 FS-8; conventions § Write timeouts).
       await widget.training
-          .publishPlanAsTemplate(planId: plan.id, clubId: clubId)
-          .timeout(kBackendLoadTimeout);
+          .publishPlanAsTemplate(planId: plan.id, clubId: clubId);
       if (!mounted) return;
       setState(() => _publishing = false);
       showTopBanner(context, l10n.planDetailPublishSuccess(plan.name));

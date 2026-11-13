@@ -12809,7 +12809,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gymLibraryAdopting => 'Adopting…';
 
   @override
+  String get gymLibraryAdopted => 'Added to my routines';
+
+  @override
   String get gymLibraryAdoptFailed => 'Couldn\'t adopt the routine.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Added to your routines. It will show there once this phone syncs.';
 
   @override
   String get gymRoutineDelete => 'Delete';

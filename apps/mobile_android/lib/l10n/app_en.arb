@@ -17264,9 +17264,17 @@
   "@gymLibraryAdopting": {
     "description": "Busy label while adopting a public routine"
   },
+  "gymLibraryAdopted": "Added to my routines",
+  "@gymLibraryAdopted": {
+    "description": "Adopt button label once the routine has been copied, so a second tap cannot make another copy"
+  },
   "gymLibraryAdoptFailed": "Couldn't adopt the routine.",
   "@gymLibraryAdoptFailed": {
     "description": "Error after a failed public-routine adopt"
+  },
+  "gymLibraryAdoptedNotSynced": "Added to your routines. It will show there once this phone syncs.",
+  "@gymLibraryAdoptedNotSynced": {
+    "description": "Banner when the routine was copied on the server but this phone could not fetch the copy yet; the adopt itself succeeded"
   },
   "gymRoutineDelete": "Delete",
   "gymRoutineDeleteConfirmTitle": "Delete routine?",

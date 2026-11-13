@@ -248,6 +248,8 @@ class _RoutinePublicPreviewScreenState
       _exercises = const [];
   bool _loading = true;
   bool _adopting = false;
+  /// Set once the clone has landed, so the button cannot make a second copy.
+  bool _adopted = false;
 
   @override
   void initState() {
@@ -278,67 +280,89 @@ class _RoutinePublicPreviewScreenState
 
   Future<void> _adopt() async {
     final api = widget.api;
-    if (api == null || _adopting) return;
+    if (api == null || _adopting || _adopted) return;
     final l10n = AppLocalizations.of(context);
     setState(() => _adopting = true);
+    // The clone is one non-idempotent write, so it carries no client timeout:
+    // a timeout cannot cancel a write the server may still land, and reporting
+    // that as a failure invited a retry that made a second copy (issue #1374
+    // FS-8). Only the clone's own failure is "couldn't adopt".
+    final String newId;
     try {
-      final newId = await api
-          .cloneGymRoutineTemplate(widget.entry.routine.id)
-          .timeout(kBackendLoadTimeout);
-      // The clone lands as a personal routine server-side; hydrate it into the
-      // caller's store so the detail renders offline-first (mirrors the club
-      // Adopt path in club_detail_screen).
-      await widget.store.syncWithServer(api);
-      final detail = await api.fetchGymRoutineDetail(newId);
-      if (detail != null) {
-        await widget.store.upsertFromServer(
-          detail.routine.toJson(),
-          [
-            for (final e in detail.exercises)
-              StoredRoutineExercise(
-                exerciseName: e.exercise.exerciseName,
-                exerciseKey: e.exercise.exerciseKey,
-                supersetGroup: e.exercise.supersetGroup,
-                supersetOrder: e.exercise.supersetOrder,
-                modality: e.exercise.modality,
-                progression: e.exercise.progression,
-                progressionParams: e.exercise.progressionParams is Map
-                    ? Map<String, dynamic>.from(
-                        e.exercise.progressionParams as Map)
-                    : const <String, dynamic>{},
-                sets: [
-                  for (final s in e.sets)
-                    StoredRoutineSet(
-                      setType: s.setType,
-                      targetRepsMin: s.targetRepsMin,
-                      targetRepsMax: s.targetRepsMax,
-                      targetWeightKg: s.targetWeightKg,
-                      targetRpe: s.targetRpe,
-                      restS: s.restS,
-                      targetDurationS: s.targetDurationS,
-                      targetDistanceM: s.targetDistanceM,
-                    ),
-                ],
-              ),
-          ],
-        );
-      }
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => RoutineDetailScreen(
-            api: api,
-            store: widget.store,
-            gymStore: widget.gymStore,
-            routineId: newId,
-            social: widget.social,
-          ),
-        ),
-      );
-    } catch (_) {
+      newId = await api.cloneGymRoutineTemplate(widget.entry.routine.id);
+    } catch (e) {
+      debugPrint('RoutinePublicLibrary._adopt clone failed: $e');
       if (!mounted) return;
       setState(() => _adopting = false);
       showTopBanner(context, l10n.gymLibraryAdoptFailed);
+      return;
+    }
+    // Adopted. The detail screen reads the copy from the store, so it opens
+    // only once the copy is there; otherwise the adopt still stands and says
+    // the copy arrives with the next sync.
+    if (mounted) setState(() => _adopted = true);
+    try {
+      await _hydrate(api, newId).timeout(kBackendLoadTimeout);
+    } catch (e) {
+      debugPrint('RoutinePublicLibrary._adopt hydrate failed: $e');
+    }
+    if (!mounted) return;
+    setState(() => _adopting = false);
+    if (widget.store.byId(newId) == null) {
+      showTopBanner(context, l10n.gymLibraryAdoptedNotSynced);
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => RoutineDetailScreen(
+          api: api,
+          store: widget.store,
+          gymStore: widget.gymStore,
+          routineId: newId,
+          social: widget.social,
+        ),
+      ),
+    );
+  }
+
+  /// The clone lands as a personal routine server-side; hydrate it into the
+  /// caller's store so the detail renders offline-first (mirrors the club
+  /// Adopt path in club_detail_screen).
+  Future<void> _hydrate(ApiClient api, String newId) async {
+    await widget.store.syncWithServer(api);
+    final detail = await api.fetchGymRoutineDetail(newId);
+    if (detail != null) {
+      await widget.store.upsertFromServer(
+        detail.routine.toJson(),
+        [
+          for (final e in detail.exercises)
+            StoredRoutineExercise(
+              exerciseName: e.exercise.exerciseName,
+              exerciseKey: e.exercise.exerciseKey,
+              supersetGroup: e.exercise.supersetGroup,
+              supersetOrder: e.exercise.supersetOrder,
+              modality: e.exercise.modality,
+              progression: e.exercise.progression,
+              progressionParams: e.exercise.progressionParams is Map
+                  ? Map<String, dynamic>.from(
+                      e.exercise.progressionParams as Map)
+                  : const <String, dynamic>{},
+              sets: [
+                for (final s in e.sets)
+                  StoredRoutineSet(
+                    setType: s.setType,
+                    targetRepsMin: s.targetRepsMin,
+                    targetRepsMax: s.targetRepsMax,
+                    targetWeightKg: s.targetWeightKg,
+                    targetRpe: s.targetRpe,
+                    restS: s.restS,
+                    targetDurationS: s.targetDurationS,
+                    targetDistanceM: s.targetDistanceM,
+                  ),
+              ],
+            ),
+        ],
+      );
     }
   }
 
@@ -380,16 +404,19 @@ class _RoutinePublicPreviewScreenState
       floatingActionButton: _loading
           ? null
           : FloatingActionButton.extended(
-              onPressed: _adopting ? null : _adopt,
+              onPressed: _adopting || _adopted ? null : _adopt,
               icon: _adopting
                   ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.library_add),
-              label: Text(
-                  _adopting ? l10n.gymLibraryAdopting : l10n.gymLibraryAdopt),
+                  : Icon(_adopted ? Icons.check : Icons.library_add),
+              label: Text(_adopting
+                  ? l10n.gymLibraryAdopting
+                  : _adopted
+                      ? l10n.gymLibraryAdopted
+                      : l10n.gymLibraryAdopt),
             ),
       body: _loading
           ? SectionedDetailSkeleton(

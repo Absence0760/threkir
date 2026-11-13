@@ -12934,7 +12934,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get gymLibraryAdopting => 'Adoptando…';
 
   @override
+  String get gymLibraryAdopted => 'Añadida a mis rutinas';
+
+  @override
   String get gymLibraryAdoptFailed => 'No se pudo adoptar la rutina.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Añadida a tus rutinas. Aparecerá allí cuando este teléfono se sincronice.';
 
   @override
   String get gymRoutineDelete => 'Eliminar';

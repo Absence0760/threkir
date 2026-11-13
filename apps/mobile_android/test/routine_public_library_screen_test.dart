@@ -97,6 +97,26 @@ class _AdoptApi extends ApiClient {
       );
 }
 
+/// The clone lands, then the follow-up read of the copy fails.
+class _HydrateFailsApi extends _AdoptApi {
+  _HydrateFailsApi() : super('r-adopted');
+  int cloneCalls = 0;
+
+  @override
+  Future<String> cloneGymRoutineTemplate(String templateId) async {
+    cloneCalls++;
+    return clonedId;
+  }
+
+  @override
+  Future<({
+    GymRoutineRow routine,
+    List<({GymRoutineExerciseRow exercise, List<GymRoutineSetRow> sets})>
+        exercises,
+  })?> fetchGymRoutineDetail(String id) async =>
+      throw const SocketException('offline');
+}
+
 ({Map<String, dynamic> routine, List<StoredRoutineExercise> exercises})
     _stored(String id) => (
           routine: <String, dynamic>{
@@ -264,6 +284,50 @@ void main() {
       );
       expect(f.store.byId(pending.id)!.syncState,
           RoutineSyncState.pendingCreate);
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  // Issue #1374 FS-8: a failure AFTER the clone landed read as "Couldn't
+  // adopt", and the retry made a second copy.
+  testWidgets('a failed follow-up read after the clone is not a failed adopt',
+      (tester) async {
+    final f = await _fixture('adopt-hydrate-fails');
+    final api = _HydrateFailsApi();
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RoutinePublicPreviewScreen(
+          api: api,
+          store: f.store,
+          gymStore: f.gym,
+          entry: (
+            routine: _routine('r-pub', 'Wendler'),
+            authorHandle: null,
+            isOfficial: false,
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.runAsync(() => tester.tap(find.byType(FloatingActionButton)));
+      await pumpUntil(
+          tester, () => find.text(l10n.gymLibraryAdopted).evaluate().isNotEmpty,
+          describe: 'the adopt to settle');
+      await pumpUntil(
+          tester,
+          () => find.text(l10n.gymLibraryAdoptedNotSynced).evaluate().isNotEmpty,
+          describe: 'the not-synced banner');
+      expect(find.text(l10n.gymLibraryAdoptFailed), findsNothing);
+
+      await tester.tap(find.byType(FloatingActionButton), warnIfMissed: false);
+      await tester.pump();
+      expect(api.cloneCalls, 1);
+      await tester.runAsync(() => f.store.debugWritesSettled());
+      await tester.pump(const Duration(seconds: 4));
     } finally {
       f.dir.deleteSync(recursive: true);
     }

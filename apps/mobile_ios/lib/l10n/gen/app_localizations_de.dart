@@ -12956,7 +12956,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get gymLibraryAdopting => 'Wird übernommen…';
 
   @override
+  String get gymLibraryAdopted => 'Zu meinen Routinen hinzugefügt';
+
+  @override
   String get gymLibraryAdoptFailed => 'Routine konnte nicht übernommen werden.';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'Zu deinen Routinen hinzugefügt. Sie erscheint dort, sobald dieses Smartphone synchronisiert.';
 
   @override
   String get gymRoutineDelete => 'Löschen';

@@ -20889,11 +20889,23 @@ abstract class AppLocalizations {
   /// **'Adopting…'**
   String get gymLibraryAdopting;
 
+  /// Adopt button label once the routine has been copied, so a second tap cannot make another copy
+  ///
+  /// In en, this message translates to:
+  /// **'Added to my routines'**
+  String get gymLibraryAdopted;
+
   /// Error after a failed public-routine adopt
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t adopt the routine.'**
   String get gymLibraryAdoptFailed;
+
+  /// Banner when the routine was copied on the server but this phone could not fetch the copy yet; the adopt itself succeeded
+  ///
+  /// In en, this message translates to:
+  /// **'Added to your routines. It will show there once this phone syncs.'**
+  String get gymLibraryAdoptedNotSynced;
 
   /// No description provided for @gymRoutineDelete.
   ///

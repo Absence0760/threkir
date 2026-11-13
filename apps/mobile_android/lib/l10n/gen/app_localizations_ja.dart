@@ -12315,7 +12315,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gymLibraryAdopting => '取り込み中…';
 
   @override
+  String get gymLibraryAdopted => '自分のルーティンに追加済み';
+
+  @override
   String get gymLibraryAdoptFailed => 'ルーティンを取り込めませんでした。';
+
+  @override
+  String get gymLibraryAdoptedNotSynced =>
+      'ルーティンに追加しました。このスマートフォンが同期すると表示されます。';
 
   @override
   String get gymRoutineDelete => '削除';

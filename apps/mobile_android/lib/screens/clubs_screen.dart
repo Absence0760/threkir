@@ -364,135 +364,102 @@ class _ClubTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final c = view.row;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
+    return ListCard.row(
+      margin: EdgeInsets.zero,
+      dense: true,
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Row(
-          children: [
-            IdentityAvatar(seed: c.id, name: c.name, size: 44),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // A Wrap, not a Row: at 2x text on a 320 dp phone the
-                  // badges beside the name ran 26 dp past the tile, so they
-                  // flow under a long name instead (issue #1374). The order
-                  // stays name, verified, private for a screen reader.
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 2,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        c.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      // Verified-official badge — differentiates an
-                      // authentic operator (e.g. the Richmond
-                      // Marathon) from a fan or squatter holding the
-                      // same name on a sibling slug. clubs.name is
-                      // intentionally NOT unique; the badge is the
-                      // disambiguator.
-                      if (c.isVerified) const VerifiedBadge(),
-                      if (!(c.isPublic ?? true))
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: theme.dividerColor),
-                          ),
-                          child: Text(
-                            AppLocalizations.of(context).clubsBadgePrivate,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              letterSpacing: 0.8,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  if (c.locationLabel != null && c.locationLabel!.isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(Icons.place, size: 14,
-                            color: theme.colorScheme.outline),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            c.locationLabel!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
+      chevron: true,
+      leading: IdentityAvatar(seed: c.id, name: c.name, size: 44),
+      title: c.name,
+      // The order stays name, verified, private for a screen reader.
+      badge: c.isVerified || !(c.isPublic ?? true)
+          ? Wrap(
+              spacing: AppSpace.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                // Verified-official badge — differentiates an authentic
+                // operator (e.g. the Richmond Marathon) from a fan or
+                // squatter holding the same name on a sibling slug.
+                // clubs.name is intentionally NOT unique; the badge is the
+                // disambiguator.
+                if (c.isVerified) const VerifiedBadge(),
+                if (!(c.isPublic ?? true))
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: theme.dividerColor),
                     ),
-                  const SizedBox(height: 4),
-                  // Wraps for the same reason: the count and the role pill
-                  // side by side ran 271 dp past the tile at 2x.
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.group, size: 14,
-                              color: theme.colorScheme.outline),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              AppLocalizations.of(context)
-                                  .clubsMemberCount(view.memberCount),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
+                    child: Text(
+                      AppLocalizations.of(context).clubsBadgePrivate,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        letterSpacing: 0.8,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      if (view.viewerRole != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            view.viewerRole!,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
-                ],
+              ],
+            )
+          : null,
+      // Wraps: the place, the count and the role pill side by side ran 271 dp
+      // past the tile at 2x on a 320 dp phone (issue #1374).
+      meta: Wrap(
+        spacing: 10,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (c.locationLabel case final place? when place.isNotEmpty)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.place, size: 14, color: theme.colorScheme.outline),
+                const SizedBox(width: AppSpace.xs),
+                Flexible(
+                  child: Text(
+                    place,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.group, size: 14, color: theme.colorScheme.outline),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  AppLocalizations.of(context)
+                      .clubsMemberCount(view.memberCount),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (view.viewerRole != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                view.viewerRole!,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-            Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-          ],
-        ),
+        ],
       ),
     );
   }

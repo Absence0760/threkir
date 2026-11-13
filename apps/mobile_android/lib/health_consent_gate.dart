@@ -1,10 +1,12 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart';
 
 import 'l10n/gen/app_localizations.dart';
 import 'preferences.dart';
 import 'screens/settings_body_metrics_screen.dart';
 import 'settings_sync.dart';
+import 'widgets/single_flight.dart';
 
 /// Heart rate and the food log are kept only with health-data consent
 /// (decisions § 2514). The database refuses a food-log write and strips a
@@ -44,10 +46,29 @@ Future<void> openHealthConsent(
   );
 }
 
+// The consent read is a network round trip before the dialog, so a second
+// tap in it would stack a second dialog; one ask is open at a time.
+final _consentFlight = SingleFlight();
+
 /// True when food may be logged now. Without consent on record it explains
 /// why, offers the consent screen, and checks again on the way back; nothing
-/// is stored unless consent is then on record.
+/// is stored unless consent is then on record. A call while another is still
+/// asking returns false.
 Future<bool> ensureFoodLogConsent(
+  BuildContext context, {
+  required ApiClient? api,
+  required SettingsSyncService? settingsSync,
+  required Preferences? preferences,
+}) async {
+  var ok = false;
+  await _consentFlight.openOnce(() async {
+    ok = await _askFoodLogConsent(context,
+        api: api, settingsSync: settingsSync, preferences: preferences);
+  });
+  return ok;
+}
+
+Future<bool> _askFoodLogConsent(
   BuildContext context, {
   required ApiClient? api,
   required SettingsSyncService? settingsSync,
@@ -99,36 +120,27 @@ class HeartRateNotKeptNote extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Card(
+    return ListCard(
       key: const Key('heart-rate-not-kept'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ExcludeSemantics(
-                  child: Icon(Icons.favorite_border,
-                      color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(message, style: theme.textTheme.bodyMedium),
-                ),
-              ],
-            ),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: TextButton(
-                onPressed: onGiveConsent,
-                child: Text(l10n.healthConsentGiveAction),
-              ),
-            ),
-          ],
+      actions: [
+        TextButton(
+          onPressed: onGiveConsent,
+          child: Text(l10n.healthConsentGiveAction),
         ),
+      ],
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: Icon(Icons.favorite_border,
+                color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(message, style: theme.textTheme.bodyMedium),
+          ),
+        ],
       ),
     );
   }

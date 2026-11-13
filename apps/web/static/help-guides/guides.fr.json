@@ -2666,7 +2666,7 @@
     "id": "run-a-self-timed-race",
     "lang": "fr",
     "title": "Courir une course en chrono libre",
-    "summary": "Inscrivez-vous à une course ouverte pendant une fenêtre de temps, marquez votre course comme votre tentative et courez de la ligne de départ à la ligne d'arrivée quand cela vous convient.",
+    "summary": "Inscrivez-vous à une épreuve ouverte pendant une fenêtre de temps, marquez votre course comme votre tentative et courez de la ligne de départ à la ligne d'arrivée quand cela vous convient.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2761,7 +2761,7 @@
             "type": "list",
             "items": [
               "À l'arrivée, touchez Arrêter, puis **Terminer la course**. Une fois que vous avez couvert 90 % du parcours, cela envoie votre temps, et l'organisateur l'examine avant qu'il compte.",
-              "Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la course sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de la course, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
+              "Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la course sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de l'épreuve, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
               "Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre tracé est donc le moyen d'obtenir pour votre tentative un résultat chronométré par les lignes."
             ]
           },
@@ -3133,7 +3133,7 @@
             "type": "list",
             "items": [
               "Chaque demande utilise l'un de vos messages quotidiens du Coach IA, le même quota que le Coach.",
-              "Elle nécessite la dernière version de l'avis sur l'IA. Si on vous demande de l'accepter, sélectionnez **La consulter dans les Réglages** et acceptez-la là.",
+              "Elle nécessite la dernière version de l'information sur l'IA. Si on vous demande de l'accepter, sélectionnez **La consulter dans les Réglages** et acceptez-la là.",
               "Seules les séances à venir de votre plan et la modification que vous avez tapée sont envoyées à l'IA."
             ]
           },
@@ -3682,7 +3682,7 @@
             "type": "list",
             "items": [
               "La saisie depuis une photo fait partie de Pro. Saisir ses aliments à la main reste gratuit.",
-              "Elle utilise l'IA et nécessite donc la dernière version de l'avis sur l'IA. Si on vous demande de l'accepter, le message s'accompagne d'un lien vers la page de votre compte, où vous pouvez l'accepter.",
+              "Elle utilise l'IA et nécessite donc la dernière version de l'information sur l'IA. Si on vous demande de l'accepter, le message s'accompagne d'un lien vers la page de votre compte, où vous pouvez l'accepter.",
               "La photo sert uniquement à estimer ce qu'il y a dans l'assiette. Les données de lieu et d'appareil sont retirées avant l'envoi, et Threkir ne conserve pas la photo."
             ]
           },

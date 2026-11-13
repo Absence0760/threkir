@@ -1713,7 +1713,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir recolhe a sua localização GPS para gravar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há uma gravação a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da app, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra app. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a gravar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para gravar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há uma gravação a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da app, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra app. Antes da sua primeira corrida, o Threkir propõe a passagem para “Permitir sempre”, que mantém então o seguimento fiável. Se recusar, as corridas continuam a gravar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
@@ -10213,7 +10213,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsAdvancedGpsSubtitle =>
-      'Grava um trajeto mais detalhado. A distância não muda.';
+      'O trajeto gravado fica mais detalhado. A distância não muda.';
 
   @override
   String get prefsShowRawTrack => 'Mostrar trajeto GPS bruto';
@@ -13339,7 +13339,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registo por fotografia do prato precisa das informações atualizadas sobre IA.';
+      'O registo por fotografia do prato precisa do aviso de IA atualizado.';
 
   @override
   String get platePhotoErrorPro =>
@@ -15703,7 +15703,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get integrationsStravaInfo =>
-      'O Strava é uma app popular para gravar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Inicia sessão no Strava e autoriza o acesso, e pode desligar quando quiser.';
+      'O Strava é uma app popular para gravar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Vai iniciar sessão no Strava e autorizar o acesso, e pode desligar quando quiser.';
 
   @override
   String get integrationsRunsignupInfo =>
@@ -20062,7 +20062,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planBreakHintRace(String date) {
-    return 'Pode retomar o plano onde o deixou. O dia da prova continua a ser $date e o polimento mantém-se; cada semana que repetir substitui uma semana de desenvolvimento posterior.';
+    return 'Pode retomar o plano onde o deixou. O dia da prova continua a ser $date e o polimento mantém-se; cada semana que repetir substitui uma semana de construção posterior.';
   }
 
   @override
@@ -20107,8 +20107,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'São retiradas $n semanas de desenvolvimento posteriores',
-      one: 'É retirada $n semana de desenvolvimento posterior',
+      other: 'São retiradas $n semanas de construção posteriores',
+      one: 'É retirada $n semana de construção posterior',
     );
     return '$_temp0 para dar espaço; o polimento não muda.';
   }
@@ -25298,7 +25298,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runPreciseLocationOff =>
-      'A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo gravado. Ative a localização precisa nos Ajustes para um trajeto preciso.';
+      'A localização precisa está desativada — o mapa e a distância GPS desta corrida vão faltar ou ficar muito imprecisos, mas o tempo continua sendo gravado. Ative a localização precisa nas configurações do celular para um trajeto preciso.';
 
   @override
   String get runGpsSensorFailed =>
@@ -29116,7 +29116,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String eventRsvpFailed(String error) {
-    return 'Não foi possível atualizar sua confirmação: $error';
+    return 'Não foi possível atualizar sua confirmação de presença: $error';
   }
 
   @override
@@ -33330,7 +33330,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadReadingTapered =>
-      'Em polimento — uma sessão difícil não vai te quebrar.';
+      'Em polimento — uma sessão difícil não vai derrubar você.';
 
   @override
   String get trainingLoadReadingBalanced =>
@@ -36088,7 +36088,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registro por foto do prato precisa das informações atualizadas sobre IA.';
+      'O registro por foto do prato precisa do aviso de IA atualizado.';
 
   @override
   String get platePhotoErrorPro =>

@@ -12464,7 +12464,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runBatteryOptHintBody =>
-      'Certains téléphones (Samsung, Xiaomi, OnePlus et d\'autres) mettent les applications en veille pour économiser la batterie, ce qui peut interrompre l\'enregistrement d\'une longue course lorsque votre écran est éteint. Par précaution, excluez cette application de l\'optimisation de la batterie dans les Réglages. Votre course sera enregistrée dans tous les cas — cela empêche simplement le système de l\'interrompre.';
+      'Certains téléphones (Samsung, Xiaomi, OnePlus et d\'autres) mettent les applications en veille pour économiser la batterie, ce qui peut interrompre l\'enregistrement d\'une longue course lorsque votre écran est éteint. Par précaution, excluez cette application de l\'optimisation de la batterie dans les paramètres du téléphone. Votre course sera enregistrée dans tous les cas — cela empêche simplement le système de l\'interrompre.';
 
   @override
   String shareCardCaption(Object title, Object distance, Object duration) {
@@ -13368,7 +13368,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'La saisie par photo de repas nécessite votre consentement à l\'information mise à jour sur l\'IA.';
+      'La saisie par photo de repas nécessite l\'information sur l\'IA mise à jour.';
 
   @override
   String get platePhotoErrorPro =>
@@ -18714,7 +18714,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Abonnez-vous à $name pour voir ses courses et ses abonnements. Chaque demande est validée.';
+    return 'Abonnez-vous à $name pour voir ses courses et ses abonnements. Chaque demande doit être validée par cette personne.';
   }
 
   @override
@@ -21539,10 +21539,10 @@ class AppLocalizationsFr extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Carte du parcours avec $n points de contrôle. La légende en dessous explique chaque repère.',
+          'Carte du parcours avec $n points de contrôle. La légende ci-dessous explique chaque repère.',
       one:
-          'Carte du parcours avec $n point de contrôle. La légende en dessous explique chaque repère.',
-      zero: 'Carte du parcours. La légende en dessous explique chaque repère.',
+          'Carte du parcours avec $n point de contrôle. La légende ci-dessous explique chaque repère.',
+      zero: 'Carte du parcours. La légende ci-dessous explique chaque repère.',
     );
     return '$_temp0';
   }

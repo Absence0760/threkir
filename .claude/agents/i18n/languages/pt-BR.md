@@ -103,6 +103,7 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | goal | Meta / Metas | "Objetivo" occasionally on web |
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
 | AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está pensando"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
+| AI disclosure | **o aviso de IA** ("precisa do aviso de IA atualizado") | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
 | event host | **Organizador** | `admin.earnings.*`; never "Anfitrião" |
 | payouts / payout account | **Repasses** / **conta de repasses** | `payouts.pageTitle`, `fundraiser.setUpPayouts`; *payment* (a charge) stays "pagamento" |
 | activity discipline (yoga, pilates…) | **Modalidade** | `eventEditor.discipline`, `session.discipline` |

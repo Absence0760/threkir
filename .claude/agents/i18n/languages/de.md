@@ -97,6 +97,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | streak | Serie | "Beste Serie" |
 | goal | Ziel / Ziele | |
 | coach | Coach; AI Coach = **KI-Coach** | `nav.coach` |
+| AI disclosure | **KI-Hinweise** (plural: "die aktualisierten KI-Hinweise", "KI-Hinweise ansehen", "akzeptiere sie") | settled 2026-11-13; never the singular "KI-Hinweis". Consent wording: CISO/counsel review |
 | auto-pause | — | no catalogue string yet; build from "Pause" / "pausieren" ("Lauf pausiert") → "Auto-Pause", and flag it as a new term |
 | kudos | Kudos ("Kudos geben", "Kudos zurücknehmen") | |
 | workout | Training (dominant) / Workout | |

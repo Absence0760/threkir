@@ -92,6 +92,7 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | streak | Racha | |
 | goal | Objetivo / Objetivos | |
 | coach | Entrenador; AI Coach = **Entrenador IA** | web `coachChat.coach` "Coach" |
+| AI disclosure | **el aviso de IA** ("necesita el aviso de IA actualizado") | settled 2026-11-13; never "la información actualizada sobre IA". Consent wording: CISO/counsel review |
 | auto-pause | — | no catalogue string yet; build from "pausa" ("Carrera en pausa", "Pausar") → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "quitar/retirar kudos") | |
 | workout / session | Entrenamiento / sesión | |

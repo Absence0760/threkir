@@ -3665,7 +3665,7 @@ export const messages = {
 	"seasonPlanner.describeButton": "Meine Rennen finden",
 	"seasonPlanner.describeWorking": "Wird gelesen…",
 	"seasonPlanner.describeFound": "Rennen aus deiner Beschreibung. Prüfe jedes, bevor du weitermachst.",
-	"seasonPlanner.errorConsent": "Der Saison-Assistent braucht den aktualisierten KI-Hinweis. Du kannst deine Rennen trotzdem unten eintragen.",
+	"seasonPlanner.errorConsent": "Der Saison-Assistent braucht die aktualisierten KI-Hinweise. Du kannst deine Rennen trotzdem unten eintragen.",
 	"seasonPlanner.errorConsentLink": "In den Einstellungen ansehen und akzeptieren.",
 	"seasonPlanner.errorDailyLimit": "Du hast deine KI-Anfragen für heute aufgebraucht. Trage deine Rennen unten selbst ein oder versuche es morgen wieder.",
 	"seasonPlanner.errorNotUnderstood": "Darin wurden keine Rennen gefunden. Trage sie unten selbst ein.",
@@ -7445,7 +7445,7 @@ export const messages = {
 	// Rückgängig-Leiste (UndoBar.svelte) + Zeitfenster-Einstellung
 	"undo.action": "Rückgängig",
 	"undo.dismiss": "Schließen",
-	"undo.hint": "Zum Wiederherstellen „Rückgängig“ drücken.",
+	"undo.hint": "Drücke „Rückgängig“, um es wiederherzustellen.",
 	"undo.restored": "Wiederhergestellt",
 	"nutrition.entryRemoved": "{item} entfernt",
 	"routeConditions.removed": "Meldung entfernt",

@@ -12,7 +12,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Das Eintragen per Foto gehört zu Pro. Essen von Hand einzutragen bleibt kostenlos.',
-						'Es nutzt KI und setzt deshalb den aktuellen KI-Hinweis voraus. Wirst du gebeten, ihn zu akzeptieren, führt dich ein Link bei der Meldung zu deiner Kontoseite, wo du ihn akzeptieren kannst.',
+						'Es nutzt KI und setzt deshalb die aktuellen KI-Hinweise voraus. Wirst du gebeten, sie zu akzeptieren, führt dich ein Link bei der Meldung zu deiner Kontoseite, wo du sie akzeptieren kannst.',
 						'Das Foto wird nur genutzt, um zu schätzen, was auf dem Teller ist. Standort- und Kameradaten werden vor dem Senden entfernt, und Threkir behält das Foto nicht.',
 					],
 				},

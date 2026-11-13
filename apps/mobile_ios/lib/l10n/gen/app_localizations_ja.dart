@@ -2593,7 +2593,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String historyEmptyBodyRunPrimary(String button) {
-    return '「$button」をタップして記録するか、すでに終えたものを追加しましょう';
+    return '「$button」をタップして記録するか、すでに終えたランを追加しましょう';
   }
 
   @override
@@ -3764,17 +3764,17 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String routeBuilderWaypoint(int index, int total) {
-    return 'ポイント $index/$total';
+    return '$total個中$index番目のポイント';
   }
 
   @override
   String routeBuilderWaypointStart(int index, int total) {
-    return 'ポイント $index/$total、スタート';
+    return '$total個中$index番目のポイント、スタート';
   }
 
   @override
   String routeBuilderWaypointEnd(int index, int total) {
-    return 'ポイント $index/$total、ゴール';
+    return '$total個中$index番目のポイント、ゴール';
   }
 
   @override
@@ -9304,7 +9304,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get discardChangesDiscard => '破棄';
 
   @override
-  String get discardChangesBusy => '保存中です。完了してから戻ってください。';
+  String get discardChangesBusy => '保存中です。保存が完了すると移動できます。';
 
   @override
   String get prefsTitle => '環境設定';
@@ -10027,7 +10027,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String from,
     String to,
   ) {
-    return 'フィットネス $ctlFrom→$ctlTo、疲労 $atlFrom→$atlTo、調子 $tsbFrom→$tsbTo（$from〜$to）';
+    return 'フィットネス $ctlFromから$ctlTo、疲労 $atlFromから$atlTo、調子 $tsbFromから$tsbTo、期間 $fromから$to';
   }
 
   @override
@@ -19594,7 +19594,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けます。';
+      'フィットネス、疲労、調子の数値です。「基本だけ」を選んだため折りたたんでいます。いつでも開けます。';
 
   @override
   String get dashboardTrainingLoadSectionAction => '表示する情報量を変更';

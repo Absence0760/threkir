@@ -35,7 +35,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Se tocar em **Iniciar mesmo assim**, a corrida é gravada normalmente enquanto a app estiver no ecrã. Com o ecrã desligado ou noutra app, o Android pode deixar de enviar a sua localização: o tempo continua a contar e nada do que já foi gravado se perde, mas a distância percorrida entretanto não é contabilizada. Quando isso acontece, ao voltar surge uma mensagem que começa por **O registo foi pausado enquanto esteve fora**, com um botão **Definições**.',
+					text: 'Se tocar em **Iniciar mesmo assim**, a corrida é gravada normalmente enquanto a app estiver no ecrã. Com o ecrã desligado ou noutra app, o Android pode deixar de enviar a sua localização: o tempo continua a contar e nada do que já foi gravado se perde, mas a distância percorrida entretanto não é contabilizada. Quando isso acontece, ao voltar surge uma mensagem que começa por **A gravação da localização foi pausada enquanto esteve fora**, com um botão **Definições**.',
 				},
 				{
 					type: 'note',
@@ -121,7 +121,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Lê a sua localização enquanto grava uma corrida e quando um mapa se centra em si, por exemplo ao criar um percurso ou ao colocar uma zona de privacidade. Não o segue entre corridas.',
+						'A app lê a sua localização enquanto grava uma corrida e quando um mapa se centra em si, por exemplo ao criar uma rota ou ao colocar uma zona de privacidade. Não o segue entre corridas.',
 						'No Android, surge uma notificação enquanto uma corrida está a ser gravada, se permitir notificações.',
 						'O traçado de uma corrida fica no seu telemóvel até ser sincronizado com a sua conta ou até o partilhar, e quem o pode ver segue as suas definições de privacidade: veja [[guide:your-data-and-privacy|os seus dados e a sua privacidade]].',
 						'Para esconder onde mora, configure [[guide:privacy-zones|zonas de privacidade]]. A sua posição em direto só é partilhada se ativar o [[guide:live-tracking-and-safety|seguimento em direto]].',

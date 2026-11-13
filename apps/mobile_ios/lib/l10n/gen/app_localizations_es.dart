@@ -366,7 +366,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Ida y vuelta sin pérdidas. Funciona sin iniciar sesión — las carreras restauradas se sincronizan con tu cuenta la próxima vez que lo hagas.';
+      'Copia y restauración sin pérdidas. Funciona sin iniciar sesión — las carreras restauradas se sincronizan con tu cuenta la próxima vez que lo hagas.';
 
   @override
   String get importBackupMakeOne => 'Crear una copia de seguridad';
@@ -6354,7 +6354,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String eventRsvpFailed(String error) {
-    return 'No se pudo actualizar tu confirmación: $error';
+    return 'No se pudo actualizar tu confirmación de asistencia: $error';
   }
 
   @override
@@ -7489,7 +7489,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailMissedLongTaper =>
-      'Te perdiste una tirada larga, pero estás en la puesta a punto — déjala y llega fresco al día de la carrera.';
+      'Te perdiste una tirada larga, pero estás en la puesta a punto: déjala pasar y llega fresco al día de la carrera.';
 
   @override
   String get planDetailMissedLongRecovery =>
@@ -13332,7 +13332,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'El registro con foto del plato necesita la información actualizada sobre IA.';
+      'El registro con foto del plato necesita el aviso de IA actualizado.';
 
   @override
   String get platePhotoErrorPro =>
@@ -18641,7 +18641,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runPhotosRaceGalleryPrivate =>
-      'Haz pública esta actividad para compartir sus fotos en la página de la prueba.';
+      'Haz pública esta carrera para compartir sus fotos en la página de la prueba.';
 
   @override
   String runPhotosRaceGalleryError(String error) {

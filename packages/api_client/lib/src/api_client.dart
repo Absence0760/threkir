@@ -2644,7 +2644,7 @@ class ApiClient {
 
   /// Cross-club activity discovery. Searches PUBLIC clubs' events across the
   /// typed-events model by category / discipline / cadence / weekday /
-  /// time-of-day / paid-or-free. Backs the Social Discover tab. Mirrors
+  /// time-of-day / paid-or-free. Backs the Social Events tab. Mirrors
   /// `searchPublicEvents` in `apps/web/src/lib/core/data.ts` + the
   /// `search_public_events` RPC (migrations 20270110_001 + 20270111_001).
   /// `security invoker` + scoped to `clubs.is_public = true`, so it works

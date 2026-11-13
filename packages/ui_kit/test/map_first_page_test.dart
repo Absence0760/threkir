@@ -181,6 +181,30 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('with semantics on, the sheet lays out without a semantics '
+      'assertion', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await _pump(
+      tester,
+      MapFirstPage(
+        appBar: AppBar(title: const Text('Map')),
+        map: _map,
+        controls: [_locate()],
+        sheet: MapFirstSheet(
+          slivers: [
+            SliverList.list(children: [
+              for (var i = 0; i < 5; i++) ListTile(title: Text('row $i')),
+            ]),
+          ],
+        ),
+      ),
+    );
+    await tester.drag(find.text('row 0'), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
   testWidgets('hosted, it draws no Scaffold and clears what the host covers',
       (tester) async {
     await _pump(

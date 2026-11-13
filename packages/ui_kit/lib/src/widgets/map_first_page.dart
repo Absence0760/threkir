@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/corner_radii.dart';
 import '../theme/spacing.dart';
 import 'sheet_scaffold.dart' show systemBottomInset;
 
@@ -264,7 +265,8 @@ class _MapFirstPageState extends State<MapFirstPage> {
           elevation: 3,
           shape: sheetTheme.shape ??
               const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                  borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(AppRadius.xl))),
           clipBehavior: Clip.antiAlias,
           child: NotificationListener<ScrollNotification>(
             onNotification: (n) => sheet.onScroll?.call(n) ?? false,
@@ -283,7 +285,8 @@ class _MapFirstPageState extends State<MapFirstPage> {
                           color: sheetTheme.dragHandleColor ??
                               theme.colorScheme.onSurfaceVariant
                                   .withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.pill),
                         ),
                       ),
                     ),

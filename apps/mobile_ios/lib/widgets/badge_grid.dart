@@ -76,7 +76,7 @@ IconData badgeIconData(String name) {
     case 'map':
       return Icons.map_outlined;
     case 'calendar_month':
-      return Icons.calendar_month_outlined;
+      return Icons.calendar_month;
     case 'event_repeat':
       return Icons.event_repeat;
     case 'event_available':

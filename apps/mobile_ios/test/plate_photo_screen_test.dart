@@ -12,6 +12,7 @@ import '../lib/local_food_store.dart';
 import '../lib/offline_sync_store.dart' show SyncState;
 import '../lib/plate_photo_client.dart';
 import '../lib/screens/plate_photo_screen.dart';
+import '../lib/settings_destination.dart';
 
 class _FakeStore extends LocalFoodStore {
   final saved = <Map<String, Object?>>[];
@@ -161,9 +162,11 @@ void main() {
     expect(store.saved, isEmpty);
   });
 
-  testWidgets('a consent refusal points at Settings → Account, not the Coach', (tester) async {
+  testWidgets('a consent refusal opens the Account page, not the Coach', (tester) async {
     // The Coach only asks a runner with no record, so a stale acceptance sent
-    // there finds nothing to accept; Settings → Account accepts from both.
+    // there finds nothing to accept; the Account page accepts from both.
+    pendingSettingsDestination.value = null;
+    addTearDown(() => pendingSettingsDestination.value = null);
     await _pump(
       tester,
       PlatePhotoForm(
@@ -179,8 +182,9 @@ void main() {
     await tester.pump();
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.platePhotoErrorConsent), findsOneWidget);
-    expect(l10n.platePhotoErrorConsent, contains('Settings → Account'));
     expect(l10n.platePhotoErrorConsent, isNot(contains('Coach')));
+    await tester.tap(find.byKey(const ValueKey('plate-photo-consent-link')));
+    expect(pendingSettingsDestination.value, SettingsDestination.account);
   });
 
   testWidgets('estimate stays disabled until a picture is chosen', (tester) async {

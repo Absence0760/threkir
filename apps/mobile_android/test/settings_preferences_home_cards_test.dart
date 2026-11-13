@@ -1,5 +1,5 @@
-// Settings → Preferences "Home cards" (#1187, decisions § 2386): where a trend
-// group hidden from Home comes back, through the universal
+// Units & display "Progress cards" (#1187, decisions § 2386, § 2492): where a
+// trend group hidden from the Progress page comes back, through the universal
 // `dashboard_hidden_cards` key. Web twin: the Home section of
 // `/settings/display`.
 
@@ -46,7 +46,7 @@ class _Sync extends SettingsSyncService {
   }
 }
 
-const _tileKey = Key('prefsHomeCards');
+const _tileKey = Key('prefsProgressCards');
 
 Future<_Sync> _open(WidgetTester tester, Map<String, dynamic> bag) async {
   final prefs = Preferences();
@@ -72,7 +72,7 @@ Future<_Sync> _open(WidgetTester tester, Map<String, dynamic> bag) async {
 }
 
 bool _checked(WidgetTester tester, String id) =>
-    tester.widget<CheckboxListTile>(find.byKey(Key('prefsHomeCard-$id'))).value ==
+    tester.widget<CheckboxListTile>(find.byKey(Key('prefsProgressCard-$id'))).value ==
     true;
 
 void main() {
@@ -88,7 +88,7 @@ void main() {
     expect(_checked(tester, 'recent'), isFalse);
     expect(_checked(tester, 'fitness'), isTrue);
 
-    await tester.tap(find.byKey(const Key('prefsHomeCard-volume')));
+    await tester.tap(find.byKey(const Key('prefsProgressCard-volume')));
     await tester.pumpAndSettle();
     expect(_checked(tester, 'volume'), isTrue);
     expect(sync.hiddenWrites.last, ['recent']);
@@ -98,7 +98,7 @@ void main() {
     final sync = await _open(tester, {
       kDashboardHiddenCardsKey: ['recent'],
     });
-    await tester.tap(find.byKey(const Key('prefsHomeCard-effort')));
+    await tester.tap(find.byKey(const Key('prefsProgressCard-effort')));
     await tester.pumpAndSettle();
     expect(sync.hiddenWrites.last, ['effort', 'recent']);
   });

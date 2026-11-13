@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../rate_limit_message.dart';
@@ -35,16 +36,23 @@ class StreamerOverlaySheet extends StatefulWidget {
   final String webBase;
   final DistanceUnit? unit;
 
+  /// Opens a URL in the browser; tests pass a fake.
+  final Future<bool> Function(Uri url) openUrl;
+
   const StreamerOverlaySheet({
     super.key,
     required this.controller,
     required this.webBase,
     this.unit,
+    this.openUrl = _launchExternal,
   });
 
   @override
   State<StreamerOverlaySheet> createState() => _StreamerOverlaySheetState();
 }
+
+Future<bool> _launchExternal(Uri url) =>
+    launchUrl(url, mode: LaunchMode.externalApplication);
 
 class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
   bool _loading = true;
@@ -76,6 +84,18 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _openWebSettings() async {
+    final l10n = AppLocalizations.of(context);
+    final url = streamerOverlayPrivacySettingsUrl(widget.webBase);
+    var ok = false;
+    try {
+      ok = await widget.openUrl(url);
+    } catch (e) {
+      debugPrint('streamer overlay: opening $url failed: $e');
+    }
+    if (!ok && mounted) _say(l10n.legalCouldNotOpen('$url'), error: true);
   }
 
   void _say(String text, {bool error = false}) {
@@ -307,6 +327,15 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
         ),
         const SizedBox(height: 12),
         Text(l10n.streamerOverlayMapHeartRateNote, style: muted),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            key: const ValueKey('streamer-overlay-web-settings'),
+            onPressed: _openWebSettings,
+            icon: const Icon(Icons.open_in_new),
+            label: Text(l10n.streamerOverlayOpenWebSettings),
+          ),
+        ),
       ];
     }
 

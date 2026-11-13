@@ -33,6 +33,7 @@ import '../metrics.dart';
 import '../preferences.dart';
 import '../run_intensity.dart';
 import '../run_stats.dart';
+import '../settings_destination.dart';
 import '../settings_sync.dart';
 import '../streak_card.dart';
 import '../streaks.dart';
@@ -287,8 +288,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
     }
   }
 
-  /// Hiding is honestly reversible (Settings brings a group back), so there
-  /// is no confirm; the banner says where the way back is. A refused write
+  /// Hiding is honestly reversible (Progress cards on the Units & display
+  /// page brings a group back), so there is no confirm; the banner's action
+  /// opens that page. A refused write
   /// puts the group back rather than leaving the page and the bag disagreeing.
   Future<void> _hideTrendGroup(String id, String title) async {
     final l10n = AppLocalizations.of(context);
@@ -299,7 +301,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
       await widget.settingsSync
           ?.updateUniversal({SettingsKeys.dashboardHiddenCards: next});
       if (!mounted) return;
-      showTopBanner(context, l10n.dashboardCardHidden(title));
+      showTopBanner(
+        context,
+        l10n.dashboardCardHidden(title),
+        actionLabel: l10n.dashboardCardHiddenAction,
+        onAction: () => openSettings(SettingsDestination.display),
+      );
     } catch (e) {
       debugPrint('progress: hiding $id not saved: $e');
       if (!mounted) return;
@@ -887,6 +894,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [fitnessCard, loadBlock],
                 ),
+              ),
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                key: const Key('dashboardDisclosureLevelLink'),
+                onPressed: () => openSettings(SettingsDestination.display),
+                child: Text(l10n.dashboardTrainingLoadSectionAction),
               ),
             ),
             loadRampCard,

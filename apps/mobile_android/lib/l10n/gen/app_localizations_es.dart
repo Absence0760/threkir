@@ -366,7 +366,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Ida y vuelta sin pérdidas. Funciona sin iniciar sesión — las carreras restauradas se sincronizan con tu cuenta la próxima vez que lo hagas. Crea una copia de seguridad desde Ajustes → Copia de seguridad completa.';
+      'Ida y vuelta sin pérdidas. Funciona sin iniciar sesión — las carreras restauradas se sincronizan con tu cuenta la próxima vez que lo hagas.';
+
+  @override
+  String get importBackupMakeOne => 'Crear una copia de seguridad';
 
   @override
   String get importBackupButton => 'Restaurar ZIP de copia de seguridad';
@@ -668,7 +671,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Activa «Mostrarme a corredores cercanos» y fija tu zona. Solo pueden encontrarte los corredores que hayan hecho lo mismo.';
 
   @override
-  String get peopleNearbyEmptyAction => 'Abrir Preferencias';
+  String get peopleNearbyEmptyAction => 'Abrir ajustes de privacidad';
 
   @override
   String get peopleNearbyLoadFailed =>
@@ -876,8 +879,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name está oculto. Puedes recuperarlo en Ajustes.';
+    return '$name está oculto en Progreso.';
   }
+
+  @override
+  String get dashboardCardHiddenAction => 'Gestionar tarjetas';
 
   @override
   String get dashboardHideCardFailed =>
@@ -1726,7 +1732,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'Una cuenta sincroniza tus carreras con la app web y tus otros dispositivos, y las recupera si pierdes este. Puedes correr sin ella: aquí todo funciona sin conexión, y puedes crearla más tarde desde Tú › Ajustes.';
+      'Una cuenta sincroniza tus carreras con la app web y tus otros dispositivos, y las recupera si pierdes este. Puedes correr sin ella: aquí todo funciona sin conexión, y puedes crearla más tarde desde Tú.';
 
   @override
   String get onboardingAccountCreate => 'Crear una cuenta gratis';
@@ -2880,7 +2886,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get historySignInToSync =>
-      'Inicia sesión desde Ajustes para sincronizar las carreras';
+      'Inicia sesión desde la pestaña Tú para sincronizar las carreras';
 
   @override
   String get historyRefreshFailed =>
@@ -3212,7 +3218,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Las zonas usan una FC máxima estimada por edad. Si tomas medicación cardíaca (p. ej. betabloqueantes) o si has medido tu FC máxima, configúrala en Preferencias para obtener zonas precisas.';
+      'Las zonas usan una FC máxima estimada por edad. Si tomas medicación cardíaca (p. ej. betabloqueantes) o si has medido tu FC máxima, configúrala para obtener zonas precisas.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Definir FC máx.';
@@ -5861,8 +5867,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get clubDetailNameHintAction =>
-      'Puedes añadir tu nombre en los ajustes de tu cuenta.';
+  String get clubDetailNameHintAction => 'Añade tu nombre a tu cuenta.';
 
   @override
   String get clubRoleOwner => 'Propietario';
@@ -10436,7 +10441,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Basado en volumen: configura la FC en reposo y máxima en preferencias y registra con una banda para pasar a TRIMP.';
+      'Basado en volumen: configura la FC en reposo y máxima y registra con una banda para pasar a TRIMP.';
+
+  @override
+  String get trainingLoadSetHeartRate => 'Definir frecuencia cardiaca';
 
   @override
   String get trainingLoadEmpty =>
@@ -11731,8 +11739,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Etiquetar el equipo usado en esta carrera';
 
   @override
-  String get runGearChipsEmpty =>
-      'Aún no has registrado ningún equipo. Añade alguno en Ajustes → Equipo.';
+  String get runGearChipsEmpty => 'Aún no has registrado ningún equipo.';
 
   @override
   String get runGearChipsCancel => 'Cancelar';
@@ -13209,7 +13216,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'El registro con foto del plato necesita la información actualizada sobre IA. Acéptala en Ajustes → Cuenta.';
+      'El registro con foto del plato necesita la información actualizada sobre IA.';
 
   @override
   String get platePhotoErrorPro =>
@@ -13364,10 +13371,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'La altura, el peso, la fecha de nacimiento y el sexo son datos de salud, así que se editan en Ajustes tras su consentimiento.';
+      'La altura, el peso, la fecha de nacimiento y el sexo son datos de salud, así que se editan tras su consentimiento.';
 
   @override
-  String get nutritionTargetsEditMetrics => 'Editar en Ajustes';
+  String get nutritionTargetsEditMetrics => 'Editar datos corporales';
 
   @override
   String get nutritionTargetsUnset => 'Sin definir';
@@ -20375,11 +20382,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prefsDisclosureLevel => 'Cuánto detalle';
 
   @override
-  String get prefsHomeCards => 'Tarjetas de Inicio';
+  String get prefsProgressCards => 'Tarjetas de Progreso';
 
   @override
-  String get prefsHomeCardsHint =>
-      'Desmarca un grupo para quitarlo de Inicio. La elección te sigue en todos tus dispositivos.';
+  String get prefsProgressCardsHint =>
+      'Desmarca un grupo para quitarlo de la página Progreso. La elección te sigue en todos tus dispositivos.';
 
   @override
   String get prefsDisclosureAuto => 'Automático';
@@ -20403,7 +20410,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras, o pide Todo en Ajustes → Preferencias.';
+      'Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras.';
+
+  @override
+  String get dashboardTrainingLoadSectionAction => 'Cambiar cuánto detalle';
 
   @override
   String recapCardKicker(String period) {
@@ -20635,7 +20645,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'Activa el trazado de la ruta y la frecuencia cardiaca en Ajustes → Privacidad y uso compartido en la web.';
+      'El trazado de la ruta y la frecuencia cardiaca se activan en tus ajustes de privacidad en la web.';
+
+  @override
+  String get streamerOverlayOpenWebSettings => 'Abrir en la web';
 
   @override
   String get liveSpectatorHeartRate => 'Frecuencia cardíaca';

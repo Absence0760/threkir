@@ -1032,7 +1032,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _putUniversal(disclosureLevelKey, picked == 'auto' ? null : picked);
   }
 
-  String _homeCardLabel(AppLocalizations l10n, String id) => switch (id) {
+  String _progressCardLabel(AppLocalizations l10n, String id) => switch (id) {
         'volume' => l10n.dashboardTrendGroupVolume,
         'fitness' => l10n.dashboardTrendGroupFitness,
         'performance' => l10n.dashboardTrendGroupPerformance,
@@ -1040,10 +1040,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
         _ => l10n.dashboardTrendGroupRecent,
       };
 
-  /// Where a trend group hidden from Home comes back, and where one can be
-  /// hidden too (`dashboard_hidden_cards`, decisions § 2386). Web twin: the
-  /// Home section of `/settings/display`.
-  Future<void> _editHomeCards() async {
+  /// Where a trend group hidden from the Progress page comes back, and where
+  /// one can be hidden too (`dashboard_hidden_cards`, decisions § 2386; the
+  /// groups moved from Home to Progress in § 2492). Web twin: the Home
+  /// section of `/settings/display`, since web keeps one dashboard.
+  Future<void> _editProgressCards() async {
     final l10n = AppLocalizations.of(context);
     var hidden =
         parseHiddenCards(_bagValue<Object>(SettingsKeys.dashboardHiddenCards));
@@ -1051,17 +1052,17 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       context: context,
       builder: (dialog) => StatefulBuilder(
         builder: (dialog, setDialogState) => AlertDialog(
-          title: Text(l10n.prefsHomeCards),
+          title: Text(l10n.prefsProgressCards),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(l10n.prefsHomeCardsHint),
+                Text(l10n.prefsProgressCardsHint),
                 for (final id in hideableDashboardCards)
                   CheckboxListTile(
-                    key: Key('prefsHomeCard-$id'),
+                    key: Key('prefsProgressCard-$id'),
                     contentPadding: EdgeInsets.zero,
-                    title: Text(_homeCardLabel(l10n, id)),
+                    title: Text(_progressCardLabel(l10n, id)),
                     value: !hidden.contains(id),
                     onChanged: (shown) {
                       hidden = withCardHidden(hidden, id, shown != true);
@@ -1672,11 +1673,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
             onTap: _editDisclosureLevel,
           ),
           ListRow.nav(
-            key: const Key('prefsHomeCards'),
-            title: l10n.prefsHomeCards,
-            subtitle: l10n.prefsHomeCardsHint,
+            key: const Key('prefsProgressCards'),
+            title: l10n.prefsProgressCards,
+            subtitle: l10n.prefsProgressCardsHint,
             enabled: _bagReady,
-            onTap: _editHomeCards,
+            onTap: _editProgressCards,
           ),
           ListRow.value(
             title: l10n.prefsMapStyle,
@@ -2439,7 +2440,7 @@ List<String> preferencesRowTitles(AppLocalizations l10n, PreferencesPage page) =
           l10n.prefsWeightUnit,
           l10n.prefsWeekStart,
           l10n.prefsDisclosureLevel,
-          l10n.prefsHomeCards,
+          l10n.prefsProgressCards,
           l10n.prefsMapStyle,
           l10n.prefsUndoWindow,
           l10n.prefsShowCalories,

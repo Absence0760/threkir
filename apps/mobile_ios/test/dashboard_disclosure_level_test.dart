@@ -21,6 +21,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/progress_screen.dart';
+import '../lib/settings_destination.dart';
 import '../lib/settings_sync.dart';
 import '../lib/widgets/training_load_chart.dart';
 import 'pump_until.dart';
@@ -164,6 +165,48 @@ void main() {
         reason: 'folded, never dropped');
   });
 
+  testWidgets('the fold links to the page where the level is set',
+      (tester) async {
+    // The hint used to recite "Settings → Preferences", a page that became
+    // five (decisions § 2494). The link opens the one that holds the level.
+    tall(tester);
+    pendingSettingsDestination.value = null;
+    addTearDown(() => pendingSettingsDestination.value = null);
+    final h = await _seed(tester, runs: 40);
+    addTearDown(() => h.dir.deleteSync(recursive: true));
+    await _pump(tester, h, {disclosureLevelKey: 'simple'});
+
+    final link = find.byKey(const Key('dashboardDisclosureLevelLink'));
+    expect(link, findsOneWidget);
+    await tester.ensureVisible(link);
+    await tester.tap(link);
+    expect(pendingSettingsDestination.value, SettingsDestination.display);
+  });
+
+  testWidgets('hiding a group offers the way back on its banner',
+      (tester) async {
+    // The banner used to say "bring it back in Settings"; Progress cards on
+    // the Units & display page is that way back, and the action opens it.
+    tall(tester);
+    pendingSettingsDestination.value = null;
+    addTearDown(() => pendingSettingsDestination.value = null);
+    final h = await _seed(tester, runs: 40);
+    addTearDown(() => h.dir.deleteSync(recursive: true));
+    await _pump(tester, h, {disclosureLevelKey: 'standard'});
+
+    await tester.longPress(find.text('Volume'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('disclosureSectionHide')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Volume is hidden from Progress.'), findsOneWidget);
+    await tester.tap(find.text('Manage cards'));
+    await tester.pump();
+    expect(pendingSettingsDestination.value, SettingsDestination.display);
+    await tester.pump(const Duration(seconds: 4));
+  });
+
   for (final level in ['standard', 'full']) {
     testWidgets('at $level the group is unchanged and nothing folds',
         (tester) async {
@@ -174,6 +217,8 @@ void main() {
 
       expect(_expander, findsNothing);
       expect(find.byType(TrainingLoadChart), findsOneWidget);
+      expect(find.byKey(const Key('dashboardDisclosureLevelLink')),
+          findsNothing);
     });
   }
 

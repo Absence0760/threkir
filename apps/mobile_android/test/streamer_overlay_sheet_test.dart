@@ -82,7 +82,8 @@ class _FakeApi implements ApiClient {
 const _existing = LiveOverlay(
     token: 'abc', delaySeconds: 60, showMap: true, showHeartRate: true);
 
-Future<void> _pump(WidgetTester tester, _FakeController c) async {
+Future<void> _pump(WidgetTester tester, _FakeController c,
+    {Future<bool> Function(Uri url)? openUrl}) async {
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -91,6 +92,7 @@ Future<void> _pump(WidgetTester tester, _FakeController c) async {
         controller: c,
         webBase: 'https://threkir.test/',
         unit: DistanceUnit.mi,
+        openUrl: openUrl ?? (_) async => true,
       ),
     ),
   ));
@@ -114,6 +116,34 @@ void main() {
     expect(isLiveOverlayDisabledError(Exception('live_overlay_disabled')),
         isTrue);
     expect(isLiveOverlayDisabledError(Exception('socket closed')), isFalse);
+  });
+
+  testWidgets('the trace and heart-rate note opens web privacy settings',
+      (tester) async {
+    // Those two switches exist only on web; the note used to recite a
+    // Settings path, and now a button opens the page itself.
+    final opened = <Uri>[];
+    await _pump(tester, _FakeController(overlay: _existing),
+        openUrl: (url) async {
+      opened.add(url);
+      return true;
+    });
+    final link = _key('streamer-overlay-web-settings');
+    await tester.ensureVisible(link);
+    await tester.tap(link);
+    await tester.pump();
+    expect(opened, [Uri.parse('https://threkir.test/settings/privacy')]);
+  });
+
+  testWidgets('a browser that cannot open the page says so', (tester) async {
+    await _pump(tester, _FakeController(overlay: _existing),
+        openUrl: (_) async => false);
+    final link = _key('streamer-overlay-web-settings');
+    await tester.ensureVisible(link);
+    await tester.tap(link);
+    await tester.pump();
+    expect(find.text('Could not open https://threkir.test/settings/privacy'),
+        findsOneWidget);
   });
 
   testWidgets('no overlay yet: Create makes one and shows its link',

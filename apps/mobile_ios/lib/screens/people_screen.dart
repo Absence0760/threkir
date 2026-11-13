@@ -428,7 +428,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
                 title: l10n.peopleNearbyEmptyTitle,
                 body: l10n.peopleNearbyEmptyBody,
                 // The opt-in and the area setter both live on the
-                // Preferences screen, which needs a Preferences and a
+                // Privacy & sharing page, which needs a Preferences and a
                 // SettingsSyncService this tab was never handed. Name the
                 // destination and let the shell open it (decisions § 710) —
                 // web's empty card links to the privacy page here.

@@ -1539,12 +1539,13 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ImportScreen(
+                      builder: (importContext) => ImportScreen(
                         apiClient: widget.apiClient,
                         runStore: widget.runStore!,
                         routeStore: widget.routeStore,
                         preferences: widget.preferences,
                         settingsSync: widget.settingsSync,
+                        onMakeBackup: () => Navigator.pop(importContext),
                       ),
                     ),
                   );

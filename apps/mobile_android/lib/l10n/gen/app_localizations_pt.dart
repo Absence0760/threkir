@@ -366,7 +366,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Ida e volta sem perdas. Funciona sem sessão iniciada — as corridas restauradas sincronizam com a sua conta na próxima vez que entrar. Faça um backup em Definições → Backup completo.';
+      'Ida e volta sem perdas. Funciona sem sessão iniciada — as corridas restauradas sincronizam com a sua conta na próxima vez que entrar.';
+
+  @override
+  String get importBackupMakeOne => 'Fazer um backup';
 
   @override
   String get importBackupButton => 'Restaurar ZIP de backup';
@@ -671,7 +674,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ative «Mostrar-me a corredores por perto» e defina a sua área. Só os corredores que fizeram o mesmo o podem encontrar.';
 
   @override
-  String get peopleNearbyEmptyAction => 'Abrir Preferências';
+  String get peopleNearbyEmptyAction => 'Abrir definições de privacidade';
 
   @override
   String get peopleNearbyLoadFailed =>
@@ -878,8 +881,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name está oculto. Pode voltar a mostrá-lo nas Definições.';
+    return '$name está oculto no Progresso.';
   }
+
+  @override
+  String get dashboardCardHiddenAction => 'Gerir cartões';
 
   @override
   String get dashboardHideCardFailed =>
@@ -1728,7 +1734,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'Uma conta sincroniza as suas corridas com a app web e os seus outros dispositivos, e recupera-as se perder este. Pode correr sem ela: aqui tudo funciona offline, e pode criar uma mais tarde em Tu › Definições.';
+      'Uma conta sincroniza as suas corridas com a app web e os seus outros dispositivos, e recupera-as se perder este. Pode correr sem ela: aqui tudo funciona offline, e pode criar uma mais tarde em Tu.';
 
   @override
   String get onboardingAccountCreate => 'Criar uma conta gratuita';
@@ -2879,7 +2885,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get historySignInToSync =>
-      'Entre nas definições para sincronizar as corridas';
+      'Inicie sessão no separador Tu para sincronizar as corridas';
 
   @override
   String get historyRefreshFailed =>
@@ -3209,7 +3215,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'As zonas utilizam uma FC máxima estimada pela idade. Se toma medicação cardíaca (ex.: betabloqueadores) ou já mediu a sua FC máxima, defina-a em Preferências para zonas precisas.';
+      'As zonas utilizam uma FC máxima estimada pela idade. Se toma medicação cardíaca (ex.: betabloqueadores) ou já mediu a sua FC máxima, defina-a para zonas precisas.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Definir FC máx.';
@@ -5867,8 +5873,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get clubDetailNameHintAction =>
-      'Pode adicionar o seu nome nas definições da conta.';
+  String get clubDetailNameHintAction => 'Adicione o seu nome à sua conta.';
 
   @override
   String get clubRoleOwner => 'Proprietário';
@@ -10442,7 +10447,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Baseado em volume — defina FC de repouso e máxima nas preferências e registe com uma cinta para mudar para TRIMP.';
+      'Baseado em volume — defina FC de repouso e máxima e registe com uma cinta para mudar para TRIMP.';
+
+  @override
+  String get trainingLoadSetHeartRate => 'Definir frequência cardíaca';
 
   @override
   String get trainingLoadEmpty =>
@@ -11736,8 +11744,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Marcar o equipamento utilizado nesta corrida';
 
   @override
-  String get runGearChipsEmpty =>
-      'Ainda não registou nenhum equipamento. Adicione em Definições → Equipamento.';
+  String get runGearChipsEmpty => 'Ainda não registou nenhum equipamento.';
 
   @override
   String get runGearChipsCancel => 'Cancelar';
@@ -13216,7 +13223,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registo por fotografia do prato precisa das informações atualizadas sobre IA. Aceite-as em Definições → Conta.';
+      'O registo por fotografia do prato precisa das informações atualizadas sobre IA.';
 
   @override
   String get platePhotoErrorPro =>
@@ -13371,10 +13378,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso são editados nas Definições atrás do consentimento.';
+      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso são editados atrás do consentimento.';
 
   @override
-  String get nutritionTargetsEditMetrics => 'Editar nas Definições';
+  String get nutritionTargetsEditMetrics => 'Editar dados corporais';
 
   @override
   String get nutritionTargetsUnset => 'Não indicado';
@@ -20380,11 +20387,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prefsDisclosureLevel => 'Quanto detalhe';
 
   @override
-  String get prefsHomeCards => 'Cartões do Início';
+  String get prefsProgressCards => 'Cartões do Progresso';
 
   @override
-  String get prefsHomeCardsHint =>
-      'Desmarque um grupo para o retirar do Início. A escolha aplica-se a todos os seus dispositivos.';
+  String get prefsProgressCardsHint =>
+      'Desmarque um grupo para o retirar da página Progresso. A escolha aplica-se a todos os seus dispositivos.';
 
   @override
   String get prefsDisclosureAuto => 'Automático';
@@ -20408,7 +20415,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser, ou peça Tudo em Definições → Preferências.';
+      'Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser.';
+
+  @override
+  String get dashboardTrainingLoadSectionAction => 'Mudar quanto detalhe';
 
   @override
   String recapCardKicker(String period) {
@@ -20641,7 +20651,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'Ative o traçado do percurso e a frequência cardíaca em Definições → Privacidade e partilha na web.';
+      'O traçado do percurso e a frequência cardíaca ativam-se nas suas definições de privacidade na web.';
+
+  @override
+  String get streamerOverlayOpenWebSettings => 'Abrir na web';
 
   @override
   String get liveSpectatorHeartRate => 'Frequência cardíaca';
@@ -22964,7 +22977,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importBackupCardDescription =>
-      'Ida e volta sem perdas. Funciona sem login — as corridas restauradas sincronizam com sua conta na próxima vez que você entrar. Faça um backup em Configurações → Backup completo.';
+      'Ida e volta sem perdas. Funciona sem login — as corridas restauradas sincronizam com sua conta na próxima vez que você entrar.';
+
+  @override
+  String get importBackupMakeOne => 'Fazer um backup';
 
   @override
   String get importBackupButton => 'Restaurar ZIP de backup';
@@ -23269,7 +23285,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Ative “Mostrar meu perfil a corredores por perto” e defina sua área. Só os corredores que fizeram o mesmo podem te encontrar.';
 
   @override
-  String get peopleNearbyEmptyAction => 'Abrir Preferências';
+  String get peopleNearbyEmptyAction => 'Abrir configurações de privacidade';
 
   @override
   String get peopleNearbyLoadFailed =>
@@ -23478,8 +23494,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name está oculto. Você pode trazê-lo de volta nas Configurações.';
+    return '$name está oculto no Progresso.';
   }
+
+  @override
+  String get dashboardCardHiddenAction => 'Gerenciar cartões';
 
   @override
   String get dashboardHideCardFailed =>
@@ -24328,7 +24347,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get onboardingAccountBody =>
-      'Uma conta sincroniza suas corridas com o app web e seus outros dispositivos, e recupera tudo se você perder este. Você pode correr sem ela: aqui tudo funciona offline, e você pode criar uma mais tarde em Você › Configurações.';
+      'Uma conta sincroniza suas corridas com o app web e seus outros dispositivos, e recupera tudo se você perder este. Você pode correr sem ela: aqui tudo funciona offline, e você pode criar uma mais tarde em Você.';
 
   @override
   String get onboardingAccountCreate => 'Criar uma conta gratuita';
@@ -25480,7 +25499,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get historySignInToSync =>
-      'Entre nas configurações para sincronizar as corridas';
+      'Entre pela aba Você para sincronizar as corridas';
 
   @override
   String get historyRefreshFailed =>
@@ -25810,7 +25829,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailHrDisclaimer =>
-      'As zonas usam uma FC máxima estimada pela idade. Se você toma medicação cardíaca (ex.: betabloqueadores) ou já mediu sua FC máxima, defina-a em Preferências para zonas precisas.';
+      'As zonas usam uma FC máxima estimada pela idade. Se você toma medicação cardíaca (ex.: betabloqueadores) ou já mediu sua FC máxima, defina-a para zonas precisas.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Definir FC máx.';
@@ -28466,8 +28485,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get clubDetailNameHintAction =>
-      'Você pode adicionar seu nome nas configurações da conta.';
+  String get clubDetailNameHintAction => 'Adicione seu nome à sua conta.';
 
   @override
   String get clubRoleOwner => 'Proprietário';
@@ -33032,7 +33050,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Baseado em volume — defina FC de repouso e máxima nas preferências e registre com uma cinta para mudar para TRIMP.';
+      'Baseado em volume — defina FC de repouso e máxima e registre com uma cinta para mudar para TRIMP.';
+
+  @override
+  String get trainingLoadSetHeartRate => 'Definir frequência cardíaca';
 
   @override
   String get trainingLoadEmpty =>
@@ -34327,7 +34348,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runGearChipsEmpty =>
-      'Você ainda não registrou nenhum equipamento. Adicione em Configurações → Equipamento.';
+      'Você ainda não registrou nenhum equipamento.';
 
   @override
   String get runGearChipsCancel => 'Cancelar';
@@ -35807,7 +35828,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get platePhotoErrorConsent =>
-      'O registro por foto do prato precisa das informações atualizadas sobre IA. Aceite-as em Configurações → Conta.';
+      'O registro por foto do prato precisa das informações atualizadas sobre IA.';
 
   @override
   String get platePhotoErrorPro =>
@@ -35962,10 +35983,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso são editados nas Configurações atrás do consentimento.';
+      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso são editados atrás do consentimento.';
 
   @override
-  String get nutritionTargetsEditMetrics => 'Editar nas Configurações';
+  String get nutritionTargetsEditMetrics => 'Editar dados corporais';
 
   @override
   String get nutritionTargetsUnset => 'Não informado';
@@ -42962,11 +42983,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get prefsDisclosureLevel => 'Quanto detalhe';
 
   @override
-  String get prefsHomeCards => 'Cartões do Início';
+  String get prefsProgressCards => 'Cartões do Progresso';
 
   @override
-  String get prefsHomeCardsHint =>
-      'Desmarque um grupo para tirá-lo do Início. A escolha vale em todos os seus dispositivos.';
+  String get prefsProgressCardsHint =>
+      'Desmarque um grupo para tirá-lo da página Progresso. A escolha vale em todos os seus dispositivos.';
 
   @override
   String get prefsDisclosureAuto => 'Automático';
@@ -42990,7 +43011,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser, ou peça Tudo em Configurações → Preferências.';
+      'Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser.';
+
+  @override
+  String get dashboardTrainingLoadSectionAction => 'Mudar quanto detalhe';
 
   @override
   String recapCardKicker(String period) {
@@ -43222,7 +43246,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'Ative o traçado do percurso e a frequência cardíaca em Configurações → Privacidade e compartilhamento na web.';
+      'O traçado do percurso e a frequência cardíaca são ativados nas suas configurações de privacidade na web.';
+
+  @override
+  String get streamerOverlayOpenWebSettings => 'Abrir na web';
 
   @override
   String get liveSpectatorHeartRate => 'Frequência cardíaca';

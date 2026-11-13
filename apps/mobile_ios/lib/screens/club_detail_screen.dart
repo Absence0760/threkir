@@ -23,6 +23,7 @@ import '../local_routine_store.dart';
 import '../plan_overlap.dart';
 import '../preferences.dart';
 import '../runner_handle.dart';
+import '../settings_destination.dart';
 import '../social_service.dart';
 import '../training.dart' show toIsoDate;
 import '../training_service.dart';
@@ -1287,6 +1288,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                 title: Text(l10n.clubDetailNameHint(_shownName(
                     l10n, null, widget.social.currentUserId ?? ''))),
                 subtitle: Text(l10n.clubDetailNameHintAction),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => openSettings(SettingsDestination.account),
               ),
             ),
             const SizedBox(height: 12),

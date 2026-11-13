@@ -18,6 +18,7 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../preferences.dart';
 import '../restore_warning.dart';
+import '../settings_destination.dart';
 import '../settings_sync.dart';
 import '../strava_importer.dart';
 import '../widgets/import_failure_report.dart';
@@ -85,6 +86,10 @@ class ImportScreen extends StatefulWidget {
     List<String>? allowedExtensions,
   })? pickFilesFn;
 
+  /// Where "Make a backup" goes. Null opens the Account page, where Full
+  /// backup is; the Account page itself passes a pop back to that row.
+  final VoidCallback? onMakeBackup;
+
   const ImportScreen({
     super.key,
     this.apiClient,
@@ -97,6 +102,7 @@ class ImportScreen extends StatefulWidget {
     this.requestHealthRoutePermissionFn,
     this.fetchHealthRoutesFn,
     this.pickFilesFn,
+    this.onMakeBackup,
   });
 
   @override
@@ -858,6 +864,15 @@ class _ImportScreenState extends State<ImportScreen> {
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       height: 1.5,
+                    ),
+                  ),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(
+                      key: const Key('importBackupMakeOne'),
+                      onPressed: widget.onMakeBackup ??
+                          () => openSettings(SettingsDestination.account),
+                      child: Text(l10n.importBackupMakeOne),
                     ),
                   ),
                   const SizedBox(height: 16),

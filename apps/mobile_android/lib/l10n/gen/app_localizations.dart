@@ -650,8 +650,14 @@ abstract class AppLocalizations {
   /// Body copy explaining the full-backup restore behaviour
   ///
   /// In en, this message translates to:
-  /// **'Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do. Make a backup from Settings → Full backup.'**
+  /// **'Loss-less round-trip. Works without signing in — restored runs sync to your account the next time you do.'**
   String get importBackupCardDescription;
+
+  /// Link on the Restore backup card; opens the Account page, where Full backup makes one
+  ///
+  /// In en, this message translates to:
+  /// **'Make a backup'**
+  String get importBackupMakeOne;
 
   /// Button to pick and restore a full-backup ZIP
   ///
@@ -1043,10 +1049,10 @@ abstract class AppLocalizations {
   /// **'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.'**
   String get peopleNearbyEmptyBody;
 
-  /// Button on the runners-nearby empty state that opens the Preferences settings screen
+  /// Button on the runners-nearby empty state that opens the Privacy & sharing preferences page
   ///
   /// In en, this message translates to:
-  /// **'Open Preferences'**
+  /// **'Open privacy settings'**
   String get peopleNearbyEmptyAction;
 
   /// Error-state message when the runners-nearby list fails to load
@@ -1409,7 +1415,7 @@ abstract class AppLocalizations {
   /// **'Readiness {score}'**
   String dashboardHeroReadiness(int score);
 
-  /// Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Settings brings it back
+  /// Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Progress cards on the Units & display page brings it back
   ///
   /// In en, this message translates to:
   /// **'Hide from Progress'**
@@ -1418,8 +1424,14 @@ abstract class AppLocalizations {
   /// Banner after hiding a Home trend group; {name} is the group title
   ///
   /// In en, this message translates to:
-  /// **'{name} is hidden. You can bring it back in Settings.'**
+  /// **'{name} is hidden from Progress.'**
   String dashboardCardHidden(String name);
+
+  /// Action on the banner after hiding a trend group on Progress; opens the Units & display page, where Progress cards brings a group back
+  ///
+  /// In en, this message translates to:
+  /// **'Manage cards'**
+  String get dashboardCardHiddenAction;
 
   /// Banner when hiding a Home trend group could not be saved
   ///
@@ -2888,7 +2900,7 @@ abstract class AppLocalizations {
   /// Body of the onboarding account page — what an account buys and that the app works without one
   ///
   /// In en, this message translates to:
-  /// **'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You › Settings.'**
+  /// **'An account syncs your runs to the web app and your other devices, and gets them back if you lose this one. You can run without it — everything here works offline — and create one later from You.'**
   String get onboardingAccountBody;
 
   /// Primary action on the onboarding account page — opens sign-up
@@ -4820,7 +4832,7 @@ abstract class AppLocalizations {
   /// Banner shown when tapping sync while signed out
   ///
   /// In en, this message translates to:
-  /// **'Sign in from Settings to sync runs'**
+  /// **'Sign in on the You tab to sync runs'**
   String get historySignInToSync;
 
   /// Banner shown when a cloud refresh of the runs list fails
@@ -5372,10 +5384,10 @@ abstract class AppLocalizations {
   /// Info note under the run-detail HR-zone breakdown when zones fall back to an age-estimated max HR (no hr_zones or max_hr_bpm override set)
   ///
   /// In en, this message translates to:
-  /// **'Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you\'ve measured your max HR, set it in Preferences for accurate zones.'**
+  /// **'Zones use an age-estimated max HR. On heart-rate medication (e.g. beta-blockers) or if you\'ve measured your max HR, set it for accurate zones.'**
   String get runDetailHrDisclaimer;
 
-  /// Button under the HR-zone disclaimer that opens Settings to set max HR / zones
+  /// Button under the HR-zone disclaimer that opens the Training preferences page to set max HR / zones
   ///
   /// In en, this message translates to:
   /// **'Set max HR'**
@@ -9466,10 +9478,10 @@ abstract class AppLocalizations {
   /// **'Club members see you as {handle}.'**
   String clubDetailNameHint(String handle);
 
-  /// Second line of the club name hint, pointing at Settings > Account; web clubHome.nameHintAction
+  /// Second line of the club name hint; tapping the hint opens the Account page; web clubHome.nameHintAction
   ///
   /// In en, this message translates to:
-  /// **'You can add your name in your account settings.'**
+  /// **'Add your name to your account.'**
   String get clubDetailNameHintAction;
 
   /// Club role label (club_members.role owner); web clubRole.owner
@@ -16686,8 +16698,14 @@ abstract class AppLocalizations {
   /// Training-load subtitle when only volume-based load is available
   ///
   /// In en, this message translates to:
-  /// **'Volume-based — set resting + max HR in preferences and record with a strap to upgrade to TRIMP.'**
+  /// **'Volume-based — set resting + max HR and record with a strap to upgrade to TRIMP.'**
   String get trainingLoadSubtitleVolume;
+
+  /// Link under the volume-based training load subtitle; opens the Training preferences page, where resting and max HR are set
+  ///
+  /// In en, this message translates to:
+  /// **'Set heart rate'**
+  String get trainingLoadSetHeartRate;
 
   /// Empty-state text for the training-load chart
   ///
@@ -18960,7 +18978,7 @@ abstract class AppLocalizations {
   /// Empty state in the gear picker
   ///
   /// In en, this message translates to:
-  /// **'You haven\'t registered any gear yet. Add some in Settings → Gear.'**
+  /// **'You haven\'t registered any gear yet.'**
   String get runGearChipsEmpty;
 
   /// Cancel button in the gear picker
@@ -21390,7 +21408,7 @@ abstract class AppLocalizations {
   /// The endpoint refused for want of AI disclosure v5
   ///
   /// In en, this message translates to:
-  /// **'The plate-photo logger needs the updated AI disclosure. Accept it in Settings → Account.'**
+  /// **'The plate-photo logger needs the updated AI disclosure.'**
   String get platePhotoErrorConsent;
 
   /// The endpoint refused because the runner is not Pro
@@ -21549,7 +21567,7 @@ abstract class AppLocalizations {
   /// **'Add your height, weight, age and sex to see calorie + macro targets.'**
   String get nutritionNoTargets;
 
-  /// CTA on the nutrition rings card that opens Settings > Body metrics
+  /// CTA on the nutrition rings card that opens the Body metrics page
   ///
   /// In en, this message translates to:
   /// **'Add body metrics'**
@@ -21651,16 +21669,16 @@ abstract class AppLocalizations {
   /// **'Body metrics'**
   String get nutritionTargetsMetricsHeading;
 
-  /// Hint explaining that body metrics are health data edited in Settings behind the consent gate
+  /// Hint explaining that body metrics are health data edited behind the consent gate; the Edit body metrics button beside the heading opens them
   ///
   /// In en, this message translates to:
-  /// **'Height, weight, date of birth and sex are health data, so they\'re edited in Settings behind their consent gate.'**
+  /// **'Height, weight, date of birth and sex are health data, so they\'re edited behind their consent gate.'**
   String get nutritionTargetsMetricsHint;
 
-  /// Action opening the consent-gated body-metrics editor in Settings
+  /// Action opening the consent-gated Body metrics page
   ///
   /// In en, this message translates to:
-  /// **'Edit in Settings'**
+  /// **'Edit body metrics'**
   String get nutritionTargetsEditMetrics;
 
   /// Placeholder for a body metric the user has not provided
@@ -32855,7 +32873,7 @@ abstract class AppLocalizations {
   /// **'Plans give runners aged 50 and over more recovery automatically.'**
   String get planNewDobHintAbsent;
 
-  /// Button opening Settings → Preferences, where the date of birth is edited.
+  /// Button opening the Training preferences page, where the date of birth is edited.
   ///
   /// In en, this message translates to:
   /// **'Add your date of birth'**
@@ -32867,7 +32885,7 @@ abstract class AppLocalizations {
   /// **'Plans can only use your date of birth to adjust for age with your consent to health-data use.'**
   String get planNewDobHintHealthData;
 
-  /// Button opening Settings → Body metrics, where health-data consent is reviewed.
+  /// Button opening the Body metrics page, where health-data consent is reviewed.
   ///
   /// In en, this message translates to:
   /// **'Review consent'**
@@ -32963,17 +32981,17 @@ abstract class AppLocalizations {
   /// **'How much detail'**
   String get prefsDisclosureLevel;
 
-  /// Settings row and sheet title listing the Home trend groups to show or hide
+  /// Units & display row and dialog title listing the Progress page's trend groups to show or hide
   ///
   /// In en, this message translates to:
-  /// **'Home cards'**
-  String get prefsHomeCards;
+  /// **'Progress cards'**
+  String get prefsProgressCards;
 
-  /// Explanation under the Home cards setting
+  /// Explanation under the Progress cards setting
   ///
   /// In en, this message translates to:
-  /// **'Untick a group to take it off Home. The choice follows you to every device.'**
-  String get prefsHomeCardsHint;
+  /// **'Untick a group to take it off the Progress page. The choice follows you to every device.'**
+  String get prefsProgressCardsHint;
 
   /// Disclosure-level option: no stored level, derived from the onboarding goal and run count
   ///
@@ -33011,11 +33029,17 @@ abstract class AppLocalizations {
   /// **'Training load'**
   String get dashboardTrainingLoadSection;
 
-  /// One-line explanation under the Training load expander title on Home; names where the level is changed
+  /// One-line explanation under the Training load expander title on Progress; the link below it opens the page where the level is changed
   ///
   /// In en, this message translates to:
-  /// **'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.'**
+  /// **'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it.'**
   String get dashboardTrainingLoadSectionHint;
+
+  /// Link under the folded Training load section on Progress; opens the Units & display page where the How much detail level is set
+  ///
+  /// In en, this message translates to:
+  /// **'Change how much detail'**
+  String get dashboardTrainingLoadSectionAction;
 
   /// Letter-spaced kicker on the recap share image, printed in capitals; period is a year or a month and year
   ///
@@ -33389,11 +33413,17 @@ abstract class AppLocalizations {
   /// **'The streamer overlay isn\'t available right now.'**
   String get streamerOverlayUnavailable;
 
-  /// Note naming the web settings page where the route trace and heart rate are turned on
+  /// Note that the route trace and heart rate are set on the web; the button below it opens that page
   ///
   /// In en, this message translates to:
-  /// **'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.'**
+  /// **'The route trace and heart rate are turned on in your privacy settings on the web.'**
   String get streamerOverlayMapHeartRateNote;
+
+  /// Button under the route-trace and heart-rate note; opens the web app's Privacy & sharing settings page in the browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open on the web'**
+  String get streamerOverlayOpenWebSettings;
 
   /// Live spectator stat label for the runner's current heart rate
   ///

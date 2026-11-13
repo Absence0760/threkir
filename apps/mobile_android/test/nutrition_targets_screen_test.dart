@@ -272,7 +272,7 @@ void main() {
         settingsSync: null,
       )));
       await _settle(tester);
-      await _scrollTo(tester, find.text('Edit in Settings'));
+      await _scrollTo(tester, find.text('Edit body metrics'));
 
       expect(find.text('175 cm'), findsOneWidget);
       expect(find.text('70.0 kg'), findsOneWidget);
@@ -280,7 +280,7 @@ void main() {
       expect(find.text('Male'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
 
-      await tester.tap(find.text('Edit in Settings'));
+      await tester.tap(find.text('Edit body metrics'));
       await tester.pumpAndSettle();
       expect(find.byType(SettingsBodyMetricsScreen), findsOneWidget);
     });

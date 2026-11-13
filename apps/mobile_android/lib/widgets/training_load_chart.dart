@@ -7,6 +7,7 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../metrics.dart';
+import '../settings_destination.dart';
 import '../training_load.dart';
 import 'metric_label.dart';
 
@@ -64,6 +65,12 @@ class TrainingLoadChart extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (!hasHr)
+              TextButton(
+                key: const Key('trainingLoadSetHeartRate'),
+                onPressed: () => openSettings(SettingsDestination.training),
+                child: Text(l10n.trainingLoadSetHeartRate),
+              ),
             if (lowConfidence) ...[
               const SizedBox(height: 4),
               Text(

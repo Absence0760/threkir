@@ -366,7 +366,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Verlustfreier Roundtrip. Funktioniert ohne Anmeldung — wiederhergestellte Läufe werden beim nächsten Anmelden mit deinem Konto synchronisiert. Erstelle ein Backup unter Einstellungen → Vollständiges Backup.';
+      'Verlustfreier Roundtrip. Funktioniert ohne Anmeldung — wiederhergestellte Läufe werden beim nächsten Anmelden mit deinem Konto synchronisiert.';
+
+  @override
+  String get importBackupMakeOne => 'Backup erstellen';
 
   @override
   String get importBackupButton => 'Backup-ZIP wiederherstellen';
@@ -670,7 +673,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aktiviere „Mich Läufern in der Nähe zeigen“ und setze dein Gebiet. Nur Läufer, die dasselbe getan haben, können dich finden.';
 
   @override
-  String get peopleNearbyEmptyAction => 'Voreinstellungen öffnen';
+  String get peopleNearbyEmptyAction => 'Datenschutzeinstellungen öffnen';
 
   @override
   String get peopleNearbyLoadFailed =>
@@ -880,8 +883,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name ist ausgeblendet. In den Einstellungen kannst du es wieder einblenden.';
+    return '$name ist unter Fortschritt ausgeblendet.';
   }
+
+  @override
+  String get dashboardCardHiddenAction => 'Karten verwalten';
 
   @override
   String get dashboardHideCardFailed =>
@@ -1731,7 +1737,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'Ein Konto synchronisiert deine Läufe mit der Web-App und deinen anderen Geräten – und holt sie zurück, falls du dieses hier verlierst. Du kannst auch ohne Konto laufen: Hier funktioniert alles offline, und du kannst später unter „Du“ › Einstellungen eines anlegen.';
+      'Ein Konto synchronisiert deine Läufe mit der Web-App und deinen anderen Geräten – und holt sie zurück, falls du dieses hier verlierst. Du kannst auch ohne Konto laufen: Hier funktioniert alles offline, und du kannst später unter „Du“ eines anlegen.';
 
   @override
   String get onboardingAccountCreate => 'Kostenloses Konto erstellen';
@@ -2884,7 +2890,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get historySignInToSync =>
-      'Melde dich in den Einstellungen an, um Läufe zu synchronisieren';
+      'Melde dich im Tab „Du“ an, um Läufe zu synchronisieren';
 
   @override
   String get historyRefreshFailed =>
@@ -3216,7 +3222,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Die Zonen verwenden eine altersgeschätzte maximale HF. Wenn du Herzfrequenzmedikamente nimmst (z. B. Betablocker) oder deine maximale HF gemessen hast, lege sie in den Präferenzen fest, um genaue Zonen zu erhalten.';
+      'Die Zonen verwenden eine altersgeschätzte maximale HF. Wenn du Herzfrequenzmedikamente nimmst (z. B. Betablocker) oder deine maximale HF gemessen hast, lege sie fest, um genaue Zonen zu erhalten.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Max. HF festlegen';
@@ -5884,7 +5890,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get clubDetailNameHintAction =>
-      'Du kannst deinen Namen in deinen Kontoeinstellungen hinzufügen.';
+      'Füge deinem Konto deinen Namen hinzu.';
 
   @override
   String get clubRoleOwner => 'Inhaber';
@@ -10456,7 +10462,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Volumenbasiert — lege Ruhe- und Maximalpuls in den Einstellungen fest und zeichne mit einem Gurt auf, um auf TRIMP zu wechseln.';
+      'Volumenbasiert — lege Ruhe- und Maximalpuls fest und zeichne mit einem Gurt auf, um auf TRIMP zu wechseln.';
+
+  @override
+  String get trainingLoadSetHeartRate => 'Herzfrequenz festlegen';
 
   @override
   String get trainingLoadEmpty =>
@@ -11748,8 +11757,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Bei diesem Lauf verwendete Ausrüstung markieren';
 
   @override
-  String get runGearChipsEmpty =>
-      'Du hast noch keine Ausrüstung registriert. Füge welche unter Einstellungen → Ausrüstung hinzu.';
+  String get runGearChipsEmpty => 'Du hast noch keine Ausrüstung registriert.';
 
   @override
   String get runGearChipsCancel => 'Abbrechen';
@@ -13230,7 +13238,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise. Akzeptiere sie unter Einstellungen → Konto.';
+      'Die Mahlzeiten-Fotoerfassung benötigt die aktualisierten KI-Hinweise.';
 
   @override
   String get platePhotoErrorPro =>
@@ -13385,10 +13393,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Größe, Gewicht, Geburtsdatum und Geschlecht sind Gesundheitsdaten und werden daher in den Einstellungen hinter der Einwilligung bearbeitet.';
+      'Größe, Gewicht, Geburtsdatum und Geschlecht sind Gesundheitsdaten und werden daher hinter der Einwilligung bearbeitet.';
 
   @override
-  String get nutritionTargetsEditMetrics => 'In Einstellungen bearbeiten';
+  String get nutritionTargetsEditMetrics => 'Körperdaten bearbeiten';
 
   @override
   String get nutritionTargetsUnset => 'Nicht angegeben';
@@ -20400,11 +20408,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get prefsDisclosureLevel => 'Wie viele Details';
 
   @override
-  String get prefsHomeCards => 'Karten auf der Startseite';
+  String get prefsProgressCards => 'Karten unter Fortschritt';
 
   @override
-  String get prefsHomeCardsHint =>
-      'Entferne den Haken bei einer Gruppe, um sie von der Startseite zu nehmen. Die Auswahl gilt auf all deinen Geräten.';
+  String get prefsProgressCardsHint =>
+      'Entferne den Haken bei einer Gruppe, um sie von der Seite Fortschritt zu nehmen. Die Auswahl gilt auf all deinen Geräten.';
 
   @override
   String get prefsDisclosureAuto => 'Automatisch';
@@ -20428,7 +20436,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“.';
+      'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit.';
+
+  @override
+  String get dashboardTrainingLoadSectionAction => 'Detailgrad ändern';
 
   @override
   String recapCardKicker(String period) {
@@ -20661,7 +20672,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'Schalte die Streckenspur und die Herzfrequenz im Web unter Einstellungen → Datenschutz & Teilen ein.';
+      'Streckenspur und Herzfrequenz schaltest du im Web in deinen Datenschutzeinstellungen ein.';
+
+  @override
+  String get streamerOverlayOpenWebSettings => 'Im Web öffnen';
 
   @override
   String get liveSpectatorHeartRate => 'Herzfrequenz';

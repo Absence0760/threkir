@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/settings_destination.dart';
 import '../lib/widgets/run_gear_chips.dart';
 
 class _FakeApiClient extends ApiClient {
@@ -17,6 +18,10 @@ class _FakeApiClient extends ApiClient {
 
   @override
   Future<List<GearRow>> fetchRunGear(String runId) async => gear;
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchMyGearWithDistance() async =>
+      const [];
 }
 
 /// The assigned-gear read fails until [failures] is exhausted. Before the
@@ -149,6 +154,24 @@ void main() {
         (tester) async {
       await _pump(tester, _FakeApiClient(viewerId: 'owner-1'));
       expect(find.text('+ Tag gear'), findsOneWidget);
+    });
+
+    testWidgets('an empty inventory links to the Gear page', (tester) async {
+      // The picker used to say "Add some in Settings → Gear", a path the
+      // You hub no longer has (decisions § 2494); the button opens the page.
+      pendingSettingsDestination.value = null;
+      addTearDown(() => pendingSettingsDestination.value = null);
+      await _pump(tester, _FakeApiClient(viewerId: 'owner-1'));
+      await tester.tap(find.text('+ Tag gear'));
+      await tester.pumpAndSettle();
+
+      expect(find.text("You haven't registered any gear yet."), findsOneWidget);
+      await tester.tap(find.byKey(const Key('runGearChipsAddGear')));
+      await tester.pumpAndSettle();
+
+      expect(pendingSettingsDestination.value, SettingsDestination.gear);
+      expect(find.byKey(const Key('runGearChipsAddGear')), findsNothing,
+          reason: 'the sheet closes so Back from Gear lands on the run');
     });
   });
 

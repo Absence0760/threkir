@@ -550,7 +550,8 @@ user logs**, not a fixed grid. The ordering algorithm:
 > [decisions § 2386](../architecture/decisions.md)):** each trend group can
 > be taken off Home — web's group headings carry a Hide button, mobile's
 > answer a long-press (and a screen-reader action) — and comes back from web
-> `/settings/display` → Home or mobile You → Units & display → Home cards.
+> `/settings/display` → Home or mobile You → Units & display → Progress cards
+> (mobile's groups sit on the Progress page since decisions § 2492).
 > The list is the universal `dashboard_hidden_cards` key
 > ([settings.md](../backend/settings.md)), universal where the folds are per
 > device. Drag-to-reorder is deferred. `test/settings_preferences_home_cards_test.dart`.

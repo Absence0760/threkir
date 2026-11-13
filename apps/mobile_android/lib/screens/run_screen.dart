@@ -108,16 +108,12 @@ import '../widgets/streamer_overlay_sheet.dart';
 import '../widgets/loaded_workout_card.dart';
 import '../widgets/race_stop_sheet.dart';
 import '../widgets/safety_nudge_banner.dart';
-import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/track_preview.dart' show projectTrack;
-import '../widgets/upcoming_event_card.dart';
 import '../widgets/workout_execution_band.dart';
 import 'help_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plans_screen.dart';
-import 'run_detail_screen.dart';
-import 'workout_detail_screen.dart';
 
 /// Whether the recording view should darken the live map to save battery
 /// (issue #271). Only while actually recording (not during the countdown,
@@ -145,6 +141,16 @@ final ValueNotifier<bool> runRecordingActive = ValueNotifier<bool>(false);
 /// start surface, so the shell does not count a runner looking at their last
 /// run as already on the start screen ([RunSummaryDismissRequests]).
 final ValueNotifier<bool> runSummaryShowing = ValueNotifier<bool>(false);
+
+/// Whether the Run page shows its start screen, so the shell's docked centre
+/// button can be the recorder's Start there ([RunStartRequests]). True by
+/// default and on tear-down: a recorder is built idle, and a tap the recorder
+/// cannot honour is dropped by it rather than starting anything.
+final ValueNotifier<bool> runIdleShowing = ValueNotifier<bool>(true);
+
+/// Whether the recorder is counting down to a start, so the docked centre
+/// button cancels it rather than offering a second Start.
+final ValueNotifier<bool> runCountdownShowing = ValueNotifier<bool>(false);
 
 /// How far the live pace may sit from the target before the pace cue speaks.
 /// Held against both watches by `scripts/check_shared_constants.mjs`
@@ -280,6 +286,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _state = next;
     runRecordingActive.value = next == _ScreenState.recording;
     runSummaryShowing.value = next == _ScreenState.finished;
+    runIdleShowing.value = next == _ScreenState.idle;
+    runCountdownShowing.value = next == _ScreenState.countdown;
   }
 
   RunRecorder? _recorder;
@@ -814,11 +822,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   bool _synced = false;
   String? _syncError;
 
-  // Next RSVP'd event in the social layer, if within the next 48h. Shown on
-  // the idle Run tab as a priority card above the last-run summary.
-  EventView? _upcomingEvent;
-
-  // Active-plan overview; drives the today's-workout card on idle.
+  // Active-plan overview; drives the Training plans chip on idle.
   ActivePlanOverview? _planOverview;
 
   // Measured height of the stats overlay. Insets the map (camera offset,
@@ -863,12 +867,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     widget.preferences.addListener(_onPrefsChange);
     widget.runStore.addListener(_onPrefsChange);
-    widget.social.addListener(_onSocialChange);
     widget.training.addListener(_onTrainingChange);
     widget.shown?.addListener(_onShownChange);
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     runStopRequests.addListener(_onDockedStopRequest);
+    runStartRequests.addListener(_onDockedStartRequest);
     runSummaryDismissRequests.addListener(_onSummaryDismissRequest);
     widget.raceController?.addListener(_onRaceChange);
     widget.raceController?.onStartLineCrossed = _onRaceStartCrossed;
@@ -879,7 +883,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _rebuildTurnAnnouncer();
     _loadCutoffLegs();
     _maybePreloadWorkoutRunner();
-    _refreshUpcomingEvent();
     _refreshPlanOverview();
     unawaited(_probeSafetyAudience());
     unawaited(_probeLiveOverlay());
@@ -890,6 +893,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _onPendingStartWorkout();
       _onPendingArmGuidedRun();
+      _onDockedStartRequest();
     });
     // A process-killed run was recovered as resumable at cold start. Prompt
     // once, after first frame (so `_l10n` + a Navigator context exist), to
@@ -1007,6 +1011,25 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   void _onDockedStopRequest() {
     if (_state != _ScreenState.recording) return;
     unawaited(_requestStop());
+  }
+
+  /// A tap on the shell's docked centre button while this page is not
+  /// recording, or Home's quick Start ([RunStartRequests]). Start goes
+  /// through [_beginCountdown], so the permission checks and the cancellable
+  /// 3-2-1 are the panel's own; cancel is the countdown's tap-to-cancel.
+  void _onDockedStartRequest() {
+    if (!mounted) return;
+    final request = runStartRequests.take();
+    switch (request) {
+      case RunStartRequest.start when _state == _ScreenState.idle:
+        unawaited(_beginCountdown());
+      case RunStartRequest.cancel when _state == _ScreenState.countdown:
+        _discard();
+      case _:
+        if (request != null) {
+          debugPrint('run start request dropped: $request, state=$_state');
+        }
+    }
   }
 
   bool _raceEndedShown = false;
@@ -1343,44 +1366,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _refreshUpcomingEvent() async {
-    try {
-      final evt = await widget.social
-          .fetchNextRsvpedEvent()
-          .timeout(kBackendLoadTimeout);
-      if (mounted) setState(() => _upcomingEvent = evt);
-    } catch (e) {
-      // Non-critical — leave the card hidden if the fetch fails. Log
-      // so an upstream API rename doesn't surface only as a missing
-      // UI card. See docs/architecture/conventions.md § Layered resilience.
-      debugPrint('refresh upcoming-event card failed: $e');
-    }
-  }
-
   Future<void> _refreshPlanOverview() async {
     try {
       final p = await widget.training.fetchActiveOverview();
       if (mounted) setState(() => _planOverview = p);
     } catch (e) {
-      // Non-critical — same logging rationale as `_refreshUpcomingEvent`.
+      // Non-critical — leave the chip on its default if the fetch fails, and
+      // log so an upstream API rename doesn't surface only as a missing plan
+      // name. See docs/architecture/conventions.md § Layered resilience.
       debugPrint('refresh plan-overview card failed: $e');
     }
   }
 
-  // Both services notify several times in a row when the user takes a
-  // single action (e.g. RSVP toggle → membership row update + count
-  // refresh + my-rsvp refresh). Debounce so we don't fire 3 fetches
-  // for one logical change.
-  Timer? _socialDebounce;
+  // The training service notifies several times in a row for one action
+  // (a plan switch rewrites the plan, its weeks and its workouts). Debounce
+  // so we don't fire 3 fetches for one logical change.
   Timer? _trainingDebounce;
   static const _listenerDebounce = Duration(milliseconds: 500);
-
-  void _onSocialChange() {
-    _socialDebounce?.cancel();
-    _socialDebounce = Timer(_listenerDebounce, () {
-      if (mounted) _refreshUpcomingEvent();
-    });
-  }
 
   void _onTrainingChange() {
     _trainingDebounce?.cancel();
@@ -4580,10 +4582,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // shell in non-swipeable state.
     runRecordingActive.value = false;
     runSummaryShowing.value = false;
+    runIdleShowing.value = true;
+    runCountdownShowing.value = false;
     WidgetsBinding.instance.removeObserver(this);
     pendingStartWorkout.removeListener(_onPendingStartWorkout);
     pendingArmGuidedRun.removeListener(_onPendingArmGuidedRun);
     runStopRequests.removeListener(_onDockedStopRequest);
+    runStartRequests.removeListener(_onDockedStartRequest);
     runSummaryDismissRequests.removeListener(_onSummaryDismissRequest);
     widget.raceController?.removeListener(_onRaceChange);
     if (widget.raceController?.onStartLineCrossed == _onRaceStartCrossed) {
@@ -4592,10 +4597,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _raceUndoTimer?.cancel();
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
-    widget.social.removeListener(_onSocialChange);
     widget.training.removeListener(_onTrainingChange);
     widget.shown?.removeListener(_onShownChange);
-    _socialDebounce?.cancel();
     _trainingDebounce?.cancel();
     _snapshotSub?.cancel();
     _stepSub?.cancel();
@@ -4823,28 +4826,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
     distCtrl.dispose();
     goalCtrl.dispose();
-  }
-
-  /// Today's-workout card tap: open the workout detail. The card's own
-  /// Start button loads the runner, so a tap no longer asks Start or Details,
-  /// and a workout already done or skipped never offers Start (#1186). The
-  /// detail screen pops with the row when its own Start is tapped.
-  Future<void> _openTodayWorkoutDetail(
-      PlanWorkoutRow wo, String planId) async {
-    final result = await Navigator.of(context).push<PlanWorkoutRow?>(
-      MaterialPageRoute<PlanWorkoutRow?>(
-        builder: (_) => WorkoutDetailScreen(
-          training: widget.training,
-          planId: planId,
-          workoutId: wo.id,
-          initial: wo,
-        ),
-      ),
-    );
-    _refreshPlanOverview();
-    if (result != null && mounted) {
-      await _startStructuredWorkout(result);
-    }
   }
 
   /// Load a planned workout into the current run-screen state — builds
@@ -5079,18 +5060,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   Widget _buildIdle(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final lastRun = _mostRecentRun();
+    // On the phone shell the docked centre button is this page's Start, as
+    // it is the Stop mid-run ([RunStartRequests]), so the panel draws no
+    // second one a thumb's width above it. Where nothing is docked (the rail,
+    // the keyboard up, a recorder mounted outside the shell) it keeps its own.
+    final docked = RunStopDock.of(context);
     // Start is the L0/L1 entry point, so it floats over the scroll rather
-    // than ending it: every card above (race, route, event, plan workout,
-    // last run) is auxiliary, and when they stacked up Start was pushed
-    // under the bottom bar and had to be scrolled to. The cards run on
-    // behind it under a fade, so the page reads as continuing rather than
-    // cut off, and the scroll is padded so the last card clears Start.
+    // than ending it: every card above (race, route, loaded workout) is
+    // auxiliary, and when they stacked up Start was pushed under the bottom
+    // bar and had to be scrolled to. The cards run on behind it under a
+    // fade, so the page reads as continuing rather than cut off, and the
+    // scroll is padded so the last card clears Start.
     final dockInset = DockedFabInset.of(context);
     return SafeArea(
       child: LayoutBuilder(builder: (context, constraints) {
         final startSize = idleStartButtonSize(constraints.maxHeight);
-        final startArea = idleStartAreaHeight(startSize, dockInset);
+        final startArea =
+            docked ? dockInset : idleStartAreaHeight(startSize, dockInset);
         final page = theme.scaffoldBackgroundColor;
         return Stack(
           children: [
@@ -5228,16 +5214,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Priority-card *stack* (previously a pick-one chain).
-                    // When the user has multiple signals active — an RSVP
-                    // event tomorrow, a plan workout today, and a recent
-                    // run — showing them together fills the space that
-                    // was sitting empty between the chips and the START
-                    // button. A followed route is this run's context, so
-                    // the event card and the last-run summary yield to it;
-                    // today's workout does not, because a runner on their
-                    // race route on a plan day still needs the card that
-                    // loads the session.
+                    // Only what this run will carry: the race it is armed
+                    // for, the route it follows and the workout it loads.
+                    // Today's workout, the next club event and the last run
+                    // are Home's (issue #1374); this page used to repeat all
+                    // three under its own Start.
                     if (widget.raceController != null)
                       ListenableBuilder(
                         listenable: widget.raceController!,
@@ -5271,89 +5252,50 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                           onUnload: () => setState(_unloadWorkout),
                         ),
                       ),
-                    if (_selectedRoute == null && _upcomingEvent != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: UpcomingEventCard(
-                          event: _upcomingEvent!,
-                          onTap: () async {
-                            await openUpcomingEvent(
-                                context, widget.social, _upcomingEvent!);
-                            _refreshUpcomingEvent();
-                          },
-                        ),
-                      ),
-                    // The loaded card already stands for today's workout once
-                    // it is the one loaded.
-                    if (_planOverview?.todayWorkout != null &&
-                        !(_workoutRunner != null &&
-                            _activeWorkoutId ==
-                                _planOverview!.todayWorkout!.id))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: TodaysWorkoutCard(
-                          workout: _planOverview!.todayWorkout!,
-                          onTap: () => _openTodayWorkoutDetail(
-                            _planOverview!.todayWorkout!,
-                            _planOverview!.plan.id,
-                          ),
-                          onStart: () => _startStructuredWorkout(
-                              _planOverview!.todayWorkout!),
-                        ),
-                      ),
-                    if (_selectedRoute == null) ...[
-                      if (lastRun != null)
-                        _LastRunCard(
-                          run: lastRun,
-                          onTap: () => _openLastRun(lastRun),
-                        )
-                      else if (_upcomingEvent == null &&
-                          _planOverview?.todayWorkout == null)
-                        _FirstRunPrompt(theme: theme),
-                    ],
                   ],
                 ),
               ),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: startArea,
-              child: Stack(
-                children: [
-                  // Only the circle takes taps; a tap on the fade or
-                  // beside Start reaches the card underneath it.
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      key: const ValueKey('run-idle-start-scrim'),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              page.withValues(alpha: 0),
-                              page.withValues(alpha: 0.7),
-                              page,
-                            ],
-                            stops: const [0, 0.5, 1],
+            if (!docked)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: startArea,
+                child: Stack(
+                  children: [
+                    // Only the circle takes taps; a tap on the fade or
+                    // beside Start reaches the card underneath it.
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        key: const ValueKey('run-idle-start-scrim'),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                page.withValues(alpha: 0),
+                                page.withValues(alpha: 0.7),
+                                page,
+                              ],
+                              stops: const [0, 0.5, 1],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 16 + dockInset,
-                    child: Center(
-                      child: _buildIdleStartButton(theme, l10n, startSize),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 16 + dockInset,
+                      child: Center(
+                        child: _buildIdleStartButton(theme, l10n, startSize),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         );
       }),
@@ -5426,30 +5368,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  cm.Run? _mostRecentRun() {
-    final runs = widget.runStore.runs;
-    if (runs.isEmpty) return null;
-    final sorted = [...runs]
-      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
-    return sorted.first;
-  }
-
-  void _openLastRun(cm.Run run) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RunDetailScreen(
-          run: run,
-          runStore: widget.runStore,
-          routeStore: widget.routeStore,
-          preferences: widget.preferences,
-          apiClient: widget.apiClient,
-          settingsSync: widget.settingsSync,
         ),
       ),
     );
@@ -7348,27 +7266,6 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
   }
 }
 
-String _formatAgo(BuildContext context, DateTime when) {
-  final l10n = AppLocalizations.of(context);
-  final diff = DateTime.now().difference(when);
-  if (diff.inMinutes < 60) {
-    return diff.inMinutes <= 1
-        ? l10n.runAgoJustNow
-        : l10n.runAgoMinutes(diff.inMinutes);
-  }
-  if (diff.inHours < 24) {
-    return l10n.runAgoHours(diff.inHours);
-  }
-  if (diff.inDays == 1) return l10n.runAgoYesterday;
-  if (diff.inDays < 7) return l10n.runAgoDays(diff.inDays);
-  if (diff.inDays < 30) {
-    final weeks = (diff.inDays / 7).floor();
-    return l10n.runAgoWeeks(weeks);
-  }
-  final months = (diff.inDays / 30).floor();
-  return l10n.runAgoMonths(months);
-}
-
 /// How long the app must have been off screen before an absent GPS fix is
 /// evidence that Android cut location delivery, rather than simply the gap
 /// between two fixes. One fix interval plus margin.
@@ -7453,134 +7350,6 @@ PostLiveVisibilityAction postLiveVisibilityActionOnStop({
       : PostLiveVisibilityAction.revertToDefault;
 }
 
-String _formatPace(Duration duration, double metres) {
-  if (metres < 10) return '--:--';
-  return formatPaceForPref(duration.inSeconds / (metres / 1000));
-}
-
-class _LastRunCard extends StatelessWidget {
-  final cm.Run run;
-  final VoidCallback onTap;
-  const _LastRunCard({required this.run, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Semantics(
-      button: true,
-      label: l10n.runLastRunOpenA11yLabel,
-      child: Material(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: Row(
-              children: [
-                if (cm.trackLine(run.track).length >= 2)
-                  SizedBox(
-                    width: 72,
-                    height: 56,
-                    child: CustomPaint(
-                      painter: _TrackSparkPainter(
-                        track: cm.trackLine(run.track),
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  )
-                else
-                  Container(
-                    width: 72,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.directions_run,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        run.distanceMetres < 50
-                            ? l10n.runLastActivity
-                            : l10n.runLastRun,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatAgo(context, run.startedAt),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      // A Wrap, not a Row: the column is ~190 dp on a
-                      // 360 dp phone, so the two pills side by side overflow
-                      // at the default text size and the pace pill must drop
-                      // to its own line under a large OS text scale.
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _metricPill(
-                            theme,
-                            formatDistanceForPref(run.distanceMetres),
-                          ),
-                          _metricPill(
-                            theme,
-                            _formatPace(run.duration, run.distanceMetres),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _metricPill(ThemeData theme, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-/// The followed route on the idle screen. A tap reopens the picker and the
-/// corner x stops following it; clearing needs no confirm because picking the
-/// route again restores it (conventions.md § Destructive actions).
 class _RoutePreviewCard extends StatelessWidget {
   final cm.Route route;
   final VoidCallback onTap;
@@ -7629,6 +7398,15 @@ class _RoutePreviewCard extends StatelessWidget {
     );
   }
 
+  Widget _routeStat(ThemeData theme, IconData icon, String text) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: theme.colorScheme.outline),
+          const SizedBox(width: 4),
+          Flexible(child: Text(text, style: theme.textTheme.bodySmall)),
+        ],
+      );
+
   Widget _content(ThemeData theme, AppLocalizations l10n) {
     return Row(
         children: [
@@ -7667,31 +7445,17 @@ class _RoutePreviewCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(
+                // A Wrap, not a Row: the column is ~160 dp on a 360 dp phone,
+                // and at 2x text the distance alone overflowed a Row.
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
                   children: [
-                    Icon(
-                      Icons.straighten,
-                      size: 14,
-                      color: theme.colorScheme.outline,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      formatDistanceForPref(route.distanceMetres),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    if (route.elevationGainMetres > 0) ...[
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.terrain,
-                        size: 14,
-                        color: theme.colorScheme.outline,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        formatElevationForPref(route.elevationGainMetres),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
+                    _routeStat(theme, Icons.straighten,
+                        formatDistanceForPref(route.distanceMetres)),
+                    if (route.elevationGainMetres > 0)
+                      _routeStat(theme, Icons.terrain,
+                          formatElevationForPref(route.elevationGainMetres)),
                   ],
                 ),
               ],
@@ -7702,39 +7466,8 @@ class _RoutePreviewCard extends StatelessWidget {
   }
 }
 
-class _FirstRunPrompt extends StatelessWidget {
-  final ThemeData theme;
-  const _FirstRunPrompt({required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.primary),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.rocket_launch, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              AppLocalizations.of(context).runFirstRunPrompt,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Scales a waypoint list to fit a small rect and paints a rounded polyline.
-/// Cheap — used for last-run and route-preview cards on the Run tab idle view.
+/// Cheap — used for the route-preview card on the Run tab idle view.
 ///
 /// Projection is delegated to `projectTrack`, the same helper the routes-list
 /// thumbnails use, so the finish card and the routes list draw one shape for

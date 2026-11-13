@@ -976,6 +976,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get navStop => 'Detener';
 
   @override
+  String get navStart => 'Iniciar';
+
+  @override
+  String get runCancelStartA11yLabel => 'Cancelar el inicio';
+
+  @override
   String get logReturnToRunA11yLabel => 'Volver a tu carrera';
 
   @override
@@ -1945,10 +1951,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runStartA11yLabel => 'Iniciar carrera';
 
   @override
-  String get runLastRunOpenA11yLabel =>
-      'Abrir los detalles de la última carrera';
-
-  @override
   String get runChooseRoute => 'Elegir ruta';
 
   @override
@@ -2067,12 +2069,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runTapToCancel => 'Toca para cancelar';
-
-  @override
-  String get runFirstRunPrompt => 'Tu primera carrera está a un toque.';
-
-  @override
-  String get runLastActivity => 'Última actividad';
 
   @override
   String get runLastRun => 'Última carrera';
@@ -2491,55 +2487,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get runGpsSensorFailed =>
       'Grabando sin GPS — no se pudo iniciar el sensor.';
-
-  @override
-  String get runAgoJustNow => 'Ahora mismo';
-
-  @override
-  String runAgoMinutes(int count) {
-    return 'hace $count min';
-  }
-
-  @override
-  String runAgoHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'hace $count horas',
-      one: 'hace 1 hora',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get runAgoYesterday => 'Ayer';
-
-  @override
-  String runAgoDays(int count) {
-    return 'hace $count días';
-  }
-
-  @override
-  String runAgoWeeks(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'hace $count semanas',
-      one: 'hace 1 semana',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String runAgoMonths(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'hace $count meses',
-      one: 'hace 1 mes',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get runWorkoutAbandonedBand =>

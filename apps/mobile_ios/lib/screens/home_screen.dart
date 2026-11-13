@@ -249,6 +249,8 @@ class _HomeScreenState extends State<HomeScreen>
   /// any of them.
   late final Listenable _centreInputs = Listenable.merge([
     runRecordingActive,
+    runIdleShowing,
+    runCountdownShowing,
     widget.preferences,
     widget.gymStore,
     widget.foodStore,
@@ -890,7 +892,7 @@ class _HomeScreenState extends State<HomeScreen>
           foodStore: widget.foodStore,
           preferences: widget.preferences,
           settingsSync: widget.settingsSync,
-          onStartRun: () => _performLogAction(LogAction.run),
+          onStartRun: _startRunNow,
           onLogLift: () => _performLogAction(LogAction.lift),
           onStartWorkout: _startTodaysWorkout,
           social: widget.social,
@@ -1105,9 +1107,32 @@ class _HomeScreenState extends State<HomeScreen>
         nutritionShown: _nutritionShown,
       );
 
+  /// Home's Start: one tap starts the run, behind the recorder's own
+  /// permission checks and its cancellable 3-2-1 (issue #1374). It used to
+  /// open the recorder, where the runner pressed Start a second time. A run
+  /// already recording is returned to instead, and a finished run's summary
+  /// is closed first, as the centre button closes it.
+  void _startRunNow() {
+    widget.preferences.setLastLogType(LogAction.run.wire);
+    if (!runRecordingActive.value) {
+      if (runSummaryShowing.value) runSummaryDismissRequests.request();
+      runStartRequests.request(RunStartRequest.start);
+    }
+    _goToPage(_pageRun);
+  }
+
   /// Tap on the centre Log button: the primary capture action for this user.
-  /// While a run records it is the way back to it instead.
+  /// While a run records it is the way back to it instead. Docked over the
+  /// Run page it is that page's Start, or the countdown's Cancel.
   void _onLogTap({Offset? anchor}) {
+    if (_centreIsStart) {
+      runStartRequests.request(RunStartRequest.start);
+      return;
+    }
+    if (_centreIsCancel) {
+      runStartRequests.request(RunStartRequest.cancel);
+      return;
+    }
     if (runRecordingActive.value || _runIsPrimary) {
       _performLogAction(LogAction.run);
     } else {
@@ -1124,6 +1149,9 @@ class _HomeScreenState extends State<HomeScreen>
   /// gestures, so a press held half a beat too long at a traffic light does
   /// not open a picker over the run.
   void _onLogLongPress() {
+    // The countdown is a second away from a run; a picker over it would
+    // outlive the start it was opened from.
+    if (_centreIsCancel) return;
     if (runRecordingActive.value) {
       _performLogAction(LogAction.run);
     } else {
@@ -1367,6 +1395,28 @@ class _HomeScreenState extends State<HomeScreen>
   bool get _centreIsStop =>
       runRecordingActive.value && _currentIndex.value == _pageRun;
 
+  /// Whether the docked centre button is the recorder's Start: the Run page
+  /// shows its start screen (issue #1374). The recorder then draws no Start
+  /// of its own, as it draws no Stop mid-run. Phone shell, keyboard down
+  /// only, exactly when the panel reads [RunStopDock] as docked.
+  bool get _centreIsStart =>
+      _centreDocked &&
+      _currentIndex.value == _pageRun &&
+      !runRecordingActive.value &&
+      runIdleShowing.value;
+
+  /// Whether the docked centre button cancels the countdown that its Start
+  /// began, so a second tap is the way back rather than a dead button.
+  bool get _centreIsCancel =>
+      _centreDocked &&
+      _currentIndex.value == _pageRun &&
+      runCountdownShowing.value;
+
+  /// Whether the centre button is docked in the bottom bar, read from the
+  /// same [RunStopDock] the recorder reads, so the two can never disagree
+  /// about which of them draws Start.
+  bool _centreDocked = false;
+
   /// The centre button's icon, caption and spoken label. When a tap starts a
   /// run it says so: a "+" captioned "Log" reads as "add an entry", and a
   /// first-timer only found out it opened the GPS recorder by pressing it.
@@ -1383,6 +1433,22 @@ class _HomeScreenState extends State<HomeScreen>
         label: l10n.navStop,
         semantics: l10n.runStopA11yLabel,
         recording: true,
+      );
+    }
+    if (docked && _centreIsStart) {
+      return (
+        icon: Icons.play_arrow,
+        label: l10n.navStart,
+        semantics: l10n.runStartA11yLabel,
+        recording: false,
+      );
+    }
+    if (docked && _centreIsCancel) {
+      return (
+        icon: Icons.close,
+        label: l10n.commonCancel,
+        semantics: l10n.runCancelStartA11yLabel,
+        recording: false,
       );
     }
     if (runRecordingActive.value) {
@@ -1455,6 +1521,7 @@ class _HomeScreenState extends State<HomeScreen>
     // either, so the docked button goes while it is up and the panel keeps
     // its own Stop.
     final keyboardUp = MediaQuery.viewInsetsOf(context).bottom > 0;
+    _centreDocked = !expanded && !keyboardUp;
     final body = Column(
       children: [
         BillingIssueBanner(apiClient: widget.apiClient),
@@ -1465,7 +1532,7 @@ class _HomeScreenState extends State<HomeScreen>
           // `_goToPage` drives the controller directly, which non-scrollable
           // physics doesn't block. Fail-open: the notifier defaults to false.
           child: RunStopDock(
-            docked: !expanded && !keyboardUp,
+            docked: _centreDocked,
             child: ValueListenableBuilder<bool>(
               valueListenable: runRecordingActive,
               builder: (context, recording, _) => PageView(
@@ -1658,7 +1725,7 @@ class _HomeScreenState extends State<HomeScreen>
           return box.localToGlobal(box.size.center(Offset.zero));
         }
 
-        final look = _centreLook(l10n);
+        final look = _centreLook(l10n, docked: !anchored);
         final scheme = Theme.of(fabContext).colorScheme;
         return GestureDetector(
           onLongPress: _onLogLongPress,

@@ -237,9 +237,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
-  /// START, the countdown, and a short track — a run in progress.
+  /// Start (the docked centre button, issue #1374), the countdown, and a
+  /// short track — a run in progress.
   Future<void> recordARun(WidgetTester tester, {int fromSecond = 0}) async {
-    await tester.tap(find.text('START'));
+    expect(centreLabelled('Start run'), findsOneWidget,
+        reason: 'on the idle Run page the centre button is the Start');
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     for (var i = 0; i < 3; i++) {
@@ -289,7 +292,9 @@ void main() {
 
       await tapCentre(tester);
       expect(shellPage(tester), 2);
-      expect(find.text('START'), findsOneWidget);
+      expect(centreLabelled('Start run'), findsOneWidget);
+      expect(find.text('START'), findsNothing,
+          reason: 'one Start on screen: the docked centre button');
 
       await recordARun(tester);
       expect(find.byType(HoldToStopButton), findsOneWidget,
@@ -323,7 +328,7 @@ void main() {
       await holdDockedStop(tester);
 
       await tapCentre(tester);
-      expect(find.text('START'), findsOneWidget);
+      expect(centreLabelled('Start run'), findsOneWidget);
       expect(find.text('Done'), findsNothing);
       expect(find.textContaining('already on'), findsNothing);
       expect(runStore.runs, hasLength(1),
@@ -341,7 +346,7 @@ void main() {
 
       await tester.tap(find.text('Done'));
       await tester.pump();
-      expect(find.text('START'), findsOneWidget);
+      expect(centreLabelled('Start run'), findsOneWidget);
       expect(runSummaryShowing.value, isFalse);
       expect(runStore.runs, hasLength(1));
 
@@ -366,6 +371,61 @@ void main() {
     });
   });
 
+  group('the centre button starts and cancels the countdown', () {
+    testWidgets('a second tap during the countdown cancels the start',
+        (tester) async {
+      final runStore = await pumpShell(tester);
+      await tapCentre(tester);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('3'), findsOneWidget,
+          reason: 'one tap starts the 3-2-1 the runner can still cancel');
+      expect(centreLabelled('Cancel the start'), findsOneWidget);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      tester.takeException();
+      expect(runRecordingActive.value, isFalse);
+      expect(centreLabelled('Start run'), findsOneWidget);
+      expect(runStore.runs, isEmpty);
+
+      await unmount(tester);
+    });
+
+    testWidgets("Home's Start starts the run in one tap", (tester) async {
+      final runStore = await pumpShell(tester);
+      await tester.tap(find.byKey(const Key('dashboardWelcomeStart')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      expect(shellPage(tester), 2);
+      expect(find.text('3'), findsOneWidget,
+          reason: "Home's Start runs the countdown, not a second Start");
+
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      expect(runRecordingActive.value, isTrue);
+      for (var i = 0; i < 6; i++) {
+        geolocator.emit(_pos(metresEast: i * 12.0, secondsFromStart: i * 2));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      await holdDockedStop(tester);
+      expect(runStore.runs, hasLength(1));
+
+      await unmount(tester);
+    });
+  });
+
   group('leaving the Run page and coming back', () {
     testWidgets('mid-run, back goes Home and the centre button returns to '
         'the same recording', (tester) async {
@@ -382,7 +442,7 @@ void main() {
       await tapCentre(tester);
       expect(shellPage(tester), 2);
       expect(runRecordingActive.value, isTrue);
-      expect(find.text('START'), findsNothing,
+      expect(centreLabelled('Start run'), findsNothing,
           reason: 'returning must not reset the recorder');
 
       await holdDockedStop(tester);
@@ -403,7 +463,7 @@ void main() {
 
       await tapCentre(tester);
       expect(shellPage(tester), 2);
-      expect(find.text('START'), findsOneWidget);
+      expect(centreLabelled('Start run'), findsOneWidget);
       expect(find.text('Done'), findsNothing);
       expect(runStore.runs, hasLength(1));
 
@@ -428,11 +488,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       tester.takeException();
 
-      expect(find.text('START'), findsOneWidget);
+      expect(centreLabelled('Start run'), findsOneWidget);
       expect(runRecordingActive.value, isFalse);
       expect(runSummaryShowing.value, isFalse);
       expect(runStore.runs, isEmpty);
-      expect(centreLabelled('Start a run'), findsOneWidget);
 
       await unmount(tester);
     });

@@ -1312,6 +1312,14 @@
   "@navStop": {
     "description": "Caption under the centre nav button while a run is recording on the Run page, where the button is the hold-to-stop control. Must fit the 72dp centre slot"
   },
+  "navStart": "Start",
+  "@navStart": {
+    "description": "Caption under the centre nav button while the Run page shows its start screen, where a tap starts the 3-2-1 countdown. Must fit the 72dp centre slot"
+  },
+  "runCancelStartA11yLabel": "Cancel the start",
+  "@runCancelStartA11yLabel": {
+    "description": "Screen-reader label for the centre nav button during the 3-2-1 countdown; a tap cancels the start"
+  },
   "logReturnToRunA11yLabel": "Return to your run",
   "@logReturnToRunA11yLabel": {
     "description": "Screen-reader label for the centre nav button while a run is recording"
@@ -2517,10 +2525,6 @@
   "@runStartA11yLabel": {
     "description": "Screen-reader label for the start-run button"
   },
-  "runLastRunOpenA11yLabel": "Open last run details",
-  "@runLastRunOpenA11yLabel": {
-    "description": "Screen-reader label for the tappable recent-run card on the start-run screen"
-  },
   "runChooseRoute": "Choose route",
   "@runChooseRoute": {
     "description": "Idle-screen button to pick a route to follow when no route is selected"
@@ -2668,14 +2672,6 @@
   "runTapToCancel": "Tap to cancel",
   "@runTapToCancel": {
     "description": "Hint shown during the pre-run countdown — tapping anywhere aborts the start"
-  },
-  "runFirstRunPrompt": "Your first run is one tap away.",
-  "@runFirstRunPrompt": {
-    "description": "Empty-state encouragement on the idle run screen when there is no recent run, event, or plan"
-  },
-  "runLastActivity": "Last activity",
-  "@runLastActivity": {
-    "description": "Label on the last-run card when the recorded distance is negligible (treated as a generic activity)"
   },
   "runLastRun": "Last run",
   "@runLastRun": {
@@ -3252,59 +3248,6 @@
   "runGpsSensorFailed": "Recording without GPS — could not start the sensor.",
   "@runGpsSensorFailed": {
     "description": "Banner shown when the GPS sensor could not start for an unknown reason"
-  },
-  "runAgoJustNow": "Just now",
-  "@runAgoJustNow": {
-    "description": "Relative-time label for an event within the last minute"
-  },
-  "runAgoMinutes": "{count} min ago",
-  "@runAgoMinutes": {
-    "description": "Relative-time label in minutes",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoHours": "{count, plural, one{{count} hour ago} other{{count} hours ago}}",
-  "@runAgoHours": {
-    "description": "Relative-time label in hours",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoYesterday": "Yesterday",
-  "@runAgoYesterday": {
-    "description": "Relative-time label for one day ago"
-  },
-  "runAgoDays": "{count} days ago",
-  "@runAgoDays": {
-    "description": "Relative-time label in days (2-6 days)",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoWeeks": "{count, plural, one{{count} week ago} other{{count} weeks ago}}",
-  "@runAgoWeeks": {
-    "description": "Relative-time label in weeks",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "runAgoMonths": "{count, plural, one{{count} month ago} other{{count} months ago}}",
-  "@runAgoMonths": {
-    "description": "Relative-time label in months",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
   },
   "runWorkoutAbandonedBand": "Workout abandoned · running freely",
   "@runWorkoutAbandonedBand": {
@@ -27878,7 +27821,6 @@
   "@parksSharedUseSaturdayMorningGroup": {
     "description": "Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation."
   },
-
   "parksAttributionOsm": "Course line © OpenStreetMap contributors",
   "@parksAttributionOsm": {
     "description": "Park courses (#1313): web key parks.attributionOsm."

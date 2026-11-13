@@ -4037,11 +4037,10 @@ void main() {
           'makeRunPrivate',
           'concludeLiveBroadcast',
           'fetchPlanForWorkout',
-          'fetchNextRsvpedEvent',
         ];
         // The event card's club lookup moved into the shared
-        // `openUpcomingEvent` (Home and the Run tab both tap through it,
-        // decisions § 2285), so its timeout is pinned there.
+        // `openUpcomingEvent` (decisions § 2285), so its timeout is pinned
+        // there. Only Home draws the card since issue #1374.
         final eventCard =
             File('lib/widgets/upcoming_event_card.dart').readAsStringSync();
         expect(

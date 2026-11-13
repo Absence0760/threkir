@@ -20,14 +20,17 @@ import '../lib/screens/home_screen.dart' show bottomNavMetrics;
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
-import '../lib/widgets/todays_workout_card.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
 
-// The idle Start used to end the scroll, below every auxiliary card. With a
-// plan workout due today and a recent run on file the stack outgrew a phone
-// and Start sat under the bottom bar until the runner scrolled for it. These
-// cases pin it to the visible area above the bar and the docked centre FAB.
+// The idle Start used to end the scroll, below every auxiliary card, and the
+// stack outgrew a phone, so Start sat under the bottom bar until the runner
+// scrolled for it. These cases pin it to the visible area above the bar and a
+// docked centre FAB. On the phone shell the docked centre button is itself the
+// Start (RunStopDock, issue #1374), so the panel's own circle is what a recorder
+// shows with nothing docked: the rail layout, or the keyboard up. That circle
+// is what these cases measure; the docked case is in
+// run_screen_recording_flow_test.dart.
 
 const _startKey = ValueKey('run-idle-start');
 const _navKey = ValueKey('test-bottom-bar');
@@ -89,6 +92,18 @@ class _TodayPlanTraining extends TrainingService {
   }
 }
 
+final _route = cm.Route(
+  id: 'route-river',
+  userId: 'u1',
+  name: 'River loop',
+  distanceMetres: 5000,
+  waypoints: const [
+    cm.Waypoint(lat: 47.37, lng: 8.54),
+    cm.Waypoint(lat: 47.371, lng: 8.541),
+    cm.Waypoint(lat: 47.372, lng: 8.543),
+  ],
+);
+
 Future<RunScreen> _screen(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = Preferences();
@@ -119,6 +134,7 @@ Future<RunScreen> _screen(WidgetTester tester) async {
     training: _TodayPlanTraining(),
     heartRate: BleHeartRate(),
     treadmill: BleTreadmill(),
+    initialRoute: _route,
   );
 }
 
@@ -168,8 +184,8 @@ Future<void> _pumpIdle(WidgetTester tester, double textScale) async {
   await tester.pumpWidget(_shell(screen, textScale));
   await pumpUntil(
     tester,
-    () => find.byType(TodaysWorkoutCard).evaluate().isNotEmpty,
-    describe: "today's plan workout card to load",
+    () => find.text('Richmond Marathon block').evaluate().isNotEmpty,
+    describe: 'the plan chip to load',
   );
 }
 
@@ -212,7 +228,7 @@ void main() {
 
   for (final textScale in const [1.0, 1.3, 2.0]) {
     testWidgets(
-      'Start stays visible above the tabs with a plan workout showing '
+      'Start stays visible above the tabs with a followed route showing '
       '(360x640, text x$textScale)',
       (tester) async {
         const logical = Size(360, 640);
@@ -229,19 +245,18 @@ void main() {
     const logical = Size(360, 640);
     _useSurface(tester, logical);
     await _pumpIdle(tester, 2.0);
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    final lastRun = find.text(l10n.runLastRun);
-    await tester.ensureVisible(lastRun);
+    final lastCard = find.text(_route.name);
+    await tester.ensureVisible(lastCard);
     await tester.pump();
     final start = tester.getRect(find.byKey(_startKey));
     expect(
-      tester.getRect(lastRun).bottom,
+      tester.getRect(lastCard).bottom,
       lessThanOrEqualTo(start.top),
       reason:
           'the auxiliary stack must be reachable above Start, '
           'not hidden behind it',
     );
-    expect(lastRun.hitTestable(), findsOneWidget);
+    expect(lastCard.hitTestable(), findsOneWidget);
     _expectStartClear(tester, logical);
   });
 
@@ -281,14 +296,13 @@ void main() {
             .position;
         position.jumpTo(position.maxScrollExtent);
         await tester.pump();
-        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-        final lastRun = find.text(l10n.runLastRun);
+        final lastCard = find.text(_route.name);
         expect(
-          tester.getRect(lastRun).bottom,
+          tester.getRect(lastCard).bottom,
           lessThanOrEqualTo(tester.getRect(find.byKey(_startKey)).top),
           reason: 'at the end of the scroll the last card sits above Start',
         );
-        expect(lastRun.hitTestable(), findsOneWidget);
+        expect(lastCard.hitTestable(), findsOneWidget);
         _expectStartClear(tester, logical);
       },
     );

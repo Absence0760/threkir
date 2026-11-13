@@ -231,6 +231,26 @@ Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
   });
 }
 
+/// Takes every [RunStartRequests] the shell sends before the mounted recorder
+/// can, so a test sees what the centre button asked for without a real
+/// countdown asking the platform for location. Must be called before
+/// [_pump]: listeners run in the order they were added.
+List<RunStartRequest> _captureStartRequests() {
+  final taken = <RunStartRequest>[];
+  void listener() {
+    final r = runStartRequests.take();
+    if (r != null) taken.add(r);
+  }
+
+  runStartRequests.addListener(listener);
+  addTearDown(() {
+    runStartRequests.removeListener(listener);
+    runIdleShowing.value = true;
+    runCountdownShowing.value = false;
+  });
+  return taken;
+}
+
 /// [text] inside the long-press menu's sheet, so a page's own copy of the
 /// same label cannot answer for it.
 Finder _inMenu(String text) =>
@@ -913,6 +933,102 @@ void main() {
     });
   });
 
+  group('the docked centre button is the Start on the idle Run page (#1374)',
+      () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    Finder caption(String text) => find.descendant(
+        of: find.byType(BottomAppBar), matching: find.text(text));
+
+    for (final fanMode in [false, true]) {
+      final mode = fanMode ? 'the "+" fan' : 'run-primary';
+
+      testWidgets(
+          '$mode: one tap starts the countdown, and a tap during it cancels',
+          (tester) async {
+        final starts = _captureStartRequests();
+        final s = await _makeStores();
+        if (fanMode) await _seedLoggedLift(tester, s);
+        await _pump(tester, s);
+
+        if (fanMode) {
+          await tester.tap(find.byTooltip('Log'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          await tester.tap(find.byTooltip('Log run'));
+        } else {
+          await tester.tap(find.byType(FloatingActionButton));
+        }
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        tester.takeException();
+        expect(shellPage(tester), 2);
+        expect(starts, isEmpty,
+            reason: 'reaching the Run page does not start a run by itself');
+
+        expect(caption('Start'), findsOneWidget);
+        expect(_semanticsLabelled('Start run'), findsOneWidget);
+        expect(find.text('START'), findsNothing,
+            reason: 'the panel draws no second Start under the docked one');
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(starts, [RunStartRequest.start]);
+        expect(find.textContaining('already on'), findsNothing);
+
+        runIdleShowing.value = false;
+        runCountdownShowing.value = true;
+        await tester.pump();
+        expect(caption('Cancel'), findsOneWidget);
+        expect(_semanticsLabelled('Cancel the start'), findsOneWidget);
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(starts, [RunStartRequest.start, RunStartRequest.cancel]);
+        tester.takeException();
+      });
+    }
+
+    testWidgets('away from the Run page the button keeps its own meaning',
+        (tester) async {
+      final starts = _captureStartRequests();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(caption('Start'), findsNothing);
+      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+      expect(starts, isEmpty);
+    });
+
+    testWidgets("Home's Start asks for the start and lands on the Run page",
+        (tester) async {
+      final starts = _captureStartRequests();
+      final s = await _makeStores();
+      await _pump(tester, s);
+      await tester.runAsync(() async {});
+      await pumpUntil(
+          tester,
+          () => find
+              .byKey(const Key('dashboardWelcomeStart'))
+              .evaluate()
+              .isNotEmpty,
+          describe: "the welcome state's Start");
+
+      await tester.tap(find.byKey(const Key('dashboardWelcomeStart')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      tester.takeException();
+      expect(starts, [RunStartRequest.start],
+          reason: 'one tap on Home starts the run, behind the countdown');
+      expect(shellPage(tester), 2);
+    });
+  });
+
   group('the docked centre button is the Stop on the Run page', () {
     double shellPage(WidgetTester tester) {
       final controller =
@@ -1008,8 +1124,16 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         expect(find.byType(HoldToStopButton), findsOneWidget);
 
-        // The recorder's finished state releases the flag.
+        // The recorder's finished state releases the flag and shows the
+        // summary, which is not the start screen, so the docked button is
+        // not its Start (issue #1374).
+        addTearDown(() {
+          runSummaryShowing.value = false;
+          runIdleShowing.value = true;
+        });
         runRecordingActive.value = false;
+        runSummaryShowing.value = true;
+        runIdleShowing.value = false;
         await tester.pump();
 
         expect(find.byType(HoldToStopButton), findsNothing);
@@ -1612,9 +1736,11 @@ void main() {
       void listener() => dismissals++;
       runSummaryDismissRequests.addListener(listener);
       addTearDown(() => runSummaryDismissRequests.removeListener(listener));
+      final starts = _captureStartRequests();
       final s = await _makeStores();
       await _pump(tester, s);
       runSummaryShowing.value = true;
+      runIdleShowing.value = false;
 
       // From another page: the tap lands on Run with the summary closing.
       await tester.tap(find.byType(FloatingActionButton));
@@ -1632,15 +1758,16 @@ void main() {
       expect(find.textContaining('already on'), findsNothing);
       expect(shellPage(tester), 2);
 
-      // Once the start screen is what shows, the banner is true again.
+      // Once the start screen is what shows, the button is its Start.
       runSummaryShowing.value = false;
+      runIdleShowing.value = true;
+      await tester.pump();
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(dismissals, 2);
-      expect(find.text("You're already on Run"), findsOneWidget);
-      // showTopBanner arms an auto-dismiss timer; let it run out.
-      await tester.pump(const Duration(seconds: 8));
+      expect(starts, [RunStartRequest.start]);
+      expect(find.textContaining('already on'), findsNothing);
     });
 
     testWidgets('long-press for a pure runner opens the runner menu, not a '

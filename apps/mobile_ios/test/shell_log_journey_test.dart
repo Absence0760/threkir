@@ -363,7 +363,11 @@ void main() {
 
       await pick(tester, 'Log run');
       expect(shellPage(tester), 2);
-      expect(find.text('START'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(BottomAppBar), matching: find.text('Start')),
+          findsOneWidget,
+          reason: 'on the idle Run page the centre button is the Start');
       expect(find.textContaining('already on'), findsNothing);
       expect(s.gymStore.workouts, hasLength(1));
 

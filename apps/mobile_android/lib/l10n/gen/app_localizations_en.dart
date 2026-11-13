@@ -965,6 +965,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navStop => 'Stop';
 
   @override
+  String get navStart => 'Start';
+
+  @override
+  String get runCancelStartA11yLabel => 'Cancel the start';
+
+  @override
   String get logReturnToRunA11yLabel => 'Return to your run';
 
   @override
@@ -1926,9 +1932,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runStartA11yLabel => 'Start run';
 
   @override
-  String get runLastRunOpenA11yLabel => 'Open last run details';
-
-  @override
   String get runChooseRoute => 'Choose route';
 
   @override
@@ -2046,12 +2049,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runTapToCancel => 'Tap to cancel';
-
-  @override
-  String get runFirstRunPrompt => 'Your first run is one tap away.';
-
-  @override
-  String get runLastActivity => 'Last activity';
 
   @override
   String get runLastRun => 'Last run';
@@ -2464,55 +2461,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runGpsSensorFailed =>
       'Recording without GPS — could not start the sensor.';
-
-  @override
-  String get runAgoJustNow => 'Just now';
-
-  @override
-  String runAgoMinutes(int count) {
-    return '$count min ago';
-  }
-
-  @override
-  String runAgoHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count hours ago',
-      one: '$count hour ago',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get runAgoYesterday => 'Yesterday';
-
-  @override
-  String runAgoDays(int count) {
-    return '$count days ago';
-  }
-
-  @override
-  String runAgoWeeks(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count weeks ago',
-      one: '$count week ago',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String runAgoMonths(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count months ago',
-      one: '$count month ago',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get runWorkoutAbandonedBand => 'Workout abandoned · running freely';

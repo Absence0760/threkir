@@ -2892,6 +2892,7 @@ class _WelcomeEmpty extends StatelessWidget {
             // (onStartRun null) rather than shown as a dead button.
             if (onStartRun != null) ...[
               FilledButton.icon(
+                key: const Key('dashboardWelcomeStart'),
                 onPressed: onStartRun,
                 icon: Icon(startActivity.icon),
                 label: Text(startActivityAction(l10n, startActivity)),

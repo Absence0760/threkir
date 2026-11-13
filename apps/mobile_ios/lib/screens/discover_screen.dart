@@ -5,20 +5,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show
-        ActiveFilter,
-        AppInsets,
-        AppSearchField,
-        AppSpace,
-        AsyncView,
-        ChoiceChipOption,
-        EmptyState,
-        FilterBar,
-        HubTabBody,
-        LoadingState,
-        StatusPill,
-        buildChoiceChip,
-        showFilterSheet;
+    show ActiveFilter, AppInsets, AppSearchField, AppSpace, AsyncView, ChoiceChipOption, EmptyState, FilterBar, HubTabBody, ListCard, LoadingState, StatusPill, buildChoiceChip, showFilterSheet;
 
 import '../l10n/gen/app_localizations.dart';
 import '../social_service.dart';
@@ -437,50 +424,26 @@ class _ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return ListCard.row(
       margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(event.clubName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium),
-                    const SizedBox(height: 2),
-                    Text(meta,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              StatusPill(
-                label: price,
-                foreground: free
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.onPrimaryContainer,
-                fill: free
-                    ? theme.colorScheme.surfaceContainerHighest
-                    : theme.colorScheme.primaryContainer,
-              ),
-            ],
-          ),
-        ),
+      dense: true,
+      onTap: onTap,
+      title: title,
+      titleMaxLines: 1,
+      badge: StatusPill(
+        label: price,
+        foreground: free
+            ? theme.colorScheme.onSurfaceVariant
+            : theme.colorScheme.onPrimaryContainer,
+        fill: free
+            ? theme.colorScheme.surfaceContainerHighest
+            : theme.colorScheme.primaryContainer,
       ),
+      subtitle: event.clubName,
+      subtitleMaxLines: 1,
+      meta: Text(meta,
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
     );
   }
 }

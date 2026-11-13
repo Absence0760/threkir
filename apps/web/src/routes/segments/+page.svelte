@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
@@ -248,25 +249,26 @@
 			<ul class="cards" data-testid="segment-catalogue-list">
 				{#each shown as segment (segment.id)}
 					<li>
-						<a class="card" href="/segments/{segment.id}">
-							<span class="card-name">{segment.name}</span>
-							{#if segment.region}
-								<span class="card-region">
-									<span class="material-symbols" aria-hidden="true">place</span>
-									{segment.region}
-								</span>
-							{/if}
-							<span class="card-stats">
-								<span class="stat">{fmtDist(segment.distance_m)}</span>
-								{#if segment.elevation_m != null && Number(segment.elevation_m) > 0}
-									<span class="stat">
-										<span class="material-symbols" aria-hidden="true">trending_up</span>
-										{formatElevation(Number(segment.elevation_m))}
+						<ListCard href="/segments/{segment.id}" title={segment.name}>
+							{#snippet meta()}
+								{#if segment.region}
+									<span class="card-region">
+										<span class="material-symbols" aria-hidden="true">place</span>
+										{segment.region}
 									</span>
 								{/if}
-								<span class="stat">{routeSurfaceLabel(segment.surface)}</span>
-							</span>
-						</a>
+								<span class="card-stats">
+									<span class="stat">{fmtDist(segment.distance_m)}</span>
+									{#if segment.elevation_m != null && Number(segment.elevation_m) > 0}
+										<span class="stat">
+											<span class="material-symbols" aria-hidden="true">trending_up</span>
+											{formatElevation(Number(segment.elevation_m))}
+										</span>
+									{/if}
+									<span class="stat">{routeSurfaceLabel(segment.surface)}</span>
+								</span>
+							{/snippet}
+						</ListCard>
 					</li>
 				{/each}
 			</ul>
@@ -359,24 +361,6 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
 		gap: var(--space-sm);
-	}
-	.card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-		height: 100%;
-		padding: var(--space-md);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		text-decoration: none;
-		color: var(--color-text);
-	}
-	.card:hover {
-		border-color: var(--color-primary);
-	}
-	.card-name {
-		font-weight: 600;
 	}
 	.card-region,
 	.card-stats {

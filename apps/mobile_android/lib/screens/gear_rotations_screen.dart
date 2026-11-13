@@ -7,7 +7,8 @@ import 'package:ui_kit/ui_kit.dart'
         AsyncView,
         EmptyState,
         LoadingState,
-        SheetScaffold;
+        SheetScaffold,
+        ListCard;
 
 import '../auth_error.dart';
 import '../gear_rotation_pick.dart';
@@ -321,7 +322,9 @@ class _GearRotationsScreenState extends State<GearRotationsScreen> {
   Widget _rotationTile(
       GearRotationWithMembers r, ThemeData theme, AppLocalizations l10n) {
     final nextUps = _nextUpFor(r);
-    return Card(
+    // Flush: the rotation's own row and its next-up blocks each hold a
+    // control, so the card is a shell around them rather than one tap.
+    return ListCard.flush(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 
 import '../geocoding.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -212,23 +213,24 @@ class _NearbyAreaScreenState extends State<NearbyAreaScreen> {
                 onRetry: _loadLabel,
               )
             else
-              Card(
-                child: ListTile(
-                  title: Text(
-                    _label == null
-                        ? l10n.nearbyAreaNone
-                        : l10n.nearbyAreaCurrent(_label!),
-                  ),
-                  trailing: _label == null
-                      ? null
-                      : TextButton(
-                          onPressed: _busy ? null : _forget,
-                          style: TextButton.styleFrom(
-                            foregroundColor: theme.colorScheme.error,
-                          ),
-                          child: Text(l10n.nearbyAreaForget),
-                        ),
-                ),
+              ListCard.row(
+                dense: true,
+                title: _label == null
+                    ? l10n.nearbyAreaNone
+                    : l10n.nearbyAreaCurrent(_label!),
+                titleMaxLines: 3,
+                // An action under the label rather than a trailing button:
+                // at 2x the button took the row's width from the label.
+                actions: [
+                  if (_label != null)
+                    TextButton(
+                      onPressed: _busy ? null : _forget,
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                      ),
+                      child: Text(l10n.nearbyAreaForget),
+                    ),
+                ],
               ),
             const SizedBox(height: 24),
             Semantics(

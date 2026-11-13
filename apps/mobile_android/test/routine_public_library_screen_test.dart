@@ -11,6 +11,7 @@ import '../lib/local_routine_store.dart';
 import '../lib/screens/routine_public_library_screen.dart';
 import '../lib/widgets/official_badge.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 GymRoutineRow _routine(String id, String title) => GymRoutineRow(
       id: id,
@@ -153,6 +154,46 @@ Widget _app(ApiClient api, LocalRoutineStore store, LocalGymStore gym) =>
     );
 
 void main() {
+  worstCaseTestWidgets('the library cards', (tester, locale) async {
+    final f = await _fixture('wc');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    final api = _LibraryApi([
+      (
+        routine: _routine('r-off', 'Strength and mobility for distance runners'),
+        authorHandle: 'Threkir',
+        isOfficial: true,
+      ),
+    ]);
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoutinePublicLibraryScreen(api: api, store: f.store, gymStore: f.gym),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Library');
+  });
+
+  worstCaseTestWidgets('the preview exercise cards', (tester, locale) async {
+    final f = await _fixture('wcp');
+    addTearDown(() => f.dir.deleteSync(recursive: true));
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RoutinePublicPreviewScreen(
+        api: _AdoptApi('r-adopted'),
+        store: f.store,
+        gymStore: f.gym,
+        entry: (
+          routine: _routine('r-off', 'Strength for runners'),
+          authorHandle: 'Threkir',
+          isOfficial: true,
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await walkScrollable(tester, primaryScrollable(), 'Library preview');
+  });
+
   testWidgets('lists public routines with author handle', (tester) async {
     final f = await _fixture('list');
     try {

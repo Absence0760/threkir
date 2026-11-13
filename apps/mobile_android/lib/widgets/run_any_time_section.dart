@@ -4,7 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' show Position;
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard, ListSkeleton;
 
 import '../any_time_courses.dart';
 import '../backend_timeout.dart';
@@ -359,33 +359,52 @@ class _CourseCard extends StatelessWidget {
                     '${r.season}', formatEffortTime(r.timeSeconds));
     final muted = theme.textTheme.bodySmall
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    return Card(
+    // The content form, not ListCard.row: the park name is a link of its own
+    // inside the card, which a row would merge into the card's label.
+    return ListCard(
       key: ValueKey('races-any-time-course-${course.id}'),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: const Icon(Icons.park_outlined),
-        title: Text(segment.name),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ParkNameLink(
-              key: ValueKey('races-any-time-park-link-${course.id}'),
-              label: '${park.name}, ${regionName(park.regionCode)}',
-              onTap: onOpenPark,
+      margin: ListCard.listMargin,
+      dense: true,
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(Icons.park_outlined, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  segment.name,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                ParkNameLink(
+                  key: ValueKey('races-any-time-park-link-${course.id}'),
+                  label: '${park.name}, ${regionName(park.regionCode)}',
+                  onTap: onOpenPark,
+                ),
+                Text(meta, style: muted),
+                if (pills.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.xs),
+                    child: Wrap(spacing: 6, runSpacing: 4, children: pills),
+                  ),
+                if (recordLine != null) Text(recordLine),
+              ],
             ),
-            Text(meta, style: muted),
-            if (pills.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Wrap(spacing: 6, runSpacing: 4, children: pills),
-              ),
-            if (recordLine != null) Text(recordLine),
-          ],
-        ),
-        trailing: course.status == 'open'
-            ? const Icon(Icons.chevron_right)
-            : Chip(label: Text(courseStatusLabel(l10n, course.status))),
-        onTap: onTap,
+          ),
+          const SizedBox(width: AppSpace.sm),
+          if (course.status == 'open')
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            )
+          else
+            Flexible(
+              child: Chip(label: Text(courseStatusLabel(l10n, course.status))),
+            ),
+        ],
       ),
     );
   }

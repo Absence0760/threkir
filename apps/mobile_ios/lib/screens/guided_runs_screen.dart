@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        AppSpace,
         DetailHero,
         DetailPage,
         HeroCta,
+        ListCard,
         SectionHeader,
         StatusPill,
         TextLane;
@@ -55,52 +57,33 @@ class _GuidedRunCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final minutes = (run.durationSec / 60).round();
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => GuidedRunDetailScreen(run: run),
-          ),
+    return ListCard.row(
+      margin: ListCard.listMargin,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GuidedRunDetailScreen(run: run),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  StatusPill(
-                    label: l10n.guidedRunMinutesBadge(minutes),
-                    foreground: theme.colorScheme.onPrimaryContainer,
-                    fill: theme.colorScheme.primaryContainer,
-                  ),
-                  const Spacer(),
-                  Icon(Icons.chevron_right,
-                      color: theme.colorScheme.outline),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(run.title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                run.subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(run.description, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 8),
-              Text(
-                l10n.guidedRunCueCount(run.cues.length),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+      ),
+      chevron: true,
+      title: run.title,
+      badge: StatusPill(
+        label: l10n.guidedRunMinutesBadge(minutes),
+        foreground: theme.colorScheme.onPrimaryContainer,
+        fill: theme.colorScheme.primaryContainer,
+      ),
+      subtitle: run.subtitle,
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(run.description, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: AppSpace.sm),
+          Text(
+            l10n.guidedRunCueCount(run.cues.length),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -183,25 +166,33 @@ class _GuidedRunDetailScreenState extends State<GuidedRunDetailScreen> {
           SectionHeader(label: l10n.guidedRunFullScript),
           const SizedBox(height: 8),
           for (final cue in widget.run.cues)
-            Card(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              child: ListTile(
-                leading: TextLane(
-                  width: 56,
-                  child: Text(
-                    _fmtMmSs(cue.atSec),
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+            // The content form: a cue is a line of script read as body
+            // text, not a row title, and its preview is a button of its own.
+            ListCard(
+              margin: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+              dense: true,
+              child: Row(
+                children: [
+                  TextLane(
+                    width: 56,
+                    child: Text(
+                      _fmtMmSs(cue.atSec),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
-                ),
-                title: Text(cue.text),
-                trailing: IconButton(
-                  tooltip: l10n.guidedRunPreviewCue,
-                  icon: const Icon(Icons.volume_up),
-                  onPressed: () => _previewCue(cue.text),
-                ),
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(
+                    child: Text(cue.text, style: theme.textTheme.bodyLarge),
+                  ),
+                  IconButton(
+                    tooltip: l10n.guidedRunPreviewCue,
+                    icon: const Icon(Icons.volume_up),
+                    onPressed: () => _previewCue(cue.text),
+                  ),
+                ],
               ),
             ),
         ],

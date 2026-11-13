@@ -26,7 +26,7 @@ import 'package:ui_kit/ui_kit.dart'
         SheetScaffold,
         StatTile,
         StatusPill,
-        motionDuration;
+        motionDuration, ListCard;
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -5611,26 +5611,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 if (_raceUndoOpen)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Card(
+                    child: ListCard(
                       key: const ValueKey('race-undo'),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                l10n.runRaceFinishRecorded,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
+                      dense: true,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.runRaceFinishRecorded,
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
-                            const SizedBox(width: 8),
-                            FilledButton(
-                              key: const ValueKey('race-undo-resume'),
-                              onPressed: () => unawaited(_onRaceUndo()),
-                              child: Text(l10n.runRaceUndoResume),
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            key: const ValueKey('race-undo-resume'),
+                            onPressed: () => unawaited(_onRaceUndo()),
+                            child: Text(l10n.runRaceUndoResume),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -5841,7 +5839,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           }
       }
     }
-    return Card(
+    return ListCard.flush(
       color: theme.colorScheme.surface.withValues(alpha: 0.94),
       margin: EdgeInsets.zero,
       child: SwitchListTile(
@@ -6672,126 +6670,124 @@ class RunTopBanners extends StatelessWidget {
         // both can show at once and stack.
         if (offRouteMetres != null)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.danger,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Text(
-                  l10n.runOffRoute(offRouteMetres!.round()),
-                  style: TextStyle(
-                      color: semantic.onDanger, fontWeight: FontWeight.w600),
-                ),
+              dense: true,
+              child: Text(
+                l10n.runOffRoute(offRouteMetres!.round()),
+                style: TextStyle(
+                    color: semantic.onDanger, fontWeight: FontWeight.w600),
               ),
             ),
           ),
         if (permissionLost)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.danger,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.location_off,
-                        color: semantic.onDanger, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
+              dense: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.location_off,
+                      color: semantic.onDanger, size: 18),
+                  const SizedBox(width: 8),
+                  // Flexible, as the approximate strip's is: at 2x the
+                  // line is wider than the screen and has to wrap.
+                  Flexible(
+                    child: Text(
                       l10n.runPermissionRevoked,
                       style: TextStyle(
                           color: semantic.onDanger,
                           fontWeight: FontWeight.w600),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           )
         else if (gpsLost)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.danger,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.gps_off, color: semantic.onDanger, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
+              dense: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.gps_off, color: semantic.onDanger, size: 18),
+                  const SizedBox(width: 8),
+                  // Flexible, as the approximate strip's is: at 2x the
+                  // line is wider than the screen and has to wrap.
+                  Flexible(
+                    child: Text(
                       l10n.runGpsLost,
                       style: TextStyle(
                           color: semantic.onDanger,
                           fontWeight: FontWeight.w600),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           )
         else if (approximateLocation)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.warning,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 8, 2),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.gps_not_fixed,
-                            color: semantic.onWarning, size: 18),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            l10n.runWeakGpsApproximate,
-                            style: TextStyle(
-                                color: semantic.onWarning,
-                                fontWeight: FontWeight.w600),
-                          ),
+              dense: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.gps_not_fixed,
+                          color: semantic.onWarning, size: 18),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          l10n.runWeakGpsApproximate,
+                          style: TextStyle(
+                              color: semantic.onWarning,
+                              fontWeight: FontWeight.w600),
                         ),
-                      ],
-                    ),
-                    if (onTurnOnPreciseLocation != null)
-                      TextButton(
-                        onPressed: onTurnOnPreciseLocation,
-                        style: TextButton.styleFrom(
-                          foregroundColor: semantic.onWarning,
-                        ),
-                        child: Text(l10n.runTurnOnPreciseLocation),
                       ),
-                  ],
-                ),
+                    ],
+                  ),
+                  if (onTurnOnPreciseLocation != null)
+                    TextButton(
+                      onPressed: onTurnOnPreciseLocation,
+                      style: TextButton.styleFrom(
+                        foregroundColor: semantic.onWarning,
+                      ),
+                      child: Text(l10n.runTurnOnPreciseLocation),
+                    ),
+                ],
               ),
             ),
           )
         else if (weakGps)
           Center(
-            child: Card(
+            child: ListCard(
               color: semantic.warning,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.gps_not_fixed,
-                        color: semantic.onWarning, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
+              dense: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.gps_not_fixed,
+                      color: semantic.onWarning, size: 18),
+                  const SizedBox(width: 8),
+                  // Flexible, as the approximate strip's is: at 2x the
+                  // line is wider than the screen and has to wrap.
+                  Flexible(
+                    child: Text(
                       l10n.runWeakGps,
                       style: TextStyle(
                           color: semantic.onWarning,
                           fontWeight: FontWeight.w600),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

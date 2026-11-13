@@ -10,6 +10,7 @@ import 'package:ui_kit/ui_kit.dart'
         AppSpace,
         AsyncView,
         EmptyState,
+        ListCard,
         FilterBar,
         HubTabBody,
         IdentityAvatar,
@@ -38,6 +39,7 @@ import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
 import '../widgets/loading_skeletons.dart';
 import '../widgets/old_match_note.dart';
+import '../widgets/segments_panel.dart' show SegmentTierFilters;
 
 /// Browse list for the curated famous-segment catalogue (decisions §233).
 /// Mobile mirror of web `/segments`: search with accent folding, region and
@@ -395,33 +397,23 @@ class _CatalogueCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final elevation = segment.elevationM;
-    return Card(
+    final region = segment.region?.trim();
+    return ListCard.row(
       margin: EdgeInsets.zero,
-      child: ListTile(
-        onTap: onTap,
-        title: Text(segment.name, style: theme.textTheme.titleMedium),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (segment.region != null && segment.region!.trim().isNotEmpty)
-                Text(segment.region!),
-              const SizedBox(height: 4),
-              Text(
-                [
-                  formatDistanceForPref((segment.distanceM ?? 0).toDouble()),
-                  if (elevation != null && elevation > 0)
-                    formatElevationForPref(elevation.toDouble()),
-                  routeSurfaceLabel(l10n, segment.surface),
-                ].join(' · '),
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
+      dense: true,
+      onTap: onTap,
+      chevron: true,
+      title: segment.name,
+      subtitle: region == null || region.isEmpty ? null : region,
+      meta: Text(
+        [
+          formatDistanceForPref((segment.distanceM ?? 0).toDouble()),
+          if (elevation != null && elevation > 0)
+            formatElevationForPref(elevation.toDouble()),
+          routeSurfaceLabel(l10n, segment.surface),
+        ].join(' · '),
+        style: theme.textTheme.bodySmall
+            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -654,15 +646,14 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
         ],
         if (_parkCourse case final pc?) ...[
           const SizedBox(height: 8),
-          Card(
+          ListCard.row(
             key: const Key('segment-park-course-link'),
             margin: EdgeInsets.zero,
-            child: ListTile(
-              leading: const Icon(Icons.park_outlined),
-              title: Text(l10n.segmentCatalogueParkCourseLink(pc.park.park.name)),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _openParkCourse(pc),
-            ),
+            dense: true,
+            leading: const Icon(Icons.park_outlined),
+            title: l10n.segmentCatalogueParkCourseLink(pc.park.park.name),
+            chevron: true,
+            onTap: () => _openParkCourse(pc),
           ),
         ],
         if (_courseCredit case final credit?) ...[
@@ -726,73 +717,25 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            DropdownButtonHideUnderline(
-              child: DropdownButton<String?>(
-                value: _gender,
-                isDense: true,
-                hint: Text(l10n.segmentsPanelAllGenders),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(l10n.segmentsPanelAllGenders),
-                  ),
-                  DropdownMenuItem(
-                    value: 'male',
-                    child: Text(l10n.segmentsPanelGenderMen),
-                  ),
-                  DropdownMenuItem(
-                    value: 'female',
-                    child: Text(l10n.segmentsPanelGenderWomen),
-                  ),
-                ],
-                onChanged: (v) {
-                  setState(() => _gender = v);
-                  _refreshBoard();
-                },
-              ),
-            ),
-            DropdownButtonHideUnderline(
-              child: DropdownButton<String?>(
-                value: _ageBand,
-                isDense: true,
-                hint: Text(l10n.segmentsPanelAllAges),
-                items: [
-                  DropdownMenuItem(
-                    value: null,
-                    child: Text(l10n.segmentsPanelAllAges),
-                  ),
-                  for (final b in kSegmentAgeBands)
-                    DropdownMenuItem(value: b, child: Text(b)),
-                ],
-                onChanged: (v) {
-                  setState(() => _ageBand = v);
-                  _refreshBoard();
-                },
-              ),
-            ),
-            if (filtered)
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _gender = null;
-                    _ageBand = null;
-                  });
-                  _refreshBoard();
-                },
-                icon: const Icon(Icons.close, size: 16),
-                label: Text(l10n.segmentsPanelResetFilters),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-          ],
+        SegmentTierFilters(
+          framed: false,
+          genderFilter: _gender,
+          ageFilter: _ageBand,
+          onGenderChanged: (v) {
+            setState(() => _gender = v);
+            _refreshBoard();
+          },
+          onAgeChanged: (v) {
+            setState(() => _ageBand = v);
+            _refreshBoard();
+          },
+          onReset: () {
+            setState(() {
+              _gender = null;
+              _ageBand = null;
+            });
+            _refreshBoard();
+          },
         ),
         const SizedBox(height: 8),
         if (_segment case final segment?)
@@ -913,29 +856,33 @@ class _BoardRow extends StatelessWidget {
             imageUrl: entry.athlete.avatarUrl,
           ),
           const SizedBox(width: 8),
+          // The viewer's "You" sits under the name, not beside it: inline
+          // at 320 dp and 2x it and the time left the name no width. The
+          // label and the weight are the cue; the row tint is too faint.
           Expanded(
-            child: Text(
-              entry.athlete.displayName ?? l10n.segmentsPanelRunnerFallback,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontWeight: isViewer ? FontWeight.w700 : null),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  entry.athlete.displayName ?? l10n.segmentsPanelRunnerFallback,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: isViewer ? FontWeight.w700 : null),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isViewer)
+                  Text(
+                    l10n.navYou,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
             ),
           ),
-          // The viewer tint is barely distinguishable from a neighbouring row,
-          // so the label and the weight are the cue — as on the route-segment
-          // leaderboard.
-          if (isViewer) ...[
-            const SizedBox(width: 6),
-            Text(
-              l10n.navYou,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 6),
-          ],
+          const SizedBox(width: 6),
           Text(
             formatEffortTime(entry.effort.timeSeconds),
             style: theme.textTheme.titleSmall

@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, IdentityAvatar, ListCard, ListSkeleton;
 import '../auth_error.dart';
 import '../engagement_cache.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -996,8 +997,8 @@ class _MentionPicker extends StatelessWidget {
     return Semantics(
       container: true,
       label: AppLocalizations.of(context).runSocialMentionSuggestions,
-      child: Card(
-        margin: const EdgeInsets.only(top: 4),
+      child: ListCard.flush(
+        margin: const EdgeInsets.only(top: AppSpace.xs),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

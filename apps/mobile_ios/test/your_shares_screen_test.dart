@@ -9,6 +9,7 @@ import '../lib/screens/your_shares_screen.dart';
 import '../lib/share_ref.dart';
 import '../lib/social_service.dart';
 import '../lib/widgets/error_state.dart';
+import 'worst_case_layout.dart';
 
 class _FakeSocial extends SocialService {
   _FakeSocial(this.rows, {this.fail = false});
@@ -34,7 +35,31 @@ Future<void> _pump(WidgetTester tester, _FakeSocial social) async {
   await tester.pump();
 }
 
+const _stats = [
+  ShareStat(
+      kind: 'plan',
+      entityId: 'p1',
+      title: 'Marathon block for the autumn city races',
+      visits: 12345,
+      refVisits: 5432,
+      signups: 210,
+      starts: 3,
+      refStarts: 1),
+  ShareStat(kind: 'challenge', entityId: 'c1', title: 'Run 50 km', joins: 4, refJoins: 4),
+  ShareStat(kind: 'profile', entityId: 'u1', visits: 7, botVisits: 2),
+];
+
 void main() {
+  worstCaseTestWidgets('Your shares list', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: YourSharesScreen(social: _FakeSocial(_stats)),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Your shares');
+  });
+
   testWidgets('each link shows its visits, sign-ups and starts or joins', (tester) async {
     await _pump(
         tester,

@@ -263,9 +263,10 @@ void main() {
             'showing the queued one, promises a sync that cannot happen');
 
     final semantics = tester.widget<Semantics>(
-      find.ancestor(
+      find.descendant(
         of: find.byType(Card),
-        matching: find.byType(Semantics),
+        matching: find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.label != null),
       ).first,
     );
     final en = lookupAppLocalizations(const Locale('en'));

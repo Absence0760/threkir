@@ -239,42 +239,17 @@ class _RoutineLibraryScreenState extends State<RoutineLibraryScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final r = routines[i];
-        return Card(
+        return ListCard.row(
           margin: EdgeInsets.zero,
-          child: InkWell(
-            onTap: () => _open(r.id),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          r.title.isEmpty ? l10n.gymUntitled : r.title,
-                          style: theme.textTheme.titleSmall,
-                        ),
-                        Text(
-                          formatDateMed(r.lastModifiedAt.toLocal(), tag),
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    l10n.gymRoutineExerciseCount(r.exerciseCount),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-                ],
-              ),
-            ),
+          dense: true,
+          onTap: () => _open(r.id),
+          chevron: true,
+          title: r.title.isEmpty ? l10n.gymUntitled : r.title,
+          subtitle: formatDateMed(r.lastModifiedAt.toLocal(), tag),
+          meta: Text(
+            l10n.gymRoutineExerciseCount(r.exerciseCount),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         );
       },

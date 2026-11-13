@@ -981,4 +981,31 @@ void main() {
     expect(raceShareUrl('abc', webBase: 'https://threkir.com/'),
         'https://threkir.com/share/race/abc');
   });
+
+  // The runs linked to the race are ListCard rows (issue #1374).
+  worstCaseTestWidgets('Race detail with linked runs', (tester, locale) async {
+    final service =
+        _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(-3)))
+          ..runs = const [
+            RaceListingRun(
+              id: 'run-1',
+              startedAt: '2026-10-12T08:00:00.000Z',
+              distanceM: 42195,
+              durationS: 11530,
+              chipTime: '3:12:10',
+            ),
+          ];
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: RaceDetailScreen(
+        service: service,
+        listingId: '11111111-1111-4111-8111-111111111111',
+        training: _FakeTraining(),
+        loadAiPlanAvailable: () async => false,
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Race detail');
+  });
 }

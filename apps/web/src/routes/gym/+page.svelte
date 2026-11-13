@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ListCard from '#lib/components/ListCard.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -311,35 +312,38 @@
 		<ul class="workout-list">
 			{#each workouts as w (w.id)}
 				<li>
-					<a class="card-elevated workout-row" href="/gym/{w.id}">
-						<div class="row-main">
-							<span class="row-title">{w.title || t('gym.untitled')}</span>
-							<span class="row-date">{formatDate(w.started_at)}</span>
-						</div>
-						<div class="row-stats">
-							{#if summaryById.get(w.id)?.isPr}
-								<span class="pr-badge" aria-label={t('gym.pr.title')}>
-									<span class="material-symbols" aria-hidden="true">trophy</span>
-									{t('gym.pr.badge')}
+					<ListCard
+						class="workout-row"
+						href="/gym/{w.id}"
+						title={w.title || t('gym.untitled')}
+						subtitle={formatDate(w.started_at)}
+						chevron
+					>
+						{#snippet trailing()}
+							<span class="row-stats">
+								{#if summaryById.get(w.id)?.isPr}
+									<span class="pr-badge" aria-label={t('gym.pr.title')}>
+										<span class="material-symbols" aria-hidden="true">trophy</span>
+										{t('gym.pr.badge')}
+									</span>
+								{/if}
+								<span class="stat">
+									<span class="stat-value">{summaryById.get(w.id)?.exerciseCount ?? 0}</span>
+									<span class="stat-label section-label">{t('gym.exercisesLabel')}</span>
 								</span>
-							{/if}
-							<span class="stat">
-								<span class="stat-value">{summaryById.get(w.id)?.exerciseCount ?? 0}</span>
-								<span class="stat-label section-label">{t('gym.exercisesLabel')}</span>
-							</span>
-							<span class="stat">
-								<span class="stat-value">{w.set_count}</span>
-								<span class="stat-label section-label">{t('gym.setsLabel')}</span>
-							</span>
-							{#if Math.round(w.volume_kg) > 0}
-								<span class="stat stat-volume">
-									<span class="stat-value">{formatWeight(Math.round(w.volume_kg))}</span>
-									<span class="stat-label section-label">{t('gym.volumeLabel')}</span>
+								<span class="stat">
+									<span class="stat-value">{w.set_count}</span>
+									<span class="stat-label section-label">{t('gym.setsLabel')}</span>
 								</span>
-							{/if}
-							<span class="material-symbols chevron" aria-hidden="true">chevron_right</span>
-						</div>
-					</a>
+								{#if Math.round(w.volume_kg) > 0}
+									<span class="stat stat-volume">
+										<span class="stat-value">{formatWeight(Math.round(w.volume_kg))}</span>
+										<span class="stat-label section-label">{t('gym.volumeLabel')}</span>
+									</span>
+								{/if}
+							</span>
+						{/snippet}
+					</ListCard>
 				</li>
 			{/each}
 		</ul>
@@ -457,41 +461,6 @@
 		flex-direction: column;
 		gap: var(--space-sm);
 	}
-	.workout-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: var(--space-lg);
-		padding: var(--space-md) var(--space-lg);
-		text-decoration: none;
-		color: inherit;
-		transition: border-color var(--transition-fast),
-			box-shadow var(--transition-base);
-	}
-	.workout-row:hover {
-		border-color: var(--color-primary);
-	}
-	.workout-row:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: 2px;
-	}
-	.row-main {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		min-width: 0;
-	}
-	.row-title {
-		font-weight: 600;
-		font-size: 1rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.row-date {
-		font-size: 0.82rem;
-		color: var(--color-text-secondary);
-	}
 	.row-stats {
 		display: flex;
 		flex-wrap: wrap;
@@ -529,10 +498,6 @@
 	}
 	.pr-badge .material-symbols {
 		font-size: 0.85rem;
-	}
-	.chevron {
-		color: var(--color-text-tertiary);
-		flex-shrink: 0;
 	}
 
 	/* Skeleton row — the blocks are SkeletonBlock. */

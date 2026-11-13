@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         EmptyState,
+        ListCard,
         ListSkeleton,
         PageHeader,
         PushedPage,
@@ -320,14 +321,11 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
     );
   }
 
-  Widget _card({required List<Widget> children}) => Card(
+  Widget _card({required List<Widget> children}) => ListCard(
         margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
         ),
       );
 
@@ -375,6 +373,8 @@ class _NutritionTargetsScreenState extends State<NutritionTargetsScreen> {
     final factor = NumberFormat.decimalPattern(tag).format(_activityFactor);
     return _card(
       children: [
+        // The total is the header's trailing slot, which drops under the
+        // label when the two do not share a line (2x text, 320 dp).
         SectionHeader(
           label: l10n.nutritionTargetsTotal,
           trailing: Text(

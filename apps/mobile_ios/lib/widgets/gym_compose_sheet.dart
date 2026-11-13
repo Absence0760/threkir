@@ -4,7 +4,8 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show dedupeShadowedExercises;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SectionHeader, TextLane;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, ListCard, SectionHeader, TextLane;
 
 import '../gym_compose_draft.dart';
 import '../gym_prs.dart';
@@ -735,66 +736,33 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
 
   Widget _recoverCard(
       GymComposeDraft draft, ThemeData theme, AppLocalizations l10n) {
-    return Card(
+    return ListCard.row(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.history, color: theme.colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.gymComposeDraftTitle,
-                          style: theme.textTheme.titleSmall),
-                      Text(
-                        l10n.gymComposeDraftBody,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: Wrap(
-                spacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: _discardRecoverable,
-                    style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.error),
-                    child: Text(l10n.gymSessionDiscardConfirm),
-                  ),
-                  FilledButton(
-                    onPressed: () => _restoreRecoverable(draft),
-                    child: Text(l10n.gymDraftResume),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      dense: true,
+      leading: Icon(Icons.history, color: theme.colorScheme.primary),
+      title: l10n.gymComposeDraftTitle,
+      subtitle: l10n.gymComposeDraftBody,
+      subtitleMaxLines: 4,
+      actions: [
+        TextButton(
+          onPressed: _discardRecoverable,
+          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+          child: Text(l10n.gymSessionDiscardConfirm),
         ),
-      ),
+        FilledButton(
+          onPressed: () => _restoreRecoverable(draft),
+          child: Text(l10n.gymDraftResume),
+        ),
+      ],
     );
   }
 
   Widget _exerciseCard(
       _EditExercise ex, int i, ThemeData theme, AppLocalizations l10n) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -917,7 +885,6 @@ class _GymComposeSheetState extends State<GymComposeSheet> {
             ),
           ],
         ),
-      ),
     );
   }
 

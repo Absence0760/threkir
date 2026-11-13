@@ -4,10 +4,12 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        AppSpace,
         DetailHero,
         DetailMeta,
         DetailPage,
         EmptyState,
+        ListCard,
         ListSkeleton,
         PageHeader,
         ProgressBar,
@@ -150,14 +152,6 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
           PageHeader(title: l10n.planLibraryTitle),
           if (showControls) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Text(
-                l10n.planLibrarySubheading,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ),
-            Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
                 controller: _searchCtrl,
@@ -207,19 +201,28 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
                             onRefresh: _load,
                             child: ListView.separated(
                               padding: const EdgeInsets.all(16),
-                              itemCount: _plans.length,
+                              // The subheading scrolls with the cards: pinned
+                              // above the search, it left the list no room at
+                              // 320 dp and 2x (issue #1374).
+                              itemCount: _plans.length + 1,
                               separatorBuilder: (_, __) => const SizedBox(height: 8),
-                              itemBuilder: (_, i) => _LibraryCard(
-                                entry: _plans[i],
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => PlanLibraryPreviewScreen(
-                                      training: widget.training,
-                                      entry: _plans[i],
+                              itemBuilder: (_, i) => i == 0
+                                  ? Text(
+                                      l10n.planLibrarySubheading,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant),
+                                    )
+                                  : _LibraryCard(
+                                      entry: _plans[i - 1],
+                                      onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => PlanLibraryPreviewScreen(
+                                            training: widget.training,
+                                            entry: _plans[i - 1],
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ),
                             ),
                           ),
           ),
@@ -276,23 +279,20 @@ class _LibraryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final p = entry.plan;
     final author = entry.authorHandle ?? l10n.planLibraryAnonymous;
-    return Card(
-      child: ListTile(
-        onTap: onTap,
-        title: Text(p.name, style: theme.textTheme.titleMedium),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (entry.isOfficial) const OfficialBadge(),
-              Text(l10n.planLibraryByAuthor(author)),
-              const SizedBox(height: 6),
-              _PlanFacts(plan: p),
-            ],
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
+    return ListCard.row(
+      onTap: onTap,
+      title: p.name,
+      chevron: true,
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (entry.isOfficial) const OfficialBadge(),
+          Text(l10n.planLibraryByAuthor(author),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: AppSpace.xs),
+          _PlanFacts(plan: p),
+        ],
       ),
     );
   }

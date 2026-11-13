@@ -19,6 +19,7 @@ import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'realtime_drain.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 
@@ -209,6 +210,74 @@ class _PendingSocial extends SocialService {
 
 /// Admin club with one pending request that records deny calls so the
 /// deny-confirm dialog flow can be asserted.
+/// An admin club with a row in every list the detail page draws, for the
+/// worst-case walk: a pending request, upcoming events, a post, a club
+/// route, and plan, session and routine templates.
+class _FullClubSocial extends _PendingSocial {
+  @override
+  Future<List<EventView>> fetchUpcomingEvents(String clubId) async => [
+        EventView(
+          row: EventRow(
+            raceStartMode: 'host_go',
+            id: 'event-1',
+            clubId: 'club-1',
+            title: 'Saturday long run along the river and back to the clubhouse',
+            startsAt: DateTime.utc(2026, 3, 28, 10, 35),
+            authorId: 'owner',
+            category: 'run',
+            isPublic: true,
+            meetLabel: 'Riverside car park by the old boathouse',
+          ),
+          byday: null,
+          attendeeCount: 1234,
+          viewerRsvp: 'going',
+          nextInstanceStart: DateTime.utc(2026, 3, 28, 10, 35),
+        ),
+      ];
+  @override
+  Future<List<ClubPostView>> fetchClubPosts(
+    String clubId, {
+    int limit = 20,
+  }) async => [
+        ClubPostView(
+          row: ClubPostRow(
+            id: 'post-1',
+            clubId: 'club-1',
+            authorId: 'someone',
+            body: 'Saturday long run? Meet at the boathouse at nine.',
+            createdAt: DateTime.utc(2026, 5, 1),
+          ),
+          authorName: 'Samantha Featherstonehaugh',
+          replyCount: 12,
+        ),
+      ];
+  @override
+  Future<List<ClubVerificationRequestRow>> fetchClubVerificationRequests(
+          String clubId) async =>
+      const [];
+}
+
+class _FullClubTraining extends TrainingService {
+  @override
+  Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async => [
+        TrainingPlanRow(
+          id: 'tpl-1',
+          userId: 'owner',
+          name: 'Club half marathon build with hills and tempo blocks',
+          goalEvent: 'half',
+          goalDistanceM: 21097,
+          source: 'generated',
+          isTemplate: true,
+          isPublicTemplate: false,
+          startDate: DateTime.utc(2026, 1, 5),
+          endDate: DateTime.utc(2026, 3, 29),
+          daysPerWeek: 4,
+          status: 'active',
+          notes: 'Twelve weeks, four runs a week, one long run on Sunday.',
+        ),
+      ];
+}
+
 class _DenySocial extends SocialService {
   int denyCalls = 0;
 
@@ -533,6 +602,50 @@ class _RosterSocial extends SocialService {
 }
 
 void main() {
+
+  worstCaseTestWidgets('Club detail lists', (tester, locale) async {
+    await _ensureSupabase();
+    final l10n = l10nFor(locale);
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ClubDetailScreen(
+        social: _FullClubSocial(),
+        training: _FullClubTraining(),
+        apiClient: _FakeApi(
+          [_routine('r-1', 'Club push day with accessory supersets', 12)],
+          officialRoutineIds: const {'r-1'},
+        ),
+        slug: 'track-club',
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    for (final (label, row) in [
+      (l10n.clubDetailTabFeed, 'Samantha Featherstonehaugh'),
+      (l10n.clubDetailTabEvents, 'Riverside car park by the old boathouse'),
+      (l10n.clubDetailTabMembers, 'Pat Pending'),
+      (l10n.clubDetailTabTemplates, 'Club push day with accessory supersets'),
+    ]) {
+      final tab = find.text(label);
+      await tester.ensureVisible(tab);
+      await tester.tap(tab);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.dragUntilVisible(
+          find.text(row), find.byType(TabBarView), const Offset(0, -150));
+      await tester.pump();
+      tester.takeException();
+    }
+    await drainRealtimeTimers(tester);
+  },
+      layoutOnly: true,
+      // The hero's avatar-and-title Row (`_buildHero`) still overflows at 2x
+      // in de and fr; it moves to DetailPage in the same round, and these
+      // two locales join the run when it does. Every list row here was
+      // measured clean in all seven.
+      locales: kWorstCaseLocales
+          .where((l) => l.languageCode != 'de' && l.languageCode != 'fr')
+          .toList());
   setUpAll(_ensureSupabase);
 
   group('ClubDetailScreen — initial render', () {

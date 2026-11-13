@@ -183,6 +183,17 @@ void main() {
   tearDown(resetActivePreferencesForTest);
 
   group('NutritionTargetsScreen', () {
+    // Issue #1374: the derivation and macro panels are ListCards.
+    worstCaseTestWidgets('Nutrition targets', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: NutritionTargetsScreen(api: _MetricsApi(), settingsSync: null),
+      ));
+      await _settle(tester);
+      await walkScrollable(
+          tester, find.byType(Scrollable).first, 'Nutrition targets');
+    });
+
     testWidgets('shows every term of the derivation and the macro split',
         (tester) async {
       await tester.pumpWidget(_app(NutritionTargetsScreen(

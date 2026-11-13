@@ -6,6 +6,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
 import '../lib/screens/import_screen.dart';
 import '../lib/settings_destination.dart';
+import 'worst_case_layout.dart';
 
 late Directory _runsDir;
 
@@ -37,6 +38,17 @@ Future<void> _pump(WidgetTester tester, LocalRunStore runStore) async {
 }
 
 void main() {
+  // Issue #1374: every import source is a ListCard.
+  worstCaseTestWidgets('Import', (tester, locale) async {
+    final runStore = (await tester.runAsync(_makeStore))!;
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: ImportScreen(apiClient: null, runStore: runStore),
+    ));
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Import');
+  });
+
   tearDown(() {
     if (_runsDir.existsSync()) _runsDir.deleteSync(recursive: true);
   });

@@ -15,6 +15,7 @@ import '../lib/screens/park_courses_screen.dart';
 import '../lib/widgets/elevation_chart.dart';
 import '../lib/widgets/park_course_map.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 ParkListing _park({
   required String id,
@@ -284,6 +285,60 @@ Finder _inCard(String courseId, Finder f) =>
 
 void main() {
   setUpAll(_ensureEnvironment);
+
+  group('ListCard surfaces at the worst case', () {
+    worstCaseTestWidgets('the park cards', (tester, locale) async {
+      final api = _ParksApi(
+        parks: [
+          _park(id: 'p1', name: 'Pocahontas State Park'),
+          _park(id: 'p2', name: 'Umstead State Park', region: 'US-NC'),
+        ],
+        courses: [
+          _course(id: 'a', distanceM: 5000),
+          _course(id: 'b', distanceM: 21100),
+        ],
+      );
+      await tester.pumpWidget(
+          worstCaseApp(locale: locale, home: ParksScreen(api: api)));
+      await _settle(tester);
+      expect(find.byType(Card), findsWidgets);
+      await walkScrollable(tester, primaryScrollable(), 'Parks');
+      await _unmount(tester);
+    }, layoutOnly: true);
+
+    worstCaseTestWidgets('the course cards', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: ParkScreen(
+          api: _ParksApi(courses: [
+            _course(id: 'beaver', name: 'Beaver Lake Trail', distanceM: 4000),
+            _course(id: 'k10', name: '10K', distanceM: 10000, laps: 2),
+            _course(id: 'shut', name: 'Closed loop', status: 'closed'),
+          ]),
+          listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+        ),
+      ));
+      await _settle(tester);
+      await walkScrollable(tester, primaryScrollable(), 'Park');
+      await _unmount(tester);
+    }, layoutOnly: true);
+
+    worstCaseTestWidgets('a closed course and its notices',
+        (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: ParkCourseScreen(
+          api: _ParksApi(),
+          listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+          course: _course(status: 'closed', distanceM: 50000),
+        ),
+      ));
+      await _settle(tester);
+      expect(find.byKey(const Key('park-course-closed')), findsOneWidget);
+      await walkScrollable(tester, primaryScrollable(), 'Park course');
+      await _unmount(tester);
+    }, layoutOnly: true);
+  });
 
   // Tall enough that the course page's boards, below the map, are built.
   void tallView(WidgetTester tester) {

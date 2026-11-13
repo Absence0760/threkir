@@ -83,11 +83,11 @@ const _register = <String, int>{
   // The live stats panel, blurred over the map. Type >= 11.292/9.165 at both
   // tile extremes.
   'lib/widgets/collapsible_panel.dart': 1,
-  // The multi-select selected-row fill (1.065/1.223), moved here with the row
-  // itself when #666 C8 consolidated the two forks of it. Not the cue: the
-  // leading slot forks `check_circle` / `radio_button_unchecked` and the row
-  // carries `Semantics(selected:)`.
-  'lib/widgets/run_list_tile.dart': 1,
+  // The selected-card fill (1.065/1.223), moved here from `run_list_tile.dart`
+  // when every list card became ui_kit's `ListCard` (issue #1374). Not the
+  // cue: a selecting row's leading slot forks `check_circle` /
+  // `radio_button_unchecked` and the card carries `Semantics(selected:)`.
+  '../../packages/ui_kit/lib/src/widgets/list_card.dart': 1,
   // `surface@0.95` over the PAGE, not a map — the only one of the family that
   // is not an overlay, and in dark it is a lighter fill on a darker page
   // (1.163:1), so its `dividerColor` border is what separates it.

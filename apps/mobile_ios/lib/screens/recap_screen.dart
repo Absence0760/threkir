@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:ui_kit/ui_kit.dart'
+    show ChoiceChipOption, ChoiceChipRow, ListCard;
 
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -335,46 +336,37 @@ class _RecapScreenState extends State<RecapScreen> {
             ),
             const SizedBox(height: 12),
             if (_outOfRange) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    l10n.recapNoRunsForPeriod(label),
-                    style: theme.textTheme.titleMedium,
-                  ),
+              ListCard(
+                child: Text(
+                  l10n.recapNoRunsForPeriod(label),
+                  style: theme.textTheme.titleMedium,
                 ),
               ),
             ] else if (recap.runCount == 0) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    l10n.recapNoRunsYetInPeriod(label),
-                    style: theme.textTheme.bodyMedium,
-                  ),
+              ListCard(
+                child: Text(
+                  l10n.recapNoRunsYetInPeriod(label),
+                  style: theme.textTheme.bodyMedium,
                 ),
               ),
             ] else ...[
               // Hero distance
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(
-                        UnitFormat.distance(recap.totalDistanceM, unit),
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+              ListCard(
+                child: Column(
+                  children: [
+                    Text(
+                      UnitFormat.distance(recap.totalDistanceM, unit),
+                      style: theme.textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.recapAcrossRuns(recap.runCount,
-                            recap.runCount == 1 ? 'run' : 'runs'),
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.recapAcrossRuns(recap.runCount,
+                          recap.runCount == 1 ? 'run' : 'runs'),
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -474,26 +466,23 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 4),
-            Text(value, style: theme.textTheme.titleLarge),
-            if (sub != null) ...[
-              const SizedBox(height: 2),
-              Text(sub!, style: theme.textTheme.bodySmall),
-            ],
+          ),
+          const SizedBox(height: 4),
+          Text(value, style: theme.textTheme.titleLarge),
+          if (sub != null) ...[
+            const SizedBox(height: 2),
+            Text(sub!, style: theme.textTheme.bodySmall),
           ],
-        ),
+        ],
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/guided_runs_screen.dart';
+import 'worst_case_layout.dart';
 
 Widget _app(Widget home, {double bottomInset = 0}) => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -18,6 +19,13 @@ Widget _app(Widget home, {double bottomInset = 0}) => MaterialApp(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  worstCaseTestWidgets('the guided run cards', (tester, locale) async {
+    await tester.pumpWidget(
+        worstCaseApp(locale: locale, home: const GuidedRunsScreen()));
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Guided runs');
+  });
 
   testWidgets('GuidedRunsScreen reserves the bottom safe-area inset below the list',
       (tester) async {

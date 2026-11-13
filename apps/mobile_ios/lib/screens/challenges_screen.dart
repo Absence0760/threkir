@@ -1,14 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show
-        AppInsets,
-        AppSpace,
-        AsyncView,
-        EmptyState,
-        HubTabBody,
-        LoadingState,
-        PrimaryAction,
-        SectionHeader;
+    show AppInsets, AppSpace, AsyncView, EmptyState, HubTabBody, ListCard, LoadingState, PrimaryAction, SectionHeader;
 
 import '../challenge_list.dart';
 import '../fab_clearance.dart';
@@ -158,33 +150,24 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           )
         else
-          ...rows.map((c) => Card(
-                margin: const EdgeInsets.only(bottom: AppInsets.itemGap),
-                child: showProgress
-                    ? _progressRow(context, c)
-                    : ListTile(
-                        title: Row(
-                          children: [
-                            Flexible(child: Text(c.title)),
-                            if (c.isOfficial) const OfficialBadge(),
-                          ],
-                        ),
-                        subtitle: Text(
-                          '${challengeMetricLabel(l10n, c.metric)} · ${l10n.challengesParticipants(c.participantCount)}',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => _open(c),
-                      ),
+          ...rows.map((c) => ListCard.row(
+                title: c.title,
+                badge: c.isOfficial ? const OfficialBadge() : null,
+                subtitle:
+                    '${challengeMetricLabel(l10n, c.metric)} · ${l10n.challengesParticipants(c.participantCount)}',
+                meta: showProgress ? _progress(context, c) : null,
+                chevron: true,
+                onTap: () => _open(c),
               )),
       ],
     );
   }
 
-  /// A joined row, carrying the caller's own progress. The value is whatever
+  /// A joined row's own progress. The value is whatever
   /// `my_active_challenges` reported; a challenge outside that RPC's
   /// live-plus-7-day window has no value at all, and says so — drawing an empty
   /// bar there would state a zero nobody measured.
-  Widget _progressRow(BuildContext context, ChallengeView c) {
+  Widget _progress(BuildContext context, ChallengeView c) {
     final l10n = AppLocalizations.of(context);
     final hint = TextStyle(color: Theme.of(context).hintColor);
     final progress = myProgressView(
@@ -192,59 +175,37 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
       startsAt: c.startsAt,
       now: _loadedAt,
     );
-    return InkWell(
-      onTap: () => _open(c),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(c.title,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                ),
-                if (c.isOfficial) const OfficialBadge(),
-                const Icon(Icons.chevron_right),
-              ],
-            ),
-            Text(
-              '${challengeMetricLabel(l10n, c.metric)} · ${l10n.challengesParticipants(c.participantCount)}',
-              style: hint,
-            ),
-            const SizedBox(height: 10),
-            if (progress.state == MyProgressState.unknown)
-              Text(l10n.challengesProgressUnavailable, style: hint)
-            else
-              ChallengeProgressBar(
-                metric: c.metric,
-                value: progress.value,
-                goal: c.goalValue,
-                startsAt: c.startsAt,
-                endsAt: c.endsAt,
-              ),
-            if (c.myRank != null || c.completedAt != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  if (c.myRank != null)
-                    Text(l10n.challengesLeaderboardRank(c.myRank!),
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w600)),
-                  if (c.myRank != null && c.completedAt != null)
-                    const SizedBox(width: 12),
-                  if (c.completedAt != null)
-                    Text(l10n.challengesBadgeEarned,
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary)),
-                ],
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (progress.state == MyProgressState.unknown)
+          Text(l10n.challengesProgressUnavailable, style: hint)
+        else
+          ChallengeProgressBar(
+            metric: c.metric,
+            value: progress.value,
+            goal: c.goalValue,
+            startsAt: c.startsAt,
+            endsAt: c.endsAt,
+          ),
+        if (c.myRank != null || c.completedAt != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          Wrap(
+            spacing: AppSpace.smPlus,
+            children: [
+              if (c.myRank != null)
+                Text(l10n.challengesLeaderboardRank(c.myRank!),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600)),
+              if (c.completedAt != null)
+                Text(l10n.challengesBadgeEarned,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary)),
             ],
-          ],
-        ),
-      ),
+          ),
+        ],
+      ],
     );
   }
 }

@@ -21,6 +21,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/nearby_area_screen.dart';
 import '../lib/screens/settings_preferences_screen.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 bool _supabaseReady = false;
 Future<void> _ensureSupabase() async {
@@ -176,6 +177,19 @@ void main() {
   });
 
   group('NearbyAreaScreen', () {
+    worstCaseTestWidgets('the current area card', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: NearbyAreaScreen(
+          api: _FakeApi(label: 'Richmond, Virginia, United States'),
+          geocodingFetcher: _fetcher('[]'),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await walkScrollable(tester, primaryScrollable(), 'Nearby area');
+    });
+
     testWidgets('shows the stored label', (tester) async {
       await tester.pumpWidget(_wrapArea(NearbyAreaScreen(
         api: _FakeApi(label: 'Richmond, VA'),

@@ -538,90 +538,47 @@ class _RaceCard extends StatelessWidget {
     ];
     // The whole card opens the race; the action buttons below stay their own
     // targets because each claims its own tap. A screen reader hears the
-    // name and facts as one button, and each action separately — the
-    // InkWell's own tap node is excluded so the card is not announced twice.
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        excludeFromSemantics: true,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              MergeSemantics(
-                child: Semantics(
-                  button: true,
-                  onTap: onOpen,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        race.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(decoration: TextDecoration.underline),
-                      ),
-                      if (provenanceShowsBadge(provenance)) ...[
-                        const SizedBox(height: 4),
-                        ProvenanceBadge(provenance: provenance),
-                      ],
-                      const SizedBox(height: 4),
-                      Text(
-                        meta.join(' · '),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      if (!race.isVerified)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            l.racesUnverified,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        ),
-                    ],
+    // name and facts as one button, and each action separately.
+    return ListCard.row(
+      margin: ListCard.listMargin,
+      dense: true,
+      onTap: onOpen,
+      title: race.name,
+      badge: provenanceShowsBadge(provenance)
+          ? ProvenanceBadge(provenance: provenance)
+          : null,
+      subtitle: meta.join(' · '),
+      subtitleMaxLines: 3,
+      meta: race.isVerified
+          ? null
+          : Text(
+              l.racesUnverified,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  if (canTrainFor)
-                    OutlinedButton(
-                      onPressed: onTrainFor,
-                      child: Text(l.racesTrainForThis),
-                    ),
-                  if (race.entryUrl != null)
-                    OutlinedButton(
-                      onPressed: () => _launch(context, race.entryUrl!),
-                      child: Text(l.racesRegister),
-                    ),
-                  if (race.resultsUrl != null)
-                    OutlinedButton(
-                      onPressed: () => _launch(context, race.resultsUrl!),
-                      child: Text(l.racesViewResults),
-                    ),
-                  if (canImport)
-                    FilledButton(
-                      onPressed: onImport,
-                      child: Text(l.racesImportResult),
-                    ),
-                ],
-              ),
-            ],
+            ),
+      actions: [
+        if (canTrainFor)
+          OutlinedButton(
+            onPressed: onTrainFor,
+            child: Text(l.racesTrainForThis),
           ),
-        ),
-      ),
+        if (race.entryUrl != null)
+          OutlinedButton(
+            onPressed: () => _launch(context, race.entryUrl!),
+            child: Text(l.racesRegister),
+          ),
+        if (race.resultsUrl != null)
+          OutlinedButton(
+            onPressed: () => _launch(context, race.resultsUrl!),
+            child: Text(l.racesViewResults),
+          ),
+        if (canImport)
+          FilledButton(
+            onPressed: onImport,
+            child: Text(l.racesImportResult),
+          ),
+      ],
     );
   }
 

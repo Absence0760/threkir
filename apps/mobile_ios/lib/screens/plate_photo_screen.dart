@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard;
 import 'package:image_picker/image_picker.dart';
 
 import '../diary_day.dart';
@@ -364,50 +365,48 @@ class PlatePhotoFormState extends State<PlatePhotoForm> {
           ),
           const SizedBox(height: 12),
           for (final d in drafts)
-            Card(
+            ListCard(
               key: ObjectKey(d),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: d.name,
-                            decoration: InputDecoration(labelText: l10n.platePhotoItemName),
-                          ),
+              dense: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: d.name,
+                          decoration: InputDecoration(labelText: l10n.platePhotoItemName),
                         ),
-                        IconButton(
-                          tooltip: l10n.platePhotoRemoveItem(d.name.text),
-                          icon: const Icon(Icons.close),
-                          onPressed: () => setState(() {
-                            _drafts = [...drafts]..remove(d);
-                            d.dispose();
-                          }),
-                        ),
-                      ],
-                    ),
-                    if (d.source.lowConfidence)
-                      Text(l10n.platePhotoLowConfidence, style: theme.textTheme.bodySmall),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _num(l10n.platePhotoCalories, d.calories),
-                        const SizedBox(width: 8),
-                        _num(l10n.platePhotoProtein, d.protein),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        _num(l10n.platePhotoCarbs, d.carbs),
-                        const SizedBox(width: 8),
-                        _num(l10n.platePhotoFat, d.fat),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      IconButton(
+                        tooltip: l10n.platePhotoRemoveItem(d.name.text),
+                        icon: const Icon(Icons.close),
+                        onPressed: () => setState(() {
+                          _drafts = [...drafts]..remove(d);
+                          d.dispose();
+                        }),
+                      ),
+                    ],
+                  ),
+                  if (d.source.lowConfidence)
+                    Text(l10n.platePhotoLowConfidence, style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _num(l10n.platePhotoCalories, d.calories),
+                      const SizedBox(width: 8),
+                      _num(l10n.platePhotoProtein, d.protein),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      _num(l10n.platePhotoCarbs, d.carbs),
+                      const SizedBox(width: 8),
+                      _num(l10n.platePhotoFat, d.fat),
+                    ],
+                  ),
+                ],
               ),
             ),
         ],

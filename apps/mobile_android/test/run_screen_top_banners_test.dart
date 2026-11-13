@@ -6,6 +6,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/widgets/safety_nudge_banner.dart';
 import '../lib/widgets/workout_execution_band.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -48,6 +49,40 @@ const _offRoute = 'Off route — 120m away';
 const _gpsLost = 'GPS signal lost — move to open sky';
 
 void main() {
+  // Issue #1374: the banners are ListCards. Each status state, with the
+  // off-route banner and the nudge stacked on it, fits at the worst case.
+  for (final (name, permissionLost, gpsLost, weakGps, approximate) in [
+    ('permission', true, false, false, false),
+    ('gps lost', false, true, false, false),
+    ('weak gps', false, false, true, false),
+    ('approximate', false, false, true, true),
+  ]) {
+    worstCaseTestWidgets('Run top banners ($name)', (tester, locale) async {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: SingleChildScrollView(
+              child: RunTopBanners(
+                offRouteMetres: 120,
+                permissionLost: permissionLost,
+                gpsLost: gpsLost,
+                weakGps: weakGps,
+                approximateLocation: approximate,
+                onTurnOnPreciseLocation: () {},
+                safetyNudgeVisible: true,
+                onSafetyNudgeShare: () {},
+                onSafetyNudgeDismiss: () {},
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+    });
+  }
+
   testWidgets('off-route + GPS-lost render together without overlapping '
       '(issue #666 V10)', (tester) async {
     await _pump(tester, offRouteMetres: 120, gpsLost: true);

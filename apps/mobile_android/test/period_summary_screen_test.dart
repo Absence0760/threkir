@@ -14,6 +14,7 @@ import '../lib/screens/period_summary_screen.dart';
 import '../lib/widgets/activity_heatmap.dart';
 import '../lib/widgets/this_week_strip.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 late Directory _runsDir;
 
@@ -259,5 +260,42 @@ void main() {
       expect(find.byKey(const Key('periodSummaryVert')), findsNothing,
           reason: 'no climb tile without any climb');
     });
+  });
+
+  // The week strip, heatmap and run cards are ListCards (issue #1374).
+  worstCaseTestWidgets('Weekly summary', (tester, locale) async {
+    late ({LocalRunStore runStore, LocalRouteStore routeStore, Preferences prefs}) s;
+    await tester.runAsync(() async {
+      s = await _makeStores();
+      await s.runStore.save(Run(
+        id: 'r-1',
+        startedAt: DateTime.now(),
+        duration: const Duration(minutes: 30),
+        distanceMetres: 5000,
+        source: RunSource.app,
+        metadata: {'elevation_m': 140},
+      ));
+    });
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: PeriodSummaryScreen(
+        initialPeriod: PeriodType.week,
+        initialAnchor: DateTime.now(),
+        runStore: s.runStore,
+        routeStore: s.routeStore,
+        preferences: s.prefs,
+      ),
+    ));
+    // Loaded tall so the strip is built whatever the locale puts above it,
+    // then walked on the phone.
+    tester.view.physicalSize = const Size(320, 3000);
+    await pumpUntil(
+      tester,
+      () => find.byType(ThisWeekStrip).evaluate().isNotEmpty,
+      describe: 'the day strip to render',
+    );
+    tester.view.physicalSize = kWorstCasePhone;
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Weekly summary');
   });
 }

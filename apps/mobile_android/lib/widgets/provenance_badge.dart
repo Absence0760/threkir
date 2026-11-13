@@ -63,11 +63,15 @@ class ProvenanceBadge extends StatelessWidget {
       children: [
         icon,
         const SizedBox(width: 2),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: provenance == Provenance.official ? null : muted,
+        // Flexible so a long label wraps beside the glyph rather than
+        // overflowing a narrow card at large text (issue #1374).
+        Flexible(
+          child: Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: provenance == Provenance.official ? null : muted,
+            ),
           ),
         ),
       ],

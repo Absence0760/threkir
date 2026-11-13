@@ -5,9 +5,11 @@ import 'package:ui_kit/ui_kit.dart'
     show
         AppBarAction,
         AppSemanticColors,
+        AppSpace,
         DetailHero,
         DetailMeta,
         DetailPage,
+        ListCard,
         SectionHeader,
         TextLane;
 
@@ -744,11 +746,10 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     final key = normaliseExerciseName(block.name);
     final prs = prByExercise[key] ?? const [];
     final lastTime = prevByExercise[key];
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Wrap(
@@ -826,7 +827,6 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
               ),
           ],
         ),
-      ),
     );
   }
 

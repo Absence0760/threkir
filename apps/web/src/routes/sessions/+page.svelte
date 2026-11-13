@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchSessionPlans, type SessionPlan } from '#lib/core/data.ts';
+	import ListCard from '#lib/components/ListCard.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
@@ -79,15 +80,22 @@
 		<ul class="plan-list">
 			{#each plans as plan (plan.id)}
 				<li>
-					<a class="card-elevated plan-row" href={`/sessions/${plan.id}`}>
-						<span class="plan-title">{plan.title || t('session.untitled')}{#if plan.is_official}<OfficialBadge />{/if}</span>
-						<span class="plan-meta">
-							{#if plan.discipline}{plan.discipline}{/if}
-							{#if plan.est_duration_min}
-								· {t('session.estDuration', { minutes: plan.est_duration_min })}
-							{/if}
-						</span>
-					</a>
+					<ListCard
+						class="plan-row"
+						href={`/sessions/${plan.id}`}
+						title={plan.title || t('session.untitled')}
+						subtitle={[
+							plan.discipline,
+							plan.est_duration_min
+								? t('session.estDuration', { minutes: plan.est_duration_min })
+								: null,
+						]
+							.filter(Boolean)
+							.join(' · ') || undefined}
+						chevron
+					>
+						{#snippet badge()}{#if plan.is_official}<OfficialBadge />{/if}{/snippet}
+					</ListCard>
 				</li>
 			{/each}
 		</ul>
@@ -112,24 +120,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
-	}
-	.plan-row {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2xs);
-		padding: var(--space-md);
-		text-decoration: none;
-		color: inherit;
-	}
-	.plan-title {
-		font-weight: 600;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.plan-meta {
-		color: var(--color-text-tertiary);
-		font-size: 0.9rem;
 	}
 	.error-banner {
 		display: flex;

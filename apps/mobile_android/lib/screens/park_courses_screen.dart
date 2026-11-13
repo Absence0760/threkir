@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppBarAction,
+        AppInsets,
         AppSemanticColors,
         ChoiceChipOption,
         ChoiceChipRow,
@@ -15,6 +16,7 @@ import 'package:ui_kit/ui_kit.dart'
         DetailHero,
         DetailPage,
         DetailParentChip,
+        ListCard,
         ListSkeleton,
         SectionHeader,
         StatGrid,
@@ -45,6 +47,7 @@ import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/live_run_map.dart' show currentBasemapIsDark;
 import '../widgets/park_course_map.dart';
 import '../widgets/park_course_report_sheet.dart';
+import '../widgets/segments_panel.dart' show SegmentTierFilters;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/old_match_note.dart';
@@ -261,11 +264,9 @@ class ParkCard extends StatelessWidget {
     final summary = sorted == null || sorted.isEmpty
         ? null
         : [l10n.parksCourseCount(sorted.length), ?range].join(' · ');
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
+    return ListCard.flush(
+      onTap: onTap,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (sorted != null && sorted.isNotEmpty)
@@ -278,7 +279,7 @@ class ParkCard extends StatelessWidget {
                 showStarts: false,
               ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+              padding: AppInsets.cardDense,
               child: Row(
                 children: [
                   Expanded(
@@ -305,7 +306,6 @@ class ParkCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -738,89 +738,52 @@ class _ParkCourseCard extends StatelessWidget {
     final segment = course.segment;
     final geometry = ApiClient.globalSegmentGeometry(segment);
     final pills = courseFactPills(context, course);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: MergeSemantics(
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (geometry.length >= 2) ...[
-                  SizedBox(
-                    width: 88,
-                    child: AspectRatio(
-                      aspectRatio: 4 / 3,
-                      child: TrackPreview(points: geometry),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          ExcludeSemantics(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: colour,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const SizedBox.square(dimension: 10),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              segment.name,
-                              style: theme.textTheme.titleSmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            courseDistanceForPref(segment.distanceM),
-                            key: ValueKey(
-                              'park-course-distance-${course.course.id}',
-                            ),
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          ...pills,
-                        ],
-                      ),
-                      if (recordLine != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          recordLine!,
-                          key: ValueKey(
-                            'park-course-record-${course.course.id}',
-                          ),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-          ),
+    return ListCard.row(
+      dense: true,
+      onTap: onTap,
+      chevron: true,
+      leadingWidth: geometry.length >= 2 ? 88 : null,
+      leading: geometry.length >= 2
+          ? AspectRatio(
+              aspectRatio: 4 / 3,
+              child: TrackPreview(points: geometry),
+            )
+          : null,
+      title: segment.name,
+      // The course's colour on the park map, so the card names its line.
+      badge: ExcludeSemantics(
+        child: DecoratedBox(
+          decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
+          child: const SizedBox.square(dimension: 10),
         ),
+      ),
+      meta: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                courseDistanceForPref(segment.distanceM),
+                key: ValueKey('park-course-distance-${course.course.id}'),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              ...pills,
+            ],
+          ),
+          if (recordLine != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              recordLine!,
+              key: ValueKey('park-course-record-${course.course.id}'),
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1077,16 +1040,14 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                 ),
                 if (course.status == 'closed') ...[
                   const SizedBox(height: 12),
-                  Card(
+                  ListCard(
                     key: const Key('park-course-closed'),
+                    dense: true,
                     color: theme.colorScheme.errorContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        l10n.parksClosedBanner,
-                        style: TextStyle(
-                          color: theme.colorScheme.onErrorContainer,
-                        ),
+                    child: Text(
+                      l10n.parksClosedBanner,
+                      style: TextStyle(
+                        color: theme.colorScheme.onErrorContainer,
                       ),
                     ),
                   ),
@@ -1315,60 +1276,25 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           ),
         ),
         if (_kind == ParkBoardKind.fastest)
-          Wrap(
-            spacing: 8,
-            children: [
-              IntrinsicWidth(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String?>(
-                    value: _gender,
-                    isDense: true,
-                    isExpanded: true,
-                    hint: Text(l10n.segmentsPanelAllGenders),
-                    items: [
-                      DropdownMenuItem(
-                        value: null,
-                        child: Text(l10n.segmentsPanelAllGenders),
-                      ),
-                      DropdownMenuItem(
-                        value: 'male',
-                        child: Text(l10n.segmentsPanelGenderMen),
-                      ),
-                      DropdownMenuItem(
-                        value: 'female',
-                        child: Text(l10n.segmentsPanelGenderWomen),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      setState(() => _gender = v);
-                      _refreshBoard();
-                    },
-                  ),
-                ),
-              ),
-              IntrinsicWidth(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String?>(
-                    value: _ageBand,
-                    isDense: true,
-                    isExpanded: true,
-                    hint: Text(l10n.segmentsPanelAllAges),
-                    items: [
-                      DropdownMenuItem(
-                        value: null,
-                        child: Text(l10n.segmentsPanelAllAges),
-                      ),
-                      for (final b in kSegmentAgeBands)
-                        DropdownMenuItem(value: b, child: Text(b)),
-                    ],
-                    onChanged: (v) {
-                      setState(() => _ageBand = v);
-                      _refreshBoard();
-                    },
-                  ),
-                ),
-              ),
-            ],
+          SegmentTierFilters(
+            framed: false,
+            genderFilter: _gender,
+            ageFilter: _ageBand,
+            onGenderChanged: (v) {
+              setState(() => _gender = v);
+              _refreshBoard();
+            },
+            onAgeChanged: (v) {
+              setState(() => _ageBand = v);
+              _refreshBoard();
+            },
+            onReset: () {
+              setState(() {
+                _gender = null;
+                _ageBand = null;
+              });
+              _refreshBoard();
+            },
           ),
         const SizedBox(height: 8),
         if (_kind == ParkBoardKind.fastest && !_boardFailed)
@@ -1545,13 +1471,12 @@ class _CourseNotices extends StatelessWidget {
             Expanded(child: Text(text, style: style)),
           ],
         );
-    return Card(
+    return ListCard(
       key: const Key('park-course-notices'),
       color: scheme.surfaceContainerHighest,
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             row(
@@ -1598,7 +1523,6 @@ class _CourseNotices extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -1648,26 +1572,33 @@ class _ParkBoardRow extends StatelessWidget {
             imageUrl: athlete.avatarUrl,
           ),
           const SizedBox(width: 8),
+          // The "You" marker sits under the name, not beside it: inline at
+          // 320 dp and 2x it and the time left the name no width at all.
           Expanded(
-            child: Text(
-              athlete.displayName ?? l10n.segmentsPanelRunnerFallback,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: isViewer ? FontWeight.w700 : null,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  athlete.displayName ?? l10n.segmentsPanelRunnerFallback,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: isViewer ? FontWeight.w700 : null,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isViewer)
+                  Text(
+                    l10n.navYou,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
             ),
           ),
-          if (isViewer) ...[
-            Text(
-              l10n.navYou,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 6),
-          ],
+          const SizedBox(width: 6),
           Text(
             value,
             style: theme.textTheme.titleSmall?.copyWith(

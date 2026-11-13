@@ -5,19 +5,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show
-        ActiveFilter,
-        AppInsets,
-        AppSpace,
-        AsyncView,
-        ChoiceChipOption,
-        EmptyState,
-        FilterBar,
-        HubTabBody,
-        IdentityAvatar,
-        LoadingState,
-        buildChoiceChip,
-        showFilterSheet;
+    show ActiveFilter, AppInsets, AppSpace, AsyncView, ChoiceChipOption, EmptyState, FilterBar, HubTabBody, IdentityAvatar, ListCard, LoadingState, buildChoiceChip, showFilterSheet;
 
 import '../adaptive_width.dart';
 import '../auth_error.dart';
@@ -565,8 +553,7 @@ class _EntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    return ListCard.flush(
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -883,8 +870,7 @@ class _LiftEntryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final title = entry.title?.trim();
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    return ListCard.flush(
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

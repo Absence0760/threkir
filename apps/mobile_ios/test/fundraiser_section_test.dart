@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/social_service.dart';
 import '../lib/widgets/fundraiser_section.dart';
+import 'worst_case_layout.dart';
 
 class _FakeSocial extends SocialService {
   final FundraiserView fundraiser;
@@ -83,6 +84,32 @@ Future<void> _pump(
 }
 
 void main() {
+  worstCaseTestWidgets('Fundraiser section', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: FundraiserSection(
+            social: _FakeSocial(
+              fundraiser:
+                  _fundraiser(title: 'Running the city marathon for the shelter'),
+              totals: const FundraiserTotalsView(
+                raisedCents: 1234567,
+                donorCount: 321,
+                goalCents: 2500000,
+                currency: 'usd',
+              ),
+              feed: [_entry(displayName: 'Alexandra', message: 'Go go go')],
+            ),
+            runId: 'r1',
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump();
+  });
+
   group('FundraiserSection', () {
     testWidgets('renders the thermometer + donation feed', (tester) async {
       final social = _FakeSocial(

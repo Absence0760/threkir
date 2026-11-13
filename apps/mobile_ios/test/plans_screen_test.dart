@@ -13,6 +13,7 @@ import '../lib/training.dart';
 import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/error_state.dart';
+import '../lib/widgets/plan_list_card.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 
 Future<void> _pump(WidgetTester tester, {required TrainingService training}) {
@@ -655,8 +656,9 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(training.created, isNotNull);
-      InkWell tile(String id) =>
-          tester.widget<InkWell>(find.byKey(Key('planStarter-$id')));
+      InkWell tile(String id) => tester.widget<InkWell>(find.descendant(
+          of: find.byKey(Key('planStarter-$id')),
+          matching: find.byType(InkWell)));
       for (final id in ['c25k', 'half_12wk', 'marathon_16wk']) {
         expect(tile(id).onTap, isNull, reason: id);
       }

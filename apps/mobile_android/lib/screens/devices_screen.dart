@@ -3,7 +3,8 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show ListSkeleton, SheetScaffold, StatusPill, StatusPillSize;
+    show ListSkeleton, SheetScaffold, StatusPill, StatusPillSize,
+    ListCard;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -236,62 +237,54 @@ class _DevicesScreenState extends State<DevicesScreen> {
                               d.deviceId == widget.currentDeviceId;
                           final overrideCount =
                               ((d.prefs as Map?) ?? const {}).length;
-                          return Card(
-                            child: ListTile(
-                              leading: Icon(
-                                _iconFor(d.platform),
-                                color: theme.colorScheme.primary,
-                              ),
-                              title: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(d.label ?? d.platform),
-                                  ),
-                                  if (isCurrent)
-                                    StatusPill(
-                                      label: l10n.devicesThisDevice,
-                                      foreground: theme
-                                          .colorScheme.onPrimaryContainer,
-                                      fill:
-                                          theme.colorScheme.primaryContainer,
-                                      size: StatusPillSize.compact,
-                                    ),
-                                ],
-                              ),
-                              subtitle: Text(
-                                l10n.devicesLastSeen(_fmtRelative(d.lastSeenAt,
-                                        l10n,
-                                        localeToTag(Localizations.localeOf(context)))) +
-                                    (overrideCount > 0
-                                        ? '  •  ${l10n.devicesOverrideCount(overrideCount)}'
-                                        : ''),
-                              ),
-                              trailing: PopupMenuButton<String>(
-                                onSelected: (v) async {
-                                  switch (v) {
-                                    case 'rename':
-                                      await _rename(d);
-                                      break;
-                                    case 'overrides':
-                                      await _editOverrides(d);
-                                      break;
-                                    case 'remove':
-                                      await _remove(d);
-                                      break;
-                                  }
-                                },
-                                itemBuilder: (_) => [
-                                  PopupMenuItem(
-                                      value: 'rename',
-                                      child: Text(l10n.devicesRename)),
-                                  PopupMenuItem(
-                                      value: 'overrides',
-                                      child: Text(l10n.devicesEditOverrides)),
-                                  PopupMenuItem(
-                                      value: 'remove',
-                                      child: Text(l10n.devicesRemove)),
-                                ],
-                              ),
+                          return ListCard.row(
+                            leading: Icon(
+                              _iconFor(d.platform),
+                              color: theme.colorScheme.primary,
+                            ),
+                            title: d.label ?? d.platform,
+                            badge: isCurrent
+                                ? StatusPill(
+                                    label: l10n.devicesThisDevice,
+                                    foreground:
+                                        theme.colorScheme.onPrimaryContainer,
+                                    fill: theme.colorScheme.primaryContainer,
+                                    size: StatusPillSize.compact,
+                                  )
+                                : null,
+                            subtitle: l10n.devicesLastSeen(_fmtRelative(
+                                    d.lastSeenAt,
+                                    l10n,
+                                    localeToTag(
+                                        Localizations.localeOf(context)))) +
+                                (overrideCount > 0
+                                    ? '  •  ${l10n.devicesOverrideCount(overrideCount)}'
+                                    : ''),
+                            trailing: PopupMenuButton<String>(
+                              onSelected: (v) async {
+                                switch (v) {
+                                  case 'rename':
+                                    await _rename(d);
+                                    break;
+                                  case 'overrides':
+                                    await _editOverrides(d);
+                                    break;
+                                  case 'remove':
+                                    await _remove(d);
+                                    break;
+                                }
+                              },
+                              itemBuilder: (_) => [
+                                PopupMenuItem(
+                                    value: 'rename',
+                                    child: Text(l10n.devicesRename)),
+                                PopupMenuItem(
+                                    value: 'overrides',
+                                    child: Text(l10n.devicesEditOverrides)),
+                                PopupMenuItem(
+                                    value: 'remove',
+                                    child: Text(l10n.devicesRemove)),
+                              ],
                             ),
                           );
                         },

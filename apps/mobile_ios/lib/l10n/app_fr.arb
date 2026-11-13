@@ -3811,6 +3811,7 @@
   "nutritionLogTitle": "Enregistrer un aliment",
   "nutritionSearchHint": "Rechercher un aliment",
   "nutritionSearching": "Recherche…",
+  "nutritionSearchKcalPer100g": "{kcal} kcal / 100 g",
   "nutritionNoResults": "Aucun résultat. Essayez un autre terme ou saisissez-le manuellement ci-dessous.",
   "nutritionSearchFailed": "Échec de la recherche. Vérifiez votre connexion, puis réessayez ou saisissez-le manuellement ci-dessous.",
   "nutritionSearchRetry": "Réessayer la recherche",

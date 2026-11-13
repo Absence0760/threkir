@@ -11,6 +11,7 @@ import '../lib/training.dart' show toIsoDate;
 import '../lib/screens/race_detail_screen.dart';
 import '../lib/screens/races_screen.dart';
 import 'pump_until.dart';
+import 'worst_case_layout.dart';
 
 class _FakeRaceService extends RaceService {
   final List<RaceListingView> results;
@@ -150,6 +151,23 @@ Future<void> _openFilters(WidgetTester tester) async {
 }
 
 void main() {
+  worstCaseTestWidgets('the race cards', (tester, locale) async {
+    final service = _FakeRaceService(
+      results: [
+        _listing('r-w1', 'Schwarzwald Halbmarathon mit Bergwertung',
+            distanceM: 21097, distanceMAway: 12000, verified: false),
+        _listing('r-w2', 'Riverside 10k',
+            distanceM: 10000, raceDate: _isoDaysOut(90)),
+      ],
+    );
+    await tester.pumpWidget(
+        worstCaseApp(locale: locale, home: RacesScreen(service: service)));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(Card), findsWidgets);
+    await walkScrollable(tester, primaryScrollable(), 'Races');
+  });
+
   testWidgets('renders the empty state when no listings match', (tester) async {
     await tester.pumpWidget(_app(_FakeRaceService(results: const [])));
     await tester.pump();

@@ -537,68 +537,66 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    return Card(
+    return ListCard(
       key: const Key('session-sequence'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.clubEventSessionPlanTitle,
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                if (isOrganiser)
-                  TextButton(
-                    key: const Key('session-sequence-attach'),
-                    onPressed: _contentBusy ? null : () => _editSessionPlan(e),
-                    child: Text(l10n.clubEventSessionPlanAttach),
-                  ),
-              ],
-            ),
-            if (expansion != null && planId != null) ...[
-              InkWell(
-                onTap: () => _openSessionPlan(planId),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  _sessionPlanTitle ?? '',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
+                  l10n.clubEventSessionPlanTitle,
+                  style: theme.textTheme.titleSmall,
                 ),
               ),
-              const SizedBox(height: 4),
-              for (final (i, step) in expansion.steps.indexed)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, right: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              sessionStepLabel(l10n, step),
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                            if (step.cue != null && step.cue!.isNotEmpty)
-                              Text(step.cue!, style: muted),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+              if (isOrganiser)
+                TextButton(
+                  key: const Key('session-sequence-attach'),
+                  onPressed: _contentBusy ? null : () => _editSessionPlan(e),
+                  child: Text(l10n.clubEventSessionPlanAttach),
                 ),
-            ] else
-              Text(l10n.eventFormSessionPlanNone, style: muted),
-          ],
-        ),
+            ],
+          ),
+          if (expansion != null && planId != null) ...[
+            InkWell(
+              onTap: () => _openSessionPlan(planId),
+              child: Text(
+                _sessionPlanTitle ?? '',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            for (final (i, step) in expansion.steps.indexed)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            sessionStepLabel(l10n, step),
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          if (step.cue != null && step.cue!.isNotEmpty)
+                            Text(step.cue!, style: muted),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ] else
+            Text(l10n.eventFormSessionPlanNone, style: muted),
+        ],
       ),
     );
   }
@@ -635,58 +633,56 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    return Card(
+    return ListCard(
       key: const Key('class-routine'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.clubEventGymRoutineTitle,
-                    style: theme.textTheme.titleSmall,
-                  ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.clubEventGymRoutineTitle,
+                  style: theme.textTheme.titleSmall,
                 ),
-                if (isOrganiser)
-                  TextButton(
-                    key: const Key('class-routine-attach'),
-                    onPressed: _contentBusy ? null : () => _editGymRoutine(e),
-                    child: Text(l10n.clubEventGymRoutineAttach),
-                  ),
-              ],
-            ),
-            if (routine != null) ...[
-              Text(routine.title, style: theme.textTheme.bodyLarge),
-              const SizedBox(height: 4),
-              for (final (i, ex) in routine.exercises.indexed)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, right: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
-                      Expanded(
-                        child: Text(
-                          ex.exerciseName,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.clubEventGymRoutineSets(ex.sets.length),
-                        style: muted,
-                      ),
-                    ],
-                  ),
+              ),
+              if (isOrganiser)
+                TextButton(
+                  key: const Key('class-routine-attach'),
+                  onPressed: _contentBusy ? null : () => _editGymRoutine(e),
+                  child: Text(l10n.clubEventGymRoutineAttach),
                 ),
-            ] else
-              Text(l10n.clubEventGymRoutineNone, style: muted),
-          ],
-        ),
+            ],
+          ),
+          if (routine != null) ...[
+            Text(routine.title, style: theme.textTheme.bodyLarge),
+            const SizedBox(height: 4),
+            for (final (i, ex) in routine.exercises.indexed)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${i + 1}. ', style: theme.textTheme.bodyMedium),
+                    Expanded(
+                      child: Text(
+                        ex.exerciseName,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.clubEventGymRoutineSets(ex.sets.length),
+                      style: muted,
+                    ),
+                  ],
+                ),
+              ),
+          ] else
+            Text(l10n.clubEventGymRoutineNone, style: muted),
+        ],
       ),
     );
   }
@@ -2497,35 +2493,33 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// the attempt itself is the run screen's "This run is my attempt".
   Widget _buildSelfTimedParticipant(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
-    return Card(
+    return ListCard(
       key: const ValueKey('self-timed-participant'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.eventRaceSelfTimedParticipant(
-                  _clock(_raceSession?.windowClosesAt)),
-              style: theme.textTheme.bodyMedium,
-            ),
-            if (!_viewerGoing) ...[
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                key: const ValueKey('self-timed-join'),
-                onPressed: _busy ? null : () => _rsvp('going'),
-                icon: const Icon(Icons.flag_outlined),
-                label: Text(l10n.eventRaceJoinAttempt),
-              ),
-            ],
-            TextButton(
-              key: const ValueKey('self-timed-guide'),
-              onPressed: () => openGuide(context, 'run-a-self-timed-race'),
-              child: Text(l10n.infoTipReadGuide),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.eventRaceSelfTimedParticipant(
+                _clock(_raceSession?.windowClosesAt)),
+            style: theme.textTheme.bodyMedium,
+          ),
+          if (!_viewerGoing) ...[
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const ValueKey('self-timed-join'),
+              onPressed: _busy ? null : () => _rsvp('going'),
+              icon: const Icon(Icons.flag_outlined),
+              label: Text(l10n.eventRaceJoinAttempt),
             ),
           ],
-        ),
+          TextButton(
+            key: const ValueKey('self-timed-guide'),
+            onPressed: () => openGuide(context, 'run-a-self-timed-race'),
+            child: Text(l10n.infoTipReadGuide),
+          ),
+        ],
       ),
     );
   }
@@ -2553,105 +2547,103 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       _ => theme.colorScheme.onSurfaceVariant,
     };
 
-    return Card(
+    return ListCard(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.sports_score, size: 18, color: bannerColour),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  l10n.eventRaceControlLabel,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            banner,
+            style: theme.textTheme.titleMedium?.copyWith(color: bannerColour),
+          ),
+          const SizedBox(height: 8),
+          if (status == 'idle' || status == 'finished' || status == 'cancelled') ...[
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(
+                l10n.eventRaceAutoApprove,
+                style: theme.textTheme.bodySmall,
+              ),
+              value: _autoApproveOnArm,
+              onChanged: (v) => setState(() => _autoApproveOnArm = v ?? true),
+            ),
+            FilledButton.icon(
+              onPressed: _raceBusy ? null : _armWithPreflight,
+              icon: const Icon(Icons.bolt),
+              label: Text(l10n.eventRaceArm),
+            ),
+          ] else if (status == 'armed') ...[
+            Text(
+              l10n.eventRaceArmedHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.sports_score, size: 18, color: bannerColour),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    l10n.eventRaceControlLabel,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
+                FilledButton.icon(
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _raceMutation(_RaceAction.go),
+                  icon: const Icon(Icons.flag_outlined),
+                  label: Text(l10n.eventRaceFireGo),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _confirmRaceAction(_RaceAction.cancel),
+                  child: Text(l10n.eventRaceCancel),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              banner,
-              style: theme.textTheme.titleMedium?.copyWith(color: bannerColour),
-            ),
-            const SizedBox(height: 8),
-            if (status == 'idle' || status == 'finished' || status == 'cancelled') ...[
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(
-                  l10n.eventRaceAutoApprove,
-                  style: theme.textTheme.bodySmall,
-                ),
-                value: _autoApproveOnArm,
-                onChanged: (v) => setState(() => _autoApproveOnArm = v ?? true),
-              ),
-              FilledButton.icon(
-                onPressed: _raceBusy ? null : _armWithPreflight,
-                icon: const Icon(Icons.bolt),
-                label: Text(l10n.eventRaceArm),
-              ),
-            ] else if (status == 'armed') ...[
+          ] else if (status == 'running') ...[
+            if (race?.startedAt != null)
               Text(
-                l10n.eventRaceArmedHint,
+                l10n.eventRaceStartedAt(fmtEventDate(
+                    race!.startedAt!.toLocal(),
+                    localeToTag(Localizations.localeOf(context)))),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  FilledButton.icon(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _raceMutation(_RaceAction.go),
-                    icon: const Icon(Icons.flag_outlined),
-                    label: Text(l10n.eventRaceFireGo),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.cancel),
-                    child: Text(l10n.eventRaceCancel),
-                  ),
-                ],
-              ),
-            ] else if (status == 'running') ...[
-              if (race?.startedAt != null)
-                Text(
-                  l10n.eventRaceStartedAt(fmtEventDate(
-                      race!.startedAt!.toLocal(),
-                      localeToTag(Localizations.localeOf(context)))),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                // No Cancel once running: the server refuses running ->
+                // cancelled, and web offers only End here.
+                FilledButton.icon(
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _confirmRaceAction(_RaceAction.end),
+                  icon: const Icon(Icons.stop_circle),
+                  label: Text(l10n.eventRaceEnd),
                 ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  // No Cancel once running: the server refuses running ->
-                  // cancelled, and web offers only End here.
-                  FilledButton.icon(
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.end),
-                    icon: const Icon(Icons.stop_circle),
-                    label: Text(l10n.eventRaceEnd),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -2667,116 +2659,114 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final selfTimed = mode == SessionStartMode.selfTimed;
     final muted = theme.textTheme.bodySmall
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-    return Card(
+    return ListCard(
       key: const ValueKey('race-mode-control'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.eventRaceControlLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      letterSpacing: 0.8,
-                    ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.eventRaceControlLabel,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.8,
                   ),
                 ),
+              ),
+              TextButton(
+                key: const ValueKey('race-mode-guide'),
+                onPressed: () =>
+                    openGuide(context, 'choose-how-your-race-starts'),
+                child: Text(l10n.infoTipReadGuide),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (race == null || status == 'idle') ...[
+            Text(
+              selfTimed ? l10n.eventRaceSelfTimedNotYet : l10n.eventRaceScheduledNotYet,
+              style: muted,
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const ValueKey('race-arm-early'),
+              onPressed: _raceBusy ? null : _armWithPreflight,
+              icon: const Icon(Icons.bolt),
+              label: Text(l10n.eventRaceArmEarly),
+            ),
+          ] else if (status == 'armed') ...[
+            Text(
+              selfTimed
+                  ? l10n.eventRaceOpensAt(_clock(race.windowOpensAt))
+                  : l10n.eventRaceGoAt(_clock(race.scheduledStartAt)),
+              key: const ValueKey('race-mode-start'),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(color: theme.colorScheme.tertiary),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  key: const ValueKey('race-delay'),
+                  onPressed: _raceBusy ? null : _delayRace,
+                  icon: const Icon(Icons.schedule),
+                  label: Text(l10n.eventRaceDelay),
+                ),
                 TextButton(
-                  key: const ValueKey('race-mode-guide'),
-                  onPressed: () =>
-                      openGuide(context, 'choose-how-your-race-starts'),
-                  child: Text(l10n.infoTipReadGuide),
+                  key: const ValueKey('race-cancel'),
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _confirmRaceAction(_RaceAction.cancel),
+                  child: Text(l10n.eventRaceCancel),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            if (race == null || status == 'idle') ...[
-              Text(
-                selfTimed ? l10n.eventRaceSelfTimedNotYet : l10n.eventRaceScheduledNotYet,
-                style: muted,
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                key: const ValueKey('race-arm-early'),
-                onPressed: _raceBusy ? null : _armWithPreflight,
-                icon: const Icon(Icons.bolt),
-                label: Text(l10n.eventRaceArmEarly),
-              ),
-            ] else if (status == 'armed') ...[
-              Text(
-                selfTimed
-                    ? l10n.eventRaceOpensAt(_clock(race.windowOpensAt))
-                    : l10n.eventRaceGoAt(_clock(race.scheduledStartAt)),
-                key: const ValueKey('race-mode-start'),
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.tertiary),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
+          ] else if (status == 'running') ...[
+            Text(
+              selfTimed
+                  ? l10n.eventRaceOpenUntil(_clock(race.windowClosesAt))
+                  : l10n.eventRaceRunning,
+              key: const ValueKey('race-mode-live'),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(color: theme.colorScheme.primary),
+            ),
+            if (!selfTimed)
+              Text(l10n.eventRaceAutoEnds(_clock(race.windowClosesAt)),
+                  style: muted),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (selfTimed)
                   OutlinedButton.icon(
-                    key: const ValueKey('race-delay'),
-                    onPressed: _raceBusy ? null : _delayRace,
-                    icon: const Icon(Icons.schedule),
-                    label: Text(l10n.eventRaceDelay),
+                    key: const ValueKey('race-extend'),
+                    onPressed: _raceBusy ? null : _extendRace,
+                    icon: const Icon(Icons.more_time),
+                    label: Text(l10n.eventRaceExtend),
                   ),
-                  TextButton(
-                    key: const ValueKey('race-cancel'),
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.cancel),
-                    child: Text(l10n.eventRaceCancel),
-                  ),
-                ],
-              ),
-            ] else if (status == 'running') ...[
-              Text(
-                selfTimed
-                    ? l10n.eventRaceOpenUntil(_clock(race.windowClosesAt))
-                    : l10n.eventRaceRunning,
-                key: const ValueKey('race-mode-live'),
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.primary),
-              ),
-              if (!selfTimed)
-                Text(l10n.eventRaceAutoEnds(_clock(race.windowClosesAt)),
-                    style: muted),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (selfTimed)
-                    OutlinedButton.icon(
-                      key: const ValueKey('race-extend'),
-                      onPressed: _raceBusy ? null : _extendRace,
-                      icon: const Icon(Icons.more_time),
-                      label: Text(l10n.eventRaceExtend),
-                    ),
-                  FilledButton.icon(
-                    key: const ValueKey('race-end'),
-                    onPressed: _raceBusy
-                        ? null
-                        : () => _confirmRaceAction(_RaceAction.end),
-                    icon: const Icon(Icons.stop_circle),
-                    label: Text(selfTimed ? l10n.eventRaceEndEarly : l10n.eventRaceEnd),
-                  ),
-                ],
-              ),
-            ] else
-              Text(
-                status == 'cancelled' ? l10n.eventRaceCancelled : l10n.eventRaceFinished,
-                style: muted,
-              ),
-          ],
-        ),
+                FilledButton.icon(
+                  key: const ValueKey('race-end'),
+                  onPressed: _raceBusy
+                      ? null
+                      : () => _confirmRaceAction(_RaceAction.end),
+                  icon: const Icon(Icons.stop_circle),
+                  label: Text(selfTimed ? l10n.eventRaceEndEarly : l10n.eventRaceEnd),
+                ),
+              ],
+            ),
+          ] else
+            Text(
+              status == 'cancelled' ? l10n.eventRaceCancelled : l10n.eventRaceFinished,
+              style: muted,
+            ),
+        ],
       ),
     );
   }

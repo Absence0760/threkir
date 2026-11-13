@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show SectionHeader;
+import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard, SectionHeader;
 
 import '../gym_prs.dart' show namesAnExercise, normaliseExerciseName;
 import '../l10n/gen/app_localizations.dart';
@@ -450,11 +450,10 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       _EditExercise ex, int i, ThemeData theme, AppLocalizations l10n) {
     final isRep =
         ex.modality == 'weight_reps' || ex.modality == 'bodyweight_reps';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Column(
+    return ListCard(
+      margin: const EdgeInsets.only(bottom: AppSpace.smPlus),
+      dense: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -516,7 +515,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             ),
           ],
         ),
-      ),
     );
   }
 

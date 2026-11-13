@@ -17,6 +17,7 @@ import 'package:ui_kit/ui_kit.dart'
         AppSemanticColors,
         ChoiceChipOption,
         ChoiceChipRow,
+        ListCard,
         MapFirstPage,
         SheetScaffold,
         syncMotionLoop;
@@ -1899,12 +1900,11 @@ class _DrawStatusCard extends StatelessWidget {
             FidelityVerdict.rough => l10n.routeBuilderDrawMatchRough,
             FidelityVerdict.poor => l10n.routeBuilderDrawMatchPoor,
           };
-    return Card(
+    return ListCard(
       key: const Key('route-builder-draw-status'),
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
+      dense: true,
+      child: Row(
           children: [
             Icon(
               f == null ? Icons.gesture : Icons.auto_awesome,
@@ -1923,7 +1923,6 @@ class _DrawStatusCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

@@ -2449,45 +2449,39 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       String? meta,
       VoidCallback? onTap,
     }) =>
-        Card(
+        ListCard(
           key: key,
           margin: EdgeInsets.zero,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(icon,
-                      size: AppIconSize.material,
-                      color: theme.colorScheme.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(label,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            )),
-                        Text(title,
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700)),
-                        if (meta != null)
-                          Text(meta,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )),
-                      ],
-                    ),
-                  ),
-                  if (onTap != null)
-                    Icon(Icons.chevron_right,
-                        color: theme.colorScheme.onSurfaceVariant),
-                ],
+          onTap: onTap,
+          child: Row(
+            children: [
+              Icon(icon,
+                  size: AppIconSize.material,
+                  color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        )),
+                    Text(title,
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    if (meta != null)
+                      Text(meta,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          )),
+                  ],
+                ),
               ),
-            ),
+              if (onTap != null)
+                Icon(Icons.chevron_right,
+                    color: theme.colorScheme.onSurfaceVariant),
+            ],
           ),
         );
 

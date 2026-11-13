@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/coaching_screen.dart';
+import 'worst_case_layout.dart';
 
 /// Signed-in fake whose coaching reads return canned data so the roster
 /// screen renders without touching Supabase. Subclassing the real type keeps
@@ -113,6 +114,30 @@ void main() {
   });
 
   setUpAll(() => initializeDateFormatting());
+
+  worstCaseTestWidgets('Coaching cards', (tester, locale) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      roster: [_rosterRow('a1', lastRunAt: DateTime.utc(2026, 1, 3))],
+      athletes: [_link('l1', 'a1', 'Alexandra Runner-Featherstonehaugh')],
+      pending: [
+        PendingCoachInvite(
+          id: 'inv-1',
+          inviteToken: 'tok-1',
+          note: null,
+          createdAt: DateTime.utc(2026, 1, 5),
+        ),
+      ],
+      coaches: [_link('l2', 'c1', 'Coach Bartholomew Longname')],
+    );
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: CoachingScreen(api: api, preferences: prefs),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, find.byType(Scrollable).first, 'Coaching');
+  });
 
   group('coachInviteLink', () {
     test('builds the accept URL with the default host', () {

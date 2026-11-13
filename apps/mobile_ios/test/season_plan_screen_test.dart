@@ -12,6 +12,7 @@ import '../lib/training.dart';
 import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 import 'editor_layout.dart';
+import 'worst_case_layout.dart';
 
 const _today = '2026-08-14';
 
@@ -568,5 +569,20 @@ void main() {
       ),
       save: find.byKey(const Key('season-preview')),
     );
+  });
+
+  // The race and plan cards are ListCards (issue #1374).
+  worstCaseTestWidgets('Season plan', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SeasonPlanScreen(
+        training: _FakeTraining(),
+        loadAiAvailable: () async => true,
+        requestSeasonRacesFn: _returns(const []),
+        todayIso: () => _today,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await walkScrollable(tester, primaryScrollable(), 'Season plan');
   });
 }

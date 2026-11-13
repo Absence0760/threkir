@@ -13025,6 +13025,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get nutritionSearching => '検索中…';
 
   @override
+  String nutritionSearchKcalPer100g(int kcal) {
+    return '100 gあたり $kcal kcal';
+  }
+
+  @override
   String get nutritionNoResults => '一致する項目がありません。別の語で検索するか、下から手動で入力してください。';
 
   @override

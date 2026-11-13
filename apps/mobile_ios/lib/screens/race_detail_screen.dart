@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ListCard, AppInsets;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ui_kit/ui_kit.dart'
     show DetailHero, DetailMeta, DetailPage, HeroCta, SectionHeader;
@@ -1032,15 +1033,14 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
           Text(l.racesDetailNoRuns, style: theme.textTheme.bodySmall)
         else
           for (final r in _runs)
-            Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                title: Text(r.startedAt.length >= 10 ? r.startedAt.substring(0, 10) : r.startedAt),
-                subtitle: Text(
-                  '${formatDistanceForPref(r.distanceM)} · '
+            ListCard.row(
+              margin: const EdgeInsets.only(bottom: AppInsets.itemGap),
+              dense: true,
+              title: r.startedAt.length >= 10
+                  ? r.startedAt.substring(0, 10)
+                  : r.startedAt,
+              subtitle: '${formatDistanceForPref(r.distanceM)} · '
                   '${r.chipTime != null ? '${l.racesChipTime} ${r.chipTime}' : formatEffortTime(r.durationS.toDouble())}',
-                ),
-              ),
             ),
       ],
     );

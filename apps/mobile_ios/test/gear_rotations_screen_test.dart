@@ -10,6 +10,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/screens/gear_rotations_screen.dart';
 import 'store_write_watch.dart';
+import 'worst_case_layout.dart';
 
 GearRotationWithMembers _rot({
   String id = 'r1',
@@ -196,6 +197,30 @@ void main() {
       expect(find.text('Race day'), findsOneWidget);
       expect(find.text(_l10n.commonStaleOffline), findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  // Issue #1374: a rotation is a ListCard; its row and next-up block fit.
+  worstCaseTestWidgets('Gear rotations', (tester, locale) async {
+    final f = await _setup('worst-${locale.toLanguageTag()}');
+    try {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: GearRotationsScreen(
+          api: _RotApi(seed: [
+            _rot(name: 'Race day and long-run rotation', gearIds: ['g1', 'g2'])
+          ]),
+          gearStore: f.store,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await walkScrollable(
+          tester, find.byType(Scrollable).first, 'Gear rotations');
+      expect(find.text('Race day and long-run rotation', skipOffstage: false),
+          findsOneWidget);
     } finally {
       f.dir.deleteSync(recursive: true);
     }

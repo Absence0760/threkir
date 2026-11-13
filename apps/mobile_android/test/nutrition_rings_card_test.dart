@@ -5,6 +5,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/nutrition_targets.dart';
 import '../lib/nutrition_totals.dart';
 import '../lib/widgets/nutrition_rings_card.dart';
+import 'worst_case_layout.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child,
     {double textScale = 1.0, Locale? locale}) {
@@ -33,6 +34,18 @@ void main() {
       proteinG: 165,
       carbsG: 280,
       fatG: 85);
+
+  // Issue #1374: the card is a ListCard; the rings reflow at the worst case.
+  worstCaseTestWidgets('Nutrition rings card', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: const Scaffold(
+        body: NutritionRingsCard(
+            consumed: consumed, targets: targets, onTap: _noop),
+      ),
+    ));
+    await tester.pump();
+  });
 
   group('NutritionRingsCard', () {
     testWidgets('renders four macro rings + the kcal value', (tester) async {

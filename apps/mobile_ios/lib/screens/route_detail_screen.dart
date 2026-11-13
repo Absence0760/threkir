@@ -10,9 +10,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
+        AppSpace,
         DetailHero,
         DetailPage,
         KeepAliveChild,
+        ListCard,
         SheetScaffold,
         StatGrid,
         StatTile,
@@ -1573,77 +1575,80 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                 ),
               )
             else
-              ..._reviews.map((review) => Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              ..._reviews.map((review) => ListCard(
+                    // The page's 24 dp content inset, as the rows above.
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: AppSpace.xs),
+                    dense: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                ...List.generate(
-                                  5,
-                                  (i) => Icon(
-                                    i < review.rating
-                                        ? Icons.star
-                                        : Icons.star_border,
-                                    size: 16,
-                                    color: AppSemanticColors.of(context).crown,
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (review.createdAt != null)
-                                  Text(
-                                    formatDateShort(review.createdAt!,
-                                        localeToTag(Localizations.localeOf(context))),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                if (widget.apiClient?.userId != null)
-                                  if (widget.apiClient!.userId != review.userId)
-                                    IconButton(
-                                      icon: const Icon(Icons.flag_outlined, size: 16),
-                                      tooltip: l10n.routeDetailReportReview,
-                                      padding: const EdgeInsets.only(left: 8),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 48,
-                                        minHeight: 48,
-                                      ),
-                                      color: theme.colorScheme.outline,
-                                      onPressed: () => showReportSheet(
-                                        context,
-                                        api: widget.apiClient!,
-                                        targetKind: 'route_review',
-                                        targetId: review.id,
-                                      ),
-                                    )
-                                  else
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, size: 16),
-                                      tooltip: l10n.routeDetailDeleteReview,
-                                      padding: const EdgeInsets.only(left: 8),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 48,
-                                        minHeight: 48,
-                                      ),
-                                      color: theme.colorScheme.outline,
-                                      onPressed: _deleteOwnReview,
-                                    ),
-                              ],
+                            ...List.generate(
+                              5,
+                              (i) => Icon(
+                                i < review.rating
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                size: 16,
+                                color: AppSemanticColors.of(context).crown,
+                              ),
                             ),
-                            if (review.comment != null &&
-                                review.comment!.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Text(review.comment!,
-                                  style: theme.textTheme.bodySmall),
-                            ],
+                            // Expanded, not a Spacer: at 320 dp and 2x
+                            // the date beside five stars and the flag
+                            // button has to wrap rather than overflow.
+                            Expanded(
+                              child: review.createdAt == null
+                                  ? const SizedBox.shrink()
+                                  : Text(
+                                      formatDateShort(review.createdAt!,
+                                          localeToTag(Localizations.localeOf(context))),
+                                      textAlign: TextAlign.end,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                            ),
+                            if (widget.apiClient?.userId != null)
+                              if (widget.apiClient!.userId != review.userId)
+                                IconButton(
+                                  icon: const Icon(Icons.flag_outlined, size: 16),
+                                  tooltip: l10n.routeDetailReportReview,
+                                  padding: const EdgeInsets.only(left: 8),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  color: theme.colorScheme.outline,
+                                  onPressed: () => showReportSheet(
+                                    context,
+                                    api: widget.apiClient!,
+                                    targetKind: 'route_review',
+                                    targetId: review.id,
+                                  ),
+                                )
+                              else
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 16),
+                                  tooltip: l10n.routeDetailDeleteReview,
+                                  padding: const EdgeInsets.only(left: 8),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                    minHeight: 48,
+                                  ),
+                                  color: theme.colorScheme.outline,
+                                  onPressed: _deleteOwnReview,
+                                ),
                           ],
                         ),
-                      ),
+                        if (review.comment != null &&
+                            review.comment!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(review.comment!,
+                              style: theme.textTheme.bodySmall),
+                        ],
+                      ],
                     ),
                   )),
 

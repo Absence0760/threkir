@@ -10,6 +10,7 @@ import 'package:ui_kit/ui_kit.dart'
         AppSemanticColors,
         AppSpace,
         ChartCardHeader,
+        ListCard,
         PageHeader,
         ProgressBar,
         PushedPage,
@@ -68,7 +69,6 @@ import 'period_summary_screen.dart';
 import 'recap_screen.dart';
 import 'workout_detail_screen.dart';
 
-const _kCardPadding = AppInsets.card;
 const _kSectionGap = SizedBox(height: AppInsets.sectionGap);
 const _kPagePadding = EdgeInsets.fromLTRB(
     AppInsets.gutter, AppInsets.pageTop, AppInsets.gutter, AppSpace.md);
@@ -765,21 +765,18 @@ class _ProgressScreenState extends State<ProgressScreen> {
             children: [?addGoalButton, ?recapButton],
           )
         : null;
-    final streakCard = Card(
-      child: Padding(
-        padding: _kCardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ChartCardHeader(title: l10n.dashboardSectionStreak),
-            const SizedBox(height: 10),
-            _StreakRow(
-              key: const Key('dashboardStreakRow'),
-              runs: runs,
-              allTime: _allTimeStreaks,
-            ),
-          ],
-        ),
+    final streakCard = ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ChartCardHeader(title: l10n.dashboardSectionStreak),
+          const SizedBox(height: 10),
+          _StreakRow(
+            key: const Key('dashboardStreakRow'),
+            runs: runs,
+            allTime: _allTimeStreaks,
+          ),
+        ],
       ),
     );
     final mileageCard = MileageTrendCard(
@@ -789,41 +786,38 @@ class _ProgressScreenState extends State<ProgressScreen> {
       now: now,
     );
     final pbCard = hasAnyPb
-        ? Card(
-            child: Padding(
-              padding: _kCardPadding,
-              child: Column(
-                children: [
-                  ChartCardHeader(
-                    title: l10n.dashboardSectionPersonalBests,
-                    action: const MetricInfoButton(metric: Metric.ageGrade),
-                  ),
-                  const SizedBox(height: 10),
-                  if (longest != null)
-                    _PbRow(
-                      icon: Icons.straighten,
-                      label: l10n.dashboardLongestRun,
-                      value: UnitFormat.distance(longest.distanceMetres, unit),
-                    ),
-                  for (final e in displayEfforts.entries) ...[
-                    const SizedBox(height: AppSpace.smPlus),
-                    _PbRow(
-                      icon: Icons.emoji_events,
-                      label: l10n.dashboardFastestDistance(
-                          bestEffortDistanceLabel(l10n, e.key)),
-                      value: _formatDuration(e.value),
-                      subValue: switch (_pbAgeGrade(e.key, e.value, now,
-                          achievedAt: pbDates[e.key])) {
-                        final ag? => metricText(l10n, Metric.ageGrade,
-                            variant: 'pb', args: {'percent': ag}),
-                        _ => null,
-                      },
-                    ),
-                  ],
-                ],
+        ? ListCard(
+          child: Column(
+            children: [
+              ChartCardHeader(
+                title: l10n.dashboardSectionPersonalBests,
+                action: const MetricInfoButton(metric: Metric.ageGrade),
               ),
-            ),
-          )
+              const SizedBox(height: 10),
+              if (longest != null)
+                _PbRow(
+                  icon: Icons.straighten,
+                  label: l10n.dashboardLongestRun,
+                  value: UnitFormat.distance(longest.distanceMetres, unit),
+                ),
+              for (final e in displayEfforts.entries) ...[
+                const SizedBox(height: AppSpace.smPlus),
+                _PbRow(
+                  icon: Icons.emoji_events,
+                  label: l10n.dashboardFastestDistance(
+                      bestEffortDistanceLabel(l10n, e.key)),
+                  value: _formatDuration(e.value),
+                  subValue: switch (_pbAgeGrade(e.key, e.value, now,
+                      achievedAt: pbDates[e.key])) {
+                    final ag? => metricText(l10n, Metric.ageGrade,
+                        variant: 'pb', args: {'percent': ag}),
+                    _ => null,
+                  },
+                ),
+              ],
+            ],
+          ),
+        )
         : null;
     final fitnessCard = FitnessCard(
         runs: runs, now: now, hrPrefs: hrPrefs, loadSeries: loadSeries);
@@ -1069,91 +1063,88 @@ class _DashboardWeekLead extends StatelessWidget {
             structure: next.structure,
           );
 
-    return Card(
-      child: Padding(
-        padding: _kCardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ChartCardHeader(
-              title: l10n.dashboardLeadTitle,
-              action: IconButton(
-                key: const Key('dashboardWeekLeadOpenWeek'),
-                tooltip: l10n.periodWeeklySummary,
-                icon: const Icon(Icons.chevron_right),
-                onPressed: onOpenWeek,
-              ),
+    return ListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ChartCardHeader(
+            title: l10n.dashboardLeadTitle,
+            action: IconButton(
+              key: const Key('dashboardWeekLeadOpenWeek'),
+              tooltip: l10n.periodWeeklySummary,
+              icon: const Icon(Icons.chevron_right),
+              onPressed: onOpenWeek,
             ),
-            const SizedBox(height: 8),
-            if (lead.count == 0)
-              Text(
-                l10n.dashboardLeadEmpty,
-                key: const Key('dashboardWeekLeadEmpty'),
-                style: theme.textTheme.titleMedium?.copyWith(color: muted),
-              )
-            else
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.end,
-                spacing: 8,
-                children: [
-                  Text(
-                    UnitFormat.distance(lead.distanceM, unit),
-                    key: const Key('dashboardWeekLeadDistance'),
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    l10n.dashboardWeekStripCount(lead.count),
-                    style: theme.textTheme.bodyMedium?.copyWith(color: muted),
-                  ),
-                ],
-              ),
-            if (ratio != null) ...[
-              const SizedBox(height: 8),
-              ProgressBar(
-                key: const Key('dashboardWeekLeadMeter'),
-                value: ratio.clamp(0.0, 1.0),
-                semanticsLabel: c!.kind == WeekComparisonKind.plan
-                    ? l10n.dashboardLeadPlanProgressAria
-                    : l10n.dashboardLeadGoalProgressAria,
-              ),
-            ],
-            if (vs != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                vs,
-                key: const Key('dashboardWeekLeadVs'),
-                style: theme.textTheme.bodyMedium?.copyWith(color: muted),
-              ),
-            ],
-            if (hasPlan) ...[
-              const SizedBox(height: 16),
-              Text(
-                l10n.dashboardLeadNextSession,
-                style: theme.textTheme.labelMedium?.copyWith(color: muted),
-              ),
-              const SizedBox(height: 6),
-              if (next != null)
-                _WeekLeadSession(
-                  key: const Key('dashboardWeekLeadNext'),
-                  when: _whenLabel(l10n, next.scheduledDate, lead.nextInDays),
-                  detail: [
-                    workoutKindLabel(l10n, workoutKindFromDb(next.kind)),
-                    if (nextSize != null)
-                      formatPlannedSize(l10n, nextSize,
-                          (m) => UnitFormat.distance(m.toDouble(), unit)),
-                  ].join(' · '),
-                  onTap: () => onOpenSession(next),
-                )
-              else
+          ),
+          const SizedBox(height: 8),
+          if (lead.count == 0)
+            Text(
+              l10n.dashboardLeadEmpty,
+              key: const Key('dashboardWeekLeadEmpty'),
+              style: theme.textTheme.titleMedium?.copyWith(color: muted),
+            )
+          else
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: 8,
+              children: [
                 Text(
-                  l10n.dashboardLeadNoNextSession,
-                  key: const Key('dashboardWeekLeadNoNext'),
+                  UnitFormat.distance(lead.distanceM, unit),
+                  key: const Key('dashboardWeekLeadDistance'),
+                  style: theme.textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  l10n.dashboardWeekStripCount(lead.count),
                   style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                 ),
-            ],
+              ],
+            ),
+          if (ratio != null) ...[
+            const SizedBox(height: 8),
+            ProgressBar(
+              key: const Key('dashboardWeekLeadMeter'),
+              value: ratio.clamp(0.0, 1.0),
+              semanticsLabel: c!.kind == WeekComparisonKind.plan
+                  ? l10n.dashboardLeadPlanProgressAria
+                  : l10n.dashboardLeadGoalProgressAria,
+            ),
           ],
-        ),
+          if (vs != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              vs,
+              key: const Key('dashboardWeekLeadVs'),
+              style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+            ),
+          ],
+          if (hasPlan) ...[
+            const SizedBox(height: 16),
+            Text(
+              l10n.dashboardLeadNextSession,
+              style: theme.textTheme.labelMedium?.copyWith(color: muted),
+            ),
+            const SizedBox(height: 6),
+            if (next != null)
+              _WeekLeadSession(
+                key: const Key('dashboardWeekLeadNext'),
+                when: _whenLabel(l10n, next.scheduledDate, lead.nextInDays),
+                detail: [
+                  workoutKindLabel(l10n, workoutKindFromDb(next.kind)),
+                  if (nextSize != null)
+                    formatPlannedSize(l10n, nextSize,
+                        (m) => UnitFormat.distance(m.toDouble(), unit)),
+                ].join(' · '),
+                onTap: () => onOpenSession(next),
+              )
+            else
+              Text(
+                l10n.dashboardLeadNoNextSession,
+                key: const Key('dashboardWeekLeadNoNext'),
+                style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+              ),
+          ],
+        ],
       ),
     );
   }
@@ -1223,9 +1214,11 @@ class _TrainingLoadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    // Flush: the rows are cards with their own insets, drawn chromeless by
+    // the theme below.
+    return ListCard.flush(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
         child: Theme(
           data: theme.copyWith(
             cardTheme: theme.cardTheme.copyWith(
@@ -1265,49 +1258,42 @@ class _EmptyGoalsCta extends StatelessWidget {
     // `InkWell` carries no role for TalkBack; without Semantics it
     // reads as a generic tappable region. The label summarises the
     // CTA so a screen-reader user understands what activates.
-    return Card(
+    return ListCard(
+      onTap: onAdd,
       child: Semantics(
-        button: true,
         label: l10n.dashboardSetWeeklyGoalA11y,
-        child: InkWell(
-        onTap: onAdd,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.primaryContainer,
-                ),
-                child: Icon(Icons.flag_outlined,
-                    color: theme.colorScheme.primary),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.primaryContainer,
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.dashboardSetFirstGoal,
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.dashboardSetFirstGoalBody,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+              child: Icon(Icons.flag_outlined,
+                  color: theme.colorScheme.primary),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.dashboardSetFirstGoal,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.dashboardSetFirstGoalBody,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-            ],
-          ),
-        ),
+            ),
+            Icon(Icons.chevron_right, color: theme.colorScheme.outline),
+          ],
         ),
       ),
     );
@@ -1353,78 +1339,71 @@ class _GoalCard extends StatelessWidget {
           : l10n.dashboardGoalInProgress,
     );
 
-    return Card(
+    return ListCard(
+      onTap: onTap,
       child: Semantics(
-        button: true,
         label: a11yLabel,
-        child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          customTitle ??
-                              l10n.dashboardGoalTitleFallback(periodLabel),
-                          style: (customTitle != null
-                                  ? theme.textTheme.titleMedium
-                                  : theme.textTheme.labelMedium)
-                              ?.copyWith(
-                            color: customTitle != null
-                                ? null
-                                : theme.colorScheme.onSurfaceVariant,
-                            letterSpacing: customTitle != null ? 0 : 1.1,
-                            fontWeight: customTitle != null
-                                ? FontWeight.w700
-                                : FontWeight.normal,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        customTitle ??
+                            l10n.dashboardGoalTitleFallback(periodLabel),
+                        style: (customTitle != null
+                                ? theme.textTheme.titleMedium
+                                : theme.textTheme.labelMedium)
+                            ?.copyWith(
+                          color: customTitle != null
+                              ? null
+                              : theme.colorScheme.onSurfaceVariant,
+                          letterSpacing: customTitle != null ? 0 : 1.1,
+                          fontWeight: customTitle != null
+                              ? FontWeight.w700
+                              : FontWeight.normal,
                         ),
-                        if (customTitle != null)
-                          Text(
-                            periodLabel,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              letterSpacing: 1.1,
-                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (customTitle != null)
+                        Text(
+                          periodLabel,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            letterSpacing: 1.1,
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
-                  Text(
-                    '${(progress.overallPercent * 100).round()}%',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(Icons.edit_outlined,
-                      size: 14, color: theme.colorScheme.outline),
-                ],
-              ),
-              const SizedBox(height: 14),
-              for (int i = 0; i < GoalTargetKind.values.length; i++) ...[
-                if (i > 0) const SizedBox(height: 12),
-                _TargetRow(
-                  kind: GoalTargetKind.values[i],
-                  target: byKind[GoalTargetKind.values[i]],
-                  unit: unit,
                 ),
+                Text(
+                  '${(progress.overallPercent * 100).round()}%',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.edit_outlined,
+                    size: 14, color: theme.colorScheme.outline),
               ],
+            ),
+            const SizedBox(height: 14),
+            for (int i = 0; i < GoalTargetKind.values.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              _TargetRow(
+                kind: GoalTargetKind.values[i],
+                target: byKind[GoalTargetKind.values[i]],
+                unit: unit,
+              ),
             ],
-          ),
-        ),
+          ],
         ),
       ),
     );
@@ -1642,80 +1621,77 @@ class _PeriodStatCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final value = UnitFormat.distanceValue(distanceMetres, unit);
     final unitLabel = UnitFormat.distanceLabel(unit);
-    final inner = Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.06,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+    final inner = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.06,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(height: 6),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Flexible(
+              child: Text(
+                value,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              unitLabel,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.dashboardRunCount(runCount),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        if (vertMetres > 0) ...[
+          const SizedBox(height: 2),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            mainAxisSize: MainAxisSize.min,
             children: [
+              Icon(
+                Icons.terrain,
+                size: 14,
+                color: theme.colorScheme.outline,
+              ),
+              const SizedBox(width: 3),
               Flexible(
                 child: Text(
-                  value,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  metricText(l10n, Metric.vert, variant: 'total', args: {
+                    'value': UnitFormat.elevation(vertMetres, unit)
+                  }),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.fade,
                   softWrap: false,
                 ),
               ),
-              const SizedBox(width: 3),
-              Text(
-                unitLabel,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.dashboardRunCount(runCount),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (vertMetres > 0) ...[
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.terrain,
-                  size: 14,
-                  color: theme.colorScheme.outline,
-                ),
-                const SizedBox(width: 3),
-                Flexible(
-                  child: Text(
-                    metricText(l10n, Metric.vert, variant: 'total', args: {
-                      'value': UnitFormat.elevation(vertMetres, unit)
-                    }),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    softWrap: false,
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
-      ),
+      ],
     );
     final isTappable = onTap != null;
     final theme0 = Theme.of(context);
@@ -1728,13 +1704,15 @@ class _PeriodStatCard extends StatelessWidget {
     // report: "clickable sections should be distinguishable from non-
     // clickable fields … Week / Month / All Time look the same but
     // only Week and Month are clickable."
+    // The chevron sits in the card's corner, over the padding.
     final body = Stack(
+      clipBehavior: Clip.none,
       children: [
         inner,
         if (isTappable)
           Positioned(
-            right: 8,
-            top: 8,
+            right: -AppSpace.sm,
+            top: -AppSpace.xs,
             child: Icon(
               Icons.chevron_right,
               size: 16,
@@ -1743,44 +1721,25 @@ class _PeriodStatCard extends StatelessWidget {
           ),
       ],
     );
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: isTappable
-          ? RoundedRectangleBorder(
-              side: BorderSide(
-                color: theme0.colorScheme.primary,
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(12),
+    // audit/accessibility (2026-05-25) High, WCAG 4.1.2: a tappable tile
+    // reads as one button-roled label, not the raw stat numbers in order.
+    return ListCard(
+      dense: true,
+      outline: isTappable ? theme0.colorScheme.primary : null,
+      onTap: onTap,
+      semanticLabel: isTappable
+          ? l10n.dashboardPeriodSummaryA11y(
+              label,
+              '${UnitFormat.distanceValue(distanceMetres, unit)} '
+                  '${UnitFormat.distanceLabel(unit)}',
+              l10n.dashboardRunCount(runCount),
+              vertMetres > 0
+                  ? l10n.dashboardElevationGainSuffix(
+                      UnitFormat.elevation(vertMetres, unit))
+                  : '',
             )
-          : RoundedRectangleBorder(
-              side: BorderSide(
-                color: theme0.dividerColor,
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-      // audit/accessibility (2026-05-25) High — WCAG 4.1.2. The
-      // tappable InkWell was bare; without Semantics TalkBack
-      // announced only the raw stat numbers in reading order.
-      // Wrapping with a button-roled label restores the semantics
-      // for the period summary drill-in.
-      child: isTappable
-          ? Semantics(
-              button: true,
-              label: l10n.dashboardPeriodSummaryA11y(
-                label,
-                '${UnitFormat.distanceValue(distanceMetres, unit)} '
-                    '${UnitFormat.distanceLabel(unit)}',
-                l10n.dashboardRunCount(runCount),
-                vertMetres > 0
-                    ? l10n.dashboardElevationGainSuffix(
-                        UnitFormat.elevation(vertMetres, unit))
-                    : '',
-              ),
-              child: InkWell(onTap: onTap, child: body),
-            )
-          : body,
+          : null,
+      child: body,
     );
   }
 }

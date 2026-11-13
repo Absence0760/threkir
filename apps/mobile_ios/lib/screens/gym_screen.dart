@@ -533,67 +533,35 @@ class _GymScreenState extends State<GymScreen>
         final title = w.workout.title?.trim();
         final started = w.startedAt;
         final volume = gymWorkoutVolume(w);
-        return Card(
+        final unit = activeWeightUnit;
+        return ListCard.row(
           margin: EdgeInsets.zero,
-          child: InkWell(
-            onTap: () => _open(w),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title == null || title.isEmpty
-                              ? l10n.gymUntitled
-                              : title,
-                          style: theme.textTheme.titleSmall,
-                        ),
-                        if (started != null)
-                          Text(
-                            formatDateMed(started.toLocal(), tag),
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (prIds.contains(w.id)) ...[
-                    _prBadge(theme, l10n),
-                    const SizedBox(width: 8),
-                  ],
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        l10n.gymExercisesShort(gymExerciseCount(w)),
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                      ),
-                      if (volume > 0)
-                        Text(
-                          // Volume is summed in canonical kg; show it in the
-                          // user's weight unit (rounded — it's an aggregate).
-                          '${WeightFormat.toDisplay(volume.toDouble(), activeWeightUnit).round()} ${WeightFormat.label(activeWeightUnit)}',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                    ],
-                  ),
-                  Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-                ],
-              ),
-            ),
+          dense: true,
+          onTap: () => _open(w),
+          chevron: true,
+          title: title == null || title.isEmpty ? l10n.gymUntitled : title,
+          badge: prIds.contains(w.id) ? _prBadge(theme, l10n) : null,
+          subtitle: started == null
+              ? null
+              : formatDateMed(started.toLocal(), tag),
+          // Count and volume on one line under the date rather than stacked
+          // at the row's end, where at 2x they took the title's width.
+          meta: Wrap(
+            spacing: AppSpace.smPlus,
+            children: [
+              for (final fact in [
+                l10n.gymExercisesShort(gymExerciseCount(w)),
+                // Volume is summed in canonical kg; show it in the user's
+                // weight unit (rounded — it's an aggregate).
+                if (volume > 0)
+                  '${WeightFormat.toDisplay(volume.toDouble(), unit).round()} ${WeightFormat.label(unit)}',
+              ])
+                Text(
+                  fact,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+            ],
           ),
         );
       },
@@ -603,67 +571,30 @@ class _GymScreenState extends State<GymScreen>
   Widget _draftCard(({StoredGymWorkout draft, StoredRoutine routine}) d,
       ThemeData theme, AppLocalizations l10n) {
     final title = d.routine.title.trim();
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _resumeDraft(d),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.play_circle_outline,
-                      color: theme.colorScheme.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l10n.gymDraftTitle,
-                            style: theme.textTheme.titleSmall),
-                        Text(
-                          '${title.isEmpty ? l10n.gymUntitled : title} · ${l10n.gymDraftSetCount(d.draft.sets.length)}',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: Wrap(
-                  spacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () => _discardDraft(d.draft),
-                      style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.error),
-                      child: Text(l10n.gymSessionDiscardConfirm),
-                    ),
-                    TextButton(
-                      onPressed: () => _saveDraftAsIs(d.draft),
-                      child: Text(l10n.gymDraftSave),
-                    ),
-                    FilledButton(
-                      onPressed: () => _resumeDraft(d),
-                      child: Text(l10n.gymDraftResume),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return ListCard.row(
+      margin: const EdgeInsets.fromLTRB(
+          AppInsets.gutter, AppInsets.pageTop, AppInsets.gutter, 0),
+      dense: true,
+      onTap: () => _resumeDraft(d),
+      leading: Icon(Icons.play_circle_outline, color: theme.colorScheme.primary),
+      title: l10n.gymDraftTitle,
+      subtitle:
+          '${title.isEmpty ? l10n.gymUntitled : title} · ${l10n.gymDraftSetCount(d.draft.sets.length)}',
+      actions: [
+        TextButton(
+          onPressed: () => _discardDraft(d.draft),
+          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+          child: Text(l10n.gymSessionDiscardConfirm),
         ),
-      ),
+        TextButton(
+          onPressed: () => _saveDraftAsIs(d.draft),
+          child: Text(l10n.gymDraftSave),
+        ),
+        FilledButton(
+          onPressed: () => _resumeDraft(d),
+          child: Text(l10n.gymDraftResume),
+        ),
+      ],
     );
   }
 

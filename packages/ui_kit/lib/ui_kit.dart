@@ -18,6 +18,7 @@ export 'src/widgets/filter_bar.dart';
 export 'src/widgets/hub_tab_body.dart';
 export 'src/widgets/identity_avatar.dart';
 export 'src/widgets/keep_alive_child.dart';
+export 'src/widgets/list_card.dart';
 export 'src/widgets/list_skeleton.dart';
 export 'src/widgets/map_first_page.dart';
 export 'src/widgets/overlay_icon_button.dart';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show TermValueRow;
+import 'package:ui_kit/ui_kit.dart'
+    show AppInsets, AppSpace, ListCard, TermValueRow;
 
 import '../l10n/gen/app_localizations.dart';
 import '../race_match.dart';
@@ -149,32 +150,30 @@ class _RunRaceSectionState extends State<RunRaceSection> {
 
     final candidate = _candidate;
     if (candidate != null && !_dismissed) {
-      return Card(
-        margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l.racesMatchPrompt(candidate.name)),
-              const SizedBox(height: 8),
-              OverflowBar(
-                alignment: MainAxisAlignment.end,
-                overflowAlignment: OverflowBarAlignment.end,
-                spacing: 8,
-                children: [
-                  TextButton(
-                    onPressed: () => setState(() => _dismissed = true),
-                    child: Text(l.racesMatchDismiss),
-                  ),
-                  FilledButton(
-                    onPressed: _confirmMatch,
-                    child: Text(l.racesMatchConfirm),
-                  ),
-                ],
-              ),
-            ],
-          ),
+      return ListCard(
+        margin: const EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.smPlus,
+          AppInsets.gutter, AppSpace.xs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.racesMatchPrompt(candidate.name)),
+            const SizedBox(height: 8),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              overflowAlignment: OverflowBarAlignment.end,
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () => setState(() => _dismissed = true),
+                  child: Text(l.racesMatchDismiss),
+                ),
+                FilledButton(
+                  onPressed: _confirmMatch,
+                  child: Text(l.racesMatchConfirm),
+                ),
+              ],
+            ),
+          ],
         ),
       );
     }

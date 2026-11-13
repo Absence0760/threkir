@@ -1,7 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show EditorPage, EditorSave;
+import 'package:ui_kit/ui_kit.dart'
+    show EditorPage, EditorSave, ListCard;
 
 import '../auth_error.dart';
 import '../backend_timeout.dart';
@@ -616,110 +617,108 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
       for (final a in _aiAssumptions)
         if (seasonAssumptionLabel(l10n, a) case final label?) label,
     ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.seasonPlanDescribeTitle,
-              style: theme.textTheme.titleMedium,
+    return ListCard(
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.seasonPlanDescribeTitle,
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.seasonPlanDescribeHint,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
             ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.seasonPlanDescribeHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('season-describe'),
+            controller: _describeCtrl,
+            minLines: 2,
+            maxLines: 5,
+            maxLength: _kSeasonDescriptionMaxChars,
+            enabled: !_aiBusy,
+            decoration: InputDecoration(
+              labelText: l10n.seasonPlanDescribeTitle,
+              hintText: l10n.seasonPlanDescribePlaceholder,
+              hintMaxLines: 3,
             ),
+            onChanged: (_) => _changed(),
+          ),
+          FilledButton.tonal(
+            key: const Key('season-find-races'),
+            onPressed: (_aiBusy || _describeCtrl.text.trim().isEmpty)
+                ? null
+                : _findRaces,
+            child: Text(
+              _aiBusy
+                  ? l10n.seasonPlanDescribeWorking
+                  : l10n.seasonPlanDescribeButton,
+            ),
+          ),
+          if (error != null) ...[
             const SizedBox(height: 8),
-            TextField(
-              key: const Key('season-describe'),
-              controller: _describeCtrl,
-              minLines: 2,
-              maxLines: 5,
-              maxLength: _kSeasonDescriptionMaxChars,
-              enabled: !_aiBusy,
-              decoration: InputDecoration(
-                labelText: l10n.seasonPlanDescribeTitle,
-                hintText: l10n.seasonPlanDescribePlaceholder,
-                hintMaxLines: 3,
-              ),
-              onChanged: (_) => _changed(),
-            ),
-            FilledButton.tonal(
-              key: const Key('season-find-races'),
-              onPressed: (_aiBusy || _describeCtrl.text.trim().isEmpty)
-                  ? null
-                  : _findRaces,
-              child: Text(
-                _aiBusy
-                    ? l10n.seasonPlanDescribeWorking
-                    : l10n.seasonPlanDescribeButton,
-              ),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 8),
-              Semantics(
-                liveRegion: true,
-                child: Container(
-                  key: const Key('season-ai-error'),
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: cs.errorContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _aiErrorText(l10n, error),
-                        style: TextStyle(color: cs.onErrorContainer),
+            Semantics(
+              liveRegion: true,
+              child: Container(
+                key: const Key('season-ai-error'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: cs.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _aiErrorText(l10n, error),
+                      style: TextStyle(color: cs.onErrorContainer),
+                    ),
+                    if (error == PlanRequestErrorKind.consent)
+                      TextButton(
+                        onPressed: _reviewAiDisclosure,
+                        child: Text(l10n.seasonPlanReviewDisclosure),
                       ),
-                      if (error == PlanRequestErrorKind.consent)
-                        TextButton(
-                          onPressed: _reviewAiDisclosure,
-                          child: Text(l10n.seasonPlanReviewDisclosure),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
-            ],
-            if (_aiFound || assumptions.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Semantics(
-                liveRegion: true,
-                child: Container(
-                  key: const Key('season-ai-found'),
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: cs.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_aiFound)
-                        Text(
-                          l10n.seasonPlanDescribeFound,
-                          style: TextStyle(color: cs.onSecondaryContainer),
-                        ),
-                      for (final line in assumptions)
-                        Text(
-                          '• $line',
-                          style: TextStyle(color: cs.onSecondaryContainer),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ],
-        ),
+          if (_aiFound || assumptions.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Semantics(
+              liveRegion: true,
+              child: Container(
+                key: const Key('season-ai-found'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: cs.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_aiFound)
+                      Text(
+                        l10n.seasonPlanDescribeFound,
+                        style: TextStyle(color: cs.onSecondaryContainer),
+                      ),
+                    for (final line in assumptions)
+                      Text(
+                        '• $line',
+                        style: TextStyle(color: cs.onSecondaryContainer),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -732,88 +731,85 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     String unit,
     String Function(String) day,
   ) {
-    return Card(
+    return ListCard(
       key: ValueKey('season-race-${row.key}'),
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.seasonPlanRaceLegend(i + 1),
-                    style: theme.textTheme.titleSmall,
-                  ),
+      dense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.seasonPlanRaceLegend(i + 1),
+                  style: theme.textTheme.titleSmall,
                 ),
-                IconButton(
-                  key: Key('season-remove-$i'),
-                  tooltip: l10n.seasonPlanRemoveRace(i + 1),
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _removeRace(row),
+              ),
+              IconButton(
+                key: Key('season-remove-$i'),
+                tooltip: l10n.seasonPlanRemoveRace(i + 1),
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => _removeRace(row),
+              ),
+            ],
+          ),
+          TextField(
+            key: Key('season-name-$i'),
+            controller: row.name,
+            maxLength: kSeasonRaceNameMax,
+            decoration: InputDecoration(labelText: l10n.seasonPlanRaceName),
+            onChanged: (_) => _changed(),
+          ),
+          ListTile(
+            key: Key('season-date-$i'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.event),
+            title: Text(l10n.seasonPlanRaceDate),
+            subtitle: Text(
+              row.date == null ? l10n.seasonPlanRaceDatePick : day(row.date!),
+            ),
+            onTap: () => _pickDate(row),
+          ),
+          TextField(
+            key: Key('season-distance-$i'),
+            controller: row.distance,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
+            decoration: InputDecoration(
+              labelText: l10n.seasonPlanRaceDistance(unit),
+            ),
+            onChanged: (_) => _changed(),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<SeasonRacePriority>(
+            key: Key('season-priority-$i-${row.priority.name}'),
+            initialValue: row.priority,
+            decoration: InputDecoration(
+              labelText: l10n.seasonPlanRacePriority,
+            ),
+            items: [
+              for (final p in SeasonRacePriority.values)
+                DropdownMenuItem(
+                  value: p,
+                  child: Text(_priorityLabel(l10n, p)),
                 ),
-              ],
+            ],
+            onChanged: (v) {
+              if (v != null) setState(() => row.priority = v);
+            },
+          ),
+          TextField(
+            key: Key('season-goal-$i'),
+            controller: row.goal,
+            keyboardType: TextInputType.datetime,
+            decoration: InputDecoration(
+              labelText: l10n.seasonPlanRaceGoal,
+              helperText: l10n.seasonPlanRaceGoalHint,
             ),
-            TextField(
-              key: Key('season-name-$i'),
-              controller: row.name,
-              maxLength: kSeasonRaceNameMax,
-              decoration: InputDecoration(labelText: l10n.seasonPlanRaceName),
-              onChanged: (_) => _changed(),
-            ),
-            ListTile(
-              key: Key('season-date-$i'),
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.event),
-              title: Text(l10n.seasonPlanRaceDate),
-              subtitle: Text(
-                row.date == null ? l10n.seasonPlanRaceDatePick : day(row.date!),
-              ),
-              onTap: () => _pickDate(row),
-            ),
-            TextField(
-              key: Key('season-distance-$i'),
-              controller: row.distance,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: l10n.seasonPlanRaceDistance(unit),
-              ),
-              onChanged: (_) => _changed(),
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<SeasonRacePriority>(
-              key: Key('season-priority-$i-${row.priority.name}'),
-              initialValue: row.priority,
-              decoration: InputDecoration(
-                labelText: l10n.seasonPlanRacePriority,
-              ),
-              items: [
-                for (final p in SeasonRacePriority.values)
-                  DropdownMenuItem(
-                    value: p,
-                    child: Text(_priorityLabel(l10n, p)),
-                  ),
-              ],
-              onChanged: (v) {
-                if (v != null) setState(() => row.priority = v);
-              },
-            ),
-            TextField(
-              key: Key('season-goal-$i'),
-              controller: row.goal,
-              keyboardType: TextInputType.datetime,
-              decoration: InputDecoration(
-                labelText: l10n.seasonPlanRaceGoal,
-                helperText: l10n.seasonPlanRaceGoalHint,
-              ),
-              onChanged: (_) => _changed(),
-            ),
-          ],
-        ),
+            onChanged: (_) => _changed(),
+          ),
+        ],
       ),
     );
   }
@@ -849,59 +845,57 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
         ),
         const SizedBox(height: 8),
         for (var i = 0; i < preview.plans.length; i++) ...[
-          Card(
+          ListCard(
             key: Key('season-plan-$i'),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    preview.plans[i].name,
-                    style: theme.textTheme.titleSmall,
+            dense: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  preview.plans[i].name,
+                  style: theme.textTheme.titleSmall,
+                ),
+                Text(
+                  l10n.seasonPlanPlanWindow(
+                    day(preview.plans[i].startDate),
+                    day(preview.plans[i].endDate),
+                    preview.plans[i].weeks,
                   ),
+                ),
+                Text(
+                  l10n.seasonPlanPlanGoal(
+                    formatDistanceForPref(preview.plans[i].goalDistanceM),
+                    day(preview.plans[i].endDate),
+                  ),
+                ),
+                if (preview.plans[i].goalTimeSec != null)
                   Text(
-                    l10n.seasonPlanPlanWindow(
-                      day(preview.plans[i].startDate),
-                      day(preview.plans[i].endDate),
-                      preview.plans[i].weeks,
+                    l10n.seasonPlanPlanGoalTime(
+                      formatRaceGoalTimeS(preview.plans[i].goalTimeSec!),
                     ),
                   ),
+                if (preview.plans[i].races.isNotEmpty) ...[
+                  const SizedBox(height: 4),
                   Text(
-                    l10n.seasonPlanPlanGoal(
-                      formatDistanceForPref(preview.plans[i].goalDistanceM),
-                      day(preview.plans[i].endDate),
-                    ),
+                    l10n.seasonPlanPlanRaces,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  if (preview.plans[i].goalTimeSec != null)
+                  for (final r in preview.plans[i].races)
                     Text(
-                      l10n.seasonPlanPlanGoalTime(
-                        formatRaceGoalTimeS(preview.plans[i].goalTimeSec!),
+                      l10n.seasonPlanPlanRaceLine(
+                        seasonPriorityLetter(r.priority),
+                        r.name,
+                        formatDistanceForPref(r.distanceM),
+                        day(r.date),
                       ),
-                    ),
-                  if (preview.plans[i].races.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.seasonPlanPlanRaces,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    for (final r in preview.plans[i].races)
-                      Text(
-                        l10n.seasonPlanPlanRaceLine(
-                          seasonPriorityLetter(r.priority),
-                          r.name,
-                          formatDistanceForPref(r.distanceM),
-                          day(r.date),
-                        ),
-                      ),
-                  ],
-                  if (_created.any((c) => c.index == i))
-                    Text(
-                      l10n.seasonPlanPlanCreated,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                 ],
-              ),
+                if (_created.any((c) => c.index == i))
+                  Text(
+                    l10n.seasonPlanPlanCreated,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+              ],
             ),
           ),
           if (i < preview.gaps.length)

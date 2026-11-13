@@ -5,7 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
-import 'package:flutter/foundation.dart' show compute, debugPrint;
+import 'package:flutter/foundation.dart' show compute, debugPrint, listEquals;
 import 'package:meta/meta.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -3353,28 +3353,6 @@ class ApiClient {
     ];
   }
 
-  /// Every follow edge anchored on `userId` in one direction, walked to its
-  /// end by keyset cursor, resolved to profiles in edge order. Throws when the
-  /// walk cannot finish (a failed page, or a server that stops advancing), so
-  /// a partial list never reads as the whole one.
-  Future<List<UserProfileRow>> _walkFollowEdges({
-    required String anchorColumn,
-    required String otherColumn,
-    required List<KeysetKey> order,
-    required String userId,
-  }) async {
-    final edges = await _walk(
-      order,
-      () => _client
-          .from(UserFollowRow.table)
-          .select('$otherColumn, ${UserFollowRow.colFollowedAt}')
-          .eq(anchorColumn, userId),
-    );
-    return _profilesInEdgeOrder(
-      edges.map<String>((e) => e[otherColumn] as String).toList(),
-    );
-  }
-
   /// People who follow `userId`, newest follow first, one keyset page at a
   /// time: pass the previous page's `next` as `after` to load more. A cursor
   /// rather than an offset because an offset is a position — a follower who
@@ -3410,6 +3388,31 @@ class ApiClient {
         after: after,
       );
 
+  /// Every row of a paged follow list, read page after page by the `next`
+  /// cursor each page hands back — the same page reader the profile's
+  /// follower lists use, so a walk and a list cannot page differently. Pages
+  /// are the lists' own size rather than `db.max-rows`, so the walk rests on
+  /// the one assumption those lists already make: a page of that size comes
+  /// back whole. Throws when the walk cannot finish (a failed page, or a page
+  /// that hands back the cursor it was asked to start after), so a partial
+  /// list never reads as the whole one.
+  Future<List<UserProfileRow>> _walkFollowPages(
+    Future<KeysetPage<UserProfileRow>> Function(List<Object?>? after) page,
+  ) async {
+    final rows = <UserProfileRow>[];
+    List<Object?>? after;
+    while (true) {
+      final next = await page(after);
+      rows.addAll(next.rows);
+      final cursor = next.next;
+      if (cursor == null) return rows;
+      if (after != null && listEquals(cursor, after)) {
+        throw StateError('follow walk: the server stopped advancing');
+      }
+      after = cursor;
+    }
+  }
+
   /// Everyone who follows `userId` and everyone `userId` follows, each
   /// direction walked to its end. A picker that offers "people you can
   /// message / share with / add" filters this list on the client, so one page
@@ -3420,12 +3423,7 @@ class ApiClient {
   Future<({List<UserProfileRow> followers, List<UserProfileRow> following})>
       fetchFollowGraph(String userId) async {
     final walks = await Future.wait([
-      _walkFollowEdges(
-        anchorColumn: UserFollowRow.colFolloweeId,
-        otherColumn: UserFollowRow.colFollowerId,
-        order: _followersOrder,
-        userId: userId,
-      ),
+      _walkFollowPages((after) => fetchFollowers(userId, after: after)),
       fetchAllFollowing(userId),
     ]);
     return (followers: walks[0], following: walks[1]);
@@ -3434,12 +3432,7 @@ class ApiClient {
   /// Everyone `userId` follows, walked to the end (the outbound half of
   /// [fetchFollowGraph], for a surface that needs only that direction).
   Future<List<UserProfileRow>> fetchAllFollowing(String userId) =>
-      _walkFollowEdges(
-        anchorColumn: UserFollowRow.colFollowerId,
-        otherColumn: UserFollowRow.colFolloweeId,
-        order: _followingOrder,
-        userId: userId,
-      );
+      _walkFollowPages((after) => fetchFollowing(userId, after: after));
 
   /// Free-text people search. Routes through the
   /// `search_user_profiles` SECURITY DEFINER RPC so the search

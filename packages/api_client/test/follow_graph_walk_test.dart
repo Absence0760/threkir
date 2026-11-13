@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test/test.dart';
@@ -75,6 +76,60 @@ Map<String, dynamic> _edge(String column, String id, int minute) => {
   'followed_at': '2026-03-01T07:${minute.toString().padLeft(2, '0')}:00+00:00',
 };
 
+/// Edge rows [from] .. [from] + [count] - 1, newest first, ids `<prefix><n>`.
+List<Map<String, dynamic>> _page(
+  String column,
+  String prefix,
+  int from,
+  int count,
+) => [
+  for (var i = from; i < from + count; i++)
+    {
+      column: '$prefix$i',
+      'followed_at': DateTime.utc(2026, 3, 1)
+          .subtract(Duration(minutes: i))
+          .toIso8601String(),
+    },
+];
+
+UserProfileRow _profile(String id) => UserProfileRow.fromJson({
+  'id': id,
+  'display_name': id,
+  'avatar_url': null,
+  'created_at': '2026-01-01T00:00:00Z',
+});
+
+/// The shape of a widget-test fake: the page methods overridden, nothing
+/// else. Followers come in two pages joined by a cursor.
+class _PagedApi extends ApiClient {
+  _PagedApi(SupabaseClient client) : super.withClient(client);
+
+  final followerAfters = <List<Object?>?>[];
+  final followingAfters = <List<Object?>?>[];
+
+  @override
+  Future<KeysetPage<UserProfileRow>> fetchFollowers(
+    String userId, {
+    int limit = 100,
+    List<Object?>? after,
+  }) async {
+    followerAfters.add(after);
+    return after == null
+        ? KeysetPage([_profile('a'), _profile('b')], const ['b'])
+        : KeysetPage([_profile('c')], null);
+  }
+
+  @override
+  Future<KeysetPage<UserProfileRow>> fetchFollowing(
+    String userId, {
+    int limit = 100,
+    List<Object?>? after,
+  }) async {
+    followingAfters.add(after);
+    return KeysetPage([_profile('x')], null);
+  }
+}
+
 void main() {
   late _FakePostgrest fake;
   late SupabaseClient client;
@@ -113,51 +168,78 @@ void main() {
   ];
 
   test('walks both directions past the first page, in edge order', () async {
-    // A server capping every page below the ask answers short pages that are
-    // not the end; the walk keeps going until a page is shorter than the one
-    // before it.
+    // A full page hands back a cursor and the walk asks for the rows after
+    // it; a short page is the end.
     fake.pages['followee_id']!.addAll([
-      [_edge('follower_id', 'f1', 59), _edge('follower_id', 'f2', 58)],
-      [_edge('follower_id', 'f3', 57), _edge('follower_id', 'f4', 56)],
-      [_edge('follower_id', 'f5', 55)],
+      _page('follower_id', 'f', 0, 100),
+      _page('follower_id', 'f', 100, 3),
     ]);
     fake.pages['follower_id']!.addAll([
-      [_edge('followee_id', 'g1', 50), _edge('followee_id', 'g2', 49)],
-      [_edge('followee_id', 'g3', 48)],
+      _page('followee_id', 'g', 0, 100),
+      _page('followee_id', 'g', 100, 1),
     ]);
 
     final graph = await api.fetchFollowGraph('me');
 
-    expect(graph.followers.map((p) => p.id), ['f1', 'f2', 'f3', 'f4', 'f5']);
-    expect(graph.following.map((p) => p.id), ['g1', 'g2', 'g3']);
+    expect(graph.followers.map((p) => p.id), [
+      for (var i = 0; i < 103; i++) 'f$i',
+    ]);
+    expect(graph.following.map((p) => p.id), [
+      for (var i = 0; i < 101; i++) 'g$i',
+    ]);
 
     final inbound = edgeReads('followee_id');
-    expect(inbound, hasLength(3));
+    expect(inbound, hasLength(2));
     expect(inbound.first.url.queryParameters['followee_id'], 'eq.me');
+    expect(inbound.first.url.queryParameters['limit'], '100');
     expect(inbound.first.url.queryParameters.containsKey('or'), isFalse);
     expect(
       inbound[1].url.queryParameters['or'],
-      contains('f2'),
+      contains('f99'),
       reason: 'each page must start strictly after the last edge read',
     );
     expect(
       inbound.first.url.queryParameters['order'],
       startsWith('followed_at.desc'),
     );
+    expect(edgeReads('follower_id'), hasLength(2));
     expect(
       edgeReads('follower_id').first.url.queryParameters['follower_id'],
       'eq.me',
     );
   });
 
+  test('a short first page is the whole list, read once', () async {
+    fake.pages['follower_id']!.add(_page('followee_id', 'g', 0, 2));
+    final following = await api.fetchAllFollowing('me');
+    expect(following.map((p) => p.id), ['g0', 'g1']);
+    expect(edgeReads('follower_id'), hasLength(1));
+  });
+
   test('fetchAllFollowing walks only the outbound direction', () async {
     fake.pages['follower_id']!.addAll([
-      [_edge('followee_id', 'g1', 50), _edge('followee_id', 'g2', 49)],
-      [_edge('followee_id', 'g3', 48)],
+      _page('followee_id', 'g', 0, 100),
+      _page('followee_id', 'g', 100, 1),
     ]);
     final following = await api.fetchAllFollowing('me');
-    expect(following.map((p) => p.id), ['g1', 'g2', 'g3']);
+    expect(following, hasLength(101));
     expect(edgeReads('followee_id'), isEmpty);
+  });
+
+  test('the walk reads through the public page methods, so a fake of them '
+      'fakes the graph', () async {
+    // A widget test fakes fetchFollowers / fetchFollowing; the graph must
+    // come from those pages and never reach the network behind them.
+    final paged = _PagedApi(client);
+    final graph = await paged.fetchFollowGraph('me');
+    expect(graph.followers.map((p) => p.id), ['a', 'b', 'c']);
+    expect(graph.following.map((p) => p.id), ['x']);
+    expect(paged.followerAfters, [
+      null,
+      ['b'],
+    ]);
+    expect(paged.followingAfters, [null]);
+    expect(fake.requests, isEmpty);
   });
 
   test('a page that fails mid-walk fails the graph, not shortens it', () async {
@@ -169,10 +251,7 @@ void main() {
   test(
     'a server that stops advancing fails the walk instead of looping',
     () async {
-      fake.stuck['follower_id'] = [
-        _edge('followee_id', 'g1', 50),
-        _edge('followee_id', 'g2', 49),
-      ];
+      fake.stuck['follower_id'] = _page('followee_id', 'g', 0, 100);
       await expectLater(api.fetchAllFollowing('me'), throwsStateError);
     },
   );

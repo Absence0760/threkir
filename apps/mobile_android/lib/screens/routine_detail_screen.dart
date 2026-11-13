@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show AppBarAction, DetailHero, DetailMeta, DetailPage;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, ListCard, StatusPill, StatusPillSize;
 
 import '../fab_clearance.dart';
 import '../gym_prs.dart';
@@ -422,15 +423,15 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+            // Title and count share a line while they fit; the count drops
+            // under the title in a long translation at large text.
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
               children: [
-                Expanded(
-                  child: Text(l10n.gymRoutineHistoryTitle,
-                      style: theme.textTheme.titleSmall),
-                ),
-                const SizedBox(width: 8),
+                Text(l10n.gymRoutineHistoryTitle,
+                    style: theme.textTheme.titleSmall),
                 Text(
                   l10n.gymRecordsSessions(h.sessionCount),
                   style: theme.textTheme.bodySmall
@@ -460,23 +461,28 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     children: [
-                      Text(
-                        formatDateMed(DateTime.parse(s.startedAt), tag),
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          (s.title ?? '').trim().isEmpty
-                              ? l10n.gymUntitled
-                              : s.title!,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              formatDateMed(DateTime.parse(s.startedAt), tag),
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                            Text(
+                              (s.title ?? '').trim().isEmpty
+                                  ? l10n.gymUntitled
+                                  : s.title!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 8),
-                      _verdictChip(s.verdict, theme, l10n),
+                      Flexible(child: _verdictChip(s.verdict, theme, l10n)),
                     ],
                   ),
                 ),
@@ -510,20 +516,14 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
           Colors.transparent,
         ),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-        border: v == RoutineSessionVerdict.ungraded
-            ? Border.all(color: theme.colorScheme.outlineVariant)
-            : null,
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall
-            ?.copyWith(color: fg, fontWeight: FontWeight.w700),
-      ),
+    return StatusPill(
+      label: label,
+      foreground: fg,
+      fill: bg,
+      outline: v == RoutineSessionVerdict.ungraded
+          ? theme.colorScheme.outlineVariant
+          : null,
+      size: StatusPillSize.compact,
     );
   }
 
@@ -720,24 +720,12 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
 
   Widget _chip(IconData icon, String label, Color fg, Color bg,
           ThemeData theme) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: fg),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: fg, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
+      StatusPill(
+        icon: icon,
+        label: label,
+        foreground: fg,
+        fill: bg,
+        size: StatusPillSize.compact,
       );
 
   String _repLabel(StoredRoutineSet s) {

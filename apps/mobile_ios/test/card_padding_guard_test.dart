@@ -68,7 +68,6 @@ const _lookAlikesLeft = <String, (int, String)>{
     'a workout row\'s kind-coloured inset inside the week grid',
   ),
   'lib/screens/route_builder_screen.dart': (2, 'two panels over the builder map'),
-  'lib/screens/routine_detail_screen.dart': (1, 'the progression verdict chip'),
   'lib/screens/run_detail_screen.dart': (
     2,
     'the route-suggestion banner and the map-match pill over the hero map',

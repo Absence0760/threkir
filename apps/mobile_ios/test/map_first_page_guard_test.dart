@@ -25,7 +25,6 @@ const _handPlaced = <String, int>{
   'lib/screens/public_route_screen.dart': 1,
   'lib/screens/route_builder_screen.dart': 1,
   'lib/screens/route_detail_screen.dart': 1,
-  'lib/screens/routes_heatmap_screen.dart': 1,
   'lib/screens/run_detail_screen.dart': 1,
   'lib/screens/run_screen.dart': 7,
 };
@@ -33,6 +32,7 @@ const _handPlaced = <String, int>{
 const _migrated = <String>{
   'lib/screens/live_spectator_screen.dart',
   'lib/screens/privacy_zones_screen.dart',
+  'lib/screens/routes_heatmap_screen.dart',
 };
 
 int _close(String s, int open) {

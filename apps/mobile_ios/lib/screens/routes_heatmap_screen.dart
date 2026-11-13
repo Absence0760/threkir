@@ -9,7 +9,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSemanticColors, SheetScaffold, StatusPill, StatusPillSize;
+    show
+        AppSemanticColors,
+        MapFirstPage,
+        SheetScaffold,
+        StatusPill,
+        StatusPillSize;
 
 import '../distance_bands.dart';
 import '../geocoding.dart';
@@ -820,7 +825,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final darkBasemap = currentBasemapIsDark(context);
-    return Scaffold(
+    return MapFirstPage(
       appBar: AppBar(
         title: TextField(
           controller: _searchCtl,
@@ -855,224 +860,193 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
           ),
         ],
       ),
-      body: Stack(
+      map: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          backgroundColor: basemapVoidColour(darkBasemap: darkBasemap),
+          initialCenter: const LatLng(51.5074, -0.1276),
+          initialZoom: widget.initialZoom ?? 11,
+          onMapReady: () {
+            _mapReady = true;
+            _lastCamera = _mapController.camera;
+            // If a fix already arrived, open centred on it. If the
+            // locate already gave up, widen to the data view. Otherwise
+            // load the default view while a fix is still pending.
+            if (_maybeAutoCenter()) return;
+            if (_wantDataFit) {
+              _startDataFallback();
+              return;
+            }
+            final saved = _savedView;
+            if (saved != null) {
+              _mapController.move(saved.center, saved.zoom);
+            }
+            _refresh();
+          },
+          onPositionChanged: (pos, hasGesture) {
+            _lastCamera = pos;
+            if (hasGesture) {
+              _userMovedMap = true;
+              _scheduleRefresh();
+            }
+          },
+          onTap: _onMapTap,
+        ),
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              backgroundColor: basemapVoidColour(darkBasemap: darkBasemap),
-              initialCenter: const LatLng(51.5074, -0.1276),
-              initialZoom: widget.initialZoom ?? 11,
-              onMapReady: () {
-                _mapReady = true;
-                _lastCamera = _mapController.camera;
-                // If a fix already arrived, open centred on it. If the
-                // locate already gave up, widen to the data view. Otherwise
-                // load the default view while a fix is still pending.
-                if (_maybeAutoCenter()) return;
-                if (_wantDataFit) {
-                  _startDataFallback();
-                  return;
-                }
-                final saved = _savedView;
-                if (saved != null) {
-                  _mapController.move(saved.center, saved.zoom);
-                }
-                _refresh();
-              },
-              onPositionChanged: (pos, hasGesture) {
-                _lastCamera = pos;
-                if (hasGesture) {
-                  _userMovedMap = true;
-                  _scheduleRefresh();
-                }
-              },
-              onTap: _onMapTap,
+          basemapTileLayer(urlTemplate: currentTileUrl(context)),
+          // Heat-density background (stacked low-opacity dots) —
+          // opt-in via the Filters sheet.
+          if (_showHeat)
+            CircleLayer(
+              circles: [
+                for (final p in _points)
+                  CircleMarker(
+                    point: LatLng(p.lat, p.lng),
+                    radius: 4,
+                    color: Colors.red.withValues(alpha: 0.18),
+                    borderStrokeWidth: 0,
+                  ),
+              ],
             ),
-            children: [
-              basemapTileLayer(urlTemplate: currentTileUrl(context)),
-              // Heat-density background (stacked low-opacity dots) —
-              // opt-in via the Filters sheet.
-              if (_showHeat)
-                CircleLayer(
-                  circles: [
-                    for (final p in _points)
-                      CircleMarker(
-                        point: LatLng(p.lat, p.lng),
-                        radius: 4,
-                        color: Colors.red.withValues(alpha: 0.18),
-                        borderStrokeWidth: 0,
-                      ),
-                  ],
+          // Pinned ("kept") route lines, distinct from the preview, drawn
+          // below it and persistent until unpinned. Both take web's
+          // basemap-aware rungs (`mapPinnedLine` / `mapHoverLine`) over the
+          // shared casing: the fixed dark-map hexes held under 3:1 on a
+          // light basemap.
+          if (_pinnedIds.isNotEmpty)
+            PolylineLayer(
+              key: const ValueKey('heatmap-pinned-routes'),
+              polylines: [
+                for (final id in _pinnedIds)
+                  if (_geomCache[id] != null)
+                    ...solidMapLine(_geomCache[id]!,
+                        mapPinnedLine(darkBasemap: darkBasemap)),
+              ],
+            ),
+          // The previewed route's line — hidden until a pin / row is
+          // tapped.
+          if (_selectedLine != null)
+            PolylineLayer(
+              key: const ValueKey('heatmap-selected-route'),
+              polylines: solidMapLine(
+                  _selectedLine!, mapHoverLine(darkBasemap: darkBasemap)),
+            ),
+          // Halo ring under the selected route's start dot.
+          if (_selectedPin != null)
+            CircleLayer(
+              circles: [
+                CircleMarker(
+                  point: LatLng(_selectedPin!.lat, _selectedPin!.lng),
+                  radius: 16,
+                  useRadiusInMeter: false,
+                  color: mapHoverLine(darkBasemap: darkBasemap)
+                      .withValues(alpha: 0.16),
+                  borderColor: mapHoverLine(darkBasemap: darkBasemap),
+                  borderStrokeWidth: 2,
                 ),
-              // Pinned ("kept") route lines, distinct from the preview, drawn
-              // below it and persistent until unpinned. Both take web's
-              // basemap-aware rungs (`mapPinnedLine` / `mapHoverLine`) over the
-              // shared casing: the fixed dark-map hexes held under 3:1 on a
-              // light basemap.
-              if (_pinnedIds.isNotEmpty)
-                PolylineLayer(
-                  key: const ValueKey('heatmap-pinned-routes'),
-                  polylines: [
-                    for (final id in _pinnedIds)
-                      if (_geomCache[id] != null)
-                        ...solidMapLine(_geomCache[id]!,
-                            mapPinnedLine(darkBasemap: darkBasemap)),
-                  ],
-                ),
-              // The previewed route's line — hidden until a pin / row is
-              // tapped.
-              if (_selectedLine != null)
-                PolylineLayer(
-                  key: const ValueKey('heatmap-selected-route'),
-                  polylines: solidMapLine(
-                      _selectedLine!, mapHoverLine(darkBasemap: darkBasemap)),
-                ),
-              // Halo ring under the selected route's start dot.
-              if (_selectedPin != null)
-                CircleLayer(
-                  circles: [
-                    CircleMarker(
-                      point: LatLng(_selectedPin!.lat, _selectedPin!.lng),
-                      radius: 16,
-                      useRadiusInMeter: false,
-                      color: mapHoverLine(darkBasemap: darkBasemap)
-                          .withValues(alpha: 0.16),
-                      borderColor: mapHoverLine(darkBasemap: darkBasemap),
-                      borderStrokeWidth: 2,
-                    ),
-                  ],
-                ),
-              // Club pins (visual; teal).
-              MarkerLayer(
-                markers: [
-                  for (final club in _clubs)
-                    Marker(
-                      point: LatLng(club.lat, club.lng),
-                      width: 18,
-                      height: 18,
-                      child: _ClubPinDot(verified: club.isVerified),
-                    ),
-                ],
-              ),
-              // Upcoming verified race pins (violet); a tap opens the race's
-              // card.
-              if (_showRaces)
-                MarkerLayer(
-                  markers: [
-                    for (final race in _races)
-                      Marker(
-                        key: ValueKey('heatmap-race-pin-${race.id}'),
-                        point: LatLng(race.lat, race.lng),
-                        width: 48,
-                        height: 48,
-                        child: Semantics(
-                          button: true,
-                          label: race.name,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => _showRaceSheet(race),
-                            child: _RacePinDot(official: race.official),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              // Clustered route pins — rebuilds on every camera change so
-              // clusters break apart as you zoom in.
-              Builder(
-                builder: (ctx) {
-                  final camera = MapCamera.of(ctx);
-                  return MarkerLayer(
-                    markers: [
-                      for (final c in _buildClusters(camera))
-                        Marker(
-                          point: LatLng(c.lat, c.lng),
-                          width: 44,
-                          height: 44,
-                          alignment: Alignment.center,
-                          child: c.isCluster
-                              ? _ClusterBubble(count: c.count)
-                              : _RoutePinDot(
-                                  featured: c.first.featured,
-                                  selected: c.first.id == _selectedRouteId,
-                                ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-              if (_userLatLng != null)
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _userLatLng!,
-                      width: 22,
-                      height: 22,
-                      child: const _UserLocationDot(),
-                    ),
-                  ],
+              ],
+            ),
+          // Club pins (visual; teal).
+          MarkerLayer(
+            markers: [
+              for (final club in _clubs)
+                Marker(
+                  point: LatLng(club.lat, club.lng),
+                  width: 18,
+                  height: 18,
+                  child: _ClubPinDot(verified: club.isVerified),
                 ),
             ],
           ),
-          // Search-results dropdown — overlays without pushing content.
-          if (_searchOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Material(
-                elevation: 4,
-                child: PlaceSearchPanel(
-                  results: _searchResults,
-                  unavailable: _searchUnavailable,
-                  onSelect: _onSearchResultTap,
-                  onRetry: () => _runPlaceSearch(_searchCtl.text),
-                ),
-              ),
-            ),
-          // Clean map by default: the Locate FAB floats just above a
-          // floating "N routes" pill (opens the list as a dismissible
-          // modal) or, once a route is picked, a compact dismissible
-          // card. Neither permanently covers the map — the user's
-          // complaint about the old always-present draggable sheet.
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16, bottom: 10),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: FloatingActionButton.small(
-                        heroTag: 'routes_heatmap_locate_fab',
-                        tooltip: l10n.heatmapLocateMe,
-                        onPressed: _locate,
-                        child: const Icon(Icons.my_location),
+          // Upcoming verified race pins (violet); a tap opens the race's
+          // card.
+          if (_showRaces)
+            MarkerLayer(
+              markers: [
+                for (final race in _races)
+                  Marker(
+                    key: ValueKey('heatmap-race-pin-${race.id}'),
+                    point: LatLng(race.lat, race.lng),
+                    width: 48,
+                    height: 48,
+                    child: Semantics(
+                      button: true,
+                      label: race.name,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _showRaceSheet(race),
+                        child: _RacePinDot(official: race.official),
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                    child: _selectedPin != null
-                        ? _selectionCard(_selectedPin!)
-                        : Center(child: _resultsPill()),
-                  ),
-                  // The credit closes the column rather than riding the map's
-                  // bottom edge, which sits under the system navigation bar
-                  // and under the pill above.
-                  MapAttribution(darkBasemap: darkBasemap),
-                ],
-              ),
+              ],
             ),
+          // Clustered route pins — rebuilds on every camera change so
+          // clusters break apart as you zoom in.
+          Builder(
+            builder: (ctx) {
+              final camera = MapCamera.of(ctx);
+              return MarkerLayer(
+                markers: [
+                  for (final c in _buildClusters(camera))
+                    Marker(
+                      point: LatLng(c.lat, c.lng),
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      child: c.isCluster
+                          ? _ClusterBubble(count: c.count)
+                          : _RoutePinDot(
+                              featured: c.first.featured,
+                              selected: c.first.id == _selectedRouteId,
+                            ),
+                    ),
+                ],
+              );
+            },
           ),
+          if (_userLatLng != null)
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: _userLatLng!,
+                  width: 22,
+                  height: 22,
+                  child: const _UserLocationDot(),
+                ),
+              ],
+            ),
         ],
       ),
+      overlays: [
+        // Search results hang from the app bar without pushing the map.
+        if (_searchOpen)
+          Material(
+            elevation: 4,
+            child: PlaceSearchPanel(
+              results: _searchResults,
+              unavailable: _searchUnavailable,
+              onSelect: _onSearchResultTap,
+              onRetry: () => _runPlaceSearch(_searchCtl.text),
+            ),
+          ),
+      ],
+      // Clean map by default: Locate me floats above a "N routes" pill
+      // (opens the list as a dismissible modal) or, once a route is picked,
+      // a compact dismissible card. Neither permanently covers the map — the
+      // user's complaint about the old always-present draggable sheet.
+      controls: [
+        FloatingActionButton.small(
+          heroTag: 'routes_heatmap_locate_fab',
+          tooltip: l10n.heatmapLocateMe,
+          onPressed: _locate,
+          child: const Icon(Icons.my_location),
+        ),
+      ],
+      footer: _selectedPin != null
+          ? _selectionCard(_selectedPin!)
+          : Center(child: _resultsPill()),
+      attribution: MapAttribution(darkBasemap: darkBasemap),
     );
   }
 
@@ -1101,7 +1075,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
-              Text(label, style: theme.textTheme.titleSmall),
+              // Flexible: the empty-area label at 2x text ran 167 dp past a
+              // 320 dp phone's edge on one line.
+              Flexible(child: Text(label, style: theme.textTheme.titleSmall)),
               if (_pinnedIds.isNotEmpty) ...[
                 const SizedBox(width: 10),
                 Icon(Icons.push_pin,
@@ -1293,15 +1269,14 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
             ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Row(
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   if (band != null) _bandBadge(band.label),
-                  Flexible(
-                    child: Text(
-                      meta,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
+                  Text(
+                    meta,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -1309,25 +1284,26 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
             const SizedBox(height: 14),
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Row(
+              // An OverflowBar: at 2x text on a 320 dp phone the two buttons
+              // side by side overflowed the card, so Keep drops under View.
+              child: OverflowBar(
+                spacing: 8,
+                overflowSpacing: 8,
                 children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => PublicRouteScreen(
-                              api: widget.api,
-                              routeId: p.id,
-                            ),
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => PublicRouteScreen(
+                            api: widget.api,
+                            routeId: p.id,
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.arrow_forward),
-                      label: Text(l10n.heatmapViewRoute),
-                    ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.arrow_forward),
+                    label: Text(l10n.heatmapViewRoute),
                   ),
-                  const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: () => _togglePin(p),
                     icon: Icon(

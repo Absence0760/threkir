@@ -363,18 +363,19 @@
 	     /nutrition. Effort labels, not body measurements, so they auto-save
 	     and aren't consent-gated. -->
 	<section class="card">
-		<div class="card-head">
-			<SectionHeader label={m('prefs.nutritionTargetsHeading')} class="prefs-section-head" />
-			<p class="autosave-note" role="status" aria-live="polite" data-testid="nutrition-save-status">
-				{#if prefs.status === 'saving'}
-					<span class="material-symbols spin" aria-hidden="true">progress_activity</span> {m('prefs.saving')}
-				{:else if prefs.status === 'saved'}
-					<span class="material-symbols" aria-hidden="true">check_circle</span> {m('prefs.saved')}
-				{:else}
-					{m('prefs.nutritionAutosaveHint')}
-				{/if}
-			</p>
-		</div>
+		<SectionHeader label={m('prefs.nutritionTargetsHeading')} class="prefs-section-head">
+			{#snippet trailing()}
+				<p class="autosave-note" role="status" aria-live="polite" data-testid="nutrition-save-status">
+					{#if prefs.status === 'saving'}
+						<span class="material-symbols spin" aria-hidden="true">progress_activity</span> {m('prefs.saving')}
+					{:else if prefs.status === 'saved'}
+						<span class="material-symbols" aria-hidden="true">check_circle</span> {m('prefs.saved')}
+					{:else}
+						{m('prefs.nutritionAutosaveHint')}
+					{/if}
+				</p>
+			{/snippet}
+		</SectionHeader>
 		<div class="form-grid">
 			<div class="field">
 				<label>
@@ -448,14 +449,6 @@
 	.save-hint strong { color: var(--color-text); font-weight: 600; }
 	.save-hint .material-symbols,
 	.autosave-note .material-symbols { font-size: 1.1rem; }
-	.card-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-xs) var(--space-md);
-	}
-	.card-head h2 { margin-bottom: 0; }
 	.spin { animation: spin 1s linear infinite; }
 	@keyframes spin { to { transform: rotate(360deg); } }
 	@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

@@ -115,10 +115,10 @@ test.describe('/social?tab=feed — badge highlights', () => {
 		const highlights = page.getByTestId('feed-highlight');
 		await expect(highlights).toHaveCount(1, { timeout: 10_000 });
 
-		await page.getByRole('group', { name: /activity/i }).getByRole('button', { name: 'Run' }).click();
+		await page.getByRole('group', { name: /activity/i }).getByRole('button', { name: 'Run', exact: true }).click();
 		await expect(highlights).toHaveCount(0);
 
-		await page.getByRole('group', { name: /activity/i }).getByRole('button', { name: 'All' }).click();
+		await page.getByRole('group', { name: /activity/i }).getByRole('button', { name: 'All', exact: true }).click();
 		await expect(highlights).toHaveCount(1);
 	});
 });

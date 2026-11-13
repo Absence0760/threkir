@@ -27,6 +27,7 @@ export 'src/widgets/progress_bar.dart';
 export 'src/widgets/pushed_page.dart';
 export 'src/widgets/term_value_row.dart';
 export 'src/widgets/text_lane.dart';
+export 'src/widgets/title_with_badge.dart';
 export 'src/widgets/section_header.dart';
 export 'src/widgets/settings_list.dart';
 export 'src/widgets/sheet_scaffold.dart';

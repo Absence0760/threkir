@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/corner_radii.dart';
 import '../theme/spacing.dart';
+import 'title_with_badge.dart';
 
 enum _ListCardKind { content, row, flush }
 
@@ -142,8 +143,9 @@ class ListCard extends StatelessWidget {
   /// (a thumbnail, an icon, the selection glyph) keep their titles aligned.
   final double? leadingWidth;
 
-  /// A status beside the title (a `StatusPill`). Wraps under the title when
-  /// the two do not fit on one line.
+  /// A status beside the title (a `StatusPill`, a glyph), inline after its
+  /// last word through [TitleWithBadge]: it wraps with that word and is never
+  /// cut by the ellipsis, so it never stands alone on a line of its own.
   final Widget? badge;
 
   /// One line of facts under the title, muted.
@@ -355,14 +357,12 @@ class ListCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (badge case final badge?)
-          // A Wrap rather than a Row: a long title and a pill share one line
-          // when they fit and the pill drops under the title when they do
-          // not, which at 320 dp and 2x text is most of the time.
-          Wrap(
-            spacing: AppSpace.sm,
-            runSpacing: AppSpace.xs,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [titleText, badge],
+          TitleWithBadge(
+            title!,
+            badge: badge,
+            maxLines: titleMaxLines,
+            gap: AppSpace.sm,
+            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           )
         else
           titleText,

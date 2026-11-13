@@ -146,7 +146,7 @@ Future<void> _pump(
   required LocalRouteStore routeStore,
   required Preferences prefs,
   double textScale = 1.0,
-  bool centreStartsRun = false,
+  bool centreOpensRecorder = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -162,7 +162,7 @@ Future<void> _pump(
         runStore: runStore,
         routeStore: routeStore,
         preferences: prefs,
-        centreStartsRun: centreStartsRun,
+        centreOpensRecorder: centreOpensRecorder,
       ),
     ),
   );
@@ -224,7 +224,7 @@ void main() {
           runStore: s.runStore,
           routeStore: s.routeStore,
           prefs: s.prefs,
-          centreStartsRun: true);
+          centreOpensRecorder: true);
       final empty = tester.widget<EmptyState>(find.byType(EmptyState));
       expect(empty.body, contains('Tap Run to record one'));
       expect(empty.body, isNot(contains('Log')));
@@ -242,7 +242,7 @@ void main() {
           runStore: s.runStore,
           routeStore: s.routeStore,
           prefs: s.prefs,
-          centreStartsRun: true);
+          centreOpensRecorder: true);
       final empty = tester.widget<EmptyState>(find.byType(EmptyState));
       expect(empty.body, contains('Tap Trail run'));
     });

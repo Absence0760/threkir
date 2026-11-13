@@ -102,12 +102,12 @@ class RunsScreen extends StatefulWidget {
   /// other mount's add is modality-specific, so it keeps its FAB.
   final bool showAddFab;
 
-  /// Whether the shell's centre button starts recording on tap, in which case
-  /// it is captioned for the default activity ("Start run", "Start ride", ...)
-  /// rather than "Log" and the empty state has to name it that way. The host
-  /// knows, because it is the one that can see whether lifts or meals exist;
-  /// this screen's Runs-only mount cannot.
-  final bool centreStartsRun;
+  /// Whether the shell's centre button is the run's: one tap opens the
+  /// recorder, and it is captioned for the default activity ("Run", "Ride",
+  /// ...) rather than "Log", so the empty state has to name it that way. The
+  /// host knows, because it is the one that can see whether lifts or meals
+  /// exist; this screen's Runs-only mount cannot.
+  final bool centreOpensRecorder;
 
   const RunsScreen({
     super.key,
@@ -122,7 +122,7 @@ class RunsScreen extends StatefulWidget {
     this.showKindChips = true,
     this.showSyncActions = true,
     this.showAddFab = true,
-    this.centreStartsRun = false,
+    this.centreOpensRecorder = false,
   });
 
   @override
@@ -1375,7 +1375,7 @@ class _RunsScreenState extends State<RunsScreen>
         icon: Icons.directions_run,
         illustration: grisnirWaitingOrNull(),
         title: l10n.historyEmptyTitle,
-        body: widget.centreStartsRun
+        body: widget.centreOpensRecorder
             ? l10n.historyEmptyBodyRunPrimary(activityTypeLabel(
                 l10n,
                 ActivityType.fromName(widget.preferences.defaultActivityType),
@@ -1493,7 +1493,7 @@ class _RunsScreenState extends State<RunsScreen>
               preferences: widget.preferences,
               settingsSync: widget.settingsSync,
               social: widget.social,
-              centreStartsRun: widget.centreStartsRun,
+              centreOpensRecorder: widget.centreOpensRecorder,
             ),
           ),
         );

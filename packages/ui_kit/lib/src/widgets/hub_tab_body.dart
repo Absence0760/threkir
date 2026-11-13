@@ -181,8 +181,9 @@ class HubSelection {
 /// as its one FAB, puts [actions] at the end of the control row, and wraps
 /// [body] in a pull-to-refresh when [onRefresh] is given. Mounted on its own
 /// (pushed where no hub is listening, or in a test) it builds the page a
-/// pushed screen is: a small app bar titled [title] carrying [actions], and
-/// [primary] as its FAB.
+/// pushed screen is: [title] said in a heading above the controls, a small
+/// app bar that repeats it once the heading has scrolled away, and [primary]
+/// as its FAB.
 class HubTabBody extends StatefulWidget {
   const HubTabBody({
     super.key,
@@ -379,8 +380,8 @@ class _HubTabBodyState extends State<HubTabBody> {
         ],
       );
     }
-    // On its own: the same column under a small titled app bar, so a tab
-    // reads the same pushed as hosted. While selecting, the app bar becomes
+    // On its own: the same controls and content under a heading and a small
+    // app bar, so a tab reads the same pushed as hosted. While selecting, the app bar becomes
     // the selection bar, as a pushed list's does, and Back closes it first.
     return PopScope(
       canPop: selection == null,

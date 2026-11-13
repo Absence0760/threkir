@@ -30,7 +30,8 @@ class EditorSave {
 }
 
 /// The one layout for a full-page create / edit form: an app bar with a close
-/// button and the title, the fields in a body that always scrolls, and the
+/// button, the title at the top of the fields (the bar repeats it once it has
+/// scrolled away), the fields in a body that always scrolls, and the
 /// [save] action pinned in a bar under them, above the keyboard and the
 /// system navigation bar.
 ///

@@ -5630,6 +5630,8 @@ export const en = {
 	"runsNewPage.kicker": "New run",
 	"runsNewPage.tagline": "Manually log a run the app didn't record — a treadmill session, a chip-timed race, or a trail run where GPS dropped out. Distance and duration are enough to start.",
 	"settingsLayout.pageTitle": "Settings — Threkir",
+	"settingsLayout.searchLabel": "Search settings",
+	"settingsLayout.searchEmpty": "No settings match “{query}”.",
 	"settingsLayout.sectionProfile": "Profile",
 	"settingsLayout.sectionAppsData": "Apps & data",
 	"settingsLayout.sectionAccountLegal": "Account & legal",

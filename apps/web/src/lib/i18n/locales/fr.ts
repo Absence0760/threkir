@@ -5615,6 +5615,8 @@ export const messages = {
 	"runsNewPage.kicker": "Nouvelle course",
 	"runsNewPage.tagline": "Enregistrez manuellement une course que l'appli n'a pas captée — une séance sur tapis, une course chronométrée par puce, ou un trail où le GPS a lâché. La distance et la durée suffisent pour commencer.",
 	"settingsLayout.pageTitle": "Paramètres — Threkir",
+	"settingsLayout.searchLabel": "Rechercher dans les paramètres",
+	"settingsLayout.searchEmpty": "Aucun paramètre ne correspond à « {query} ».",
 	"settingsLayout.sectionProfile": "Profil",
 	"settingsLayout.sectionAppsData": "Apps et données",
 	"settingsLayout.sectionAccountLegal": "Compte et mentions légales",

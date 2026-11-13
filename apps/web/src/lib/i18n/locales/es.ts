@@ -5615,6 +5615,8 @@ export const messages = {
 	"runsNewPage.kicker": "Nueva carrera",
 	"runsNewPage.tagline": "Registra manualmente una carrera que la app no grabó — una sesión en cinta, una carrera cronometrada con chip o un trail donde se cortó el GPS. Con la distancia y la duración basta para empezar.",
 	"settingsLayout.pageTitle": "Ajustes — Threkir",
+	"settingsLayout.searchLabel": "Buscar en la configuración",
+	"settingsLayout.searchEmpty": "No hay resultados para «{query}» en la configuración.",
 	"settingsLayout.sectionProfile": "Perfil",
 	"settingsLayout.sectionAppsData": "Apps y datos",
 	"settingsLayout.sectionAccountLegal": "Cuenta y aspectos legales",

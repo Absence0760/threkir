@@ -5610,6 +5610,8 @@ export const messages = {
 	"runsNewPage.kicker": "新しいラン",
 	"runsNewPage.tagline": "アプリが記録しなかったランを手動で記録しよう — トレッドミルでのセッション、チップ計測のレース、GPSが途切れたトレイルランなど。距離と時間さえあれば始められるよ。",
 	"settingsLayout.pageTitle": "設定 — Threkir",
+	"settingsLayout.searchLabel": "設定を検索",
+	"settingsLayout.searchEmpty": "「{query}」に一致する設定はありません。",
 	"settingsLayout.sectionProfile": "プロフィール",
 	"settingsLayout.sectionAppsData": "アプリとデータ",
 	"settingsLayout.sectionAccountLegal": "アカウントと法的事項",

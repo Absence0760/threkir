@@ -5615,6 +5615,8 @@ export const messages = {
 	"runsNewPage.kicker": "Neuer Lauf",
 	"runsNewPage.tagline": "Trag manuell einen Lauf ein, den die App nicht aufgezeichnet hat — eine Einheit auf dem Laufband, ein Rennen mit Chipzeit oder einen Trailrun, bei dem das GPS ausgefallen ist. Distanz und Dauer reichen schon aus.",
 	"settingsLayout.pageTitle": "Einstellungen — Threkir",
+	"settingsLayout.searchLabel": "Einstellungen durchsuchen",
+	"settingsLayout.searchEmpty": "Keine Einstellung passt zu „{query}“.",
 	"settingsLayout.sectionProfile": "Profil",
 	"settingsLayout.sectionAppsData": "Apps & Daten",
 	"settingsLayout.sectionAccountLegal": "Konto & Rechtliches",

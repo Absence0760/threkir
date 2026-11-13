@@ -7,7 +7,7 @@ The Play and App Store screenshots are made from the real app on seeded demo dat
 `.github/workflows/store-screenshots.yml` runs on demand (Actions → Store screenshots → Run workflow) and on any PR that touches this pipeline. It does the following:
 
 1. Starts the local Supabase stack (`.github/actions/start-supabase`) and loads `demo/store_demo_seed.sql`. That file creates a dedicated demo account (`store-demo@threkir.test`, "Sam Rivera", Pro) with an active half-marathon plan, a coach thread on that plan, and every past session marked done. Every date is relative to the run day, so a capture made on any day shows today in week 6 of 12 with the race six weeks out.
-2. Boots an API 34 Pixel 6 emulator and runs `apps/mobile_android/integration_test/store/store_screenshots_capture.dart` with `flutter drive --profile`. The suite does the following:
+2. Boots an API 34 Pixel 6 emulator and runs `apps/mobile_android/integration_test/store/store_screenshots_capture.dart` with `flutter drive --profile` through `capture.sh`, which also works by hand against any booted device and local stack. The suite does the following:
    - writes the plan's runs into the device's run store, with a lap of Central Park as the most recent run
    - starts the real `main()`, which signs in through the app's own dev auto-login (loopback only)
    - captures `today`, `record` (the run detail), `train` (the plan, in the light theme) and `coach`

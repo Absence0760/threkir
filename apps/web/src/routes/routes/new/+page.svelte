@@ -1191,7 +1191,7 @@
 						</button>
 					{/if}
 					{#if showGenerateProUpsell}
-						<p class="pro-upsell" role="note">
+						<p class="generate-pro-note" role="note" data-testid="route-generate-pro-upsell">
 							<ProUpsellLink message={m('routeNew.generateProUpsell')} />
 						</p>
 					{/if}
@@ -1972,14 +1972,10 @@
 		color: var(--color-text-secondary);
 	}
 
-	.pro-upsell {
+	.generate-pro-note {
 		margin: var(--space-xs) 0 0;
 		font-size: 0.72rem;
 		color: var(--color-text-secondary);
-	}
-	.pro-upsell a {
-		color: var(--color-primary);
-		font-weight: 600;
 	}
 
 	.target-btn {

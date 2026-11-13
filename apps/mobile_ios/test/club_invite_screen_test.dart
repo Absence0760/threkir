@@ -16,6 +16,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/club_invite_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import 'editor_layout.dart';
 import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
@@ -88,6 +89,19 @@ void main() {
       expect(find.text('Join club'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Invite code'), findsOneWidget);
       expect(find.widgetWithText(FilledButton, 'Join'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Join is reachable at 320 dp, 2x text and a 3-button bar, with and '
+        'without the keyboard (IK-11)', (tester) async {
+      await expectEditorSaveReachable(
+        tester,
+        page: () => ClubInviteScreen(
+          social: _FakeSocialService(),
+          training: TrainingService(),
+        ),
+        save: find.widgetWithText(FilledButton, 'Join'),
+      );
     });
 
     testWidgets('empty token shows hint instead of calling the RPC',

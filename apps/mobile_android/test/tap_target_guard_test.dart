@@ -248,4 +248,30 @@ void main() {
               'Offenders:\n${offenders.join('\n')}');
     });
   });
+
+  group('lib/ and ui_kit: interactive chips keep a 48dp target', () {
+    // #1374 A11Y-15. ChoiceChipRow (19 screens), FilterBar's removable
+    // chips, the route tag chip whose "x" is the only remove, and the
+    // surface peer strip were compact and shrink-wrapped: 24-32 dp targets.
+    // A chip that can be tapped or deleted keeps the theme's density and a
+    // padded tap target.
+    test('no tappable chip is compact or shrink-wrapped', () {
+      final offenders = <String>[];
+      for (final f in [..._libDartFiles(), ..._uiKitDartFiles()]) {
+        final src = f.readAsStringSync();
+        for (final m in RegExp(r'(?<![\w.])(?:Chip|ChoiceChip|FilterChip|InputChip|ActionChip)(?:\.elevated)?\(').allMatches(src)) {
+          final span = _argSpan(src, m.end - 1);
+          final tappable = ['onSelected', 'onPressed', 'onDeleted'].any(span.contains);
+          if (!tappable) continue;
+          if (span.contains('VisualDensity.compact') ||
+              span.contains('MaterialTapTargetSize.shrinkWrap')) {
+            offenders.add('${f.path}:${_lineOf(src, m.start)}');
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'a tappable chip under the 48dp target:\n${offenders.join('\n')}');
+    });
+  });
 }
+

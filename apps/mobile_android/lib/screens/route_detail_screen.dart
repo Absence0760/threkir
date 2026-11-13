@@ -2744,14 +2744,15 @@ class _RouteTagsRowState extends State<_RouteTagsRow> {
       child: Wrap(
         alignment: WrapAlignment.center,
         spacing: 6,
-        runSpacing: 6,
+        runSpacing: 0,
         children: [
+          // The delete "x" is the only way to remove a tag, so the chip keeps
+          // a padded 48 dp target (#1374 A11Y-15).
           for (final t in _tags)
             Chip(
               label: Text(t, style: theme.textTheme.labelMedium),
               onDeleted: widget.isOwner && !_saving ? () => _remove(t) : null,
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              materialTapTargetSize: MaterialTapTargetSize.padded,
             ),
           if (widget.isOwner)
             SizedBox(

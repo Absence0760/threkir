@@ -47,7 +47,7 @@ class SurfacePeerStrip extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Wrap(
           spacing: 8,
-          runSpacing: 8,
+          runSpacing: 0,
           children: [
             for (final peer in peers)
               ChoiceChip(
@@ -58,8 +58,7 @@ class SurfacePeerStrip extends StatelessWidget {
                 ),
                 selected: peer.isCurrent,
                 onSelected: (_) => peer.onTap?.call(),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                materialTapTargetSize: MaterialTapTargetSize.padded,
               ),
           ],
         ),

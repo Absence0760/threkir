@@ -1,3 +1,5 @@
+import type { Request } from '@playwright/test';
+
 import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -112,11 +114,11 @@ test.describe('/messages — live updates by polling', () => {
 		page.on('request', (r) => {
 			if (isThreadRead(r.url())) threadReads++;
 		});
-		for (const done of ['requestfinished', 'requestfailed'] as const) {
-			page.on(done, (r) => {
-				if (isThreadRead(r.url())) threadReadsDone++;
-			});
-		}
+		const settle = (r: Request) => {
+			if (isThreadRead(r.url())) threadReadsDone++;
+		};
+		page.on('requestfinished', settle);
+		page.on('requestfailed', settle);
 		page.on('response', (r) => {
 			if (r.url().includes('/rest/v1/rpc/group_messages_enabled')) readsAtFlag = threadReads;
 		});

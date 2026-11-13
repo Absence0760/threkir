@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SectionHeader;
 
 import '../auth_error.dart';
 import '../column_limits.dart';
@@ -506,14 +506,8 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
                 const Divider(height: 24),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      l10n.bodyMetricsNutritionHeading,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
+                  child: SectionHeader.title(
+                    label: l10n.bodyMetricsNutritionHeading,
                   ),
                 ),
                 Padding(

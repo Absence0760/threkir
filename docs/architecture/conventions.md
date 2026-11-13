@@ -1175,6 +1175,16 @@ The page structure is owned by ui_kit components, so a screen supplies content a
 - **Spacing in new and migrated code comes from `AppSpace` / `AppInsets`**, whose names are web's `--space-*` rungs (`AppSpace.md` = `--space-md` = 16) plus the mobile-only `smPlus` (12).
 - **Every migrated tab is tested at the worst case**: 320 dp, 2x text and the 3-button nav bar (`test/three_button_nav_bar.dart`), with the hub's FAB above the bar (`fitness_hub_tab_bodies_test.dart`).
 
+## Mobile settings pages — `SettingsList`, `ListRow`, `SectionHeader`
+
+The You tab and every settings page are owned by ui_kit components, so a page declares rows and groups and the components own the anatomy (issue #1374).
+
+- **A settings page is a `SettingsList` of `SettingsSection`s.** The list owns the group inset (gutter beside, the section gap above) and pins each group's `SectionHeader` eyebrow over that group's rows only. A section whose rows are all absent is dropped, eyebrow and all. The page puts it under a small app bar; You puts it under its own title and identity card.
+- **A row is a `ListRow`**: `.nav` opens another page (leading icon, one-line description, chevron, or open-in-new when `external`), `.value` opens a picker (the current value is the subtitle, an optional `hint` line under it), `.toggle` is a switch that applies at once. A disabled nav or value row says why in its subtitle (#666 I16). The "(i)" button goes in the row's `info` slot. A row whose state comes from the server keeps `AsyncSwitchTile` (`lib/widgets`), which never claims a value it has not read.
+- **A group label is `SectionHeader`; a section heading is `SectionHeader.title`** (the `titleMedium` form, announced as a heading). There is no second eyebrow widget: `FormSectionLabel` was removed.
+- **Preferences is web's five pages** (`PreferencesPage`, in `preferences_ia.ts`'s order), each one subject, each listed on You. A link into one names the page (`SettingsDestination.training`, `.privacy`, …), never a single "Preferences". A page holds one subject and stays short; a new row goes on the page of its subject and into `preferencesRowTitles`, which You's settings search reads (`preferences_search_index_test.dart` fails when the two disagree).
+- `settings_layout_guard_test.dart` fails a hand-built eyebrow (an uppercased `labelSmall`), a hand-built section title (`titleMedium` / `titleSmall`) or a hand-built `ListTile` / `SwitchListTile` in You or a settings page, against per-file counts of what is left that may only shrink.
+
 ## Mobile upsells — `ProUpsellLink`, never "upgrade in Settings"
 
 Every upsell on the Flutter apps draws `ProUpsellLink` (`lib/widgets/pro_upsell_link.dart`): the reason Pro would help, then a "See Pro" link that opens the Pro screen through the shell's settings seam (`openSettings(SettingsDestination.pro)`, below). The string gives the reason only; the link is the directions. The prompts it replaced (the Coach's daily cap, AI route descriptions) said "upgrade in Settings" and stopped there (issue #1374 finding 11). `upsell_link_guard_test.dart` fails an English string that sends the reader to Settings to upgrade, and any string outside the Pro screen's own `pro*` keys that names Pro unless it is a registered upsell (whose readers build a `ProUpsellLink`) or exempt with a reason.

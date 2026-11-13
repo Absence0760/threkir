@@ -3185,6 +3185,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailSectionElevation => 'Höhenmeter';
 
   @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return 'Höhenprofil über $distance: tiefster Punkt $min, höchster Punkt $max, $gain Anstieg';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$elevation bei $distance';
+  }
+
+  @override
   String get runDetailPaceBandFaster => 'Schneller';
 
   @override
@@ -10522,6 +10537,20 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get trainingLoadEmpty =>
       'Zeichne ein paar Läufe auf, um deinen Fitness-Trend zu sehen.';
+
+  @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'Fitness $ctlFrom auf $ctlTo, Ermüdung $atlFrom auf $atlTo, Form $tsbFrom auf $tsbTo, $from bis $to';
+  }
 
   @override
   String get trainingLoadLegendFitness => 'Fitness';

@@ -3178,6 +3178,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runDetailSectionElevation => 'Elevação';
 
   @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return 'Perfil de elevação em $distance: mínimo $min, máximo $max, $gain de subida';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$elevation aos $distance';
+  }
+
+  @override
   String get runDetailPaceBandFaster => 'Mais depressa';
 
   @override
@@ -10507,6 +10522,20 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get trainingLoadEmpty =>
       'Grave algumas corridas para ver a tendência do seu condicionamento.';
+
+  @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'Condicionamento de $ctlFrom para $ctlTo, fadiga de $atlFrom para $atlTo, forma de $tsbFrom para $tsbTo, de $from a $to';
+  }
 
   @override
   String get trainingLoadLegendFitness => 'Condicionamento';
@@ -25859,6 +25888,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runDetailSectionElevation => 'Elevação';
 
   @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return 'Perfil de elevação em $distance: mínimo $min, máximo $max, $gain de subida';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$elevation em $distance';
+  }
+
+  @override
   String get runDetailPaceBandFaster => 'Mais rápido';
 
   @override
@@ -33177,6 +33221,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get trainingLoadEmpty =>
       'Grave algumas corridas para ver a tendência do seu condicionamento.';
+
+  @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'Condicionamento de $ctlFrom para $ctlTo, fadiga de $atlFrom para $atlTo, forma de $tsbFrom para $tsbTo, de $from a $to';
+  }
 
   @override
   String get trainingLoadLegendFitness => 'Condicionamento';

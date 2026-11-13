@@ -3044,6 +3044,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailSectionElevation => '獲得標高';
 
   @override
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  ) {
+    return '$distance の標高：最低 $min、最高 $max、獲得標高 $gain';
+  }
+
+  @override
+  String elevationChartPoint(String elevation, String distance) {
+    return '$distance 地点で $elevation';
+  }
+
+  @override
   String get runDetailPaceBandFaster => '速い';
 
   @override
@@ -9975,6 +9990,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get trainingLoadEmpty => '数回ランを記録するとフィットネスの推移が見られます。';
+
+  @override
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  ) {
+    return 'フィットネス $ctlFrom→$ctlTo、疲労 $atlFrom→$atlTo、調子 $tsbFrom→$tsbTo（$from〜$to）';
+  }
 
   @override
   String get trainingLoadLegendFitness => 'フィットネス';

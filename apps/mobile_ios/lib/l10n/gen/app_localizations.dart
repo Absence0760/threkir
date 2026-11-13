@@ -5309,6 +5309,23 @@ abstract class AppLocalizations {
   /// **'Elevation'**
   String get runDetailSectionElevation;
 
+  /// Screen-reader summary of the elevation chart on run detail and park courses
+  ///
+  /// In en, this message translates to:
+  /// **'Elevation over {distance}: lowest {min}, highest {max}, {gain} climbed'**
+  String elevationChartSummary(
+    String distance,
+    String min,
+    String max,
+    String gain,
+  );
+
+  /// Screen-reader value of the elevation chart's cursor as it is stepped along the track
+  ///
+  /// In en, this message translates to:
+  /// **'{elevation} at {distance}'**
+  String elevationChartPoint(String elevation, String distance);
+
   /// Fast end of the run-detail map's pace-colour legend
   ///
   /// In en, this message translates to:
@@ -16784,6 +16801,21 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Record a few runs to see your fitness trend.'**
   String get trainingLoadEmpty;
+
+  /// Screen-reader summary of the training-load chart: where each line started and ended over the window
+  ///
+  /// In en, this message translates to:
+  /// **'Fitness {ctlFrom} to {ctlTo}, fatigue {atlFrom} to {atlTo}, form {tsbFrom} to {tsbTo}, {from} to {to}'**
+  String trainingLoadChartSummary(
+    String ctlFrom,
+    String ctlTo,
+    String atlFrom,
+    String atlTo,
+    String tsbFrom,
+    String tsbTo,
+    String from,
+    String to,
+  );
 
   /// Legend label for the CTL (fitness) series
   ///

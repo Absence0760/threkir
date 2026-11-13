@@ -4168,6 +4168,36 @@
   "@runDetailSectionElevation": {
     "description": "Section header for the elevation chart on run-detail"
   },
+  "elevationChartSummary": "Elevation over {distance}: lowest {min}, highest {max}, {gain} climbed",
+  "@elevationChartSummary": {
+    "description": "Screen-reader summary of the elevation chart on run detail and park courses",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      },
+      "gain": {
+        "type": "String"
+      }
+    }
+  },
+  "elevationChartPoint": "{elevation} at {distance}",
+  "@elevationChartPoint": {
+    "description": "Screen-reader value of the elevation chart's cursor as it is stepped along the track",
+    "placeholders": {
+      "elevation": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
   "runDetailPaceBandFaster": "Faster",
   "@runDetailPaceBandFaster": {
     "description": "Fast end of the run-detail map's pace-colour legend"
@@ -14102,6 +14132,36 @@
   "trainingLoadEmpty": "Record a few runs to see your fitness trend.",
   "@trainingLoadEmpty": {
     "description": "Empty-state text for the training-load chart"
+  },
+  "trainingLoadChartSummary": "Fitness {ctlFrom} to {ctlTo}, fatigue {atlFrom} to {atlTo}, form {tsbFrom} to {tsbTo}, {from} to {to}",
+  "@trainingLoadChartSummary": {
+    "description": "Screen-reader summary of the training-load chart: where each line started and ended over the window",
+    "placeholders": {
+      "ctlFrom": {
+        "type": "String"
+      },
+      "ctlTo": {
+        "type": "String"
+      },
+      "atlFrom": {
+        "type": "String"
+      },
+      "atlTo": {
+        "type": "String"
+      },
+      "tsbFrom": {
+        "type": "String"
+      },
+      "tsbTo": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   },
   "trainingLoadLegendFitness": "Fitness",
   "@trainingLoadLegendFitness": {

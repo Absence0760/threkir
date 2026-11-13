@@ -29,7 +29,7 @@ string never mixes the two. A batch string in `tu` is a regression, not a
 neighbour to match.
 
 Setting and field hints that describe what a control does stay in the third
-person ("Ajoute Muscu à la barre latérale…", "Copie chaque nouvelle sortie…");
+person ("Ajoute Muscu à la barre latérale…", "Copie chaque nouvelle course…");
 where the English is an instruction, use the `vous` imperative or an
 infinitive, never a bare `-e` form that reads as `tu`.
 
@@ -69,7 +69,7 @@ count of 0. Use `{count}` (ARB) / `#` (web).
 
 | English | French | Evidence / note |
 |---|---|---|
-| run (noun) | course / courses; nav verb **Courir** | `nav.runs` "Courses", `navRun` "Courir"; one web "Sorties" |
+| run (noun) | course / courses; nav verb **Courir**; group run **Course en groupe**; easy run **course facile** | `nav.runs` "Courses", `navRun` "Courir". **Never « sortie » for a run** — settled 2026-11-12, when 31 mobile / 58 web strings and 8 help guides moved from « sortie » to « course ». « Sortie » stays only in **sortie longue** (long run) and its non-run senses: exit / *Sortie* at a checkpoint, output, an app's release, off-route (« sortie d'itinéraire »), a bike ride (« sortie vélo »), a social outing. Where a string also names a race, keep the run as « course (enregistrée) » and call the race **épreuve** (or « compétition », « jour J ») rather than writing « course » twice — see inconsistency 1 |
 | pace | Allure | all 6 / 8 stat labels |
 | split | **Splits** (section); per-km cue "Intermédiaires" | `runDetailSectionSplits`, `prefsCueSplits`. Web `prefs.cue.splits` "Fractionnés" is a mistranslation (= interval training) — inconsistency 2 |
 | lap | Tour / Tours | |
@@ -111,7 +111,11 @@ count of 0. Use `{count}` (ARB) / `#` (web).
 1. **run vs race are both "course".** Web `runSurface.tabRuns` and
    `runSurface.tabRaces` both render "Courses" side by side in
    `RunSurfaceTabs.svelte`; `nav.races` / `navRaces` (unused keys) too.
-   "Course officielle" exists for one key.
+   "Course officielle" exists for one key. Since 2026-11-12 a run is always
+   « course », so a string that names both says « épreuve » / « compétition »
+   / « jour J » for the race (`raceRetime.loadFailed`, `raceRetime.undone`,
+   `clubHome.emptyEventsNonAdmin`, `planRecapRaceNotRun`, the race help
+   guides); the two tab labels are still both "Courses".
 2. **split**: web `prefs.cue.splits` "Fractionnés" (wrong sense) vs mobile
    `prefsCueSplits` "Intermédiaires"; web `landing.previewSplits` "Temps
    au km".

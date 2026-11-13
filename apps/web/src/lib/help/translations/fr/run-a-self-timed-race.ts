@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'run-a-self-timed-race',
 	title: 'Courir une course en chrono libre',
-	summary: 'Inscrivez-vous à une course ouverte pendant une fenêtre de temps, marquez votre sortie comme votre tentative et courez de la ligne de départ à la ligne d\'arrivée quand cela vous convient.',
+	summary: 'Inscrivez-vous à une course ouverte pendant une fenêtre de temps, marquez votre course comme votre tentative et courez de la ligne de départ à la ligne d\'arrivée quand cela vous convient.',
 	sections: [
 		{
 			heading: 'Qu\'est-ce qu\'une course en chrono libre',
@@ -14,7 +14,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Vous enregistrez votre tentative avec l\'app mobile ou une montre Wear OS. Le web sert à vous inscrire et à consulter les résultats ; un navigateur ne peut pas enregistrer une sortie.',
+					text: 'Vous enregistrez votre tentative avec l\'app mobile ou une montre Wear OS. Le web sert à vous inscrire et à consulter les résultats ; un navigateur ne peut pas enregistrer une course.',
 				},
 			],
 		},
@@ -50,7 +50,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Une sortie que vous ne marquez pas comme votre tentative ne rejoint jamais la course : elle n\'envoie aucune position en direct et n\'obtient aucun résultat. Ainsi, une sortie que vous ne vouliez pas courir en compétition n\'apparaît jamais au classement.',
+					text: 'Une course que vous ne marquez pas comme votre tentative ne rejoint jamais l\'épreuve : elle n\'envoie aucune position en direct et n\'obtient aucun résultat. Ainsi, une course que vous ne vouliez pas courir en compétition n\'apparaît jamais au classement.',
 				},
 			],
 		},
@@ -83,7 +83,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'À l\'arrivée, touchez Arrêter, puis **Terminer la course**. Une fois que vous avez couvert 90 % du parcours, cela envoie votre temps, et l\'organisateur l\'examine avant qu\'il compte.',
-						'Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la sortie sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de la course, et le résultat remplace un résultat en attente d\'examen, ou un résultat plus lent. Vous pouvez le faire jusqu\'à 24 heures après la fermeture de la fenêtre.',
+						'Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la course sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de la course, et le résultat remplace un résultat en attente d\'examen, ou un résultat plus lent. Vous pouvez le faire jusqu\'à 24 heures après la fermeture de la fenêtre.',
 						'Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre tracé est donc le moyen d\'obtenir pour votre tentative un résultat chronométré par les lignes.',
 					],
 				},

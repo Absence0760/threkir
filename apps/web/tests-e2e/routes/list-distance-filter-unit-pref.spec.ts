@@ -47,8 +47,10 @@ test.describe('/routes — distance-filter labels honour user unit pref', () => 
 
 		await page.goto('/routes');
 
-		const select = page.getByLabel('Distance');
-		await expect(select).toBeVisible({ timeout: 10_000 });
+		// Distance lives in the Filters sheet.
+		await page.getByTestId('routes-filters-toggle').click({ timeout: 10_000 });
+		const select = page.getByTestId('routes-distance');
+		await expect(select).toBeVisible();
 		// Pin each option's label. The values stay as 'lt5' / '5to10'
 		// etc. so URL state survives the unit flip, but the visible
 		// labels switch.
@@ -83,8 +85,10 @@ test.describe('/routes — distance-filter labels honour user unit pref', () => 
 
 		await page.goto('/routes');
 
-		const select = page.getByLabel('Distance');
-		await expect(select).toBeVisible({ timeout: 10_000 });
+		// Distance lives in the Filters sheet.
+		await page.getByTestId('routes-filters-toggle').click({ timeout: 10_000 });
+		const select = page.getByTestId('routes-distance');
+		await expect(select).toBeVisible();
 		await expect(select.locator('option[value="lt5"]')).toHaveText(
 			/< 5 km/,
 		);

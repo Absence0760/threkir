@@ -40,13 +40,13 @@ names stay in Latin script.
 
 ## Typography
 
-- Full stop 「。」, comma 「、」; question 「？」 and exclamation 「！」 full-width
+- Full stop 「。」, comma 「、」; question 「？」 and exclamation 「！」 full-width (an ASCII `?` or `!` right after Japanese text fails `ja_fullwidth_parens.test.ts` since #1374 round 4; no space follows 「？」 inside a sentence)
   (6 / 10 `！`; ASCII `!` is a slip).
 - Quotes **「…」**, always, with no space between 」 and the particle after it, e.g.
   `routePickerEmptyNoMatch` 「「{query}」に一致するルートはありません」; 『』 only
   inside 「」. A straight `"` in a message fails CI (`messages_parity.test.ts` on web, `architecture_guards_test.dart` on mobile — ARBs and the `gen/` getters); the last 2 mobile straight-quoted strings
   (`addRunPickerNoMatch`, `runDetailRouteSaved`) moved to 「…」 2026-10-14.
-- Parentheses full-width **（…）** (92 / 167).
+- Parentheses full-width **（…）** after Japanese text, everywhere: catalogues, ARB and help guides ("受取額（純額）", "理由（任意）"). Only a statute citation keeps ASCII paragraph marks ("GDPR 第9条(2)(a)"). `ja_fullwidth_parens.test.ts` fails a half-width one; settled 2026-11-13 (#1374 round 3.8).
 - Ellipsis **…**.
 - Colon: the catalogues mostly use ASCII `: ` after kana/kanji (136 / 176)
   with full-width 「：」 in 60 / 32 — inconsistent; follow the neighbouring
@@ -85,6 +85,9 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | counting cues | 「# 件のキュー」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「#個のキュー」 |
 | mapped run (personal heatmap) | 「地図に#件のラン」「地図に表示できるランはまだありません」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「マップ化されたラン」 |
 | AI disclosure | **AIに関する説明** | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 「AIの説明」, which collides with 「AIによる説明」 (an AI description) |
+| leaderboard | **ランキング** ("セグメントのランキング", "性別・年齢区分別のセグメントのランキング") | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never 「リーダーボード」 |
+| Review (health-data) consent (button that opens the consent screen) | **（健康データの利用への）同意内容を確認する** | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never 「同意する」 (the tap does not consent) and never bare 「同意を確認する」, which reads as *confirm consent* (`prefs.hrMedicationConsentCheckFailed` uses 確認 that way). The consent statement and every withdrawal list name the same items in the same order as the English (gender, height, weight history, cycle or pregnancy details, heart rate recorded with activities, heart-rate targets in plans, heart-rate medication setting, food log); `health_consent_scope.test.ts` pins the English. The heart-rate medication item names the setting, never a statement that a drug affects the reader: 「心拍数に影響する服薬の設定」 |
+| GDPR citation | **GDPR 第9条(2)(a)**, 「GDPR 第7条(3)」, 「GDPR 第20条」, 「GDPR 第9条」 (one space after GDPR, ASCII paragraph marks) | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never 「GDPR第9条2項(a)」 |
 | waitlist | **キャンセル待ち** everywhere — status 「キャンセル待ち」, 「満員 · キャンセル待ち{n}人」 | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 補欠 |
 | safety contact | **緊急連絡先** everywhere, including 「緊急連絡先のみ」 on the live view | settled 2026-11-13 (#1374 round 3.5), both surfaces; never 安全連絡先 |
 | payouts (a host or fundraiser receiving money: the Payouts page and tab, "Set up payouts", the payout account) | **受け取り** — 「受け取り」, 「受け取りを設定」, 「受け取りの設定を完了する」, 「受け取りアカウント」 | settled 2026-11-13 (#1374 round 3.7), web (mobile has no payouts surface); never 支払い for this, which reads as money paid out by the reader. 支払い / お支払い stays for a reader paying (「お支払いで確定します」, 支払い方法) and 決済 for payment processing (「まだ決済が設定されていません」) |

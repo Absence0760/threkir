@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
@@ -135,8 +136,8 @@
 	</section>
 
 	{#if loaded && account}
-		<section class="earnings" aria-labelledby="earnings-title" aria-busy={earningsState === 'loading'}>
-			<h2 id="earnings-title">{m('payouts.earningsTitle')}</h2>
+		<section class="earnings" aria-labelledby={settingRowId('payouts.earningsTitle')} aria-busy={earningsState === 'loading'}>
+			<h2 id={settingRowId('payouts.earningsTitle')}>{m('payouts.earningsTitle')}</h2>
 			<p class="earnings-intro">{m('payouts.earningsIntro')}</p>
 			{#if earningsState === 'loading' || earningsState === 'idle'}
 				<p class="muted">{m('payouts.earningsLoading')}</p>

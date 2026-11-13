@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
@@ -585,7 +586,7 @@
 			{:else}
 				{#if anyTimeParks.length > 0}
 					<div class="any-time-parks">
-						<h3 id="races-any-time-parks-heading">{m('races.anyTimeParks')}</h3>
+						<SectionHeader label={m('races.anyTimeParks')} id="races-any-time-parks-heading" level={3} class="races-any-time-head" />
 						<ul class="park-row" aria-labelledby="races-any-time-parks-heading" data-testid="races-any-time-parks">
 							{#each anyTimeParks as p (p.park.id)}
 								<li><ParkCard park={p.park} courses={p.courses} /></li>
@@ -697,13 +698,8 @@
 		grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr));
 		gap: var(--space-sm);
 	}
-	.any-time-parks h3 {
-		margin: 0 0 var(--space-xs);
-		font-size: var(--font-size-section-label);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: var(--section-label-tracking);
-		color: var(--color-text-secondary);
+	:global(.races-any-time-head) {
+		margin-bottom: var(--space-xs);
 	}
 	/* One row that scrolls inside itself, so the parks lead the courses
 	   without pushing them a screen down. */

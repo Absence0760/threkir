@@ -228,4 +228,115 @@ void main() {
       expect(label.bottom, lessThanOrEqualTo(header.bottom + 0.5));
     });
   });
+
+  group('SettingsAnchor', () {
+    List<SettingsSection> anchored(int groups, int rows) => [
+      for (var g = 0; g < groups; g++)
+        SettingsSection(
+          label: 'Group $g',
+          rows: [
+            for (var r = 0; r < rows; r++)
+              ListRow.toggle(
+                anchor: 'row-$g-$r',
+                title: 'Row $g.$r',
+                value: false,
+                onChanged: (_) {},
+              ),
+          ],
+        ),
+    ];
+
+    Finder highlight() =>
+        find.byKey(const ValueKey('settings-anchor-highlight'));
+
+    Color tintOf(WidgetTester tester) =>
+        tester.widget<Material>(highlight()).color!;
+
+    testWidgets('lands on a row below the fold, tints it, then fades', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        SettingsList(sections: anchored(4, 8), focus: 'row-3-6'),
+        size: const Size(320, 640),
+        textScale: 2.0,
+      );
+      await tester.pump();
+      // The scroll, then the landing that follows it.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      final viewport = tester.getRect(find.byType(CustomScrollView));
+      final row = tester.getRect(find.text('Row 3.6'));
+      expect(viewport.contains(row.topLeft), isTrue);
+      expect(viewport.contains(row.bottomRight), isTrue);
+      expect(highlight(), findsOneWidget);
+      expect(
+        find.ancestor(of: find.text('Row 3.6'), matching: highlight()),
+        findsOneWidget,
+      );
+      expect(tintOf(tester).a, greaterThan(0.5));
+      expect(tester.takeAnnouncements().map((a) => a.message), ['Row 3.6']);
+      await tester.pump(SettingsAnchor.highlight);
+      expect(tintOf(tester).a, 0);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+      'under reduce motion it jumps and the tint holds, then clears',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(360, 640),
+                disableAnimations: true,
+              ),
+              child: Scaffold(
+                body: SettingsList(sections: anchored(4, 8), focus: 'row-2-5'),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        final viewport = tester.getRect(find.byType(CustomScrollView));
+        expect(
+          viewport.contains(tester.getCenter(find.text('Row 2.5'))),
+          isTrue,
+        );
+        final first = tintOf(tester).a;
+        await tester.pump(SettingsAnchor.highlight ~/ 2);
+        expect(tintOf(tester).a, first, reason: 'the tint holds still');
+        await tester.pump(SettingsAnchor.highlight);
+        expect(tintOf(tester).a, 0);
+      },
+    );
+
+    testWidgets('no focus, or another id, leaves every row untinted', (
+      tester,
+    ) async {
+      await _pump(tester, SettingsList(sections: anchored(2, 3)));
+      await tester.pump();
+      expect(highlight(), findsNothing);
+      await _pump(
+        tester,
+        SettingsList(sections: anchored(2, 3), focus: 'missing'),
+      );
+      await tester.pump();
+      expect(highlight(), findsNothing);
+    });
+
+    testWidgets('a row below the fold is built, so a focus can reach it', (
+      tester,
+    ) async {
+      await _pump(tester, SettingsList(sections: anchored(6, 10)));
+      expect(
+        find.byType(SettingsAnchor, skipOffstage: false),
+        findsNWidgets(60),
+      );
+    });
+  });
 }

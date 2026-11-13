@@ -1206,7 +1206,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "**Event löschen** ist keine Absage. Es entfernt das Event mit allen Terminen und erstattet niemandem, der bezahlt hat. Lösche keinen bezahlten Kurs, der noch Anmeldungen hat."
+            "text": "**Event löschen** ist keine Absage. Es entfernt das Event mit allen Terminen und erstattet niemandem, der bezahlt hat, sein Geld. Lösche keinen bezahlten Kurs, der noch Anmeldungen hat."
           },
           {
             "type": "p",
@@ -2728,7 +2728,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Ein Lauf, den du nicht als deinen Versuch markierst, nimmt nie am Rennen teil: Er sendet keine Live-Position und bekommt kein Ergebnis. So landet ein Lauf, den du gar nicht als Rennen laufen wolltest, nie in der Rangliste."
+            "text": "Ein Lauf, den du nicht als deinen Versuch markierst, nimmt nie am Rennen teil: Er sendet keine Live-Position und bekommt kein Ergebnis. So landet ein Lauf, den du gar nicht als Rennen laufen wolltest, nie in der Bestenliste."
           }
         ]
       },
@@ -2746,7 +2746,7 @@
           },
           {
             "type": "p",
-            "text": "Was die Zeiten in der Rangliste bedeuten, steht in [[guide:race-results-explained|Rennergebnisse erklärt]]."
+            "text": "Was die Zeiten in der Bestenliste bedeuten, steht in [[guide:race-results-explained|Rennergebnisse erklärt]]."
           }
         ]
       },
@@ -2782,7 +2782,7 @@
     "id": "set-up-a-race",
     "lang": "de",
     "title": "Ein Rennen einrichten",
-    "summary": "Erstelle ein Club-Event mit einer oder mehreren Strecken, damit Teilnehmende eine Distanz wählen, live gemessen werden und in einer Rangliste pro Strecke landen.",
+    "summary": "Erstelle ein Club-Event mit einer oder mehreren Strecken, damit Teilnehmende eine Distanz wählen, live gemessen werden und in einer Bestenliste pro Strecke landen.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2841,7 +2841,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Werden am selben Tag mehrere Distanzen gelaufen? Füge jede zusätzliche Distanz als eigene Strecke hinzu. Jede Strecke bekommt ihre eigene Rangliste."
+            "text": "Werden am selben Tag mehrere Distanzen gelaufen? Füge jede zusätzliche Distanz als eigene Strecke hinzu. Jede Strecke bekommt ihre eigene Bestenliste."
           },
           {
             "type": "steps",
@@ -2894,7 +2894,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
+            "text": "Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Bestenliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
           },
           {
             "type": "p",
@@ -3752,8 +3752,8 @@
   {
     "id": "park-courses",
     "lang": "de",
-    "title": "Parkstrecken: Kontrollpunkte, Saisons und Bestenlisten",
-    "summary": "Wie eine Parkstrecke deinen Lauf misst, warum jeder Kontrollpunkt zählt, wann eine Saison beginnt und wie die Listen Schnellste und Meiste Läufe ranken.",
+    "title": "Parkstrecken: Kontrollpunkte, Saisons, Monate und Bestenlisten",
+    "summary": "Wie eine Parkstrecke deinen Lauf misst, warum jeder Kontrollpunkt zählt, wann eine Saison und ein Monat beginnen und wie die Listen Schnellste und Meiste Läufe die Rangfolge bilden.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3827,7 +3827,7 @@
             "type": "list",
             "items": [
               "**Schnellste** ordnet jede Person nach ihrer besten Zeit auf der Strecke. Du erscheinst einmal, mit deinem besten Lauf.",
-              "Standardmäßig zeigt sie dieses Jahr. Wähle **Gesamt** für die besten Zeiten aller Zeiten.",
+              "Standardmäßig zeigt sie dieses Jahr. Wähle **Dieser Monat** für den bisherigen Monat oder **Gesamt** für die besten Zeiten aller Zeiten.",
               "Filtere nach Geschlecht oder Altersklasse. Der Altersfilter enthält nur Personen, die dem Teilen von Gesundheitsdaten zugestimmt haben, daher kann er kürzer sein als die ganze Liste."
             ]
           }
@@ -3839,6 +3839,25 @@
           {
             "type": "p",
             "text": "**Meiste Läufe** belohnt die Stammgäste. Sie zählt die Tage, an denen du die Strecke absolviert hast, in der Zeitzone des Parks, also zählen mehrere Runden an einem Tag als einer."
+          }
+        ]
+      },
+      {
+        "heading": "Monate: jeden Monat eine neue Liste",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Beide Listen gibt es auch Monat für Monat. Ein Monat ist ein Kalendermonat in der Zeitzone des Parks, von Mitternacht am 1. bis Mitternacht am 1. des nächsten Monats. Ein Lauf um 23:30 Uhr am 31. Oktober dort, wo der Park liegt, zählt also für Oktober."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Wähle **Dieser Monat**, um den bisherigen Monat zu sehen, und blättere mit den Pfeilen neben dem Monatsnamen zu früheren Monaten zurück.",
+              "Jede Strecke auf der Seite eines Parks zeigt, wie viele Personen sie diesen Monat gelaufen sind.",
+              "Eine Parkstrecken-Zeit auf der Seite deines Laufs zeigt ihren Platz in diesem Monat und in diesem Jahr, etwa Platz 2 im November, Platz 9 im Jahr 2026. Der Sticker **Parkstrecke** auf einem geteilten Bild zeigt den Platz im Monat und auch den Platz im Jahr, wenn er unter den ersten 10 ist.",
+              "Wenn dort, wo der Park liegt, ein Monat endet, bekommst du im Posteingang eine Nachricht mit deiner Bestzeit aus dem Monat auf jeder Strecke, die du gelaufen bist. Schalte sie mit **Parkstrecken-Monate** aus: im Web unter [[route:/settings/notifications|Benachrichtigungen]], in der Handy-App unter **Benachrichtigungen** im Tab **Du**.",
+              "Die Abzeichen für Parkmonate zählen die Monate, in denen du eine Parkstrecke absolviert hast, bei 3, 6, 12 und 24 Monaten. Sie zählen absolvierte Strecken, nie Platzierungen."
+            ]
           }
         ]
       },

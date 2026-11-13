@@ -220,12 +220,12 @@ test.describe('/social?tab=feed — load failure surfaces an error toast', () =>
 		).toBeVisible({ timeout: 10_000 });
 	});
 
-	test('a failed badge-awards read says so with a retry, and the retry recovers', async ({ page }) => {
+	test('a failed badge-awards read says so with a retry, and the retry recovers', async ({ page, mockRoute }) => {
 		// The strip once swallowed this read as "no badges" (§ 2501). Fail the
 		// first followee-awards read only (the `user_id=in.(…)` one), so the
 		// retry reaches the real table and no other achievements read is hit.
 		let failed = false;
-		await page.route('**/rest/v1/achievements*', async (route) => {
+		await mockRoute(page, '**/rest/v1/achievements*', async (route) => {
 			if (failed || !route.request().url().includes('user_id=in.')) return route.fallback();
 			failed = true;
 			await route.fulfill({
@@ -235,8 +235,20 @@ test.describe('/social?tab=feed — load failure surfaces an error toast', () =>
 			});
 		});
 
+		// An empty feed: badges are news whether or not a followee ran in the
+		// window, and the strip once rendered only above feed entries, so its
+		// error never showed over the "No recent activity" state.
+		for (const view of ['public_runs', 'public_gym_workouts']) {
+			await mockRoute(page, `**/rest/v1/${view}*`, (route) =>
+				route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+			);
+		}
+
 		await page.goto('/social?tab=feed');
 
+		await expect(page.getByRole('heading', { name: 'No recent activity' })).toBeVisible({
+			timeout: 10_000
+		});
 		const error = page.getByTestId('feed-badges-error');
 		await expect(error).toBeVisible({ timeout: 10_000 });
 		await expect(error).toContainText(/Couldn't load the latest badges/);

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../health_consent_gate.dart';
 import '../adaptive_width.dart';
 import '../fab_clearance.dart';
 import '../auth_error.dart';
@@ -180,7 +181,15 @@ class _NutritionScreenState extends State<NutritionScreen>
     }
   }
 
+  /// A food log is health data, kept only with health-data consent
+  /// (decisions § 2514): every way of logging asks here first.
+  Future<bool> _foodConsent() => ensureFoodLogConsent(context,
+      api: widget.api,
+      settingsSync: widget.settingsSync,
+      preferences: activePreferences);
+
   Future<void> _logFromPhoto() async {
+    if (!await _foodConsent() || !mounted) return;
     final saved = await showPlatePhotoScreen(
         context: context, store: widget.store, diaryDate: _viewDate);
     if (saved == true) await _maybeSync();
@@ -450,6 +459,7 @@ class _NutritionScreenState extends State<NutritionScreen>
   }
 
   Future<void> _logFood() async {
+    if (!await _foodConsent() || !mounted) return;
     final saved = await showNutritionLogSheet(
         context: context, store: widget.store, diaryDate: _viewDate);
     if (saved == true) await _maybeSync();
@@ -552,6 +562,7 @@ class _NutritionScreenState extends State<NutritionScreen>
   /// + an offline-first batch write to the food store.
   Future<void> _logTemplate(StoredMealTemplate t) async {
     if (_loggingTemplateId) return;
+    if (!await _foodConsent() || !mounted) return;
     setState(() {
       _loggingTemplateId = true;
       _loggingId = t.id;
@@ -714,29 +725,30 @@ class _NutritionScreenState extends State<NutritionScreen>
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: nameController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.nutritionRecipeName,
-                    hintText: l10n.nutritionRecipeNamePlaceholder,
+                FieldColumn(children: [
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: l10n.nutritionRecipeName,
+                      hintText: l10n.nutritionRecipeNamePlaceholder,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: servingsController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) => setDialogState(() {}),
-                  decoration: InputDecoration(
-                    labelText: l10n.nutritionRecipeServings,
-                    errorText: outOfRange
-                        ? l10n.limitsServingsOutOfRange(
-                            boundText(columnMin(servingsKey)),
-                            boundText(columnMax(servingsKey)))
-                        : null,
+                  TextField(
+                    controller: servingsController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: InputDecoration(
+                      labelText: l10n.nutritionRecipeServings,
+                      errorText: outOfRange
+                          ? l10n.limitsServingsOutOfRange(
+                              boundText(columnMin(servingsKey)),
+                              boundText(columnMax(servingsKey)))
+                          : null,
+                    ),
                   ),
-                ),
+                ]),
                 const SizedBox(height: 8),
                 Text(l10n.nutritionRecipeServingsHint,
                     style: Theme.of(ctx).textTheme.bodySmall),
@@ -837,6 +849,7 @@ class _NutritionScreenState extends State<NutritionScreen>
   /// an offline-first write to the food store.
   Future<void> _logRecipe(StoredRecipe r) async {
     if (_loggingRecipe) return;
+    if (!await _foodConsent() || !mounted) return;
     setState(() {
       _loggingRecipe = true;
       _loggingRecipeId = r.id;

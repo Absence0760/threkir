@@ -66,7 +66,7 @@ class TrainingLoadChart extends StatelessWidget {
           if (!hasHr)
             TextButton(
               key: const Key('trainingLoadSetHeartRate'),
-              onPressed: () => openSettings(SettingsDestination.training),
+              onPressed: () => openSettingsRow(PreferencesRow.maxHr),
               child: Text(l10n.trainingLoadSetHeartRate),
             ),
           if (lowConfidence) ...[

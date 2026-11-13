@@ -220,6 +220,35 @@ void main() {
     }
   });
 
+  // Issue #1374: two number fields per row cut "Saturated fat (g)" at 320 dp
+  // and 2x; a FieldPair stacks them where a label would not fit.
+  worstCaseTestWidgets('Food manual entry', (tester, locale) async {
+    final f = await _store('manual_worst_');
+    try {
+      await tester.pumpWidget(worstCaseApp(
+        locale: locale,
+        home: Scaffold(body: NutritionLogSheet(store: f.store)),
+      ));
+      await tester.pump();
+      final l10n = l10nFor(locale);
+      final open = find.text(l10n.nutritionManualEntry);
+      await tester.ensureVisible(open);
+      await tester.tap(open);
+      await tester.pump();
+      Rect field(String label) =>
+          tester.getRect(find.widgetWithText(TextField, label));
+      final sat = field('${l10n.nutritionSaturatedFat} (g)');
+      final sodium = field('${l10n.nutritionSodium} (mg)');
+      expect(sodium.top, greaterThan(sat.bottom),
+          reason: 'the pair stacks rather than halving the label');
+      expect(sat.width, sodium.width);
+      await walkScrollable(
+          tester, find.byType(Scrollable).first, 'Food manual entry');
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
   testWidgets('search renders Open Food Facts results via the injected fetcher',
       (tester) async {
     final f = await _store('search_');

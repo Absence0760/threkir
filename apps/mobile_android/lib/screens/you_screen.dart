@@ -7,7 +7,8 @@ import 'package:ui_kit/ui_kit.dart'
         IdentityAvatar,
         ListCard,
         ListRow,
-        PageHeader;
+        PageHeader,
+        RootPage;
 
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
@@ -252,39 +253,37 @@ class _YouScreenState extends State<YouScreen>
     final l10n = AppLocalizations.of(context);
     final api = widget.apiClient;
     final viewerId = api?.userId;
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: SettingsScreen(
-          apiClient: widget.apiClient,
-          preferences: widget.preferences,
-          runStore: widget.runStore,
-          routeStore: widget.routeStore,
-          gymStore: widget.gymStore,
-          foodStore: widget.foodStore,
-          gearStore: widget.gearStore,
-          heartRate: widget.heartRate,
-          treadmill: widget.treadmill,
-          settingsSync: widget.settingsSync,
-          onSubScreenClosed: _refreshIdentity,
-          header: [
-            _title(context),
-            if (api != null && viewerId != null)
-              _identityCard(context, api, viewerId)
-            else if (api != null)
-              _signInCard(context, api),
-          ],
-          profileRows: [
-            if (viewerId != null && _barcodeNumber != null)
-              ListRow.nav(
-                key: const ValueKey('you-parkrun-barcode'),
-                icon: Icons.badge_outlined,
-                title: l10n.parkrunBarcodeTitle,
-                subtitle: _barcodeNumber,
-                onTap: () => _push(ParkrunBarcodeScreen(api: api!)),
-              ),
-          ],
-        ),
+    return RootPage(
+      title: l10n.navYou,
+      body: SettingsScreen(
+        apiClient: widget.apiClient,
+        preferences: widget.preferences,
+        runStore: widget.runStore,
+        routeStore: widget.routeStore,
+        gymStore: widget.gymStore,
+        foodStore: widget.foodStore,
+        gearStore: widget.gearStore,
+        heartRate: widget.heartRate,
+        treadmill: widget.treadmill,
+        settingsSync: widget.settingsSync,
+        onSubScreenClosed: _refreshIdentity,
+        header: [
+          _title(context),
+          if (api != null && viewerId != null)
+            _identityCard(context, api, viewerId)
+          else if (api != null)
+            _signInCard(context, api),
+        ],
+        profileRows: [
+          if (viewerId != null && _barcodeNumber != null)
+            ListRow.nav(
+              key: const ValueKey('you-parkrun-barcode'),
+              icon: Icons.badge_outlined,
+              title: l10n.parkrunBarcodeTitle,
+              subtitle: _barcodeNumber,
+              onTap: () => _push(ParkrunBarcodeScreen(api: api!)),
+            ),
+        ],
       ),
     );
   }

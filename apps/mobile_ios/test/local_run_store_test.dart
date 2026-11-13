@@ -1749,6 +1749,42 @@ void main() {
       expect(store.runs.map((r) => r.id), ['c', 'b']);
     });
 
+    // Sentry THREKIR-CLIENT-B (iOS watchdog termination): the full-walk
+    // rebuild used to keep every run it read, track and all, for the whole
+    // session — about 2 MB per two-hour run, so a large imported library was
+    // gigabytes. It now holds what the fast path would.
+    test('slow path (no index): only the window and unsynced runs stay '
+        'resident, every summary is rebuilt, and the index comes back',
+        () async {
+      await seed(
+        [
+          for (var i = 0; i < 40; i++)
+            mk('s$i', DateTime(2026, 1, 1).add(Duration(days: i))),
+        ],
+        unsynced: [mk('old-unsynced', DateTime(2025, 6, 1))],
+      );
+      File('${tempDir.path}/index.json').deleteSync();
+
+      final store = LocalRunStore()..residentWindow = 2;
+      await store.init(overrideDirectory: tempDir);
+
+      expect(store.summaries, hasLength(41));
+      expect(store.summaries.first.id, 's39');
+      expect(store.runs.map((r) => r.id), ['s39', 's38', 'old-unsynced']);
+      expect(store.unsyncedRuns.map((r) => r.id), ['old-unsynced']);
+      expect(File('${tempDir.path}/index.json').existsSync(), isTrue);
+      expect(store.coldLoad,
+          (rebuilt: true, files: 41, resident: 3, residentPoints: 0));
+
+      final again = LocalRunStore()..residentWindow = 2;
+      await again.init(overrideDirectory: tempDir);
+      expect(again.runs.map((r) => r.id), store.runs.map((r) => r.id),
+          reason: 'the rebuilt index puts the next launch on the fast path '
+              'with the same resident set');
+      expect(again.coldLoad,
+          (rebuilt: false, files: 41, resident: 3, residentPoints: 0));
+    });
+
     test('runById hydrates an out-of-window run from disk (with track)',
         () async {
       await seed([

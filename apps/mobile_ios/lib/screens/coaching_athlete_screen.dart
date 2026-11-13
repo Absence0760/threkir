@@ -3,7 +3,18 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppSpace, IdentityAvatar, ListCard, ListSkeleton, PageHeader, ProgressBar, PushedPage, StatusPill, StatusPillSize, TextLane;
+    show
+        AppSpace,
+        FieldColumn,
+        IdentityAvatar,
+        ListCard,
+        ListSkeleton,
+        PageHeader,
+        ProgressBar,
+        PushedPage,
+        StatusPill,
+        StatusPillSize,
+        TextLane;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -364,31 +375,32 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
           ),
         ],
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: _selectedPlanId,
-          isExpanded: true,
-          decoration: InputDecoration(
-            labelText: l10n.coachingAthleteAssignSelectLabel,
-          ),
-          hint: Text(l10n.coachingAthleteAssignSelectPlaceholder),
-          items: [
-            for (final p in _myPlans)
-              DropdownMenuItem(value: p.id, child: Text(p.name)),
-          ],
-          onChanged: _assigning
-              ? null
-              : (v) => setState(() => _selectedPlanId = v),
-        ),
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: _assigning ? null : _pickStartDate,
-          child: InputDecorator(
+        FieldColumn(children: [
+          DropdownButtonFormField<String>(
+            initialValue: _selectedPlanId,
+            isExpanded: true,
             decoration: InputDecoration(
-              labelText: l10n.coachingAthleteAssignStartLabel,
+              labelText: l10n.coachingAthleteAssignSelectLabel,
             ),
-            child: Text(formatDateMed(_startDate, activeLocaleTag)),
+            hint: Text(l10n.coachingAthleteAssignSelectPlaceholder),
+            items: [
+              for (final p in _myPlans)
+                DropdownMenuItem(value: p.id, child: Text(p.name)),
+            ],
+            onChanged: _assigning
+                ? null
+                : (v) => setState(() => _selectedPlanId = v),
           ),
-        ),
+          InkWell(
+            onTap: _assigning ? null : _pickStartDate,
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: l10n.coachingAthleteAssignStartLabel,
+              ),
+              child: Text(formatDateMed(_startDate, activeLocaleTag)),
+            ),
+          ),
+        ]),
         const SizedBox(height: 12),
         FilledButton(
           onPressed: (_selectedPlanId == null || _assigning) ? null : _assignPlan,

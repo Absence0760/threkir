@@ -68,8 +68,7 @@
 			{#if leading}<span class="lc-leading">{@render leading()}</span>{/if}
 			<span class="lc-texts">
 				<span class="lc-title-line">
-					<span class="list-card-title">{title}</span>
-					{#if badge}{@render badge()}{/if}
+					<span class="list-card-title">{title}</span>{#if badge}&#8288;<span class="lc-badge">{@render badge()}</span>{/if}
 				</span>
 				{#if subtitle}<span class="list-card-subtitle">{subtitle}</span>{/if}
 				{#if meta}<span class="lc-meta">{@render meta()}</span>{/if}
@@ -208,12 +207,18 @@
 		gap: var(--space-2xs);
 		min-width: 0;
 	}
+	/* Inline flow, not a wrapping flex row: the badge follows the title's last
+	   word (a word joiner glues the two) and wraps with it, so it never stands
+	   alone on a line under a two-line title (issue #1374). */
 	.lc-title-line {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-xs) var(--space-sm);
+		display: block;
 		min-width: 0;
+	}
+	.lc-badge {
+		display: inline-flex;
+		align-items: center;
+		vertical-align: middle;
+		margin-inline-start: var(--space-sm);
 	}
 	.list-card-title {
 		font-weight: 600;

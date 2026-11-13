@@ -15,6 +15,12 @@ insert into user_profiles (id, display_name) values
   ('00000000-0000-0000-0000-0000d0000001', 'Dee')
 on conflict (id) do nothing;
 
+-- Food and heart rate are stored only with health-data consent (decisions § 2514).
+insert into user_profiles (id, health_data_consent_at)
+values
+  ('00000000-0000-0000-0000-0000d0000001', now())
+on conflict (id) do update set health_data_consent_at = excluded.health_data_consent_at;
+
 -- A DNF'd run and a finished run for the same user.
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, is_public, activity_type, is_dnf) values
   ('dddddddd-dddd-dddd-dddd-dddd00000001', '00000000-0000-0000-0000-0000d0000001', '2026-07-01 06:00:00+00', 42000, 18000, 'app', true, 'run', true),

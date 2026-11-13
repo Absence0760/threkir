@@ -3,7 +3,7 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
-	import { formatDuration, formatRelativeTime } from '#lib/format/time.ts';
+	import { activeFormatLocale, formatDuration, formatRelativeTime } from '#lib/format/time.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
@@ -20,11 +20,11 @@
 		type BadgeAwardFeedEntry,
 	} from '#lib/core/data.ts';
 
-	import { formatDistance, formatPace, formatWeight } from '#lib/format/units.svelte.ts';
+	import { formatDistance, formatPace, formatWeight, getUnit } from '#lib/format/units.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
-	import { tierFor, type AchievementTier } from '#lib/social/badges.ts';
+	import { badgeWords, tierFor, type AchievementTier } from '#lib/social/badges.ts';
 	import { ACTIVITY_TYPE_ICONS, activityTypeKey } from '#lib/runs/activity_type.ts';
 
 	// `all` and `lift` are not `activity_type` values — they are feed scopes, so
@@ -79,8 +79,8 @@
 	}
 
 	function badgeLabel(b: BadgeAwardFeedEntry): string {
-		const t = tierFor(b.badge.badge_key, b.badge.tier as AchievementTier);
-		return t ? m(t.labelKey) : b.badge.badge_key;
+		const w = badgeWords(b.badge.badge_key, b.badge.tier as AchievementTier, m, getUnit(), activeFormatLocale());
+		return w?.label ?? b.badge.badge_key;
 	}
 	function badgeIcon(b: BadgeAwardFeedEntry): string {
 		const t = tierFor(b.badge.badge_key, b.badge.tier as AchievementTier);
@@ -224,6 +224,32 @@
 		<span class="window-hint">{m('socialFeed.windowHint', { n: FEED_WINDOW_DAYS })}</span>
 	</div>
 
+	<!-- The strip is its own read: badges earned are news whether or not a
+	     followee ran in the window, and a failed read must show even over an
+	     empty feed (§ 2501). -->
+	{#if loaded || !loading}
+		{#if badgeAwardsFailed}
+			<p class="badge-strip-error" role="status" data-testid="feed-badges-error">
+				<span>{m('badges.feedLoadFailed')}</span>
+				<button type="button" class="btn btn-outline btn-sm" onclick={loadBadgeAwards}>{m('runs.retry')}</button>
+			</p>
+		{:else if badgeAwards.length > 0}
+			<section class="badge-strip" aria-label={m('badges.section.title')}>
+				{#each badgeAwards as b (b.badge.id)}
+					<a class="badge-chip tier-{b.badge.tier}" href="/u/{b.authorId}?tab=achievements&badge={b.badge.id}">
+						<span class="material-symbols" aria-hidden="true">{badgeIcon(b)}</span>
+						<span class="badge-chip-text">
+							{m('badges.feedEarned', {
+								name: b.authorName ?? m('badges.aRunner'),
+								badge: badgeLabel(b)
+							})}
+						</span>
+					</a>
+				{/each}
+			</section>
+		{/if}
+	{/if}
+
 	{#if loading && !loaded}
 		<div class="feed" aria-hidden="true">
 			{#each Array(4) as _, i (i)}
@@ -271,26 +297,6 @@
 			/>
 		{/if}
 	{:else}
-		{#if badgeAwardsFailed}
-			<p class="badge-strip-error" role="status" data-testid="feed-badges-error">
-				<span>{m('badges.feedLoadFailed')}</span>
-				<button type="button" class="btn btn-outline btn-sm" onclick={loadBadgeAwards}>{m('runs.retry')}</button>
-			</p>
-		{:else if badgeAwards.length > 0}
-			<section class="badge-strip" aria-label={m('badges.section.title')}>
-				{#each badgeAwards as b (b.badge.id)}
-					<a class="badge-chip tier-{b.badge.tier}" href="/u/{b.authorId}?tab=achievements&badge={b.badge.id}">
-						<span class="material-symbols" aria-hidden="true">{badgeIcon(b)}</span>
-						<span class="badge-chip-text">
-							{m('badges.feedEarned', {
-								name: b.authorName ?? m('badges.aRunner'),
-								badge: badgeLabel(b)
-							})}
-						</span>
-					</a>
-				{/each}
-			</section>
-		{/if}
 		<div class="feed">
 			{#each entries as entry (entry.id)}
 				<article class="entry">

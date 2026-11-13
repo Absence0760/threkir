@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
@@ -171,11 +172,13 @@
 		</div>
 	{:else}
 		{#if targets}
+			{@const totalCalories = targets.calories}
 			<section class="card-elevated goal-card" data-testid="targets-goal">
-				<div class="card-head">
-					<span class="section-label">{m('nutrition.targets.total')}</span>
-					<span class="goal-total">{targets.calories} kcal</span>
-				</div>
+				<SectionHeader label={m('nutrition.targets.total')}>
+					{#snippet trailing()}
+						<span class="goal-total">{totalCalories} kcal</span>
+					{/snippet}
+				</SectionHeader>
 				<ul class="derivation">
 					<li>
 						<span class="term">{m('nutrition.targets.bmr')}</span>
@@ -212,9 +215,7 @@
 			</section>
 
 			<section class="card-elevated macro-card" data-testid="targets-macros">
-				<div class="card-head">
-					<span class="section-label">{m('nutrition.targets.macrosHeading')}</span>
-				</div>
+				<SectionHeader label={m('nutrition.targets.macrosHeading')} />
 				<ul class="macro-list">
 					<li>
 						<span class="term">
@@ -257,9 +258,7 @@
 		{/if}
 
 		<section class="card-elevated defaults-card">
-			<div class="card-head">
-				<span class="section-label">{m('nutrition.targets.defaultsHeading')}</span>
-			</div>
+			<SectionHeader label={m('nutrition.targets.defaultsHeading')} />
 			<div class="form-grid">
 				<div class="field">
 					<label>
@@ -311,12 +310,13 @@
 		</section>
 
 		<section class="card-elevated metrics-card" data-testid="targets-metrics">
-			<div class="card-head">
-				<span class="section-label">{m('nutrition.targets.metricsHeading')}</span>
-				<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="targets-edit-metrics">
-					{m('nutrition.targets.editMetrics')}
-				</a>
-			</div>
+			<SectionHeader label={m('nutrition.targets.metricsHeading')}>
+				{#snippet trailing()}
+					<a class="btn btn-secondary btn-sm" href="/settings/body#body-metrics" data-testid="targets-edit-metrics">
+						{m('nutrition.targets.editMetrics')}
+					</a>
+				{/snippet}
+			</SectionHeader>
 			<ul class="metric-list">
 				<li>
 					<span class="term">{m('prefs.heightCm')}</span>
@@ -374,21 +374,7 @@
 		margin-bottom: var(--space-md);
 	}
 
-	.card-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-sm);
-		flex-wrap: wrap;
-		margin-bottom: var(--space-sm);
-	}
 
-	.section-label {
-		font-size: 0.8rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-secondary);
-	}
 
 	.goal-total {
 		font-size: 1.5rem;

@@ -590,6 +590,7 @@ void main() {
       await tester.pump();
 
       expect(pendingSettingsDestination.value, SettingsDestination.privacy);
+      expect(pendingSettingsRow, PreferencesRow.discoverableNearby);
     });
 
     testWidgets('the empty-state body no longer recites the Settings path',

@@ -691,6 +691,7 @@ export type NotificationKind =
 	| 'course_alert'
 	| 'organiser_dispute'
 	| 'park_course_report'
+	| 'park_course_month_closed'
 	| 'race_starting_soon'
 	| 'race_start_moved'
 	| 'group_invite';

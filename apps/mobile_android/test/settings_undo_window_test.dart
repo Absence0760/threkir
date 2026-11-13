@@ -66,6 +66,10 @@ Future<void> _openUndoWindow(WidgetTester tester) async {
     250,
     scrollable: find.byType(Scrollable).first,
   );
+  // SettingsList builds a whole section eagerly, so the row is found while
+  // still below the fold and scrollUntilVisible's closing ensureVisible does
+  // the real scroll; the tap needs the frame that lays it out.
+  await tester.pump();
   await tester.tap(find.text('Undo window'));
   await tester.pumpAndSettle();
 }

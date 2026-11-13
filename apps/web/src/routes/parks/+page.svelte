@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -85,7 +86,7 @@
 	{:else}
 		{#each groups as group (group.regionCode)}
 			<section class="region" data-testid="parks-region" aria-labelledby="region-{group.regionCode}">
-				<h2 id="region-{group.regionCode}">{regionName(group.regionCode)}</h2>
+				<SectionHeader label={regionName(group.regionCode)} id="region-{group.regionCode}" class="parks-region-head" />
 				<ul class="park-grid">
 					{#each group.parks as park (park.id)}
 						<li><ParkCard {park} courses={byPark.get(park.id) ?? []} /></li>
@@ -112,13 +113,8 @@
 	.state-msg {
 		color: var(--color-text-tertiary);
 	}
-	.region h2 {
-		margin: var(--space-lg) 0 var(--space-sm);
-		font-size: var(--font-size-section-label);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: var(--section-label-tracking);
-		color: var(--color-text-secondary);
+	:global(.parks-region-head) {
+		margin-top: var(--space-lg);
 	}
 	.park-grid {
 		list-style: none;

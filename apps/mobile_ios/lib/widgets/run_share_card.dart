@@ -32,7 +32,7 @@ import '../l10n/locale_support.dart';
 import '../mascot.dart';
 import '../preferences.dart';
 import '../privacy.dart';
-import '../park_courses.dart' show RunParkCourseTime;
+import '../park_courses.dart' show RunParkCourseTime, shareCoursePlaces;
 import '../run_share_stats.dart';
 import '../share_look.dart';
 import '../share_placement.dart';
@@ -373,17 +373,15 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           name: course.courseName,
           park: course.parkName,
           time: formatShareDuration(Duration(seconds: course.timeSeconds)),
-          rank: course.seasonRank == null
-              ? null
-              : l10n.shareCardCourseRank(
-                  '${course.seasonRank}', '${course.season}'),
+          rank: _courseRankLine(l10n, course),
           hasRoute: hasRoute,
         );
       case RunStickerKind.badge:
         final badge = _badge!;
         return badgeStickerBody(
           kicker: l10n.shareCardBadgeKicker,
-          name: badgeLabelFor(l10n, badge.badgeKey, badge.tier),
+          name: badgeLabelFor(l10n, badge.badgeKey, badge.tier,
+              unit: widget.preferences.unit),
           tier: badgeTierLabel(l10n, badge.tier),
         );
       case RunStickerKind.route:
@@ -1878,4 +1876,20 @@ int fitCrc(int crc, int byte) {
   crc = (crc >> 4) & 0x0FFF;
   crc = crc ^ tmp ^ table[(byte >> 4) & 0xF];
   return crc;
+}
+
+/// "#2 in November", or "#2 in November · #9 in 2026" when the year place is
+/// one the sticker prints (`shareCoursePlaces`); null when the time holds no
+/// month place. Mirrors web `RunShareImageDialog.courseRankLine`.
+String? _courseRankLine(AppLocalizations l10n, RunParkCourseTime course) {
+  final places = shareCoursePlaces(course);
+  final monthRank = places.monthRank;
+  if (monthRank == null) return null;
+  final month =
+      formatMonthName(DateTime(course.season, course.month), activeLocaleTag);
+  final seasonRank = places.seasonRank;
+  return seasonRank == null
+      ? l10n.shareCardCourseMonthRank('$monthRank', month)
+      : l10n.shareCardCourseRanks(
+          '$monthRank', month, '$seasonRank', '${course.season}');
 }

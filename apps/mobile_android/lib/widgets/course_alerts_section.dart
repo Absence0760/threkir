@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard;
+import 'package:ui_kit/ui_kit.dart' show AppSpace, FieldColumn, ListCard;
 
 import '../l10n/gen/app_localizations.dart';
 import '../race_service.dart';
@@ -207,32 +207,33 @@ class _CourseAlertsSectionState extends State<CourseAlertsSection> {
             ),
           if (_canPost) ...[
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              key: const Key('course-alert-kind'),
-              // Expanded, so a long kind label ellipsizes inside the field
-              // rather than running past it at 320 dp and 2x.
-              isExpanded: true,
-              initialValue: _kind,
-              decoration: InputDecoration(labelText: l.courseAlertsKindLabel),
-              items: [
-                for (final k in kCourseAlertKinds)
-                  DropdownMenuItem(
-                    value: k,
-                    child: Text(courseAlertKindLabel(l, k)),
-                  ),
-              ],
-              onChanged: _busy ? null : (v) => setState(() => _kind = v ?? 'notice'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              key: const Key('course-alert-message'),
-              controller: _message,
-              maxLength: _messageMax,
-              minLines: 2,
-              maxLines: 5,
-              decoration: InputDecoration(labelText: l.courseAlertsMessageLabel),
-              onChanged: (_) => setState(() {}),
-            ),
+            FieldColumn(children: [
+              DropdownButtonFormField<String>(
+                key: const Key('course-alert-kind'),
+                // Expanded, so a long kind label ellipsizes inside the field
+                // rather than running past it at 320 dp and 2x.
+                isExpanded: true,
+                initialValue: _kind,
+                decoration: InputDecoration(labelText: l.courseAlertsKindLabel),
+                items: [
+                  for (final k in kCourseAlertKinds)
+                    DropdownMenuItem(
+                      value: k,
+                      child: Text(courseAlertKindLabel(l, k)),
+                    ),
+                ],
+                onChanged: _busy ? null : (v) => setState(() => _kind = v ?? 'notice'),
+              ),
+              TextField(
+                key: const Key('course-alert-message'),
+                controller: _message,
+                maxLength: _messageMax,
+                minLines: 2,
+                maxLines: 5,
+                decoration: InputDecoration(labelText: l.courseAlertsMessageLabel),
+                onChanged: (_) => setState(() {}),
+              ),
+            ]),
             Text(l.courseAlertsPostHint, style: theme.textTheme.bodySmall),
             const SizedBox(height: 8),
             FilledButton(

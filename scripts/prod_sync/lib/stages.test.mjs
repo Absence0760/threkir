@@ -212,8 +212,6 @@ test('the entry point connects without the password on the command line and summ
 	assert.ok(r.summary.includes('1 unchanged.'));
 	assert.ok(r.summary.includes('| pocahontas | swift-creek-5k | unchanged |   | u1 |'));
 	assert.equal(r.stdout, r.summary);
-	// The committed prod_config.json declares no toggle (issue #1350), so those
-	// stages report and write nothing.
 	for (const title of ['Feature flags', 'Edge Function env toggles', 'Retired Edge Functions and secrets', 'Web build flags', 'Cron URL entries', 'One-off ops tasks']) {
 		assert.ok(r.summary.includes(`### ${title}\n`), title);
 	}
@@ -221,9 +219,14 @@ test('the entry point connects without the password on the command line and summ
 	// each reads absent and no delete or unset is sent.
 	assert.ok(r.summary.includes('| function | parkrun-import | absent |'));
 	assert.ok(!/functions delete|secrets unset/.test(r.supabase), r.supabase);
-	for (const call of ['private.apply_feature_flag(', 'private.arm_cron_url(']) {
-		assert.ok(!r.stdin.includes(call), `the committed config sends no ${call}`);
-	}
+	// A flag or cron URL is sent exactly when the committed config declares
+	// one: a flag declared off (the health backlog purge, pending counsel) is
+	// still applied, so prod is pinned to the declared state.
+	const committed = JSON.parse(fs.readFileSync(path.join(REPO, 'apps', 'backend', 'ops', 'prod_config.json'), 'utf8'));
+	const flags = Object.keys(committed.feature_flags);
+	assert.equal(r.stdin.includes('private.apply_feature_flag('), flags.length > 0, 'a flag is applied only when one is declared');
+	for (const flag of flags) assert.ok(r.stdin.includes(`'${flag}'`), `the declared flag ${flag} is sent`);
+	assert.equal(r.stdin.includes('private.arm_cron_url('), committed.cron_urls.length > 0, 'a cron URL is armed only when one is declared');
 	// The committed one-off tasks are not a toggle: each one the stub's ledger
 	// has not recorded is begun exactly once, and none is begun when none is
 	// committed.

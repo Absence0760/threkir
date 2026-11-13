@@ -8,7 +8,9 @@ import { RECAP_BADGE_IDS, type RecapBadge, type RecapBadgeId, type YearInRunning
 import type { MessageKey } from '../i18n/messages';
 import { DEFAULT_SITE_URL } from '../core/site_url';
 import { formatHoursMinutes } from '../format/time';
-import { formatDecimal, formatInteger } from '../format/number';
+import { formatInteger } from '../format/number';
+import { formatElevationIn } from '../format/elevation';
+import { formatThresholdDistance } from '../format/short_distance';
 
 export type RecapTranslate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -31,10 +33,11 @@ export const RECAP_SITE = new URL(DEFAULT_SITE_URL).host;
 /// in it (`n` for a count, `time` for a start time). A badge whose words name
 /// its threshold distance carries it as `distanceM`, printed as `{distance}`
 /// in the reader's unit (`digits` is 1 for a race distance such as 42.2, 0 for
-/// a year's total), so a miles reader reads "26.2 mi in one run".
+/// a year's total), so a miles reader reads "26.2 mi in one run"; a climb
+/// threshold is `elevationM`, printed as `{elevation}` in metres or feet.
 const RECAP_BADGE_TEXT: Record<
 	RecapBadgeId,
-	{ label: MessageKey; detail: MessageKey; param?: 'n' | 'time'; distanceM?: number; digits?: 0 | 1 }
+	{ label: MessageKey; detail: MessageKey; param?: 'n' | 'time'; distanceM?: number; digits?: 0 | 1; elevationM?: number }
 > = {
 	'dist-2000': { label: 'recap.badgeLabel_dist2000', detail: 'recap.badgeDetail_dist2000', distanceM: 2_000_000, digits: 0 },
 	'dist-1000': { label: 'recap.badgeLabel_dist1000', detail: 'recap.badgeDetail_dist1000', distanceM: 1_000_000, digits: 0 },
@@ -50,7 +53,7 @@ const RECAP_BADGE_TEXT: Record<
 	'streak-14': { label: 'recap.badgeLabel_streak14', detail: 'recap.badgeDetail_streak', param: 'n' },
 	'streak-7': { label: 'recap.badgeLabel_streak7', detail: 'recap.badgeDetail_streak', param: 'n' },
 	'elev-everest': { label: 'recap.badgeLabel_elevEverest', detail: 'recap.badgeDetail_elevEverest' },
-	'elev-5000': { label: 'recap.badgeLabel_elev5000', detail: 'recap.badgeDetail_elev5000' },
+	'elev-5000': { label: 'recap.badgeLabel_elev5000', detail: 'recap.badgeDetail_elev5000', elevationM: 5000 },
 	'months-12': { label: 'recap.badgeLabel_months12', detail: 'recap.badgeDetail_months12' },
 	'months-6': { label: 'recap.badgeLabel_months6', detail: 'recap.badgeDetail_months6', param: 'n' },
 	'pr-5': { label: 'recap.badgeLabel_pr5', detail: 'recap.badgeDetail_pr', param: 'n' },
@@ -62,15 +65,6 @@ const RECAP_BADGE_TEXT: Record<
 	night: { label: 'recap.badgeLabel_night', detail: 'recap.badgeDetail_night', param: 'time' },
 };
 
-/// A badge threshold in the reader's unit: "42.2 km" / "26.2 mi", "50 km" /
-/// "31.1 mi", "2,000 km" / "1,243 mi", grouped and decimal-marked for `locale`.
-export function recapBadgeDistance(meters: number, unit: 'km' | 'mi', digits: 0 | 1, locale?: string): string {
-	const v = unit === 'mi' ? meters / 1609.344 : meters / 1000;
-	const r = digits === 0 ? Math.round(v) : Math.round(v * 10) / 10;
-	const n = Number.isInteger(r) ? formatInteger(r, locale) : formatDecimal(r, 1, locale);
-	return `${n} ${unit}`;
-}
-
 export function recapBadgeText(
 	b: RecapBadge,
 	t: RecapTranslate,
@@ -79,8 +73,12 @@ export function recapBadgeText(
 ): { label: string; detail: string } {
 	const k = RECAP_BADGE_TEXT[b.id];
 	if (k.distanceM != null) {
-		const distance = recapBadgeDistance(k.distanceM, unit, k.digits ?? 0, locale);
+		const distance = formatThresholdDistance(k.distanceM, unit, k.digits ?? 0, locale);
 		return { label: t(k.label, { distance }), detail: t(k.detail, { distance }) };
+	}
+	if (k.elevationM != null) {
+		const elevation = formatElevationIn(k.elevationM, unit, locale);
+		return { label: t(k.label, { elevation }), detail: t(k.detail, { elevation }) };
 	}
 	const label = t(k.label);
 	if (!k.param) return { label, detail: t(k.detail) };
@@ -114,9 +112,9 @@ export function recapBadgeFromSnapshot(raw: unknown): RecapBadge | null {
 	return value == null ? { id: o.id, icon } : { id: o.id, icon, value };
 }
 
-export function recapWholeDistance(meters: number, unit: 'km' | 'mi'): string {
-	if (unit === 'mi') return `${(meters / 1609.344).toFixed(0)} mi`;
-	return `${(meters / 1000).toFixed(0)} km`;
+export function recapWholeDistance(meters: number, unit: 'km' | 'mi', locale?: string): string {
+	const v = unit === 'mi' ? meters / 1609.344 : meters / 1000;
+	return `${formatInteger(Math.round(v), locale)} ${unit}`;
 }
 
 export function recapActiveMonths(recap: YearInRunningRecap): number {
@@ -124,7 +122,7 @@ export function recapActiveMonths(recap: YearInRunningRecap): number {
 }
 
 /// `periodLabel` (e.g. "March 2026") makes a monthly card; without it the
-/// card is the year's. `locale` groups the climb figure and upper-cases the
+/// card is the year's. `locale` groups the figures and upper-cases the
 /// kicker; undefined is the host default.
 export function recapCardText(
 	recap: YearInRunningRecap,
@@ -137,16 +135,16 @@ export function recapCardText(
 		: t('recap.heroKicker', { year: recap.year });
 	return {
 		kicker: kicker.toLocaleUpperCase(opts.locale),
-		hero: recapWholeDistance(recap.totalDistanceM, unit),
+		hero: recapWholeDistance(recap.totalDistanceM, unit, opts.locale),
 		subhead: t('recap.acrossRuns', { n: recap.runCount }),
 		cells: [
-			{ label: t('recap.longestRun'), value: recapWholeDistance(recap.longestRunM, unit) },
+			{ label: t('recap.longestRun'), value: recapWholeDistance(recap.longestRunM, unit, opts.locale) },
 			{ label: t('recap.cardOnFoot'), value: formatHoursMinutes(recap.totalDurationS) },
 			{ label: t('recap.bestStreak'), value: t('recap.cardStreakDays', { n: recap.bestStreakDays }) },
-			{ label: t('recap.topWeek'), value: recapWholeDistance(recap.topWeek?.distanceM ?? 0, unit) },
+			{ label: t('recap.topWeek'), value: recapWholeDistance(recap.topWeek?.distanceM ?? 0, unit, opts.locale) },
 			{
 				label: t('recap.cardClimbed'),
-				value: `${new Intl.NumberFormat(opts.locale).format(Math.round(recap.totalElevationM))} m`,
+				value: formatElevationIn(recap.totalElevationM, unit, opts.locale),
 			},
 			{ label: t('recap.cardActiveMonths'), value: `${recapActiveMonths(recap)} / 12` },
 		],

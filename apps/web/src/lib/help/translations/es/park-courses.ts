@@ -2,8 +2,8 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'park-courses',
-	title: "Recorridos de parques: puntos de control, temporadas y clasificaciones",
-	summary: "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empieza una temporada y cómo ordenan Más rápidos y Más completados.",
+	title: "Recorridos de parques: puntos de control, temporadas, meses y clasificaciones",
+	summary: "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empiezan una temporada y un mes y cómo ordenan a los corredores Más rápidos y Más completados.",
 	sections: [
 		{
 			heading: "Qué es un recorrido de parque",
@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						"**Más rápidos** ordena a cada corredor por su mejor tiempo en el recorrido. Apareces una sola vez, con tu mejor carrera.",
-						"Por defecto muestra este año. Selecciona **Histórico** para ver los mejores tiempos de siempre.",
+						"Por defecto muestra este año. Selecciona **Este mes** para ver lo que va de mes, o **Histórico** para ver los mejores tiempos de siempre.",
 						"Filtra por género o por grupo de edad. El filtro de edad solo incluye a quienes han aceptado compartir datos de salud, así que puede ser más corto que la clasificación completa.",
 					],
 				},
@@ -52,6 +52,22 @@ export const translation: GuideTranslation = {
 			heading: "La clasificación Más completados",
 			blocks: [
 				{ type: 'p', text: "**Más completados** premia a los habituales. Cuenta los días en que completaste el recorrido, en la zona horaria del parque, así que varias vueltas el mismo día cuentan como una." },
+			],
+		},
+		{
+			heading: "Meses: una clasificación nueva cada mes",
+			blocks: [
+				{ type: 'p', text: "Las dos clasificaciones también van mes a mes. Un mes es un mes natural en la zona horaria del parque, desde la medianoche del día 1 hasta la medianoche del día 1 del mes siguiente, así que una carrera a las 23:30 del 31 de octubre en la hora del parque cuenta para octubre." },
+				{
+					type: 'list',
+					items: [
+						"Selecciona **Este mes** para ver lo que va de mes, y usa las flechas junto al nombre del mes para volver a meses anteriores.",
+						"Cada recorrido en la página de un parque muestra cuántas personas lo han corrido este mes.",
+						"Un tiempo en un recorrido de parque, en la página de tu carrera, muestra su puesto ese mes y ese año, por ejemplo N.º 2 en noviembre, n.º 9 en 2026. La pegatina **Recorrido de parque** de una imagen compartida muestra el puesto del mes, y también el del año cuando está entre los 10 primeros.",
+						"Cuando termina un mes en la hora del parque, recibes en tu bandeja de entrada un aviso con tu mejor tiempo de ese mes en cada recorrido que corriste. Desactívalo con **Meses en recorridos de parque**: en la web, en [[route:/settings/notifications|Notificaciones]]; en la app del móvil, en **Notificaciones**, dentro de la pestaña **Tú**.",
+						"Las insignias de meses de parque cuentan los meses en los que completaste un recorrido de parque, a los 3, 6, 12 y 24 meses. Cuentan recorridos completados, nunca puestos.",
+					],
+				},
 			],
 		},
 		{
@@ -70,8 +86,8 @@ export const translation: GuideTranslation = {
 		},
 	],
 	sources: {
-		title: "c0967d2bf224e3d2",
-		summary: "6a173631b44944bc",
+		title: "80ff9e4c22672c3e",
+		summary: "a8d0d3cdf47ef5c6",
 		"s0.heading": "216fc084817bfda9",
 		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
@@ -87,14 +103,21 @@ export const translation: GuideTranslation = {
 		"s2.b1": "6afb246fc0e80841",
 		"s3.heading": "f90c634a3c69c00f",
 		"s3.b0.i0": "8bab47facf52e4fd",
-		"s3.b0.i1": "c74b158f75754752",
+		"s3.b0.i1": "01322b98d3fa4762",
 		"s3.b0.i2": "a26ad1f8b547015d",
 		"s4.heading": "d62c88ea85d104ce",
 		"s4.b0": "23512913978ca5c1",
-		"s5.heading": "b119ed9eec93efe3",
-		"s5.b0.i0": "bee88a50dcbbbfa2",
-		"s5.b0.i1": "25229437ce8179b8",
-		"s5.b0.i2": "c95241619d2e3582",
-		"s5.b1": "f0b47eeb5f542fe4",
+		"s5.heading": "2158104d68549d3e",
+		"s5.b0": "f8cebd1b6b6f6d5c",
+		"s5.b1.i0": "95832d49c27d961e",
+		"s5.b1.i1": "e5fd55e453a25d9a",
+		"s5.b1.i2": "0220ee50a2c3ffc2",
+		"s5.b1.i3": "3c988cac91d6d886",
+		"s5.b1.i4": "9f0fedf00dcae221",
+		"s6.heading": "b119ed9eec93efe3",
+		"s6.b0.i0": "bee88a50dcbbbfa2",
+		"s6.b0.i1": "25229437ce8179b8",
+		"s6.b0.i2": "c95241619d2e3582",
+		"s6.b1": "f0b47eeb5f542fe4",
 	},
 };

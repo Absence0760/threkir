@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        FieldColumn,
         ListSkeleton,
         PageHeader,
         PushedPage,
@@ -431,43 +432,43 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
                   value: _consent,
                   onChanged: (v) => setState(() => _consent = v),
                 ),
-                if (_consent) ...[
+                if (_consent)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: TextField(
-                      controller: _heightCtl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: l10n.bodyMetricsHeight,
-                        suffixText: 'cm',
-                        errorText: _heightError
-                            ? l10n.limitsHeightOutOfRange(
-                                _bound(columnMin(_heightKey)),
-                                _bound(columnMax(_heightKey)),
-                              )
-                            : null,
-                      ),
+                    child: FieldColumn(
+                      children: [
+                        TextField(
+                          controller: _heightCtl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: l10n.bodyMetricsHeight,
+                            suffixText: 'cm',
+                            errorText: _heightError
+                                ? l10n.limitsHeightOutOfRange(
+                                    _bound(columnMin(_heightKey)),
+                                    _bound(columnMax(_heightKey)),
+                                  )
+                                : null,
+                          ),
+                        ),
+                        TextField(
+                          controller: _weightCtl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: l10n.bodyMetricsWeight,
+                            suffixText: WeightFormat.label(_unit),
+                            errorText: _weightError
+                                ? _weightRangeMessage(l10n)
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: TextField(
-                      controller: _weightCtl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: l10n.bodyMetricsWeight,
-                        suffixText: WeightFormat.label(_unit),
-                        errorText: _weightError
-                            ? _weightRangeMessage(l10n)
-                            : null,
-                      ),
-                    ),
-                  ),
-                ],
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: FilledButton(

@@ -3752,8 +3752,8 @@
   {
     "id": "park-courses",
     "lang": "fr",
-    "title": "Parcours des parcs : points de contrôle, saisons et classements",
-    "summary": "Comment un parcours de parc chronomètre votre course, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
+    "title": "Parcours des parcs : points de contrôle, saisons, mois et classements",
+    "summary": "Comment un parcours de parc chronomètre votre course, pourquoi chaque point de contrôle compte, quand commencent une saison et un mois et comment se classent Plus rapides et Le plus de passages.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3827,7 +3827,7 @@
             "type": "list",
             "items": [
               "**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure course.",
-              "Il affiche cette année par défaut. Sélectionnez **Depuis toujours** pour les meilleurs temps de tous les temps.",
+              "Il affiche cette année par défaut. Sélectionnez **Ce mois-ci** pour le mois en cours, ou **Depuis toujours** pour les meilleurs temps jamais réalisés.",
               "Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont accepté de partager leurs données de santé, il peut donc être plus court que le classement complet."
             ]
           }
@@ -3839,6 +3839,25 @@
           {
             "type": "p",
             "text": "**Le plus de passages** récompense les habitués. Il compte les jours où vous avez bouclé le parcours, dans le fuseau horaire du parc : plusieurs tours le même jour comptent pour un."
+          }
+        ]
+      },
+      {
+        "heading": "Les mois : un nouveau classement chaque mois",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Les deux classements existent aussi mois par mois. Un mois est un mois civil dans le fuseau horaire du parc, de minuit le 1er à minuit le 1er du mois suivant : une course à 23 h 30 le 31 octobre, à l'heure du parc, compte donc pour octobre."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Sélectionnez **Ce mois-ci** pour voir le mois en cours, et utilisez les flèches à côté du nom du mois pour revenir aux mois précédents.",
+              "Chaque parcours sur la page d'un parc indique combien de personnes l'ont couru ce mois-ci.",
+              "Un temps sur un parcours de parc, sur la page de votre course, indique sa place ce mois-là et cette année-là, par exemple n° 2 en novembre, n° 9 en 2026. L'autocollant **Parcours de parc** d'une image partagée montre la place du mois, et aussi celle de l'année quand elle est dans les 10 premières.",
+              "Quand un mois se termine à l'heure du parc, vous recevez dans votre boîte de réception un message avec votre meilleur temps du mois sur chaque parcours que vous avez couru. Désactivez-le avec **Mois sur les parcours de parc** : sur le web dans [[route:/settings/notifications|Notifications]], dans l'app mobile sous **Notifications** dans l'onglet **Vous**.",
+              "Les badges des mois au parc comptent les mois où vous avez terminé un parcours de parc, à 3, 6, 12 et 24 mois. Ils comptent les parcours terminés, jamais les places."
+            ]
           }
         ]
       },

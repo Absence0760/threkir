@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 
 import 'filter_bar.dart';
 import 'pushed_page.dart';
@@ -38,12 +39,19 @@ class PrimaryAction {
       (other.onPressed == null) == (onPressed == null);
 
   /// This action as an extended FAB. [onPressed] defaults to the action's own.
-  Widget toFab({Object? heroTag, VoidCallback? onPressed}) =>
+  /// With [extended] false only the icon shows, and the label becomes the
+  /// tooltip, so the button keeps its name.
+  Widget toFab({
+    Object? heroTag,
+    VoidCallback? onPressed,
+    bool extended = true,
+  }) =>
       FloatingActionButton.extended(
         key: fabKey,
         heroTag: heroTag,
+        isExtended: extended,
         onPressed: this.onPressed == null ? null : (onPressed ?? this.onPressed),
-        tooltip: tooltip,
+        tooltip: tooltip ?? (extended ? null : label),
         icon: Icon(icon),
         label: Text(label),
       );
@@ -65,6 +73,23 @@ class HubPrimaryActions extends ChangeNotifier {
   }
 
   PrimaryAction? of(Object tab) => _actions[tab];
+
+  /// Tabs whose list is scrolling down, whose FAB shows its icon only.
+  final Set<Object> _collapsed = {};
+
+  /// Whether [tab]'s FAB is collapsed to its icon.
+  bool isCollapsed(Object tab) => _collapsed.contains(tab);
+
+  /// Collapses [tab]'s FAB while its list scrolls down and extends it again
+  /// when the list scrolls up or comes to rest at either end. An extended FAB
+  /// at 2x text spans most of a narrow phone, so over a list on the move it
+  /// covered the trailing control of every card it passed (issue #1374,
+  /// Routes → Mine: Build over the stars).
+  void setCollapsed(Object tab, bool collapsed) {
+    if (_disposed) return;
+    final changed = collapsed ? _collapsed.add(tab) : _collapsed.remove(tab);
+    if (changed) notifyListeners();
+  }
 
   /// Back handlers by tab, each keyed by the body that registered it, so a
   /// tab with several bodies (Routes' views) never has one clear another's.
@@ -149,6 +174,7 @@ class HubFab extends StatelessWidget {
           return action.toFab(
             heroTag: ValueKey(('hub-fab', tab)),
             onPressed: () => actions.of(tab)?.onPressed?.call(),
+            extended: !actions.isCollapsed(tab),
           );
         },
       );
@@ -356,13 +382,32 @@ class _HubTabBodyState extends State<HubTabBody> {
   /// refresh on and off (a view switch) keeps the state under it.
   Widget _content() {
     final onRefresh = widget.onRefresh;
-    return RefreshIndicator(
-      onRefresh: onRefresh ?? () async {},
-      notificationPredicate: onRefresh == null
-          ? (_) => false
-          : defaultScrollNotificationPredicate,
-      child: widget.body,
+    return NotificationListener<UserScrollNotification>(
+      onNotification: _onUserScroll,
+      child: RefreshIndicator(
+        onRefresh: onRefresh ?? () async {},
+        notificationPredicate: onRefresh == null
+            ? (_) => false
+            : defaultScrollNotificationPredicate,
+        child: widget.body,
+      ),
     );
+  }
+
+  /// Hosted, tells the hub which way the list is moving, so its FAB shows
+  /// its icon only while the list scrolls down ([HubPrimaryActions.setCollapsed]).
+  bool _onUserScroll(UserScrollNotification n) {
+    final scope = _scope;
+    if (scope == null || n.metrics.axis != Axis.vertical) return false;
+    switch (n.direction) {
+      case ScrollDirection.reverse:
+        scope.actions.setCollapsed(scope.tab, true);
+      case ScrollDirection.forward:
+        scope.actions.setCollapsed(scope.tab, false);
+      case ScrollDirection.idle:
+        if (n.metrics.atEdge) scope.actions.setCollapsed(scope.tab, false);
+    }
+    return false;
   }
 
   @override

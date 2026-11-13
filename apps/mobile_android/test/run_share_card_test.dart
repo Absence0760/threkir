@@ -978,24 +978,50 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
     });
 
-    testWidgets('a park course time is offered as a sticker and prints its rank',
-        (tester) async {
+    RunParkCourseTime courseTime({int? monthRank, int? seasonRank}) =>
+        RunParkCourseTime(
+          effortId: 'effort-1',
+          courseName: 'Beaver Lake Trail',
+          courseSlug: 'beaver-lake-trail',
+          parkName: 'Pocahontas State Park',
+          parkSlug: 'pocahontas',
+          regionCode: 'US-VA',
+          timeSeconds: 1452,
+          season: 2027,
+          seasonRank: seasonRank,
+          month: 11,
+          monthRank: monthRank,
+        );
+
+    testWidgets('a park course sticker prints its month place, and the year '
+        'place when it is in the top 10', (tester) async {
       await openSheet(tester,
-          courseLoad: () async => const RunParkCourseTime(
-              effortId: 'effort-1',
-              courseName: 'Beaver Lake Trail',
-              courseSlug: 'beaver-lake-trail',
-              parkName: 'Pocahontas State Park',
-              parkSlug: 'pocahontas',
-              regionCode: 'US-VA',
-              timeSeconds: 1452,
-              season: 2027,
-              seasonRank: 3));
+          courseLoad: () async => courseTime(monthRank: 2, seasonRank: 9));
       await tapChip(tester, 'Sticker');
       await tapChip(tester, 'Park course');
       expect(find.text('Beaver Lake Trail'), findsOneWidget);
       expect(find.text('Pocahontas State Park'), findsOneWidget);
-      expect(find.text('#3 in 2027'), findsOneWidget);
+      expect(find.text('#2 in November · #9 in 2027'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a year place outside the top 10 leaves the sticker the month',
+        (tester) async {
+      await openSheet(tester,
+          courseLoad: () async => courseTime(monthRank: 4, seasonRank: 11));
+      await tapChip(tester, 'Sticker');
+      await tapChip(tester, 'Park course');
+      expect(find.text('#4 in November'), findsOneWidget);
+      expect(find.textContaining('2027'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a time with no month place prints no place', (tester) async {
+      await openSheet(tester, courseLoad: () async => courseTime());
+      await tapChip(tester, 'Sticker');
+      await tapChip(tester, 'Park course');
+      expect(find.text('Beaver Lake Trail'), findsOneWidget);
+      expect(find.textContaining('#'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 

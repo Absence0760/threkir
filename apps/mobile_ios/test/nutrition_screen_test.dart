@@ -25,6 +25,11 @@ import 'worst_case_layout.dart';
 class _OfflineFakeApi extends ApiClient {
   @override
   String? get userId => null;
+
+  // Logging food needs health-data consent (decisions § 2514); these tests
+  // are about the diary, so the runner has given it.
+  @override
+  Future<bool> fetchHealthDataConsented() async => true;
 }
 
 class _FakePathProvider extends PathProviderPlatform
@@ -232,13 +237,10 @@ void main() {
     try {
       await tester.pumpWidget(_app(f.store));
       await tester.pump();
-      expect(
-        find.text(
-            'Add your height, weight, age and sex to see calorie + macro targets.'),
-        findsOneWidget,
-      );
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(l10n.nutritionNoTargets), findsOneWidget);
 
-      await tester.tap(find.text('Add body metrics'));
+      await tester.tap(find.text(l10n.nutritionAddBodyMetrics));
       await tester.pumpAndSettle();
       expect(find.byType(SettingsBodyMetricsScreen), findsOneWidget);
     } finally {
@@ -1032,6 +1034,9 @@ class _SlowFoodApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
+  Future<bool> fetchHealthDataConsented() async => true;
+
+  @override
   Future<List<FoodLogRow>> fetchFoodLog({
     required DateTime from,
     required DateTime to,
@@ -1043,6 +1048,15 @@ class _SlowFoodApi extends ApiClient {
     // already treats a mid-refresh failure as "offline, use the cache".
     throw StateError('offline');
   }
+}
+
+/// A signed-in runner without health-data consent (decisions § 2514).
+class _NoConsentApi extends ApiClient {
+  @override
+  String? get userId => null;
+
+  @override
+  Future<bool> fetchHealthDataConsented() async => false;
 }
 
 void _livenessTests() {
@@ -1118,6 +1132,30 @@ void _livenessTests() {
       await tester.pump();
       expect(api.pulls, 2,
           reason: 'midnight re-pulls the day rather than keeping yesterday');
+    } finally {
+      await pumpUntilStoreWritesSettle(tester);
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('Log food without health-data consent asks first and logs nothing',
+      (tester) async {
+    final f = await _store('noconsent_');
+    try {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NutritionScreen(api: _NoConsentApi(), store: f.store),
+      ));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Log food'));
+      await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(l10n.healthConsentFoodTitle), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, l10n.commonCancel));
+      await tester.pumpAndSettle();
+      expect(find.byType(NutritionLogSheet), findsNothing);
+      expect(f.store.rows, isEmpty);
     } finally {
       await pumpUntilStoreWritesSettle(tester);
       f.dir.deleteSync(recursive: true);

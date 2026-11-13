@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { sessionStore } from '#lib/core/browser_storage.ts';
 	import { onMount } from 'svelte';
 	import { goto, replaceState } from '$app/navigation';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -30,8 +31,8 @@
 
 	function takeStashed(key: string): string | null {
 		try {
-			const value = sessionStorage.getItem(key);
-			sessionStorage.removeItem(key);
+			const value = sessionStore()?.getItem(key) ?? null;
+			sessionStore()?.removeItem(key);
 			return value;
 		} catch (_) {
 			return null;
@@ -51,7 +52,7 @@
 			const signedIn = linking ? (await supabase.auth.getSession()).data.session : null;
 			if (linking && signedIn) {
 				try {
-					sessionStorage.setItem(
+					sessionStore()?.setItem(
 						LINK_REFUSAL_STASH_KEY,
 						encodeLinkRefusal({ provider: linking, ...refused }),
 					);
@@ -119,8 +120,8 @@
 		// fallback below re-prompts.
 		let oauthSignUp = false;
 		try {
-			const stampedAge = sessionStorage.getItem('age_confirmed_at');
-			const stampedTerms = sessionStorage.getItem('terms_accepted_at');
+			const stampedAge = sessionStore()?.getItem('age_confirmed_at') ?? null;
+			const stampedTerms = sessionStore()?.getItem('terms_accepted_at') ?? null;
 			if (stampedAge && stampedTerms) {
 				oauthSignUp = true;
 				// Seed the region unit default from the browser locale on the
@@ -129,8 +130,8 @@
 				await supabase.rpc('confirm_age_and_terms', {
 					p_preferred_unit: defaultUnitForLocale(navigator.language),
 				});
-				sessionStorage.removeItem('age_confirmed_at');
-				sessionStorage.removeItem('terms_accepted_at');
+				sessionStore()?.removeItem('age_confirmed_at');
+				sessionStore()?.removeItem('terms_accepted_at');
 			}
 		} catch (_) {
 			/* RPC failed — the /auth/confirm-age check below catches it. */

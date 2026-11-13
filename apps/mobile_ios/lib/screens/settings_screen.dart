@@ -40,8 +40,10 @@ import 'your_shares_screen.dart';
 /// platforms (issue #1374).
 ///
 /// The search matches a row's title on this list and on every Preferences
-/// page (`preferencesRowTitles`), and a result opens the screen or page that
-/// holds it. The host (`YouScreen`) supplies the scaffold, the page title and
+/// page (`PreferencesRow`). A result for a row here opens what that row
+/// opens; a result for a Preferences row opens its page landed on the row:
+/// scrolled into view, highlighted and announced (decisions § 2494,
+/// amended). A result is keyed by its row's stable id, not its title. The host (`YouScreen`) supplies the scaffold, the page title and
 /// the identity card through [header].
 class SettingsScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -100,9 +102,14 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-/// One searchable destination: what it is called, where it lives (null for
-/// a row on this list) and how to open it.
-typedef _Entry = ({String title, String? where, VoidCallback? open});
+/// One searchable destination: its stable id, what it is called, where it
+/// lives (null for a row on this list) and how to open it.
+typedef _Entry = ({
+  String id,
+  String title,
+  String? where,
+  VoidCallback? open,
+});
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final SocialService _social = widget.social ?? SocialService();
@@ -155,9 +162,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _openPreferences(PreferencesPage page) =>
+  void _openPreferences(PreferencesPage page, {PreferencesRow? focus}) =>
       _open((_) => SettingsPreferencesScreen(
             page: page,
+            focus: focus,
             apiClient: widget.apiClient,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
@@ -172,6 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final api = widget.apiClient;
     final signedIn = api?.userId != null;
     (ListRow, _Entry) row({
+      required String id,
       Key? key,
       required IconData icon,
       required String title,
@@ -186,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: subtitle,
             onTap: onTap,
           ),
-          (title: title, where: null, open: onTap),
+          (id: id, title: title, where: null, open: onTap),
         );
     final gearStore = widget.gearStore;
     return [
@@ -194,6 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         l10n.settingsSectionProfile,
         [
           row(
+            id: 'you-account',
             icon: Icons.person_outline,
             title: l10n.settingsAccountTitle,
             subtitle: l10n.settingsTabAccountSubtitle,
@@ -206,6 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 )),
           ),
           row(
+            id: 'you-bodyMetrics',
             icon: Icons.monitor_weight_outlined,
             title: l10n.bodyMetricsTitle,
             subtitle: l10n.bodyMetricsTileSubtitle,
@@ -216,6 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 )),
           ),
           row(
+            id: 'you-safety',
             icon: Icons.health_and_safety,
             title: l10n.safetyTitle,
             subtitle: l10n.safetyTileSubtitle,
@@ -228,6 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // privacy rows, and only once the profile was private (#1374).
           if (signedIn)
             row(
+              id: 'you-followRequests',
               key: const ValueKey('you-follow-requests'),
               icon: Icons.person_add_alt,
               title: l10n.followRequestsTitle,
@@ -241,6 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         [
           for (final page in PreferencesPage.values)
             row(
+              id: 'you-prefs-${page.name}',
               key: ValueKey('you-prefs-${page.name}'),
               icon: preferencesPageIcon(page),
               title: preferencesPageTitle(l10n, page),
@@ -253,6 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         l10n.settingsSectionAppsData,
         [
           row(
+            id: 'you-integrations',
             icon: Icons.link,
             title: l10n.integrationsTitle,
             subtitle: l10n.settingsTabIntegrationsSubtitle,
@@ -265,6 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 )),
           ),
           row(
+            id: 'you-devices',
             icon: Icons.devices,
             title: l10n.devicesTitle,
             subtitle: signedIn
@@ -278,6 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // A null onTap renders the row disabled with its reason, never a
           // tappable row that silently does nothing (#666 I16).
           row(
+            id: 'you-gear',
             icon: Icons.directions_run,
             title: l10n.gearTitle,
             subtitle: gearStore == null
@@ -294,6 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           if (_sharesEnabled)
             row(
+              id: 'you-shares',
               icon: Icons.share_outlined,
               title: l10n.sharesTitle,
               subtitle: l10n.sharesTileSubtitle,
@@ -306,6 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         l10n.settingsSectionAccountLegal,
         [
           row(
+            id: 'you-pro',
             icon: Icons.favorite_outline,
             title: l10n.proTitle,
             subtitle: l10n.settingsTabProSubtitle,
@@ -313,12 +332,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _open((_) => SettingsProScreen(apiClient: widget.apiClient)),
           ),
           row(
+            id: 'you-about',
             icon: Icons.info_outline,
             title: l10n.aboutTitle,
             subtitle: l10n.settingsTabAboutSubtitle,
             onTap: () => _open((_) => const SettingsAboutScreen()),
           ),
           row(
+            id: 'you-help',
             icon: Icons.help_outline,
             title: l10n.helpTitle,
             subtitle: l10n.helpSettingsSubtitle,
@@ -330,7 +351,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   /// Rows that match [query]: the landing's own rows, then every row of
-  /// every Preferences page, each opening the page that holds it.
+  /// every Preferences page, each opening its page landed on the row.
   List<Widget> _results(
     AppLocalizations l10n,
     String query,
@@ -341,19 +362,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final entries = <_Entry>[
       for (final (_, rows) in groups)
         for (final (_, entry) in rows) entry,
-      for (final page in PreferencesPage.values)
-        for (final title in preferencesRowTitles(l10n, page))
-          (
-            title: title,
-            where: preferencesPageTitle(l10n, page),
-            open: () => _openPreferences(page),
-          ),
+      for (final r in PreferencesRow.values)
+        (
+          id: r.name,
+          title: preferencesRowTitle(l10n, r),
+          where: preferencesPageTitle(l10n, r.page),
+          open: () => _openPreferences(r.page, focus: r),
+        ),
     ];
     return [
       for (final e in entries)
         if (hit(e.title))
           ListRow.nav(
-            key: ValueKey('settings-search-result-${e.title}'),
+            key: ValueKey('settings-search-result-${e.id}'),
             title: e.title,
             subtitle: e.where,
             onTap: e.open,

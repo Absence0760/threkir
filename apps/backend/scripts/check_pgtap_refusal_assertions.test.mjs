@@ -362,6 +362,11 @@ test('the base-table operator widens row-level security rather than bypassing it
     PREAMBLE.includes(TRANSACTION_LOCAL_SQL),
     'the mutant declares the transaction-local test but never defines it',
   );
+  assert.match(
+    PREAMBLE,
+    /permissive = 'RESTRICTIVE'[\s\S]*alter policy %I on %s using \(\(current_setting/,
+    'a restrictive policy is AND-ed over the permissive set, so the added permissive policy cannot reach a row it hides; the preamble must rewrite each restrictive SELECT policy under the same gate',
+  );
 });
 
 // pgtap's own `lives_ok` / `throws_ok` run their payload in a subtransaction, so

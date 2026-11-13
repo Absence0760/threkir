@@ -50,7 +50,6 @@ const _unconverted = <String, int>{
   'lib/screens/plan_detail_screen.dart': 2,
   'lib/screens/plan_library_screen.dart': 1,
   'lib/screens/plan_new_screen.dart': 3,
-  'lib/screens/profile_screen.dart': 2,
   'lib/screens/race_detail_screen.dart': 2,
   'lib/screens/route_detail_screen.dart': 2,
   'lib/screens/routine_public_library_screen.dart': 1,

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:ui_kit/ui_kit.dart'
     show ActiveFilter, AppInsets, AppSearchField, AppSpace, AsyncView, ChoiceChipOption, EmptyState, FilterBar, HubTabBody, ListCard, LoadingState, StatusPill, buildChoiceChip, showFilterSheet;
 
+import '../fab_clearance.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../social_service.dart';
 import '../widgets/error_state.dart';
@@ -381,7 +382,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         builder: (_, results) => ListView.separated(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(AppInsets.gutter, AppSpace.sm,
-              AppInsets.gutter, AppSpace.md + MediaQuery.paddingOf(context).bottom),
+              AppInsets.gutter, listEndClearance(context)),
           itemCount: results.length,
           separatorBuilder: (_, _) => const SizedBox(height: AppInsets.itemGap),
           itemBuilder: (_, i) => _ResultCard(

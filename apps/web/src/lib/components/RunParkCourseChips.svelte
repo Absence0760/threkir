@@ -3,7 +3,8 @@
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { formatDuration } from '#lib/format/time.ts';
 	import { fetchRunParkCourseTimes } from '#lib/core/data.ts';
-	import { regionSlug, type RunParkCourseTime } from '#lib/parks/park_courses.ts';
+	import { boardPeriodParam, regionSlug, type RunParkCourseTime } from '#lib/parks/park_courses.ts';
+	import { monthName } from '#lib/format/calendar.ts';
 
 	interface Props {
 		runId: string;
@@ -38,14 +39,31 @@
 		if (isOwner) void load();
 	});
 
+	/// The course on the effort's month board, the place the chip names first.
 	function href(t: RunParkCourseTime): string {
-		return `/parks/${regionSlug(t.region_code)}/${t.park_slug}/${t.course_slug}`;
+		const period = boardPeriodParam({ kind: 'month', season: t.season, month: t.month });
+		return `/parks/${regionSlug(t.region_code)}/${t.park_slug}/${t.course_slug}?period=${period}`;
 	}
 
+	/// "#2 in November, #9 in 2026": the place on the effort's month board
+	/// where the park is, then on its season's, each when it holds one.
 	function rank(t: RunParkCourseTime): string | null {
-		if (t.season_rank == null) return null;
-		const nf = new Intl.NumberFormat(currentLocale(), { useGrouping: false });
-		return m('runDetail.parkCourseRank', { rank: nf.format(t.season_rank), season: nf.format(t.season) });
+		const locale = currentLocale();
+		const nf = new Intl.NumberFormat(locale, { useGrouping: false });
+		const month = monthName(t.month - 1, locale);
+		if (t.month_rank != null && t.season_rank != null) {
+			return m('runDetail.parkCourseRanks', {
+				monthRank: nf.format(t.month_rank),
+				month,
+				seasonRank: nf.format(t.season_rank),
+				season: nf.format(t.season),
+			});
+		}
+		if (t.month_rank != null) return m('runDetail.parkCourseMonthRank', { rank: nf.format(t.month_rank), month });
+		if (t.season_rank != null) {
+			return m('runDetail.parkCourseRank', { rank: nf.format(t.season_rank), season: nf.format(t.season) });
+		}
+		return null;
 	}
 </script>
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { m } from '#lib/i18n/store.svelte.ts';
 
-	const lastUpdated = '2026-07-14';
+	const lastUpdated = '2026-11-13';
 	const privacyEmail = 'privacy@threkir.com';
 </script>
 
@@ -21,9 +21,9 @@
 		<li>
 			<strong>{m('deleteAccount.s1WebLabel')}</strong>{m('deleteAccount.s1WebPrefix')}<a
 				href="/settings/account">{m('deleteAccount.s1WebLink')}</a
-			>{m('deleteAccount.s1WebMiddle')}<strong>{m('deleteAccount.s1WebAction')}</strong>{m(
-				'deleteAccount.s1WebSuffix'
-			)}
+			>{m('deleteAccount.s1WebMiddle')}<strong>{m('deleteAccount.s1WebAction')}</strong>{m('deleteAccount.s1WebSuffix', {
+				word: m('settingsAccount.deleteChallengeWord'),
+			})}
 		</li>
 		<li>
 			<strong>{m('deleteAccount.s1MobileLabel')}</strong>{m('deleteAccount.s1MobileBody')}

@@ -278,7 +278,7 @@ test.describe('/settings/gear — CRUD', () => {
 			retiredRow.getByRole('button', { name: 'Restore' })
 		).toBeVisible();
 		await expect(
-			page.getByRole('heading', { name: 'Retired', level: 3 })
+			page.getByRole('heading', { name: 'Retired', level: 2 })
 		).toBeVisible();
 
 		// Restore — row leaves the retired list, comes back into active.

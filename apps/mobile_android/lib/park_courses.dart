@@ -363,6 +363,13 @@ class RunParkCourseTime {
   final int timeSeconds;
   final int season;
   final int? seasonRank;
+
+  /// The effort's calendar month (1-12) where the park is.
+  final int month;
+
+  /// Its place on that month's fastest board, when it is the runner's best
+  /// that month and in the top 100.
+  final int? monthRank;
   const RunParkCourseTime({
     required this.effortId,
     required this.courseName,
@@ -373,6 +380,8 @@ class RunParkCourseTime {
     required this.timeSeconds,
     required this.season,
     required this.seasonRank,
+    required this.month,
+    required this.monthRank,
   });
 
   factory RunParkCourseTime.fromRow(Map<String, dynamic> row) => RunParkCourseTime(
@@ -385,17 +394,125 @@ class RunParkCourseTime {
         timeSeconds: (row['time_seconds'] as num).round(),
         season: (row['season'] as num).toInt(),
         seasonRank: (row['season_rank'] as num?)?.toInt(),
+        month: (row['month'] as num).toInt(),
+        monthRank: (row['month_rank'] as num?)?.toInt(),
       );
 }
 
-/// The course the share sticker prints: the best season rank among the run's
-/// ranked courses, else the first course; null when the run completed none.
+/// The sticker adds the year's place only when it is this high (issue #1343).
+const int kShareCourseYearPlaceMax = 10;
+
+/// The course the share sticker prints: the best month place among the run's
+/// park course times (the year place breaking a tie), else the first course;
+/// null when the run completed none.
 RunParkCourseTime? pickShareCourse(List<RunParkCourseTime> rows) {
   RunParkCourseTime? best;
   for (final r in rows) {
-    final rank = r.seasonRank;
+    final rank = r.monthRank;
     if (rank == null) continue;
-    if (best == null || rank < best.seasonRank!) best = r;
+    if (best == null ||
+        rank < best.monthRank! ||
+        (rank == best.monthRank &&
+            (r.seasonRank ?? double.infinity) <
+                (best.seasonRank ?? double.infinity))) {
+      best = r;
+    }
   }
   return best ?? (rows.isEmpty ? null : rows.first);
+}
+
+/// The places a share sticker prints for a course time: the month place, and
+/// the year place only when it is in the top [kShareCourseYearPlaceMax].
+({int? monthRank, int? seasonRank}) shareCoursePlaces(RunParkCourseTime t) => (
+      monthRank: t.monthRank,
+      seasonRank: t.seasonRank != null && t.seasonRank! <= kShareCourseYearPlaceMax
+          ? t.seasonRank
+          : null,
+    );
+
+/// Which period a park course board shows (issue #1343).
+enum BoardPeriodKind { month, year, all }
+
+/// The period a park course board shows: one calendar month or the year, each
+/// where the park is, or all time. A month or year is the `p_season` /
+/// `p_month` pair the boards take.
+class BoardPeriod {
+  final BoardPeriodKind kind;
+  final int? season;
+  final int? month;
+
+  const BoardPeriod.month(int this.season, int this.month)
+      : kind = BoardPeriodKind.month;
+  const BoardPeriod.year(int this.season)
+      : kind = BoardPeriodKind.year,
+        month = null;
+  const BoardPeriod.all()
+      : kind = BoardPeriodKind.all,
+        season = null,
+        month = null;
+
+  @override
+  bool operator ==(Object other) =>
+      other is BoardPeriod &&
+      other.kind == kind &&
+      other.season == season &&
+      other.month == month;
+
+  @override
+  int get hashCode => Object.hash(kind, season, month);
+
+  @override
+  String toString() => 'BoardPeriod($kind, $season, $month)';
+}
+
+/// The earliest season either board accepts (`p_season` between 2000 and 2200).
+const int kBoardFirstSeason = 2000;
+
+/// "Now" where the park is, read from `park_season` and `park_month`.
+typedef ParkNow = ({int season, int month});
+
+/// Reads a `period` value: `YYYY-MM` is that month, `all` is all time.
+/// Anything else, a month outside 1-12, a season the boards refuse, or a
+/// month after the park's current one is null, and the caller shows this
+/// year.
+BoardPeriod? parseBoardPeriod(String? raw, ParkNow now) {
+  if (raw == 'all') return const BoardPeriod.all();
+  final m = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(raw ?? '');
+  if (m == null) return null;
+  final season = int.parse(m.group(1)!);
+  final month = int.parse(m.group(2)!);
+  if (month < 1 || month > 12 || season < kBoardFirstSeason) return null;
+  if (season > now.season || (season == now.season && month > now.month)) {
+    return null;
+  }
+  return BoardPeriod.month(season, month);
+}
+
+/// The `period` value for a period. Null for the year, the default, so the
+/// page's own URL stays bare; only the park's current year is ever shown.
+String? boardPeriodParam(BoardPeriod period) => switch (period.kind) {
+      BoardPeriodKind.all => 'all',
+      BoardPeriodKind.year => null,
+      BoardPeriodKind.month =>
+        '${period.season}-${period.month.toString().padLeft(2, '0')}',
+    };
+
+/// The `p_season` / `p_month` a board call passes for a period; null leaves
+/// the argument out.
+({int? season, int? month}) boardPeriodArgs(BoardPeriod period) =>
+    (season: period.season, month: period.month);
+
+/// The month [delta] months from a month period, or null when that would
+/// pass the park's current month or come before the first season the boards
+/// accept. Any other period has no neighbour.
+BoardPeriod? stepBoardMonth(BoardPeriod period, int delta, ParkNow now) {
+  if (period.kind != BoardPeriodKind.month) return null;
+  final index = period.season! * 12 + (period.month! - 1) + delta;
+  final season = index ~/ 12;
+  final month = index % 12 + 1;
+  if (season < kBoardFirstSeason) return null;
+  if (season > now.season || (season == now.season && month > now.month)) {
+    return null;
+  }
+  return BoardPeriod.month(season, month);
 }

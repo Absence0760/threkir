@@ -57,10 +57,6 @@ const _barsLeft = <String, ({int count, String why})>{
     why: 'the chat is a conversation, with its history drawer opened from '
         'the bar; its signed-out and consent states are PushedPages',
   ),
-  'lib/screens/fitness_hub_screen.dart': (
-    count: 1,
-    why: 'a root hub: a zero-height bar that only holds its tab strip',
-  ),
   'lib/screens/group_thread_screen.dart': (
     count: 1,
     why: 'a conversation: its name stays in the bar (ThreadTitle, with a '
@@ -110,11 +106,6 @@ const _barsLeft = <String, ({int count, String why})>{
     count: 1,
     why: 'the wizard has no Back; it is in a PageTitleScope and says its '
         'title in the step, the bar repeating it as a PushedPage would',
-  ),
-  'lib/screens/social_screen.dart': (
-    count: 2,
-    why: 'a root hub, not a pushed page: its bar holds the tab strip and '
-        'the inbox and bell (and the same bar while signed out)',
   ),
   'lib/widgets/collapsing_tab_host.dart': (
     count: 1,
@@ -218,7 +209,8 @@ void main() {
             "title and tell the page's bar when it has scrolled away");
   });
 
-  test('the TO-12 pages and Progress say their title in the body', () {
+  test('the TO-12 pages, Progress and the four root tabs say their title '
+      'in the body', () {
     final bad = <String>[];
     for (final path in _titledInBody) {
       final s = _code(File(path).readAsStringSync());
@@ -228,12 +220,24 @@ void main() {
         bad.add(path);
       }
     }
+    // The four bottom-nav roots are ui_kit RootPages, which own the large
+    // title, its collapse into the bar and the bar's actions; the two with a
+    // scroll view of their own open it with the PageHeader.
     for (final path in const [
       'lib/screens/today_screen.dart',
       'lib/screens/you_screen.dart',
     ]) {
-      if (!_code(File(path).readAsStringSync()).contains('PageHeader(')) {
-        bad.add('$path (root page without a PageHeader)');
+      final s = _code(File(path).readAsStringSync());
+      if (!s.contains('RootPage(') || !s.contains('PageHeader(')) {
+        bad.add('$path (root page without a RootPage and a PageHeader)');
+      }
+    }
+    for (final path in const [
+      'lib/screens/fitness_hub_screen.dart',
+      'lib/screens/social_screen.dart',
+    ]) {
+      if (!_code(File(path).readAsStringSync()).contains('RootPage.tabbed(')) {
+        bad.add('$path (root hub without a RootPage.tabbed)');
       }
     }
     expect(bad, isEmpty);

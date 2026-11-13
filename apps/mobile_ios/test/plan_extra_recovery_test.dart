@@ -133,6 +133,7 @@ void main() {
 
       await tester.tap(find.text('Add your date of birth'));
       expect(pendingSettingsDestination.value, SettingsDestination.training);
+      expect(pendingSettingsRow, PreferencesRow.dateOfBirth);
     });
 
     testWidgets(
@@ -160,6 +161,7 @@ void main() {
 
       await tester.tap(find.text('Review consent'));
       expect(pendingSettingsDestination.value, SettingsDestination.bodyMetrics);
+      expect(pendingSettingsRow, isNull);
     });
 
     testWidgets('a failed profile read shows the switch but no hint',

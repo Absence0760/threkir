@@ -5,7 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
-import 'package:flutter/foundation.dart' show compute, debugPrint;
+import 'package:flutter/foundation.dart' show compute, debugPrint, listEquals;
 import 'package:meta/meta.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1097,6 +1097,7 @@ class ApiClient {
   Future<void> saveRun(Run run, {bool? isPublic, bool followersOnly = false}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
+    run = await _runAsConsented(run);
 
     String? trackUrl;
     final existingTrackUrl = run.metadata?['track_url'] as String?;
@@ -1197,6 +1198,7 @@ class ApiClient {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
     if (runs.isEmpty) return const RunPushOutcome();
+    runs = [for (final r in runs) await _runAsConsented(r)];
 
     // Upload tracks in parallel groups. A failure on ANY single
     // upload used to bubble through `Future.wait` and poison the
@@ -2079,9 +2081,14 @@ class ApiClient {
     required Uint8List gzippedBytes,
   }) async {
     final path = '$userId/$runId.json.gz';
+    // A restored track carries whatever bpm the archive held; without
+    // health-data consent it is uploaded without it (decisions § 2514).
+    final body = await fetchHealthDataConsented()
+        ? gzippedBytes
+        : trackBytesWithoutBpm(gzippedBytes);
     await _client.storage.from(StorageBuckets.runs).uploadBinary(
           path,
-          gzippedBytes,
+          body,
           fileOptions: const FileOptions(
             // gzipped JSON bytes — `application/gzip` is the only
             // shape the `runs` bucket MIME allowlist (migration
@@ -3353,28 +3360,6 @@ class ApiClient {
     ];
   }
 
-  /// Every follow edge anchored on `userId` in one direction, walked to its
-  /// end by keyset cursor, resolved to profiles in edge order. Throws when the
-  /// walk cannot finish (a failed page, or a server that stops advancing), so
-  /// a partial list never reads as the whole one.
-  Future<List<UserProfileRow>> _walkFollowEdges({
-    required String anchorColumn,
-    required String otherColumn,
-    required List<KeysetKey> order,
-    required String userId,
-  }) async {
-    final edges = await _walk(
-      order,
-      () => _client
-          .from(UserFollowRow.table)
-          .select('$otherColumn, ${UserFollowRow.colFollowedAt}')
-          .eq(anchorColumn, userId),
-    );
-    return _profilesInEdgeOrder(
-      edges.map<String>((e) => e[otherColumn] as String).toList(),
-    );
-  }
-
   /// People who follow `userId`, newest follow first, one keyset page at a
   /// time: pass the previous page's `next` as `after` to load more. A cursor
   /// rather than an offset because an offset is a position — a follower who
@@ -3410,6 +3395,31 @@ class ApiClient {
         after: after,
       );
 
+  /// Every row of a paged follow list, read page after page by the `next`
+  /// cursor each page hands back — the same page reader the profile's
+  /// follower lists use, so a walk and a list cannot page differently. Pages
+  /// are the lists' own size rather than `db.max-rows`, so the walk rests on
+  /// the one assumption those lists already make: a page of that size comes
+  /// back whole. Throws when the walk cannot finish (a failed page, or a page
+  /// that hands back the cursor it was asked to start after), so a partial
+  /// list never reads as the whole one.
+  Future<List<UserProfileRow>> _walkFollowPages(
+    Future<KeysetPage<UserProfileRow>> Function(List<Object?>? after) page,
+  ) async {
+    final rows = <UserProfileRow>[];
+    List<Object?>? after;
+    while (true) {
+      final next = await page(after);
+      rows.addAll(next.rows);
+      final cursor = next.next;
+      if (cursor == null) return rows;
+      if (after != null && listEquals(cursor, after)) {
+        throw StateError('follow walk: the server stopped advancing');
+      }
+      after = cursor;
+    }
+  }
+
   /// Everyone who follows `userId` and everyone `userId` follows, each
   /// direction walked to its end. A picker that offers "people you can
   /// message / share with / add" filters this list on the client, so one page
@@ -3420,12 +3430,7 @@ class ApiClient {
   Future<({List<UserProfileRow> followers, List<UserProfileRow> following})>
       fetchFollowGraph(String userId) async {
     final walks = await Future.wait([
-      _walkFollowEdges(
-        anchorColumn: UserFollowRow.colFolloweeId,
-        otherColumn: UserFollowRow.colFollowerId,
-        order: _followersOrder,
-        userId: userId,
-      ),
+      _walkFollowPages((after) => fetchFollowers(userId, after: after)),
       fetchAllFollowing(userId),
     ]);
     return (followers: walks[0], following: walks[1]);
@@ -3434,12 +3439,7 @@ class ApiClient {
   /// Everyone `userId` follows, walked to the end (the outbound half of
   /// [fetchFollowGraph], for a surface that needs only that direction).
   Future<List<UserProfileRow>> fetchAllFollowing(String userId) =>
-      _walkFollowEdges(
-        anchorColumn: UserFollowRow.colFollowerId,
-        otherColumn: UserFollowRow.colFolloweeId,
-        order: _followingOrder,
-        userId: userId,
-      );
+      _walkFollowPages((after) => fetchFollowing(userId, after: after));
 
   /// Free-text people search. Routes through the
   /// `search_user_profiles` SECURITY DEFINER RPC so the search
@@ -5914,6 +5914,7 @@ class ApiClient {
     String? ageBand,
     String? clubId,
     int? season,
+    int? month,
     int limit = 50,
   }) async {
     final rows = await _client.rpc(
@@ -5925,6 +5926,7 @@ class ApiClient {
         'p_limit': limit,
         'p_club_id': ?clubId,
         'p_season': ?season,
+        'p_month': ?month,
       },
       get: true,
     );
@@ -5966,7 +5968,7 @@ class ApiClient {
   Future<List<ParkListing>> fetchParks() async {
     final rows = await _client
         .from(ParkRow.table)
-        .select('*, park_season')
+        .select('*, park_season, park_month')
         .order(ParkRow.colRegionCode, ascending: true)
         .order(ParkRow.colName, ascending: true);
     return [
@@ -5974,6 +5976,7 @@ class ApiClient {
         ParkListing(
           park: ParkRow.fromJson(r),
           season: (r['park_season'] as num).toInt(),
+          month: (r['park_month'] as num).toInt(),
         ),
     ];
   }
@@ -5988,7 +5991,7 @@ class ApiClient {
   ) async {
     final park = await _client
         .from(ParkRow.table)
-        .select('*, park_season')
+        .select('*, park_season, park_month')
         .eq(ParkRow.colSlug, parkSlug)
         .maybeSingle();
     if (park == null) return null;
@@ -6003,6 +6006,7 @@ class ApiClient {
       park: ParkListing(
         park: ParkRow.fromJson(park),
         season: (park['park_season'] as num).toInt(),
+        month: (park['park_month'] as num).toInt(),
       ),
       course: ParkCourseListing(
         course: ParkCourseRow.fromJson(course),
@@ -6029,7 +6033,7 @@ class ApiClient {
     if (course == null || course['global_segments'] is! Map) return null;
     final park = await _client
         .from(ParkRow.table)
-        .select('*, park_season')
+        .select('*, park_season, park_month')
         .eq(ParkRow.colId, course[ParkCourseRow.colParkId] as String)
         .maybeSingle();
     if (park == null) return null;
@@ -6037,6 +6041,7 @@ class ApiClient {
       park: ParkListing(
         park: ParkRow.fromJson(park),
         season: (park['park_season'] as num).toInt(),
+        month: (park['park_month'] as num).toInt(),
       ),
       course: ParkCourseListing(
         course: ParkCourseRow.fromJson(course),
@@ -6110,6 +6115,56 @@ class ApiClient {
     };
   }
 
+  /// How many runners the caller can see with a time on each of a park's
+  /// courses in the park's current calendar month
+  /// (`park_course_month_runners`), keyed by course id; a course with none
+  /// has no entry. Signed-in only. Mirrors web `fetchParkCourseMonthRunners`.
+  /// Throws on a failed read.
+  Future<Map<String, int>> fetchParkCourseMonthRunners(String parkId) async {
+    final rows = await _client.rpc('park_course_month_runners',
+        params: {'p_park_id': parkId}, get: true);
+    if (rows is! List) return const {};
+    return {
+      for (final r in rows)
+        if (r is Map && r['course_id'] is String && r['runners'] is num)
+          r['course_id'] as String: (r['runners'] as num).toInt(),
+    };
+  }
+
+  /// One park course by its id, with its park and the park's current season
+  /// and month, for opening a course from a month-close notice (the row
+  /// carries only the course id). Null when RLS hides either or it is gone.
+  /// Throws on a failed read.
+  Future<({ParkListing park, ParkCourseListing course})?> fetchParkCourseById(
+    String courseId,
+  ) async {
+    final course = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colId, courseId)
+        .maybeSingle();
+    if (course == null || course['global_segments'] is! Map) return null;
+    final park = await _client
+        .from(ParkRow.table)
+        .select('*, park_season, park_month')
+        .eq(ParkRow.colId, course[ParkCourseRow.colParkId] as String)
+        .maybeSingle();
+    if (park == null) return null;
+    return (
+      park: ParkListing(
+        park: ParkRow.fromJson(park),
+        season: (park['park_season'] as num).toInt(),
+        month: (park['park_month'] as num).toInt(),
+      ),
+      course: ParkCourseListing(
+        course: ParkCourseRow.fromJson(course),
+        segment: GlobalSegmentRow.fromJson(
+          (course['global_segments'] as Map).cast<String, dynamic>(),
+        ),
+      ),
+    );
+  }
+
   /// Which of [routeIds] are a park course's official route, so their
   /// Official badge can read "Official Threkir course". Mirrors web
   /// `fetchParkCourseRouteIds`. Throws on a failed read.
@@ -6173,11 +6228,13 @@ class ApiClient {
 
   /// The most-completions board on a catalogue segment
   /// (`global_segment_completions`): one row per athlete, distinct local days
-  /// in the park's timezone. [season] null is all time. Tied counts share a
+  /// in the park's timezone. [season] null is all time; [month] (1-12)
+  /// narrows it to one calendar month where the park is. Tied counts share a
   /// rank. Throws on a failed read.
   Future<List<GlobalSegmentCompletionsEntry>> fetchGlobalSegmentCompletions(
     String segmentId, {
     int? season,
+    int? month,
     int limit = 50,
   }) async {
     final rows = await _client.rpc(
@@ -6186,6 +6243,7 @@ class ApiClient {
         'p_segment_id': segmentId,
         'p_season': ?season,
         'p_limit': limit,
+        'p_month': ?month,
       },
       get: true,
     );
@@ -6222,7 +6280,8 @@ class ApiClient {
   /// The park courses the signed-in runner's own [runId] completed, from
   /// `run_park_course_times`: course and park names, the time, the season (the
   /// calendar year in the park's timezone) and the effort's place on that
-  /// season's fastest board when it is the runner's best and in the top 100.
+  /// season's fastest board when it is the runner's best and in the top 100,
+  /// and the same for its calendar month there (`month`, `month_rank`).
   /// Raw rows; the app parses them in its `park_courses` pair. Mirrors web
   /// `fetchRunParkCourseTimes`. Throws on a failed read.
   Future<List<Map<String, dynamic>>> fetchRunParkCourseTimes(String runId) async {
@@ -7217,18 +7276,42 @@ class ApiClient {
             .select('${EventRow.colId}, ${EventRow.colTitle}, ${EventRow.colClubId}')
             .inFilter(EventRow.colId, eventIds);
 
+    final parkCourseIds = {
+      for (final row in rows)
+        if (row.parkCourseId != null) row.parkCourseId!,
+    }.toList();
+    final parkCourseRowsF = parkCourseIds.isEmpty
+        ? Future.value(<dynamic>[])
+        : _client
+            .from(ParkCourseRow.table)
+            .select('${ParkCourseRow.colId}, global_segments(name)')
+            .inFilter(ParkCourseRow.colId, parkCourseIds);
+
     final results = await Future.wait([
       actorRowsF,
       runRowsF,
       publicRunRowsF,
       commentRowsF,
       eventRowsF,
+      parkCourseRowsF,
     ]);
     final actorRows = results[0];
     final runRows = results[1];
     final publicRunRows = results[2];
     final commentRows = results[3];
     final eventRows = results[4];
+    final parkCourseRows = results[5];
+    // A course whose segment was pulled is hidden by RLS, so its notice keeps
+    // its line without a name.
+    final parkCourseNameById = <String, String>{};
+    for (final r in parkCourseRows) {
+      final row = r as Map<String, dynamic>;
+      final segment = row['global_segments'];
+      final name = segment is Map ? segment['name'] : null;
+      if (name is String && name.isNotEmpty) {
+        parkCourseNameById[row[ParkCourseRow.colId] as String] = name;
+      }
+    }
 
     final actorsById = <String, PublicProfile>{};
     for (final r in actorRows) {
@@ -7322,6 +7405,8 @@ class ApiClient {
         eventClubSlug: eventClubSlug,
         clubName: (linkedClub?.name.isNotEmpty ?? false) ? linkedClub!.name : null,
         clubSlug: (linkedClub?.slug.isNotEmpty ?? false) ? linkedClub!.slug : null,
+        parkCourseName:
+            row.parkCourseId == null ? null : parkCourseNameById[row.parkCourseId!],
       );
     }).toList();
   }
@@ -9305,6 +9390,7 @@ class ApiClient {
     if (_client.auth.currentUser?.id == null) {
       throw StateError('not signed in');
     }
+    forgetHealthDataConsent();
     final res = await _client.rpc('grant_health_data_consent');
     if (res is! String) return null;
     return parseIsoStrict(res);
@@ -9327,7 +9413,51 @@ class ApiClient {
     if (_client.auth.currentUser?.id == null) {
       throw StateError('not signed in');
     }
+    forgetHealthDataConsent();
     await _client.rpc('withdraw_health_data_consent');
+  }
+
+  /// Whether the signed-in runner has health-data consent on record, read
+  /// through `get_my_profile()`. Heart rate and the food log are kept only
+  /// with it (decisions § 2514). Remembered for 30 s so a batch sync does not
+  /// ask once per run; a grant or a withdrawal through this client forgets
+  /// it. A failed read falls back to this session's last answer, and with
+  /// none it throws rather than guessing: "no" would strip a consenting
+  /// runner's heart rate for good, "yes" would upload it.
+  Future<bool> fetchHealthDataConsented() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return false;
+    final memo = _healthConsentMemo;
+    if (memo != null &&
+        memo.userId == uid &&
+        DateTime.now().difference(memo.at) < _healthConsentMemoTtl) {
+      return memo.consented;
+    }
+    final bool consented;
+    try {
+      consented = (await fetchMyProfile())?.healthDataConsentAt != null;
+    } catch (_) {
+      // Offline: the last answer this session had is still the runner's
+      // own, and an offline-first store must not stop on a dead network.
+      if (memo != null && memo.userId == uid) return memo.consented;
+      rethrow;
+    }
+    _healthConsentMemo = (userId: uid, consented: consented, at: DateTime.now());
+    return consented;
+  }
+
+  /// Drop the remembered answer of [fetchHealthDataConsented].
+  void forgetHealthDataConsent() => _healthConsentMemo = null;
+
+  ({String userId, bool consented, DateTime at})? _healthConsentMemo;
+  static const Duration _healthConsentMemoTtl = Duration(seconds: 30);
+
+  /// [run] as it may be uploaded: without its heart rate when the runner has
+  /// no health-data consent. The database strips the row's heart-rate keys
+  /// itself, but it cannot see the per-point bpm inside the track blob.
+  Future<Run> _runAsConsented(Run run) async {
+    if (!runHasHeartRate(run)) return run;
+    return await fetchHealthDataConsented() ? run : runWithoutHeartRate(run);
   }
 
   /// Set (or clear, when null) the signed-in user's height in centimetres

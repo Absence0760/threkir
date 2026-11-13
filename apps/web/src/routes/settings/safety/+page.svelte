@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
+	import ListRow from '#lib/components/ListRow.svelte';
 	import { onMount } from 'svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -249,7 +251,7 @@
 				handleAdd();
 			}}
 		>
-			<label class="field">
+			<label id={settingRowId('safety.addLabel')} class="field">
 				<span class="label-text">{m('safety.addLabel')}</span>
 				<input
 					type="email"
@@ -342,7 +344,7 @@
 
 	<section class="card" data-testid="safety-overdue-card">
 		<header class="section-head">
-			<h2>{m('safety.overdueTitle')}</h2>
+			<h2 id={settingRowId('safety.overdueTitle')}>{m('safety.overdueTitle')}</h2>
 			<p class="tagline">{m('safety.overdueIntro')}</p>
 		</header>
 		<label class="field overdue-field">
@@ -360,18 +362,17 @@
 	{#if offRouteEnabled}
 		<section class="card" data-testid="safety-off-route-card">
 			<header class="section-head">
-				<h2>{m('safety.offRouteTitle')}</h2>
-				<p class="tagline">{m('safety.offRouteIntro')}</p>
+				<h2 id={settingRowId('safety.offRouteTitle')}>{m('safety.offRouteTitle')}</h2>
+				<p class="tagline" id="safety-off-route-intro">{m('safety.offRouteIntro')}</p>
 			</header>
-			<label class="toggle-row">
-				<input
-					type="checkbox"
-					bind:checked={offRouteAlerts}
-					onchange={saveOffRoute}
-					data-testid="safety-off-route-toggle"
-				/>
-				<span>{m('safety.offRouteLabel')}</span>
-			</label>
+			<ListRow
+				kind="toggle"
+				title={m('safety.offRouteLabel')}
+				bind:checked={offRouteAlerts}
+				onchange={saveOffRoute}
+				describedby="safety-off-route-intro"
+				testid="safety-off-route-toggle"
+			/>
 			<p class="overdue-note">{m('safety.offRouteNote')}</p>
 		</section>
 	{/if}
@@ -379,7 +380,7 @@
 	{#if pending.length > 0}
 		<section class="card incoming" data-testid="safety-incoming">
 			<header class="section-head">
-				<h2>{m('safety.incomingTitle')}</h2>
+				<h2 id={settingRowId('safety.incomingTitle')}>{m('safety.incomingTitle')}</h2>
 				<p class="tagline">{m('safety.incomingIntro')}</p>
 			</header>
 			<ul class="contact-list">
@@ -420,7 +421,7 @@
 	{#if contactOf.length > 0}
 		<section class="card" data-testid="safety-contact-of">
 			<header class="section-head">
-				<h2>{m('safety.contactOfTitle')}</h2>
+				<h2 id={settingRowId('safety.contactOfTitle')}>{m('safety.contactOfTitle')}</h2>
 				<p class="tagline">{m('safety.contactOfIntro')}</p>
 			</header>
 			<ul class="contact-list">
@@ -673,18 +674,6 @@
 		font-size: 0.82rem;
 		line-height: 1.5;
 		color: var(--color-text-secondary);
-	}
-	.toggle-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-sm);
-		font-size: 0.9rem;
-		cursor: pointer;
-	}
-	.toggle-row input {
-		width: 1.1rem;
-		height: 1.1rem;
-		flex-shrink: 0;
 	}
 
 	.section-head { margin-bottom: var(--space-md); }

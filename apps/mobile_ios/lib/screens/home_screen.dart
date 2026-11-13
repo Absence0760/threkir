@@ -709,10 +709,17 @@ class _HomeScreenState extends State<HomeScreen>
     final destination = pendingSettingsDestination.value;
     if (destination == null || !mounted) return;
     pendingSettingsDestination.value = null;
-    _pushScreen(_settingsDestinationScreen(destination));
+    final row = takePendingSettingsRow();
+    _pushScreen(_settingsDestinationScreen(
+      destination,
+      focus: row?.page == destination.preferencesPage ? row : null,
+    ));
   }
 
-  Widget _settingsDestinationScreen(SettingsDestination destination) =>
+  Widget _settingsDestinationScreen(
+    SettingsDestination destination, {
+    PreferencesRow? focus,
+  }) =>
       switch (destination) {
         SettingsDestination.display ||
         SettingsDestination.recording ||
@@ -721,6 +728,7 @@ class _HomeScreenState extends State<HomeScreen>
         SettingsDestination.notifications =>
           SettingsPreferencesScreen(
             page: destination.preferencesPage!,
+            focus: focus,
             apiClient: widget.apiClient,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
@@ -1623,18 +1631,21 @@ class _HomeScreenState extends State<HomeScreen>
   /// rather than "Runs" because the hub's own first tab is already "Runs",
   /// and it names the plans and races beside them.
   ({IconData icon, IconData outlined, String label}) _hubLook(
-          AppLocalizations l10n) =>
-      _gymShown || _nutritionShown
-          ? (
-              icon: Icons.fitness_center,
-              outlined: Icons.fitness_center_outlined,
-              label: l10n.navFitness,
-            )
-          : (
-              icon: Icons.directions_run,
-              outlined: Icons.directions_run_outlined,
-              label: l10n.navTraining,
-            );
+      AppLocalizations l10n) {
+    final label = fitnessHubTitle(l10n,
+        gymShown: _gymShown, nutritionShown: _nutritionShown);
+    return _gymShown || _nutritionShown
+        ? (
+            icon: Icons.fitness_center,
+            outlined: Icons.fitness_center_outlined,
+            label: label,
+          )
+        : (
+            icon: Icons.directions_run,
+            outlined: Icons.directions_run_outlined,
+            label: label,
+          );
+  }
 
   String _logPageName(AppLocalizations l10n, LogAction action) =>
       switch (action) {

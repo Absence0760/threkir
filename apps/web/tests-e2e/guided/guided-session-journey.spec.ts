@@ -128,7 +128,7 @@ test.describe('Guided session — discovery → preview → compare journey', ()
 				await expect(stamps.first()).toHaveText('0:00');
 				await expect(stamps.last()).toHaveText(first.lastStamp);
 				// The detail's own cue-count chip agrees with the row count.
-				await expect(page.locator('.script-head .cue-count')).toContainText(
+				await expect(page.locator('.guided-script-head .cue-count')).toContainText(
 					String(first.cueCount)
 				);
 			});

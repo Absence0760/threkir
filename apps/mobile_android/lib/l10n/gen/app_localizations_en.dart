@@ -300,7 +300,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'This backup was made by a newer version of the app. Update the app, then restore it.';
 
   @override
-  String get importStatusRestoringBackup => 'Restoring backup...';
+  String get importStatusRestoringBackup => 'Restoring backup…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
@@ -533,6 +533,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count activities were imported without their heart rate',
+      one: '1 activity was imported without its heart rate',
+    );
+    return '$_temp0: Threkir keeps heart rate only with your health-data consent.';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Pull workouts you\'ve recorded on Apple Watch, Nike Run Club, Strava, and other apps that write to Apple Health';
 
@@ -675,7 +686,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.';
+      'Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.';
 
   @override
   String get peopleNearbyEmptyAction => 'Open privacy settings';
@@ -694,7 +705,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => 'Show me to runners nearby';
+  String get prefsDiscoverableNearby => 'Show me in Runners nearby';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -1284,7 +1295,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsConsentSubtitle =>
-      'Height and weight are special-category health data. Turn this off to erase them.';
+      'Threkir stores your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and uses them and your date of birth as health data (GDPR Art 9(2)(a)) to personalise your training and nutrition targets and to place you in gender and age-band segment leaderboards, only while this is on. Turn it off and save to withdraw consent and erase them; your date of birth stays as your age record.';
 
   @override
   String get bodyMetricsHeight => 'Height';
@@ -1328,10 +1339,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyMetricsWithdrawBody =>
-      'This permanently erases your saved height and your entire weight history. This can\'t be undone.';
+      'This permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log. Your activities themselves are kept, and your date of birth stays as your age record but is no longer used as health data. This can\'t be undone.';
 
   @override
   String get bodyMetricsWithdrawConfirm => 'Withdraw & erase';
+
+  @override
+  String get healthConsentFoodTitle => 'Your food log is health data';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.';
+
+  @override
+  String get healthConsentGiveAction => 'Review consent';
 
   @override
   String get bodyMetricsSaved => 'Saved';
@@ -2007,7 +2028,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'I consent to Threkir using my gender and date of birth to personalise pace, heart-rate and calorie estimates (special-category health data, GDPR Art 9).';
+      'I consent to Threkir storing my gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with my activities, the heart-rate targets in my plans, my heart-rate medication setting and my food log, and using them and my date of birth as health data (GDPR Art 9(2)(a)) to personalise my training and nutrition targets and to place me in gender and age-band segment leaderboards. I can withdraw this consent at any time.';
 
   @override
   String get setupPrivacyTitle => 'Who sees your runs?';
@@ -2301,6 +2322,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runSyncing => 'Syncing...';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'Heart rate from this activity wasn\'t saved: Threkir keeps heart rate only with your health-data consent.';
 
   @override
   String get runDone => 'Done';
@@ -3486,6 +3511,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String runDetailParkCourseRank(String rank, String season) {
     return '#$rank in $season';
+  }
+
+  @override
+  String runDetailParkCourseMonthRank(String rank, String month) {
+    return '#$rank in $month';
+  }
+
+  @override
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '#$monthRank in $month, #$seasonRank in $season';
   }
 
   @override
@@ -13526,7 +13566,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionNoTargets =>
-      'Add your height, weight, age and sex to see calorie + macro targets.';
+      'Add your height, weight, age and gender to see calorie + macro targets.';
 
   @override
   String get nutritionAddBodyMetrics => 'Add body metrics';
@@ -13590,7 +13630,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Height, weight, date of birth and sex are health data, so they\'re edited behind their consent gate.';
+      'Height, weight, date of birth and gender are health data, so they\'re edited behind their consent gate.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Edit body metrics';
@@ -13603,7 +13643,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionTargetsEmptyBody =>
-      'Add your height, weight, date of birth and sex and your calorie + macro targets appear here.';
+      'Add your height, weight, date of birth and gender and your calorie + macro targets appear here.';
 
   @override
   String get nutritionTargetsAge => 'Age';
@@ -16042,50 +16082,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => 'First 5K';
 
   @override
-  String get badgesDistanceSingle5kDesc => 'Ran 5 km in a single run';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return 'Ran $distance in a single run';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'Half marathon';
 
   @override
-  String get badgesDistanceSingleHalfDesc => 'Ran 21.1 km in a single run';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return 'Ran $distance in a single run';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'Marathon';
 
   @override
-  String get badgesDistanceSingleMarathonDesc => 'Ran 42.2 km in a single run';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return 'Ran $distance in a single run';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'Ultra';
 
   @override
-  String get badgesDistanceSingleUltraDesc =>
-      'Ran 50 km or more in a single run';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return 'Ran $distance or more in a single run';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => '100 km club';
+  String badgesDistanceLifetime100Label(String distance) {
+    return '$distance club';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '100 km logged all-time';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return '$distance logged all-time';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500 km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '500 km logged all-time';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return '$distance logged all-time';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => '1,000 km club';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return '$distance club';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '1,000 km logged all-time';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return '$distance logged all-time';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5,000 km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '5,000 km logged all-time';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return '$distance logged all-time';
+  }
 
   @override
   String get badgesStreak7Label => 'Week streak';
@@ -16210,6 +16273,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Completed a park passport in 10 states';
 
   @override
+  String get badgesParkMonths3Label => 'Park months';
+
+  @override
+  String get badgesParkMonths3Desc =>
+      'Completed a park course in 3 different months';
+
+  @override
+  String get badgesParkMonths6Label => 'Half a year of parks';
+
+  @override
+  String get badgesParkMonths6Desc =>
+      'Completed a park course in 6 different months';
+
+  @override
+  String get badgesParkMonths12Label => 'A year of parks';
+
+  @override
+  String get badgesParkMonths12Desc =>
+      'Completed a park course in 12 different months';
+
+  @override
+  String get badgesParkMonths24Label => 'Two years of parks';
+
+  @override
+  String get badgesParkMonths24Desc =>
+      'Completed a park course in 24 different months';
+
+  @override
   String get racePredictorTitle => 'Race-time predictor';
 
   @override
@@ -16256,6 +16347,190 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get racePredictorFootnote =>
       'Riegel equivalence from your best recent effort, recency-weighted. Closer distances are more reliable.';
+
+  @override
+  String get lineCalibrationEntryTitle => 'Line calibration';
+
+  @override
+  String get lineCalibrationEntrySubtitle =>
+      'Debug build: timing-line error figures';
+
+  @override
+  String get lineCalibrationTitle => 'Line calibration (debug)';
+
+  @override
+  String get lineCalibrationIntro =>
+      'Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.';
+
+  @override
+  String lineCalibrationCapturing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Capturing: $count fixes',
+      one: 'Capturing: $count fix',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String lineCalibrationIdle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Idle: $count fixes held',
+      one: 'Idle: $count fix held',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationStart => 'Start capture';
+
+  @override
+  String get lineCalibrationStop => 'Stop capture';
+
+  @override
+  String get lineCalibrationRefresh => 'Refresh';
+
+  @override
+  String get lineCalibrationLatLabel => 'Line centre latitude';
+
+  @override
+  String get lineCalibrationLngLabel => 'Line centre longitude';
+
+  @override
+  String get lineCalibrationBearingLabel => 'Bearing of travel (degrees)';
+
+  @override
+  String get lineCalibrationHalfWidthLabel => 'Half-width (m)';
+
+  @override
+  String get lineCalibrationHere => 'Centre at my position';
+
+  @override
+  String lineCalibrationMeasure(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Measure server clock ($count round trips)',
+      one: 'Measure server clock ($count round trip)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationOffsetLabel => 'Clock offset (ms)';
+
+  @override
+  String get lineCalibrationOffsetHelper => 'Server minus device';
+
+  @override
+  String get lineCalibrationApproachLabel => 'Approach';
+
+  @override
+  String get lineCalibrationApproach90 => 'At 90° to the line';
+
+  @override
+  String get lineCalibrationApproach30 => 'At 30° to the line';
+
+  @override
+  String get lineCalibrationApproachParallel20 => 'Parallel, 20 m away';
+
+  @override
+  String get lineCalibrationApproachParallel40 => 'Parallel, 40 m away';
+
+  @override
+  String get lineCalibrationApproachStanding => 'Standing on the line';
+
+  @override
+  String get lineCalibrationPaceLabel => 'Pace';
+
+  @override
+  String get lineCalibrationPaceWalk => 'Walk';
+
+  @override
+  String get lineCalibrationPaceRun => 'Run';
+
+  @override
+  String get lineCalibrationPaceStill => 'Standing still';
+
+  @override
+  String get lineCalibrationCarryLabel => 'Carry';
+
+  @override
+  String get lineCalibrationCarryHand => 'Phone in hand';
+
+  @override
+  String get lineCalibrationCarryPocket => 'Phone in pocket';
+
+  @override
+  String get lineCalibrationInstantsLabel => 'True crossing instants';
+
+  @override
+  String lineCalibrationInstantsHint(String time, String instant) {
+    return '$time or $instant';
+  }
+
+  @override
+  String get lineCalibrationInstantsHelper =>
+      'One per line. A time of day is read in this phone\'s time zone on the capture day; give an ISO instant with its zone across midnight or when the reference clock shows UTC.';
+
+  @override
+  String get lineCalibrationClockFailed =>
+      'Could not reach the server clock; enter the offset by hand.';
+
+  @override
+  String get lineCalibrationNoFix => 'No position fix.';
+
+  @override
+  String get lineCalibrationLineMissing =>
+      'Enter the line: centre, bearing of travel, half-width.';
+
+  @override
+  String get lineCalibrationOffsetMissing =>
+      'Measure or enter the clock offset.';
+
+  @override
+  String lineCalibrationInstantsInvalid(String time) {
+    return 'One instant per line: $time or ISO-8601.';
+  }
+
+  @override
+  String get lineCalibrationFewFixes =>
+      'The capture holds fewer than two fixes.';
+
+  @override
+  String get lineCalibrationLineUnusable => 'That line is not usable.';
+
+  @override
+  String get lineCalibrationScore => 'Score this capture';
+
+  @override
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  ) {
+    return '$matched of $total matched, $missed missed, $falseCount false, $near near; median $median ms, |err| p50 $p50 ms, p95 $p95 ms; offset ±$offset ms';
+  }
+
+  @override
+  String lineCalibrationNothingMatched(int ms) {
+    return 'Nothing matched, yet detections sit a median $ms ms from the truths: check the clock, the offset and the time zone.';
+  }
+
+  @override
+  String get lineCalibrationShare => 'Share CSV';
+
+  @override
+  String get lineCalibrationCopy => 'Copy CSV';
 
   @override
   String get settingsSectionDeveloper => 'Developer';
@@ -20975,8 +21250,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCardCourseKicker => 'Park course time';
 
   @override
-  String shareCardCourseRank(String rank, String season) {
-    return '#$rank in $season';
+  String shareCardCourseMonthRank(String rank, String month) {
+    return '#$rank in $month';
+  }
+
+  @override
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '#$monthRank in $month · #$seasonRank in $season';
   }
 
   @override
@@ -21452,12 +21737,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksBoardCompletions => 'Most completions';
 
   @override
+  String get parksPeriodThisMonth => 'This month';
+
+  @override
   String parksSeasonThisYear(int year) {
     return 'This year ($year)';
   }
 
   @override
   String get parksSeasonAllTime => 'All time';
+
+  @override
+  String get parksPeriodPrevMonth => 'Previous month';
+
+  @override
+  String get parksPeriodNextMonth => 'Next month';
 
   @override
   String parksCompletionDays(int n) {
@@ -21469,6 +21763,21 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String parksMonthRunners(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n runners this month',
+      one: '$n runner this month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksMonthRunnersFailed =>
+      'Couldn\'t load how many ran each course this month.';
 
   @override
   String get parksNoEfforts =>
@@ -21775,6 +22084,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get prefsNotifyRaceStartingSoonHint =>
       'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.';
+
+  @override
+  String get prefsNotifyParkCourseMonth => 'Park course months';
+
+  @override
+  String get prefsNotifyParkCourseMonthHint =>
+      'When a month ends at a park course you ran, a note in your inbox with your best time from it.';
 
   @override
   String get clubVerificationStatusTitle => 'Official verification';
@@ -22332,6 +22648,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileNotifParkCourseReport => 'A park course was reported';
 
   @override
+  String get profileNotifParkCourseMonthClosed =>
+      'A month has closed on a park course you ran';
+
+  @override
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  ) {
+    return '$course: the $month board has closed. Your best: $time';
+  }
+
+  @override
   String rateLimitReaction(String wait) {
     return 'You\'re reacting too quickly — please wait $wait and try again.';
   }
@@ -22815,6 +23144,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterBarSort => 'Sort';
+
+  @override
+  String get filterBarSource => 'Source';
 
   @override
   String get runsSearchHint => 'Search run names';

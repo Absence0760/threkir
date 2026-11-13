@@ -530,7 +530,7 @@ abstract class AppLocalizations {
   /// Status while restoring from a full-backup ZIP
   ///
   /// In en, this message translates to:
-  /// **'Restoring backup...'**
+  /// **'Restoring backup…'**
   String get importStatusRestoringBackup;
 
   /// Status after a successful full-backup restore
@@ -857,6 +857,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{1 run is saved on this device — its upload to the cloud didn\'t go through. It will retry on the next sync.} other{{count} runs are saved on this device — their upload to the cloud didn\'t go through. They will retry on the next sync.}}'**
   String importStatusCloudPushDeferred(int count);
 
+  /// Note after an import whose activities were stored without heart rate, for want of health-data consent
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 activity was imported without its heart rate} other{{count} activities were imported without their heart rate}}: Threkir keeps heart rate only with your health-data consent.'**
+  String importHeartRateNotKept(int count);
+
   /// iOS subtitle naming apps that write to Apple Health
   ///
   /// In en, this message translates to:
@@ -1046,7 +1052,7 @@ abstract class AppLocalizations {
   /// Empty-state body for the runners-nearby list, pointing at the opt-in and area setter
   ///
   /// In en, this message translates to:
-  /// **'Turn on \"Show me to runners nearby\" and set your area. Only runners who did the same can find you.'**
+  /// **'Turn on \"Show me in Runners nearby\" and set your area. Only runners who did the same can find you.'**
   String get peopleNearbyEmptyBody;
 
   /// Button on the runners-nearby empty state that opens the Privacy & sharing preferences page
@@ -1076,7 +1082,7 @@ abstract class AppLocalizations {
   /// Toggle title for opting in to coarse-location runners-nearby discovery
   ///
   /// In en, this message translates to:
-  /// **'Show me to runners nearby'**
+  /// **'Show me in Runners nearby'**
   String get prefsDiscoverableNearby;
 
   /// Subtitle for the runners-nearby opt-in toggle
@@ -2138,7 +2144,7 @@ abstract class AppLocalizations {
   /// Explanation under the health-data consent toggle
   ///
   /// In en, this message translates to:
-  /// **'Height and weight are special-category health data. Turn this off to erase them.'**
+  /// **'Threkir stores your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log, and uses them and your date of birth as health data (GDPR Art 9(2)(a)) to personalise your training and nutrition targets and to place you in gender and age-band segment leaderboards, only while this is on. Turn it off and save to withdraw consent and erase them; your date of birth stays as your age record.'**
   String get bodyMetricsConsentSubtitle;
 
   /// Label for the height input (centimetres)
@@ -2216,7 +2222,7 @@ abstract class AppLocalizations {
   /// No description provided for @bodyMetricsWithdrawBody.
   ///
   /// In en, this message translates to:
-  /// **'This permanently erases your saved height and your entire weight history. This can\'t be undone.'**
+  /// **'This permanently erases your gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with your activities, the heart-rate targets in your plans, your heart-rate medication setting and your food log. Your activities themselves are kept, and your date of birth stays as your age record but is no longer used as health data. This can\'t be undone.'**
   String get bodyMetricsWithdrawBody;
 
   /// No description provided for @bodyMetricsWithdrawConfirm.
@@ -2224,6 +2230,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Withdraw & erase'**
   String get bodyMetricsWithdrawConfirm;
+
+  /// Title of the dialog asking for health-data consent before the first food is logged (decisions § 2514)
+  ///
+  /// In en, this message translates to:
+  /// **'Your food log is health data'**
+  String get healthConsentFoodTitle;
+
+  /// Body of the dialog asking for health-data consent before food is logged
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir keeps a food log only with your health-data consent. Nothing is logged until you give it.'**
+  String get healthConsentFoodBody;
+
+  /// Button that opens the screen where health-data consent is reviewed and given; tapping it does not give consent itself
+  ///
+  /// In en, this message translates to:
+  /// **'Review consent'**
+  String get healthConsentGiveAction;
 
   /// Confirmation toast after saving body metrics
   ///
@@ -3404,7 +3428,7 @@ abstract class AppLocalizations {
   /// Setup wizard health-data (GDPR Art 9) consent checkbox label
   ///
   /// In en, this message translates to:
-  /// **'I consent to Threkir using my gender and date of birth to personalise pace, heart-rate and calorie estimates (special-category health data, GDPR Art 9).'**
+  /// **'I consent to Threkir storing my gender, height, weight history, any cycle or pregnancy details, the heart rate recorded with my activities, the heart-rate targets in my plans, my heart-rate medication setting and my food log, and using them and my date of birth as health data (GDPR Art 9(2)(a)) to personalise my training and nutrition targets and to place me in gender and age-band segment leaderboards. I can withdraw this consent at any time.'**
   String get setupHealthConsent;
 
   /// Setup wizard privacy-default step title
@@ -3916,6 +3940,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Syncing...'**
   String get runSyncing;
+
+  /// Note on the finished-run summary when heart rate was shown live but not saved, for want of health-data consent (decisions § 2514)
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate from this activity wasn\'t saved: Threkir keeps heart rate only with your health-data consent.'**
+  String get runHeartRateNotSaved;
 
   /// Button on the finish summary that dismisses back to the idle run screen
   ///
@@ -5859,6 +5889,23 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'#{rank} in {season}'**
   String runDetailParkCourseRank(String rank, String season);
+
+  /// A park course chip's place on that month's fastest board, e.g. #2 in November (runDetail.parkCourseMonthRank)
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank} in {month}'**
+  String runDetailParkCourseMonthRank(String rank, String month);
+
+  /// A park course chip's places on its month's and its season's boards, e.g. #2 in November, #9 in 2026 (runDetail.parkCourseRanks)
+  ///
+  /// In en, this message translates to:
+  /// **'#{monthRank} in {month}, #{seasonRank} in {season}'**
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  );
 
   /// Quiet line on run detail when the park course chips could not be read; a Retry button follows (runDetail.parkCoursesLoadFailed)
   ///
@@ -21968,7 +22015,7 @@ abstract class AppLocalizations {
   /// No description provided for @nutritionNoTargets.
   ///
   /// In en, this message translates to:
-  /// **'Add your height, weight, age and sex to see calorie + macro targets.'**
+  /// **'Add your height, weight, age and gender to see calorie + macro targets.'**
   String get nutritionNoTargets;
 
   /// CTA on the nutrition rings card that opens the Body metrics page
@@ -22076,7 +22123,7 @@ abstract class AppLocalizations {
   /// Hint explaining that body metrics are health data edited behind the consent gate; the Edit body metrics button beside the heading opens them
   ///
   /// In en, this message translates to:
-  /// **'Height, weight, date of birth and sex are health data, so they\'re edited behind their consent gate.'**
+  /// **'Height, weight, date of birth and gender are health data, so they\'re edited behind their consent gate.'**
   String get nutritionTargetsMetricsHint;
 
   /// Action opening the consent-gated Body metrics page
@@ -22100,7 +22147,7 @@ abstract class AppLocalizations {
   /// Body of the no-targets-yet state on the targets screen
   ///
   /// In en, this message translates to:
-  /// **'Add your height, weight, date of birth and sex and your calorie + macro targets appear here.'**
+  /// **'Add your height, weight, date of birth and gender and your calorie + macro targets appear here.'**
   String get nutritionTargetsEmptyBody;
 
   /// Body-metrics row label for age
@@ -26176,11 +26223,11 @@ abstract class AppLocalizations {
   /// **'First 5K'**
   String get badgesDistanceSingle5kLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 5 km in a single run'**
-  String get badgesDistanceSingle5kDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingle5kDesc(String distance);
 
   /// Badge label
   ///
@@ -26188,11 +26235,11 @@ abstract class AppLocalizations {
   /// **'Half marathon'**
   String get badgesDistanceSingleHalfLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 21.1 km in a single run'**
-  String get badgesDistanceSingleHalfDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingleHalfDesc(String distance);
 
   /// Badge label
   ///
@@ -26200,11 +26247,11 @@ abstract class AppLocalizations {
   /// **'Marathon'**
   String get badgesDistanceSingleMarathonLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 42.2 km in a single run'**
-  String get badgesDistanceSingleMarathonDesc;
+  /// **'Ran {distance} in a single run'**
+  String badgesDistanceSingleMarathonDesc(String distance);
 
   /// Badge label
   ///
@@ -26212,59 +26259,59 @@ abstract class AppLocalizations {
   /// **'Ultra'**
   String get badgesDistanceSingleUltraLabel;
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'Ran 50 km or more in a single run'**
-  String get badgesDistanceSingleUltraDesc;
+  /// **'Ran {distance} or more in a single run'**
+  String badgesDistanceSingleUltraDesc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'100 km club'**
-  String get badgesDistanceLifetime100Label;
+  /// **'{distance} club'**
+  String badgesDistanceLifetime100Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'100 km logged all-time'**
-  String get badgesDistanceLifetime100Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime100Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'500 km'**
-  String get badgesDistanceLifetime500Label;
+  /// **'{distance}'**
+  String badgesDistanceLifetime500Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'500 km logged all-time'**
-  String get badgesDistanceLifetime500Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime500Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'1,000 km club'**
-  String get badgesDistanceLifetime1000Label;
+  /// **'{distance} club'**
+  String badgesDistanceLifetime1000Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'1,000 km logged all-time'**
-  String get badgesDistanceLifetime1000Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime1000Desc(String distance);
 
-  /// Badge label
+  /// Badge label; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'5,000 km'**
-  String get badgesDistanceLifetime5000Label;
+  /// **'{distance}'**
+  String badgesDistanceLifetime5000Label(String distance);
 
-  /// Badge description
+  /// Badge description; {distance} is the threshold in the reader's unit ("5 km" / "3.1 mi")
   ///
   /// In en, this message translates to:
-  /// **'5,000 km logged all-time'**
-  String get badgesDistanceLifetime5000Desc;
+  /// **'{distance} logged all-time'**
+  String badgesDistanceLifetime5000Desc(String distance);
 
   /// Badge label
   ///
@@ -26506,6 +26553,54 @@ abstract class AppLocalizations {
   /// **'Completed a park passport in 10 states'**
   String get badgesParkPassport10Desc;
 
+  /// Park course monthly boards (#1343) (badges.parkMonths3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park months'**
+  String get badgesParkMonths3Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 3 different months'**
+  String get badgesParkMonths3Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths6.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Half a year of parks'**
+  String get badgesParkMonths6Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths6.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 6 different months'**
+  String get badgesParkMonths6Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths12.label)
+  ///
+  /// In en, this message translates to:
+  /// **'A year of parks'**
+  String get badgesParkMonths12Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths12.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 12 different months'**
+  String get badgesParkMonths12Desc;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths24.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Two years of parks'**
+  String get badgesParkMonths24Label;
+
+  /// Park course monthly boards (#1343) (badges.parkMonths24.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course in 24 different months'**
+  String get badgesParkMonths24Desc;
+
   /// Title of the dashboard race-time predictor card
   ///
   /// In en, this message translates to:
@@ -26589,6 +26684,286 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Riegel equivalence from your best recent effort, recency-weighted. Closer distances are more reliable.'**
   String get racePredictorFootnote;
+
+  /// Debug-build Settings row that opens the timing-line calibration tool
+  ///
+  /// In en, this message translates to:
+  /// **'Line calibration'**
+  String get lineCalibrationEntryTitle;
+
+  /// Subtitle of the debug-build calibration row
+  ///
+  /// In en, this message translates to:
+  /// **'Debug build: timing-line error figures'**
+  String get lineCalibrationEntrySubtitle;
+
+  /// Title of the debug-build timing-line calibration screen
+  ///
+  /// In en, this message translates to:
+  /// **'Line calibration (debug)'**
+  String get lineCalibrationTitle;
+
+  /// How a calibration session runs; the quoted tab is navRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start a capture, record a run that crosses the line, then stop the capture here. Video-time each real crossing against an NTP-synced clock and enter those instants. The CSV holds error figures and counts only.'**
+  String get lineCalibrationIntro;
+
+  /// Capture status while recording; count is GPS fixes held
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Capturing: {count} fix} other{Capturing: {count} fixes}}'**
+  String lineCalibrationCapturing(int count);
+
+  /// Capture status while stopped; count is GPS fixes held
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Idle: {count} fix held} other{Idle: {count} fixes held}}'**
+  String lineCalibrationIdle(int count);
+
+  /// Button that starts a calibration capture
+  ///
+  /// In en, this message translates to:
+  /// **'Start capture'**
+  String get lineCalibrationStart;
+
+  /// Button that stops a calibration capture
+  ///
+  /// In en, this message translates to:
+  /// **'Stop capture'**
+  String get lineCalibrationStop;
+
+  /// Button that redraws the capture status
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get lineCalibrationRefresh;
+
+  /// Field label: latitude of the timing line centre
+  ///
+  /// In en, this message translates to:
+  /// **'Line centre latitude'**
+  String get lineCalibrationLatLabel;
+
+  /// Field label: longitude of the timing line centre
+  ///
+  /// In en, this message translates to:
+  /// **'Line centre longitude'**
+  String get lineCalibrationLngLabel;
+
+  /// Field label: compass bearing a runner crosses the line in, in degrees
+  ///
+  /// In en, this message translates to:
+  /// **'Bearing of travel (degrees)'**
+  String get lineCalibrationBearingLabel;
+
+  /// Field label: half the timing line width, in metres
+  ///
+  /// In en, this message translates to:
+  /// **'Half-width (m)'**
+  String get lineCalibrationHalfWidthLabel;
+
+  /// Button that fills the line centre from the current position
+  ///
+  /// In en, this message translates to:
+  /// **'Centre at my position'**
+  String get lineCalibrationHere;
+
+  /// Button that measures the device-to-server clock offset over count round trips
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Measure server clock ({count} round trip)} other{Measure server clock ({count} round trips)}}'**
+  String lineCalibrationMeasure(int count);
+
+  /// Field label: the clock offset, in milliseconds
+  ///
+  /// In en, this message translates to:
+  /// **'Clock offset (ms)'**
+  String get lineCalibrationOffsetLabel;
+
+  /// Helper under the clock offset field: which clock is subtracted from which
+  ///
+  /// In en, this message translates to:
+  /// **'Server minus device'**
+  String get lineCalibrationOffsetHelper;
+
+  /// Dropdown label: the angle the runner approaches the line at
+  ///
+  /// In en, this message translates to:
+  /// **'Approach'**
+  String get lineCalibrationApproachLabel;
+
+  /// Approach option: crossing square to the line
+  ///
+  /// In en, this message translates to:
+  /// **'At 90° to the line'**
+  String get lineCalibrationApproach90;
+
+  /// Approach option: crossing at a shallow angle
+  ///
+  /// In en, this message translates to:
+  /// **'At 30° to the line'**
+  String get lineCalibrationApproach30;
+
+  /// Approach option: running alongside the line 20 m off it, never crossing
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel, 20 m away'**
+  String get lineCalibrationApproachParallel20;
+
+  /// Approach option: running alongside the line 40 m off it, never crossing
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel, 40 m away'**
+  String get lineCalibrationApproachParallel40;
+
+  /// Approach option: standing still on the line
+  ///
+  /// In en, this message translates to:
+  /// **'Standing on the line'**
+  String get lineCalibrationApproachStanding;
+
+  /// Dropdown label: how fast the tester moves
+  ///
+  /// In en, this message translates to:
+  /// **'Pace'**
+  String get lineCalibrationPaceLabel;
+
+  /// Pace option
+  ///
+  /// In en, this message translates to:
+  /// **'Walk'**
+  String get lineCalibrationPaceWalk;
+
+  /// Pace option
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get lineCalibrationPaceRun;
+
+  /// Pace option: not moving
+  ///
+  /// In en, this message translates to:
+  /// **'Standing still'**
+  String get lineCalibrationPaceStill;
+
+  /// Dropdown label: where the phone is carried
+  ///
+  /// In en, this message translates to:
+  /// **'Carry'**
+  String get lineCalibrationCarryLabel;
+
+  /// Carry option
+  ///
+  /// In en, this message translates to:
+  /// **'Phone in hand'**
+  String get lineCalibrationCarryHand;
+
+  /// Carry option
+  ///
+  /// In en, this message translates to:
+  /// **'Phone in pocket'**
+  String get lineCalibrationCarryPocket;
+
+  /// Field label: the true crossing times, typed one per line
+  ///
+  /// In en, this message translates to:
+  /// **'True crossing instants'**
+  String get lineCalibrationInstantsLabel;
+
+  /// Field hint: two example formats, a time of day and an ISO-8601 instant
+  ///
+  /// In en, this message translates to:
+  /// **'{time} or {instant}'**
+  String lineCalibrationInstantsHint(String time, String instant);
+
+  /// Field helper: how a bare time of day is read
+  ///
+  /// In en, this message translates to:
+  /// **'One per line. A time of day is read in this phone\'s time zone on the capture day; give an ISO instant with its zone across midnight or when the reference clock shows UTC.'**
+  String get lineCalibrationInstantsHelper;
+
+  /// Problem: the server clock could not be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the server clock; enter the offset by hand.'**
+  String get lineCalibrationClockFailed;
+
+  /// Problem: no GPS position for Centre at my position
+  ///
+  /// In en, this message translates to:
+  /// **'No position fix.'**
+  String get lineCalibrationNoFix;
+
+  /// Problem: the line fields are empty or invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the line: centre, bearing of travel, half-width.'**
+  String get lineCalibrationLineMissing;
+
+  /// Problem: no clock offset
+  ///
+  /// In en, this message translates to:
+  /// **'Measure or enter the clock offset.'**
+  String get lineCalibrationOffsetMissing;
+
+  /// Problem: the instants do not parse; time is the HH:MM:SS.fff pattern
+  ///
+  /// In en, this message translates to:
+  /// **'One instant per line: {time} or ISO-8601.'**
+  String lineCalibrationInstantsInvalid(String time);
+
+  /// Problem: the capture has fewer than two GPS fixes
+  ///
+  /// In en, this message translates to:
+  /// **'The capture holds fewer than two fixes.'**
+  String get lineCalibrationFewFixes;
+
+  /// Problem: the line geometry is degenerate
+  ///
+  /// In en, this message translates to:
+  /// **'That line is not usable.'**
+  String get lineCalibrationLineUnusable;
+
+  /// Button that scores the capture against the entered instants
+  ///
+  /// In en, this message translates to:
+  /// **'Score this capture'**
+  String get lineCalibrationScore;
+
+  /// One scored capture's figures; median, p50, p95 and offset are a number or a dash
+  ///
+  /// In en, this message translates to:
+  /// **'{matched} of {total} matched, {missed} missed, {falseCount} false, {near} near; median {median} ms, |err| p50 {p50} ms, p95 {p95} ms; offset ±{offset} ms'**
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  );
+
+  /// Under a result that matched nothing: detections sit a median of ms milliseconds from the true crossings
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matched, yet detections sit a median {ms} ms from the truths: check the clock, the offset and the time zone.'**
+  String lineCalibrationNothingMatched(int ms);
+
+  /// Button that shares the results CSV
+  ///
+  /// In en, this message translates to:
+  /// **'Share CSV'**
+  String get lineCalibrationShare;
+
+  /// Button that copies the results CSV
+  ///
+  /// In en, this message translates to:
+  /// **'Copy CSV'**
+  String get lineCalibrationCopy;
 
   /// No description provided for @settingsSectionDeveloper.
   ///
@@ -34093,11 +34468,22 @@ abstract class AppLocalizations {
   /// **'Park course time'**
   String get shareCardCourseKicker;
 
-  /// Park courses phase 5 (runShare.courseRank)
+  /// Park course monthly boards (#1343): the sticker's month place (runShare.courseMonthRank)
   ///
   /// In en, this message translates to:
-  /// **'#{rank} in {season}'**
-  String shareCardCourseRank(String rank, String season);
+  /// **'#{rank} in {month}'**
+  String shareCardCourseMonthRank(String rank, String month);
+
+  /// Park course monthly boards (#1343): the sticker's month place with a top-10 year place (runShare.courseRanks)
+  ///
+  /// In en, this message translates to:
+  /// **'#{monthRank} in {month} · #{seasonRank} in {season}'**
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  );
 
   /// Run detail action that opens the share sheet on the PR card
   ///
@@ -34867,6 +35253,12 @@ abstract class AppLocalizations {
   /// **'Most completions'**
   String get parksBoardCompletions;
 
+  /// Park course monthly boards (#1343): web key parks.periodThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get parksPeriodThisMonth;
+
   /// Park courses (#1313): web key parks.seasonThisYear.
   ///
   /// In en, this message translates to:
@@ -34879,11 +35271,35 @@ abstract class AppLocalizations {
   /// **'All time'**
   String get parksSeasonAllTime;
 
+  /// Park course monthly boards (#1343): the month arrow back. Web key parks.periodPrevMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get parksPeriodPrevMonth;
+
+  /// Park course monthly boards (#1343): the month arrow forward. Web key parks.periodNextMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Next month'**
+  String get parksPeriodNextMonth;
+
   /// Park courses (#1313): web key parks.completionDays.
   ///
   /// In en, this message translates to:
   /// **'{n, plural, one {{n} day} other {{n} days}}'**
   String parksCompletionDays(int n);
+
+  /// Park course monthly boards (#1343): how many runners have a time on a course this month, on its park page. Web key parks.monthRunners.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} runner this month} other {{n} runners this month}}'**
+  String parksMonthRunners(int n);
+
+  /// Park course monthly boards (#1343): the park page could not read how many ran each course this month. Web key parks.monthRunnersFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load how many ran each course this month.'**
+  String get parksMonthRunnersFailed;
 
   /// Park courses (#1313): web key parks.noEfforts.
   ///
@@ -35334,6 +35750,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.'**
   String get prefsNotifyRaceStartingSoonHint;
+
+  /// Notifications: the switch for the park course month-close notice (notify_park_course_month). Web key prefs.notifyParkCourseMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Park course months'**
+  String get prefsNotifyParkCourseMonth;
+
+  /// Notifications: hint under the park course month-close switch.
+  ///
+  /// In en, this message translates to:
+  /// **'When a month ends at a park course you ran, a note in your inbox with your best time from it.'**
+  String get prefsNotifyParkCourseMonthHint;
 
   /// Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins
   ///
@@ -36187,6 +36615,22 @@ abstract class AppLocalizations {
   /// **'A park course was reported'**
   String get profileNotifParkCourseReport;
 
+  /// Notification text: a calendar month closed at a park course you ran, when the course cannot be named (notificationBell.parkCourseMonthClosed)
+  ///
+  /// In en, this message translates to:
+  /// **'A month has closed on a park course you ran'**
+  String get profileNotifParkCourseMonthClosed;
+
+  /// Notification text: a calendar month closed at a park course you ran, with your best time from it; month is a month and year such as November 2026 (notificationBell.parkCourseMonthClosedNamed)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the {month} board has closed. Your best: {time}'**
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  );
+
   /// Rate-limit refusal when the direct-message reaction bucket is spent
   ///
   /// In en, this message translates to:
@@ -36906,6 +37350,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sort'**
   String get filterBarSort;
+
+  /// Heading of the run-source choices (recorded, watch, Strava, parkrun, Health) in the run list's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get filterBarSource;
 
   /// Placeholder of the Runs tab's search field, which matches the names runners give their runs
   ///

@@ -1,6 +1,9 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { onMount } from 'svelte';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { activeFormatLocale, formatDuration } from '#lib/format/time.ts';
@@ -19,13 +22,20 @@
 		type SegmentGenderFilter,
 	} from '#lib/core/data.ts';
 	import {
+		boardPeriodArgs,
+		boardPeriodParam,
 		courseAttribution,
 		courseOffersWayfinding,
 		parkCourseGpx,
+		parseBoardPeriod,
 		parseSharedUse,
 		regionCodeFromSlug,
 		regionName,
+		stepBoardMonth,
+		type BoardPeriod,
+		type ParkNow,
 	} from '#lib/parks/park_courses.ts';
+	import { monthYearLabel } from '#lib/format/calendar.ts';
 	import { downloadFile } from '#lib/routes/gpx.ts';
 	import { PUBLIC_SITE_URL } from '$app/env/public';
 	import { siteOrigin } from '#lib/core/site_url.ts';
@@ -75,7 +85,9 @@
 
 	type BoardKind = 'fastest' | 'completions';
 	let boardKind = $state<BoardKind>('fastest');
-	let allTime = $state(false);
+	// Read from `?period=` once the park says what month it is there; null
+	// until then. This year is the default and keeps the URL bare.
+	let period = $state<BoardPeriod | null>(null);
 	let genderFilter = $state<SegmentGenderFilter | null>(null);
 	let ageFilter = $state<SegmentAgeBand | null>(null);
 	let fastest = $state<GlobalSegmentLeaderboardEntry[] | null>(null);
@@ -91,7 +103,35 @@
 	let probeFailed = $state(false);
 	let chartHoverIdx = $state<number | null>(null);
 
-	const season = $derived(allTime ? null : (park?.park_season ?? null));
+	const parkNow = $derived<ParkNow | null>(park ? { season: park.park_season, month: park.park_month } : null);
+	const periodArgs = $derived(period ? boardPeriodArgs(period) : null);
+	const prevMonth = $derived(period && parkNow ? stepBoardMonth(period, -1, parkNow) : null);
+	const nextMonth = $derived(period && parkNow ? stepBoardMonth(period, 1, parkNow) : null);
+
+	// The choice is a shallow navigation, as `?show=` on Races & courses is:
+	// the board reloads, the map and the scroll stay. `page.shallow.url` is
+	// what it wrote; a `?period=` link followed while the page is open lands
+	// in `page.url`.
+	const shownUrl = () => page.shallow?.url ?? page.url;
+	$effect(() => {
+		const raw = shownUrl().searchParams.get('period');
+		if (parkNow) period = parseBoardPeriod(raw, parkNow) ?? { kind: 'year', season: parkNow.season };
+	});
+
+	function setPeriod(next: BoardPeriod) {
+		period = next;
+		const url = shownUrl();
+		const params = new URLSearchParams(url.search);
+		const value = boardPeriodParam(next);
+		if (value) params.set('period', value);
+		else params.delete('period');
+		const rest = params.toString();
+		void goto(`${url.pathname}${rest ? `?${rest}` : ''}`, { replace: true, shallow: true });
+	}
+
+	function thisMonth(): BoardPeriod | null {
+		return parkNow ? { kind: 'month', season: parkNow.season, month: parkNow.month } : null;
+	}
 
 	// Curated catalogue geometry (a world-readable table), never a runner's
 	// trace, so it renders directly.
@@ -123,15 +163,17 @@
 		boardFailed = false;
 		fastest = null;
 		completions = null;
+		const args = periodArgs ?? { season: null, month: null };
 		try {
 			if (boardKind === 'fastest') {
 				fastest = await fetchGlobalSegmentLeaderboard(segmentId, {
 					gender: genderFilter,
 					ageBand: ageFilter,
-					season,
+					season: args.season,
+					month: args.month,
 				});
 			} else {
-				completions = await fetchGlobalSegmentCompletions(segmentId, season);
+				completions = await fetchGlobalSegmentCompletions(segmentId, args.season, 50, args.month);
 			}
 		} catch (e) {
 			console.error('park course board failed', e);
@@ -155,9 +197,9 @@
 	});
 
 	$effect(() => {
-		const deps = [boardKind, season, genderFilter, ageFilter];
+		const deps = [boardKind, periodArgs?.season, periodArgs?.month, genderFilter, ageFilter];
 		void deps;
-		if (course && auth.loggedIn && anyTimes) void refreshBoard(course.segment.id);
+		if (course && auth.loggedIn && anyTimes && period) void refreshBoard(course.segment.id);
 	});
 
 	onMount(async () => {
@@ -381,7 +423,7 @@
 					{/if}
 					{#if elevations}
 						<div class="elevation" data-testid="park-course-elevation">
-							<h2 class="section-title">{m('parks.elevationTitle')}</h2>
+							<SectionHeader title label={m('parks.elevationTitle')} />
 							<ElevationProfile
 								{elevations}
 								totalGain={course.segment.elevation_m == null ? null : Number(course.segment.elevation_m)}
@@ -430,7 +472,7 @@
 			</div>
 
 			<section class="board" aria-labelledby="park-board-title">
-				<h2 id="park-board-title" class="section-title">{m('parks.boardTitle')}</h2>
+				<SectionHeader title label={m('parks.boardTitle')} id="park-board-title" />
 				{#if !auth.loggedIn}
 					<p class="muted" data-testid="park-course-sign-in">
 						{m('parks.signInForBoards')}
@@ -482,18 +524,30 @@
 						<div class="segmented" role="group" aria-label={m('parks.boardSeasonLabel')}>
 							<button
 								type="button"
-								class:active={!allTime}
-								aria-pressed={!allTime}
-								onclick={() => (allTime = false)}
+								class:active={period?.kind === 'month'}
+								aria-pressed={period?.kind === 'month'}
+								onclick={() => {
+									const next = thisMonth();
+									if (next) setPeriod(next);
+								}}
+								data-testid="park-period-this-month"
+							>
+								{m('parks.periodThisMonth')}
+							</button>
+							<button
+								type="button"
+								class:active={period?.kind === 'year'}
+								aria-pressed={period?.kind === 'year'}
+								onclick={() => setPeriod({ kind: 'year', season: park!.park_season })}
 								data-testid="park-season-this-year"
 							>
 								{m('parks.seasonThisYear', { year: park.park_season })}
 							</button>
 							<button
 								type="button"
-								class:active={allTime}
-								aria-pressed={allTime}
-								onclick={() => (allTime = true)}
+								class:active={period?.kind === 'all'}
+								aria-pressed={period?.kind === 'all'}
+								onclick={() => setPeriod({ kind: 'all' })}
 								data-testid="park-season-all-time"
 							>
 								{m('parks.seasonAllTime')}
@@ -509,6 +563,34 @@
 							{m('headToHead.compare')}
 						</button>
 					</div>
+
+					{#if period?.kind === 'month'}
+						<div class="month-nav" data-testid="park-period-month-nav">
+							<button
+								type="button"
+								class="month-step"
+								aria-label={m('parks.periodPrevMonth')}
+								disabled={!prevMonth}
+								onclick={() => prevMonth && setPeriod(prevMonth)}
+								data-testid="park-period-prev"
+							>
+								<span class="material-symbols" aria-hidden="true">chevron_left</span>
+							</button>
+							<span class="month-label" aria-live="polite" data-testid="park-period-month">
+								{monthYearLabel(period.season, period.month, currentLocale())}
+							</span>
+							<button
+								type="button"
+								class="month-step"
+								aria-label={m('parks.periodNextMonth')}
+								disabled={!nextMonth}
+								onclick={() => nextMonth && setPeriod(nextMonth)}
+								data-testid="park-period-next"
+							>
+								<span class="material-symbols" aria-hidden="true">chevron_right</span>
+							</button>
+						</div>
+					{/if}
 
 					{#if boardKind === 'fastest'}
 						<div class="tier-filters" data-testid="park-board-filters">
@@ -783,10 +865,6 @@
 	.elevation {
 		margin-top: var(--space-lg);
 	}
-	.section-title {
-		margin: 0 0 var(--space-sm);
-		font-size: var(--font-size-section-title);
-	}
 	.attribution {
 		margin: var(--space-sm) 0 0;
 		font-size: 0.75rem;
@@ -817,6 +895,37 @@
 		background: var(--color-primary-light);
 		color: var(--color-text);
 		font-weight: 600;
+	}
+	.month-nav {
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		margin-bottom: var(--space-sm);
+	}
+	.month-step {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		background: var(--color-surface);
+		color: var(--color-text);
+		cursor: pointer;
+	}
+	.month-step:disabled {
+		color: var(--color-text-tertiary);
+		cursor: default;
+	}
+	.month-step:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.month-label {
+		min-width: 0;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 	.h2h-open {
 		display: inline-flex;

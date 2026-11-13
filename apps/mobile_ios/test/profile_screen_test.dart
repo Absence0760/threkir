@@ -28,8 +28,12 @@ class _SelfApi extends ApiClient {
   final bool countsThrow;
   bool? countsAskedAsSelf;
 
+  /// Null once the session ends under the open screen (sign-out, an account
+  /// switch, a refresh the server refused).
+  String? viewerId = 'me';
+
   @override
-  String? get userId => 'me';
+  String? get userId => viewerId;
 
   @override
   Future<({int publicCount, int? privateCount})> fetchProfileRunCounts(
@@ -189,6 +193,46 @@ void main() {
       await pumpSelf(tester, ProfileTab.notifications);
       await tester.pumpAndSettle();
       expect(_selectedTabLabel(tester), 'Notifications');
+    });
+
+    // Sentry THREKIR-CLIENT-A: Notifications is only on your own profile,
+    // and "own" is read from the live session. A session that ended under
+    // the open screen took the tab away while the controller still counted
+    // five, so the strip built a tab past its end (a RangeError in release).
+    testWidgets('the session ending on Notifications drops the tab and '
+        'selects one that is still there', (tester) async {
+      final api = _SelfApi();
+      Widget app() => MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: ProfileScreen(
+              api: api,
+              userId: 'me',
+              initialTab: ProfileTab.notifications,
+            ),
+          );
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      expect(_selectedTabLabel(tester), 'Notifications');
+
+      api.viewerId = null;
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+      expect(tabBar.controller!.length, tabBar.tabs.length);
+      expect([for (final t in tabBar.tabs) (t as Tab).text],
+          isNot(contains('Notifications')));
+      expect(_selectedTabLabel(tester), 'Following');
+
+      api.viewerId = 'me';
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.length, 5);
+      expect(_selectedTabLabel(tester), 'Following',
+          reason: 'the tab still there stays selected when one comes back');
     });
 
     testWidgets('the tab a bare index 3 would have selected is NOT '

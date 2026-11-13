@@ -4,7 +4,7 @@ description: Comment un parcours permanent dans un parc chronomètre votre cours
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-08
+updated: 2026-11-13
 cta:
   feature: parks
 ---
@@ -35,9 +35,15 @@ Chaque classement a une saison : l'année civile **dans le fuseau horaire du par
 
 Une nouvelle saison chaque janvier donne à chacun une nouvelle chance de se classer, et le classement de tous les temps garde les records.
 
+## Un nouveau classement chaque mois
+
+Les deux classements existent aussi **mois par mois**, dans le fuseau horaire du parc : de minuit le 1er à minuit le 1er du mois suivant, à l'heure du parc. Une course à 23 h 30 le 31 octobre dans un parc de Virginie compte pour octobre.
+
+Un mois qui commence vide est une nouvelle chance pour tout le monde, pas seulement pour les plus rapides de janvier. Quand un mois se termine, vous recevez dans votre boîte de réception un message avec votre meilleur temps du mois sur chaque parcours que vous avez couru, et chaque mois où vous terminez un parcours de parc compte pour les badges des mois au parc.
+
 ## Deux classements, deux façons de gagner
 
-- **Plus rapides** classe chaque coureur selon son meilleur temps, une seule fois par coureur. Passez de cette année à tous les temps, et filtrez par genre ou par tranche d'âge.
+- **Plus rapides** classe chaque coureur selon son meilleur temps, une seule fois par coureur. Passez de ce mois-ci à cette année ou à tous les temps, et filtrez par genre ou par tranche d'âge.
 - **Le plus de passages** compte les jours où vous avez bouclé le parcours pendant la saison. Plusieurs tours le même jour comptent pour un, ce qui récompense les habitués qui reviennent semaine après semaine plutôt qu'une longue journée de tours.
 
 Les sorties privées restent privées : le temps d'une sortie que les autres ne peuvent pas voir ne leur est pas montré.

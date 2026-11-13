@@ -37,6 +37,8 @@ names the reader on its own — `navYou` "Tu", web `clubEvent.youTag`
 "(tu)", `messages.youPrefix` "Tu: " (§ 760; the register guard does not
 list bare `tu` for this reason). Don't extend it to running prose.
 
+- **A string around `{distance}` agrees with both units.** *quilómetros* is masculine and *milhas* feminine, so nothing agrees with the distance: "Registou {distance} no total", "Clube {distance}", never "{distance} registados" / "Clube dos {distance}". Settled 2026-11-13 (#1374 round 3.8).
+
 ## The guards that enforce this (a pt-PT string that breaks them fails the PR)
 
 `apps/web/src/lib/i18n/locale_reach.test.ts` and the "locale reach" group
@@ -59,6 +61,18 @@ in `apps/mobile_android/test/architecture_guards_test.dart`:
   imperative too: "Antes de definir os ritmos, confirma que …" became
   "… vai confirmar que …" (2026-11-13). Give the clause a subject or a
   future.
+
+- **Brazilian colloquial verbs the guard cannot ban.** *Become* is
+  **passar a ser** / **tornar-se**, never `virar` ("cada uma passa a ser uma
+  rota própria", "provas passam a ser corridas leves"); `virar` stays only
+  for *turn* ("Vire à esquerda"), which is why it is not on the banned list.
+  A consequence is **por isso**, not `então` ("…não está no CSV, por isso as
+  corridas importadas…"). Settled 2026-11-13 (#1374 round 3.8).
+- **Runners nearby.** The section is **Corredores por perto** and its
+  switch **Mostrar-me em Corredores por perto** on both surfaces (mobile
+  `prefsDiscoverableNearby`, web `prefs.discoverableNearby`, and every
+  string that quotes it); `cross_platform_terms.test.ts` fails a drift.
+  Settled 2026-11-13.
 
 ## Spelling and style authority
 
@@ -141,6 +155,8 @@ twin the same way so the two surfaces read alike. Both rules are guards
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
 | AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está a pensar"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
 | AI disclosure | **o aviso de IA** ("precisa que aceite o aviso de IA atualizado" — keep the consent: the reader accepts the notice, not merely needs it) | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
+| health-data consent | **consentimento de dados de saúde**; Review consent button **Rever (o) consentimento (de dados de saúde)**; a sentence about what is kept under consent names **a Threkir** ("a Threkir só guarda…") | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "consentimento para dados de saúde", never "Dar consentimento" on a button that only opens the screen. The consent statement and every withdrawal list name the same items in the same order as the English (gender, height, weight history, cycle or pregnancy details, heart rate recorded with activities, heart-rate targets in plans, heart-rate medication setting, food log); `health_consent_scope.test.ts` pins the English. The heart-rate medication item names the setting, never a statement that a drug affects the reader: « a sua definição de medicação que afeta a frequência cardíaca » |
+| GDPR citation | **art. 9, n.º 2, alínea a), do RGPD**, "art. 7, n.º 3, do RGPD", "art. 20 do RGPD" | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "RGPD art. 9" |
 | race (the race-strategy phase intent) | **Competir** (`phaseIntentRace`, `runDetail.phaseRace`) | settled 2026-11-13 (#1374 round 3.6); never "Correr", which is just *run* |
 | Pro & support | **Pro e apoio** | *support* here is supporting the app ("apoiar a app"); "suporte" is tech support |
 | sign in | **Iniciar sessão** ("Inicie sessão…", "início de sessão", "sem sessão iniciada"); a bare "Entrar" on a button | never "login" / "Faça login" — guarded |

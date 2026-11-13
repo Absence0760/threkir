@@ -43,8 +43,10 @@ import 'runs_screen.dart';
 ///     the segment catalogue is Explore's Segments chip rather than a tab of
 ///     its own (issue #1374, owner decision 1).
 ///
-/// The hub owns the only app bar (the strip, no title) and the one FAB, as
-/// the Social hub does: every tab body is a ui_kit `HubTabBody`, which inside
+/// The hub is a ui_kit `RootPage.tabbed`, as the Social hub is: the hub's
+/// name ([fitnessHubTitle], the label the bottom nav shows) in a large title
+/// over the strip, which collapses into the one app bar as a tab scrolls, and
+/// the one FAB: every tab body is a ui_kit `HubTabBody`, which inside
 /// the hub's [HubTabScope] draws no app bar or title of its own, puts its
 /// secondary actions in its control row and hands its primary action to the
 /// hub, which shows the active tab's as its FAB (issue #1374). One strip in
@@ -108,6 +110,17 @@ List<FitnessTab> fitnessHubTabs({
       FitnessTab.routes,
     ];
 
+/// The hub's name: its bottom-nav label and the title it says over its strip,
+/// from one place so the two never disagree. "Fitness" while gym or
+/// nutrition is shown, "Training" for a runner with neither (decisions
+/// § 139): the hub then holds runs, plans, races and routes.
+String fitnessHubTitle(
+  AppLocalizations l10n, {
+  required bool gymShown,
+  required bool nutritionShown,
+}) =>
+    gymShown || nutritionShown ? l10n.navFitness : l10n.navTraining;
+
 class FitnessHubScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final SocialService? social;
@@ -158,8 +171,9 @@ class FitnessHubScreen extends StatefulWidget {
 
 class _FitnessHubScreenState extends State<FitnessHubScreen>
     with TickerProviderStateMixin, ShellBackHandler {
-  late TabController _controller;
-  late List<FitnessTab> _tabs;
+  late final TabSetController<FitnessTab> _tabSet;
+  TabController get _controller => _tabSet.controller;
+  List<FitnessTab> get _tabs => _tabSet.tabs;
   late bool _centreOpensRecorder;
   late final RaceService _raceService = RaceService();
   final _actions = HubPrimaryActions();
@@ -192,9 +206,13 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = _visibleTabs();
     _centreOpensRecorder = _resolveCentreOpensRecorder();
-    _controller = _buildController();
+    _tabSet = TabSetController(
+      vsync: this,
+      tabs: _visibleTabs(),
+      initial: _tab.value,
+      onIndexChanged: _publishTab,
+    );
     _settleSelection();
     _tab
       ..addListener(_adoptTab)
@@ -219,23 +237,10 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
         nutritionShown: _nutritionShown,
       );
 
-  TabController _buildController() {
-    final index = _tabs.indexOf(_tab.value);
-    final controller = TabController(
-      length: _tabs.length,
-      vsync: this,
-      initialIndex: index < 0 ? 0 : index,
-    );
-    controller.addListener(_publishTab);
-    return controller;
-  }
-
-  /// A tab that has just been hidden can't stay selected. Run only once the
-  /// new controller is in [_controller]: the write notifies [_adoptTab],
-  /// which would otherwise drive the controller just disposed.
-  void _settleSelection() {
-    if (!_tabs.contains(_tab.value)) _tab.value = _tabs.first;
-  }
+  /// The notifier follows the controller once the set has changed: a hidden
+  /// tab falls back to the first, and a tap still animating keeps the tab it
+  /// was moving to, which the notifier had not been told yet.
+  void _settleSelection() => _tab.value = _tabSet.selected;
 
   /// Rebuilds the strip only when the set of tabs actually changes — the
   /// stores notify on every logged entry, and a fresh controller each time
@@ -248,11 +253,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     setState(() {
       _centreOpensRecorder = opensRecorder;
       if (!tabsChanged) return;
-      _controller
-        ..removeListener(_publishTab)
-        ..dispose();
-      _tabs = next;
-      _controller = _buildController();
+      _tabSet.update(next, fallback: next.first);
       _settleSelection();
     });
   }
@@ -279,8 +280,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     _tab
       ..removeListener(_rememberTab)
       ..removeListener(_adoptTab);
-    _controller.removeListener(_publishTab);
-    _controller.dispose();
+    _tabSet.dispose();
     if (_ownsTab) _tab.dispose();
     _actions.dispose();
     super.dispose();
@@ -303,23 +303,20 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 0,
-        bottom: AppTabBar(
-          controller: _controller,
-          labels: [
-            for (final t in _tabs) t.label(l10n),
-          ],
-        ),
+    return RootPage.tabbed(
+      title: fitnessHubTitle(
+        l10n,
+        gymShown: _gymShown,
+        nutritionShown: _nutritionShown,
       ),
-      body: TabBarView(
-        controller: _controller,
-        children: [
-          for (final t in _tabs)
-            HubTabScope(tab: t, actions: _actions, child: _body(t, l10n)),
-        ],
-      ),
+      controller: _controller,
+      labels: [
+        for (final t in _tabs) t.label(l10n),
+      ],
+      children: [
+        for (final t in _tabs)
+          HubTabScope(tab: t, actions: _actions, child: _body(t, l10n)),
+      ],
       floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: ValueListenableBuilder<FitnessTab>(
         valueListenable: _tab,

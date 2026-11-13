@@ -100,6 +100,10 @@ String _targetKeyFor(NotificationRow n) {
       // One a day, each about that day's session: yesterday's is not a
       // second actor on today's, so they never collapse.
       return solo;
+    case 'park_course_month_closed':
+      // One per course and month, each with its own best time: "and 1
+      // other" would hide a course's month.
+      return solo;
     case 'course_alert':
       // One notice per recipient per alert, and two alerts are two
       // different course changes: never collapse them.

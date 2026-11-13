@@ -292,7 +292,7 @@ class AppLocalizationsJa extends AppLocalizations {
       'このバックアップは新しいバージョンのアプリで作成されています。アプリを更新してから復元してください。';
 
   @override
-  String get importStatusRestoringBackup => 'バックアップを復元中...';
+  String get importStatusRestoringBackup => 'バックアップを復元中…';
 
   @override
   String importStatusBackupRestored(Object runs, Object tracks, Object routes) {
@@ -517,6 +517,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String importHeartRateNotKept(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count件のアクティビティを心拍数なしでインポートしました',
+    );
+    return '$_temp0。Threkir は、健康データの利用に同意した場合にのみ心拍数を保存します。';
+  }
+
+  @override
   String get importHealthSubtitleIos =>
       'Apple Watch、Nike Run Club、Strava など、ヘルスケアに書き込む各アプリで記録したワークアウトを取り込みます';
 
@@ -652,7 +662,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get peopleNearbyEmptyBody =>
-      '「近くのランナーに自分を表示」をオンにし、エリアを設定してください。同じ設定をしたランナーだけがあなたを見つけられます。';
+      '「『近くのランナー』に表示する」をオンにし、エリアを設定してください。同じ設定をしたランナーだけがあなたを見つけられます。';
 
   @override
   String get peopleNearbyEmptyAction => 'プライバシー設定を開く';
@@ -671,7 +681,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get prefsDiscoverableNearby => '近くのランナーに自分を表示';
+  String get prefsDiscoverableNearby => '「近くのランナー」に表示する';
 
   @override
   String get prefsDiscoverableNearbySubtitle =>
@@ -1241,7 +1251,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyMetricsConsentTitle => '健康データを保存';
 
   @override
-  String get bodyMetricsConsentSubtitle => '身長と体重は特別な健康データです。オフにすると削除されます。';
+  String get bodyMetricsConsentSubtitle =>
+      'このオプションがオンの間に限り、Threkirはあなたの性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録を保存し、これらと生年月日を健康データとして（GDPR 第9条(2)(a)）、トレーニングと栄養目標のパーソナライズ、および性別・年齢区分別のセグメントのランキングへの振り分けに使用します。オフにして保存すると同意が撤回され、これらのデータが削除されます。生年月日は年齢の記録として残ります。';
 
   @override
   String get bodyMetricsHeight => '身長';
@@ -1280,10 +1291,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyMetricsWithdrawTitle => '健康データの同意を撤回しますか？';
 
   @override
-  String get bodyMetricsWithdrawBody => '保存された身長と体重の履歴がすべて完全に削除されます。元に戻せません。';
+  String get bodyMetricsWithdrawBody =>
+      '性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録が完全に削除されます。アクティビティ自体は残ります。生年月日は年齢の記録として残りますが、健康データとしては使われなくなります。この操作は元に戻せません。';
 
   @override
   String get bodyMetricsWithdrawConfirm => '撤回して削除';
+
+  @override
+  String get healthConsentFoodTitle => '食事記録は健康データです';
+
+  @override
+  String get healthConsentFoodBody =>
+      'Threkir は、健康データの利用に同意した場合にのみ食事記録を保存します。同意するまで何も記録されません。';
+
+  @override
+  String get healthConsentGiveAction => '同意内容を確認する';
 
   @override
   String get bodyMetricsSaved => '保存しました';
@@ -1936,7 +1958,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupHealthConsent =>
-      'ペース・心拍・カロリーの推定をパーソナライズするために、Threkir が性別と生年月日を使用することに同意します（特別な区分の健康データ、GDPR 第9条）。';
+      'Threkirが私の性別、身長、体重の履歴、月経周期や妊娠に関する情報（ある場合）、アクティビティとともに記録された心拍数、プランの心拍数目標、心拍数に影響する服薬の設定、食事記録を保存し、これらと生年月日を健康データとして（GDPR 第9条(2)(a)）、トレーニングと栄養目標のパーソナライズ、および性別・年齢区分別のセグメントのランキングへの振り分けに使用することに同意します。この同意はいつでも撤回できます。';
 
   @override
   String get setupPrivacyTitle => 'ランは誰が見られる？';
@@ -2222,6 +2244,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSyncing => '同期中…';
+
+  @override
+  String get runHeartRateNotSaved =>
+      'このアクティビティの心拍数は保存されていません。Threkir は、健康データの利用に同意した場合にのみ心拍数を保存します。';
 
   @override
   String get runDone => '完了';
@@ -3370,6 +3396,21 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String runDetailParkCourseRank(String rank, String season) {
     return '$season年 $rank位';
+  }
+
+  @override
+  String runDetailParkCourseMonthRank(String rank, String month) {
+    return '$month $rank位';
+  }
+
+  @override
+  String runDetailParkCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '$month $monthRank位、$season年 $seasonRank位';
   }
 
   @override
@@ -6217,7 +6258,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventRemoveResultBody =>
-      '登録したフィニッシュタイムがこのイベントのリーダーボードから削除されます。後で再度登録できます。';
+      '登録したフィニッシュタイムがこのイベントのランキングから削除されます。後で再度登録できます。';
 
   @override
   String get eventRemoveResultConfirm => '結果を削除';
@@ -10616,7 +10657,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSegEffortsNoRoute =>
-      'セグメントはルートごとに対応します。このランを保存済みルートに紐付けるとリーダーボードで競えます。';
+      'セグメントはルートごとに照合されます。このランを保存済みルートに紐付けると、そのランキングで競えます。';
 
   @override
   String get runSegEffortsEmpty => 'このランにセグメント記録はありません。';
@@ -13062,7 +13103,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      '身長・体重・生年月日・性別は健康データのため、同意のうえで編集します。';
+      '身長・体重・生年月日・性別は健康データのため、同意したうえで編集します。';
 
   @override
   String get nutritionTargetsEditMetrics => '身体データを編集';
@@ -15039,7 +15080,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get raceCourseSuggestNoRoutes => '公開ルートがまだありません。ルートを公開すると提案できます。';
 
   @override
-  String get raceCourseSuggestNote => 'メモ(任意)';
+  String get raceCourseSuggestNote => 'メモ（任意）';
 
   @override
   String get raceCourseSuggestConfirm => '提案を送信';
@@ -15456,49 +15497,73 @@ class AppLocalizationsJa extends AppLocalizations {
   String get badgesDistanceSingle5kLabel => '初めての5K';
 
   @override
-  String get badgesDistanceSingle5kDesc => '1回のランで5km走破';
+  String badgesDistanceSingle5kDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleHalfLabel => 'ハーフマラソン';
 
   @override
-  String get badgesDistanceSingleHalfDesc => '1回のランで21.1km走破';
+  String badgesDistanceSingleHalfDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleMarathonLabel => 'マラソン';
 
   @override
-  String get badgesDistanceSingleMarathonDesc => '1回のランで42.2km走破';
+  String badgesDistanceSingleMarathonDesc(String distance) {
+    return '1回のランで$distance走破';
+  }
 
   @override
   String get badgesDistanceSingleUltraLabel => 'ウルトラ';
 
   @override
-  String get badgesDistanceSingleUltraDesc => '1回のランで50km以上走破';
+  String badgesDistanceSingleUltraDesc(String distance) {
+    return '1回のランで$distance以上走破';
+  }
 
   @override
-  String get badgesDistanceLifetime100Label => '100kmクラブ';
+  String badgesDistanceLifetime100Label(String distance) {
+    return '$distanceクラブ';
+  }
 
   @override
-  String get badgesDistanceLifetime100Desc => '通算100kmを記録';
+  String badgesDistanceLifetime100Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime500Label => '500km';
+  String badgesDistanceLifetime500Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime500Desc => '通算500kmを記録';
+  String badgesDistanceLifetime500Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Label => '1,000kmクラブ';
+  String badgesDistanceLifetime1000Label(String distance) {
+    return '$distanceクラブ';
+  }
 
   @override
-  String get badgesDistanceLifetime1000Desc => '通算1,000kmを記録';
+  String badgesDistanceLifetime1000Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Label => '5,000km';
+  String badgesDistanceLifetime5000Label(String distance) {
+    return '$distance';
+  }
 
   @override
-  String get badgesDistanceLifetime5000Desc => '通算5,000kmを記録';
+  String badgesDistanceLifetime5000Desc(String distance) {
+    return '累計$distanceを記録';
+  }
 
   @override
   String get badgesStreak7Label => '週間連続';
@@ -15621,6 +15686,30 @@ class AppLocalizationsJa extends AppLocalizations {
   String get badgesParkPassport10Desc => '10の州でパークパスポートを達成';
 
   @override
+  String get badgesParkMonths3Label => 'パーク3か月';
+
+  @override
+  String get badgesParkMonths3Desc => '異なる3か月でパークコースを完走';
+
+  @override
+  String get badgesParkMonths6Label => 'パーク半年';
+
+  @override
+  String get badgesParkMonths6Desc => '異なる6か月でパークコースを完走';
+
+  @override
+  String get badgesParkMonths12Label => 'パーク1年';
+
+  @override
+  String get badgesParkMonths12Desc => '異なる12か月でパークコースを完走';
+
+  @override
+  String get badgesParkMonths24Label => 'パーク2年';
+
+  @override
+  String get badgesParkMonths24Desc => '異なる24か月でパークコースを完走';
+
+  @override
   String get racePredictorTitle => 'レースタイム予測';
 
   @override
@@ -15665,6 +15754,182 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get racePredictorFootnote =>
       '最近のベストな走りからリーゲルの換算式で算出し、新しさで重み付けしています。近い距離ほど信頼できます。';
+
+  @override
+  String get lineCalibrationEntryTitle => 'ライン較正';
+
+  @override
+  String get lineCalibrationEntrySubtitle => 'デバッグビルド: 計時ラインの誤差値';
+
+  @override
+  String get lineCalibrationTitle => 'ライン較正（デバッグ）';
+
+  @override
+  String get lineCalibrationIntro =>
+      'キャプチャを開始し、ラインを通過するランを記録してから、ここでキャプチャを停止してください。実際の各通過をNTP同期した時計に対して動画で計時し、その時刻を入力してください。CSVには誤差値と件数のみが含まれます。';
+
+  @override
+  String lineCalibrationCapturing(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'キャプチャ中: $count件の測位',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String lineCalibrationIdle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '停止中: $count件の測位を保持',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationStart => 'キャプチャを開始';
+
+  @override
+  String get lineCalibrationStop => 'キャプチャを停止';
+
+  @override
+  String get lineCalibrationRefresh => '更新';
+
+  @override
+  String get lineCalibrationLatLabel => 'ライン中心の緯度';
+
+  @override
+  String get lineCalibrationLngLabel => 'ライン中心の経度';
+
+  @override
+  String get lineCalibrationBearingLabel => '進行方位（度）';
+
+  @override
+  String get lineCalibrationHalfWidthLabel => '半幅（m）';
+
+  @override
+  String get lineCalibrationHere => '現在地を中心にする';
+
+  @override
+  String lineCalibrationMeasure(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'サーバー時計を測定（$count回の往復）',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lineCalibrationOffsetLabel => '時計のずれ（ms）';
+
+  @override
+  String get lineCalibrationOffsetHelper => 'サーバー − デバイス';
+
+  @override
+  String get lineCalibrationApproachLabel => '進入角';
+
+  @override
+  String get lineCalibrationApproach90 => 'ラインに対して90°';
+
+  @override
+  String get lineCalibrationApproach30 => 'ラインに対して30°';
+
+  @override
+  String get lineCalibrationApproachParallel20 => '平行、20 m離れて';
+
+  @override
+  String get lineCalibrationApproachParallel40 => '平行、40 m離れて';
+
+  @override
+  String get lineCalibrationApproachStanding => 'ライン上で静止';
+
+  @override
+  String get lineCalibrationPaceLabel => 'ペース';
+
+  @override
+  String get lineCalibrationPaceWalk => '歩き';
+
+  @override
+  String get lineCalibrationPaceRun => 'ラン';
+
+  @override
+  String get lineCalibrationPaceStill => '静止';
+
+  @override
+  String get lineCalibrationCarryLabel => '携帯方法';
+
+  @override
+  String get lineCalibrationCarryHand => '手に持つ';
+
+  @override
+  String get lineCalibrationCarryPocket => 'ポケットに入れる';
+
+  @override
+  String get lineCalibrationInstantsLabel => '実際の通過時刻';
+
+  @override
+  String lineCalibrationInstantsHint(String time, String instant) {
+    return '$time または $instant';
+  }
+
+  @override
+  String get lineCalibrationInstantsHelper =>
+      '1行に1つ。時刻はキャプチャ当日のこのスマートフォンのタイムゾーンで解釈されます。日付をまたぐ場合や基準時計がUTCを表示している場合は、タイムゾーン付きのISO時刻を入力してください。';
+
+  @override
+  String get lineCalibrationClockFailed => 'サーバー時計に接続できませんでした。ずれを手動で入力してください。';
+
+  @override
+  String get lineCalibrationNoFix => '位置を取得できません。';
+
+  @override
+  String get lineCalibrationLineMissing => 'ラインを入力してください: 中心、進行方位、半幅。';
+
+  @override
+  String get lineCalibrationOffsetMissing => '時計のずれを測定するか入力してください。';
+
+  @override
+  String lineCalibrationInstantsInvalid(String time) {
+    return '1行に1つの時刻: $time または ISO-8601。';
+  }
+
+  @override
+  String get lineCalibrationFewFixes => 'キャプチャの測位が2件未満です。';
+
+  @override
+  String get lineCalibrationLineUnusable => 'このラインは使用できません。';
+
+  @override
+  String get lineCalibrationScore => 'このキャプチャを評価';
+
+  @override
+  String lineCalibrationResult(
+    int matched,
+    int total,
+    int missed,
+    int falseCount,
+    int near,
+    String median,
+    String p50,
+    String p95,
+    String offset,
+  ) {
+    return '$matched/$total件一致、見逃し$missed件、誤検出$falseCount件、ニアミス$near件; 中央値 $median ms、|誤差| p50 $p50 ms、p95 $p95 ms; ずれ ±$offset ms';
+  }
+
+  @override
+  String lineCalibrationNothingMatched(int ms) {
+    return '一致はありませんでしたが、検出は実際の時刻から中央値で$ms ms離れています。時計、ずれ、タイムゾーンを確認してください。';
+  }
+
+  @override
+  String get lineCalibrationShare => 'CSVを共有';
+
+  @override
+  String get lineCalibrationCopy => 'CSVをコピー';
 
   @override
   String get settingsSectionDeveloper => '開発者';
@@ -17320,8 +17585,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get eventResultEditHelp =>
-      '編集した内容でリーダーボードのタイムが置き換わり、主催者による編集として表示されます。';
+  String get eventResultEditHelp => '編集した内容でランキングのタイムが置き換わり、主催者による編集として表示されます。';
 
   @override
   String get eventResultEditTime => 'タイム (h:mm:ss)';
@@ -17375,7 +17639,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventCancelPaidNote => '支払った人には、返金ポリシーにかかわらず全額が返金されます。';
 
   @override
-  String get eventCancelReasonLabel => '理由(任意)';
+  String get eventCancelReasonLabel => '理由（任意）';
 
   @override
   String get eventCancelKeep => 'そのままにする';
@@ -17485,7 +17749,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventFormChargeHint =>
-      '参加登録時に参加費を受け取ります。お金はクラブではなく自分の受け取りアカウントに入金され、対面イベントだけが課金できます。';
+      '参加登録時に参加費を受け取ります。お金はクラブではなく自分の受け取りアカウントに入金されます。参加費を設定できるのは対面イベントだけです。';
 
   @override
   String get eventFormChargeNeedsPayout => 'イベントを有料にするには、ウェブで受け取り口座を設定してください。';
@@ -19792,7 +20056,7 @@ class AppLocalizationsJa extends AppLocalizations {
       'プランが年齢に合わせて生年月日を使うには、健康データの利用への同意が必要です。';
 
   @override
-  String get planNewDobHintHealthDataAction => '同意を確認';
+  String get planNewDobHintHealthDataAction => '同意内容を確認する';
 
   @override
   String get messagesAiTag => 'AI';
@@ -20094,7 +20358,7 @@ class AppLocalizationsJa extends AppLocalizations {
       '心拍数は健康データです。表示するには、健康データの利用に同意してください。';
 
   @override
-  String get streamerOverlayReviewConsent => '同意を確認';
+  String get streamerOverlayReviewConsent => '同意内容を確認する';
 
   @override
   String get streamerOverlaySettingsSaved => 'オーバーレイの設定を保存しました';
@@ -20190,8 +20454,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardCourseKicker => 'パークコースのタイム';
 
   @override
-  String shareCardCourseRank(String rank, String season) {
-    return '$season年 $rank位';
+  String shareCardCourseMonthRank(String rank, String month) {
+    return '$month $rank位';
+  }
+
+  @override
+  String shareCardCourseRanks(
+    String monthRank,
+    String month,
+    String seasonRank,
+    String season,
+  ) {
+    return '$month $monthRank位 · $season年 $seasonRank位';
   }
 
   @override
@@ -20648,6 +20922,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksBoardCompletions => '完走回数';
 
   @override
+  String get parksPeriodThisMonth => '今月';
+
+  @override
   String parksSeasonThisYear(int year) {
     return '今年（$year年）';
   }
@@ -20656,10 +20933,29 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksSeasonAllTime => '全期間';
 
   @override
+  String get parksPeriodPrevMonth => '前の月';
+
+  @override
+  String get parksPeriodNextMonth => '次の月';
+
+  @override
   String parksCompletionDays(int n) {
     String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n日');
     return '$_temp0';
   }
+
+  @override
+  String parksMonthRunners(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '今月 $n人',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksMonthRunnersFailed => '今月各コースを走った人数を読み込めませんでした。';
 
   @override
   String get parksNoEfforts => 'このランキングにはまだタイムがありません。コースを走れば最初のタイムを残せます。';
@@ -20950,6 +21246,13 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get prefsNotifyRaceStartingSoonHint =>
       '参加予定の予約スタートのレースが始まる約10分前と、スタート時刻が変わったときのプッシュ通知。メールでは送りません。';
+
+  @override
+  String get prefsNotifyParkCourseMonth => '公園コースの月間記録';
+
+  @override
+  String get prefsNotifyParkCourseMonthHint =>
+      '走った公園コースで1か月が終わると、その月のベストタイムを受信箱でお知らせします。';
 
   @override
   String get clubVerificationStatusTitle => '公式認証';
@@ -21482,6 +21785,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileNotifParkCourseReport => '公園コースについて報告がありました';
 
   @override
+  String get profileNotifParkCourseMonthClosed => '走った公園コースの1か月が終わりました';
+
+  @override
+  String profileNotifParkCourseMonthClosedNamed(
+    String course,
+    String month,
+    String time,
+  ) {
+    return '$course：$monthのランキングが確定しました。ベストタイム：$time';
+  }
+
+  @override
   String rateLimitReaction(String wait) {
     return 'リアクションの送信が速すぎます。$wait待ってから、もう一度お試しください。';
   }
@@ -21678,7 +21993,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsInviteDeclineConfirmTitle(String title) {
-    return '$titleへの招待を辞退しますか?';
+    return '$titleへの招待を辞退しますか？';
   }
 
   @override
@@ -21792,7 +22107,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsLeaveConfirmTitle(String title) {
-    return '$titleから退出しますか?';
+    return '$titleから退出しますか？';
   }
 
   @override
@@ -21863,7 +22178,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsTransferConfirmTitle(String name) {
-    return '$nameさんをオーナーにしますか?';
+    return '$nameさんをオーナーにしますか？';
   }
 
   @override
@@ -21880,7 +22195,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsRemoveConfirmTitle(String name) {
-    return '$nameさんをグループから削除しますか?';
+    return '$nameさんをグループから削除しますか？';
   }
 
   @override
@@ -21897,7 +22212,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String groupsCancelInviteConfirmTitle(String name) {
-    return '$nameさんへの招待を取り消しますか?';
+    return '$nameさんへの招待を取り消しますか？';
   }
 
   @override
@@ -21948,6 +22263,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get filterBarSort => '並べ替え';
+
+  @override
+  String get filterBarSource => 'ソース';
 
   @override
   String get runsSearchHint => 'ランの名前で検索';

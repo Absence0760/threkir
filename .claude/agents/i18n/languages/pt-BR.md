@@ -28,6 +28,8 @@ with `você` is tolerated in colloquial strings (5 web strings such as
 "Outros podem te encontrar por ele"); prefer `você`/`o`/`a`/`lhe` in new
 copy. `navYou` is "Você".
 
+- **A string around `{distance}` agrees with both units.** *quilômetros* is masculine and *milhas* feminine, so nothing agrees with the distance: "Total registrado: {distance}", "Clube {distance}", never "{distance} registrados" / "Clube dos {distance}". Settled 2026-11-13 (#1374 round 3.8).
+
 ## The guards that enforce this
 
 `apps/web/src/lib/i18n/locale_reach.test.ts` and the "locale reach" group
@@ -109,6 +111,9 @@ guards (`l10n_parity_test.dart`, `messages_parity.test.ts`).
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
 | AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está pensando"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
 | AI disclosure | **o aviso de IA** ("precisa que aceite o aviso de IA atualizado" — keep the consent: the reader accepts the notice, not merely needs it) | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
+| leaderboard | **classificação** / classificações ("classificações de segmentos", "carregar a classificação") | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "ranking". "Classificação" also names a place in a race result (`races.overallPlace`), as the catalogue already did |
+| health-data consent | **consentimento de dados de saúde**; Review consent button **Revisar consentimento (de dados de saúde)**; a sentence about what is kept under consent names **a Threkir** ("a Threkir só salva…") | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "consentimento para dados de saúde", never "Dar consentimento" on a button that only opens the screen. The consent statement and every withdrawal list name the same items in the same order as the English (gender, height, weight history, cycle or pregnancy details, heart rate recorded with activities, heart-rate targets in plans, heart-rate medication setting, food log); `health_consent_scope.test.ts` pins the English. The heart-rate medication item names the setting, never a statement that a drug affects the reader: « sua configuração de medicação que afeta a frequência cardíaca » |
+| GDPR citation | **art. 9(2)(a) do GDPR**, "art. 7(3) do GDPR", "art. 20 do GDPR" | settled 2026-11-13 (health-consent gate, #1379), both surfaces; consent wording: CISO/counsel review; never "RGPD" (pt-PT's acronym) and never "GDPR art. 9" |
 | event host | **Organizador** | `admin.earnings.*`; never "Anfitrião" |
 | payouts / payout account | **Repasses** / **conta de repasses** | `payouts.pageTitle`, `fundraiser.setUpPayouts`; *payment* (a charge) stays "pagamento" |
 | activity discipline (yoga, pilates…) | **Modalidade** | `eventEditor.discipline`, `session.discipline` |

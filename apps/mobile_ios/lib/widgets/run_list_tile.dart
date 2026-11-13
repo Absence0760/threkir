@@ -147,6 +147,11 @@ class RunListTile extends StatelessWidget {
 
     final trackUrl = _trackUrl;
     final hasInlineTrack = _inlineTrack.length >= 2;
+    final hasRemoteTrack = trackUrl != null && api != null;
+    // The activity is said once: by the leading avatar when the row has no
+    // track to draw, otherwise by a glyph beside the distance. Both at once
+    // drew the same runner twice on one card (issue #1374).
+    final glyphBesideDistance = selecting || hasInlineTrack || hasRemoteTrack;
     final leading = SizedBox(
       width: kRunTileLeadingWidth,
       height: 40,
@@ -160,7 +165,7 @@ class RunListTile extends StatelessWidget {
               )
             : hasInlineTrack
             ? TrackPreview(points: _inlineTrack)
-            : (trackUrl != null && api != null)
+            : hasRemoteTrack
             ? RunTrackPreview(
                 runId: _id,
                 trackUrl: trackUrl,
@@ -175,7 +180,8 @@ class RunListTile extends StatelessWidget {
     );
 
     final semanticsLabel = [
-      '$dist ${activityTypeLabel(l10n, activity).toLowerCase()}',
+      dist,
+      activityTypeLabel(l10n, activity),
       date,
       dur,
       trailingMetric,
@@ -243,12 +249,15 @@ class RunListTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          activity.icon,
-                          size: 18,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 6),
+                        if (glyphBesideDistance) ...[
+                          Icon(
+                            activity.icon,
+                            key: const ValueKey('run-tile-activity-glyph'),
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
                         Flexible(
                           child: Text(
                             dist,
@@ -264,7 +273,10 @@ class RunListTile extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        '$date  ·  $dur  ·  ${activityTypeLabel(l10n, activity).toLowerCase()}$vertLabel',
+                        // No activity word: the glyph says it, the row's
+                        // label reads it out, and a label lowercased in
+                        // code ("run") read as the stored value.
+                        '$date  ·  $dur$vertLabel',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(

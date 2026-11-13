@@ -13,7 +13,10 @@ import '../entity_link.dart';
 import '../help_destination.dart';
 import '../help_guides.dart' show HelpDestination;
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart';
 import '../notification_groups.dart';
+import '../park_courses.dart' show BoardPeriod;
+import '../park_month_notice_copy.dart';
 import '../preferences.dart';
 import '../race_service.dart';
 import '../settings_destination.dart';
@@ -28,6 +31,7 @@ import '../widgets/error_state.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/run_list_tile.dart';
 import '../widgets/sign_in_required_state.dart';
+import '../widgets/single_flight.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/undo_bar.dart';
 import 'challenge_detail_screen.dart';
@@ -37,6 +41,7 @@ import 'follow_requests_screen.dart';
 import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
 import 'messages_screen.dart';
+import 'park_courses_screen.dart';
 import 'edit_profile_screen.dart';
 import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
@@ -94,7 +99,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
-  late TabController _tabs;
+  late final TabSetController<ProfileTab> _tabs;
 
   bool _loading = true;
   Object? _loadError;
@@ -122,6 +127,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _notificationsLoading = true;
   Object? _notificationsError;
   List<NotificationView> _notifications = const [];
+  // A notification opens one thing at a time: most resolve their target
+  // over the network before pushing it.
+  final _notifFlight = SingleFlight();
   bool _followBusy = false;
   bool _blocked = false;
   bool _blockBusy = false;
@@ -144,6 +152,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   /// Single source of tab order — the TabBar labels, the TabBarView
   /// children, and the deep-link index all read it, so they cannot drift.
+  /// It follows the live session (Notifications is yours alone), so it can
+  /// change under the open screen; [build] hands each read to [_tabs].
   List<ProfileTab> get _tabOrder => [
     ProfileTab.runs,
     ProfileTab.badges,
@@ -155,14 +165,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void initState() {
     super.initState();
-    final order = _tabOrder;
     // A tab this profile doesn't carry (Notifications on someone else's)
-    // has no index — open on the first tab rather than a nearby one.
-    final requested = order.indexOf(widget.initialTab);
-    _tabs = TabController(
-      length: order.length,
+    // opens on the first tab rather than a nearby one.
+    _tabs = TabSetController(
       vsync: this,
-      initialIndex: requested < 0 ? 0 : requested,
+      tabs: _tabOrder,
+      initial: widget.initialTab,
     );
     _load();
   }
@@ -724,6 +732,15 @@ class _ProfileScreenState extends State<ProfileScreen>
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final order = _tabOrder;
+    // The session can end (or begin) under the open screen, taking
+    // Notifications with it: the controller follows the set it is built
+    // with, or the strip indexes a tab that is gone (Sentry
+    // THREKIR-CLIENT-A).
+    if (_tabs.update(order) &&
+        order.contains(ProfileTab.notifications) &&
+        _notificationsLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadNotifications());
+    }
 
     return DetailPage(
       title: _summary?.displayName ?? l10n.profileTitle,
@@ -766,7 +783,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       // tab's body are what swap. Before § 545 the strip sat in
       // `AppBar.bottom`, where it survived loading and error for free.
       body: CollapsingTabHost(
-        controller: _tabs,
+        controller: _tabs.controller,
         labels: [for (final tab in order) _tabLabel(l10n, tab)],
         header: [
           if (_summary == null)
@@ -982,7 +999,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: InkWell(
         key: key,
         borderRadius: BorderRadius.circular(8),
-        onTap: () => _tabs.animateTo(_tabOrder.indexOf(tab)),
+        onTap: () => _tabs.select(tab),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Column(
@@ -1411,7 +1428,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ],
       ),
-      onTap: () => _onNotifTap(item),
+      onTap: () => _notifFlight.openOnce(() => _onNotifTap(item)),
     );
   }
 
@@ -1499,7 +1516,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ],
       ),
-      onTap: () => _openGroup(group, viewById),
+      onTap: () => _notifFlight.openOnce(() => _openGroup(group, viewById)),
     );
   }
 
@@ -1645,6 +1662,12 @@ class _ProfileScreenState extends State<ProfileScreen>
       await _openOnWeb('/admin/reports');
     } else if (kind == 'course_alert' && item.row.courseAlertId != null) {
       await _openCourseAlert(item.row.courseAlertId!);
+    } else if (kind == 'park_course_month_closed' &&
+        item.row.parkCourseId != null) {
+      await _openParkCourseMonth(
+        item.row.parkCourseId!,
+        item.row.parkCourseMonth,
+      );
     } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1655,7 +1678,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       );
     } else if (kind == 'achievement') {
-      _tabs.animateTo(_tabOrder.indexOf(ProfileTab.badges));
+      _tabs.select(ProfileTab.badges);
     } else if (kind == 'follow_request') {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1718,6 +1741,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final listingId = target?.listingId;
     final routeId = target?.routeId;
     if (listingId != null) {
+      // single-flight: reached only from _onNotifTap, inside _notifFlight.
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
@@ -1729,6 +1753,36 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else {
       showTopBanner(context, l10n.courseAlertsNotFound);
     }
+  }
+
+  /// A month-close notice opens its course on the month that closed, as the
+  /// web link's `?period=YYYY-MM` does. A course that is gone says so.
+  Future<void> _openParkCourseMonth(String courseId, DateTime? month) async {
+    final api = widget.api;
+    ({ParkListing park, ParkCourseListing course})? found;
+    try {
+      found = await api.fetchParkCourseById(courseId);
+    } catch (e) {
+      debugPrint('ProfileScreen: park course resolve failed: $e');
+    }
+    if (!mounted) return;
+    if (found == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).runDetailParkCourseOpenFailed);
+      return;
+    }
+    // single-flight: reached only from _onNotifTap, inside _notifFlight.
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ParkCourseScreen(
+          api: api,
+          listing: found!.park,
+          course: found.course,
+          initialPeriod:
+              month == null ? null : BoardPeriod.month(month.year, month.month),
+        ),
+      ),
+    );
   }
 
   String _notifName(AppLocalizations l10n, NotificationView item) =>
@@ -1816,6 +1870,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             : l10n.profileNotifOrganiserDispute;
       case 'park_course_report':
         return l10n.profileNotifParkCourseReport;
+      case 'park_course_month_closed':
+        return parkMonthNoticeText(
+          l10n,
+          courseName: item.parkCourseName,
+          month: item.row.parkCourseMonth,
+          timeS: item.row.parkCourseTimeS,
+          localeTag: activeLocaleTag,
+        );
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)

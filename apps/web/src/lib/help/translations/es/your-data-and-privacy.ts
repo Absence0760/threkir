@@ -58,7 +58,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Descargar archivo completo de la cuenta** (en el móvil, **Exportación de la cuenta**): todo lo que guardamos sobre ti, incluidos los chats con el entrenador, los mensajes, las integraciones y los contactos de seguridad, en un único zip. Se genera en nuestro servidor, así que puedes cerrar la página y volver a por él. Una exportación terminada se conserva 7 días.',
+						'**Descargar archivo completo de la cuenta** (en el móvil, **Exportación de la cuenta**): todo lo que guardamos sobre ti, incluidos los chats con el Entrenador IA, los mensajes, las integraciones y los contactos de seguridad, en un único zip. Se genera en nuestro servidor, así que puedes cerrar la página y volver a por él. Una exportación terminada se conserva 7 días.',
 						'**Descargar copia completa** (en el móvil, **Copia de seguridad completa**): todas las carreras con su traza GPS, además de tus rutas, tu perfil y tus preferencias, en un archivo que puedes restaurar más tarde con **Restaurar desde copia**.',
 						'**Exportación en la nube (zip GPX)**: un archivo GPX por carrera, con frecuencia cardíaca, listo para importar en otras apps. Las cuentas gratuitas pueden exportar dos veces por hora; las cuentas Pro, ocho.',
 						'**Exportar todas las carreras (CSV)** (en el móvil, **Exportar carreras como CSV**): una fila por carrera para una hoja de cálculo, sin trazas GPS.',

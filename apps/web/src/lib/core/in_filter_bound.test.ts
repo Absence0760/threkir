@@ -84,6 +84,7 @@ const ALLOWED: Record<string, number> = {
 	"src/lib/core/data.ts :: .in('id', commentIds)": 1,
 	"src/lib/core/data.ts :: .in('id', eventIds)": 1,
 	"src/lib/core/data.ts :: .in('id', clubIds)": 1,
+	"src/lib/core/data.ts :: .in('id', parkCourseIds)": 1,
 	// The two participants of one conversation (fetchDmThread): always
 	// exactly two ids.
 	"src/lib/core/data.ts :: .in('sender_id', pair)": 1,

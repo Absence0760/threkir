@@ -57,9 +57,10 @@ enum SocialTab {
 ///   - Challenges: the joinable-challenge board + the user's own entries.
 ///   - People: name search + suggested-from-clubs discovery.
 ///
-/// The hub owns the only app bar and the one FAB, as the Fitness hub does:
-/// the bar carries the hub's title, Messages (with the unread count) and the
-/// notifications bell, over the tab strip; every tab body is a ui_kit
+/// The hub is a ui_kit `RootPage.tabbed`, as the Fitness hub is: its name in
+/// a large title over the tab strip, collapsing into the one app bar as a tab
+/// scrolls, and the one FAB. The bar carries Messages (with the unread count)
+/// and the notifications bell at every scroll position; every tab body is a ui_kit
 /// `HubTabBody`, which inside the hub's [HubTabScope] draws no app bar of its
 /// own, keeps its secondary actions in its control row and hands its primary
 /// action to the hub's FAB (issue #1374). Messages and the bell moved here
@@ -200,37 +201,36 @@ class _SocialScreenState extends State<SocialScreen>
     final l10n = AppLocalizations.of(context);
     final api = widget.api;
     if (api == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.navSocial)),
-        body: const SignInRequiredState(api: null),
-      );
-    }
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.navSocial),
-        actions: [
-          _messagesButton(l10n, api),
-          if (api.userId != null) NotificationBell(api: api),
-          const SizedBox(width: AppSpace.xs),
-        ],
-        bottom: AppTabBar(
-          controller: _controller,
-          labels: [
-            for (final t in SocialTab.values) t.label(l10n),
+      return RootPage(
+        title: l10n.navSocial,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            PageHeader(title: l10n.navSocial),
+            const Expanded(child: SignInRequiredState(api: null)),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _controller,
-        children: [
-          for (final t in SocialTab.values)
-            HubTabScope(
-              tab: t,
-              actions: _actions,
-              child: KeepAliveChild(child: _body(t, api)),
-            ),
-        ],
-      ),
+      );
+    }
+    return RootPage.tabbed(
+      title: l10n.navSocial,
+      actions: [
+        _messagesButton(l10n, api),
+        if (api.userId != null) NotificationBell(api: api),
+        const SizedBox(width: AppSpace.xs),
+      ],
+      controller: _controller,
+      labels: [
+        for (final t in SocialTab.values) t.label(l10n),
+      ],
+      children: [
+        for (final t in SocialTab.values)
+          HubTabScope(
+            tab: t,
+            actions: _actions,
+            child: KeepAliveChild(child: _body(t, api)),
+          ),
+      ],
       floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: ValueListenableBuilder<SocialTab>(
         valueListenable: _tab,

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -105,9 +106,9 @@
 	</PageHeader>
 
 	<section class="tier-grid">
-		<article class="tier tier-free" aria-labelledby="tier-free-h">
+		<article class="tier tier-free" aria-labelledby={settingRowId('upgrade.tierFree')}>
 			<header class="tier-head">
-				<h2 id="tier-free-h">{m('upgrade.tierFree')}</h2>
+				<h2 id={settingRowId('upgrade.tierFree')}>{m('upgrade.tierFree')}</h2>
 				<p class="tier-price">
 					<span class="price-amount">{formatPrice(0)}</span>
 					<span class="price-period">{m('upgrade.forever')}</span>
@@ -262,7 +263,7 @@
 	{#if donateHref}
 	<section class="donate-card" data-testid="donate-card">
 		<div class="donate-text">
-			<h2>{m('upgrade.donateTitle')}</h2>
+			<h2 id={settingRowId('upgrade.donateTitle')}>{m('upgrade.donateTitle')}</h2>
 			<p>
 				{m('upgrade.donateBody')}
 			</p>

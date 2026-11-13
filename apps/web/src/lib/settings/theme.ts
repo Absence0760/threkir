@@ -1,3 +1,5 @@
+import { localStore } from '../core/browser_storage';
+
 /// Theme toggle state. Three-way: `light`, `dark`, `auto`. The last
 /// follows the OS via `prefers-color-scheme` and is the default.
 ///
@@ -10,8 +12,12 @@ export type Theme = 'light' | 'dark' | 'auto';
 const STORAGE_KEY = 'run_app.theme';
 
 export function loadTheme(): Theme {
-	if (typeof localStorage === 'undefined') return 'auto';
-	const raw = localStorage.getItem(STORAGE_KEY);
+	let raw: string | null = null;
+	try {
+		raw = localStore()?.getItem(STORAGE_KEY) ?? null;
+	} catch {
+		// unreadable storage — the default theme
+	}
 	if (raw === 'light' || raw === 'dark' || raw === 'auto') return raw;
 	return 'auto';
 }
@@ -20,7 +26,7 @@ export function applyTheme(theme: Theme): void {
 	if (typeof document === 'undefined') return;
 	document.documentElement.dataset.theme = theme;
 	try {
-		localStorage.setItem(STORAGE_KEY, theme);
+		localStore()?.setItem(STORAGE_KEY, theme);
 	} catch (_) {
 		// quota / SSR — applying the attribute is the important bit
 	}

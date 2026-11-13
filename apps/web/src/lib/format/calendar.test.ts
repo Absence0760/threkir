@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { monthName, monthNames, weekdayAbbrevs, leadingBlanks } from './calendar';
+import { monthName, monthNames, monthYearLabel, weekdayAbbrevs, leadingBlanks } from './calendar';
 
 test('monthNames: localised long month names, 12 of them, 0-based', () => {
 	assert.equal(monthNames('en').length, 12);
@@ -53,4 +53,10 @@ test('leadingBlanks: maps Date.getDay() to the grid offset per week start', () =
 	assert.equal(leadingBlanks(0, 'sunday'), 0);
 	assert.equal(leadingBlanks(6, 'sunday'), 6);
 	assert.equal(leadingBlanks(1, 'sunday'), 1);
+});
+
+test('monthYearLabel: a 1-based month with its year, in each locale\'s order', () => {
+	assert.equal(monthYearLabel(2026, 11, 'en'), 'November 2026');
+	assert.equal(monthYearLabel(2026, 1, 'de'), 'Januar 2026');
+	assert.equal(monthYearLabel(2026, 11, 'ja'), '2026年11月');
 });

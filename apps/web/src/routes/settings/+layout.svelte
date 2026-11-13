@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -7,7 +7,10 @@
 	import { BODY_METRICS_PAGE, PREFERENCES_PAGES } from '#lib/settings/preferences_ia.ts';
 	import { shareAttributionEnabled } from '#lib/share/share_attribution.ts';
 	import { searchSettings } from '#lib/settings/settings_search.ts';
+	import { focusSettingFromHash } from '#lib/settings/setting_focus.ts';
 	import AppSearchField from '#lib/components/AppSearchField.svelte';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
+	import ListRow from '#lib/components/ListRow.svelte';
 
 	type Tab = { href: string; label: string; icon: string };
 	type Section = { label: string; tabs: Tab[] };
@@ -80,13 +83,27 @@
 	]);
 
 	// Search over every settings page's rows (decisions § 2494): a result
-	// opens the page the setting is on. Only pages the nav shows are searched.
+	// lands on the row itself (`#setting-…`), scrolled into view, focused and
+	// briefly highlighted. Only pages the nav shows are searched.
 	let query = $state('');
 	const results = $derived(
 		query.trim() === ''
 			? null
 			: searchSettings(query, m, new Set(sections.flatMap((s) => s.tabs.map((tab) => tab.href)))),
 	);
+
+	// Every navigation whose fragment names a row lands on it, including a
+	// direct load of a shared link; a result for the row already in the URL
+	// changes nothing the effect reads, so its click lands on it directly.
+	$effect(() => {
+		const hash = page.url.hash;
+		void page.url.pathname;
+		return untrack(() => focusSettingFromHash(hash));
+	});
+	function pickResult(href: string) {
+		query = '';
+		if (href === page.url.pathname + page.url.hash) focusSettingFromHash(page.url.hash);
+	}
 </script>
 
 <svelte:head>
@@ -95,7 +112,7 @@
 
 <div class="settings-shell">
 	<nav class="settings-nav">
-		<h2>{m('shell.settings')}</h2>
+		<SectionHeader label={m('shell.settings')} class="settings-nav-title" />
 		<div class="settings-search">
 			<AppSearchField bind:value={query} label={m('settingsLayout.searchLabel')} testid="settings-search" />
 		</div>
@@ -103,10 +120,14 @@
 			<ul class="search-results" data-testid="settings-search-results" aria-label={m('settingsLayout.searchLabel')}>
 				{#each results as hit (hit.href + hit.title)}
 					<li>
-						<a href={hit.href} class="nav-item search-hit" onclick={() => (query = '')} data-testid="settings-search-result">
-							<span class="hit-title">{hit.title}</span>
-							<span class="hit-where">{hit.where}</span>
-						</a>
+						<ListRow
+							kind="nav"
+							title={hit.title}
+							subtitle={hit.where}
+							href={hit.href}
+							onclick={() => pickResult(hit.href)}
+							testid="settings-search-result"
+						/>
 					</li>
 				{/each}
 			</ul>
@@ -115,7 +136,7 @@
 			</p>
 		{:else}
 			{#each sections as section}
-				<div class="nav-section-label">{section.label}</div>
+				<SectionHeader label={section.label} level={3} class="nav-section-label" flush />
 				{#each section.tabs as tab}
 					<a
 						href={tab.href}
@@ -189,12 +210,7 @@
 		height: 100vh;
 		overflow-y: auto;
 	}
-	.settings-nav h2 {
-		font-size: 0.75rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-tertiary);
+	.settings-nav :global(.settings-nav-title) {
 		margin-bottom: var(--space-md);
 	}
 	.settings-search {
@@ -208,16 +224,6 @@
 		flex-direction: column;
 		gap: 0.25rem;
 	}
-	.search-hit {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0;
-	}
-	.hit-where {
-		font-size: 0.78rem;
-		font-weight: 400;
-		color: var(--color-text-secondary);
-	}
 	.search-empty {
 		margin: var(--space-xs) 0.75rem;
 		font-size: 0.85rem;
@@ -226,15 +232,10 @@
 	.search-empty:empty {
 		display: none;
 	}
-	.nav-section-label {
-		font-size: var(--font-size-section-label);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
+	.settings-nav :global(.nav-section-label) {
 		padding: var(--space-md) 0.75rem var(--space-2xs);
 	}
-	.nav-section-label:first-of-type {
+	.settings-nav :global(.nav-section-label:first-of-type) {
 		padding-top: 0;
 	}
 	.nav-item {
@@ -280,6 +281,38 @@
 	.settings-content {
 		flex: 1;
 		min-width: 0;
+	}
+	/* The row a search result landed on (setting_focus.ts): a tint and a ring
+	   that fade out, so the eye finds it among its neighbours. The tint sits
+	   behind the row's own content; the ring replaces the focus ring the
+	   programmatic focus would otherwise draw. */
+	.settings-content :global(.setting-flash) {
+		border-radius: var(--radius-md);
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+		animation: -global-setting-flash 2s ease-out forwards;
+	}
+	.settings-content :global([id^='setting-'][tabindex='-1']:focus:not(.setting-flash)) {
+		outline: none;
+	}
+	@keyframes -global-setting-flash {
+		0%,
+		60% {
+			background-color: var(--color-primary-light);
+			outline-color: var(--color-primary);
+		}
+		100% {
+			background-color: transparent;
+			outline-color: transparent;
+		}
+	}
+	/* Reduced motion: the same highlight, held still for its two seconds and
+	   then removed, with no fade. */
+	@media (prefers-reduced-motion: reduce) {
+		.settings-content :global(.setting-flash) {
+			animation: none;
+			background-color: var(--color-primary-light);
+		}
 	}
 	.finish-setup {
 		display: flex;
@@ -334,8 +367,8 @@
 			height: auto;
 			overflow-y: visible;
 		}
-		.settings-nav h2,
-		.nav-section-label,
+		.settings-nav :global(.settings-nav-title),
+		.settings-nav :global(.nav-section-label),
 		.legal-links {
 			flex: 0 0 100%;
 			margin: 0;

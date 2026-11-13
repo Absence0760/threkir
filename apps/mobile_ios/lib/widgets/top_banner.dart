@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show PinnedHeaderScope;
 
 import '../return_to_shell.dart' show topRoute;
 
@@ -79,8 +80,10 @@ void showTopBanner(
       ? MediaQueryData.fromView(view).padding.top
       : MediaQuery.paddingOf(context).top;
   final appBarBottom = _appBarBottomFor(context, overlay);
-  final topInset =
-      (appBarBottom > statusBar ? appBarBottom : statusBar) + 12;
+  final headerBottom = _pinnedHeaderBottomFor(context, overlay);
+  final topInset = [appBarBottom, headerBottom, statusBar]
+          .reduce((a, b) => a > b ? a : b) +
+      12;
 
   _current?.dismiss();
   _current = null;
@@ -170,6 +173,21 @@ double _appBarBottomFor(BuildContext context, OverlayState overlay) {
 
   subtree.visitChildElements(visit);
   return bottom;
+}
+
+/// The bottom of the calling page's pinned header (a hub's tab strip, under
+/// its large title), in the overlay's coordinates, or 0 on a page without
+/// one. The strip is not an app bar, so a banner placed under the bar alone
+/// covered it at 2x text (issue #1374).
+double _pinnedHeaderBottomFor(BuildContext context, OverlayState overlay) {
+  final box = PinnedHeaderScope.headerKeyOf(context)?.currentContext
+      ?.findRenderObject();
+  if (box is! RenderBox || !box.attached || !box.hasSize) return 0;
+  final overlayBox = overlay.context.findRenderObject();
+  return box
+      .localToGlobal(Offset(0, box.size.height),
+          ancestor: overlayBox is RenderBox ? overlayBox : null)
+      .dy;
 }
 
 /// Dismiss the currently visible banner, if any. Safe to call from

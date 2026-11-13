@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show SettingsAnchor;
 
 import '../l10n/gen/app_localizations.dart';
 
@@ -18,6 +19,7 @@ class AsyncSwitchTile extends StatelessWidget {
     required this.saving,
     required this.onChanged,
     required this.onRetry,
+    this.anchor,
   });
 
   final Key? switchKey;
@@ -31,8 +33,17 @@ class AsyncSwitchTile extends StatelessWidget {
   final ValueChanged<bool> onChanged;
   final VoidCallback onRetry;
 
+  /// The row's [SettingsAnchor] id, as `ListRow.anchor`.
+  final String? anchor;
+
   @override
   Widget build(BuildContext context) {
+    final id = anchor;
+    final row = _row(context);
+    return id == null ? row : SettingsAnchor(id: id, label: title, child: row);
+  }
+
+  Widget _row(BuildContext context) {
     if (failed) {
       final theme = Theme.of(context);
       final l10n = AppLocalizations.of(context);

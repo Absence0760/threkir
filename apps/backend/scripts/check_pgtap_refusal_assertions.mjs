@@ -474,6 +474,16 @@ export function statementEnd(text, offset) {
 // policy revealing only the rows THIS TRANSACTION wrote, and the assertion runs
 // as the role the test gave it rather than as the owner.
 //
+// A permissive policy is OR-ed with the others, so it cannot reach a row a
+// RESTRICTIVE policy hides: restrictive policies are AND-ed on top of the
+// permissive set. The health-data consent gate on food_log is one (decisions
+// § 2514), and an assertion that a runner without consent reads none of their
+// own meals survived the widening for that reason alone, not for want of a
+// subject. So every restrictive SELECT (or ALL) policy is rewritten in the
+// same preamble to admit the same rows under the same gate,
+// `(<gate> and <this transaction wrote it>) or (<its own expression>)`, which
+// leaves it exactly as it was outside a mutated span.
+//
 // The policies are created once per file, immediately after its `begin;`, and
 // go with the file's rollback. They are gated on a GUC so they are inert
 // everywhere except inside a mutated span — creating them per span would be
@@ -484,7 +494,7 @@ export const PREAMBLE =
   'create extension if not exists pgtap with schema extensions;\n' +
   TRANSACTION_LOCAL_SQL +
   `do $pgtap_guard$
-declare t regclass;
+declare t regclass; r record;
 begin
   for t in select c.oid::regclass from pg_class c
              join pg_namespace n on n.oid = c.relnamespace
@@ -493,6 +503,14 @@ begin
     execute format('create policy pgtap_guard_widen on %s as permissive for select'
       || ' to public using (current_setting(''${WIDEN_GUC}'', true) = ''on'''
       || ' and ${TRANSACTION_LOCAL}(xmin))', t);
+  end loop;
+  for r in select format('%I.%I', schemaname, tablename) as rel, policyname, qual
+             from pg_policies
+            where schemaname = 'public' and permissive = 'RESTRICTIVE'
+              and cmd in ('SELECT', 'ALL') and qual is not null
+  loop
+    execute format('alter policy %I on %s using ((current_setting(''${WIDEN_GUC}'', true) = ''on'''
+      || ' and ${TRANSACTION_LOCAL}(xmin)) or (%s))', r.policyname, r.rel, r.qual);
   end loop;
 end
 $pgtap_guard$;

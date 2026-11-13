@@ -75,6 +75,7 @@ void main() {
       await _pump(tester, points: const [], hasHr: false);
       await tester.tap(find.byKey(const Key('trainingLoadSetHeartRate')));
       expect(pendingSettingsDestination.value, SettingsDestination.training);
+      expect(pendingSettingsRow, PreferencesRow.maxHr);
 
       await _pump(tester, points: const [], hasHr: true);
       expect(find.byKey(const Key('trainingLoadSetHeartRate')), findsNothing,

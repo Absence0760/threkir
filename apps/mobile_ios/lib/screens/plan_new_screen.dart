@@ -1217,55 +1217,56 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                   const SizedBox(height: 4),
                   Text(l10n.planNewGoalRaceHint, style: muted),
                 ],
-                if (_showGoalRace && _ultraChoice != null) ...[
-                  const SizedBox(height: 12),
-                  TextField(
-                    key: const Key('plan-new-ultra-distance'),
-                    controller: _ultraDistanceCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: l10n.planNewUltraDistance(
-                        UnitFormat.distanceLabel(activeDistanceUnit),
-                      ),
-                      helperText: l10n.planNewUltraDistanceHint,
-                      helperMaxLines: 4,
-                      errorText: _ultraDistanceInvalid
-                          ? l10n.planNewUltraDistanceTooShort
-                          : null,
-                      errorMaxLines: 3,
-                    ),
-                    onChanged: (s) {
-                      final n = double.tryParse(
-                        s.trim().replaceAll(',', '.'),
-                      );
-                      setState(
-                        () => _ultraDistanceM =
-                            n == null || !n.isFinite || n <= 0
-                            ? null
-                            : n * _metresPerUnit,
-                      );
-                    },
-                  ),
-                ],
                 const SizedBox(height: 16),
-                InkWell(
-                  key: const Key('plan-new-start-date'),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  onTap: _pickStartDate,
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: l10n.planNewStartDate,
-                      helperText: _beginnerWalkRun
-                          ? l10n.planNewStartDateHintWalkRun
-                          : l10n.planNewStartDateHint,
-                      helperMaxLines: 3,
-                      suffixIcon: const Icon(Icons.calendar_today),
+                FieldColumn(children: [
+                  if (_showGoalRace && _ultraChoice != null) ...[
+                    TextField(
+                      key: const Key('plan-new-ultra-distance'),
+                      controller: _ultraDistanceCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: l10n.planNewUltraDistance(
+                          UnitFormat.distanceLabel(activeDistanceUnit),
+                        ),
+                        helperText: l10n.planNewUltraDistanceHint,
+                        helperMaxLines: 4,
+                        errorText: _ultraDistanceInvalid
+                            ? l10n.planNewUltraDistanceTooShort
+                            : null,
+                        errorMaxLines: 3,
+                      ),
+                      onChanged: (s) {
+                        final n = double.tryParse(
+                          s.trim().replaceAll(',', '.'),
+                        );
+                        setState(
+                          () => _ultraDistanceM =
+                              n == null || !n.isFinite || n <= 0
+                              ? null
+                              : n * _metresPerUnit,
+                        );
+                      },
                     ),
-                    child: Text(formatDateMed(_startDate, tag)),
+                  ],
+                  InkWell(
+                    key: const Key('plan-new-start-date'),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    onTap: _pickStartDate,
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: l10n.planNewStartDate,
+                        helperText: _beginnerWalkRun
+                            ? l10n.planNewStartDateHintWalkRun
+                            : l10n.planNewStartDateHint,
+                        helperMaxLines: 3,
+                        suffixIcon: const Icon(Icons.calendar_today),
+                      ),
+                      child: Text(formatDateMed(_startDate, tag)),
+                    ),
                   ),
-                ),
+                ]),
                 const SizedBox(height: 12),
                 _SectionLabel(l10n.planNewDaysPerWeek),
                 Wrap(
@@ -2125,7 +2126,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         ),
       ];
     }
-    Widget hint(Key key, String text, String action, SettingsDestination to) =>
+    Widget hint(Key key, String text, String action, VoidCallback open) =>
         Padding(
           key: key,
           padding: const EdgeInsets.only(top: 4),
@@ -2139,7 +2140,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                   minimumSize: const Size(0, 44),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                onPressed: () => openSettings(to),
+                onPressed: open,
                 child: Text(action),
               ),
             ],
@@ -2175,14 +2176,14 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           const Key('plan-new-dob-hint'),
           l10n.planNewDobHintAbsent,
           l10n.planNewDobHintAbsentAction,
-          SettingsDestination.training,
+          () => openSettingsRow(PreferencesRow.dateOfBirth),
         )
       else if (_viewerDobState == HealthUseDobState.consentWithheld)
         hint(
           const Key('plan-new-dob-consent-hint'),
           l10n.planNewDobHintHealthData,
           l10n.planNewDobHintHealthDataAction,
-          SettingsDestination.bodyMetrics,
+          () => openSettings(SettingsDestination.bodyMetrics),
         ),
     ];
   }

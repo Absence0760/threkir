@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { page } from '$app/state';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
@@ -82,7 +83,7 @@
 	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
 	import { movingTimeSeconds, computeRealSplits } from '#lib/runs/run_stats.ts';
 	import { computeRunStreaks } from '#lib/runs/streaks.ts';
-	import { pickShareCourse } from '#lib/parks/park_courses.ts';
+	import { pickShareCourse, shareCoursePlaces } from '#lib/parks/park_courses.ts';
 	import type { AchievementTier } from '#lib/types.ts';
 	import { lineLat, lineLng, trackLine } from '#lib/runs/track_line.ts';
 	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
@@ -1007,7 +1008,15 @@
 	let shareStreakDays = $state(0);
 	let shareBadge = $state<{ badgeKey: string; tier: AchievementTier } | null>(null);
 	let parkCourseRefresh = $state(0);
-	let shareCourse = $state<{ name: string; park: string; timeS: number; season: number; rank: number | null } | null>(null);
+	let shareCourse = $state<{
+		name: string;
+		park: string;
+		timeS: number;
+		season: number;
+		month: number;
+		monthRank: number | null;
+		seasonRank: number | null;
+	} | null>(null);
 	/// The race the run is linked to, from the result stamped on it: the
 	/// official chip time when there is one.
 	let shareRace = $derived.by(() => {
@@ -1047,9 +1056,19 @@
 		}
 		try {
 			const pick = pickShareCourse(await fetchRunParkCourseTimes(runId));
-			shareCourse = pick
-				? { name: pick.course_name, park: pick.park_name, timeS: pick.time_seconds, season: pick.season, rank: pick.season_rank }
-				: null;
+			const places = pick ? shareCoursePlaces(pick) : null;
+			shareCourse =
+				pick && places
+					? {
+							name: pick.course_name,
+							park: pick.park_name,
+							timeS: pick.time_seconds,
+							season: pick.season,
+							month: pick.month,
+							monthRank: places.monthRank,
+							seasonRank: places.seasonRank,
+						}
+					: null;
 		} catch (e) {
 			console.warn('share park course read failed', e);
 		}
@@ -2705,7 +2724,7 @@
 				<h2>{m('runDetail.splits')}</h2>
 				{#if pacing}
 					<div class="pacing">
-						<h3 class="pacing-heading">{m('runDetail.pacing')}</h3>
+						<SectionHeader label={m('runDetail.pacing')} level={3} />
 						<div class="pacing-halves">
 							<div class="pacing-half">
 								<span class="pacing-half-label">{m('runDetail.pacingFirstHalf')}</span>
@@ -3920,15 +3939,6 @@
 		padding: var(--space-md);
 		background: var(--color-bg-secondary);
 		border-radius: var(--radius-md);
-	}
-
-	.pacing-heading {
-		margin: 0 0 var(--space-sm);
-		font-size: 0.8125rem;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
 	}
 
 	.pacing-halves {

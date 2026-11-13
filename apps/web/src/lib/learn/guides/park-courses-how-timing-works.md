@@ -4,7 +4,7 @@ description: How a standing park course times your run, why checkpoints stop sho
 category: trail
 slug: park-courses-how-timing-works
 order: 2
-updated: 2026-11-08
+updated: 2026-11-13
 cta:
   feature: parks
 ---
@@ -35,9 +35,15 @@ Each board has a season: the calendar year **in the park's own time zone**. The 
 
 A new season every January gives everyone a fresh chance at a placing, and the all-time board keeps the records.
 
+## A new board every month
+
+Both boards also run **month by month**, in the park's time zone: from midnight on the 1st to midnight on the 1st of the next month where the park is. A run at 23:30 on 31 October in a Virginia park counts for October.
+
+A month that starts empty is a fresh chance for anyone, not just for whoever was fastest in January. When a month ends, you get a note in your inbox with your best time that month on each course you ran, and every month you complete a park course counts toward the park months badges.
+
 ## Two boards, two ways to win
 
-- **Fastest** ranks each runner by their best time, once per runner. Switch between this year and all time, and filter by gender or age band.
+- **Fastest** ranks each runner by their best time, once per runner. Switch between this month, this year and all time, and filter by gender or age band.
 - **Most completions** counts the days you completed the course in the season. Several laps on one day count as one, so it rewards the regulars who come back week after week rather than one long day of laps.
 
 Private runs stay private: a time from a run other people can't see isn't shown to them.

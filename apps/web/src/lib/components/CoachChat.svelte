@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import ProUpsellLink from '#lib/components/ProUpsellLink.svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { renderCoachMarkdown } from '#lib/coach/markdown.ts';
+	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
 	import { payloadSha256Hex } from '#lib/util/payload_hash.ts';
@@ -135,7 +137,7 @@
 		}
 		// One-time migration from the previous localStorage build.
 		try {
-			const raw = localStorage.getItem(legacyStorageKey(userId, planId));
+			const raw = localStore()?.getItem(legacyStorageKey(userId, planId)) ?? null;
 			if (!raw) {
 				threadLoaded = true;
 				return true;
@@ -151,7 +153,7 @@
 				(m) => m && m.role === 'user' && typeof m.content === 'string',
 			);
 			if (legacy.length === 0) {
-				localStorage.removeItem(legacyStorageKey(userId, planId));
+				localStore()?.removeItem(legacyStorageKey(userId, planId));
 				threadLoaded = true;
 				return true;
 			}
@@ -165,7 +167,7 @@
 			);
 			if (!insertErr) {
 				const ok = await loadThread(userId);
-				localStorage.removeItem(legacyStorageKey(userId, planId));
+				localStore()?.removeItem(legacyStorageKey(userId, planId));
 				return ok;
 			}
 			threadLoaded = true;
@@ -896,13 +898,17 @@
 	// Realtime subscription — fires when a row is inserted into
 	// coach_messages for the active thread (RLS scopes to the caller).
 	// Cleared on unmount so we don't leak channels across navigations.
-	type SupabaseChannel = { unsubscribe: () => Promise<unknown> };
-	let realtimeChannel: SupabaseChannel | null = null;
+	let realtimeChannel: RealtimeChannel | null = null;
 
 	function subscribeToThread() {
 		if (!cachedUserId) return;
+		// supabase.channel() hands back an existing channel on the same topic,
+		// and the previous mount's channel stays listed until the server acks
+		// its leave. A remount inside that window (the plan picker navigates)
+		// got the joined channel and `.on()` threw, crashing the page. One
+		// topic per mount never meets a channel still leaving.
 		const channel = supabase
-			.channel(`coach_messages:${cachedUserId}:${planId ?? 'no_plan'}`)
+			.channel(`coach_messages:${cachedUserId}:${planId ?? 'no_plan'}:${crypto.randomUUID()}`)
 			.on(
 				'postgres_changes',
 				{
@@ -934,12 +940,12 @@
 				},
 			)
 			.subscribe();
-		realtimeChannel = channel as unknown as SupabaseChannel;
+		realtimeChannel = channel;
 	}
 
 	onDestroy(() => {
 		if (realtimeChannel) {
-			realtimeChannel.unsubscribe();
+			void supabase.removeChannel(realtimeChannel);
 			realtimeChannel = null;
 		}
 	});

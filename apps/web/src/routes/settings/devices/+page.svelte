@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
+	import { settingRowId } from '#lib/settings/settings_search.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount } from 'svelte';
@@ -156,9 +158,9 @@
 		// device-id + any in-flight settings caches. Previously the
 		// row was deleted server-side but the browser kept its minted
 		// device id, so the next write re-created the empty row.
-		if (isSelf && typeof localStorage !== 'undefined') {
+		if (isSelf) {
 			try {
-				localStorage.removeItem('run_app.device_id');
+				localStore()?.removeItem('run_app.device_id');
 			} catch (_) {
 				/* quota / access denied — noop */
 			}
@@ -429,7 +431,7 @@
 	{:else if devices.length === 0}
 		<EmptyState icon="devices_other" title={m('settingsDevices.emptyTitle')} text={m('settingsDevices.emptyText')} />
 	{:else}
-		<div class="device-list">
+		<div id={settingRowId('settingsDevices.addOverride')} class="device-list">
 			{#each devices as d (d.device_id)}
 				<div
 					class="device"
@@ -629,7 +631,6 @@
 
 <style>
 	.page { padding: var(--page-padding-y) var(--page-padding-x); max-width: 64rem; }
-	.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); }
 
 	.skeleton-stack { display: flex; flex-direction: column; gap: 0.5rem; }
 	.skel-row {
@@ -662,11 +663,6 @@
 		align-items: center;
 		gap: 0.5rem;
 		overflow: hidden;
-	}
-	.device-name strong {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 	.device-label-input {
 		font: inherit;
@@ -744,7 +740,6 @@
 		border-radius: var(--radius-sm);
 	}
 	.remove-btn:hover { color: var(--color-danger-text); background: var(--color-danger-light); }
-	.muted { color: var(--color-text-tertiary); }
 	.material-symbols { font-family: 'Material Symbols Outlined', system-ui; font-weight: normal; display: inline-block; line-height: 1; }
 
 	.override-link {

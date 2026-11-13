@@ -308,7 +308,7 @@
           {
             "type": "list",
             "items": [
-              "**Coach IA — 10/día**: diez mensajes al día al Entrenador IA en lugar de dos. El recuento se reinicia a medianoche UTC.",
+              "**Entrenador IA — 10/día**: diez mensajes al día al Entrenador IA en lugar de dos. El recuento se reinicia a medianoche UTC.",
               "Respuestas del Entrenador IA más largas y completas, que pueden tener en cuenta más de tus carreras.",
               "**Map-matching prioritario**: tus trazas GPS se ajustan a las calles antes que las de las cuentas gratuitas, así que están listas antes.",
               "**Exportaciones a la nube prioritarias**: hasta 8 exportaciones de paquetes GPX por hora en lugar de 2.",
@@ -320,7 +320,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Algunas de estas funciones dependen de servicios que puede que aún no estén activados. La tarjeta Pro de [[route:/settings/upgrade|Pro y apoyo]] solo muestra lo que funciona hoy; si dice **Pro desbloquea el entrenador con IA: próximamente.**, todavía no se puede comprar Pro."
+            "text": "Algunas de estas funciones dependen de servicios que puede que aún no estén activados. La tarjeta Pro de [[route:/settings/upgrade|Pro y apoyo]] solo muestra lo que funciona hoy; si dice **Pro desbloquea el Entrenador IA: próximamente.**, todavía no se puede comprar Pro."
           }
         ]
       },
@@ -444,7 +444,7 @@
           {
             "type": "list",
             "items": [
-              "**Descargar archivo completo de la cuenta** (en el móvil, **Exportación de la cuenta**): todo lo que guardamos sobre ti, incluidos los chats con el entrenador, los mensajes, las integraciones y los contactos de seguridad, en un único zip. Se genera en nuestro servidor, así que puedes cerrar la página y volver a por él. Una exportación terminada se conserva 7 días.",
+              "**Descargar archivo completo de la cuenta** (en el móvil, **Exportación de la cuenta**): todo lo que guardamos sobre ti, incluidos los chats con el Entrenador IA, los mensajes, las integraciones y los contactos de seguridad, en un único zip. Se genera en nuestro servidor, así que puedes cerrar la página y volver a por él. Una exportación terminada se conserva 7 días.",
               "**Descargar copia completa** (en el móvil, **Copia de seguridad completa**): todas las carreras con su traza GPS, además de tus rutas, tu perfil y tus preferencias, en un archivo que puedes restaurar más tarde con **Restaurar desde copia**.",
               "**Exportación en la nube (zip GPX)**: un archivo GPX por carrera, con frecuencia cardíaca, listo para importar en otras apps. Las cuentas gratuitas pueden exportar dos veces por hora; las cuentas Pro, ocho.",
               "**Exportar todas las carreras (CSV)** (en el móvil, **Exportar carreras como CSV**): una fila por carrera para una hoja de cálculo, sin trazas GPS."
@@ -3132,7 +3132,7 @@
           {
             "type": "list",
             "items": [
-              "Cada petición gasta uno de tus mensajes diarios del Entrenador IA, el mismo cupo que el del Entrenador.",
+              "Cada petición gasta uno de tus mensajes diarios del Entrenador IA, el mismo cupo que usas al chatear con él.",
               "Necesita el aviso de IA más reciente. Si se te pide aceptarlo, selecciona **Revísala en Ajustes** y acéptalo allí.",
               "A la IA solo se envían los próximos entrenamientos de tu plan y el cambio que has escrito."
             ]
@@ -3140,7 +3140,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "También puedes pedirle al Entrenador que cambie tu plan. Responde con un enlace que abre Ajustar con IA con tu petición ya escrita."
+            "text": "También puedes pedirle al Entrenador IA que cambie tu plan. Responde con un enlace que abre Ajustar con IA con tu petición ya escrita."
           }
         ]
       }
@@ -3752,8 +3752,8 @@
   {
     "id": "park-courses",
     "lang": "es",
-    "title": "Recorridos de parques: puntos de control, temporadas y clasificaciones",
-    "summary": "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empieza una temporada y cómo ordenan Más rápidos y Más completados.",
+    "title": "Recorridos de parques: puntos de control, temporadas, meses y clasificaciones",
+    "summary": "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empiezan una temporada y un mes y cómo ordenan a los corredores Más rápidos y Más completados.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3827,7 +3827,7 @@
             "type": "list",
             "items": [
               "**Más rápidos** ordena a cada corredor por su mejor tiempo en el recorrido. Apareces una sola vez, con tu mejor carrera.",
-              "Por defecto muestra este año. Selecciona **Histórico** para ver los mejores tiempos de siempre.",
+              "Por defecto muestra este año. Selecciona **Este mes** para ver lo que va de mes, o **Histórico** para ver los mejores tiempos de siempre.",
               "Filtra por género o por grupo de edad. El filtro de edad solo incluye a quienes han aceptado compartir datos de salud, así que puede ser más corto que la clasificación completa."
             ]
           }
@@ -3839,6 +3839,25 @@
           {
             "type": "p",
             "text": "**Más completados** premia a los habituales. Cuenta los días en que completaste el recorrido, en la zona horaria del parque, así que varias vueltas el mismo día cuentan como una."
+          }
+        ]
+      },
+      {
+        "heading": "Meses: una clasificación nueva cada mes",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Las dos clasificaciones también van mes a mes. Un mes es un mes natural en la zona horaria del parque, desde la medianoche del día 1 hasta la medianoche del día 1 del mes siguiente, así que una carrera a las 23:30 del 31 de octubre en la hora del parque cuenta para octubre."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Selecciona **Este mes** para ver lo que va de mes, y usa las flechas junto al nombre del mes para volver a meses anteriores.",
+              "Cada recorrido en la página de un parque muestra cuántas personas lo han corrido este mes.",
+              "Un tiempo en un recorrido de parque, en la página de tu carrera, muestra su puesto ese mes y ese año, por ejemplo N.º 2 en noviembre, n.º 9 en 2026. La pegatina **Recorrido de parque** de una imagen compartida muestra el puesto del mes, y también el del año cuando está entre los 10 primeros.",
+              "Cuando termina un mes en la hora del parque, recibes en tu bandeja de entrada un aviso con tu mejor tiempo de ese mes en cada recorrido que corriste. Desactívalo con **Meses en recorridos de parque**: en la web, en [[route:/settings/notifications|Notificaciones]]; en la app del móvil, en **Notificaciones**, dentro de la pestaña **Tú**.",
+              "Las insignias de meses de parque cuentan los meses en los que completaste un recorrido de parque, a los 3, 6, 12 y 24 meses. Cuentan recorridos completados, nunca puestos."
+            ]
           }
         ]
       },

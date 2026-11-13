@@ -179,6 +179,17 @@ test('groupNotifications: personal records never collapse, even on one run', () 
 	assert.equal(groups.length, 2);
 });
 
+test('groupNotifications: park course month-close notices never collapse', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'm1', kind: 'park_course_month_closed', created_at: ago(1000) }),
+			n({ id: 'm2', kind: 'park_course_month_closed', created_at: ago(2000) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 2);
+});
+
 test('groupNotifications: event RSVPs collapse per event, distinct events split', () => {
 	const groups = groupNotifications(
 		[

@@ -55,7 +55,7 @@ test.describe('/runs', () => {
 		// with the selects wrapping BELOW them — never the actions wrapping.
 		await page.setViewportSize({ width: 1400, height: 900 });
 		await page.goto('/runs');
-		await expect(page.getByRole('heading', { level: 1, name: 'Run history' })).toBeAttached();
+		await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeAttached();
 		const actions = page.locator('.toolbar-actions');
 		const activity = page.locator('.activity-group');
 		const selects = page.locator('.select-group');

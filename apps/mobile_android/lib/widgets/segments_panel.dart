@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart'
         AppInsets,
         AppSemanticColors,
         AppSpace,
+        FieldColumn,
         IdentityAvatar,
         ListCard,
         SectionHeader;
@@ -370,42 +371,43 @@ class _CreateForm extends StatelessWidget {
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: nameCtrl,
-              maxLength: 120,
-              decoration: InputDecoration(
-                labelText: l10n.segmentsPanelNameLabel,
-                hintText: l10n.segmentsPanelNameHint,
-                isDense: true,
+            FieldColumn(children: [
+              TextField(
+                controller: nameCtrl,
+                maxLength: 120,
+                decoration: InputDecoration(
+                  labelText: l10n.segmentsPanelNameLabel,
+                  hintText: l10n.segmentsPanelNameHint,
+                  isDense: true,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: startCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: l10n.segmentsPanelStartLabel,
-                      isDense: true,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: startCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l10n.segmentsPanelStartLabel,
+                        isDense: true,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: endCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: l10n.segmentsPanelEndLabel,
-                      helperText: hint,
-                      isDense: true,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: endCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l10n.segmentsPanelEndLabel,
+                        helperText: hint,
+                        isDense: true,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ]),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,

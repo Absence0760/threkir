@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppSpace, ListCard, SectionHeader;
+import 'package:ui_kit/ui_kit.dart'
+    show AppSpace, FieldColumn, ListCard, SectionHeader;
 
 import '../gym_prs.dart' show namesAnExercise, normaliseExerciseName;
 import '../l10n/gen/app_localizations.dart';
@@ -613,8 +614,7 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
       _EditExercise ex, ThemeData theme, AppLocalizations l10n) {
     final unit = WeightFormat.label(activeWeightUnit);
     final scheme = ex.progression;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return FieldColumn(
       children: [
         DropdownButtonFormField<String>(
           isExpanded: true,
@@ -636,17 +636,14 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
             scheme == 'double_progression' ||
             scheme == 'five_by_five' ||
             scheme == 'rpe_autoreg') ...[
-          const SizedBox(height: 8),
           _numField(
               ex.increment, l10n.gymRoutineProgressionIncrementLabel(unit), true),
         ],
         if (scheme == 'percent_cycle') ...[
-          const SizedBox(height: 8),
           _numField(
               ex.percent,
               metricText(l10n, Metric.e1rm, variant: 'percent'),
               true),
-          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -661,7 +658,6 @@ class _RoutineBuilderSheetState extends State<RoutineBuilderSheet> {
           ),
         ],
         if (scheme == 'rpe_autoreg') ...[
-          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(

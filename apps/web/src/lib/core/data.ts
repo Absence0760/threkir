@@ -21,6 +21,7 @@ import type {
 import { isEntityId } from './entity_id';
 import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
+import { stripHeartRate } from './heart_rate_consent';
 import {
 	keysetAfter,
 	literalSubstringPattern,
@@ -220,6 +221,7 @@ import { trackExtent, type TrackExtent } from '../segments/track_extent';
 import {
 	courseAttribution,
 	parseCourseCheckpoints,
+	regionSlug,
 	type CourseCheckpoint,
 	type RecapParkRow,
 	type RunParkCourseTime,
@@ -804,9 +806,10 @@ export async function fetchRecapParkCourses(startIso: string, endIso: string): P
 	});
 }
 
-/// The park course times one of the caller's own runs set, with the season
-/// rank each holds (`run_park_course_times`), for run detail's course chips
-/// and the share image's course sticker. Throws on a failed read.
+/// The park course times one of the caller's own runs set, with the place
+/// each holds on its month's and its season's board (`run_park_course_times`),
+/// for run detail's course chips and the share image's course sticker. Throws
+/// on a failed read.
 export async function fetchRunParkCourseTimes(runId: string): Promise<RunParkCourseTime[]> {
 	const { data, error } = await supabase.rpc('run_park_course_times', { p_run_id: runId }, { get: true });
 	if (error) throw dbError(error);
@@ -820,6 +823,8 @@ export async function fetchRunParkCourseTimes(runId: string): Promise<RunParkCou
 		time_seconds: r.time_seconds,
 		season: r.season,
 		season_rank: r.season_rank ?? null,
+		month: r.month,
+		month_rank: r.month_rank ?? null,
 	}));
 }
 
@@ -1839,6 +1844,40 @@ export async function createManualRun(input: {
 	return { id: runId };
 }
 
+/// Whether the signed-in runner has health-data consent on record, read
+/// through `get_my_profile()` (the column is closed to a direct select).
+/// Remembered for 30 s so a bulk import does not ask once per run;
+/// `forgetHealthDataConsent()` drops it after a grant or a withdrawal. A
+/// failed read throws rather than guessing: answering "no" would strip a
+/// consenting runner's heart rate for good, answering "yes" would upload it.
+let healthConsentMemo: { userId: string; consented: boolean; at: number } | null = null;
+const HEALTH_CONSENT_MEMO_MS = 30_000;
+
+export async function fetchHealthDataConsented(): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return false;
+	const memo = healthConsentMemo;
+	if (memo && memo.userId === userId && Date.now() - memo.at < HEALTH_CONSENT_MEMO_MS) {
+		return memo.consented;
+	}
+	const { data, error } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
+	if (error) throw dbError(error);
+	const consented = (data as { health_data_consent_at?: string | null } | null)?.health_data_consent_at != null;
+	healthConsentMemo = { userId, consented, at: Date.now() };
+	return consented;
+}
+
+export function forgetHealthDataConsent(): void {
+	healthConsentMemo = null;
+}
+
+/// SQLSTATE 42501 with the food_log gate's message (migration
+/// 20271227100004): the runner has no health-data consent, so nothing was
+/// stored. A surface shows the consent notice for it rather than an error.
+export function isFoodConsentRequiredError(err: unknown): boolean {
+	return err instanceof DbError && err.code === '42501' && /food_log/.test(err.message);
+}
+
 /// Insert a run from an importer (Strava zip, GPX bulk, etc). Uploads
 /// an optional `track` to the Storage bucket and stores the path in
 /// `track_url`. For callers without a GPS track, pass `track: undefined`
@@ -1874,11 +1913,17 @@ export async function saveRun(input: {
 	/// import honours the runner's default visibility.
 	isPublic?: boolean;
 	followersOnly?: boolean;
-}): Promise<{ id: string; trackUploaded: boolean; trackError?: string }> {
+}): Promise<{ id: string; trackUploaded: boolean; trackError?: string; heartRateDropped: boolean }> {
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	const audience = await runAudienceFor(userId, input);
+	// Heart rate is kept only with health-data consent (decisions § 2514). The
+	// database strips the row's keys itself, but not the bpm inside the track
+	// blob, and Storage refuses the HR sidecar, so the input is stripped here.
+	const stripped = (await fetchHealthDataConsented()) ? input : stripHeartRate(input);
+	const heartRateDropped = stripped !== input;
+	input = stripped;
 
 	// `title` has no DB column, so it survives the round-trip in metadata only.
 	// `elevation_m` is different: migration 20270302_001 promoted total ascent to
@@ -1999,7 +2044,7 @@ export async function saveRun(input: {
 
 	await recomputeChallengesForRun(input.started_at);
 
-	return { id: runId, trackUploaded, trackError };
+	return { id: runId, trackUploaded, trackError, heartRateDropped };
 }
 
 async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {
@@ -11470,10 +11515,6 @@ export async function fetchGlobalSegment(id: string): Promise<GlobalSegment | nu
 	return data ? asGlobalSegment(data) : null;
 }
 
-/// Block-guarded global-segment leaderboard. Mirrors
-/// `fetchSegmentLeaderboardTiered` but calls the catalogue RPC (no route
-/// visibility branch — the catalogue is public; per-effort run privacy +
-/// the block graph are applied server-side).
 /// The caller's best public attempt against each mutual-follow friend's on one
 /// route or segment (`head_to_head`, decisions § 2267). With `friendId`, that
 /// friend's row or none. Throws on a failed read, so "no friend to compare"
@@ -11497,6 +11538,10 @@ export async function fetchHeadToHead(
 	return parseHeadToHeadRows(data);
 }
 
+/// Block-guarded global-segment leaderboard. Mirrors
+/// `fetchSegmentLeaderboardTiered` but calls the catalogue RPC (no route
+/// visibility branch — the catalogue is public; per-effort run privacy +
+/// the block graph are applied server-side). Throws on a failed read.
 export async function fetchGlobalSegmentLeaderboard(
 	segmentId: string,
 	filter: {
@@ -11505,6 +11550,8 @@ export async function fetchGlobalSegmentLeaderboard(
 		clubId?: string | null;
 		/** A calendar year in the course's park timezone; omitted is all time. */
 		season?: number | null;
+		/** A calendar month (1-12) of `season` in the park timezone; needs a season. */
+		month?: number | null;
 	} = {},
 	limit = 50,
 ): Promise<GlobalSegmentLeaderboardEntry[]> {
@@ -11515,12 +11562,12 @@ export async function fetchGlobalSegmentLeaderboard(
 		p_limit: limit,
 		p_club_id: filter.clubId ?? undefined,
 		p_season: filter.season ?? undefined,
+		p_month: filter.month ?? undefined,
 	}, { get: true });
-	if (error || !data) {
-		console.warn('fetchGlobalSegmentLeaderboard failed', error);
-		return [];
-	}
-	const rows = data as Array<{
+	// Thrown, not answered as an empty board: both pages hold a failed state
+	// with a retry, and an empty board reads as "nobody has run it".
+	if (error) throw dbError(error);
+	const rows = (data ?? []) as Array<{
 		effort_id: string;
 		user_id: string;
 		run_id: string;
@@ -11760,6 +11807,8 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 export type Park = Database['public']['Tables']['parks']['Row'] & {
 	/** The calendar year it is now where the park is (`park_season`). */
 	park_season: number;
+	/** The calendar month (1-12) it is now where the park is (`park_month`). */
+	park_month: number;
 };
 
 export type ParkCourseRow = Database['public']['Tables']['park_courses']['Row'];
@@ -11770,7 +11819,7 @@ export interface ParkCourse extends Omit<ParkCourseRow, 'checkpoints'> {
 	segment: GlobalSegment;
 }
 
-const PARK_COLUMNS = '*, park_season';
+const PARK_COLUMNS = '*, park_season, park_month';
 
 function asParkCourse(
 	row: ParkCourseRow & {
@@ -11824,6 +11873,16 @@ export async function fetchParkCourses(parkId: string): Promise<ParkCourse[]> {
 		const course = asParkCourse(row);
 		return course ? [course] : [];
 	});
+}
+
+/// How many runners the caller can see with a time on each of a park's
+/// courses in the park's current calendar month (`park_course_month_runners`),
+/// keyed by course id; a course with none has no entry. Signed-in only.
+/// Throws on a failed read.
+export async function fetchParkCourseMonthRunners(parkId: string): Promise<Map<string, number>> {
+	const { data, error } = await supabase.rpc('park_course_month_runners', { p_park_id: parkId }, { get: true });
+	if (error) throw dbError(error);
+	return new Map((data ?? []).map((r) => [r.course_id, r.runners]));
 }
 
 export interface ParkCourseWithPark extends ParkCourse {
@@ -11977,15 +12036,17 @@ export interface CompletionsEntry {
 
 /// The most-completions board on a catalogue segment: one row per athlete,
 /// counting distinct local days (park timezone) with a visible effort. Tied
-/// counts share a rank. Throws on a failed read.
+/// counts share a rank. `month` (1-12) narrows `season` to one calendar
+/// month where the park is. Throws on a failed read.
 export async function fetchGlobalSegmentCompletions(
 	segmentId: string,
 	season: number | null,
 	limit = 50,
+	month: number | null = null,
 ): Promise<CompletionsEntry[]> {
 	const { data, error } = await supabase.rpc(
 		'global_segment_completions',
-		{ p_segment_id: segmentId, p_season: season ?? undefined, p_limit: limit },
+		{ p_segment_id: segmentId, p_season: season ?? undefined, p_limit: limit, p_month: month ?? undefined },
 		{ get: true },
 	);
 	if (error) throw dbError(error);
@@ -12063,6 +12124,10 @@ export interface NotificationRow {
 	event_title: string | null;
 	/** The group a message or group_invite is about (20271217000001); null otherwise. */
 	conversation_id?: string | null;
+	/** A park course month-close notice's course, month (the park-local 1st) and best time (20271226011343). */
+	park_course_id?: string | null;
+	park_course_month?: string | null;
+	park_course_time_s?: number | null;
 	created_at: string;
 }
 
@@ -12076,6 +12141,9 @@ export interface NotificationView {
 	event_club_slug: string | null;
 	club_name: string | null;
 	club_slug: string | null;
+	/** The row's park course name, and `<region>/<park>/<course>` for its link. */
+	park_course_name: string | null;
+	park_course_path: string | null;
 }
 
 /**
@@ -12111,8 +12179,9 @@ export async function fetchNotificationsWithError(
 	const commentIds = Array.from(new Set(rows.map((r) => r.comment_id).filter((x): x is string => !!x)));
 	const eventIds = Array.from(new Set(rows.map((r) => (r as { event_id?: string | null }).event_id).filter((x): x is string => !!x)));
 	const clubIds = Array.from(new Set(rows.map((r) => (r as { club_id?: string | null }).club_id).filter((x): x is string => !!x)));
+	const parkCourseIds = Array.from(new Set(rows.map((r) => r.park_course_id).filter((x): x is string => !!x)));
 
-	const [profiles, runs, publicRuns, comments, events, clubs] = await Promise.all([
+	const [profiles, runs, publicRuns, comments, events, clubs, parkCourses] = await Promise.all([
 		actorIds.length > 0
 			? supabase.from('user_profiles').select('id, display_name, avatar_url').in('id', actorIds)
 			: Promise.resolve({ data: [] as PublicProfile[] }),
@@ -12138,6 +12207,12 @@ export async function fetchNotificationsWithError(
 		clubIds.length > 0
 			? supabase.from('clubs').select('id, name, slug').in('id', clubIds)
 			: Promise.resolve({ data: [] as { id: string; name: string; slug: string }[] }),
+		parkCourseIds.length > 0
+			? supabase
+					.from(TABLES.park_courses)
+					.select('id, slug, global_segments(name), parks(slug, region_code)')
+					.in('id', parkCourseIds)
+			: Promise.resolve({ data: [] }),
 	]);
 
 	const profileBy = new Map<string, PublicProfile>();
@@ -12164,6 +12239,15 @@ export async function fetchNotificationsWithError(
 	for (const c of (clubs.data ?? []) as { id: string; name: string; slug: string }[]) {
 		clubBy.set(c.id, { name: c.name, slug: c.slug });
 	}
+	// A course whose park or segment was pulled is hidden by RLS, so its
+	// notice keeps its line without a name or a link.
+	const parkCourseBy = new Map<string, { name: string; path: string }>();
+	for (const c of parkCourses.data ?? []) {
+		const segment = singleEmbed(c.global_segments);
+		const park = singleEmbed(c.parks);
+		if (!segment || !park) continue;
+		parkCourseBy.set(c.id, { name: segment.name, path: `${regionSlug(park.region_code)}/${park.slug}/${c.slug}` });
+	}
 
 	return {
 		notifications: rows.map((row) => {
@@ -12172,6 +12256,7 @@ export async function fetchNotificationsWithError(
 			const body = r.comment_id ? commentBy.get(r.comment_id) ?? null : null;
 			const ev = r.event_id ? eventBy.get(r.event_id) ?? null : null;
 			const club = r.club_id ? clubBy.get(r.club_id) ?? null : null;
+			const parkCourse = r.park_course_id ? parkCourseBy.get(r.park_course_id) ?? null : null;
 			return {
 				row: r,
 				actor: r.actor_id ? profileBy.get(r.actor_id) ?? null : null,
@@ -12182,6 +12267,8 @@ export async function fetchNotificationsWithError(
 				event_club_slug: ev?.club_slug ?? null,
 				club_name: club?.name ?? null,
 				club_slug: club?.slug ?? null,
+				park_course_name: parkCourse?.name ?? null,
+				park_course_path: parkCourse?.path ?? null,
 			};
 		}),
 		error: null,

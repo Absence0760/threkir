@@ -428,8 +428,9 @@ test.describe('/routes/[id] — SegmentsPanel (v2 tiered leaderboards)', () => {
 		// Pin the label flip so a regression that left it stuck at one
 		// value (e.g. forgetting the `{showCreate ? ... : ...}` ternary)
 		// would surface here.
+		// It is the section header's trailing action (SectionHeader, § 2510).
 		await page.goto(`/routes/${BATTERSEA_ROUTE_ID}`);
-		const btn = page.locator('.segments-panel .hd button');
+		const btn = page.locator('.segments-panel .section-header button');
 		await expect(btn).toHaveText('New segment', { timeout: 10_000 });
 		await btn.click();
 		await expect(btn).toHaveText('Cancel');

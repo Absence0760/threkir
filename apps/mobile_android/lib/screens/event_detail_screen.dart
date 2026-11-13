@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../column_limits.dart';
 import '../course_gates.dart'
     show CourseGate, PreflightCourse, SessionStartMode, racePreflight;
+import '../activity_type_labels.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../calendar_intent.dart';
@@ -3158,37 +3159,38 @@ class _ResultEditDialogState extends State<ResultEditDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _time,
-              keyboardType: TextInputType.datetime,
-              decoration: InputDecoration(
-                labelText: l10n.eventResultEditTime,
-                hintText: '1:02:03',
-                errorText: _invalid ? l10n.eventResultEditTimeInvalid : null,
+            FieldColumn(children: [
+              TextField(
+                controller: _time,
+                keyboardType: TextInputType.datetime,
+                decoration: InputDecoration(
+                  labelText: l10n.eventResultEditTime,
+                  hintText: '1:02:03',
+                  errorText: _invalid ? l10n.eventResultEditTimeInvalid : null,
+                ),
+                onChanged: (_) {
+                  if (_invalid) setState(() => _invalid = false);
+                },
               ),
-              onChanged: (_) {
-                if (_invalid) setState(() => _invalid = false);
-              },
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _status,
-              decoration:
-                  InputDecoration(labelText: l10n.eventResultEditStatus),
-              items: [
-                DropdownMenuItem(
-                    value: 'finished',
-                    child: Text(l10n.eventResultStatusFinished)),
-                DropdownMenuItem(
-                    value: 'dnf', child: Text(l10n.eventResultStatusDnf)),
-                DropdownMenuItem(
-                    value: 'dns', child: Text(l10n.eventResultStatusDns)),
-              ],
-              onChanged: (v) => setState(() {
-                _status = v ?? _status;
-                _invalid = false;
-              }),
-            ),
+              DropdownButtonFormField<String>(
+                initialValue: _status,
+                decoration:
+                    InputDecoration(labelText: l10n.eventResultEditStatus),
+                items: [
+                  DropdownMenuItem(
+                      value: 'finished',
+                      child: Text(l10n.eventResultStatusFinished)),
+                  DropdownMenuItem(
+                      value: 'dnf', child: Text(l10n.eventResultStatusDnf)),
+                  DropdownMenuItem(
+                      value: 'dns', child: Text(l10n.eventResultStatusDns)),
+                ],
+                onChanged: (v) => setState(() {
+                  _status = v ?? _status;
+                  _invalid = false;
+                }),
+              ),
+            ]),
           ],
         ),
       ),
@@ -3562,7 +3564,7 @@ class _SubmitTimeSheetState extends State<_SubmitTimeSheet> {
                   '${_dateLabel(r.startedAt, localeToTag(Localizations.localeOf(context)))} · ${formatDistanceForPref(r.distanceM)}',
                 ),
                 subtitle: Text(
-                  '${_ResultRow._formatDuration(r.durationS)} · ${r.activityType}',
+                  '${_ResultRow._formatDuration(r.durationS)} · ${activityTypeLabelFor(l10n, r.activityType)}',
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                 onTap: () => Navigator.of(context).pop(

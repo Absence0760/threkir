@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { localStore } from '#lib/core/browser_storage.ts';
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
@@ -22,6 +24,8 @@
 		createRecipe,
 		deleteRecipe,
 		logRecipe,
+		fetchHealthDataConsented,
+		isFoodConsentRequiredError,
 		fetchNutritionPlansWithError,
 		fetchNutritionPlansByIds,
 		fetchMyNutritionAssignmentsWithError,
@@ -89,6 +93,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
+	import HealthConsentNotice from '#lib/components/HealthConsentNotice.svelte';
 	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
 	import NutritionPlanLibrary from '#lib/components/NutritionPlanLibrary.svelte';
 	import NutritionAdherencePanel from '#lib/components/NutritionAdherencePanel.svelte';
@@ -248,6 +253,17 @@
 		};
 	});
 
+	// A food log is health data, kept only with health-data consent (decisions
+	// § 2514). Without it the diary reads empty (the rows are hidden, not
+	// deleted) and every log is refused, so the page says so once, at the top.
+	let foodConsentAbsent = $state(false);
+	$effect(() => {
+		fetchHealthDataConsented().then(
+			(given) => (foodConsentAbsent = !given),
+			() => {},
+		);
+	});
+
 	async function load() {
 		if (!auth.user) return;
 		const day = viewDate;
@@ -372,7 +388,7 @@
 				protein: Math.round(proByDay.get(iso) ?? 0),
 			}));
 
-			const stored = localStorage.getItem(waterStorageKey());
+			const stored = localStore()?.getItem(waterStorageKey()) ?? null;
 			waterMl = stored ? Number(stored) || 0 : 0;
 
 			await loadTemplates();
@@ -501,7 +517,8 @@
 			showToast(m('nutrition.templateLogged', { n, name: t.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.templateLogFailed', { error: errorCopy(e, m, 'nutrition.templateLogFailed') }), 'error');
+			if (isFoodConsentRequiredError(e)) foodConsentAbsent = true;
+			else showToast(m('nutrition.templateLogFailed', { error: errorCopy(e, m, 'nutrition.templateLogFailed') }), 'error');
 		} finally {
 			loggingTemplateId = null;
 		}
@@ -569,7 +586,8 @@
 			showToast(m('nutrition.recipeLogged', { n, name: r.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.recipeLogFailed', { error: errorCopy(e, m, 'nutrition.recipeLogFailed') }), 'error');
+			if (isFoodConsentRequiredError(e)) foodConsentAbsent = true;
+			else showToast(m('nutrition.recipeLogFailed', { error: errorCopy(e, m, 'nutrition.recipeLogFailed') }), 'error');
 		} finally {
 			loggingRecipeId = null;
 		}
@@ -592,11 +610,20 @@
 
 	function addWater() {
 		waterMl += WATER_UNIT_ML;
-		localStorage.setItem(waterStorageKey(), String(waterMl));
+		saveWater();
 	}
 	function removeWater() {
 		waterMl = Math.max(0, waterMl - WATER_UNIT_ML);
-		localStorage.setItem(waterStorageKey(), String(waterMl));
+		saveWater();
+	}
+	// The count is this device's only record of the day's water, but a full
+	// or blocked storage must not stop the tap from counting on screen.
+	function saveWater() {
+		try {
+			localStore()?.setItem(waterStorageKey(), String(waterMl));
+		} catch (_) {
+			/* quota / private mode — the on-screen count stands */
+		}
 	}
 
 	// A logged entry is the app's most frequently deleted row and is
@@ -737,6 +764,10 @@
 		{/snippet}
 	</PageHeader>
 
+	{#if foodConsentAbsent}
+		<HealthConsentNotice testid="food-consent-notice" message={m('healthConsent.foodNeedsConsent')} />
+	{/if}
+
 	<div class="day-bar">
 		<nav class="day-nav" aria-label={m('nutrition.day.navLabel')}>
 			<button
@@ -796,19 +827,20 @@
 	{:else}
 		<section class="card-elevated rings-card" data-testid="macro-rings">
 			{#if dayTargets && calorieBudget}
-				<div class="card-head">
-					<span class="section-label">{dayLabel}</span>
-					<div class="budget-head">
-						<span class="card-meta">{consumed.calories} / {dayTargets.calories} kcal</span>
-						{#if calorieBudget.exceeded}
-							<span class="budget-chip budget-over" data-testid="calorie-budget">{m('nutrition.over', { n: calorieBudget.over })}</span>
-						{:else if calorieBudget.remaining === 0}
-							<span class="budget-chip budget-on" data-testid="calorie-budget">{m('nutrition.onTarget')}</span>
-						{:else}
-							<span class="budget-chip budget-left" data-testid="calorie-budget">{m('nutrition.remaining', { n: calorieBudget.remaining ?? 0 })}</span>
-						{/if}
-					</div>
-				</div>
+				<SectionHeader label={dayLabel} class="nutrition-card-head">
+					{#snippet trailing()}
+						<div class="budget-head">
+							<span class="card-meta">{consumed.calories} / {dayTargets.calories} kcal</span>
+							{#if calorieBudget.exceeded}
+								<span class="budget-chip budget-over" data-testid="calorie-budget">{m('nutrition.over', { n: calorieBudget.over })}</span>
+							{:else if calorieBudget.remaining === 0}
+								<span class="budget-chip budget-on" data-testid="calorie-budget">{m('nutrition.onTarget')}</span>
+							{:else}
+								<span class="budget-chip budget-left" data-testid="calorie-budget">{m('nutrition.remaining', { n: calorieBudget.remaining ?? 0 })}</span>
+							{/if}
+						</div>
+					{/snippet}
+				</SectionHeader>
 			{/if}
 			<div class="rings" class:rings-untargeted={!dayTargets}>
 				{#each rings as r (r.key)}
@@ -914,17 +946,18 @@
 		{@const drunkPips = Math.round(waterMl / WATER_UNIT_ML)}
 		{@const pipCount = Math.max(8, Math.round(waterTargetMl / WATER_UNIT_ML), drunkPips)}
 		<section class="card-elevated water-card">
-			<div class="card-head">
-				<span class="section-label">{m('nutrition.water')}</span>
-				<div class="budget-head" aria-live="polite">
-					<span class="water-amount">{litres(waterMl)} / {litres(waterTargetMl)} L</span>
-					{#if waterBudget.reached}
-						<span class="budget-chip budget-on" data-testid="water-budget">{m('nutrition.waterGoalReached')}</span>
-					{:else}
-						<span class="budget-chip budget-left" data-testid="water-budget">{m('nutrition.waterRemaining', { n: litres(waterBudget.remainingMl) })}</span>
-					{/if}
-				</div>
-			</div>
+			<SectionHeader label={m('nutrition.water')} class="nutrition-card-head">
+				{#snippet trailing()}
+					<div class="budget-head" aria-live="polite">
+						<span class="water-amount">{litres(waterMl)} / {litres(waterTargetMl)} L</span>
+						{#if waterBudget.reached}
+							<span class="budget-chip budget-on" data-testid="water-budget">{m('nutrition.waterGoalReached')}</span>
+						{:else}
+							<span class="budget-chip budget-left" data-testid="water-budget">{m('nutrition.waterRemaining', { n: litres(waterBudget.remainingMl) })}</span>
+						{/if}
+					</div>
+				{/snippet}
+			</SectionHeader>
 			<div class="water-controls">
 				<button class="btn btn-outline btn-sm water-btn" type="button" onclick={removeWater} aria-label={m('nutrition.waterRemove')}>−</button>
 				<div class="water-pips" class:water-pips-reached={waterBudget.reached} aria-hidden="true">
@@ -939,9 +972,7 @@
 
 		{#if nutrientBudgets.length > 0}
 			<section class="card-elevated nutrients-card" data-testid="nutrients">
-				<div class="card-head">
-					<span class="section-label">{m('nutrition.nutrients')}</span>
-				</div>
+				<SectionHeader label={m('nutrition.nutrients')} class="nutrition-card-head" />
 				<ul class="nutrient-list">
 					{#each nutrientBudgets as n (n.kind)}
 						{@const label = m(n.labelKey)}
@@ -991,9 +1022,7 @@
 
 		{#if templatesError}
 			<section class="card-elevated templates-card" data-testid="templates-error">
-				<div class="card-head">
-					<span class="section-label">{m('nutrition.templates')}</span>
-				</div>
+				<SectionHeader label={m('nutrition.templates')} class="nutrition-card-head" />
 				<p class="section-hint">
 					<span class="material-symbols hint-icon" aria-hidden="true">error</span>
 					{m('nutrition.templatesLoadFailed')}
@@ -1002,9 +1031,7 @@
 			</section>
 		{:else if templates.length > 0}
 			<section class="card-elevated templates-card" data-testid="meal-templates">
-				<div class="card-head">
-					<span class="section-label">{m('nutrition.templates')}</span>
-				</div>
+				<SectionHeader label={m('nutrition.templates')} class="nutrition-card-head" />
 				<ul class="template-list">
 					{#each templates as t (t.id)}
 						<li class="template-row">
@@ -1035,9 +1062,7 @@
 
 		{#if recipesError}
 			<section class="card-elevated templates-card" data-testid="recipes-error">
-				<div class="card-head">
-					<span class="section-label">{m('nutrition.recipes')}</span>
-				</div>
+				<SectionHeader label={m('nutrition.recipes')} class="nutrition-card-head" />
 				<p class="section-hint">
 					<span class="material-symbols hint-icon" aria-hidden="true">error</span>
 					{m('nutrition.recipesLoadFailed')}
@@ -1046,9 +1071,7 @@
 			</section>
 		{:else if recipes.length > 0}
 			<section class="card-elevated templates-card" data-testid="recipes">
-				<div class="card-head">
-					<span class="section-label">{m('nutrition.recipes')}</span>
-				</div>
+				<SectionHeader label={m('nutrition.recipes')} class="nutrition-card-head" />
 				<ul class="template-list">
 					{#each recipes as r (r.id)}
 						<li class="template-row">
@@ -1090,36 +1113,37 @@
 			</EmptyState>
 		{:else}
 			<section class="card-elevated meals-card">
-				<div class="card-head">
-					<span class="section-label">{dayLabel}</span>
-					<div class="meals-head-right">
-						<span class="card-meta">{consumed.calories} kcal</span>
-						<button
-							class="btn btn-outline btn-sm"
-							type="button"
-							onclick={() => {
-								mealName = '';
-								showSaveMeal = true;
-							}}
-							data-testid="save-as-meal"
-						>{m('nutrition.saveAsMeal')}</button>
-						<button
-							class="btn btn-outline btn-sm"
-							type="button"
-							onclick={() => {
-								recipeName = '';
-								recipeServings = servingsBounds.min;
-								showSaveRecipe = true;
-							}}
-							data-testid="save-as-recipe"
-						>{m('nutrition.saveAsRecipe')}</button>
-					</div>
-				</div>
+				<SectionHeader label={dayLabel} class="nutrition-card-head">
+					{#snippet trailing()}
+						<div class="meals-head-right">
+							<span class="card-meta">{consumed.calories} kcal</span>
+							<button
+								class="btn btn-outline btn-sm"
+								type="button"
+								onclick={() => {
+									mealName = '';
+									showSaveMeal = true;
+								}}
+								data-testid="save-as-meal"
+							>{m('nutrition.saveAsMeal')}</button>
+							<button
+								class="btn btn-outline btn-sm"
+								type="button"
+								onclick={() => {
+									recipeName = '';
+									recipeServings = servingsBounds.min;
+									showSaveRecipe = true;
+								}}
+								data-testid="save-as-recipe"
+							>{m('nutrition.saveAsRecipe')}</button>
+						</div>
+					{/snippet}
+				</SectionHeader>
 				<div class="meal-groups">
 					{#each groups as g (g.slot)}
 						<div class="meal-group">
 							<a class="meal-head meal-head-link" href={`/nutrition/${viewDate}/${g.slot}`}>
-								<h2>{m(`nutrition.slot_${g.slot}`)}</h2>
+								<h3>{m(`nutrition.slot_${g.slot}`)}</h3>
 								<span class="meal-kcal">{g.calories} kcal<span class="material-symbols meal-chevron" aria-hidden="true">chevron_right</span></span>
 							</a>
 							<ul class="meal-list">
@@ -1148,31 +1172,30 @@
 
 		{#if hasAnyData}
 			<section class="card-elevated trend-card">
-				<div class="card-head">
-					<span class="section-label">{isViewingToday
-						? m('nutrition.weeklyTrend')
-						: m('nutrition.day.trendEnding', { date: formatDate(viewDate) })}</span>
-					<div class="trend-meta">
-						{#if trendSeries.avg > 0}<span class="card-meta">{trendSeries.avgLabel}</span>{/if}
-						{#if weekSummary.deltaPerDay !== null}
-							{@const delta = weekSummary.deltaPerDay}
-							{#if delta === 0}
-								<span class="week-delta week-delta-on" data-testid="week-delta">{m('nutrition.weekOnGoal')}</span>
-							{:else if delta < 0}
-								<span class="week-delta week-delta-under" data-testid="week-delta">{m('nutrition.weekUnderGoal', { n: -delta })}</span>
-							{:else}
-								<span class="week-delta week-delta-over" data-testid="week-delta">{m('nutrition.weekOverGoal', { n: delta })}</span>
+				<SectionHeader label={isViewingToday ? m('nutrition.weeklyTrend') : m('nutrition.day.trendEnding', { date: formatDate(viewDate) })} class="nutrition-card-head">
+					{#snippet trailing()}
+						<div class="trend-meta">
+							{#if trendSeries.avg > 0}<span class="card-meta">{trendSeries.avgLabel}</span>{/if}
+							{#if weekSummary.deltaPerDay !== null}
+								{@const delta = weekSummary.deltaPerDay}
+								{#if delta === 0}
+									<span class="week-delta week-delta-on" data-testid="week-delta">{m('nutrition.weekOnGoal')}</span>
+								{:else if delta < 0}
+									<span class="week-delta week-delta-under" data-testid="week-delta">{m('nutrition.weekUnderGoal', { n: -delta })}</span>
+								{:else}
+									<span class="week-delta week-delta-over" data-testid="week-delta">{m('nutrition.weekOverGoal', { n: delta })}</span>
+								{/if}
 							{/if}
-						{/if}
-						{#if proteinSummary.daysMetGoal !== null}
-							<span
-								class="week-delta week-protein"
-								class:week-delta-on={proteinSummary.daysMetGoal === proteinSummary.loggedDays}
-								data-testid="week-protein"
-							>{m('nutrition.weekProtein', { met: proteinSummary.daysMetGoal, total: proteinSummary.loggedDays })}</span>
-						{/if}
-					</div>
-				</div>
+							{#if proteinSummary.daysMetGoal !== null}
+								<span
+									class="week-delta week-protein"
+									class:week-delta-on={proteinSummary.daysMetGoal === proteinSummary.loggedDays}
+									data-testid="week-protein"
+								>{m('nutrition.weekProtein', { met: proteinSummary.daysMetGoal, total: proteinSummary.loggedDays })}</span>
+							{/if}
+						</div>
+					{/snippet}
+				</SectionHeader>
 				<div class="trend-toggle" role="group" aria-label={m('nutrition.trendMetric')}>
 					<button
 						type="button"
@@ -1409,12 +1432,7 @@
 		flex-wrap: wrap;
 	}
 
-	.card-head {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: space-between;
-		align-items: baseline;
-		gap: var(--space-sm) var(--space-md);
+	:global(.nutrition-card-head) {
 		margin-bottom: var(--space-md);
 	}
 	.card-meta {
@@ -1713,7 +1731,7 @@
 		padding-bottom: var(--space-2xs);
 		border-bottom: 1px solid var(--color-border);
 	}
-	.meal-head h2 {
+	.meal-head h3 {
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 700;
@@ -1723,7 +1741,7 @@
 		color: inherit;
 		cursor: pointer;
 	}
-	.meal-head-link:hover h2 {
+	.meal-head-link:hover h3 {
 		color: var(--color-primary);
 	}
 	.meal-kcal {

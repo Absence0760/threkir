@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
@@ -1338,7 +1339,7 @@
 
 				{#if returnMessage}
 					<div class="ramp-note" role="status" data-testid="plan-return-note">
-						<h3>{t('planEditor.returnTitle')}</h3>
+						<SectionHeader label={t('planEditor.returnTitle')} level={3} class="plan-ramp-note-head" />
 						<p id="plan-return-body">{returnMessage}</p>
 						<label class="confirm-recent">
 							<input type="checkbox" bind:checked={easeBack} aria-describedby="plan-return-body" />
@@ -1350,12 +1351,12 @@
 					</div>
 				{:else if rampMessage}
 					<div class="ramp-note" role="status">
-						<h3>{t('planEditor.rampLabel')}</h3>
+						<SectionHeader label={t('planEditor.rampLabel')} level={3} class="plan-ramp-note-head" />
 						<p>{rampMessage}</p>
 					</div>
 				{:else if thinHistoryMessage}
 					<div class="ramp-note" role="status" data-testid="plan-thin-history-note">
-						<h3>{t('planEditor.rampLabel')}</h3>
+						<SectionHeader label={t('planEditor.rampLabel')} level={3} class="plan-ramp-note-head" />
 						<p>{thinHistoryMessage}</p>
 						<button type="button" class="btn btn-secondary" onclick={() => setWalkRun(true)}>
 							{t('planEditor.thinHistoryWalkRun')}
@@ -1363,10 +1364,11 @@
 					</div>
 				{/if}
 
-				<div class="outline-head">
-					<h3>{t('planEditor.weekOutline')}</h3>
-					<MetricLabel metric="planPhases" />
-				</div>
+				<SectionHeader label={t('planEditor.weekOutline')} level={3} class="plan-outline-head" flush>
+					{#snippet trailing()}
+						<MetricLabel metric="planPhases" />
+					{/snippet}
+				</SectionHeader>
 				<p class="outline-hint" id="week-outline-hint">
 					{t('planEditor.outlineHint')}
 				</p>
@@ -1698,13 +1700,6 @@
 	.preview h2 {
 		font-size: 1.1rem;
 	}
-	.preview h3 {
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
-		margin-top: var(--space-md);
-	}
 	.paces {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
@@ -1731,18 +1726,10 @@
 		font-size: 0.82rem;
 		margin: 0;
 	}
-	.outline-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-xs) var(--space-md);
+	:global(.plan-outline-head) {
 		margin-top: var(--space-md);
 	}
-	.outline-head h3 {
-		margin: 0;
-	}
-	.outline-head :global(.metric-label) {
+	:global(.plan-outline-head .metric-label) {
 		font-size: 0.78rem;
 		color: var(--color-text-secondary);
 	}
@@ -1760,7 +1747,7 @@
 		padding-inline-start: 0.7rem;
 		margin: 0.6rem 0 0 0;
 	}
-	.ramp-note h3 {
+	:global(.plan-ramp-note-head) {
 		margin: 0 0 0.2rem 0;
 	}
 	.ramp-note p {

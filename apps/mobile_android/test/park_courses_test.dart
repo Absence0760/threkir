@@ -307,7 +307,7 @@ void main() {
     expect(s.parks.map((p) => p.name).toList(), ['Cove', 'Alder', 'Bluff']);
   });
 
-  RunParkCourseTime time(String name, int? rank) =>
+  RunParkCourseTime time(String name, int? monthRank, [int? seasonRank]) =>
       RunParkCourseTime(
         effortId: 'e-$name',
         courseName: name,
@@ -317,19 +317,75 @@ void main() {
         regionCode: 'US-VA',
         timeSeconds: 600,
         season: 2027,
-        seasonRank: rank,
+        seasonRank: seasonRank,
+        month: 11,
+        monthRank: monthRank,
       );
 
   test('pickShareCourse: no course is null', () {
     expect(pickShareCourse(const []), isNull);
   });
 
-  test('pickShareCourse: the best season rank wins over an unranked course', () {
-    expect(pickShareCourse([time('A', null), time('B', 7), time('C', 3)])?.courseName, 'C');
+  test('pickShareCourse: the best month place wins', () {
+    expect(pickShareCourse([time('A', 7, 1), time('B', 2, 40), time('C', null)])?.courseName, 'B');
   });
 
-  test('pickShareCourse: with no ranked course the first one is printed', () {
+  test('pickShareCourse: a tied month place goes to the better year place', () {
+    expect(pickShareCourse([time('A', 1), time('B', 1, 12), time('C', 1, 3)])?.courseName, 'C');
+  });
+
+  test('pickShareCourse: with no placed course the first one is printed', () {
     expect(pickShareCourse([time('A', null), time('B', null)])?.courseName, 'A');
+  });
+
+  test('shareCoursePlaces: the year place only when it is in the top 10', () {
+    expect(kShareCourseYearPlaceMax, 10);
+    expect(shareCoursePlaces(time('A', 2, 9)), (monthRank: 2, seasonRank: 9));
+    expect(shareCoursePlaces(time('A', 2, 10)), (monthRank: 2, seasonRank: 10));
+    expect(shareCoursePlaces(time('A', 4, 11)), (monthRank: 4, seasonRank: null));
+    expect(shareCoursePlaces(time('A', null)), (monthRank: null, seasonRank: null));
+  });
+
+  const ParkNow now = (season: 2026, month: 11);
+
+  test('parseBoardPeriod: a month and all time', () {
+    expect(parseBoardPeriod('2026-11', now), const BoardPeriod.month(2026, 11));
+    expect(parseBoardPeriod('2025-01', now), const BoardPeriod.month(2025, 1));
+    expect(parseBoardPeriod('2000-01', now), const BoardPeriod.month(2000, 1));
+    expect(parseBoardPeriod('all', now), const BoardPeriod.all());
+  });
+
+  test('parseBoardPeriod: anything else, an impossible month or a month still to come is null', () {
+    for (final raw in <String?>[null, '', '2026', '2026-1', '2026-001', '26-11', '2026-00', '2026-13', '1999-12', '2026-12', '2027-01', 'ALL', ' 2026-11', '2026-11 ']) {
+      expect(parseBoardPeriod(raw, now), isNull, reason: '$raw');
+    }
+  });
+
+  test('boardPeriodParam: a month is zero-padded, all time is all, the year has none', () {
+    expect(boardPeriodParam(const BoardPeriod.month(2026, 3)), '2026-03');
+    expect(boardPeriodParam(const BoardPeriod.month(2026, 11)), '2026-11');
+    expect(boardPeriodParam(const BoardPeriod.all()), 'all');
+    expect(boardPeriodParam(const BoardPeriod.year(2026)), isNull);
+    expect(parseBoardPeriod(boardPeriodParam(const BoardPeriod.month(2026, 3)), now), const BoardPeriod.month(2026, 3));
+  });
+
+  test('boardPeriodArgs: the season and month each board call passes', () {
+    expect(boardPeriodArgs(const BoardPeriod.month(2026, 10)), (season: 2026, month: 10));
+    expect(boardPeriodArgs(const BoardPeriod.year(2026)), (season: 2026, month: null));
+    expect(boardPeriodArgs(const BoardPeriod.all()), (season: null, month: null));
+  });
+
+  test('stepBoardMonth: steps across a year in both directions', () {
+    expect(stepBoardMonth(const BoardPeriod.month(2026, 1), -1, now), const BoardPeriod.month(2025, 12));
+    expect(stepBoardMonth(const BoardPeriod.month(2025, 12), 1, now), const BoardPeriod.month(2026, 1));
+    expect(stepBoardMonth(const BoardPeriod.month(2026, 10), 1, now), const BoardPeriod.month(2026, 11));
+  });
+
+  test("stepBoardMonth: never past the park's month, nor before 2000, and only from a month", () {
+    expect(stepBoardMonth(const BoardPeriod.month(2026, 11), 1, now), isNull);
+    expect(stepBoardMonth(const BoardPeriod.month(2000, 1), -1, now), isNull);
+    expect(stepBoardMonth(const BoardPeriod.year(2026), -1, now), isNull);
+    expect(stepBoardMonth(const BoardPeriod.all(), 1, now), isNull);
   });
 
   test('parseSharedUse: reads a known key and nothing else', () {

@@ -47,6 +47,12 @@ String formatDateShort(DateTime dt, String tag) =>
 String formatMonthName(DateTime dt, String tag) =>
     DateFormat.MMMM(tag).format(_local(dt));
 
+/// Full month name with its year, locale-ordered: `November 2026` (en),
+/// `November 2026` (de), `2026年11月` (ja). Used for the month a park course
+/// board shows; pass a synthetic local `DateTime(year, month)`.
+String formatMonthYear(DateTime dt, String tag) =>
+    DateFormat.yMMMM(tag).format(_local(dt));
+
 /// Abbreviated weekday: `Fri` (en). Used for calendar DOW headers and the
 /// runs-list date line.
 String formatDow(DateTime dt, String tag) => DateFormat.E(tag).format(_local(dt));

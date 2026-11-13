@@ -60,7 +60,7 @@ test('renders a well-formed svg with the year and headline distance', () => {
 	assert.ok(svg.trimEnd().endsWith('</svg>'));
 	assert.ok(svg.includes('viewBox="0 0 1080 1080"'));
 	assert.ok(svg.includes('MY 2026 IN RUNNING'));
-	assert.ok(svg.includes('1234 km'));
+	assert.ok(svg.includes('1,234 km'));
 	assert.ok(svg.includes('across 142 runs'));
 });
 
@@ -68,7 +68,9 @@ test('honours the mi unit on every distance field', () => {
 	const svg = svgOf(recap(), 'mi');
 	assert.ok(svg.includes('767 mi')); // 1_234_000 m / 1609.344
 	assert.ok(svg.includes('26 mi')); // 42195 m longest run
+	assert.ok(svg.includes('40,502 ft')); // 12345 m climbed
 	assert.ok(!svg.includes(' km'));
+	assert.ok(!svg.includes(' m<'));
 });
 
 test('singularises a single-run year', () => {
@@ -116,7 +118,7 @@ test('a story is 1080x1920 with the same stats and the site address', () => {
 	assert.ok(svg.includes('viewBox="0 0 1080 1920"'));
 	assert.ok(svg.includes('<rect width="1080" height="1920"'));
 	assert.ok(svg.includes('MY 2026 IN RUNNING'));
-	assert.ok(svg.includes('1234 km'));
+	assert.ok(svg.includes('1,234 km'));
 	assert.ok(svg.includes('9 / 12'));
 	assert.match(svg, /<text[^>]*>threkir\.com<\/text>/);
 });
@@ -124,7 +126,7 @@ test('a story is 1080x1920 with the same stats and the site address', () => {
 test('a German reader gets the German card, not the English one', () => {
 	const svg = buildRecapShareSvg(recapCardText(recap(), 'km', tIn(de, 'de'), { locale: 'de' }));
 	assert.ok(svg.includes('MEIN LAUFJAHR 2026'));
-	assert.ok(svg.includes('über 142 Läufe'));
+	assert.ok(svg.includes('in 142 Läufen'));
 	assert.ok(svg.includes('LÄNGSTER LAUF'));
 	assert.ok(svg.includes('21 Tage'));
 	assert.ok(svg.includes('12.345 m'));

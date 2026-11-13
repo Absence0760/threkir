@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from '#lib/components/SectionHeader.svelte';
 	import { selfTimedBoard } from '#lib/races/race_start_modes.ts';
 	import type * as GeoJSON from 'geojson';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
@@ -817,10 +818,11 @@
 	{:else}
 		<div class="layout">
 			<section class="leaderboard">
-				<header class="section-head">
-					<h2>{m('liveEvent.onCourse')}</h2>
-					<span class="count">{pings.length}</span>
-				</header>
+				<SectionHeader label={m('liveEvent.onCourse')} class="live-section-head">
+					{#snippet badge()}
+						<span class="count">{pings.length}</span>
+					{/snippet}
+				</SectionHeader>
 				{#if pings.length === 0}
 					<div class="empty-inline">
 						<span class="material-symbols">satellite_alt</span>
@@ -885,10 +887,11 @@
 		{#if finishedResults.length > 0 || dnfResults.length > 0}
 			<section class="results">
 				{#if finishedResults.length > 0}
-					<header class="section-head">
-						<h2>{m('liveEvent.finished')}</h2>
-						<span class="count">{finishedResults.length}</span>
-					</header>
+					<SectionHeader label={m('liveEvent.finished')} class="live-section-head">
+						{#snippet badge()}
+							<span class="count">{finishedResults.length}</span>
+						{/snippet}
+					</SectionHeader>
 					{#each finishedBoards as board (board.course?.id ?? 'none')}
 						{#if finishedBoards.length > 1 || courses.length > 1}
 							<h3 class="course-title" data-testid="live-course-title">{courseTitle(board.course)}</h3>
@@ -921,10 +924,11 @@
 				{/if}
 
 				{#if dnfResults.length > 0}
-					<header class="section-head section-head-spaced">
-						<h2>{m('liveEvent.didNotFinish')}</h2>
-						<span class="count">{dnfResults.length}</span>
-					</header>
+					<SectionHeader label={m('liveEvent.didNotFinish')} class="live-section-head live-section-head-spaced">
+						{#snippet badge()}
+							<span class="count">{dnfResults.length}</span>
+						{/snippet}
+					</SectionHeader>
 					<ol class="runners">
 						{#each dnfResults as r (keyOf(r))}
 							<li class="runner dnf-row">
@@ -1049,22 +1053,11 @@
 		margin-bottom: var(--space-xl);
 	}
 
-	.section-head {
-		display: flex;
-		align-items: baseline;
-		gap: var(--space-sm);
+	:global(.live-section-head) {
 		margin-bottom: var(--space-md);
 	}
-	.section-head-spaced {
+	:global(.live-section-head.live-section-head-spaced) {
 		margin-top: var(--space-lg);
-	}
-	.section-head h2 {
-		font-size: 0.85rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-secondary);
-		margin: 0;
 	}
 	.count {
 		font-size: 0.85rem;

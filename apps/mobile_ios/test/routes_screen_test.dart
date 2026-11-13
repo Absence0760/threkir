@@ -920,19 +920,31 @@ void main() {
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'no overflow stripe');
 
-        // Filters beside the search, Starred on the chip line.
-        final strip = find.byKey(const ValueKey('routes-filter-bar'));
-        final controls = find.descendant(
-          of: strip,
-          matching: find.byWidgetPredicate(
-              (w) => w is FilterChip || w is IconButton),
-        );
-        expect(controls, findsNWidgets(2));
-        expectInsideScreen(tester, controls, 'filter control');
-        for (var i = 0; i < 2; i++) {
-          expect(tester.getSize(controls.at(i)).height,
+        // Filters beside the search; Starred, Mine's one quick chip, at the
+        // end of the view row rather than alone on a line of its own.
+        final filters = find.descendant(
+            of: find.byKey(const ValueKey('routes-filter-bar')),
+            matching: find.byKey(const Key('filter-bar-filters')));
+        final starred = find.descendant(
+            of: find.byKey(const ValueKey('routes-view-bar')),
+            matching: find.widgetWithText(FilterChip, 'Starred'));
+        expect(starred, findsOneWidget);
+        expect(find.byKey(const Key('filter-bar-chips')), findsNothing,
+            reason: 'no chip line is left holding Starred alone');
+        expect(tester.getCenter(starred).dy,
+            tester.getCenter(find.widgetWithText(ChoiceChip, 'Mine')).dy,
+            reason: 'Starred shares the view row');
+        expectInsideScreen(tester, filters, 'Filters');
+        // The test font draws every glyph a full em wide, so past 1x the view
+        // row overstates its width and scrolls; Starred must still be
+        // reachable on it.
+        await tester.ensureVisible(starred);
+        await tester.pump();
+        expectInsideScreen(tester, starred, 'Starred');
+        for (final control in [starred, filters]) {
+          expect(tester.getSize(control).height,
               greaterThanOrEqualTo(kMinInteractiveDimension),
-              reason: 'filter control #$i keeps a 48 dp tap target');
+              reason: 'each control keeps a 48 dp tap target');
         }
       });
 

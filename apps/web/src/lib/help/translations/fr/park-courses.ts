@@ -2,8 +2,8 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'park-courses',
-	title: "Parcours des parcs : points de contrôle, saisons et classements",
-	summary: "Comment un parcours de parc chronomètre votre course, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
+	title: "Parcours des parcs : points de contrôle, saisons, mois et classements",
+	summary: "Comment un parcours de parc chronomètre votre course, pourquoi chaque point de contrôle compte, quand commencent une saison et un mois et comment se classent Plus rapides et Le plus de passages.",
 	sections: [
 		{
 			heading: "Qu'est-ce qu'un parcours de parc",
@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						"**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure course.",
-						"Il affiche cette année par défaut. Sélectionnez **Depuis toujours** pour les meilleurs temps de tous les temps.",
+						"Il affiche cette année par défaut. Sélectionnez **Ce mois-ci** pour le mois en cours, ou **Depuis toujours** pour les meilleurs temps jamais réalisés.",
 						"Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont accepté de partager leurs données de santé, il peut donc être plus court que le classement complet.",
 					],
 				},
@@ -52,6 +52,22 @@ export const translation: GuideTranslation = {
 			heading: "Le classement Le plus de passages",
 			blocks: [
 				{ type: 'p', text: "**Le plus de passages** récompense les habitués. Il compte les jours où vous avez bouclé le parcours, dans le fuseau horaire du parc : plusieurs tours le même jour comptent pour un." },
+			],
+		},
+		{
+			heading: "Les mois : un nouveau classement chaque mois",
+			blocks: [
+				{ type: 'p', text: "Les deux classements existent aussi mois par mois. Un mois est un mois civil dans le fuseau horaire du parc, de minuit le 1er à minuit le 1er du mois suivant : une course à 23 h 30 le 31 octobre, à l'heure du parc, compte donc pour octobre." },
+				{
+					type: 'list',
+					items: [
+						"Sélectionnez **Ce mois-ci** pour voir le mois en cours, et utilisez les flèches à côté du nom du mois pour revenir aux mois précédents.",
+						"Chaque parcours sur la page d'un parc indique combien de personnes l'ont couru ce mois-ci.",
+						"Un temps sur un parcours de parc, sur la page de votre course, indique sa place ce mois-là et cette année-là, par exemple n° 2 en novembre, n° 9 en 2026. L'autocollant **Parcours de parc** d'une image partagée montre la place du mois, et aussi celle de l'année quand elle est dans les 10 premières.",
+						"Quand un mois se termine à l'heure du parc, vous recevez dans votre boîte de réception un message avec votre meilleur temps du mois sur chaque parcours que vous avez couru. Désactivez-le avec **Mois sur les parcours de parc** : sur le web dans [[route:/settings/notifications|Notifications]], dans l'app mobile sous **Notifications** dans l'onglet **Vous**.",
+						"Les badges des mois au parc comptent les mois où vous avez terminé un parcours de parc, à 3, 6, 12 et 24 mois. Ils comptent les parcours terminés, jamais les places.",
+					],
+				},
 			],
 		},
 		{
@@ -70,8 +86,8 @@ export const translation: GuideTranslation = {
 		},
 	],
 	sources: {
-		title: "c0967d2bf224e3d2",
-		summary: "6a173631b44944bc",
+		title: "80ff9e4c22672c3e",
+		summary: "a8d0d3cdf47ef5c6",
 		"s0.heading": "216fc084817bfda9",
 		"s0.b0": "c202f382c7f5c297",
 		"s0.b1.i0": "a8567bc2512800d1",
@@ -87,14 +103,21 @@ export const translation: GuideTranslation = {
 		"s2.b1": "6afb246fc0e80841",
 		"s3.heading": "f90c634a3c69c00f",
 		"s3.b0.i0": "8bab47facf52e4fd",
-		"s3.b0.i1": "c74b158f75754752",
+		"s3.b0.i1": "01322b98d3fa4762",
 		"s3.b0.i2": "a26ad1f8b547015d",
 		"s4.heading": "d62c88ea85d104ce",
 		"s4.b0": "23512913978ca5c1",
-		"s5.heading": "b119ed9eec93efe3",
-		"s5.b0.i0": "bee88a50dcbbbfa2",
-		"s5.b0.i1": "25229437ce8179b8",
-		"s5.b0.i2": "c95241619d2e3582",
-		"s5.b1": "f0b47eeb5f542fe4",
+		"s5.heading": "2158104d68549d3e",
+		"s5.b0": "f8cebd1b6b6f6d5c",
+		"s5.b1.i0": "95832d49c27d961e",
+		"s5.b1.i1": "e5fd55e453a25d9a",
+		"s5.b1.i2": "0220ee50a2c3ffc2",
+		"s5.b1.i3": "3c988cac91d6d886",
+		"s5.b1.i4": "9f0fedf00dcae221",
+		"s6.heading": "b119ed9eec93efe3",
+		"s6.b0.i0": "bee88a50dcbbbfa2",
+		"s6.b0.i1": "25229437ce8179b8",
+		"s6.b0.i2": "c95241619d2e3582",
+		"s6.b1": "f0b47eeb5f542fe4",
 	},
 };

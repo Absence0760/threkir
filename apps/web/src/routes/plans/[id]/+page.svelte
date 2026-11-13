@@ -138,7 +138,7 @@
 	import { workoutKindLabel, planPhaseLabel, planWeekNote } from '#lib/training/workout_labels.ts';
 	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
 	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
-	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtCompactDistance, fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { fmtOverrun } from '#lib/format/overrun.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -1239,6 +1239,9 @@
 			const res = await fetchPlan(id);
 			loadError = res.error ? errorCopy(res.error, m, 'plans/[id]: loadError') : null;
 			plan = res.plan;
+			// Set with the plan, not after the mount's later awaits: a publish
+			// clicked while those were pending was overwritten by the stale row.
+			libraryCopyId = res.plan?.library_copy_id ?? null;
 			weeks = res.weeks;
 			workouts = res.workouts;
 		} catch (e) {
@@ -1333,14 +1336,14 @@
 
 	/// A session's size as the plan states it (`plannedWorkoutSize`): a
 	/// walk-run session in minutes, never its estimated distance.
-	function sizeLabel(wo: PlanWorkout, digits?: number): string | null {
+	function sizeLabel(wo: PlanWorkout, distance: (metres: number) => string = (x) => fmtKm(x)): string | null {
 		const size = plannedWorkoutSize({
 			kind: wo.kind,
 			targetDistanceM: wo.target_distance_m,
 			targetDurationS: wo.target_duration_seconds,
 			structure: wo.structure
 		});
-		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres, digits));
+		return size == null ? null : formatPlannedSize(m, size, distance);
 	}
 
 	/// A walk-run session's intervals ("8 × (1 min run / 90 s walk)"), which
@@ -1402,7 +1405,6 @@
 			adminClubs = clubs.filter(
 				(c) => c.viewer_role === 'owner' || c.viewer_role === 'admin'
 			);
-			libraryCopyId = plan?.library_copy_id ?? null;
 		}
 	});
 
@@ -2605,8 +2607,8 @@
 									<span class="kind">
 										{workoutKindLabel(wo.kind)}
 									</span>
-									{#if sizeLabel(wo, 1) != null}
-										<span class="dist" data-testid="plan-day-size">{sizeLabel(wo, 1)}</span>
+									{#if sizeLabel(wo, fmtCompactDistance) != null}
+										<span class="dist" data-testid="plan-day-size">{sizeLabel(wo, fmtCompactDistance)}</span>
 									{/if}
 									{#if status === 'done'}
 										{@const over = overrunOf(wo)}

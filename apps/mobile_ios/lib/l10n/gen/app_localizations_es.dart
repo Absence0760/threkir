@@ -811,11 +811,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Cuánto has corrido, semana a semana';
 
   @override
-  String get dashboardTrendGroupFitness => 'Forma física';
+  String get dashboardTrendGroupFitness => 'Estado físico y forma';
 
   @override
   String get dashboardTrendGroupFitnessHint =>
-      'Preparación, forma física y carga de entrenamiento';
+      'Preparación, estado físico y carga de entrenamiento';
 
   @override
   String get dashboardTrendGroupPerformance => 'Rendimiento';
@@ -2194,7 +2194,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runUnitSpm => 'ppm';
 
   @override
-  String get runUnitBpm => 'lpm';
+  String get runUnitBpm => 'ppm';
 
   @override
   String get runMutePaceCues => 'Silenciar avisos de ritmo';
@@ -3229,10 +3229,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Las zonas usan una FC máxima estimada por edad. Si tomas medicación que afecta a la frecuencia cardíaca (p. ej. betabloqueantes) o has medido tu FC máxima, configúrala para obtener zonas precisas.';
+      'Las zonas usan una frecuencia cardíaca máxima estimada por edad. Si tomas medicación que afecta a la frecuencia cardíaca (p. ej. betabloqueantes) o has medido tu frecuencia cardíaca máxima, configúrala para obtener zonas precisas.';
 
   @override
-  String get runDetailHrDisclaimerAction => 'Definir FC máx.';
+  String get runDetailHrDisclaimerAction => 'Definir FC máxima';
 
   @override
   String get runDetailSectionSplits => 'Parciales';
@@ -6774,7 +6774,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewRecent5kConfirm =>
-      'Es un tiempo que podría correr hoy: refleja mi forma física actual.';
+      'Es un tiempo que podría correr hoy: refleja mi estado físico actual.';
 
   @override
   String get planNewRecent5kWarning =>
@@ -6834,7 +6834,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewAiAppliedRecent5k =>
-      'Se añadió tu tiempo de 5 km, pero sin confirmar. Marca la casilla solo si refleja tu forma actual.';
+      'Se añadió tu tiempo de 5 km, pero sin confirmar. Marca la casilla solo si refleja tu estado físico actual.';
 
   @override
   String planNewAiRaceApplied(String date) {
@@ -7981,7 +7981,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlan =>
-      'El plan o los planes de entrenamiento que has seleccionado: de cada plan, su nombre, estado, carrera objetivo y tiempo objetivo, el tiempo reciente en 5K y la puntuación de forma física con los que se creó, sus fechas, días de entrenamiento, reglas y notas; la fase, la distancia objetivo y las notas de cada semana; y la fecha, el tipo, los objetivos, la estructura, las notas, el nombre de la carrera y la prioridad de cada entrenamiento, y si lo has completado u omitido, además de los objetivos de frecuencia cardíaca (solo si has dado tu consentimiento de datos de salud).';
+      'El plan o los planes de entrenamiento que has seleccionado: de cada plan, su nombre, estado, carrera objetivo y tiempo objetivo, el tiempo reciente en 5K y la puntuación de estado físico con los que se creó, sus fechas, días de entrenamiento, reglas y notas; la fase, la distancia objetivo y las notas de cada semana; y la fecha, el tipo, los objetivos, la estructura, las notas, el nombre de la carrera y la prioridad de cada entrenamiento, y si lo has completado u omitido, además de los objetivos de frecuencia cardíaca (solo si has dado tu consentimiento de datos de salud).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -10452,7 +10452,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get trainingLoadSubtitleVolume =>
-      'Basado en volumen: configura la FC en reposo y máxima y registra con una banda para pasar a TRIMP.';
+      'Basado en volumen: configura tu frecuencia cardíaca en reposo y máxima y registra con una banda para pasar a TRIMP.';
 
   @override
   String get trainingLoadSetHeartRate => 'Definir frecuencia cardíaca';
@@ -10543,24 +10543,24 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fitnessStatVo2MaxTooltip =>
-      'Tu motor aeróbico: cuánto oxígeno puede usar tu cuerpo por minuto. Cuanto más alto, mejor forma.';
+      'Tu motor aeróbico: cuánto oxígeno puede usar tu cuerpo por minuto. Cuanto más alto, mejor es tu estado físico.';
 
   @override
   String get fitnessStatVdot => 'VDOT';
 
   @override
   String get fitnessStatVdotTooltip =>
-      'La puntuación de forma de Daniels según tu mejor esfuerzo reciente. Define tus ritmos de entrenamiento.';
+      'La puntuación de estado físico de Daniels según tu mejor esfuerzo reciente. Define tus ritmos de entrenamiento.';
 
   @override
   String get fitnessStatRuns => 'Carreras';
 
   @override
   String get fitnessStatRunsTooltip =>
-      'Carreras recientes lo bastante largas para contar en tu estimación de forma.';
+      'Carreras recientes lo bastante largas para contar en tu estimación de estado físico.';
 
   @override
-  String get fitnessStatCtl => 'Estado (CTL)';
+  String get fitnessStatCtl => 'Estado físico (CTL)';
 
   @override
   String get fitnessStatCtlTooltip =>
@@ -10578,7 +10578,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fitnessStatTsbTooltip =>
-      'Estado menos fatiga. Positivo = fresco y listo para competir; negativo = con fatiga acumulada.';
+      'Estado físico menos fatiga. Positivo = fresco y listo para competir; negativo = con fatiga acumulada.';
 
   @override
   String get runSocialActivity => 'Actividad';
@@ -13490,7 +13490,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsExcludeGymFromReadinessHint =>
-      'De forma predeterminada, las sesiones de gimnasio aumentan tu fatiga y reducen tu preparación, igual que una carrera. Actívalo para que tu forma, fatiga y frescura se basen solo en las carreras.';
+      'De forma predeterminada, las sesiones de gimnasio aumentan tu fatiga y reducen tu preparación, igual que una carrera. Actívalo para que tu estado físico, tu fatiga y tu forma se basen solo en las carreras.';
 
   @override
   String get prefsHrMedicationAffected =>
@@ -19885,7 +19885,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dashboardTrainForSomethingBody =>
-      'Elige una carrera o una distancia y obtén un plan semana a semana con ritmos ajustados a tu forma.';
+      'Elige una carrera o una distancia y obtén un plan semana a semana con ritmos ajustados a tu estado físico.';
 
   @override
   String dashboardRecent5kTitle(String time, String date) {
@@ -19894,7 +19894,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dashboardRecent5kBody =>
-      'Crea un plan a partir de él. Antes de que marque tus ritmos, confirmarás que sigue reflejando tu forma.';
+      'Crea un plan a partir de él. Antes de que marque tus ritmos, confirmarás que sigue reflejando tu estado físico.';
 
   @override
   String get dashboardRecent5kCta => 'Crear un plan';
@@ -19908,7 +19908,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewRecent5kSuggested =>
-      'Rellenado con tus 5 km recientes. Activa el interruptor de abajo solo si refleja tu forma de hoy.';
+      'Rellenado con tus 5 km recientes. Activa el interruptor de abajo solo si refleja tu estado físico de hoy.';
 
   @override
   String get planBreakTitle => 'Volver después de un descanso';

@@ -101,6 +101,7 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | warm-up / cool-down / recovery | ウォームアップ / クールダウン / リカバリー | 回復 once on mobile |
 | save / settings / feed / followers | 保存 / 設定 / フィード / フォロワー | |
 | sign in | サインイン | ログイン in 4 / 21 strings — inconsistency 4 |
+| device / phone | **デバイス** for *device* (「このデバイス」「他のデバイス」「サインイン中のデバイス」「すべてのデバイスからサインアウト」); **スマートフォン** where the English says *phone* (「このスマートフォンに保存」) | settled 2026-11-12: 31 mobile / 13 web strings and 3 help guides moved off 「端末」. Never 端末, and スマホ is not the short form: "phone" is スマートフォン in full |
 | arm / armed (race control) | **準備する** / **準備完了** — 「レースを準備」「このまま準備する」「早めに準備」「レース準備完了」 | settled 2026-11-10; never 「準備完了にする」 for the action |
 | set up (a race created automatically before its start) | **設定される** (「レースはスタートの前日に設定されます」) | settled 2026-11-10; never 準備, which is *arm* |
 | self-timed (race) | **セルフタイム**; a self-timed race is 「セルフタイム方式のレース」, the window 「セルフタイム期間」 | settled 2026-11-10; never 「セルフ計測」 |

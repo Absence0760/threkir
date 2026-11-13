@@ -17,6 +17,13 @@ web, 220 on the phone, plus the help-guide labels that quote them) moved on
 `votre` / `vos` and none carry `tu`; the phone 573 and none (the one web
 marker hit, `prefsHub.trainingSummary`, is "le ton du coach" — *tone*).
 
+Informal strings crept back in with the season planner, the streamer overlay,
+the plan-recovery hints and a few dashboard, club and workout lines; the
+last 41 mobile / 49 web strings and one help guide moved to `vous` on
+2026-11-12. When you check a batch, grep for `tu`/`ton`/`ta`/`tes`/`-toi`
+*and* for bare `-e`/`-s` imperatives ("Réessaie", "Choisis", "Suis",
+"Passe à Pro"): most of these slipped in without a pronoun.
+
 - `discardChangesBody` (mobile) and `common.unsavedBody` (web): "Vous avez des modifications non enregistrées. Quitter sans enregistrer ?"
 - `clubInviteEnterCodeError` (mobile): "Saisissez le code d'invitation de votre lien."
 - `rateLimit.generic` (web): "Vous faites cela trop rapidement — veuillez patienter {wait} et réessayer."
@@ -61,9 +68,15 @@ vocabulary is a good tiebreaker. `e-mail` (30 / 38; `courriel` is unused),
 ## Plurals
 
 `one` covers **0 and 1**, `other` the rest. Never write a literal `1` in a
-`one` branch: 12 mobile strings already do (e.g. `importFailuresHeading`
-"one{1 activité n'a pas été importée}"), which renders "1 activité" for a
-count of 0. Use `{count}` (ARB) / `#` (web).
+`one` branch (it renders "1 …" for a count of 0; the last ones moved to
+`{count}` in § 2497). Use `{count}` (ARB) / `#` (web). The same 0 arrives
+without a digit when the plural is the **whole message** and its `one`
+branch is the sentence for exactly one — "Invitation envoyée", "Cette
+semaine est refaite…" read as true for 0. Name the count in that branch
+("{count} invitation envoyée") or give 0 its own `=0{…}` branch. A plural
+inside a longer sentence is agreement ("{n, plural, one {est en} other {sont
+en}}") and the singular is right for 0 in French, so leave it. Both rules
+are guards: `l10n_parity_test.dart` and `messages_parity.test.ts`.
 
 ## Running glossary (what the catalogues already use)
 
@@ -94,6 +107,8 @@ count of 0. Use `{count}` (ARB) / `#` (web).
 | nutrition | Nutrition | |
 | log (verb) | Ajouter (mobile `navLog`) / Enregistrer | "Enregistrer" also means *save* — prefer "Ajouter" where *log* sits beside *save* |
 | streak | Série | |
+| log a session (action) | **Enregistrer une séance** (de musculation) — the action label on both surfaces | 2026-11-12: never "Noter" |
+| tap / press / long-press | **Touchez** (tap: "Touchez Réessayer", "Touchez la carte", "Touchez pour modifier" — *toucher* is transitive, no « sur ») · **Appuyez sur** only where the English says *press* (a button on the web, a key, a watch's physical button: "appuyez sur GO sur la ligne", "Appuyez sur Annuler pour le restaurer") · long-press **appuyez longuement** / « un appui long » | settled 2026-11-12: 25 mobile / 7 web strings and one help guide moved from « Appuyez sur » to « Touchez » where the English says *tap*; the help guides already said « touchez » (55) |
 | goal | Objectif / Objectifs | |
 | coach | Coach; AI Coach = **Coach IA** | |
 | auto-pause | — | no catalogue string yet; build from "pause" ("Course en pause", "Mettre en pause") → "Pause automatique", and flag it as a new term |

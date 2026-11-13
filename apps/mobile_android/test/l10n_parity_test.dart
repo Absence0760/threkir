@@ -40,6 +40,23 @@ bool _hashInPlural(String value) => (_IcuArgs(value)..parse()).hashInPlural;
 List<(String, String)> _oneBranches(String value) =>
     (_IcuArgs(value)..parse()).oneBranches;
 
+/// The argument of every plural that is the whole message, whose `one`
+/// branch never names that argument and which has no `=0` / `zero` branch.
+/// Such a `one` branch is the sentence for exactly one ("Invitation sent",
+/// "This week runs again next week"), and where `one` also takes 0 it is
+/// what a count of 0 renders. A plural set inside a longer sentence is not
+/// listed: there the `one` branch is agreement ("is in" / "are in"), and a
+/// singular for 0 is what CLDR asks of fr and pt.
+List<String> _countlessOne(String value) => [
+  for (final p in (_IcuArgs(value)..parse()).plurals)
+    if (p.whole &&
+        p.branches.containsKey('one') &&
+        !p.branches['one']!.contains('{${p.arg}}') &&
+        !p.branches.containsKey('=0') &&
+        !p.branches.containsKey('zero'))
+      p.arg,
+];
+
 /// A `1` standing as a number of its own: not part of `10`, `1.5`, `1RM` or
 /// `x1`. A literal count in a `one` branch is what this finds.
 final _literalOne = RegExp(r'(?<![\p{L}\p{N}.,])1(?![\p{L}\p{N}.,])', unicode: true);
@@ -57,12 +74,23 @@ bool _oneCoversMoreThanOne(String locale) => [
           'one',
 );
 
+class _Plural {
+  _Plural(this.arg, this.whole, this.branches);
+
+  final String arg;
+
+  /// Nothing but whitespace stands outside the plural.
+  final bool whole;
+  final Map<String, String> branches;
+}
+
 class _IcuArgs {
   _IcuArgs(this.s);
 
   final String s;
   final Set<String> names = {};
   final List<(String, String)> oneBranches = [];
+  final List<_Plural> plurals = [];
   var i = 0;
   var _pluralDepth = 0;
   var hashInPlural = false;
@@ -109,6 +137,7 @@ class _IcuArgs {
   }
 
   void _argument() {
+    final open = i - 1;
     final name = _token(_word);
     if (name == null) return _skipToClose();
     names.add(name);
@@ -124,31 +153,40 @@ class _IcuArgs {
     final counts = type != 'select';
     if (counts) _pluralDepth++;
     try {
-      _branches(type == 'plural' ? name : null);
+      final branches = _branches(type == 'plural' ? name : null);
+      if (type == 'plural') {
+        final whole =
+            s.substring(0, open).trim().isEmpty &&
+            s.substring(i).trim().isEmpty;
+        plurals.add(_Plural(name, whole, branches));
+      }
     } finally {
       if (counts) _pluralDepth--;
     }
   }
 
-  void _branches(String? pluralArg) {
+  Map<String, String> _branches(String? pluralArg) {
+    final out = <String, String>{};
     _ws();
     if (i < s.length && s[i] == ',') i++;
     while (true) {
       _ws();
-      if (i >= s.length) return;
+      if (i >= s.length) return out;
       if (s[i] == '}') {
         i++;
-        return;
+        return out;
       }
       final selector = _token(RegExp(r'[^\s{}]+'));
       if (selector != null && selector.startsWith('offset:')) continue;
       _ws();
       if (selector == null || i >= s.length || s[i] != '{') {
-        return _skipToClose();
+        _skipToClose();
+        return out;
       }
       i++;
       final start = i;
       _message(nested: true);
+      out[selector] = s.substring(start, i);
       if (pluralArg != null && selector == 'one') {
         oneBranches.add((pluralArg, s.substring(start, i)));
       }
@@ -236,6 +274,24 @@ void main() {
     expect(_literalOne.hasMatch('1 minute'), isTrue);
     for (final ok in ['10 km', '1.5 km', '1RM', 'x1', '{count} actif']) {
       expect(_literalOne.hasMatch(ok), isFalse, reason: ok);
+    }
+  });
+
+  test('the countless-one scan reads whole-message plurals only', () {
+    expect(_countlessOne('{n, plural, one {Sent} other {{n} sent}}'), ['n']);
+    expect(
+      _countlessOne('  {n, plural, one{Sent} other{{n} sent}} '),
+      ['n'],
+    );
+    for (final ok in [
+      '{n, plural, one {{n} sent} other {{n} sent}}',
+      '{n, plural, =0 {None} one {Sent} other {{n} sent}}',
+      '{n, plural, zero {None} one {Sent} other {{n} sent}}',
+      '{n, plural, other {{n} sent}}',
+      'All {n, plural, one {is} other {are}} in',
+      '{k, select, one {Sent} other {Kept}}',
+    ]) {
+      expect(_countlessOne(ok), isEmpty, reason: ok);
     }
   });
 
@@ -362,6 +418,28 @@ void main() {
           reason:
               'app_$tag.arb: `one` also covers counts other than 1 here, so '
               'a literal 1 is wrong for them. Use the argument: one{{n} …}',
+        );
+      });
+
+      // The same 0, reached without a digit: a plural that is the whole
+      // message and whose `one` branch is the sentence for exactly one
+      // ("Invitation envoyée") says one was sent when none was. Name the
+      // count in the branch, or give 0 its own `=0{…}` (intl answers an
+      // exact 0 from it before the plural rule runs). A plural inside a
+      // longer sentence is agreement and is left alone — see _countlessOne.
+      test('no whole-message plural leaves 0 to a count-free one branch', () {
+        if (!_oneCoversMoreThanOne(tag)) return;
+        final offenders = [
+          for (final key in keys)
+            for (final arg in _countlessOne(arb[key] as String)) '$key ($arg)',
+        ]..sort();
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'app_$tag.arb: `one` also covers 0 here, so a `one` branch '
+              'with no {count} is what 0 renders. Name the argument in it, '
+              'or add =0{…}',
         );
       });
 

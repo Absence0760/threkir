@@ -19,12 +19,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
-import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
 import '../lib/widgets/disclosure_section.dart';
 
 Run _run(String id, DateTime startedAt) => Run(
@@ -64,11 +63,10 @@ void main() {
           theme: AppTheme.light,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: DashboardScreen(
+          home: ProgressScreen(
             runStore: runStore,
             routeStore: LocalRouteStore(),
             gymStore: LocalGymStore(),
-            foodStore: LocalFoodStore(),
             preferences: prefs,
           ),
         ));
@@ -171,11 +169,10 @@ void main() {
           theme: AppTheme.light,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: DashboardScreen(
+          home: ProgressScreen(
             runStore: runStore,
             routeStore: LocalRouteStore(),
             gymStore: LocalGymStore(),
-            foodStore: LocalFoodStore(),
             preferences: prefs,
           ),
         ));

@@ -14,6 +14,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
 import '../lib/widgets/training_load_chart.dart';
 
 /// Issue #666 C1. The dashboard used to stack its cards at three different
@@ -32,7 +33,7 @@ Run _run(String id, DateTime startedAt) => Run(
     );
 
 void main() {
-  testWidgets('every full-width dashboard card shares one left and right edge',
+  testWidgets('every full-width Progress card shares one left and right edge',
       (tester) async {
     await tester.runAsync(() async {
       // Tall surface so the whole card stack builds — the offending margins
@@ -64,11 +65,10 @@ void main() {
             theme: AppTheme.light,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: DashboardScreen(
+            home: ProgressScreen(
               runStore: runStore,
               routeStore: LocalRouteStore(),
               gymStore: LocalGymStore(),
-              foodStore: LocalFoodStore(),
               preferences: prefs,
             ),
           ),
@@ -99,6 +99,89 @@ void main() {
         // dropping quietly out of the set.
         final fullWidth = rects.where((r) => r.width > widest * 0.6).toList();
         expect(fullWidth.length, greaterThan(4));
+
+        final lefts = fullWidth.map((r) => r.left).toSet();
+        final rights = fullWidth.map((r) => r.right).toSet();
+        expect(lefts, hasLength(1), reason: 'left edges: $lefts');
+        expect(rights, hasLength(1), reason: 'right edges: $rights');
+
+        // The ListView supplies the whole 16 px gutter.
+        expect(lefts.single, 16.0);
+        expect(rights.single, 384.0);
+      } finally {
+        dir.deleteSync(recursive: true);
+      }
+    });
+  });
+
+  testWidgets('Today\'s title and every full-width card share the page gutter',
+      (tester) async {
+    await tester.runAsync(() async {
+      // Tall surface so the whole card stack builds — the offending margins
+      // lived on cards well below a phone-height fold.
+      tester.view.physicalSize = const Size(400, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = Preferences();
+      await prefs.init();
+
+      final dir = Directory.systemTemp.createTempSync('today_card_align_');
+      try {
+        final now = DateTime.now().toUtc();
+        final seed = LocalRunStore();
+        await seed.init(overrideDirectory: dir);
+        // Enough history for the `standard` disclosure floor: below it, with
+        // no goal stored, the training-load chart folds into an expander.
+        for (var i = 0; i < disclosureStandardRuns; i++) {
+          await seed.save(_run('r$i', now.subtract(Duration(days: i * 3))));
+        }
+
+        final runStore = LocalRunStore();
+        await runStore.init(overrideDirectory: dir);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: DashboardScreen(
+              runStore: runStore,
+              routeStore: LocalRouteStore(),
+              gymStore: LocalGymStore(),
+              foodStore: LocalFoodStore(),
+              preferences: prefs,
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        // The title used to add a 16 px inset of its own inside the list's,
+        // and started at 32 while the cards started at 16 (issue #1374).
+        expect(tester.getTopLeft(find.text('Today')).dx, 16.0);
+
+        // Measure the painted surface, not the Card element: the Card's own
+        // render object spans its margin box, so a card that insets itself
+        // still reports full-width bounds.
+        final rects = tester
+            .widgetList<Card>(find.byType(Card))
+            .map((c) => tester.getRect(find
+                .descendant(of: find.byWidget(c), matching: find.byType(Material))
+                .first))
+            .toList();
+        expect(rects.length, greaterThanOrEqualTo(2),
+            reason: 'the hero readiness card and the progress summary');
+
+        final widest = rects.map((r) => r.width).reduce((a, b) => a > b ? a : b);
+        // The period strip is three cards abreast inside one row, each about
+        // a third of the content width; everything else is a stacked card and
+        // must line up. The threshold sits well below full width so a card
+        // that re-grows a horizontal margin fails the assertion instead of
+        // dropping quietly out of the set.
+        final fullWidth = rects.where((r) => r.width > widest * 0.6).toList();
+        expect(fullWidth.length, greaterThanOrEqualTo(2));
 
         final lefts = fullWidth.map((r) => r.left).toSet();
         final rights = fullWidth.map((r) => r.right).toSet();

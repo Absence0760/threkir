@@ -1058,9 +1058,33 @@
   "@readinessContributorRestingHr": {
     "description": "Readiness breakdown: the points resting heart rate added to the score"
   },
-  "dashboardTrendsDivider": "Trends",
-  "@dashboardTrendsDivider": {
-    "description": "Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header."
+  "todayTitle": "Today",
+  "@todayTitle": {
+    "description": "Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary"
+  },
+  "progressTitle": "Progress",
+  "@progressTitle": {
+    "description": "Title of the Progress page, reached from the progress summary card on Today: trends, personal bests, streak, goals and the recap"
+  },
+  "progressSummaryTitle": "Your progress",
+  "@progressSummaryTitle": {
+    "description": "Heading of the one progress summary card on Today; a tap opens the Progress page"
+  },
+  "progressSummaryOpenHint": "Open your progress",
+  "@progressSummaryOpenHint": {
+    "description": "Screen-reader hint on the progress summary card: what a tap does"
+  },
+  "progressSummaryWeek": "This week",
+  "@progressSummaryWeek": {
+    "description": "Label under this calendar week's distance on Today's progress summary card"
+  },
+  "progressSummaryMonth": "This month",
+  "@progressSummaryMonth": {
+    "description": "Label under this calendar month's distance on Today's progress summary card"
+  },
+  "todayGoalsMore": "More goals in Progress",
+  "@todayGoalsMore": {
+    "description": "Quiet line under Today's goals strip when the runner has more goals than it lists; the strip opens the Progress page, which lists them all"
   },
   "dashboardTrendGroupVolume": "Volume",
   "@dashboardTrendGroupVolume": {
@@ -1151,9 +1175,9 @@
       }
     }
   },
-  "dashboardHideFromHome": "Hide from Home",
-  "@dashboardHideFromHome": {
-    "description": "Long-press action on a Home trend group that hides it from Home"
+  "progressHideGroup": "Hide from Progress",
+  "@progressHideGroup": {
+    "description": "Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Settings brings it back"
   },
   "dashboardCardHidden": "{name} is hidden. You can bring it back in Settings.",
   "@dashboardCardHidden": {
@@ -1395,6 +1419,14 @@
   "homeAskCoachSubtitleRunOnly": "Advice on your runs, training and recovery",
   "@homeAskCoachSubtitleRunOnly": {
     "description": "Subtitle of the pinned Ask your coach card on Home while Gym and Nutrition are both hidden, so it names only what this runner records"
+  },
+  "homeCoachTitle": "Coach",
+  "@homeCoachTitle": {
+    "description": "Title of the Coach row on Today when the AI coach is not live on this deploy or the runner is signed out: the Coach screen still holds guided runs and athletes & coaches"
+  },
+  "homeCoachSubtitleTools": "Guided runs, athletes and coaches",
+  "@homeCoachSubtitleTools": {
+    "description": "Subtitle of the Coach row on Today when the AI coach is not available: what the Coach screen holds instead"
   },
   "youProfileTitle": "Your profile",
   "@youProfileTitle": {

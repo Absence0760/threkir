@@ -1,7 +1,7 @@
-// Progressive disclosure on Home (#905, #1187): at `simple` the fitness card
-// and the training-load chart fold into one named "Training load" expander
-// inside the Fitness and form group, remembered per account in the universal
-// `dashboard_training_load_expanded` key; at `standard` / `full` the group is
+// Progressive disclosure on the Progress page (#905, #1187, #1374): at
+// `simple` the fitness card and the training-load chart fold into one named
+// "Training load" expander inside the Fitness and form group, remembered per
+// account in the universal `dashboard_training_load_expanded` key; at `standard` / `full` the group is
 // unchanged. Nothing is removed at any level. Web twin:
 // `apps/web/tests-e2e/dashboard/disclosure.spec.ts`.
 
@@ -16,12 +16,11 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../lib/disclosure.dart';
 import '../lib/l10n/gen/app_localizations.dart';
-import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
 import '../lib/settings_sync.dart';
 import '../lib/widgets/training_load_chart.dart';
 import 'pump_until.dart';
@@ -111,12 +110,11 @@ Future<_Sync> _pump(
     theme: AppTheme.light,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: DashboardScreen(
+    home: ProgressScreen(
       key: key,
       runStore: h.runStore,
       routeStore: LocalRouteStore(),
       gymStore: LocalGymStore(),
-      foodStore: LocalFoodStore(),
       preferences: h.prefs,
       settingsSync: sync,
     ),
@@ -127,7 +125,7 @@ Future<_Sync> _pump(
         .byKey(const ValueKey('dashboard-trend-fitness'))
         .evaluate()
         .isNotEmpty,
-    describe: 'the dashboard to mount its Fitness and form group',
+    describe: 'the Progress page to mount its Fitness and form group',
   );
   return sync;
 }
@@ -279,7 +277,7 @@ void main() {
     });
   });
 
-  testWidgets('a level changed in Settings reaches Home without a remount',
+  testWidgets('a level changed in Settings reaches the page without a remount',
       (tester) async {
     tall(tester);
     final h = await _seed(tester, runs: 40);

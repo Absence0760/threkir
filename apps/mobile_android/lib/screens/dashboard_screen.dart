@@ -6,67 +6,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
+        AppInsets,
         AppSemanticColors,
+        AppSpace,
         ChartCardHeader,
         ProgressBar,
-        SkeletonBlock;
+        SectionHeader,
+        SkeletonBlock,
+        StatGrid,
+        StatTile;
 
 import '../activity_type_labels.dart';
 import '../backend_timeout.dart';
 import '../social_service.dart';
 import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
-import '../age_grade.dart';
+import '../fab_clearance.dart' show DockedFabInset;
 import '../ai_disclosure.dart' show AiDisclosureRecord;
 import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../current_week.dart' show WeekStart;
 import '../device_timezone.dart';
-import '../disclosure.dart';
 import '../dashboard_layout.dart';
 import '../plan_week.dart' show PlanRaceCountdownKind;
-import '../disclosure_state.dart';
 import '../goals.dart';
-import '../health_consent.dart';
-import '../hr_prescription_gate.dart';
-import '../l10n/date_format.dart' show formatDowDateShort;
 import '../l10n/gen/app_localizations.dart';
-import '../l10n/locale_support.dart' show activeLocaleTag;
 import '../local_food_store.dart';
 import '../local_gym_store.dart';
-import '../lift_load.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
-import '../metrics.dart';
 import '../nutrition_targets.dart' show NutritionTargets;
 import '../nutrition_totals.dart' show sumMacros;
 import '../preferences.dart';
 import '../pro_sellable.dart' show ProPerks, fetchProPerks;
-import '../run_stats.dart';
 import '../settings_sync.dart';
 import '../streak_card.dart';
 import '../streaks.dart';
-import '../training.dart' show parseIsoDate, toIsoDate, workoutKindFromDb;
-import '../training_labels.dart' show workoutKindLabel;
-import '../training_load.dart';
-import '../plan_ramp.dart' show RunForVolume;
+import '../training_load_inputs.dart';
 import '../training_service.dart';
 import '../week_lead.dart';
-import '../widgets/comeback_card.dart';
-import '../widgets/disclosure_section.dart';
-import '../widgets/fitness_card.dart';
-import '../widgets/load_ramp_card.dart';
-import '../widgets/race_predictor_card.dart';
 import '../widgets/gym_summary_card.dart';
-import '../widgets/metric_label.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/pending_sync_banner.dart';
-import '../run_intensity.dart';
-import '../widgets/intensity_card.dart';
-import '../widgets/mileage_trend_card.dart';
 import '../widgets/nutrition_rings_card.dart';
 import '../widgets/readiness_card.dart';
-import '../widgets/recent_lifts_card.dart';
 import '../widgets/rest_day_grisnir.dart';
 import '../widgets/run_list_tile.dart';
 import '../widgets/goal_editor_sheet.dart';
@@ -75,8 +58,6 @@ import '../widgets/upcoming_event_card.dart';
 import '../widgets/runner_menu.dart' show todaysOpenWorkout;
 import '../widgets/plan_nudge_card.dart';
 import '../plan_nudges.dart' show PlanNudge, PlanNudgeKind, workoutOverrunMetres;
-import '../workout_summary.dart' show plannedWorkoutSize;
-import '../workout_summary_format.dart' show formatPlannedSize;
 import '../widgets/finish_plan_card.dart';
 import '../widgets/plan_break_card.dart';
 import '../widgets/missed_workout_prompt_card.dart';
@@ -85,61 +66,30 @@ import '../widgets/up_next_plan_card.dart';
 import '../widgets/plan_discovery_card.dart';
 import '../widgets/top_banner.dart';
 import '../recent_5k_suggestion.dart';
-import '../widgets/training_load_chart.dart';
 import 'add_run_screen.dart';
 import 'coach_screen.dart';
 import 'run_screen.dart' show runRecordingActive;
 import 'feed_screen.dart';
-import 'gym_detail_screen.dart';
 import 'gym_screen.dart';
 import 'import_screen.dart';
 import 'nutrition_screen.dart';
-import 'period_summary_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plan_new_screen.dart';
+import 'progress_screen.dart';
 import 'profile_screen.dart';
-import 'recap_screen.dart';
 import 'run_detail_screen.dart';
-import 'workout_detail_screen.dart';
 
-const _kCardPadding = EdgeInsets.all(16);
-const _kSectionGap = SizedBox(height: 24);
+const _kSectionGap = SizedBox(height: AppInsets.sectionGap);
+/// The page gutter; the bottom adds the shell's docked centre button on top
+/// of it (`_pagePadding`), so the last block scrolls clear of the Start.
+const _kPagePadding = EdgeInsets.fromLTRB(
+    AppInsets.gutter, 0, AppInsets.gutter, AppSpace.md);
 
-/// The trend groups below the Today | Trends divider (multi_modal.md § Home,
-/// contract v1): each folds to its one-line heading, remembered per account on
-/// this device. Every default is open, so a runner who reads these cards today
-/// finds them where they were; the memory is what makes a fold stick, not the
-/// default (decisions § 2080). Web twin: `/dashboard`'s `TREND_DEFAULTS`.
-const String _kTrendScope = 'dashboard_trends';
-const DisclosureState _kTrendDefaults = {
-  'volume': true,
-  'fitness': true,
-  'performance': true,
-  'effort': true,
-  'recent': true,
-};
-
-/// Metres for each best-effort PB label (both the offline track-scan keys and
-/// the server `personal_records` labels). Used to age-grade a timed PB via the
-/// shared `ageGradeForRun` helper — non-standard distances simply yield no
-/// grade (matchStandardDistance returns null).
-const _pbLabelMetres = <String, double>{
-  'Mile': 1609.344,
-  '1 mi': 1609.344,
-  '1 km': 1000,
-  '5 km': 5000,
-  '8 km': 8000,
-  '10 km': 10000,
-  '12 km': 12000,
-  'Half Marathon': 21097,
-  'Marathon': 42195,
-};
-
-/// Wider than [kContentMaxWidth] because the expanded dashboard is a
-/// multi-column composition (mirrors web /dashboard), not a reading column.
-const double _kExpandedMaxWidth = 1100;
-
-/// Dashboard with goals, weekly/monthly stats, and personal bests.
+/// Home, titled Today (issue #1374): what to do now and what was just done.
+/// The Today hero (today's workout, readiness and the one Start), the next
+/// race or club event, the last run and today's lift and meals, a goals strip,
+/// one progress summary card that opens [ProgressScreen], and the Coach row.
+/// Trends, PBs, the streak, the full goals and the recap live on that page.
 class DashboardScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final TrainingService? training;
@@ -232,13 +182,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// banner's retry affordance, nothing else.
   bool _isOnline = true;
 
-  /// Memoised fastest-5k window per run id. Rescanning a 200-run history
-  /// with several thousand waypoints each on every rebuild (and the
-  /// dashboard rebuilds every time a listener fires) is the hottest loop
-  /// in the app — this cache flattens it to O(1) on subsequent builds.
-  /// Invalidated wholesale when the run store changes.
-  final Map<String, Map<double, Duration?>> _bestEffortCache = {};
-
   /// Active training plan + today's workout, used to render the
   /// `TodaysWorkoutCard` at the top of the dashboard. Null when
   /// there's no active plan, no scheduled workout today, or the
@@ -264,20 +207,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// are absent (the rings then render unfilled — anti-clutter).
   NutritionTargets? _nutritionTargets;
 
-  /// Authoritative all-history personal records from the server cache. When
-  /// non-empty the best-effort card renders from this rather than scanning the
-  /// GPS tracks of the resident runs — which, under the windowed store, is only
-  /// a recent window (and never covered cloud-synced runs whose track lives in
-  /// Storage). Empty offline / signed-out → the track-scan fallback over the
-  /// resident runs is used instead.
-  List<PersonalRecordRow> _serverPbs = const [];
-
-  /// Viewer profile (DOB + sex) so the best-effort PB rows can show an age
-  /// grade alongside the raw time — the same inputs run-detail feeds
-  /// `ageGradeForRun`. Null until resolved / signed out; age grade then
-  /// simply doesn't render (graceful degrade).
-  UserProfileRow? _viewerProfile;
-
   /// The next club event the runner is going to, inside [kHomeEventWindow].
   EventView? _upcomingEvent;
 
@@ -293,19 +222,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// signed out; the card then suppresses its all-time claim rather than
   /// dressing the local figure up as one (`streak_card.dart`).
   RunStreaks? _allTimeStreaks;
-
-  DisclosureState _trendOpen = Map.of(_kTrendDefaults);
-
-  /// This visit's hide, ahead of the settings bag catching up.
-  List<String>? _hiddenCardsLocal;
-
-  /// Set once the reader toggles a group, so a slow first read can't undo it.
-  bool _trendTouched = false;
-
-  /// This visit's toggle of the "Training load" expander, ahead of the
-  /// settings bag catching up — and in place of it when the write is refused,
-  /// so the section stays the way the reader just put it.
-  bool? _trainingLoadExpandedLocal;
 
   @override
   void initState() {
@@ -323,10 +239,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     _refreshPlanOverview();
     _hydrateModalities();
     _loadUpcomingEvent();
-    _loadPersonalRecords();
     _loadViewerProfile();
     _loadRunStreaks();
-    _loadTrendOpen();
     _loadCoachLive();
   }
 
@@ -340,109 +254,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (mounted && live != _coachLive) setState(() => _coachLive = live);
   }
 
-  Future<void> _loadTrendOpen() async {
-    final stored = await readDisclosureState(
-        _kTrendScope, widget.apiClient?.userId, _kTrendDefaults);
-    if (!mounted || _trendTouched) return;
-    setState(() => _trendOpen = stored);
-  }
-
   /// Grisnir on a rest day: the universal `show_mascot`, on unless it is
   /// literally `false`, as web reads it.
   bool get _showMascot =>
       widget.settingsSync?.service?.effective<Object>(SettingsKeys.showMascot) !=
       false;
-
-  /// Trend groups hidden from Home (`dashboard_hidden_cards`, universal,
-  /// decisions § 2386). An unreadable bag hides nothing.
-  List<String> get _hiddenCards {
-    final local = _hiddenCardsLocal;
-    if (local != null) return local;
-    try {
-      return parseHiddenCards(widget.settingsSync?.service
-          ?.effective<Object>(SettingsKeys.dashboardHiddenCards));
-    } catch (e) {
-      debugPrint('dashboard: hidden cards read failed: $e');
-      return const [];
-    }
-  }
-
-  /// Hiding is honestly reversible (Settings brings a group back), so there
-  /// is no confirm; the banner says where the way back is. A refused write
-  /// puts the group back rather than leaving Home and the bag disagreeing.
-  Future<void> _hideTrendGroup(String id, String title) async {
-    final l10n = AppLocalizations.of(context);
-    final previous = _hiddenCards;
-    final next = withCardHidden(previous, id, true);
-    setState(() => _hiddenCardsLocal = next);
-    try {
-      await widget.settingsSync
-          ?.updateUniversal({SettingsKeys.dashboardHiddenCards: next});
-      if (!mounted) return;
-      showTopBanner(context, l10n.dashboardCardHidden(title));
-    } catch (e) {
-      debugPrint('dashboard: hiding $id not saved: $e');
-      if (!mounted) return;
-      setState(() => _hiddenCardsLocal = previous);
-      showTopBanner(context, l10n.dashboardHideCardFailed);
-    }
-  }
-
-  void _setTrendOpen(String key, bool open) {
-    if (_trendOpen[key] == open) return;
-    _trendTouched = true;
-    setState(() => _trendOpen = {..._trendOpen, key: open});
-    unawaited(writeDisclosureState(
-        _kTrendScope, widget.apiClient?.userId, _trendOpen));
-  }
-
-  /// How much of the trend section opens up before the runner asks for more
-  /// (web `/dashboard`'s `disclosure`). [runCount] is the device's
-  /// full-history index, the same count the All-time row shows. An unread or
-  /// unreadable bag contributes nothing, so the level falls to the derivation
-  /// from history alone rather than to a guess.
-  String _disclosureLevel(int runCount) {
-    Object? stored;
-    String? goal;
-    try {
-      final service = widget.settingsSync?.service;
-      stored = service?.effective<Object>(disclosureLevelKey);
-      final g = service?.effective<Object>(SettingsKeys.primaryGoal);
-      goal = g is String ? g : null;
-    } catch (e) {
-      debugPrint('dashboard: disclosure level read failed: $e');
-    }
-    return resolveDisclosureLevel(stored, goal, runCount);
-  }
-
-  /// Absent or non-bool reads as closed: the fold is what `simple` asked for,
-  /// so an unreadable bag must not silently re-open it.
-  bool get _trainingLoadExpanded {
-    final local = _trainingLoadExpandedLocal;
-    if (local != null) return local;
-    try {
-      return widget.settingsSync?.service
-              ?.effective<Object>(SettingsKeys.dashboardTrainingLoadExpanded) ==
-          true;
-    } catch (e) {
-      debugPrint('dashboard: training-load expander read failed: $e');
-      return false;
-    }
-  }
-
-  /// Remembering the expander is auxiliary (L4): the section is open for this
-  /// visit either way, so a refused write is logged rather than bannered — a
-  /// banner would follow every toggle of a signed-out or offline visit.
-  Future<void> _setTrainingLoadExpanded(bool open) async {
-    if (_trainingLoadExpanded == open) return;
-    setState(() => _trainingLoadExpandedLocal = open);
-    try {
-      await widget.settingsSync?.updateUniversal(
-          {SettingsKeys.dashboardTrainingLoadExpanded: open});
-    } catch (e) {
-      debugPrint('dashboard: training-load expander state not saved: $e');
-    }
-  }
 
   @override
   ApiClient? get authApi => widget.apiClient;
@@ -458,7 +274,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         _refreshPlanOverview(),
         _hydrateModalities(),
         _loadUpcomingEvent(),
-        _loadPersonalRecords(),
         _loadViewerProfile(),
         _loadRunStreaks(),
       ]);
@@ -482,24 +297,15 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void onAuthUserChanged(String? userId) {
     setState(() {
-      _serverPbs = const [];
       _planOverview = null;
       _nutritionTargets = null;
-      _viewerProfile = null;
       _upcomingEvent = null;
       _allTimeStreaks = null;
       _history = _AccountHistory.unknown;
-      _bestEffortCache.clear();
-      _trendOpen = Map.of(_kTrendDefaults);
-      _trendTouched = false;
-      _trainingLoadExpandedLocal = null;
-      _hiddenCardsLocal = null;
     });
-    _loadTrendOpen();
     _refreshPlanOverview();
     _hydrateModalities();
     _loadUpcomingEvent();
-    _loadPersonalRecords();
     _loadViewerProfile();
     _loadRunStreaks();
   }
@@ -520,23 +326,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  /// Best-effort load of the server PB cache (L4 — a failure just leaves the
-  /// track-scan fallback in place).
-  Future<void> _loadPersonalRecords() async {
-    final api = widget.apiClient;
-    if (api == null) return;
-    try {
-      final pbs = await api.fetchPersonalRecords();
-      if (mounted) setState(() => _serverPbs = pbs);
-    } catch (e) {
-      debugPrint('dashboard: personal_records fetch failed: $e');
-    }
-  }
-
-  /// Best-effort load of the viewer's DOB + sex for age-grading the PB rows
-  /// (L4 — a failure just omits the age grade). Sourced from the profile,
-  /// which carries the age record, `gender` and the Art 9 consent stamp
-  /// (get_my_profile).
+  /// Best-effort read of the viewer's profile for its AI-consent record, so
+  /// "Ask your coach" opens straight into the chat (L4 — a failure just
+  /// leaves the consent step in front of it). The PB age grades that also
+  /// read this row moved to the Progress page with the PBs.
   Future<void> _loadViewerProfile() async {
     final api = widget.apiClient;
     if (api == null) return;
@@ -554,7 +347,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         );
       }
-      if (mounted) setState(() => _viewerProfile = p);
     } catch (e) {
       debugPrint('dashboard: profile fetch failed: $e');
     }
@@ -577,28 +369,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         _allTimeStreaks = RunStreaks(current: row.current, best: row.best));
   }
 
-  /// Age grade (e.g. `72.4%`) for a timed best-effort PB, or null when the
-  /// distance isn't a graded standard or the viewer's DOB/sex is unknown.
-  /// Grades against the runner's age when the PB was set ([achievedAt]) for the
-  /// server PBs that carry a real date; falls back to [now] only for the
-  /// date-less offline track-scan. Uses the shared `ageGradeForRun` twin.
-  String? _pbAgeGrade(String label, Duration time, DateTime now,
-      {DateTime? achievedAt}) {
-    final metres = _pbLabelMetres[label];
-    if (metres == null) return null;
-    final p = _viewerProfile;
-    final result = ageGradeForRun(
-      distanceM: metres,
-      durationSec: time.inSeconds.toDouble(),
-      // Age grading is an Art 9 use of the age record, which carries no
-      // consent term of its own (§ 718 / § 722).
-      dobIso: healthUseDob(p),
-      runStartIso: (achievedAt ?? now).toIso8601String(),
-      sex: p?.gender,
-    );
-    return result != null ? formatAgeGradePercent(result.percent) : null;
-  }
-
   @override
   void dispose() {
     widget.runStore.removeListener(_onRunStoreChanged);
@@ -613,7 +383,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _onRunStoreChanged() {
-    _bestEffortCache.clear();
     if (mounted) setState(() {});
   }
 
@@ -771,16 +540,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  void _openGymWorkout(String workoutId) {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => GymDetailScreen(
-        api: widget.apiClient,
-        store: widget.gymStore,
-        workoutId: workoutId,
-      ),
-    ));
-  }
-
   void _openNutrition() {
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => NutritionScreen(
@@ -795,12 +554,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (mounted) setState(() {});
   }
 
-  /// The bag moved (Settings restored a group, another device synced), so it
-  /// is the truth again rather than this visit's copy.
-  void _onSettingsChange() {
-    if (!mounted) return;
-    setState(() => _hiddenCardsLocal = null);
-  }
+  /// The bag moved (Settings, another device), so the cards that read it
+  /// (the mascot, HR prefs, week start) redraw.
+  void _onSettingsChange() => _onChange();
 
   Future<void> _refreshPlanOverview() async {
     final svc = widget.training;
@@ -871,77 +627,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           social: widget.social,
         ),
       ),
-    );
-  }
-
-  void _openPlanSession(LeadPlanWorkout w) {
-    final svc = widget.training;
-    final p = _planOverview;
-    final id = w.id;
-    if (svc == null || p == null || id == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => WorkoutDetailScreen(
-          training: svc,
-          planId: p.plan.id,
-          workoutId: id,
-          initial: p.workouts.where((wo) => wo.id == id).firstOrNull,
-        ),
-      ),
-    );
-  }
-
-  /// The opening week card (web `DashboardWeekLead.svelte`). Its plan input is
-  /// null without an active plan, which is what hides the next-session half,
-  /// not an empty list.
-  /// The active plan's workouts in the shape both the week lead and the Goals
-  /// section read, or null without an active plan.
-  List<LeadPlanWorkout>? _leadPlanWorkouts() {
-    final plan = _planOverview;
-    return plan == null
-        ? null
-        : [
-            for (final w in plan.workouts)
-              LeadPlanWorkout(
-                id: w.id,
-                scheduledDate: toIsoDate(w.scheduledDate),
-                kind: w.kind,
-                targetDistanceM: w.targetDistanceM,
-                manuallyCompleted: w.manuallyCompleted,
-                completedRunId: w.completedRunId,
-                skippedAt: w.skippedAt?.toIso8601String(),
-                targetDurationSeconds: w.targetDurationSeconds,
-                structure: w.structure,
-              ),
-          ];
-  }
-
-  Widget _weekLeadCard(
-      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
-    // A finished plan has no sessions left to offer; Home asks to file it
-    // instead (FinishPlanCard), so the lead says nothing about the plan.
-    final planWorkouts = _planFinished(now) ? null : _leadPlanWorkouts();
-    final lead = weekLead(
-      activities: [
-        for (final r in runs)
-          LeadActivity(
-            startedAt: r.startedAt.toIso8601String(),
-            distanceM: r.distanceMetres,
-          ),
-      ],
-      planWorkouts: planWorkouts,
-      weeklyGoal: weeklyGoalTarget(goals),
-      weekStart:
-          _weekStartDay == 'sunday' ? WeekStart.sunday : WeekStart.monday,
-      now: now,
-    );
-    return _DashboardWeekLead(
-      key: const Key('dashboardWeekLead'),
-      onOpenWeek: () => _openPeriodSummary(PeriodType.week),
-      lead: lead,
-      hasPlan: planWorkouts != null,
-      unit: unit,
-      onOpenSession: _openPlanSession,
     );
   }
 
@@ -1175,22 +860,29 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  /// The "Ask your coach" entry that closes Home's Today block. Null when
-  /// signed out, with no training service, or while the Coach is not live on
-  /// this deploy, so it never renders a dead tap.
+  /// The Coach row that closes Home's Today block, shown whenever there is a
+  /// training service to open the Coach screen with (issue #1374): that
+  /// screen also holds Guided runs and Athletes & coaches, which have no
+  /// other entry point. Only a live AI coach, for a signed-in runner, is
+  /// offered as "Ask your coach"; otherwise the row names what the screen
+  /// still holds, so it never promises a chat this deploy does not run
+  /// (decisions § 2227).
   Widget? _coachEntry() {
     final api = widget.apiClient;
     final training = widget.training;
-    if (!_coachLive) return null;
-    if (api == null || api.userId == null || training == null) return null;
+    if (api == null || training == null) return null;
     final l10n = AppLocalizations.of(context);
+    final asks = _coachLive && api.userId != null;
     return _CoachEntryCard(
+      title: asks ? l10n.homeAskCoach : l10n.homeCoachTitle,
       // Its placement is the Coach-prominence decision; its copy is not. A
       // runner with Gym and Nutrition hidden was promised advice on two
       // things they had just been told are hidden.
-      subtitle: _gymShown || _nutritionShown
-          ? l10n.homeAskCoachSubtitle
-          : l10n.homeAskCoachSubtitleRunOnly,
+      subtitle: !asks
+          ? l10n.homeCoachSubtitleTools
+          : _gymShown || _nutritionShown
+              ? l10n.homeAskCoachSubtitle
+              : l10n.homeAskCoachSubtitleRunOnly,
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute<void>(
@@ -1346,145 +1038,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (msg != null) _announceA11yState(msg);
   }
 
-  Future<void> _editGoal(RunGoal goal) async {
-    final msg = await showGoalEditorSheet(
-      context,
-      preferences: widget.preferences,
-      settingsSync: widget.settingsSync,
-      existing: goal,
-    );
-    if (msg != null) _announceA11yState(msg);
-  }
-
-  String get _weekStartDay =>
-      widget.settingsSync?.service?.effective<String>(SettingsKeys.weekStartDay) ??
-      'monday';
-
-  // Shared HR prefs for every training-load surface on this page so the
-  // fitness card, readiness card, and chart all score on the same model.
-  HrPrefs _hrPrefs() => HrPrefs(
-        restingHrBpm: widget.settingsSync?.service
-            ?.effective<num>(SettingsKeys.restingHrBpm),
-        maxHrBpm: widget.settingsSync?.service
-            ?.effective<num>(SettingsKeys.maxHrBpm),
-      );
-
-  /// Logged gym sessions reduced to the load-model input. Empty for a pure
-  /// runner, so the curve is the unchanged run-only series; the gym store is
-  /// hydrated on mount regardless of flag (mobile ships gym ungated, §63), so
-  /// any logged lift feeds the same CTL/ATL/TSB trio runs do (multi_modal.md
-  /// Tier-1 lift→load).
-  List<LiftForLoad> _liftsForLoad() {
-    final flat = <SetWithWorkoutDate>[];
-    for (final w in widget.gymStore.workouts) {
-      if (w.isTombstone) continue;
-      final at = w.startedAt;
-      if (at == null) continue;
-      final iso = at.toUtc().toIso8601String();
-      for (final s in w.sets) {
-        flat.add(SetWithWorkoutDate(
-          workoutId: w.id,
-          startedAt: iso,
-          reps: s['reps'] as num?,
-          weightKg: s['weight_kg'] as num?,
-          rpe: s['rpe'] as num?,
-        ));
-      }
-    }
-    return liftsFromSetHistory(flat);
-  }
-
-  /// Opt-out (Settings → Preferences): a runner who wants a pure run-only
-  /// readiness curve drops gym load from the fitness/fatigue/form math. The
-  /// gym cards + lift→load math elsewhere are unaffected.
-  bool get _excludeGymFromReadiness =>
-      widget.settingsSync?.service
-          ?.effective<bool>(SettingsKeys.excludeGymFromReadiness) ==
-      true;
-
-  /// Lifts that actually feed the readiness series — empty when the opt-out is
-  /// on, so the curve is the byte-for-byte run-only series.
-  List<LiftForLoad> _readinessLifts() =>
-      _excludeGymFromReadiness ? const [] : _liftsForLoad();
-
-  /// True when a logged lift lands inside the ~fatigue-relevant window, so the
-  /// "factored in" / "excluded" note only shows when gym is actually relevant.
-  bool _hasRecentLift(DateTime now) {
-    final cutoff = now.toUtc().subtract(const Duration(days: 14));
-    for (final w in widget.gymStore.workouts) {
-      if (w.isTombstone) continue;
-      final at = w.startedAt;
-      if (at != null && !at.toUtc().isBefore(cutoff)) return true;
-    }
-    return false;
-  }
-
-  /// The ONE training-load series the whole dashboard reads — computed once per
-  /// build with the single decided lift set (`_readinessLifts`, which honours
-  /// the exclude-gym opt-out) and the same prefs/endDate. FitnessCard,
-  /// ReadinessCard, and the chart are all fed this exact series, so the
-  /// CTL/ATL/TSB number, the recovery advice, and the plotted curve can't
-  /// disagree (the cards used to recompute a lift-LESS series of their own —
-  /// a silent inconsistency for any gym user) and the expensive aggregation
-  /// runs once instead of 3-4× per build.
-  List<TrainingLoadPoint> _trainingLoadSeries(List<Run> runs, DateTime now) =>
-      computeTrainingLoadSeries(runs,
-          prefs: _hrPrefs(), endDate: now, lifts: _readinessLifts());
-
-  Widget _buildTrainingLoadChart(
-      List<Run> runs, DateTime now, List<TrainingLoadPoint> series) {
-    final hasHr = hasTrimpSignal(runs, _hrPrefs());
-    final medicationAffected = widget.settingsSync?.service
-            ?.effective<bool>(SettingsKeys.hrMedicationAffected) ==
-        true;
-    return TrainingLoadChart(
-      points: series,
-      hasHr: hasHr,
-      includesLifts: series.any((p) => p.liftStress > 0),
-      lowConfidence:
-          hrPrescriptionGate && isTrimpLowConfidence(hasHr, medicationAffected),
-    );
-  }
-
-  Widget _gymReadinessNote(ThemeData theme, AppLocalizations l10n) {
-    final excluded = _excludeGymFromReadiness;
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          Icon(Icons.fitness_center,
-              size: 16, color: theme.colorScheme.outline),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              excluded
-                  ? l10n.dashGymReadinessExcluded
-                  : l10n.dashGymReadinessIncluded,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openPeriodSummary(PeriodType period, [DateTime? anchor]) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PeriodSummaryScreen(
-          initialPeriod: period,
-          initialAnchor: anchor ?? DateTime.now(),
-          runStore: widget.runStore,
-          routeStore: widget.routeStore,
-          preferences: widget.preferences,
-          settingsSync: widget.settingsSync,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1498,77 +1051,13 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     final now = DateTime.now();
     _breakNow = _homeBreak(runs, now);
-    final monthStart = DateTime(now.year, now.month, 1);
-    // Compute the training-load series ONCE — FitnessCard, ReadinessCard, and
-    // the chart all read this same instance instead of each re-running the
-    // O(runs) aggregation (the cards even did so with a different lift input,
-    // disagreeing with the chart). See _trainingLoadSeries.
-    final loadSeries = _trainingLoadSeries(runs, now);
-
-    // One pass over the runs list collects everything every card needs —
-    // week totals, month totals, all-time totals, and the PB candidates.
-    // Replaces four separate `.where().fold()` chains. Matters at 10k+ runs.
-    var monthRunCount = 0;
-    var monthDistance = 0.0;
-    var monthVert = 0.0;
-    var allDistance = 0.0;
-    var allVert = 0.0;
-    Run? longest;
-    const pbDistances = <String, double>{
-      '5 km': 5000,
-      '10 km': 10000,
-      'Half Marathon': 21097,
-      'Marathon': 42195,
-    };
-    final bestEfforts = <String, Duration>{};
-    for (final r in runs) {
-      allDistance += r.distanceMetres;
-      final vert = runVertMetres(r);
-      allVert += vert;
-      if (!r.startedAt.isBefore(monthStart)) {
-        monthRunCount++;
-        monthDistance += r.distanceMetres;
-        monthVert += vert;
-      }
-      if (!_isRunActivity(r)) continue;
-      if (longest == null || r.distanceMetres > longest.distanceMetres) {
-        longest = r;
-      }
-    }
-    // Offline / signed-out best-effort fallback: scan the resident runs' GPS
-    // tracks (runStore.runs — the window, which carries tracks — NOT the
-    // track-less summaries above). Skipped entirely when the authoritative
-    // server PB cache is present; that's also the app's hottest loop, so not
-    // paying it online is a real win.
-    if (_serverPbs.isEmpty) {
-      for (final r in widget.runStore.runs) {
-        if (!_isRunActivity(r)) continue;
-        final runCache = _bestEffortCache.putIfAbsent(r.id, () => {});
-        for (final e in pbDistances.entries) {
-          if (r.distanceMetres < e.value) continue;
-          final cached = runCache.putIfAbsent(
-              e.value, () => fastestWindowOf(trackLine(r.track), e.value));
-          if (cached != null &&
-              (!bestEfforts.containsKey(e.key) ||
-                  cached < bestEfforts[e.key]!)) {
-            bestEfforts[e.key] = cached;
-          }
-        }
-      }
-    }
-    // Prefer the authoritative all-history server PB cache; fall back to the
-    // track-scan over resident runs when offline / signed-out / empty. (The
-    // track scan only sees resident runs, so under the windowed store it is a
-    // recent-window best-effort, not the all-history truth.)
-    final displayEfforts = _serverPbs.isNotEmpty
-        ? bestEffortsFromPersonalRecords(_serverPbs)
-        : bestEfforts;
-    // Age each server PB against the date it was actually set; the offline
-    // track-scan path carries no date, so its grades fall back to `now`.
-    final pbDates = _serverPbs.isNotEmpty
-        ? pbAchievedAtByLabel(_serverPbs)
-        : const <String, DateTime>{};
-    final hasAnyPb = longest != null || displayEfforts.isNotEmpty;
+    // The readiness line in the hero reads the same series the Progress
+    // page's load card does (`training_load_inputs.dart`, decisions § 109).
+    final loadSeries = trainingLoadSeriesFor(runs, now,
+        gymStore: widget.gymStore, settingsSync: widget.settingsSync);
+    final hrPrefs = hrPrefsOf(widget.settingsSync);
+    final pagePadding = _kPagePadding.copyWith(
+        bottom: _kPagePadding.bottom + DockedFabInset.of(context));
 
     final api = widget.apiClient;
     final viewerId = api?.userId;
@@ -1634,13 +1123,19 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Home opened on four glyphs and no title at all — nothing on the screen
     // said which surface it was, and the bottom-nav label is 700 dp away at
     // the other end of the phone. The title is the row's first child so the
-    // actions read as belonging to it.
+    // actions read as belonging to it. The row sits inside the page's own
+    // gutter, so the title starts where the cards do (it used to add 16 of
+    // its own and start at 32).
     final actionToolbar = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+      padding: const EdgeInsets.only(top: AppSpace.sm),
       child: Row(
         children: [
           Expanded(
-            child: Text(l10n.navHome, style: theme.textTheme.headlineSmall),
+            child: Semantics(
+              header: true,
+              child: Text(l10n.todayTitle,
+                  style: theme.textTheme.headlineSmall),
+            ),
           ),
           ...actions,
         ],
@@ -1720,7 +1215,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         // Shorter than the viewport, so without this the pull-to-refresh
         // gesture has no overscroll to report and silently does nothing.
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: pagePadding,
         children: [
           actionToolbar,
           pendingBanner,
@@ -1742,8 +1237,11 @@ class _DashboardScreenState extends State<DashboardScreen>
           SliverToBoxAdapter(
             child: Column(
               children: [
-                actionToolbar,
-                pendingBanner,
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppInsets.gutter),
+                  child: Column(children: [actionToolbar, pendingBanner]),
+                ),
                 // #272: no "Ask your coach" card on the brand-new zero-runs
                 // welcome screen — it used to dominate above the onboarding
                 // buttons. It returns once the runner has data (the
@@ -1763,7 +1261,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 if (goals.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: _goalsSection(theme, unit, runs, goals, now),
+                    child: _goalsStrip(runs, goals, now, unit),
                   ),
               ],
             ),
@@ -1796,18 +1294,16 @@ class _DashboardScreenState extends State<DashboardScreen>
         ],
       );
     } else {
-      // The coach entry — the AI coach stays one persistent tap from Home (it
-      // has no bottom-nav slot), closing the Today block rather than opening
-      // it: today's plan and what was logged today are what Home is opened
-      // for (decisions § 139, amended by § 2280). Gated on api + training, on
-      // the Coach being live, plus runs.isNotEmpty (#272) so it never
-      // dominates a zero-runs first screen.
-      final coach = runs.isNotEmpty ? _coachEntry() : null;
-      // The week lead opens Home for an account with runs (#905 workstream
-      // 3). A lifter with no runs reaches this branch too and has no running
-      // week to lead with.
-      final weekLeadCard =
-          runs.isNotEmpty ? _weekLeadCard(runs, goals, unit, now) : null;
+      // Today (issue #1374): about six blocks, what to do now and what was
+      // just done. Trends, PBs, the streak, the full goals and the recap are
+      // the Progress page's, one tap from the summary card at the end.
+      //
+      // The coach entry — the Coach stays one persistent tap from Home (it
+      // has no bottom-nav slot), closing the Today block (decisions § 139,
+      // amended by § 2280 and § 2387). Gated on api + training only
+      // (`_coachEntry`); the runless welcome state, a different branch, still
+      // carries none (#272).
+      final coach = _coachEntry();
       final raceCard = _nextRaceCard(now) ?? _planDiscoveryCard(now);
       final social = widget.social;
       final eventCard = _upcomingEvent == null || social == null
@@ -1860,7 +1356,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         key: const Key('dashboardHeroReadiness'),
         runs: runs,
         now: now,
-        hrPrefs: _hrPrefs(),
+        hrPrefs: hrPrefs,
         loadSeries: loadSeries,
         compact: true,
       );
@@ -1902,386 +1398,36 @@ class _DashboardScreenState extends State<DashboardScreen>
                 key: const Key('dashboardHeroReadinessCard'),
                 runs: runs,
                 now: now,
-                hrPrefs: _hrPrefs(),
+                hrPrefs: hrPrefs,
                 loadSeries: loadSeries,
               ),
               ?startButton,
             ],
         },
       );
-      // An empty-goals card earns the slot above the runner's own numbers on
-      // a new account, not on visit 200: once there is a run it shrinks to a
-      // one-line link under the period stats.
-      final goalsSection = goals.isEmpty && runs.isNotEmpty
-          ? null
-          : _goalsSection(theme, unit, runs, goals, now);
-      // Month and all-time stat strip. The week is the week lead's alone
-      // (decisions § 2283): a Week cell here and a This Week strip below were
-      // the second and third copies of one number, so the cell went and the
-      // lead's chevron opens the weekly summary, which now carries the day
-      // strip and the week's climb.
-      final periodRow = Row(
-        children: [
-          Expanded(
-            child: _PeriodStatCard(
-              label: l10n.dashboardPeriodMonth,
-              distanceMetres: monthDistance,
-              runCount: monthRunCount,
-              vertMetres: monthVert,
-              unit: unit,
-              onTap: () => _openPeriodSummary(PeriodType.month),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _PeriodStatCard(
-              label: l10n.dashboardPeriodAllTime,
-              distanceMetres: allDistance,
-              runCount: runs.length,
-              vertMetres: allVert,
-              unit: unit,
-              onTap: () => _openPeriodSummary(PeriodType.all),
-            ),
-          ),
-        ],
-      );
-      // The recap used to be an unlabelled calendar glyph on the toolbar —
-      // which reads as a date picker — and was the surface's only entry point
-      // in the app (#666 I8). Web renders it as a labelled link beside the
-      // dashboard stat grid; this is that link, under the period cards it
-      // summarises.
-      final recapButton = api == null
-          ? null
-          : TextButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => RecapScreen(
-                    runStore: widget.runStore,
-                    preferences: widget.preferences,
-                    api: api,
-                  ),
-                ),
-              ),
-              icon: const Icon(Icons.auto_awesome, size: 18),
-              label: Text(l10n.dashboardRecapTooltip),
-            );
-      final addGoalButton = goalsSection != null
-          ? null
-          : TextButton.icon(
-              key: const Key('dashboardAddGoalLink'),
-              onPressed: _newGoal,
-              icon: const Icon(Icons.flag_outlined, size: 18),
-              label: Text(l10n.dashboardSetGoal),
-            );
-      // A Wrap rather than a Row, so the two labels take a line each in a
-      // locale too long to fit both rather than overflowing.
-      final periodLinks = addGoalButton != null && recapButton != null
-          ? Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [addGoalButton, recapButton],
-            )
-          : addGoalButton != null
-              ? Align(alignment: Alignment.centerLeft, child: addGoalButton)
-              : recapButton != null
-                  ? Align(alignment: Alignment.centerRight, child: recapButton)
-                  : null;
-      final streakCard = Card(
-        child: Padding(
-          padding: _kCardPadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ChartCardHeader(title: l10n.dashboardSectionStreak),
-              const SizedBox(height: 10),
-              _StreakRow(
-                key: const Key('dashboardStreakRow'),
-                runs: runs,
-                allTime: _allTimeStreaks,
-              ),
-            ],
-          ),
-        ),
-      );
-      final mileageCard = MileageTrendCard(
-        runs: runs,
-        unit: unit,
-        weekStartDay: _weekStartDay,
-        now: now,
-      );
-      final pbCard = hasAnyPb
-          ? Card(
-              child: Padding(
-                padding: _kCardPadding,
-                child: Column(
-                  children: [
-                    ChartCardHeader(
-                      title: l10n.dashboardSectionPersonalBests,
-                      action: const MetricInfoButton(metric: Metric.ageGrade),
-                    ),
-                    const SizedBox(height: 10),
-                    if (longest != null)
-                      _PbRow(
-                        icon: Icons.straighten,
-                        label: l10n.dashboardLongestRun,
-                        value: UnitFormat.distance(
-                            longest.distanceMetres, unit),
-                      ),
-                    for (final e in displayEfforts.entries) ...[
-                      const SizedBox(height: 12),
-                      _PbRow(
-                        icon: Icons.emoji_events,
-                        label: l10n.dashboardFastestDistance(
-                            bestEffortDistanceLabel(l10n, e.key)),
-                        value: _formatDuration(e.value),
-                        subValue: switch (_pbAgeGrade(e.key, e.value, now,
-                            achievedAt: pbDates[e.key])) {
-                          final ag? => metricText(l10n, Metric.ageGrade,
-                              variant: 'pb', args: {'percent': ag}),
-                          _ => null,
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            )
-          : null;
-      final fitnessCard = FitnessCard(
-          runs: runs, now: now, hrPrefs: _hrPrefs(), loadSeries: loadSeries);
-      final predictorCard = RacePredictorCard(runs: runs, now: now);
-      final intensityCard = IntensityCard(
-        runs: runs,
-        hrZones: parseHrZones(
-            widget.settingsSync?.service?.effective<Map>(SettingsKeys.hrZones)),
-        now: now,
-        settingsSync: widget.settingsSync,
-      );
-      // The runner's own load ramp, and the comeback signal for the runner
-      // whose recent history cannot carry a ratio. Both are fed the SAME
-      // reduction inputs and are mutually exclusive by construction, so both
-      // mount and at most one of them renders (decisions § 609 + § 612).
-      final volumeRuns = _runVolumeInputs(runs);
-      final loadRampCard = LoadRampCard(runs: volumeRuns, now: now);
-      final comebackCard = ComebackCard(runs: volumeRuns, now: now);
-      final loadChart = _buildTrainingLoadChart(runs, now, loadSeries);
-      final gymNote = _hasRecentLift(now) ? _gymReadinessNote(theme, l10n) : null;
-      // Recent lifts trend list — self-hides for a pure runner (empty
-      // gym store) or once Gym is switched off, mirrors web /dashboard's
-      // recent-lifts card.
-      final liftsCard = _gymShown && widget.gymStore.workouts.isNotEmpty
-          ? RecentLiftsCard(
-              workouts: widget.gymStore.workouts,
-              onOpenWorkout: _openGymWorkout,
-              onViewAll: _openGym,
-            )
-          : null;
+      final goalsStrip = goals.isEmpty ? null : _goalsStrip(runs, goals, now, unit);
+      final summary = _progressSummary(runs, now, unit);
 
-      // The trend groups, in web's order (volume, fitness, performance, effort,
-      // recent). A group mounts only when a card in it is sure to draw, so a
-      // fold never opens on nothing; a member that self-hides still does so
-      // inside it, and without the group it renders bare (and hides alone).
-      // A group the runner hid is not built at all (decisions § 2386).
-      final hidden = _hiddenCards;
-      Widget? group(
-              String key, String title, String hint, List<Widget> cards) =>
-          hidden.contains(key)
-              ? null
-              : Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: DisclosureSection(
-                    key: ValueKey('dashboard-trend-$key'),
-                    title: title,
-                    hint: hint,
-                    open: _trendOpen[key] ?? true,
-                    onToggle: (open) => _setTrendOpen(key, open),
-                    hideLabel: l10n.dashboardHideFromHome,
-                    onHide: () => _hideTrendGroup(key, title),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: cards,
-                    ),
-                  ),
-                );
-      final loadBlock = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [loadChart, ?gymNote],
-      );
-      // Progressive disclosure: at `simple` the fitness snapshot and
-      // the load curve are FOLDED into one named expander, never dropped, and
-      // the expander remembers per account whether it was opened. At
-      // `standard` / `full` the group is exactly as it was. Web twin: the
-      // `training-load-disclosure` <details> on /dashboard, in the same place
-      // — after readiness, before the load ramp.
-      final isSimple = _disclosureLevel(runs.length) == 'simple';
-      final loadRows = isSimple
-          ? <Widget>[
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: DisclosureSection(
-                  key: const Key('dashboardTrainingLoadDisclosure'),
-                  title: l10n.dashboardTrainingLoadSection,
-                  hint: l10n.dashboardTrainingLoadSectionHint,
-                  open: _trainingLoadExpanded,
-                  onToggle: _setTrainingLoadExpanded,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [fitnessCard, loadBlock],
-                  ),
-                ),
-              ),
-              loadRampCard,
-              comebackCard,
-            ]
-          : <Widget>[
-              fitnessCard,
-              loadRampCard,
-              comebackCard,
-              loadBlock,
-            ];
-      // One card for the load views (#1187, decisions § 2385): they read one
-      // series (§ 109), so they are rows of one card rather than four cards.
-      // Readiness is in the Today hero.
-      final fitnessCards = <Widget>[
-        _TrainingLoadCard(
-          key: const Key('dashboardTrainingLoadCard'),
-          title: isSimple ? null : l10n.dashboardTrainingLoadSection,
-          children: loadRows,
-        ),
-      ];
-      final trendGroups = <Widget>[
-        ?group('volume', l10n.dashboardTrendGroupVolume,
-            l10n.dashboardTrendGroupVolumeHint, [mileageCard]),
-        // The load chart always draws (it has its own empty state), so this
-        // group always mounts.
-        ?group('fitness', l10n.dashboardTrendGroupFitness,
-            l10n.dashboardTrendGroupFitnessHint, fitnessCards),
-        if (pbCard != null)
-          ?group('performance', l10n.dashboardTrendGroupPerformance,
-              l10n.dashboardTrendGroupPerformanceHint, [pbCard, predictorCard])
-        else if (!hidden.contains('performance'))
-          predictorCard,
-        if (intensityCard.hasContent)
-          ?group('effort', l10n.dashboardTrendGroupEffort,
-              l10n.dashboardTrendGroupEffortHint, [intensityCard]),
-        if (liftsCard != null)
-          ?group('recent', l10n.dashboardTrendGroupRecent,
-              l10n.dashboardTrendGroupRecentHint, [liftsCard]),
-      ];
-      final trendsDivider = _TrendsDivider(label: l10n.dashboardTrendsDivider);
-
-      if (widthClassOf(context) == WidthClass.expanded) {
-        // Tablet-landscape recomposition (mirrors web /dashboard's
-        // multi-column card grid): the lead cards pair up with goals,
-        // the chart cards flow into two vertical columns. Blocks
-        // alternate columns; internally self-hiding cards render
-        // zero-height so a hidden card never reserves a grid cell.
-        final leadBlocks = todayBlocks;
-        final leadColumn = leadBlocks.isEmpty
-            ? null
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final (i, block) in leadBlocks.indexed) ...[
-                    if (i > 0) _kSectionGap,
-                    block,
-                  ],
-                ],
-              );
-        final left = <Widget>[];
-        final right = <Widget>[];
-        var slot = 0;
-        void addBlock(Widget block, {bool gapAfter = false}) {
-          final col = slot.isEven ? left : right;
-          col.add(block);
-          if (gapAfter) col.add(_kSectionGap);
-          slot++;
-        }
-
-        addBlock(streakCard);
-        trendGroups.forEach(addBlock);
-
-        content = contentColumn(
-          context,
-          maxWidth: _kExpandedMaxWidth,
-          ListView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            children: [
-              actionToolbar,
-              pendingBanner,
-              hero,
-              _kSectionGap,
-              if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
-              if (raceCard != null && !raceInHero) ...[raceCard, _kSectionGap],
-              if (eventCard != null) ...[eventCard, _kSectionGap],
-              if (leadColumn != null && goalsSection != null)
-                Row(
-                  key: const Key('dashboardExpandedLeadRow'),
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: leadColumn),
-                    const SizedBox(width: 16),
-                    Expanded(child: goalsSection),
-                  ],
-                )
-              else if (leadColumn ?? goalsSection case final lead?)
-                lead,
-              if (leadColumn != null || goalsSection != null) _kSectionGap,
-              if (coach != null) ...[coach, _kSectionGap],
-              trendsDivider,
-              periodRow,
-              if (periodLinks != null) periodLinks,
-              _kSectionGap,
-              Row(
-                key: const Key('dashboardExpandedChartColumns'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: left,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: right,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      } else {
-        content = ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      // One column on every width: Today is a short reading list, and the
+      // Progress page is where the wide two-column grid earns its keep.
+      content = contentColumn(
+        context,
+        ListView(
+          padding: pagePadding,
           children: [
             actionToolbar,
             pendingBanner,
             hero,
             _kSectionGap,
-            if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
             if (raceCard != null && !raceInHero) ...[raceCard, _kSectionGap],
             if (eventCard != null) ...[eventCard, _kSectionGap],
             for (final block in todayBlocks) ...[block, _kSectionGap],
-            if (coach != null) ...[coach, _kSectionGap],
-            trendsDivider,
-            if (goalsSection != null) ...[goalsSection, _kSectionGap],
-            periodRow,
-            if (periodLinks != null) periodLinks,
-            _kSectionGap,
-            // Every card below names itself with a ChartCardHeader, so the
-            // stack separates by the card grammar (§482's 4dp vertical margin
-            // on each side) and _kSectionGap marks only a real block boundary
-            // — a group of cards under one heading, or a non-card block.
-            streakCard,
-            ...trendGroups,
+            if (goalsStrip != null) ...[goalsStrip, _kSectionGap],
+            summary,
+            if (coach != null) ...[_kSectionGap, coach],
           ],
-        );
-      }
+        ),
+      );
     }
 
     return Scaffold(
@@ -2389,268 +1535,260 @@ class _DashboardScreenState extends State<DashboardScreen>
     return latest;
   }
 
-  Widget _goalsSection(
-    ThemeData theme,
-    DistanceUnit unit,
-    List<Run> runs,
-    List<RunGoal> goals,
-    DateTime now,
-  ) {
-    final l10n = AppLocalizations.of(context);
-    final planWorkouts = _leadPlanWorkouts() ?? const <LeadPlanWorkout>[];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionHeader(
-          l10n.dashboardGoals,
-          trailing: goals.isNotEmpty
-              ? TextButton.icon(
-                  onPressed: _newGoal,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.dashboardAdd),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                )
-              : null,
+  /// The Progress page: trends, PBs, streak, goals and recap, one tap from
+  /// Today rather than under it (issue #1374). A pushed page, not a tab.
+  void _openProgress() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProgressScreen(
+          apiClient: widget.apiClient,
+          training: widget.training,
+          runStore: widget.runStore,
+          routeStore: widget.routeStore,
+          gymStore: widget.gymStore,
+          preferences: widget.preferences,
+          settingsSync: widget.settingsSync,
         ),
-        if (goals.isEmpty)
-          _EmptyGoalsCta(onAdd: _newGoal)
-        else
-          for (final goal in goals)
-            _GoalCard(
-              goal: goal,
-              progress: evaluateGoal(goal, runs, now,
-                  weekStartDay: _weekStartDay,
-                  planWorkouts: planWorkouts),
-              unit: unit,
-              onTap: () => _editGoal(goal),
-            ),
-      ],
+      ),
     );
   }
 
-  /// Personal-best cards are running-only. Cycles, walks, and hikes have
-  /// their own pace/distance scales and would otherwise starve the run PBs
-  /// (a 40 km ride as "longest run", a brisk walk as "fastest pace"). Legacy
-  /// runs with no `activity_type` in metadata default to run.
-  static bool _isRunActivity(Run r) {
-    final raw = r.metadata?['activity_type'] as String?;
-    return raw == null || raw == 'run';
+  /// One line per goal (up to [_kGoalsStripMax]) with its progress; a tap
+  /// opens the Progress page, where each goal is edited.
+  Widget _goalsStrip(
+      List<Run> runs, List<RunGoal> goals, DateTime now, DistanceUnit unit) {
+    final planWorkouts =
+        leadPlanWorkoutsOf(_planOverview) ?? const <LeadPlanWorkout>[];
+    return _TodayGoalsStrip(
+      key: const Key('todayGoalsStrip'),
+      goals: [
+        for (final goal in goals.take(_kGoalsStripMax))
+          (
+            goal: goal,
+            progress: evaluateGoal(goal, runs, now,
+                weekStartDay: weekStartDayOf(widget.settingsSync),
+                planWorkouts: planWorkouts),
+          ),
+      ],
+      more: goals.length > _kGoalsStripMax,
+      onOpen: _openProgress,
+    );
   }
 
-  static String _formatDuration(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes % 60;
-    final s = d.inSeconds % 60;
-    if (h > 0) {
-      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  /// The one progress summary card that closes Today's numbers: this week,
+  /// this month and the current streak, opening the Progress page. The week
+  /// is `weekLead`'s own figure, so it matches the Progress page's first
+  /// card to the metre.
+  Widget _progressSummary(List<Run> runs, DateTime now, DistanceUnit unit) {
+    final monthStart = DateTime(now.year, now.month, 1);
+    var monthDistance = 0.0;
+    for (final r in runs) {
+      if (!r.startedAt.isBefore(monthStart)) monthDistance += r.distanceMetres;
     }
-    return '$m:${s.toString().padLeft(2, '0')}';
+    final week = weekLead(
+      activities: [
+        for (final r in runs)
+          LeadActivity(
+            startedAt: r.startedAt.toIso8601String(),
+            distanceM: r.distanceMetres,
+          ),
+      ],
+      planWorkouts: null,
+      weeklyGoal: null,
+      weekStart: weekStartDayOf(widget.settingsSync) == 'sunday'
+          ? WeekStart.sunday
+          : WeekStart.monday,
+      now: now,
+    );
+    final windowed = computeRunStreaks(
+        [for (final r in runs) r.startedAt], now);
+    final allTime = _allTimeStreaks;
+    final streak = streakCardState(
+      allTime == null ? null : mergeAllTimeStreaks(allTime, windowed),
+      windowed,
+    ).current;
+    return _ProgressSummaryCard(
+      key: const Key('todayProgressSummary'),
+      weekMetres: week.distanceM,
+      monthMetres: monthDistance,
+      streakDays: streak,
+      unit: unit,
+      onOpen: _openProgress,
+    );
   }
 }
 
-/// The card under the Today hero for an account with runs: this calendar week
-/// against its yardstick and the next plan session. Mirrors web
-/// `DashboardWeekLead.svelte`; the numbers come from the `week_lead.dart`
-/// parity pair.
-class _DashboardWeekLead extends StatelessWidget {
-  final WeekLead lead;
-  final bool hasPlan;
-  final DistanceUnit unit;
-  final ValueChanged<LeadPlanWorkout> onOpenSession;
+/// How many goals Today lists before leaving the rest to the Progress page.
+const _kGoalsStripMax = 3;
 
-  /// Opens this week's summary, the day-by-day detail the lead stands for.
-  final VoidCallback onOpenWeek;
+/// Today's goals: each goal's name and how far along it is, read-only. The
+/// full cards, with every target and the editor, are on the Progress page.
+class _TodayGoalsStrip extends StatelessWidget {
+  final List<({RunGoal goal, GoalProgress progress})> goals;
+  final bool more;
+  final VoidCallback onOpen;
 
-  const _DashboardWeekLead({
+  const _TodayGoalsStrip({
     super.key,
-    required this.onOpenWeek,
-    required this.lead,
-    required this.hasPlan,
-    required this.unit,
-    required this.onOpenSession,
+    required this.goals,
+    required this.more,
+    required this.onOpen,
   });
-
-  String _whenLabel(AppLocalizations l10n, String iso, int? inDays) {
-    if (inDays == 0) return l10n.dashboardLeadToday;
-    if (inDays == 1) return l10n.dashboardLeadTomorrow;
-    return formatDowDateShort(parseIsoDate(iso), activeLocaleTag);
-  }
-
-  String? _vsText(AppLocalizations l10n) {
-    final c = lead.comparison;
-    if (c == null) return null;
-    final done = UnitFormat.distance(lead.distanceM, unit);
-    return switch (c.kind) {
-      WeekComparisonKind.plan => l10n.dashboardLeadVsPlan(
-          done, UnitFormat.distance(c.targetM!, unit)),
-      WeekComparisonKind.goal => l10n.dashboardLeadVsGoal(
-          done, UnitFormat.distance(c.targetM!, unit)),
-      WeekComparisonKind.goalRuns =>
-        l10n.dashboardLeadVsGoalRuns(lead.count, c.targetCount!.round()),
-      WeekComparisonKind.average => l10n.dashboardLeadVsAverage(
-          c.weeks!, UnitFormat.distance(c.averageM!, unit)),
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final muted = theme.colorScheme.onSurfaceVariant;
-    final c = lead.comparison;
-    final ratio = c == null || c.kind == WeekComparisonKind.average
-        ? null
-        : c.kind == WeekComparisonKind.goalRuns
-            ? lead.count / c.targetCount!
-            : lead.distanceM / c.targetM!;
-    final vs = _vsText(l10n);
-    final next = lead.next;
-    final nextSize = next == null
-        ? null
-        : plannedWorkoutSize(
-            kind: next.kind,
-            targetDistanceM: next.targetDistanceM,
-            targetDurationS: next.targetDurationSeconds,
-            structure: next.structure,
-          );
-
+    final complete = AppSemanticColors.of(context).success;
     return Card(
-      child: Padding(
-        padding: _kCardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ChartCardHeader(
-              title: l10n.dashboardLeadTitle,
-              action: IconButton(
-                key: const Key('dashboardWeekLeadOpenWeek'),
-                tooltip: l10n.periodWeeklySummary,
-                icon: const Icon(Icons.chevron_right),
-                onPressed: onOpenWeek,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: AppInsets.card,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionHeader(
+                label: l10n.dashboardGoals,
+                trailing: Icon(Icons.chevron_right,
+                    color: theme.colorScheme.onSurfaceVariant),
               ),
-            ),
-            const SizedBox(height: 8),
-            if (lead.count == 0)
-              Text(
-                l10n.dashboardLeadEmpty,
-                key: const Key('dashboardWeekLeadEmpty'),
-                style: theme.textTheme.titleMedium?.copyWith(color: muted),
-              )
-            else
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.end,
-                spacing: 8,
-                children: [
-                  Text(
-                    UnitFormat.distance(lead.distanceM, unit),
-                    key: const Key('dashboardWeekLeadDistance'),
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    l10n.dashboardWeekStripCount(lead.count),
-                    style: theme.textTheme.bodyMedium?.copyWith(color: muted),
-                  ),
-                ],
-              ),
-            if (ratio != null) ...[
-              const SizedBox(height: 8),
-              ProgressBar(
-                key: const Key('dashboardWeekLeadMeter'),
-                value: ratio.clamp(0.0, 1.0),
-                semanticsLabel: c!.kind == WeekComparisonKind.plan
-                    ? l10n.dashboardLeadPlanProgressAria
-                    : l10n.dashboardLeadGoalProgressAria,
-              ),
-            ],
-            if (vs != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                vs,
-                key: const Key('dashboardWeekLeadVs'),
-                style: theme.textTheme.bodyMedium?.copyWith(color: muted),
-              ),
-            ],
-            if (hasPlan) ...[
-              const SizedBox(height: 16),
-              Text(
-                l10n.dashboardLeadNextSession,
-                style: theme.textTheme.labelMedium?.copyWith(color: muted),
-              ),
-              const SizedBox(height: 6),
-              if (next != null)
-                _WeekLeadSession(
-                  key: const Key('dashboardWeekLeadNext'),
-                  when: _whenLabel(l10n, next.scheduledDate, lead.nextInDays),
-                  detail: [
-                    workoutKindLabel(l10n, workoutKindFromDb(next.kind)),
-                    if (nextSize != null)
-                      formatPlannedSize(l10n, nextSize,
-                          (m) => UnitFormat.distance(m.toDouble(), unit)),
-                  ].join(' · '),
-                  onTap: () => onOpenSession(next),
-                )
-              else
+              for (final g in goals) ...[
+                const SizedBox(height: AppSpace.smPlus),
+                Builder(builder: (context) {
+                  final period = g.goal.period == GoalPeriod.week
+                      ? l10n.dashboardGoalWeekly
+                      : l10n.dashboardGoalMonthly;
+                  final title =
+                      g.goal.title ?? l10n.dashboardGoalTitleFallback(period);
+                  final percent = (g.progress.overallPercent * 100).round();
+                  return MergeSemantics(
+                    child: Semantics(
+                      label: l10n.dashboardGoalA11y(
+                        period,
+                        g.goal.title ?? l10n.dashboardGoalTapToEdit,
+                        g.progress.complete
+                            ? l10n.dashboardGoalComplete
+                            : l10n.dashboardGoalInProgress,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ExcludeSemantics(
+                                  child: Text(
+                                    title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpace.sm),
+                              Text(
+                                '$percent%',
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: g.progress.complete
+                                      ? complete
+                                      : theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpace.xs),
+                          ProgressBar(
+                            value: g.progress.overallPercent.clamp(0.0, 1.0),
+                            fill: g.progress.complete ? complete : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+              if (more) ...[
+                const SizedBox(height: AppSpace.sm),
                 Text(
-                  l10n.dashboardLeadNoNextSession,
-                  key: const Key('dashboardWeekLeadNoNext'),
-                  style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                  l10n.todayGoalsMore,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _WeekLeadSession extends StatelessWidget {
-  final String when;
-  final String detail;
-  final VoidCallback onTap;
+/// Today's one progress summary: this week, this month and the current
+/// streak, as one card that opens the Progress page (issue #1374).
+class _ProgressSummaryCard extends StatelessWidget {
+  final double weekMetres;
+  final double monthMetres;
+  final int streakDays;
+  final DistanceUnit unit;
+  final VoidCallback onOpen;
 
-  const _WeekLeadSession({
+  const _ProgressSummaryCard({
     super.key,
-    required this.when,
-    required this.detail,
-    required this.onTap,
+    required this.weekMetres,
+    required this.monthMetres,
+    required this.streakDays,
+    required this.unit,
+    required this.onOpen,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Material(
-      color: scheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
+    final l10n = AppLocalizations.of(context);
+    final distanceUnit = UnitFormat.distanceLabel(unit);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Semantics(
+        button: true,
+        onTapHint: l10n.progressSummaryOpenHint,
+        child: InkWell(
+          onTap: onOpen,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
+            padding: AppInsets.card,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.directions_run, color: scheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(when,
-                          style: theme.textTheme.bodyLarge
-                              ?.copyWith(fontWeight: FontWeight.w600)),
-                      Text(detail,
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: scheme.onSurfaceVariant)),
-                    ],
-                  ),
+                ChartCardHeader(
+                  title: l10n.progressSummaryTitle,
+                  action: Icon(Icons.chevron_right,
+                      color: theme.colorScheme.onSurfaceVariant),
                 ),
-                Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                const SizedBox(height: AppSpace.smPlus),
+                StatGrid(
+                  cells: [
+                    StatTile.medium(
+                      label: l10n.progressSummaryWeek,
+                      value: UnitFormat.distanceValue(weekMetres, unit),
+                      unit: distanceUnit,
+                    ),
+                    StatTile.medium(
+                      label: l10n.progressSummaryMonth,
+                      value: UnitFormat.distanceValue(monthMetres, unit),
+                      unit: distanceUnit,
+                    ),
+                    StatTile.medium(
+                      label: l10n.dashboardSectionStreak,
+                      value: '$streakDays',
+                      unit: streakDays == 1
+                          ? l10n.dashboardStreakDayUnit
+                          : l10n.dashboardStreakDaysUnit,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -2666,16 +1804,17 @@ class _WeekLeadSession extends StatelessWidget {
 class _CoachEntryCard extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
-  const _CoachEntryCard({required this.subtitle, required this.onTap});
+  final String title;
+  const _CoachEntryCard(
+      {required this.title, required this.subtitle, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final l10n = AppLocalizations.of(context);
     return Semantics(
       button: true,
-      label: l10n.homeAskCoach,
+      label: title,
       child: Material(
         key: const Key('dashboardCoachRow'),
         color: Colors.transparent,
@@ -2699,7 +1838,7 @@ class _CoachEntryCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l10n.homeAskCoach,
+                          title,
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
@@ -2760,72 +1899,6 @@ class _RestDayCard extends StatelessWidget {
         leading: const Icon(Icons.self_improvement),
         title: Text(l10n.dashboardHeroRestDay),
         subtitle: Text(l10n.dashboardHeroRestDayBody),
-      ),
-    );
-  }
-}
-
-/// One card holding the load views as rows. Each row is a card in its own
-/// right elsewhere, so the cards inside drop their chrome here rather than
-/// nesting a card in a card.
-class _TrainingLoadCard extends StatelessWidget {
-  final String? title;
-  final List<Widget> children;
-  const _TrainingLoadCard({super.key, this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Theme(
-          data: theme.copyWith(
-            cardTheme: theme.cardTheme.copyWith(
-              elevation: 0,
-              margin: EdgeInsets.zero,
-              color: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (title != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: ChartCardHeader(title: title!),
-                ),
-              ...children,
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final Widget? trailing;
-  const _SectionHeader(this.title, {this.trailing});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium),
-          ),
-          if (trailing != null) trailing!,
-        ],
       ),
     );
   }
@@ -2955,684 +2028,3 @@ class _WelcomeEmpty extends StatelessWidget {
     );
   }
 }
-
-class _EmptyGoalsCta extends StatelessWidget {
-  final VoidCallback onAdd;
-  const _EmptyGoalsCta({required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    // audit/accessibility (2026-05-25) High — WCAG 4.1.2. Tappable
-    // `InkWell` carries no role for TalkBack; without Semantics it
-    // reads as a generic tappable region. The label summarises the
-    // CTA so a screen-reader user understands what activates.
-    return Card(
-      child: Semantics(
-        button: true,
-        label: l10n.dashboardSetWeeklyGoalA11y,
-        child: InkWell(
-        onTap: onAdd,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.primaryContainer,
-                ),
-                child: Icon(Icons.flag_outlined,
-                    color: theme.colorScheme.primary),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.dashboardSetFirstGoal,
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.dashboardSetFirstGoalBody,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
-            ],
-          ),
-        ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GoalCard extends StatelessWidget {
-  final RunGoal goal;
-  final GoalProgress progress;
-  final DistanceUnit unit;
-  final VoidCallback onTap;
-  const _GoalCard({
-    required this.goal,
-    required this.progress,
-    required this.unit,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final completeColor = AppSemanticColors.of(context).success;
-    final accent =
-        progress.complete ? completeColor : theme.colorScheme.primary;
-    final periodLabel = goal.period == GoalPeriod.week
-        ? l10n.dashboardGoalWeekly
-        : l10n.dashboardGoalMonthly;
-    final customTitle = goal.title;
-
-    // Look up per-kind progress so the card can render every kind in order,
-    // with unset targets shown as muted "-" rows. Keeps the layout stable
-    // regardless of which targets the user has configured.
-    final byKind = <GoalTargetKind, TargetProgress>{
-      for (final t in progress.targets) t.kind: t,
-    };
-
-    final a11yLabel = l10n.dashboardGoalA11y(
-      periodLabel,
-      customTitle ?? l10n.dashboardGoalTapToEdit,
-      progress.complete
-          ? l10n.dashboardGoalComplete
-          : l10n.dashboardGoalInProgress,
-    );
-
-    return Card(
-      child: Semantics(
-        button: true,
-        label: a11yLabel,
-        child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          customTitle ??
-                              l10n.dashboardGoalTitleFallback(periodLabel),
-                          style: (customTitle != null
-                                  ? theme.textTheme.titleMedium
-                                  : theme.textTheme.labelMedium)
-                              ?.copyWith(
-                            color: customTitle != null
-                                ? null
-                                : theme.colorScheme.onSurfaceVariant,
-                            letterSpacing: customTitle != null ? 0 : 1.1,
-                            fontWeight: customTitle != null
-                                ? FontWeight.w700
-                                : FontWeight.normal,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (customTitle != null)
-                          Text(
-                            periodLabel,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              letterSpacing: 1.1,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    '${(progress.overallPercent * 100).round()}%',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(Icons.edit_outlined,
-                      size: 14, color: theme.colorScheme.outline),
-                ],
-              ),
-              const SizedBox(height: 14),
-              for (int i = 0; i < GoalTargetKind.values.length; i++) ...[
-                if (i > 0) const SizedBox(height: 12),
-                _TargetRow(
-                  kind: GoalTargetKind.values[i],
-                  target: byKind[GoalTargetKind.values[i]],
-                  unit: unit,
-                ),
-              ],
-            ],
-          ),
-        ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TargetRow extends StatelessWidget {
-  final GoalTargetKind kind;
-  final TargetProgress? target;
-  final DistanceUnit unit;
-  const _TargetRow({
-    required this.kind,
-    required this.target,
-    required this.unit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = target;
-
-    if (t == null) {
-      // Unset target — single muted line, no bar, no feedback.
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                goalKindLabel(kind),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            Text(
-              '—',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final completeColor = AppSemanticColors.ofTheme(theme).success;
-    final accent = t.complete ? completeColor : theme.colorScheme.primary;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Expanded(
-              child: Text(
-                goalKindLabel(kind),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            Text(
-              _valueText(t, unit),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ProgressBar(value: t.percent, fill: accent),
-        const SizedBox(height: 5),
-        Row(
-          children: [
-            Icon(
-              t.complete ? Icons.check_circle : Icons.trending_up,
-              size: 14,
-              color: accent,
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                t.feedback,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  static String _valueText(TargetProgress t, DistanceUnit unit) {
-    switch (t.kind) {
-      case GoalTargetKind.distance:
-        final c = UnitFormat.distanceValue(t.current, unit);
-        final tgt = UnitFormat.distanceValue(t.target, unit);
-        return '$c / $tgt ${UnitFormat.distanceLabel(unit)}';
-      case GoalTargetKind.time:
-        return '${_coarseDuration(t.current)} / ${_coarseDuration(t.target)}';
-      case GoalTargetKind.avgPace:
-        final c =
-            t.current > 0 ? UnitFormat.pace(t.current, unit) : '--:--';
-        final tgt = UnitFormat.pace(t.target, unit);
-        return '$c / $tgt ${UnitFormat.paceLabel(unit)}';
-      case GoalTargetKind.runCount:
-        return '${t.current.toInt()} / ${t.target.toInt()}';
-    }
-  }
-
-  static String _coarseDuration(double seconds) {
-    final totalMin = (seconds / 60).round();
-    if (totalMin >= 60) {
-      final h = totalMin ~/ 60;
-      final m = totalMin % 60;
-      return m > 0 ? '${h}h ${m}m' : '${h}h';
-    }
-    return '${totalMin}m';
-  }
-}
-
-class _PbRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  /// Optional muted second line under the value — the age grade for a timed
-  /// PB (#269). Null for rows with no graded standard (e.g. longest run) or
-  /// when the viewer's DOB/sex is unknown.
-  final String? subValue;
-  const _PbRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.subValue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(icon, color: theme.colorScheme.primary, size: 20),
-        const SizedBox(width: 12),
-        Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              value,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (subValue != null)
-              Text(
-                subValue!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Compact 3-column stat card used in the dashboard's activity
-/// summary strip. Replaces the stacked "This Week" / "This Month" /
-/// "All Time" surfaces — same data, tighter footprint. Tappable
-/// when [onTap] is set (week + month tap into PeriodSummary; all
-/// time has no period detail surface, so the card stays inert).
-class _PeriodStatCard extends StatelessWidget {
-  final String label;
-  final double distanceMetres;
-  final int runCount;
-  final double vertMetres;
-  final DistanceUnit unit;
-  final VoidCallback? onTap;
-
-  const _PeriodStatCard({
-    required this.label,
-    required this.distanceMetres,
-    required this.runCount,
-    required this.vertMetres,
-    required this.unit,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final value = UnitFormat.distanceValue(distanceMetres, unit);
-    final unitLabel = UnitFormat.distanceLabel(unit);
-    final inner = Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.06,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Flexible(
-                child: Text(
-                  value,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.fade,
-                  softWrap: false,
-                ),
-              ),
-              const SizedBox(width: 3),
-              Text(
-                unitLabel,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.dashboardRunCount(runCount),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (vertMetres > 0) ...[
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.terrain,
-                  size: 14,
-                  color: theme.colorScheme.outline,
-                ),
-                const SizedBox(width: 3),
-                Flexible(
-                  child: Text(
-                    metricText(l10n, Metric.vert, variant: 'total', args: {
-                      'value': UnitFormat.elevation(vertMetres, unit)
-                    }),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    softWrap: false,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-    final isTappable = onTap != null;
-    final theme0 = Theme.of(context);
-    // Subtle differentiation so users can tell which tiles drill in.
-    // - Tappable: outlined border in the primary tint + trailing
-    //   chevron in the value row + standard Card elevation.
-    // - Non-tappable: zero elevation + no chevron + no outline — sits
-    //   visually flatter so it reads as a read-only stat.
-    // Was previously visually identical regardless of onTap — field
-    // report: "clickable sections should be distinguishable from non-
-    // clickable fields … Week / Month / All Time look the same but
-    // only Week and Month are clickable."
-    final body = Stack(
-      children: [
-        inner,
-        if (isTappable)
-          Positioned(
-            right: 8,
-            top: 8,
-            child: Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: theme0.colorScheme.outline,
-            ),
-          ),
-      ],
-    );
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: isTappable
-          ? RoundedRectangleBorder(
-              side: BorderSide(
-                color: theme0.colorScheme.primary,
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            )
-          : RoundedRectangleBorder(
-              side: BorderSide(
-                color: theme0.dividerColor,
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-      // audit/accessibility (2026-05-25) High — WCAG 4.1.2. The
-      // tappable InkWell was bare; without Semantics TalkBack
-      // announced only the raw stat numbers in reading order.
-      // Wrapping with a button-roled label restores the semantics
-      // for the period summary drill-in.
-      child: isTappable
-          ? Semantics(
-              button: true,
-              label: l10n.dashboardPeriodSummaryA11y(
-                label,
-                '${UnitFormat.distanceValue(distanceMetres, unit)} '
-                    '${UnitFormat.distanceLabel(unit)}',
-                l10n.dashboardRunCount(runCount),
-                vertMetres > 0
-                    ? l10n.dashboardElevationGainSuffix(
-                        UnitFormat.elevation(vertMetres, unit))
-                    : '',
-              ),
-              child: InkWell(onTap: onTap, child: body),
-            )
-          : body,
-    );
-  }
-}
-
-/// Current + best run-streak card. Strava-style daily grace — a
-/// missing today doesn't break the streak if yesterday is intact.
-/// Pure compute via `lib/streaks.dart`; the claim discipline lives in
-/// `lib/streak_card.dart` (decisions § 471 / § 475): [allTime] is the
-/// `run_streaks_for_user` row and drives both figures when present
-/// (folded with the local compute so an unsynced run is never walked
-/// back), while a null — loading, offline, signed out — suppresses the
-/// best/all-time sub-label entirely rather than presenting the store's
-/// resident sliver as the all-time truth.
-class _StreakRow extends StatelessWidget {
-  final List<Run> runs;
-  final RunStreaks? allTime;
-  const _StreakRow({super.key, required this.runs, required this.allTime});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final windowed = computeRunStreaks(
-      runs.map((r) => r.startedAt).toList(),
-      DateTime.now(),
-    );
-    final at = allTime;
-    final state = streakCardState(
-      at == null ? null : mergeAllTimeStreaks(at, windowed),
-      windowed,
-    );
-    final crown = state.current > 0;
-    final color = crown
-        ? AppSemanticColors.of(context).crown
-        : theme.colorScheme.onSurfaceVariant;
-    final bestText = switch (state.sub) {
-      StreakSubKind.best => l10n.dashboardStreakBest(state.bestN!),
-      StreakSubKind.allTimeBest => l10n.dashboardStreakAllTimeBest,
-      // Encourage rather than guilt a beginner with no current streak
-      // (new persona #26).
-      StreakSubKind.restart => l10n.dashboardStreakRestart,
-      StreakSubKind.start => l10n.dashboardStreakStart,
-      StreakSubKind.none => null,
-    };
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        Flexible(
-          child: Column(
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Icon(Icons.local_fire_department, color: color, size: 24),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${state.current}',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      state.current == 1
-                          ? l10n.dashboardStreakDayUnit
-                          : l10n.dashboardStreakDaysUnit,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.dashboardStreakCurrent,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (bestText != null)
-          Flexible(
-            child: Column(
-              children: [
-                Text(
-                  bestText,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  l10n.dashboardStreakHistory,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Today | Trends (multi_modal.md § Home, section rhythm): a hairline with a
-/// quiet label riding it, not a shouting header. Web twin: `.trends-divider`.
-class _TrendsDivider extends StatelessWidget {
-  final String label;
-  const _TrendsDivider({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      key: const Key('dashboardTrendsDivider'),
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Flexible(
-            child: Semantics(
-              header: true,
-              child: Text(
-                label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: theme.colorScheme.outlineVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The runner's own runs reduced to what the load helpers grade on. One
-/// mapping for both cards: `selfLoad` and `comebackLoad` compare their windows
-/// against each other, and two conversions would let the two windows come from
-/// different run sets — the one way that comparison can silently lie.
-List<RunForVolume> _runVolumeInputs(List<Run> runs) => [
-      for (final r in runs)
-        RunForVolume(
-          startedAt: r.startedAt.toIso8601String(),
-          distanceM: r.distanceMetres,
-          activityType: r.metadata?['activity_type'] as String?,
-        ),
-    ];

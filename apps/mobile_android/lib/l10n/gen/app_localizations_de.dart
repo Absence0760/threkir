@@ -784,7 +784,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get readinessContributorRestingHr => 'Ruhepuls';
 
   @override
-  String get dashboardTrendsDivider => 'Trends';
+  String get todayTitle => 'Heute';
+
+  @override
+  String get progressTitle => 'Fortschritt';
+
+  @override
+  String get progressSummaryTitle => 'Dein Fortschritt';
+
+  @override
+  String get progressSummaryOpenHint => 'Deinen Fortschritt öffnen';
+
+  @override
+  String get progressSummaryWeek => 'Diese Woche';
+
+  @override
+  String get progressSummaryMonth => 'Diesen Monat';
+
+  @override
+  String get todayGoalsMore => 'Weitere Ziele unter Fortschritt';
 
   @override
   String get dashboardTrendGroupVolume => 'Umfang';
@@ -858,7 +876,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'Auf der Startseite ausblenden';
+  String get progressHideGroup => 'Unter Fortschritt ausblenden';
 
   @override
   String dashboardCardHidden(String name) {
@@ -1043,6 +1061,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get homeAskCoachSubtitleRunOnly =>
       'Tipps zu Läufen, Training und Erholung';
+
+  @override
+  String get homeCoachTitle => 'Coach';
+
+  @override
+  String get homeCoachSubtitleTools => 'Geführte Läufe, Athleten und Coaches';
 
   @override
   String get youProfileTitle => 'Dein Profil';

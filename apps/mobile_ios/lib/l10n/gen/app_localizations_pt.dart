@@ -783,7 +783,25 @@ class AppLocalizationsPt extends AppLocalizations {
   String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
 
   @override
-  String get dashboardTrendsDivider => 'Tendências';
+  String get todayTitle => 'Hoje';
+
+  @override
+  String get progressTitle => 'Progresso';
+
+  @override
+  String get progressSummaryTitle => 'O seu progresso';
+
+  @override
+  String get progressSummaryOpenHint => 'Abrir o seu progresso';
+
+  @override
+  String get progressSummaryWeek => 'Esta semana';
+
+  @override
+  String get progressSummaryMonth => 'Este mês';
+
+  @override
+  String get todayGoalsMore => 'Mais metas em Progresso';
 
   @override
   String get dashboardTrendGroupVolume => 'Volume';
@@ -856,7 +874,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'Ocultar do Início';
+  String get progressHideGroup => 'Ocultar do Progresso';
 
   @override
   String dashboardCardHidden(String name) {
@@ -1041,6 +1059,13 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get homeAskCoachSubtitleRunOnly =>
       'Dicas sobre as suas corridas, treino e recuperação';
+
+  @override
+  String get homeCoachTitle => 'Treinador';
+
+  @override
+  String get homeCoachSubtitleTools =>
+      'Corridas guiadas, atletas e treinadores';
 
   @override
   String get youProfileTitle => 'O seu perfil';
@@ -23281,7 +23306,25 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get readinessContributorRestingHr => 'Frequência cardíaca em repouso';
 
   @override
-  String get dashboardTrendsDivider => 'Tendências';
+  String get todayTitle => 'Hoje';
+
+  @override
+  String get progressTitle => 'Progresso';
+
+  @override
+  String get progressSummaryTitle => 'Seu progresso';
+
+  @override
+  String get progressSummaryOpenHint => 'Abrir seu progresso';
+
+  @override
+  String get progressSummaryWeek => 'Esta semana';
+
+  @override
+  String get progressSummaryMonth => 'Este mês';
+
+  @override
+  String get todayGoalsMore => 'Mais metas em Progresso';
 
   @override
   String get dashboardTrendGroupVolume => 'Volume';
@@ -23355,7 +23398,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get dashboardHideFromHome => 'Ocultar do Início';
+  String get progressHideGroup => 'Ocultar do Progresso';
 
   @override
   String dashboardCardHidden(String name) {
@@ -23540,6 +23583,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get homeAskCoachSubtitleRunOnly =>
       'Dicas sobre suas corridas, treino e recuperação';
+
+  @override
+  String get homeCoachTitle => 'Treinador';
+
+  @override
+  String get homeCoachSubtitleTools =>
+      'Corridas guiadas, atletas e treinadores';
 
   @override
   String get youProfileTitle => 'Seu perfil';

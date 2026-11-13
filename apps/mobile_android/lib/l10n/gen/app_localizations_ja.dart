@@ -749,7 +749,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get readinessContributorRestingHr => '安静時心拍数';
 
   @override
-  String get dashboardTrendsDivider => 'トレンド';
+  String get todayTitle => '今日';
+
+  @override
+  String get progressTitle => '進捗';
+
+  @override
+  String get progressSummaryTitle => 'あなたの進捗';
+
+  @override
+  String get progressSummaryOpenHint => '進捗を開く';
+
+  @override
+  String get progressSummaryWeek => '今週';
+
+  @override
+  String get progressSummaryMonth => '今月';
+
+  @override
+  String get todayGoalsMore => 'その他の目標は進捗で';
 
   @override
   String get dashboardTrendGroupVolume => '走行量';
@@ -817,7 +835,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'ホームで非表示';
+  String get progressHideGroup => '進捗で非表示';
 
   @override
   String dashboardCardHidden(String name) {
@@ -998,6 +1016,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get homeAskCoachSubtitleRunOnly => 'ラン・トレーニング・回復のアドバイス';
+
+  @override
+  String get homeCoachTitle => 'コーチ';
+
+  @override
+  String get homeCoachSubtitleTools => 'ガイド付きラン、アスリートとコーチ';
 
   @override
   String get youProfileTitle => 'あなたのプロフィール';

@@ -57,7 +57,8 @@ EventView _event(DateTime startsAt) => EventView(
     );
 
 final _card = find.byKey(const Key('dashboardUpcomingEvent'));
-final _lead = find.byKey(const Key('dashboardWeekLead'));
+final _summary = find.byKey(const Key('todayProgressSummary'));
+final _hero = find.byKey(const Key('dashboardTodayHero'));
 
 Future<void> _mount(WidgetTester tester, SocialService social,
     {required Finder until}) async {
@@ -112,23 +113,24 @@ void main() {
     expect(find.descendant(of: _card, matching: find.text('Saturday Long Run')),
         findsOneWidget);
     double top(Finder f) => tester.getTopLeft(f).dy;
-    expect(top(_card), greaterThan(top(_lead)));
-    expect(top(_card), lessThan(top(find.text('Trends'))));
+    expect(top(_card), greaterThan(top(_hero)));
+    expect(top(_card), lessThan(top(_summary)),
+        reason: 'what is next comes before the progress summary');
   });
 
   testWidgets('no event in the window, no card', (tester) async {
-    await _mount(tester, _FakeSocial(), until: _lead);
+    await _mount(tester, _FakeSocial(), until: _summary);
     expect(_card, findsNothing);
   });
 
   testWidgets('a failed read hides only the card', (tester) async {
     final social = _FakeSocial(fails: true);
-    await _mount(tester, social, until: _lead);
+    await _mount(tester, social, until: _summary);
     await pumpUntil(tester, () => social.windows.isNotEmpty,
         describe: 'the event read to run');
     await tester.pump();
     expect(_card, findsNothing);
-    expect(_lead, findsOneWidget);
+    expect(_summary, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

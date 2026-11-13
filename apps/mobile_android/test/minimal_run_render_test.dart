@@ -16,6 +16,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
 import '../lib/screens/run_detail_screen.dart';
 import '../lib/screens/runs_screen.dart';
 import '../lib/widgets/run_list_tile.dart';
@@ -290,8 +291,10 @@ void main() {
   });
 
   group('the dashboard renders an account of only minimal runs', () {
+    // Today, or with [progress] the Progress page its summary card opens
+    // (issue #1374): the totals, the week lead and the goal cards live there.
     Future<void> pumpDashboard(WidgetTester tester, List<Run> runs,
-        {bool miles = false, RunGoal? goal}) async {
+        {bool miles = false, RunGoal? goal, bool progress = false}) async {
       await _tallPhone(tester);
       final prefs = await _prefs(miles: miles);
       if (goal != null) await prefs.upsertGoal(goal);
@@ -303,13 +306,20 @@ void main() {
       await foodStore.init(overrideDirectory: _tmp('dash_food_'));
       await tester.runAsync(() => runStore.saveManyFromRemote(runs));
 
-      await tester.pumpWidget(_app(DashboardScreen(
-        runStore: runStore,
-        routeStore: LocalRouteStore(),
-        gymStore: gymStore,
-        foodStore: foodStore,
-        preferences: prefs,
-      )));
+      await tester.pumpWidget(_app(progress
+          ? ProgressScreen(
+              runStore: runStore,
+              routeStore: LocalRouteStore(),
+              gymStore: gymStore,
+              preferences: prefs,
+            )
+          : DashboardScreen(
+              runStore: runStore,
+              routeStore: LocalRouteStore(),
+              gymStore: gymStore,
+              foodStore: foodStore,
+              preferences: prefs,
+            )));
       await tester.pump();
       await tester.pump();
     }
@@ -321,9 +331,15 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('Welcome!'), findsNothing,
             reason: 'a run, however small, is a history');
-        expect(find.text('ALL TIME'), findsOneWidget);
         expect(find.byKey(const Key('dashboardLatestRun')), findsOneWidget);
-        expectNoDegenerateNumbers(tester, surface: 'dashboard, ${f.name}');
+        expect(find.byKey(const Key('todayProgressSummary')), findsOneWidget);
+        expectNoDegenerateNumbers(tester, surface: 'today, ${f.name}');
+        await pumpUntilStoreWritesSettle(tester);
+
+        await pumpDashboard(tester, [_runOf(f)], progress: true);
+        expect(tester.takeException(), isNull);
+        expect(find.text('ALL TIME'), findsOneWidget);
+        expectNoDegenerateNumbers(tester, surface: 'progress, ${f.name}');
         await pumpUntilStoreWritesSettle(tester);
       });
     }
@@ -332,16 +348,21 @@ void main() {
       testWidgets('every minimal run at once (${miles ? 'mi' : 'km'})',
           (tester) async {
         final now = DateTime.now();
-        await pumpDashboard(tester, [
+        final runs = [
           for (final (i, f) in _fixtures.indexed)
             _runOf(f,
                 id: 'run-$i',
                 start: now.subtract(Duration(minutes: 10 * (i + 1)))),
-        ], miles: miles);
+        ];
+        await pumpDashboard(tester, runs, miles: miles);
+        expect(tester.takeException(), isNull);
+        expectNoDegenerateNumbers(tester, surface: 'today, all minimal');
+        await pumpUntilStoreWritesSettle(tester);
 
+        await pumpDashboard(tester, runs, miles: miles, progress: true);
         expect(tester.takeException(), isNull);
         expect(find.text('ALL TIME'), findsOneWidget);
-        expectNoDegenerateNumbers(tester, surface: 'dashboard, all minimal');
+        expectNoDegenerateNumbers(tester, surface: 'progress, all minimal');
         await pumpUntilStoreWritesSettle(tester);
       });
     }
@@ -355,26 +376,29 @@ void main() {
     ]) {
       testWidgets('$label under a weekly goal on every target', (tester) async {
         final now = DateTime.now();
-        await pumpDashboard(
-          tester,
-          [
-            for (final (i, f) in runs.indexed)
-              _runOf(f, id: 'run-$i', start: now.subtract(Duration(minutes: i))),
-          ],
-          goal: const RunGoal(
-            id: 'g1',
-            period: GoalPeriod.week,
-            distanceMetres: 20000,
-            timeSeconds: 7200,
-            avgPaceSecPerKm: 330,
-            runCount: 3,
-          ),
+        final seeded = [
+          for (final (i, f) in runs.indexed)
+            _runOf(f, id: 'run-$i', start: now.subtract(Duration(minutes: i))),
+        ];
+        const goal = RunGoal(
+          id: 'g1',
+          period: GoalPeriod.week,
+          distanceMetres: 20000,
+          timeSeconds: 7200,
+          avgPaceSecPerKm: 330,
+          runCount: 3,
         );
+        await pumpDashboard(tester, seeded, goal: goal);
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('todayGoalsStrip')), findsOneWidget);
+        expectNoDegenerateNumbers(tester, surface: 'today, $label, goal');
+        await pumpUntilStoreWritesSettle(tester);
 
+        await pumpDashboard(tester, seeded, goal: goal, progress: true);
         expect(tester.takeException(), isNull);
         expect(find.byKey(const Key('dashboardWeekLeadVs')), findsOneWidget,
             reason: 'the week lead measures the minimal week against the goal');
-        expectNoDegenerateNumbers(tester, surface: 'dashboard, $label, goal');
+        expectNoDegenerateNumbers(tester, surface: 'progress, $label, goal');
         await pumpUntilStoreWritesSettle(tester);
       });
     }

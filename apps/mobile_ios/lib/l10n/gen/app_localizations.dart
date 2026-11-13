@@ -1241,11 +1241,47 @@ abstract class AppLocalizations {
   /// **'Resting heart rate'**
   String get readinessContributorRestingHr;
 
-  /// Quiet label on the hairline that separates the Home dashboard Today cards from the trend cards below. Not a shouting header.
+  /// Title at the top of the Home tab, which shows what to do today: today's workout, the next event, the last run, a Start, goals and one progress summary
   ///
   /// In en, this message translates to:
-  /// **'Trends'**
-  String get dashboardTrendsDivider;
+  /// **'Today'**
+  String get todayTitle;
+
+  /// Title of the Progress page, reached from the progress summary card on Today: trends, personal bests, streak, goals and the recap
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get progressTitle;
+
+  /// Heading of the one progress summary card on Today; a tap opens the Progress page
+  ///
+  /// In en, this message translates to:
+  /// **'Your progress'**
+  String get progressSummaryTitle;
+
+  /// Screen-reader hint on the progress summary card: what a tap does
+  ///
+  /// In en, this message translates to:
+  /// **'Open your progress'**
+  String get progressSummaryOpenHint;
+
+  /// Label under this calendar week's distance on Today's progress summary card
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get progressSummaryWeek;
+
+  /// Label under this calendar month's distance on Today's progress summary card
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get progressSummaryMonth;
+
+  /// Quiet line under Today's goals strip when the runner has more goals than it lists; the strip opens the Progress page, which lists them all
+  ///
+  /// In en, this message translates to:
+  /// **'More goals in Progress'**
+  String get todayGoalsMore;
 
   /// Home dashboard trend group heading, collapsible: the weekly distance cards
   ///
@@ -1373,11 +1409,11 @@ abstract class AppLocalizations {
   /// **'Readiness {score}'**
   String dashboardHeroReadiness(int score);
 
-  /// Long-press action on a Home trend group that hides it from Home
+  /// Long-press and screen-reader action on a trend group heading on the Progress page: hides that group until Settings brings it back
   ///
   /// In en, this message translates to:
-  /// **'Hide from Home'**
-  String get dashboardHideFromHome;
+  /// **'Hide from Progress'**
+  String get progressHideGroup;
 
   /// Banner after hiding a Home trend group; {name} is the group title
   ///
@@ -1732,6 +1768,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Advice on your runs, training and recovery'**
   String get homeAskCoachSubtitleRunOnly;
+
+  /// Title of the Coach row on Today when the AI coach is not live on this deploy or the runner is signed out: the Coach screen still holds guided runs and athletes & coaches
+  ///
+  /// In en, this message translates to:
+  /// **'Coach'**
+  String get homeCoachTitle;
+
+  /// Subtitle of the Coach row on Today when the AI coach is not available: what the Coach screen holds instead
+  ///
+  /// In en, this message translates to:
+  /// **'Guided runs, athletes and coaches'**
+  String get homeCoachSubtitleTools;
 
   /// Title of the profile entry at the top of the You tab
   ///

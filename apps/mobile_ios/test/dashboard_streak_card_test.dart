@@ -9,12 +9,11 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
-import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/progress_screen.dart';
 
 /// Streak-card truth pins (decisions § 475): the all-time figures come
 /// from the `run_streaks_for_user` aggregate, a missing answer suppresses
@@ -80,12 +79,12 @@ Future<Directory> _seedAndPump(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
+      // The streak card left Home for the Progress page (issue #1374).
+      home: ProgressScreen(
         apiClient: api,
         runStore: runStore,
         routeStore: LocalRouteStore(),
         gymStore: LocalGymStore(),
-        foodStore: LocalFoodStore(),
         preferences: prefs,
       ),
     ),

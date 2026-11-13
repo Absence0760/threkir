@@ -780,7 +780,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get readinessContributorRestingHr => 'Fréquence cardiaque au repos';
 
   @override
-  String get dashboardTrendsDivider => 'Tendances';
+  String get todayTitle => 'Aujourd\'hui';
+
+  @override
+  String get progressTitle => 'Progression';
+
+  @override
+  String get progressSummaryTitle => 'Votre progression';
+
+  @override
+  String get progressSummaryOpenHint => 'Ouvrir votre progression';
+
+  @override
+  String get progressSummaryWeek => 'Cette semaine';
+
+  @override
+  String get progressSummaryMonth => 'Ce mois-ci';
+
+  @override
+  String get todayGoalsMore => 'Autres objectifs dans Progression';
 
   @override
   String get dashboardTrendGroupVolume => 'Volume';
@@ -854,7 +872,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get dashboardHideFromHome => 'Masquer de l\'accueil';
+  String get progressHideGroup => 'Masquer de la progression';
 
   @override
   String dashboardCardHidden(String name) {
@@ -1040,6 +1058,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get homeAskCoachSubtitleRunOnly =>
       'Des conseils sur vos courses, votre entraînement et votre récupération';
+
+  @override
+  String get homeCoachTitle => 'Coach';
+
+  @override
+  String get homeCoachSubtitleTools => 'Courses guidées, athlètes et coachs';
 
   @override
   String get youProfileTitle => 'Votre profil';

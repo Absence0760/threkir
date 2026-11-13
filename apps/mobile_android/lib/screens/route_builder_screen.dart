@@ -12,7 +12,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, ChoiceChipOption, ChoiceChipRow, syncMotionLoop;
+    show
+        AppMotion,
+        ChoiceChipOption,
+        ChoiceChipRow,
+        MapFirstPage,
+        SheetScaffold,
+        syncMotionLoop;
 import 'package:uuid/uuid.dart';
 
 import '../auth_error.dart';
@@ -1157,7 +1163,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     // generation counter cancels a stale in-flight pass, same as
     // placing another pin mid-route.
     final canListPoints = _waypoints.isNotEmpty && !_saving;
-    final scaffold = Scaffold(
+    final scaffold = MapFirstPage(
       appBar: AppBar(
         title: TextField(
           controller: _searchCtl,
@@ -1209,7 +1215,10 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
           ),
         ],
       ),
-      body: Stack(
+      // Draw mode takes the drag gestures off the map: one finger draws, and
+      // turning the mode off brings panning back.
+      map: Stack(
+        fit: StackFit.expand,
         children: [
           FlutterMap(
             mapController: _map,
@@ -1310,8 +1319,6 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                 ),
             ],
           ),
-          // Draw mode takes the drag gestures off the map: one finger draws,
-          // and turning the mode off brings panning back.
           if (_drawing)
             Positioned.fill(
               child: GestureDetector(
@@ -1322,110 +1329,88 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                 onPanEnd: _onStrokeEnd,
               ),
             ),
-          // Top status pill — distance + elevation gain + spinner.
-          Positioned(
-            top: 12,
-            left: 12,
-            right: 12,
-            child: _StatusPill(
-              distanceM: _distanceM,
-              elevationGainM: _elevationGainM,
-              routing: _routing,
-              saving: _saving,
-              waypointCount: _waypoints.length,
-              mode: _mode,
-              dragIndex: _dragIndex,
-              onCancelDrag: () => setState(() => _dragIndex = null),
-              onDeleteDragged: _deleteSelectedWaypoint,
+        ],
+      ),
+      overlays: [
+        // Distance + elevation gain + spinner.
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: _StatusPill(
+            distanceM: _distanceM,
+            elevationGainM: _elevationGainM,
+            routing: _routing,
+            saving: _saving,
+            waypointCount: _waypoints.length,
+            mode: _mode,
+            dragIndex: _dragIndex,
+            onCancelDrag: () => setState(() => _dragIndex = null),
+            onDeleteDragged: _deleteSelectedWaypoint,
+          ),
+        ),
+        // Search results hang from the app bar, over the status pill.
+        if (_searchOpen)
+          Material(
+            elevation: 4,
+            child: PlaceSearchPanel(
+              results: _searchResults,
+              unavailable: _searchUnavailable,
+              onSelect: _onSearchResultTap,
+              onRetry: () => _runPlaceSearch(_searchCtl.text),
             ),
           ),
-          // Search-results dropdown (under the AppBar).
-          if (_searchOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Material(
-                elevation: 4,
-                child: PlaceSearchPanel(
-                  results: _searchResults,
-                  unavailable: _searchUnavailable,
-                  onSelect: _onSearchResultTap,
-                  onRetry: () => _runPlaceSearch(_searchCtl.text),
-                ),
+      ],
+      // The mode selector shares a row with Locate me, so it cannot grow into
+      // it, and the template stands the row and the credit on the system
+      // nav bar at any text scale. The selector hides while the search field
+      // has focus: the results dropdown hangs from the app bar and the
+      // selector used to cover its lower rows.
+      footer: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_drawing || _artFidelity != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _DrawStatusCard(
+                drawing: _drawing,
+                fidelity: _artFidelity,
               ),
             ),
-          // The bottom controls and the map credit are one column inside a
-          // SafeArea, so neither depends on a guessed offset: the column
-          // stands on the system inset (gesture or 3-button navigation bar),
-          // the credit sits under the controls at any text scale, and the
-          // mode selector shares a row with the Locate FAB, so it cannot grow
-          // into it. The selector hides while the search field has focus —
-          // the results dropdown hangs from the AppBar and the selector used
-          // to cover its lower rows.
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_drawing || _artFidelity != null)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: _DrawStatusCard(
-                        drawing: _drawing,
-                        fidelity: _artFidelity,
+          Row(
+            children: [
+              Expanded(
+                child: _searchFocused
+                    ? const SizedBox.shrink()
+                    : Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: _ModeToggle(
+                          mode: _mode,
+                          onChanged:
+                              _routing || _saving ? null : _onModeChanged,
+                        ),
                       ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _searchFocused
-                              ? const SizedBox.shrink()
-                              : Align(
-                                  alignment: AlignmentDirectional.centerStart,
-                                  child: _ModeToggle(
-                                    mode: _mode,
-                                    onChanged: _routing || _saving
-                                        ? null
-                                        : _onModeChanged,
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(width: 12),
-                        IconButton.filledTonal(
-                          key: const Key('route-builder-draw-toggle'),
-                          tooltip: l10n.routeBuilderDrawShape,
-                          isSelected: _drawing,
-                          icon: const Icon(Icons.gesture),
-                          selectedIcon: const Icon(Icons.edit_off),
-                          onPressed:
-                              _routing || _saving ? null : _toggleDrawing,
-                        ),
-                        const SizedBox(width: 12),
-                        FloatingActionButton(
-                          heroTag: 'route_builder_locate_fab',
-                          tooltip: l10n.routeBuilderLocateMe,
-                          onPressed: _routing || _saving ? null : _locate,
-                          child: const Icon(Icons.my_location),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  MapAttribution(darkBasemap: darkBasemap),
-                ],
               ),
-            ),
+              const SizedBox(width: 12),
+              IconButton.filledTonal(
+                key: const Key('route-builder-draw-toggle'),
+                tooltip: l10n.routeBuilderDrawShape,
+                isSelected: _drawing,
+                icon: const Icon(Icons.gesture),
+                selectedIcon: const Icon(Icons.edit_off),
+                onPressed: _routing || _saving ? null : _toggleDrawing,
+              ),
+              const SizedBox(width: 12),
+              FloatingActionButton(
+                heroTag: 'route_builder_locate_fab',
+                tooltip: l10n.routeBuilderLocateMe,
+                onPressed: _routing || _saving ? null : _locate,
+                child: const Icon(Icons.my_location),
+              ),
+            ],
           ),
         ],
       ),
+      attribution: MapAttribution(darkBasemap: darkBasemap),
     );
     // Any placed waypoint is unsaved work (Save pops directly after
     // persisting, which bypasses the guard).
@@ -1698,67 +1683,60 @@ class _WaypointListSheetState extends State<WaypointListSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Text(
-              l10n.routeBuilderPointList,
-              style: theme.textTheme.titleMedium,
+    // The list rows bring their own 16 dp inset, so the sheet adds none
+    // beside them; SheetScaffold still lifts the list off the nav bar.
+    return SheetScaffold(
+      padding: const EdgeInsets.only(bottom: 16),
+      title: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(l10n.routeBuilderPointList),
+      ),
+      scrollBody: false,
+      body: ReorderableListView.builder(
+        shrinkWrap: true,
+        buildDefaultDragHandles: false,
+        itemCount: _items.length,
+        onReorder: _onReorder,
+        itemBuilder: (context, i) {
+          final w = _items[i];
+          final tag = i == 0
+              ? l10n.routeBuilderPointStart
+              : (i == _items.length - 1 && i > 0
+                  ? l10n.routeBuilderPointEnd
+                  : null);
+          return ListTile(
+            key: ValueKey(_ids[i]),
+            leading: CircleAvatar(
+              radius: 14,
+              child: Text('${i + 1}'),
             ),
-          ),
-          Flexible(
-            child: ReorderableListView.builder(
-              shrinkWrap: true,
-              buildDefaultDragHandles: false,
-              itemCount: _items.length,
-              onReorder: _onReorder,
-              itemBuilder: (context, i) {
-                final w = _items[i];
-                final tag = i == 0
-                    ? l10n.routeBuilderPointStart
-                    : (i == _items.length - 1 && i > 0
-                        ? l10n.routeBuilderPointEnd
-                        : null);
-                return ListTile(
-                  key: ValueKey(_ids[i]),
-                  leading: CircleAvatar(
-                    radius: 14,
-                    child: Text('${i + 1}'),
-                  ),
-                  title: Text(
-                    '${w.lat.toStringAsFixed(5)}, ${w.lng.toStringAsFixed(5)}',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  subtitle: tag == null ? null : Text(tag),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: l10n.routeBuilderDeletePoint(i + 1),
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _removeAt(i),
-                      ),
-                      ReorderableDragStartListener(
-                        index: i,
-                        child: Semantics(
-                          label: l10n.routeBuilderReorderPoint(i + 1),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Icon(Icons.drag_handle),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+            title: Text(
+              '${w.lat.toStringAsFixed(5)}, ${w.lng.toStringAsFixed(5)}',
+              style: theme.textTheme.bodyMedium,
             ),
-          ),
-        ],
+            subtitle: tag == null ? null : Text(tag),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: l10n.routeBuilderDeletePoint(i + 1),
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => _removeAt(i),
+                ),
+                ReorderableDragStartListener(
+                  index: i,
+                  child: Semantics(
+                    label: l10n.routeBuilderReorderPoint(i + 1),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Icon(Icons.drag_handle),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -880,7 +880,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name est masqué de la page Progression.';
+    return 'Groupe « $name » masqué de la page Progression.';
   }
 
   @override
@@ -2905,7 +2905,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get historySignInToSync =>
-      'Connectez-vous depuis l’onglet Vous pour synchroniser les courses';
+      'Connectez-vous depuis l\'onglet Vous pour synchroniser les courses';
 
   @override
   String get historyRefreshFailed =>
@@ -3236,7 +3236,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Les zones utilisent une FC max estimée selon l\'âge. Si vous prenez des médicaments cardiaques (p. ex. bêtabloquants) ou si vous avez mesuré votre FC max, définissez-la pour des zones précises.';
+      'Les zones utilisent une FC max estimée selon l\'âge. Si vous prenez un traitement qui agit sur la fréquence cardiaque (p. ex. des bêtabloquants) ou si vous avez mesuré votre FC max, définissez-la pour des zones précises.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Définir la FC max';
@@ -13260,7 +13260,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'La saisie par photo de repas nécessite l\'information mise à jour sur l\'IA.';
+      'La saisie par photo de repas nécessite votre consentement à l\'information mise à jour sur l\'IA.';
 
   @override
   String get platePhotoErrorPro =>
@@ -13415,7 +13415,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'La taille, le poids, la date de naissance et le sexe sont des données de santé : ils se modifient derrière leur consentement.';
+      'La taille, le poids, la date de naissance et le sexe sont des données de santé ; leur modification est donc soumise à votre consentement.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Modifier les données corporelles';
@@ -20436,7 +20436,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prefsDisclosureLevel => 'Niveau de détail';
 
   @override
-  String get prefsProgressCards => 'Cartes de la Progression';
+  String get prefsProgressCards => 'Cartes de la page Progression';
 
   @override
   String get prefsProgressCardsHint =>

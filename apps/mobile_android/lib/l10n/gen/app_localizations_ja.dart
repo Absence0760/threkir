@@ -353,7 +353,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'ロスレスで往復できます。サインインなしでも動作し、復元したランは次回サインイン時にアカウントに同期されます。';
+      'データを失わずにバックアップと復元ができます。サインインなしでも動作し、復元したランは次回サインイン時にアカウントに同期されます。';
 
   @override
   String get importBackupMakeOne => 'バックアップを作成';
@@ -1666,7 +1666,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'アカウントがあると、ランがウェブアプリや他の端末と同期され、この端末をなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」で作成できます。';
+      'アカウントがあると、ランがウェブアプリや他の端末と同期され、この端末をなくしても取り戻せます。なくても走れます。ここではすべてオフラインで動作し、あとから「あなた」タブで作成できます。';
 
   @override
   String get onboardingAccountCreate => '無料アカウントを作成';
@@ -2266,7 +2266,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runWorkoutLoaded(int count) {
-    return 'ワークアウトを読み込みました · $countステップ';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countステップ',
+    );
+    return 'ワークアウトを読み込みました · $_temp0';
   }
 
   @override
@@ -3088,7 +3093,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'ゾーンは年齢から推定した最大心拍数を使用します。心拍に影響する薬（ベータ遮断薬など）を服用している場合や最大心拍数を測定済みの場合は、設定すると正確なゾーンを取得できます。';
+      'ゾーンは年齢から推定した最大心拍数を使用します。心拍に影響する薬（ベータ遮断薬など）を服用している場合や最大心拍数を測定済みの場合は、正確なゾーンにするため最大心拍数を設定してください。';
 
   @override
   String get runDetailHrDisclaimerAction => '最大心拍数を設定';
@@ -19681,10 +19686,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'ルートの軌跡と心拍数は、Web のプライバシー設定でオンにします。';
+      'ルートの軌跡と心拍数は、ウェブのプライバシー設定でオンにします。';
 
   @override
-  String get streamerOverlayOpenWebSettings => 'Web で開く';
+  String get streamerOverlayOpenWebSettings => 'ウェブで開く';
 
   @override
   String get liveSpectatorHeartRate => '心拍数';

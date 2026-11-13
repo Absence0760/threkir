@@ -366,7 +366,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Ida e volta sem perdas. Funciona sem sessão iniciada — as corridas restauradas sincronizam com a sua conta na próxima vez que entrar.';
+      'Exportação e restauro sem perdas. Funciona sem sessão iniciada — as corridas restauradas sincronizam com a sua conta da próxima vez que iniciar sessão.';
 
   @override
   String get importBackupMakeOne => 'Fazer um backup';
@@ -881,7 +881,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name está oculto no Progresso.';
+    return 'Ocultou $name do Progresso.';
   }
 
   @override
@@ -3226,7 +3226,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'As zonas utilizam uma FC máxima estimada pela idade. Se toma medicação cardíaca (ex.: betabloqueadores) ou já mediu a sua FC máxima, defina-a para zonas precisas.';
+      'As zonas utilizam uma FC máxima estimada pela idade. Se toma medicação que afeta a frequência cardíaca (ex.: betabloqueadores) ou já mediu a sua FC máxima, defina-a para obter zonas precisas.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Definir FC máx.';
@@ -13389,7 +13389,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso são editados atrás do consentimento.';
+      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso só podem ser editados depois de dar o respetivo consentimento.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Editar dados corporais';
@@ -20430,7 +20430,7 @@ class AppLocalizationsPt extends AppLocalizations {
       'Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser.';
 
   @override
-  String get dashboardTrainingLoadSectionAction => 'Mudar quanto detalhe';
+  String get dashboardTrainingLoadSectionAction => 'Alterar o nível de detalhe';
 
   @override
   String recapCardKicker(String period) {
@@ -22989,7 +22989,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importBackupCardDescription =>
-      'Ida e volta sem perdas. Funciona sem login — as corridas restauradas sincronizam com sua conta na próxima vez que você entrar.';
+      'Backup e restauração sem perda de dados. Funciona sem login — as corridas restauradas sincronizam com sua conta na próxima vez que você entrar.';
 
   @override
   String get importBackupMakeOne => 'Fazer um backup';
@@ -23506,7 +23506,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name está oculto no Progresso.';
+    return 'O grupo $name foi ocultado do Progresso.';
   }
 
   @override
@@ -24370,7 +24370,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get onboardingAccountBody =>
-      'Uma conta sincroniza suas corridas com o app web e seus outros dispositivos, e recupera tudo se você perder este. Você pode correr sem ela: aqui tudo funciona offline, e você pode criar uma mais tarde em Você.';
+      'Uma conta sincroniza suas corridas com o app web e seus outros dispositivos, e recupera tudo se você perder este. Você pode correr sem ela: aqui tudo funciona offline, e você pode criar uma mais tarde na aba Você.';
 
   @override
   String get onboardingAccountCreate => 'Criar uma conta gratuita';
@@ -25852,7 +25852,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailHrDisclaimer =>
-      'As zonas usam uma FC máxima estimada pela idade. Se você toma medicação cardíaca (ex.: betabloqueadores) ou já mediu sua FC máxima, defina-a para zonas precisas.';
+      'As zonas usam uma FC máxima estimada pela idade. Se você toma medicação que afeta a frequência cardíaca (ex.: betabloqueadores) ou já mediu sua FC máxima, defina-a para obter zonas precisas.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Definir FC máx.';
@@ -36006,7 +36006,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso são editados atrás do consentimento.';
+      'Altura, peso, data de nascimento e sexo são dados de saúde, por isso só são editados após o consentimento de dados de saúde.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Editar dados corporais';
@@ -43038,7 +43038,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser.';
 
   @override
-  String get dashboardTrainingLoadSectionAction => 'Mudar quanto detalhe';
+  String get dashboardTrainingLoadSectionAction => 'Mudar o nível de detalhe';
 
   @override
   String recapCardKicker(String period) {

@@ -879,7 +879,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String dashboardCardHidden(String name) {
-    return '$name está oculto en Progreso.';
+    return 'Has ocultado «$name» de Progreso.';
   }
 
   @override
@@ -3229,7 +3229,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runDetailHrDisclaimer =>
-      'Las zonas usan una FC máxima estimada por edad. Si tomas medicación cardíaca (p. ej. betabloqueantes) o si has medido tu FC máxima, configúrala para obtener zonas precisas.';
+      'Las zonas usan una FC máxima estimada por edad. Si tomas medicación que afecta a la frecuencia cardíaca (p. ej. betabloqueantes) o has medido tu FC máxima, configúrala para obtener zonas precisas.';
 
   @override
   String get runDetailHrDisclaimerAction => 'Definir FC máx.';
@@ -10455,7 +10455,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Basado en volumen: configura la FC en reposo y máxima y registra con una banda para pasar a TRIMP.';
 
   @override
-  String get trainingLoadSetHeartRate => 'Definir frecuencia cardiaca';
+  String get trainingLoadSetHeartRate => 'Definir frecuencia cardíaca';
 
   @override
   String get trainingLoadEmpty =>
@@ -13382,7 +13382,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get nutritionTargetsMetricsHint =>
-      'La altura, el peso, la fecha de nacimiento y el sexo son datos de salud, así que se editan tras su consentimiento.';
+      'La altura, el peso, la fecha de nacimiento y el sexo son datos de salud, así que para editarlos hace falta tu consentimiento de datos de salud.';
 
   @override
   String get nutritionTargetsEditMetrics => 'Editar datos corporales';
@@ -20397,7 +20397,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsProgressCardsHint =>
-      'Desmarca un grupo para quitarlo de la página Progreso. La elección te sigue en todos tus dispositivos.';
+      'Desmarca un grupo para quitarlo de la página Progreso. Tu elección se aplica en todos tus dispositivos.';
 
   @override
   String get prefsDisclosureAuto => 'Automático';
@@ -20421,7 +20421,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras.';
+      'Tus cifras de estado físico, fatiga y forma. La sección está plegada porque pediste solo lo básico: ábrela cuando quieras.';
 
   @override
   String get dashboardTrainingLoadSectionAction => 'Cambiar cuánto detalle';
@@ -20656,7 +20656,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'El trazado de la ruta y la frecuencia cardiaca se activan en tus ajustes de privacidad en la web.';
+      'El trazado de la ruta y la frecuencia cardíaca se activan en tus ajustes de privacidad en la web.';
 
   @override
   String get streamerOverlayOpenWebSettings => 'Abrir en la web';

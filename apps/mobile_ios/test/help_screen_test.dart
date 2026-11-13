@@ -12,6 +12,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/help_screen.dart';
 import '../lib/widgets/help_button.dart';
 import '../lib/widgets/info_tip.dart';
+import 'worst_case_layout.dart';
 
 HelpLibrary _fixture() => HelpLibrary.parse(
   File('test/fixtures/help_guides.json').readAsStringSync(),
@@ -398,5 +399,20 @@ void main() {
       expect(find.widgetWithText(PageHeading, 'Connecting Strava'),
           findsOneWidget);
     });
+  });
+
+  worstCaseTestWidgets('the guide list and a guide', (tester, locale) async {
+    _useLibrary(_fixture());
+    addTearDown(() => helpLibraryLoader = loadHelpLibraryCached);
+    await tester.pumpWidget(
+        worstCaseApp(locale: locale, home: const HelpScreen()));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Help');
+    await tester.pumpWidget(worstCaseApp(
+        locale: locale, home: const GuideScreen(guideId: 'racing-an-event')));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Guide');
   });
 }

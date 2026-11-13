@@ -606,9 +606,13 @@ class _SettingsSafetyScreenState extends State<SettingsSafetyScreen> {
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),
+                // The window sits under its label, full width: as a trailing
+                // control "Désactivée" at 2x left the label no room on a
+                // 320 dp phone.
                 ListTile(
                   title: Text(l10n.safetyOverdueLabel),
-                  trailing: DropdownButton<int?>(
+                  subtitle: DropdownButton<int?>(
+                    isExpanded: true,
                     value: _overdueMinutes,
                     onChanged: _prefsEditable ? (v) => _setOverdueMinutes(v) : null,
                     items: [

@@ -17,6 +17,7 @@ import '../lib/store_links.dart';
 import 'pro_plan_fixtures.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
+import 'worst_case_layout.dart';
 
 class _FakeProStore implements ProStore {
   _FakeProStore(
@@ -600,5 +601,17 @@ void main() {
       // Let the restore banner's auto-dismiss timer run out.
       await tester.pump(const Duration(seconds: 4));
     });
+  });
+
+  worstCaseTestWidgets('the Pro storefront', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: SettingsProScreen(
+          loadPerks: () async =>
+              const ProPerks(coach: true, routeGen: true, webCheckout: true)),
+    ));
+    await tester.pump();
+    await tester.pump();
+    await walkScrollable(tester, primaryScrollable(), 'Pro');
   });
 }

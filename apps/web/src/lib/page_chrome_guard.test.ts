@@ -284,3 +284,33 @@ test('every ALLOW entry still needs its exemption', () => {
 		assert.ok(offenders.has(`${file}|${kind}`), `${file} no longer has a hand-built ${kind}; drop its ALLOW entry`);
 	}
 });
+
+// Every root page has a title (issue #1374): each page the sidebar links to
+// says its name in a visible PageHeader, as the mobile app's four bottom-nav
+// roots do. /history and /runs carried only a visually hidden h1, so nothing
+// on the screen said which surface it was. A root reached through a shared
+// view names the file that renders the header.
+const ROOT_HEADER_FILE: Record<string, string> = {
+	'/dashboard': 'routes/dashboard/DashboardView.svelte',
+};
+const ROOT_EXEMPT: Record<string, string> = {
+	'/messages':
+		'a two-pane inbox: the conversation list heads itself with a visible h2 and the open thread names the other person, so a page-wide title would sit over both panes',
+};
+
+test('every sidebar root page says its title in a visible PageHeader', () => {
+	const layout = readFileSync(join(SRC, 'routes/+layout.svelte'), 'utf8');
+	const hrefs = [...layout.matchAll(/\{ href: '(\/[a-z-]+)', labelKey: '[^']+'/g)].map((m) => m[1]);
+	assert.ok(hrefs.length >= 5, 'the sidebar items were not found in +layout.svelte');
+	const missing: string[] = [];
+	for (const href of hrefs) {
+		if (ROOT_EXEMPT[href]) continue;
+		const file = ROOT_HEADER_FILE[href] ?? `routes${href}/+page.svelte`;
+		const source = readFileSync(join(SRC, file), 'utf8');
+		if (!/<PageHeader\b/.test(source)) missing.push(`  src/${file} (${href})`);
+	}
+	assert.deepEqual(missing, [], 'a sidebar root page renders no PageHeader:\n' + missing.join('\n'));
+	for (const href of Object.keys(ROOT_EXEMPT)) {
+		assert.ok(hrefs.includes(href), `${href} is no longer a sidebar root; drop its ROOT_EXEMPT entry`);
+	}
+});

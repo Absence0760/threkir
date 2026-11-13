@@ -1783,8 +1783,6 @@ export const en = {
 	"history.emptyTimeline": "Nothing logged in this view yet.",
 	"history.loadFailed": "Couldn't load your activity history.",
 	"history.retry": "Retry",
-	"history.heading": "Run history",
-	"history.timelineHeading": "History",
 	"history.timelineTitle": "History — Threkir",
 	"history.viewAll": "View all",
 	"runs.activityTypeGroup": "Activity type",

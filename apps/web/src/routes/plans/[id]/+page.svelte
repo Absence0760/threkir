@@ -1239,6 +1239,9 @@
 			const res = await fetchPlan(id);
 			loadError = res.error ? errorCopy(res.error, m, 'plans/[id]: loadError') : null;
 			plan = res.plan;
+			// Set with the plan, not after the mount's later awaits: a publish
+			// clicked while those were pending was overwritten by the stale row.
+			libraryCopyId = res.plan?.library_copy_id ?? null;
 			weeks = res.weeks;
 			workouts = res.workouts;
 		} catch (e) {
@@ -1402,7 +1405,6 @@
 			adminClubs = clubs.filter(
 				(c) => c.viewer_role === 'owner' || c.viewer_role === 'admin'
 			);
-			libraryCopyId = plan?.library_copy_id ?? null;
 		}
 	});
 

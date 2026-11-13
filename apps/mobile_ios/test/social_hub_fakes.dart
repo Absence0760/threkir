@@ -99,6 +99,8 @@ class SocialHubFakeApi extends ApiClient {
   Future<List<BadgeAwardEntry>> fetchFollowingBadgeAwards({
     int limit = 20,
     ({DateTime earnedAt, String id})? cursor,
+    DateTime? since,
+    String? authorId,
   }) async =>
       const [];
 

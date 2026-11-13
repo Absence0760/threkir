@@ -4485,7 +4485,7 @@
   "badgesEmpty": "Pas encore de badges — continuez à courir.",
   "badgesEmptyOther": "Aucun badge public pour l'instant.",
   "badgesEarnedOn": "Obtenu le {date}",
-  "badgesFeedEarned": "{name} a obtenu le badge {badge}",
+  "badgesFeedEarned": "{count, plural, =1{{name} a obtenu le badge {badge}} other{{name} a obtenu {count} badges}}",
   "feedBadgesLoadFailed": "Impossible de charger les derniers badges des personnes que vous suivez.",
   "badgesARunner": "Un coureur",
   "badgesTierBronze": "Bronze",

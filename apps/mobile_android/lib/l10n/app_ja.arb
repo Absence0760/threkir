@@ -4485,7 +4485,7 @@
   "badgesEmpty": "まだバッジがありません。走り続けましょう。",
   "badgesEmptyOther": "公開バッジはまだありません。",
   "badgesEarnedOn": "{date}に獲得",
-  "badgesFeedEarned": "{name}さんが{badge}バッジを獲得しました",
+  "badgesFeedEarned": "{count, plural, =1{{name}さんが{badge}バッジを獲得しました} other{{name}さんがバッジを{count}個獲得しました}}",
   "feedBadgesLoadFailed": "フォロー中の人の最新バッジを読み込めませんでした。",
   "badgesARunner": "ランナー",
   "badgesTierBronze": "ブロンズ",

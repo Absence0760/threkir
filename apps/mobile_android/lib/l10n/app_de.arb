@@ -4485,7 +4485,7 @@
   "badgesEmpty": "Noch keine Abzeichen – lauf weiter.",
   "badgesEmptyOther": "Noch keine öffentlichen Abzeichen.",
   "badgesEarnedOn": "Erhalten {date}",
-  "badgesFeedEarned": "{name} hat das Abzeichen {badge} erhalten",
+  "badgesFeedEarned": "{count, plural, =1{{name} hat das Abzeichen {badge} erhalten} other{{name} hat {count} Abzeichen erhalten}}",
   "feedBadgesLoadFailed": "Die neuesten Abzeichen von Leuten, denen du folgst, konnten nicht geladen werden.",
   "badgesARunner": "Ein Läufer",
   "badgesTierBronze": "Bronze",

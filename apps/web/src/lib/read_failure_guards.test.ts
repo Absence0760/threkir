@@ -475,18 +475,22 @@ test('the marker read-failure copy is localized in every catalogue', () => {
 	}
 });
 
-test('the following feed\'s badge strip keeps a failed read apart from no badges', () => {
-	// Reason: the strip's catch set `badgeAwards = []`, which is exactly what
-	// "nobody you follow earned a badge" looks like (§ 2501). A failure gets
-	// its own line and a retry that reads again.
+test('the following feed\'s badge highlights keep a failed read apart from no badges', () => {
+	// Reason: the old strip's catch set `badgeAwards = []`, which is exactly
+	// what "nobody you follow earned a badge" looks like (§ 2501). A failure
+	// gets its own line and a retry that reads again; the rows already read
+	// stay.
 	const source = stripComments(read('src/lib/components/SocialFeed.svelte'));
-	const loader = source.match(/async function loadBadgeAwards[\s\S]*?\n\t\}/);
-	assert.ok(loader, 'loadBadgeAwards body missing — rename?');
+	const loader = source.match(/async function topUpBadgeAwards[\s\S]*?\n\t\}/);
+	assert.ok(loader, 'topUpBadgeAwards body missing — rename?');
 	assert.match(loader![0], /badgeAwardsFailed = true;/, 'the catch must record the failure');
-	assert.match(loader![0], /badgeAwardsFailed = false;/, 'a successful retry must clear it');
+	assert.doesNotMatch(loader![0], /badgeAwards = \[\];/, 'a failure must not read as no badges');
+	const retry = source.match(/function retryBadgeAwards[\s\S]*?\n\t\}/);
+	assert.ok(retry, 'retryBadgeAwards body missing — rename?');
+	assert.match(retry![0], /badgeAwardsFailed = false;[\s\S]*topUpBadgeAwards\(\)/, 'a retry clears the failure and reads again');
 	assert.match(
 		source,
-		/\{#if badgeAwardsFailed\}[\s\S]*?onclick=\{loadBadgeAwards\}[\s\S]*?\{:else if badgeAwards\.length > 0\}/,
-		'the failure branch must come before the strip and offer a retry',
+		/\{#if badgeAwardsFailed && showHighlights\}[\s\S]*?onclick=\{retryBadgeAwards\}/,
+		'the failure line must offer a retry',
 	);
 });

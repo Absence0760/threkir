@@ -10018,10 +10018,14 @@ class ApiClient {
 
   /// Public badge awards from people the viewer follows, cursor-paged over
   /// (earned_at, id) like the run feed. Public rows only (RLS), newest first.
+  /// `since` bounds the read to the feed's window; `authorId` narrows it to
+  /// one followee (never widens it past the people the viewer follows).
   /// Mirrors web `fetchFollowingBadgeAwards`.
   Future<List<BadgeAwardEntry>> fetchFollowingBadgeAwards({
     int limit = 20,
     ({DateTime earnedAt, String id})? cursor,
+    DateTime? since,
+    String? authorId,
   }) async {
     final viewerId = _client.auth.currentUser?.id;
     if (viewerId == null) return const [];
@@ -10032,6 +10036,7 @@ class ApiClient {
         .eq(UserFollowRow.colFollowerId, viewerId);
     final authors = edges
         .map<String>((e) => e[UserFollowRow.colFolloweeId] as String)
+        .where((id) => authorId == null || id == authorId)
         .toList();
     if (authors.isEmpty) return const [];
 
@@ -10047,6 +10052,9 @@ class ApiClient {
           .select()
           .inFilter(AchievementRow.colUserId, chunk)
           .eq(AchievementRow.colIsPublic, true);
+      if (since != null) {
+        q = q.gte(AchievementRow.colEarnedAt, since.toUtc().toIso8601String());
+      }
       if (cursor != null) {
         final iso = cursor.earnedAt.toIso8601String();
         q = q.or(

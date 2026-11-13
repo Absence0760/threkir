@@ -7246,7 +7246,7 @@ export const en = {
 	"badges.shareLinkCopied": "Badge link copied to clipboard",
 	"badges.toggleError": "Couldn't change visibility. Try again.",
 	"badges.loadFailed": "Couldn't load achievements.",
-	"badges.feedEarned": "{name} earned the {badge} badge",
+	"badges.feedEarned": "{n, plural, =1 {{name} earned the {badge} badge} other {{name} earned # badges}}",
 	"badges.feedLoadFailed": "Couldn't load the latest badges from people you follow.",
 	"badges.aRunner": "A runner",
 	"badges.notif": "You earned a new badge: {badge}",

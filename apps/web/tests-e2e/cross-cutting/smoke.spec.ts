@@ -37,11 +37,11 @@ test.describe('surface smoke — authed', () => {
 			.toBeVisible({ timeout: 10_000 });
 	});
 
-	test('/routes mounts with the My-routes / Explore tabs', async ({ page }) => {
+	test('/routes mounts with the Mine / Explore view row', async ({ page }) => {
 		await page.goto('/routes');
-		await expect(page.getByRole('tab', { name: /My routes/ }).or(
-			page.getByRole('button', { name: /My routes/ })
-		)).toBeVisible({ timeout: 10_000 });
+		await expect(
+			page.getByTestId('routes-view-nav').getByRole('link', { name: 'Mine', exact: true })
+		).toBeVisible({ timeout: 10_000 });
 	});
 
 	test('/plans mounts with the New-plan button', async ({ page }) => {

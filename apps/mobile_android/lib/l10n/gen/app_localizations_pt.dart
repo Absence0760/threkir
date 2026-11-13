@@ -10084,13 +10084,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardCoachTooltip => 'Coach';
 
   @override
-  String get dashboardFeedTooltip => 'Feed de atividades';
-
-  @override
   String get dashboardRecapTooltip => 'Ano em corrida';
-
-  @override
-  String get dashboardProfileTooltip => 'O seu perfil';
 
   @override
   String get dashboardWelcomeTitle => 'Bem-vindo!';
@@ -32598,13 +32592,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get dashboardCoachTooltip => 'Coach';
 
   @override
-  String get dashboardFeedTooltip => 'Feed de atividades';
-
-  @override
   String get dashboardRecapTooltip => 'Ano em corrida';
-
-  @override
-  String get dashboardProfileTooltip => 'Seu perfil';
 
   @override
   String get dashboardWelcomeTitle => 'Bem-vindo!';

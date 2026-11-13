@@ -44,6 +44,7 @@ import '../shell_page_controller.dart';
 import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
+import '../social_unread.dart';
 import '../training_service.dart';
 import '../today_widget.dart' show TodayWidgetBridge;
 import '../watch_workout_push.dart' show WatchWorkoutBridge;
@@ -148,6 +149,11 @@ class HomeScreen extends StatefulWidget {
   /// multi-day effort continues as ONE run instead of two.
   final cm.Run? resumablePartial;
 
+  /// The unread count behind the dot on the Social nav item. Null builds the
+  /// shell's own read ([DmBadgeUnreadSource]) when there is a backend; tests
+  /// hand in a fake.
+  final SocialUnreadSource? socialUnread;
+
   const HomeScreen({
     super.key,
     this.apiClient,
@@ -168,6 +174,7 @@ class HomeScreen extends StatefulWidget {
     this.recoveredRun,
     this.recoveryEvaluation,
     this.resumablePartial,
+    this.socialUnread,
   });
 
   @override
@@ -175,7 +182,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with AuthChangeAware<HomeScreen> {
+    with AuthChangeAware<HomeScreen>, WidgetsBindingObserver {
   // PageView page indices. The bottom nav exposes four destinations
   // (Home / Fitness / Social / You) plus a centre Log action; the Run page
   // has no nav destination but stays a keep-alive PageView page so an
@@ -259,8 +266,15 @@ class _HomeScreenState extends State<HomeScreen>
   /// The nav bar and rail read the page, and the hub's label reads the same
   /// visibility the centre button does. The docked centre button reads the
   /// page too: it is the Stop while a run records on the Run page.
-  late final Listenable _navInputs =
-      Listenable.merge([_currentIndex, _centreInputs]);
+  /// Unread messages for the Social nav item's dot (issue #1374: Messages
+  /// move to Social). Owned here only when nobody handed one in.
+  late final SocialUnreadSource? _socialUnread = widget.socialUnread ??
+      (widget.apiClient == null
+          ? null
+          : DmBadgeUnreadSource(widget.apiClient!));
+
+  late final Listenable _navInputs = Listenable.merge(
+      [_currentIndex, _centreInputs, ?_socialUnread]);
 
   late final PageController _pageController =
       ShellPageController(currentPage: () => _currentIndex.value);
@@ -277,6 +291,9 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _currentIndex.addListener(_syncRunPageShown);
     _currentIndex.addListener(_dropFocusLeftBehind);
+    _currentIndex.addListener(_refreshSocialUnread);
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_socialUnread?.refresh());
     _rebuildPages();
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
@@ -366,8 +383,18 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void onAuthUserChanged(String? userId) {
     _setupWizardShown = false;
+    unawaited(_socialUnread?.refresh());
     if (userId != null) _runSignInGates();
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_socialUnread?.refresh());
+  }
+
+  /// The dot is re-read whenever the runner changes page, which is when a
+  /// conversation they just read in Social (or You) stops counting.
+  void _refreshSocialUnread() => unawaited(_socialUnread?.refresh());
 
   Future<void> _runSignInGates() async {
     final api = widget.apiClient;
@@ -992,6 +1019,9 @@ class _HomeScreenState extends State<HomeScreen>
     _pageController.dispose();
     _currentIndex.removeListener(_syncRunPageShown);
     _currentIndex.removeListener(_dropFocusLeftBehind);
+    _currentIndex.removeListener(_refreshSocialUnread);
+    WidgetsBinding.instance.removeObserver(this);
+    if (widget.socialUnread == null) _socialUnread?.dispose();
     _currentIndex.dispose();
     _runPageShown.dispose();
     _fitnessTab.dispose();
@@ -1583,7 +1613,10 @@ class _HomeScreenState extends State<HomeScreen>
                       label: Text(hub.label),
                     ),
                     NavigationRailDestination(
-                      icon: const Icon(Icons.public),
+                      icon: _UnreadDot(
+                        count: _socialUnread?.unreadCount ?? 0,
+                        child: const Icon(Icons.public),
+                      ),
                       label: Text(l10n.navSocial),
                     ),
                     NavigationRailDestination(
@@ -1668,6 +1701,7 @@ class _HomeScreenState extends State<HomeScreen>
                   icon: Icons.public,
                   label: l10n.navSocial,
                   selected: index == _pageSocial,
+                  unread: _socialUnread?.unreadCount ?? 0,
                   onTap: () => _goToPage(_pageSocial),
                 ),
                 _BottomNavItem(
@@ -1798,12 +1832,20 @@ class _BottomNavItem extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Unread messages behind this destination; above zero draws a dot.
+  final int unread;
   const _BottomNavItem({
     required this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
+    this.unread = 0,
   });
+
+  /// The pill behind the selected destination's icon, Material 3's
+  /// `NavigationBar` indicator size.
+  static const indicatorSize = Size(56, 28);
 
   @override
   Widget build(BuildContext context) {
@@ -1811,11 +1853,13 @@ class _BottomNavItem extends StatelessWidget {
     final color =
         selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
     final metrics = bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
+    final l10n = AppLocalizations.of(context);
     return Expanded(
       child: Semantics(
         button: true,
         selected: selected,
         label: label,
+        value: unread > 0 ? l10n.messagesUnreadCount(unread) : null,
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
@@ -1823,14 +1867,38 @@ class _BottomNavItem extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: color, size: 24),
+                // Selection is a shape as well as a colour (issue #1374):
+                // a pill behind the icon and a heavier label, so it reads
+                // without telling primary from on-surface-variant apart.
+                AnimatedContainer(
+                  key: selected ? const ValueKey('navSelectedIndicator') : null,
+                  duration: const Duration(milliseconds: 150),
+                  width: indicatorSize.width,
+                  height: indicatorSize.height,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? theme.colorScheme.secondaryContainer
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(indicatorSize.height),
+                  ),
+                  alignment: Alignment.center,
+                  child: ExcludeSemantics(
+                    child: _UnreadDot(
+                      count: unread,
+                      child: Icon(icon, color: color, size: 24),
+                    ),
+                  ),
+                ),
                 if (metrics.showLabels) ...[
                   const SizedBox(height: 2),
                   Flexible(
                     child: Text(
                       label,
-                      style:
-                          theme.textTheme.labelSmall?.copyWith(color: color),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: color,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1843,6 +1911,22 @@ class _BottomNavItem extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A dot on a nav icon while messages wait unread: a shape on the icon, not
+/// a tint, and the count is in the destination's semantics value.
+class _UnreadDot extends StatelessWidget {
+  final int count;
+  final Widget child;
+  const _UnreadDot({required this.count, required this.child});
+
+  @override
+  Widget build(BuildContext context) => Badge(
+        key: count > 0 ? const ValueKey('navUnreadDot') : null,
+        isLabelVisible: count > 0,
+        smallSize: 8,
+        child: child,
+      );
 }
 
 /// The caption under the docked centre Log FAB. The FAB itself is the tap

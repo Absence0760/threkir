@@ -10097,13 +10097,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dashboardCoachTooltip => 'Coach';
 
   @override
-  String get dashboardFeedTooltip => 'Aktivitäten-Feed';
-
-  @override
   String get dashboardRecapTooltip => 'Jahresrückblick im Laufen';
-
-  @override
-  String get dashboardProfileTooltip => 'Dein Profil';
 
   @override
   String get dashboardWelcomeTitle => 'Willkommen!';

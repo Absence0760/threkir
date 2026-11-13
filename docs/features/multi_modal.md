@@ -195,6 +195,14 @@ Layer 2, none of them needs a foreign key between activity rows.
 > tab is absorbed into Fitness→All, Settings folds into `You`, and Routes
 > moved out of Social onto the run surface. The section just below documents
 > the *historical* nav; read the redesign section for what ships today.
+>
+> **Since 2026-11-12 (issue #1374), mobile:** the selected destination wears
+> a pill behind its icon and a heavier label, not only the primary colour;
+> the **Social** item carries a dot while messages wait unread (the count is
+> in its semantics value), read through the `SocialUnreadSource` interface
+> (`lib/social_unread.dart`) on launch, resume, sign-in and every page
+> change; and Home's toolbar is the title and the Add / Import overflow only,
+> its Feed, bell and Profile glyphs gone to Social and You.
 
 The `Run` tab disappears as a top-level destination. The centre slot
 becomes an **action button**, not a tab.

@@ -26,6 +26,8 @@ import '../lib/race_controller.dart';
 import '../lib/run_stop_dock.dart';
 import '../lib/settings_destination.dart';
 import '../lib/social_service.dart';
+import '../lib/social_unread.dart';
+import '../lib/widgets/gym_summary_card.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/confirm_age_screen.dart';
@@ -194,7 +196,8 @@ Future<({
   );
 }
 
-Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
+Future<void> _pump(WidgetTester tester, dynamic s,
+    {ApiClient? api, SocialUnreadSource? socialUnread}) async {
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -213,6 +216,7 @@ Future<void> _pump(WidgetTester tester, dynamic s, {ApiClient? api}) async {
         training: s.training,
         heartRate: s.heartRate,
         treadmill: s.treadmill,
+        socialUnread: socialUnread,
       ),
     ),
   );
@@ -229,6 +233,23 @@ Future<void> _seedLoggedLift(WidgetTester tester, dynamic s) async {
   await tester.runAsync(() async {
     await s.gymStore.createLocal(title: 'Push day', startedAt: DateTime.now());
   });
+}
+
+/// An unread count the test sets by hand, standing in for the shell's read.
+class _FakeUnread extends ChangeNotifier implements SocialUnreadSource {
+  int _count = 0;
+  int refreshes = 0;
+
+  @override
+  int get unreadCount => _count;
+
+  set count(int value) {
+    _count = value;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> refresh() async => refreshes++;
 }
 
 /// Takes every [RunStartRequests] the shell sends before the mounted recorder
@@ -362,6 +383,110 @@ void main() {
               'the wizard while the stamp is queued');
       expect(prefs.setupWizardDismissed, isTrue,
           reason: 'the queued stamp retries on the next launch');
+    });
+  });
+
+  group("Home's links select tabs rather than push copies (issue #1374)", () {
+    double shellPage(WidgetTester tester) {
+      final controller =
+          tester.widget<PageView>(find.byType(PageView).first).controller!;
+      return controller.hasClients
+          ? controller.page!
+          : controller.initialPage.toDouble();
+    }
+
+    testWidgets("today's lift card selects the hub's Gym tab", (tester) async {
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      await pumpUntil(
+          tester, () => find.byType(GymSummaryCard).evaluate().isNotEmpty,
+          describe: "Today's lift card");
+
+      await tester.ensureVisible(find.byType(GymSummaryCard));
+      await tester.tap(find.byType(GymSummaryCard));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(shellPage(tester), 1, reason: 'the shell shows the Fitness hub');
+      expect(find.byType(GymScreen), findsOneWidget,
+          reason: "the hub's own Gym tab");
+      expect(find.byType(BackButton), findsNothing,
+          reason: 'no second Gym screen pushed over the shell');
+      tester.takeException();
+    });
+
+    testWidgets("Today's toolbar is its title and the overflow only",
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(find.byIcon(Icons.dynamic_feed_outlined), findsNothing);
+      expect(find.byIcon(Icons.person_outline), findsNothing);
+      expect(find.byIcon(Icons.notifications_outlined), findsNothing);
+      expect(find.byKey(const Key('dashboardMoreMenu')), findsOneWidget);
+    });
+  });
+
+  group('the Social nav item (issue #1374)', () {
+    Finder socialItem() => find.ancestor(
+        of: find.descendant(
+            of: find.byType(BottomAppBar), matching: find.text('Social')),
+        matching: find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.label == 'Social'));
+
+    testWidgets('carries a dot while messages wait unread, said in its value',
+        (tester) async {
+      final unread = _FakeUnread();
+      final s = await _makeStores();
+      await _pump(tester, s, socialUnread: unread);
+      expect(find.byKey(const ValueKey('navUnreadDot')), findsNothing);
+      expect(tester.widget<Semantics>(socialItem()).properties.value, isNull);
+
+      unread.count = 3;
+      await tester.pump();
+      final dot = find.byKey(const ValueKey('navUnreadDot'));
+      expect(dot, findsOneWidget);
+      expect(tester.widget<Badge>(dot).isLabelVisible, isTrue,
+          reason: 'a dot, a shape on the icon, not a tint');
+      expect(tester.widget<Semantics>(socialItem()).properties.value,
+          '3 unread messages');
+
+      unread.count = 0;
+      await tester.pump();
+      expect(find.byKey(const ValueKey('navUnreadDot')), findsNothing);
+    });
+
+    testWidgets('re-reads the count on launch and on every page change',
+        (tester) async {
+      final unread = _FakeUnread();
+      final s = await _makeStores();
+      await _pump(tester, s, socialUnread: unread);
+      expect(unread.refreshes, 1);
+      await tester.tap(find.text('Social'));
+      await tester.pump();
+      expect(unread.refreshes, 2);
+      tester.takeException();
+    });
+
+    testWidgets('the selected destination wears a pill, not only a colour',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final pill = find.byKey(const ValueKey('navSelectedIndicator'));
+      expect(pill, findsOneWidget);
+      expect(
+          find.ancestor(
+              of: pill,
+              matching: find.byWidgetPredicate((w) =>
+                  w is Semantics &&
+                  w.properties.label == 'Home' &&
+                  w.properties.selected == true)),
+          findsOneWidget);
+      await tester.tap(find.text('Social'));
+      await tester.pump();
+      expect(find.descendant(of: socialItem(), matching: pill), findsOneWidget,
+          reason: 'the pill follows the selection');
+      tester.takeException();
     });
   });
 

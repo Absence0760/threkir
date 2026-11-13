@@ -16084,23 +16084,11 @@ abstract class AppLocalizations {
   /// **'Coach'**
   String get dashboardCoachTooltip;
 
-  /// Dashboard toolbar tooltip for the activity-feed action
-  ///
-  /// In en, this message translates to:
-  /// **'Activity feed'**
-  String get dashboardFeedTooltip;
-
   /// Dashboard toolbar tooltip for the year-in-running recap action
   ///
   /// In en, this message translates to:
   /// **'Year in running'**
   String get dashboardRecapTooltip;
-
-  /// Dashboard toolbar tooltip for opening the user's own profile
-  ///
-  /// In en, this message translates to:
-  /// **'Your profile'**
-  String get dashboardProfileTooltip;
 
   /// Dashboard empty-state welcome headline
   ///

@@ -9556,13 +9556,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardCoachTooltip => 'コーチ';
 
   @override
-  String get dashboardFeedTooltip => 'アクティビティフィード';
-
-  @override
   String get dashboardRecapTooltip => 'ランニングの一年';
-
-  @override
-  String get dashboardProfileTooltip => 'あなたのプロフィール';
 
   @override
   String get dashboardWelcomeTitle => 'ようこそ！';

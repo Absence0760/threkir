@@ -13515,17 +13515,9 @@
   "@dashboardCoachTooltip": {
     "description": "Dashboard toolbar tooltip for the AI Coach action"
   },
-  "dashboardFeedTooltip": "Activity feed",
-  "@dashboardFeedTooltip": {
-    "description": "Dashboard toolbar tooltip for the activity-feed action"
-  },
   "dashboardRecapTooltip": "Year in running",
   "@dashboardRecapTooltip": {
     "description": "Dashboard toolbar tooltip for the year-in-running recap action"
-  },
-  "dashboardProfileTooltip": "Your profile",
-  "@dashboardProfileTooltip": {
-    "description": "Dashboard toolbar tooltip for opening the user's own profile"
   },
   "dashboardWelcomeTitle": "Welcome!",
   "@dashboardWelcomeTitle": {

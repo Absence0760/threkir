@@ -21,6 +21,7 @@ import '../backend_timeout.dart';
 import '../social_service.dart';
 import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
+import '../fitness_surface_requests.dart';
 import '../fab_clearance.dart' show DockedFabInset;
 import '../ai_disclosure.dart' show AiDisclosureRecord;
 import '../ai_disclosure_memo.dart';
@@ -46,7 +47,6 @@ import '../training_load_inputs.dart';
 import '../training_service.dart';
 import '../week_lead.dart';
 import '../widgets/gym_summary_card.dart';
-import '../widgets/notification_bell.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/nutrition_rings_card.dart';
 import '../widgets/readiness_card.dart';
@@ -69,14 +69,12 @@ import '../recent_5k_suggestion.dart';
 import 'add_run_screen.dart';
 import 'coach_screen.dart';
 import 'run_screen.dart' show runRecordingActive;
-import 'feed_screen.dart';
 import 'gym_screen.dart';
 import 'import_screen.dart';
 import 'nutrition_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plan_new_screen.dart';
 import 'progress_screen.dart';
-import 'profile_screen.dart';
 import 'run_detail_screen.dart';
 
 const _kSectionGap = SizedBox(height: AppInsets.sectionGap);
@@ -479,12 +477,15 @@ class _DashboardScreenState extends State<DashboardScreen>
     ];
   }
 
-  void _openGym() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) =>
-          GymScreen(api: widget.apiClient, store: widget.gymStore),
-    ));
-  }
+  /// The Fitness hub's own Gym tab, not a second copy pushed over Home
+  /// (decisions § 1654, § 2437, issue #1374): a diary day or a half-typed
+  /// entry left in the hub is still there.
+  Future<void> _openGym() => openFitnessSurface(
+        context,
+        FitnessTab.gym,
+        fallback: () =>
+            GymScreen(api: widget.apiClient, store: widget.gymStore),
+      );
 
   /// The newest run on this device, or null when there is none.
   static Run? _latestRun(List<Run> runs) {
@@ -540,15 +541,16 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  void _openNutrition() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => NutritionScreen(
-        api: widget.apiClient,
-        store: widget.foodStore,
-        settingsSync: widget.settingsSync,
-      ),
-    ));
-  }
+  /// The hub's Nutrition tab, for the same reason as [_openGym].
+  Future<void> _openNutrition() => openFitnessSurface(
+        context,
+        FitnessTab.nutrition,
+        fallback: () => NutritionScreen(
+          api: widget.apiClient,
+          store: widget.foodStore,
+          settingsSync: widget.settingsSync,
+        ),
+      );
 
   void _onChange() {
     if (mounted) setState(() {});
@@ -1060,40 +1062,13 @@ class _DashboardScreenState extends State<DashboardScreen>
         bottom: _kPagePadding.bottom + DockedFabInset.of(context));
 
     final api = widget.apiClient;
-    final viewerId = api?.userId;
 
     // Inline action toolbar — replaces the previous AppBar so the
-    // dashboard's content can sit flush with the top inset.
-    //
-    // The Coach glyph is deliberately absent: `_coachEntry()` is a labelled
-    // card on the same screen, so a toolbar icon would be a second, mute
-    // route to the same screen — and a tooltip is not a label on a touch
-    // device (#666 I8, the ruling that turned the recap glyph into the
-    // labelled link under the period cards). The three that remain are
-    // destinations with no other entry point on Home.
+    // dashboard's content can sit flush with the top inset. It is the title
+    // and the overflow only (issue #1374): the Feed, bell and Profile glyphs
+    // duplicated the Social and You tabs a thumb away, and the notifications
+    // and messages they reached live in Social's top bar now.
     final actions = <Widget>[
-      if (api != null) ...[
-        IconButton(
-          tooltip: l10n.dashboardFeedTooltip,
-          icon: const Icon(Icons.dynamic_feed_outlined),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => FeedScreen(api: api)),
-          ),
-        ),
-        if (viewerId != null) NotificationBell(api: api),
-        if (viewerId != null)
-          IconButton(
-            tooltip: l10n.dashboardProfileTooltip,
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProfileScreen(api: api, userId: viewerId),
-              ),
-            ),
-          ),
-      ],
       // Logging a run after the fact and importing history are occasional
       // jobs, so they sit in the overflow rather than on the week lead, where
       // they took the lead's whole bottom row on every visit (decisions
@@ -1431,11 +1406,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
 
     return Scaffold(
-      // No AppBar — the bottom-nav already labels this tab "Home" and
-      // the action buttons (Coach / Feed / Profile) hoist inline at
-      // the top of the body. SafeArea keeps the first content row
-      // clear of the system status bar (the AppBar was providing
-      // that inset implicitly before).
+      // No AppBar — the title row (Today and the overflow) is the first row
+      // of the body. SafeArea keeps it clear of the system status bar (the
+      // AppBar was providing that inset implicitly before).
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(onRefresh: _refreshAll, child: content),

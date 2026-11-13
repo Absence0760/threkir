@@ -55,6 +55,10 @@ in `apps/mobile_android/test/architecture_guards_test.dart`:
   `podes`, `estás`, `tens`, `queres`, the `-te` enclitic, the proclitic
   `te`, the `-aste`/`-este`/`-iste` preterite …), and no tu affirmative
   imperative that the pt-BR twin doesn't also have.
+  A bare third-person verb that opens a clause after a comma reads as a tu
+  imperative too: "Antes de definir os ritmos, confirma que …" became
+  "… vai confirmar que …" (2026-11-13). Give the clause a subject or a
+  future.
 
 ## Spelling and style authority
 
@@ -130,6 +134,7 @@ twin the same way so the two surfaces read alike. Both rules are guards
 | goal | Meta / Metas (dominant); "Objetivo" on web onboarding and plans | |
 | coach (a person) | **Treinador** | `coaching.*`, guided-run "voz de treinador" |
 | AI Coach (the product) | **Coach** as its name (capital C, also mid-sentence: "o Coach está a pensar"); **Coach de IA** where the English says *AI Coach* | settled 2026-10-13; never "Treinador IA", "Coach IA" or "AI Coach" |
+| AI disclosure | **o aviso de IA** ("precisa do aviso de IA atualizado") | settled 2026-11-13; never "as informações atualizadas sobre IA". Consent wording: CISO/counsel review |
 | Pro & support | **Pro e apoio** | *support* here is supporting the app ("apoiar a app"); "suporte" is tech support |
 | sign in | **Iniciar sessão** ("Inicie sessão…", "início de sessão", "sem sessão iniciada"); a bare "Entrar" on a button | never "login" / "Faça login" — guarded |
 | pair (Bluetooth) | **Emparelhar** / emparelhado / emparelhamento | never "parear" — guarded |
@@ -138,6 +143,11 @@ twin the same way so the two surfaces read alike. Both rules are guards
 | workout | Treino | |
 | Training (the Settings page: weekly goal, HR zones, fuelling, coach tone) | **Preferências de treino** — tab, page title, and in paths ("Definições → Preferências de treino") | settled 2026-11-12; a bare "Treino" read as *workout*. The Training nav destination (`navTraining`) stays "Treino" |
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar**; status = **estado** | settled 2026-10-21; never "saltado" for the status. Skipping a step or setup is **Saltar**; "não salte" stays in coaching advice |
+| readiness | **Prontidão** — "Prontidão {score}", "da sua prontidão para correr", "reduzem a sua prontidão", "Deixar a carga do ginásio fora da prontidão para correr" | settled 2026-11-13; never "preparo" (Brazilian colloquial, and a second word for one score) |
+| taper (the plan phase and the act) | **Polimento** — phase "Polimento", "Polimento em torno das provas B/C", "está no polimento", "antes do polimento", "o polimento fica como está", "Em polimento — …" | settled 2026-11-13; never "afinamento", "afunilamento" or "redução de carga" for the taper. "Redução de carga" stays for a *deload* (`planDetail.replanDeload`) |
+| a planned gym set that was not performed (status) | **Não atingido** (`gymReviewStatusMissed`, `gym.review.status.missed`), beside "Parcial" | settled 2026-11-13, phone aligned to web; never "Não feito" / "Falhado" |
+| Let it go (missed workout) | button **Deixar passar**; its banner says the same act back: "Deixou passar. O seu plano continua como estava." | settled 2026-11-13; never a bare "Pronto." / "Feito.", which drops what was let go |
+| unlinking a matched run | "O treino aparecerá como ainda não feito" on both platforms (`workoutUnlinkBody`, `workoutDetail.unlinkRunMessage`): the planned item is a *treino*, not a *sessão* | settled 2026-11-13 |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Guardar / **Definições** / Feed / Seguidores | `navSettings` is "Config." — inconsistency 3 |
 | app | **a app** (feminine, from *a aplicação*): "na app", "da app", "esta app", "outra app", plural "as apps" | settled 2026-10-13; never "aplicação" in UI text (the last web and phone strings moved 2026-11-10). Only an Android menu path quotes the OS ("Definições → Aplicações") |

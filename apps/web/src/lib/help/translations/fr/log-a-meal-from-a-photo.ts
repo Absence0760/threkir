@@ -12,7 +12,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'La saisie depuis une photo fait partie de Pro. Saisir ses aliments à la main reste gratuit.',
-						'Elle utilise l\'IA et nécessite donc la dernière version de l\'avis sur l\'IA. Si on vous demande de l\'accepter, le message s\'accompagne d\'un lien vers la page de votre compte, où vous pouvez l\'accepter.',
+						'Elle utilise l\'IA et nécessite donc la dernière version de l\'information sur l\'IA. Si on vous demande de l\'accepter, le message s\'accompagne d\'un lien vers la page de votre compte, où vous pouvez l\'accepter.',
 						'La photo sert uniquement à estimer ce qu\'il y a dans l\'assiette. Les données de lieu et d\'appareil sont retirées avant l\'envoi, et Threkir ne conserve pas la photo.',
 					],
 				},

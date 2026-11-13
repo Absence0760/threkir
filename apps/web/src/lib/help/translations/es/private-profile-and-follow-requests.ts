@@ -29,7 +29,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y marca **Perfil privado** en **Que te encuentren**.',
+						'En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Ajustes y marca **Perfil privado** en **Que te encuentren**.',
 						'En la app móvil, abre **Privacidad y uso compartido** en la pestaña **Tú** y activa **Perfil privado**.',
 					],
 				},

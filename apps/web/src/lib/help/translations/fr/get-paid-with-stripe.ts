@@ -81,7 +81,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Avant que quiconque ait payé, elle affiche **Aucune inscription payée pour l’instant. Dès que quelqu’un paie l’un de vos cours, il apparaît ici.** Les revenus ne sont visibles que sur le web pour le moment.',
+					text: 'Avant que quiconque ait payé, elle affiche **Aucune inscription payée pour l\'instant. Dès que quelqu\'un paie l\'un de vos cours, il apparaît ici.** Les revenus ne sont visibles que sur le web pour le moment.',
 				},
 			],
 		},

@@ -2581,7 +2581,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runWorkoutAbandon => 'Abbrechen';
 
   @override
-  String get workoutPaceOnPace => 'Im Tempo';
+  String get workoutPaceOnPace => 'Im Zieltempo';
 
   @override
   String get workoutPaceAhead => 'Schneller als das Zieltempo';
@@ -4943,7 +4943,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get heatmapLoadFailed =>
-      'Routen konnten nicht geladen werden. Tippen für neuen Versuch';
+      'Routen konnten nicht geladen werden. Tippe, um es erneut zu versuchen';
 
   @override
   String get heatmapNoRoutesHint =>
@@ -9831,7 +9831,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get discardChangesBusy =>
-      'Wird noch gespeichert. Sie können die Seite verlassen, sobald der Vorgang abgeschlossen ist.';
+      'Wird noch gespeichert. Du kannst die Seite verlassen, sobald der Vorgang abgeschlossen ist.';
 
   @override
   String get prefsTitle => 'Voreinstellungen';
@@ -10575,7 +10575,7 @@ class AppLocalizationsDe extends AppLocalizations {
     String from,
     String to,
   ) {
-    return 'Fitness $ctlFrom auf $ctlTo, Ermüdung $atlFrom auf $atlTo, Form $tsbFrom auf $tsbTo, $from bis $to';
+    return 'Fitness von $ctlFrom auf $ctlTo, Ermüdung von $atlFrom auf $atlTo, Form von $tsbFrom auf $tsbTo, $from bis $to';
   }
 
   @override
@@ -11782,7 +11782,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareCardStatClimb => 'Anstieg';
 
   @override
-  String get shareCardStatHeartRate => 'Ø Puls';
+  String get shareCardStatHeartRate => 'Ø HF';
 
   @override
   String get shareCardSave => 'In Fotos sichern';
@@ -13044,7 +13044,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get gymLibraryAdoptedNotSynced =>
-      'Zu deinen Routinen hinzugefügt. Sie erscheint dort, sobald dieses Smartphone synchronisiert.';
+      'Zu deinen Routinen hinzugefügt. Sie erscheint dort, sobald dieses Handy synchronisiert.';
 
   @override
   String get gymRoutineDelete => 'Löschen';
@@ -16951,7 +16951,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get undoDismiss => 'Schließen';
 
   @override
-  String get undoHint => 'Rückgängig machen ist kurze Zeit möglich.';
+  String get undoHint => 'Rückgängig machen ist für kurze Zeit möglich.';
 
   @override
   String get undoRestored => 'Wiederhergestellt';
@@ -18883,7 +18883,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get seasonPlanErrorConsent =>
-      'Der Saison-Assistent braucht den aktualisierten KI-Hinweis. Du kannst deine Rennen trotzdem unten eintragen.';
+      'Der Saison-Assistent braucht die aktualisierten KI-Hinweise. Du kannst deine Rennen trotzdem unten eintragen.';
 
   @override
   String get seasonPlanErrorDailyLimit =>
@@ -19114,7 +19114,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get seasonPlanReviewDisclosure => 'KI-Hinweis ansehen';
+  String get seasonPlanReviewDisclosure => 'KI-Hinweise ansehen';
 
   @override
   String get seasonPlanRaceDatePick => 'Renntag wählen';
@@ -19669,11 +19669,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get commonSavedOnPhone =>
-      'Auf diesem Smartphone gespeichert. Wird synchronisiert, sobald du wieder online bist.';
+      'Auf diesem Handy gespeichert. Wird synchronisiert, sobald du wieder online bist.';
 
   @override
   String get commonDeletedOnPhone =>
-      'Auf diesem Smartphone gelöscht. Wird synchronisiert, sobald du wieder online bist.';
+      'Auf diesem Handy gelöscht. Wird synchronisiert, sobald du wieder online bist.';
 
   @override
   String get pushTargetOpening => 'Wird geöffnet…';
@@ -20812,7 +20812,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'Streckenspur und Herzfrequenz schaltest du im Web in deinen Datenschutzeinstellungen ein.';
+      'Streckenverlauf und Herzfrequenz schaltest du im Web in deinen Datenschutzeinstellungen ein.';
 
   @override
   String get streamerOverlayOpenWebSettings => 'Im Web öffnen';

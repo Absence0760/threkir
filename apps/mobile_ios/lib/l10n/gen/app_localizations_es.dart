@@ -366,7 +366,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importBackupCardDescription =>
-      'Ida y vuelta sin pérdidas. Funciona sin iniciar sesión — las carreras restauradas se sincronizan con tu cuenta la próxima vez que lo hagas.';
+      'Copia y restauración sin pérdidas. Funciona sin iniciar sesión — las carreras restauradas se sincronizan con tu cuenta la próxima vez que lo hagas.';
 
   @override
   String get importBackupMakeOne => 'Crear una copia de seguridad';
@@ -6354,7 +6354,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String eventRsvpFailed(String error) {
-    return 'No se pudo actualizar tu confirmación: $error';
+    return 'No se pudo actualizar tu confirmación de asistencia: $error';
   }
 
   @override
@@ -7366,7 +7366,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String planImportErrorBadTaperStamp(String value, String date) {
-    return 'No se pudo leer la fecha de tapering «$value» del $date.';
+    return 'No se pudo leer la fecha de puesta a punto «$value» del $date.';
   }
 
   @override
@@ -7489,7 +7489,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailMissedLongTaper =>
-      'Te perdiste una tirada larga, pero estás afinando — déjala y llega fresco al día de la carrera.';
+      'Te perdiste una tirada larga, pero estás en la puesta a punto: déjala pasar y llega fresco al día de la carrera.';
 
   @override
   String get planDetailMissedLongRecovery =>
@@ -7517,23 +7517,23 @@ class AppLocalizationsEs extends AppLocalizations {
       'Mira tus últimas tres semanas terminadas y propone cambios cuando al menos dos quedaron por encima o por debajo del plan, para que una semana rara no mueva tu plan. Úsalo cuando llevas un tiempo desviado del plan.';
 
   @override
-  String get planDetailRaceTaper => 'Afinamiento en torno a carreras B/C';
+  String get planDetailRaceTaper => 'Puesta a punto en torno a carreras B/C';
 
   @override
   String get planDetailAdjustRaceTaperDesc =>
-      'Suaviza los días antes de cada próxima carrera B o C y los días después, para que llegues fresco y te recuperes antes de que vuelva el entrenamiento. Tu carrera A y su afinamiento se quedan como están.';
+      'Suaviza los días antes de cada próxima carrera B o C y los días después, para que llegues fresco y te recuperes antes de que vuelva el entrenamiento. Tu carrera A y su puesta a punto se quedan como están.';
 
   @override
   String get planDetailRaceTaperNone =>
-      'Ninguna próxima carrera B o C necesita afinamiento.';
+      'Ninguna próxima carrera B o C necesita puesta a punto.';
 
   @override
   String get planDetailRaceTaperPreviewTitle =>
-      'Afinamiento y recuperación propuestos';
+      'Puesta a punto y recuperación propuestas';
 
   @override
   String planDetailRaceTaperPre(String change, String race) {
-    return '$change — afinamiento para $race';
+    return '$change — puesta a punto para $race';
   }
 
   @override
@@ -7997,7 +7997,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailWeekAdviceTaper =>
-      'Afinamiento: baja el volumen, se mantiene la chispa.';
+      'Puesta a punto: baja el volumen, se mantiene la chispa.';
 
   @override
   String get planDetailWeekAdviceGraduation =>
@@ -10577,7 +10577,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get trainingLoadReadingTapered =>
-      'En descarga: una sesión dura no te romperá.';
+      'En puesta a punto: una sesión dura no te hará daño.';
 
   @override
   String get trainingLoadReadingBalanced =>
@@ -12408,7 +12408,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planPhasePeak => 'Pico';
 
   @override
-  String get planPhaseTaper => 'Afinamiento';
+  String get planPhaseTaper => 'Puesta a punto';
 
   @override
   String get planPhaseRace => 'Semana de carrera';
@@ -13332,7 +13332,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'El registro con foto del plato necesita la información actualizada sobre IA.';
+      'El registro con foto del plato necesita el aviso de IA actualizado.';
 
   @override
   String get platePhotoErrorPro =>
@@ -17013,7 +17013,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get loadRampMeaningLow =>
-      'Estás corriendo por debajo de tu base reciente. Bien para una semana de descarga o recuperación; mantenido, es pérdida de forma.';
+      'Estás corriendo por debajo de tu base reciente. Bien para una puesta a punto o una semana de recuperación; mantenido, es pérdida de forma.';
 
   @override
   String get loadRampMeaningOptimal =>
@@ -18641,7 +18641,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runPhotosRaceGalleryPrivate =>
-      'Haz pública esta actividad para compartir sus fotos en la página de la prueba.';
+      'Haz pública esta carrera para compartir sus fotos en la página de la prueba.';
 
   @override
   String runPhotosRaceGalleryError(String error) {
@@ -20382,7 +20382,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planRecapRaceNoRun => 'Marcada como hecha, sin carrera vinculada';
 
   @override
-  String get planRecapRaceNotRun => 'Ninguna carrera el día de la prueba';
+  String get planRecapRaceNotRun => 'Ninguna actividad el día de la carrera';
 
   @override
   String get planRecapRecordsLabel => 'Récords personales';
@@ -21578,7 +21578,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String runRaceSelfTimedHow(String label, String time) {
-    return '$label: toca «Esta carrera es mi intento», luego Iniciar, y cruza la línea de salida. Abierta hasta $time.';
+    return '$label: toca «Esta actividad es mi intento», luego Iniciar, y cruza la línea de salida. Abierta hasta $time.';
   }
 
   @override
@@ -21602,7 +21602,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Llegada anulada. Cuando termines, toca «Detener» y luego «Terminar carrera».';
 
   @override
-  String get runRaceThisIsMyAttempt => 'Esta carrera es mi intento';
+  String get runRaceThisIsMyAttempt => 'Esta actividad es mi intento';
 
   @override
   String get runRaceAttemptReady => 'Intento listo: toca Iniciar';
@@ -21662,7 +21662,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String eventRaceSelfTimedParticipant(String time) {
-    return 'Carrera con cronometraje propio abierta hasta las $time. Únete y cronometra tu intento desde la pantalla de carrera.';
+    return 'Carrera con cronometraje propio abierta hasta las $time. Únete y cronometra tu intento desde la pantalla Correr.';
   }
 
   @override

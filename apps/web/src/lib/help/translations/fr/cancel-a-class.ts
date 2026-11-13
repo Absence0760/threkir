@@ -11,7 +11,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Les cours payants ne sont pas encore actifs : il faut que le compte Stripe de l\'organisateur soit connecté et que la plateforme ait activé les paiements. Si les paiements ne sont pas disponibles quand vous essayez d\'annuler une occurrence qui a des inscriptions payées, vous verrez **Cette occurrence a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : elle ne peut donc pas encore être annulée. Rien n’a été modifié.** Le cours est maintenu, pour que personne ne se retrouve avec un paiement pour un cours qui n\'a pas lieu.',
+					text: 'Les cours payants ne sont pas encore actifs : il faut que le compte Stripe de l\'organisateur soit connecté et que la plateforme ait activé les paiements. Si les paiements ne sont pas disponibles quand vous essayez d\'annuler une occurrence qui a des inscriptions payées, vous verrez **Cette occurrence a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : elle ne peut donc pas encore être annulée. Rien n\'a été modifié.** Le cours est maintenu, pour que personne ne se retrouve avec un paiement pour un cours qui n\'a pas lieu.',
 				},
 				{
 					type: 'p',

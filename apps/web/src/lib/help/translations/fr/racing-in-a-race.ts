@@ -27,7 +27,7 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Ouvrez l\'événement de la course.',
-						'S\'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l\'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je viens**.',
+						'S\'il y a plusieurs parcours, choisissez le vôtre dans **Votre parcours** sur le web. Dans l\'app mobile, on vous demande **Choisissez votre parcours** quand vous touchez **Je participe**.',
 						'Touchez **Je participe**. Seule une inscription **Je participe** reçoit les alertes de course sur votre appareil ; **Peut-être** ne les reçoit pas.',
 					],
 				},
@@ -51,7 +51,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'L\'app mobile recherche les courses auxquelles vous avez répondu **Je viens** et qui commencent dans la journée qui suit. Si le bandeau tarde à apparaître, gardez l\'app ouverte sur l\'onglet Courir pendant une minute.',
+					text: 'L\'app mobile recherche les courses auxquelles vous avez répondu **Je participe** et qui commencent dans la journée qui suit. Si le bandeau tarde à apparaître, gardez l\'app ouverte sur l\'onglet Courir pendant une minute.',
 				},
 			],
 		},

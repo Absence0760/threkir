@@ -2,7 +2,7 @@ import type { GuideTranslation } from '../../types';
 
 export const translation: GuideTranslation = {
 	id: 'drive-a-course',
-	title: "Recorrer en coche el recorrido de una prueba antes del día",
+	title: "Conducir el recorrido de una prueba antes de que se celebre",
 	summary: "Abre un recorrido público en tu app de mapas, mira qué tramos no puede seguir y deja que la app del móvil te lea en voz alta las notas del recorrido mientras conduces.",
 	sections: [
 		{
@@ -13,7 +13,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						"Google Maps admite varias paradas por tramo. Mapas de Apple y Waze admiten un solo destino cada vez, así que abres cada tramo por turnos.",
-						"Los recorridos de las pruebas usan caminos, puentes y calles cortadas. La lista bajo los tramos muestra los tramos que la app de mapas no puede seguir, para que sepas qué partes no verás.",
+						"Los recorridos de las pruebas usan caminos, puentes y calles cortadas. La lista bajo los tramos muestra las partes que la app de mapas no puede seguir, para que sepas qué no verás.",
 						"La ruta de la app de mapas es solo orientativa. Las notas siguen el recorrido real.",
 					],
 				},

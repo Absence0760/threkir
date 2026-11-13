@@ -663,7 +663,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Coureurs inscrits près de la zone que vous avez définie. Distance approximative uniquement, jamais une position en direct.';
 
   @override
-  String get peopleNearbyEmptyTitle => 'Personne à proximité pour l’instant';
+  String get peopleNearbyEmptyTitle => 'Personne à proximité pour l\'instant';
 
   @override
   String get peopleNearbyEmptyBody =>
@@ -699,7 +699,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get nearbyAreaExplainer =>
-      'Choisissez la ville ou le quartier où vous courez. Elle est enregistrée arrondie à environ un kilomètre et n’est jamais votre position en direct. Les autres coureurs ne voient qu’une distance approximative, jamais la zone elle-même.';
+      'Choisissez la ville ou le quartier où vous courez. Elle est enregistrée arrondie à environ un kilomètre et n\'est jamais votre position en direct. Les autres coureurs ne voient qu\'une distance approximative, jamais la zone elle-même.';
 
   @override
   String get nearbyAreaNone => 'Aucune zone définie';
@@ -724,7 +724,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get nearbyAreaSaved => 'Zone enregistrée';
 
   @override
-  String get nearbyAreaSaveFailed => 'Impossible d’enregistrer votre zone.';
+  String get nearbyAreaSaveFailed => 'Impossible d\'enregistrer votre zone.';
 
   @override
   String get nearbyAreaLoadFailed => 'Impossible de charger votre zone.';
@@ -737,13 +737,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get nearbyAreaForgetConfirmBody =>
-      'Vous n’apparaîtrez plus aux coureurs à proximité jusqu’à ce que vous définissiez à nouveau une zone.';
+      'Vous n\'apparaîtrez plus aux coureurs à proximité jusqu\'à ce que vous définissiez à nouveau une zone.';
 
   @override
   String get nearbyAreaForgotten => 'Zone oubliée';
 
   @override
-  String get nearbyAreaForgetFailed => 'Impossible d’oublier votre zone.';
+  String get nearbyAreaForgetFailed => 'Impossible d\'oublier votre zone.';
 
   @override
   String get peopleFallbackDisplayName => 'Coureur';
@@ -1148,11 +1148,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsKeepRunPrimarySubtitle =>
-      'Touchez le bouton central pour démarrer une course. Déjà actif tant que Muscu et Nutrition sont masqués ; un appui long ouvre toujours le menu d’enregistrement';
+      'Touchez le bouton central pour démarrer une course. Déjà actif tant que Muscu et Nutrition sont masqués ; un appui long ouvre toujours le menu d\'enregistrement';
 
   @override
   String get prefsKeepRunPrimaryForcedSubtitle =>
-      'Actif tant que Muscu et Nutrition sont masqués. Affichez l’un des deux pour choisir';
+      'Actif tant que Muscu et Nutrition sont masqués. Affichez l\'un des deux pour choisir';
 
   @override
   String get prefsSectionModalities => 'Muscu et nutrition';
@@ -1162,14 +1162,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsShowGymSubtitle =>
-      'Ajoute l’onglet Muscu, « Enregistrer la muscu » et vos séances sur l’accueil';
+      'Ajoute l\'onglet Muscu, « Enregistrer la muscu » et vos séances sur l\'accueil';
 
   @override
   String get prefsShowNutrition => 'Afficher la nutrition';
 
   @override
   String get prefsShowNutritionSubtitle =>
-      'Ajoute l’onglet Nutrition, « Enregistrer un aliment » et les repas du jour sur l’accueil';
+      'Ajoute l\'onglet Nutrition, « Enregistrer un aliment » et les repas du jour sur l\'accueil';
 
   @override
   String get bodyMetricsTitle => 'Données corporelles';
@@ -1565,7 +1565,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get authErrorEmailNotConfirmed =>
-      'Confirmez d’abord votre e-mail — recherchez le lien de confirmation dans votre boîte de réception.';
+      'Confirmez d\'abord votre e-mail — recherchez le lien de confirmation dans votre boîte de réception.';
 
   @override
   String get authErrorLinkExpired =>
@@ -1610,7 +1610,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Si cet e-mail est enregistré, nous avons envoyé un lien de réinitialisation.';
 
   @override
-  String get signInResendConfirmation => 'Renvoyer l’e-mail de confirmation';
+  String get signInResendConfirmation => 'Renvoyer l\'e-mail de confirmation';
 
   @override
   String get signInConfirmationResent =>
@@ -1624,11 +1624,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get googleSignInSoon =>
-      'La connexion avec Google arrive bientôt. Pour l’instant, utilisez l’e-mail.';
+      'La connexion avec Google arrive bientôt. Pour l\'instant, utilisez l\'e-mail.';
 
   @override
   String get appleSignInSoon =>
-      'La connexion avec Apple arrive bientôt. Pour l’instant, utilisez l’e-mail.';
+      'La connexion avec Apple arrive bientôt. Pour l\'instant, utilisez l\'e-mail.';
 
   @override
   String get signInContinueOffline => 'Continuer hors ligne';
@@ -1717,18 +1717,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'Threkir relève votre position GPS pour enregistrer une course et continue de la demander écran éteint — une notification indique qu’un enregistrement est en cours. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. La demande suivante accorde l’accès pendant l’utilisation de l’app, ce que la première demande d’Android ne peut pas dépasser ; avec ce seul accès, Android peut cesser d’envoyer votre position écran éteint ou lorsque vous êtes dans une autre app. Avant votre première course, Threkir propose le passage à « Toujours autoriser », qui fiabilise alors le suivi. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
+      'Threkir relève votre position GPS pour enregistrer une course et continue de la demander écran éteint — une notification indique qu\'un enregistrement est en cours. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. La demande suivante accorde l\'accès pendant l\'utilisation de l\'app, ce que la première demande d\'Android ne peut pas dépasser ; avec ce seul accès, Android peut cesser d\'envoyer votre position écran éteint ou lorsque vous êtes dans une autre app. Avant votre première course, Threkir propose le passage à « Toujours autoriser », qui fiabilise alors le suivi. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
 
   @override
   String get onboardingLocationBodyIos =>
       'Threkir relève votre position GPS pour enregistrer une course, y compris écran éteint ou lorsque vous êtes dans une autre app. Votre position reste sur cet appareil tant que vous ne synchronisez ni ne partagez une course. Vous pouvez le modifier à tout moment dans Réglages › Confidentialité et sécurité › Service de localisation › Threkir. Si vous refusez, les courses enregistrent toujours le temps et les pas — mais ni carte, ni distance, ni allure.';
 
   @override
-  String get onboardingLocationDeniedTitle => 'Pas d’accès à la position';
+  String get onboardingLocationDeniedTitle => 'Pas d\'accès à la position';
 
   @override
   String get onboardingLocationDeniedBody =>
-      'Threkir peut toujours chronométrer vos courses et compter vos pas, mais sans la position il n’y a ni carte, ni distance, ni allure. Vous pouvez l’autoriser quand vous voulez.';
+      'Threkir peut toujours chronométrer vos courses et compter vos pas, mais sans la position il n\'y a ni carte, ni distance, ni allure. Vous pouvez l\'autoriser quand vous voulez.';
 
   @override
   String get onboardingLocationDeniedSettings => 'Ouvrir les réglages';
@@ -1749,13 +1749,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'Un compte synchronise vos courses avec l’app web et vos autres appareils, et les récupère si vous perdez celui-ci. Vous pouvez courir sans : tout fonctionne hors ligne ici, et vous pourrez en créer un plus tard depuis Vous.';
+      'Un compte synchronise vos courses avec l\'app web et vos autres appareils, et les récupère si vous perdez celui-ci. Vous pouvez courir sans : tout fonctionne hors ligne ici, et vous pourrez en créer un plus tard depuis Vous.';
 
   @override
   String get onboardingAccountCreate => 'Créer un compte gratuit';
 
   @override
-  String get onboardingAccountSignIn => 'J’ai déjà un compte';
+  String get onboardingAccountSignIn => 'J\'ai déjà un compte';
 
   @override
   String get onboardingAccountLater => 'Pas maintenant';
@@ -1938,7 +1938,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupTrackHint =>
-      'La course est toujours activée. Activez la muscu ou la nutrition pour ajouter son onglet et son action d’enregistrement. Vous pourrez changer cela plus tard dans les Réglages.';
+      'La course est toujours activée. Activez la muscu ou la nutrition pour ajouter son onglet et son action d\'enregistrement. Vous pourrez changer cela plus tard dans les Réglages.';
 
   @override
   String get setupTrackRunning => 'Course';
@@ -2047,11 +2047,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runExpectedReturnIntro =>
-      'Choisissez l’heure à laquelle vous pensez avoir fini. Si cette activité est toujours en cours, vos contacts de sécurité confirmés recevront une alerte avec votre lien en direct.';
+      'Choisissez l\'heure à laquelle vous pensez avoir fini. Si cette activité est toujours en cours, vos contacts de sécurité confirmés recevront une alerte avec votre lien en direct.';
 
   @override
   String get runExpectedReturnServerNote =>
-      'L’échéance est conservée sur le serveur : elle vaut même si ce téléphone lâche. Elle disparaît à l’enregistrement de l’activité — une activité terminée sans réseau peut encore alerter jusqu’à la synchronisation.';
+      'L\'échéance est conservée sur le serveur : elle vaut même si ce téléphone lâche. Elle disparaît à l\'enregistrement de l\'activité — une activité terminée sans réseau peut encore alerter jusqu\'à la synchronisation.';
 
   @override
   String runExpectedReturnOptionMinutes(int minutes) {
@@ -2080,22 +2080,22 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get runExpectedReturnClear => 'Supprimer l’alerte';
+  String get runExpectedReturnClear => 'Supprimer l\'alerte';
 
   @override
-  String get runExpectedReturnSetToast => 'Alerte d’heure de retour réglée.';
+  String get runExpectedReturnSetToast => 'Alerte d\'heure de retour réglée.';
 
   @override
   String get runExpectedReturnClearedToast =>
-      'Alerte d’heure de retour supprimée.';
+      'Alerte d\'heure de retour supprimée.';
 
   @override
   String get runExpectedReturnFailed =>
-      'Impossible de mettre à jour l’alerte d’heure de retour.';
+      'Impossible de mettre à jour l\'alerte d\'heure de retour.';
 
   @override
   String get runExpectedReturnUnavailable =>
-      'Serveur injoignable — impossible de régler l’alerte d’heure de retour.';
+      'Serveur injoignable — impossible de régler l\'alerte d\'heure de retour.';
 
   @override
   String get runLiveShareStopped => 'Partage en direct arrêté';
@@ -2543,11 +2543,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runBackgroundLocationPaused =>
-      'Le suivi a été mis en pause pendant votre absence — le chrono a continué et rien n’a été perdu, mais la distance parcourue hors écran n’a pas été comptée. Réglez la localisation sur « Toujours autoriser » pour suivre en arrière-plan.';
+      'Le suivi a été mis en pause pendant votre absence — le chrono a continué et rien n\'a été perdu, mais la distance parcourue hors écran n\'a pas été comptée. Réglez la localisation sur « Toujours autoriser » pour suivre en arrière-plan.';
 
   @override
   String get runPreciseLocationOff =>
-      'La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d’enregistrer. Activez la position exacte dans les Réglages pour un tracé précis.';
+      'La position exacte est désactivée — la carte et la distance GPS de cette course seront absentes ou très imprécises, mais le chrono continue d\'enregistrer. Activez la position exacte dans les Réglages pour un tracé précis.';
 
   @override
   String get runGpsSensorFailed =>
@@ -3291,7 +3291,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get runDetailPacing => 'Gestion de l’allure';
+  String get runDetailPacing => 'Gestion de l\'allure';
 
   @override
   String get runDetailPacingFirstHalf => 'Première moitié';
@@ -3401,7 +3401,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runDetailGapColumnHint =>
-      'L’allure corrigée est l’allure sur le plat qui aurait coûté le même effort que les côtes réellement parcourues.';
+      'L\'allure corrigée est l\'allure sur le plat qui aurait coûté le même effort que les côtes réellement parcourues.';
 
   @override
   String get runDetailSectionSegments => 'Segments';
@@ -4240,7 +4240,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String routeDetailWatchScheduleClockCutoffs(int checkpoints, int unresolved) {
-    return 'Plan de course envoyé ($checkpoints points de contrôle), mais $unresolved barrières horaires nécessitent une heure de départ — définissez-la sur la feuille d’équipe pour qu’elles atteignent la montre';
+    return 'Plan de course envoyé ($checkpoints points de contrôle), mais $unresolved barrières horaires nécessitent une heure de départ — définissez-la sur la feuille d\'équipe pour qu\'elles atteignent la montre';
   }
 
   @override
@@ -4249,7 +4249,7 @@ class AppLocalizationsFr extends AppLocalizations {
     int cutoffs,
     int max,
   ) {
-    return 'Parcours ($points points) envoyé, mais le plan de course compte $cutoffs barrières et la montre en accepte $max — supprimez-en pour l’envoyer';
+    return 'Parcours ($points points) envoyé, mais le plan de course compte $cutoffs barrières et la montre en accepte $max — supprimez-en pour l\'envoyer';
   }
 
   @override
@@ -4626,8 +4626,8 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count courses l’utilisent comme parcours et perdront leur parcours.',
-      one: '$count course l’utilise comme parcours et perdra son parcours.',
+          '$count courses l\'utilisent comme parcours et perdront leur parcours.',
+      one: '$count course l\'utilise comme parcours et perdra son parcours.',
     );
     return '$_temp0';
   }
@@ -4638,8 +4638,8 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count événements de club l’utilisent et perdront leur itinéraire.',
-      one: '$count événement de club l’utilise et perdra son itinéraire.',
+          '$count événements de club l\'utilisent et perdront leur itinéraire.',
+      one: '$count événement de club l\'utilise et perdra son itinéraire.',
     );
     return '$_temp0';
   }
@@ -4649,8 +4649,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count autres coureurs l’ont enregistré.',
-      one: '$count autre coureur l’a enregistré.',
+      other: '$count autres coureurs l\'ont enregistré.',
+      one: '$count autre coureur l\'a enregistré.',
     );
     return '$_temp0';
   }
@@ -4660,8 +4660,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count personnes avec qui il est partagé perdront l’accès.',
-      one: '$count personne avec qui il est partagé perdra l’accès.',
+      other: '$count personnes avec qui il est partagé perdront l\'accès.',
+      one: '$count personne avec qui il est partagé perdra l\'accès.',
     );
     return '$_temp0';
   }
@@ -4672,8 +4672,8 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count segments créés dessus par d’autres coureurs seront supprimés.',
-      one: '$count segment créé dessus par d’autres coureurs sera supprimé.',
+          '$count segments créés dessus par d\'autres coureurs seront supprimés.',
+      one: '$count segment créé dessus par d\'autres coureurs sera supprimé.',
     );
     return '$_temp0';
   }
@@ -4684,8 +4684,8 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count efforts d’autres coureurs sur ses segments seront supprimés.',
-      one: '$count effort d’autres coureurs sur ses segments sera supprimé.',
+          '$count efforts d\'autres coureurs sur ses segments seront supprimés.',
+      one: '$count effort d\'autres coureurs sur ses segments sera supprimé.',
     );
     return '$_temp0';
   }
@@ -4695,8 +4695,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count avis d’autres coureurs seront supprimés.',
-      one: '$count avis d’un autre coureur sera supprimé.',
+      other: '$count avis d\'autres coureurs seront supprimés.',
+      one: '$count avis d\'un autre coureur sera supprimé.',
     );
     return '$_temp0';
   }
@@ -4706,8 +4706,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count signalements d’état d’autres coureurs seront supprimés.',
-      one: '$count signalement d’état d’un autre coureur sera supprimé.',
+      other: '$count signalements d\'état d\'autres coureurs seront supprimés.',
+      one: '$count signalement d\'état d\'un autre coureur sera supprimé.',
     );
     return '$_temp0';
   }
@@ -4718,9 +4718,9 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          '$count courses qui l’ont suivi gardent leurs statistiques mais perdent le lien.',
+          '$count courses qui l\'ont suivi gardent leurs statistiques mais perdent le lien.',
       one:
-          '$count course qui l’a suivi garde ses statistiques mais perd le lien.',
+          '$count course qui l\'a suivi garde ses statistiques mais perd le lien.',
     );
     return '$_temp0';
   }
@@ -5692,12 +5692,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String profileNotifWaitlistSlotTitled(String title) {
-    return 'Une place s’est libérée pour « $title » et vous est réservée — payez pour l’obtenir';
+    return 'Une place s\'est libérée pour « $title » et vous est réservée — payez pour l\'obtenir';
   }
 
   @override
   String get profileNotifWaitlistSlot =>
-      'Une place s’est libérée pour un événement sur la liste d’attente duquel vous êtes inscrit, et elle vous est réservée — payez pour l’obtenir';
+      'Une place s\'est libérée pour un événement sur la liste d\'attente duquel vous êtes inscrit, et elle vous est réservée — payez pour l\'obtenir';
 
   @override
   String profileNotifEventReminderTitled(String title) {
@@ -5724,7 +5724,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profileNotifRefundFailed =>
-      'Un remboursement que nous avions lancé n’a pas pu aboutir. L’argent est toujours chez nous et nous trouverons un autre moyen de vous le rendre.';
+      'Un remboursement que nous avions lancé n\'a pas pu aboutir. L\'argent est toujours chez nous et nous trouverons un autre moyen de vous le rendre.';
 
   @override
   String profileNotifGeneric(String name) {
@@ -6377,7 +6377,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get eventRsvpGoing => 'Je viens';
+  String get eventRsvpGoing => 'Je participe';
 
   @override
   String get eventRsvpMaybe => 'Peut-être';
@@ -7011,7 +7011,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planNewAiErrorConsent =>
-      'L\'assistant de plan nécessite la notice IA mise à jour.';
+      'L\'assistant de plan nécessite l\'information sur l\'IA mise à jour.';
 
   @override
   String get planNewAiReviewDisclosure => 'Consulter l\'information';
@@ -7090,7 +7090,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planNewTemplateCloning => 'Adoption…';
 
   @override
-  String get planNewTemplateCloneFailed => 'Impossible d’adopter ce modèle.';
+  String get planNewTemplateCloneFailed => 'Impossible d\'adopter ce modèle.';
 
   @override
   String get planLibraryTitle => 'Bibliothèque publique de plans';
@@ -7504,7 +7504,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailMissedLongMakeUp =>
-      'Vous avez manqué la sortie longue de la semaine — casez-la si possible. C’est la séance la plus importante.';
+      'Vous avez manqué la sortie longue de la semaine — casez-la si possible. C\'est la séance la plus importante.';
 
   @override
   String get planDetailMissedLongTaper =>
@@ -7512,7 +7512,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailMissedLongRecovery =>
-      'Vous avez manqué une sortie longue — n’essayez pas de la rattraper. Une semaine de récupération arrive et votre corps en profitera.';
+      'Vous avez manqué une sortie longue — n\'essayez pas de la rattraper. Une semaine de récupération arrive et votre corps en profitera.';
 
   @override
   String get planDetailReplan => 'Replanifier les semaines restantes';
@@ -8388,7 +8388,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachReactionFailed =>
-      'Impossible d’enregistrer votre réaction. Réessayez.';
+      'Impossible d\'enregistrer votre réaction. Réessayez.';
 
   @override
   String get coachCopied => 'Copié dans le presse-papiers';
@@ -12079,7 +12079,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String ttsSpeedMi(String value) {
-    return 'Vitesse, $value miles à l’heure';
+    return 'Vitesse, $value miles à l\'heure';
   }
 
   @override
@@ -12242,7 +12242,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guidedEasy30Cue0 =>
-      'C’est parti. Commencez tranquillement — c’est votre allure de récupération.';
+      'C\'est parti. Commencez tranquillement — c\'est votre allure de récupération.';
 
   @override
   String get guidedEasy30Cue1 =>
@@ -12262,10 +12262,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guidedEasy30Cue5 =>
-      'Encore cinq minutes. Restez détendu. N’accélérez pas.';
+      'Encore cinq minutes. Restez détendu. N\'accélérez pas.';
 
   @override
-  String get guidedEasy30Cue6 => 'Plus qu’une minute. Terminez en douceur.';
+  String get guidedEasy30Cue6 => 'Plus qu\'une minute. Terminez en douceur.';
 
   @override
   String get guidedEasy30Cue7 =>
@@ -12279,7 +12279,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guidedTempo25Description =>
-      'Cinq minutes d’échauffement facile, quinze minutes au tempo (confortablement difficile), cinq minutes de retour au calme. La séance de tempo hebdomadaire de base.';
+      'Cinq minutes d\'échauffement facile, quinze minutes au tempo (confortablement difficile), cinq minutes de retour au calme. La séance de tempo hebdomadaire de base.';
 
   @override
   String get guidedTempo25Cue0 =>
@@ -12287,7 +12287,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guidedTempo25Cue1 =>
-      'Plus qu’une minute d’échauffement. Augmentez la cadence.';
+      'Plus qu\'une minute d\'échauffement. Augmentez la cadence.';
 
   @override
   String get guidedTempo25Cue2 =>
@@ -12299,7 +12299,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guidedTempo25Cue4 =>
-      'Dix minutes de tempo faites. Tenez l’allure.';
+      'Dix minutes de tempo faites. Tenez l\'allure.';
 
   @override
   String get guidedTempo25Cue5 =>
@@ -12326,7 +12326,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get guidedFirst15Description =>
-      'Nouveau dans la course ? Trois séries d’une minute de course et une minute de marche, plus un échauffement et un retour au calme. Une mise en route en douceur ; tout le monde commence ici.';
+      'Nouveau dans la course ? Trois séries d\'une minute de course et une minute de marche, plus un échauffement et un retour au calme. Une mise en route en douceur ; tout le monde commence ici.';
 
   @override
   String get guidedFirst15Cue0 =>
@@ -12359,11 +12359,12 @@ class AppLocalizationsFr extends AppLocalizations {
       'Revenez à la marche. Cinq minutes de retour au calme.';
 
   @override
-  String get guidedFirst15Cue9 => 'Plus qu’une minute. Marchez tranquillement.';
+  String get guidedFirst15Cue9 =>
+      'Plus qu\'une minute. Marchez tranquillement.';
 
   @override
   String get guidedFirst15Cue10 =>
-      'Terminé. C’était une vraie course. Revenez vite courir.';
+      'Terminé. C\'était une vraie course. Revenez vite courir.';
 
   @override
   String guidedRunMinutesBadge(int minutes) {
@@ -12389,7 +12390,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String guidedRunPreviewError(String error) {
-    return 'Impossible d’écouter : $error';
+    return 'Impossible d\'écouter : $error';
   }
 
   @override
@@ -12463,7 +12464,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runBatteryOptHintBody =>
-      'Certains téléphones (Samsung, Xiaomi, OnePlus et d\'autres) mettent les applications en veille pour économiser la batterie, ce qui peut interrompre l\'enregistrement d\'une longue course lorsque votre écran est éteint. Par précaution, excluez cette application de l\'optimisation de la batterie dans les Réglages. Votre course sera enregistrée dans tous les cas — cela empêche simplement le système de l\'interrompre.';
+      'Certains téléphones (Samsung, Xiaomi, OnePlus et d\'autres) mettent les applications en veille pour économiser la batterie, ce qui peut interrompre l\'enregistrement d\'une longue course lorsque votre écran est éteint. Par précaution, excluez cette application de l\'optimisation de la batterie dans les paramètres du téléphone. Votre course sera enregistrée dans tous les cas — cela empêche simplement le système de l\'interrompre.';
 
   @override
   String shareCardCaption(Object title, Object distance, Object duration) {
@@ -12844,7 +12845,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get gymCatalogueBrowse => 'Parcourir le catalogue';
 
   @override
-  String get gymCatalogueTitle => 'Catalogue d’exercices';
+  String get gymCatalogueTitle => 'Catalogue d\'exercices';
 
   @override
   String get gymCatalogueSearchPlaceholder => 'Rechercher des exercices';
@@ -12857,11 +12858,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get gymCatalogueUnavailable =>
-      'Impossible de charger le catalogue d’exercices, cette liste est peut-être incomplète.';
+      'Impossible de charger le catalogue d\'exercices, cette liste est peut-être incomplète.';
 
   @override
   String get gymCatalogueShadowsBuiltIn =>
-      'Ajouté. Il remplace l’exercice intégré du même nom.';
+      'Ajouté. Il remplace l\'exercice intégré du même nom.';
 
   @override
   String gymCatalogueOtherCategory(String name, String category) {
@@ -12877,7 +12878,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get gymCatalogueCreateFailed => 'Impossible d’ajouter cet exercice.';
+  String get gymCatalogueCreateFailed => 'Impossible d\'ajouter cet exercice.';
 
   @override
   String get gymCatalogueCategoryAll => 'Tous';
@@ -12966,7 +12967,7 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other: 'Faite il y a $days jours',
       one: 'Faite hier',
-      zero: 'Faite aujourd’hui',
+      zero: 'Faite aujourd\'hui',
     );
     return '$_temp0';
   }
@@ -12981,7 +12982,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get gymRoutineHistoryLoadError =>
-      'Impossible de charger l’historique de cette routine.';
+      'Impossible de charger l\'historique de cette routine.';
 
   @override
   String get gymRoutineClubTemplateBadge => 'Modèle du club';
@@ -13027,7 +13028,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get gymLibraryLoadError => 'Impossible de charger la bibliothèque.';
 
   @override
-  String get gymLibraryEmpty => 'Aucune routine publiée pour l’instant.';
+  String get gymLibraryEmpty => 'Aucune routine publiée pour l\'instant.';
 
   @override
   String gymLibraryEmptySearch(String query) {
@@ -13052,7 +13053,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get gymLibraryAdopted => 'Ajoutée à mes routines';
 
   @override
-  String get gymLibraryAdoptFailed => 'Impossible d’adopter la routine.';
+  String get gymLibraryAdoptFailed => 'Impossible d\'adopter la routine.';
 
   @override
   String get gymLibraryAdoptedNotSynced =>
@@ -13367,7 +13368,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get platePhotoErrorConsent =>
-      'La saisie par photo de repas nécessite votre consentement à l\'information mise à jour sur l\'IA.';
+      'La saisie par photo de repas nécessite l\'information sur l\'IA mise à jour.';
 
   @override
   String get platePhotoErrorPro =>
@@ -13445,7 +13446,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get nutritionNutrientReached => 'Objectif atteint';
 
   @override
-  String get nutritionNutrientUntargeted => 'Pas d’objectif quotidien';
+  String get nutritionNutrientUntargeted => 'Pas d\'objectif quotidien';
 
   @override
   String get nutritionWater => 'Eau';
@@ -13690,7 +13691,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String nutritionDeleteFailed(String error) {
-    return 'Impossible de supprimer l’entrée : $error';
+    return 'Impossible de supprimer l\'entrée : $error';
   }
 
   @override
@@ -13794,7 +13795,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String nutritionTemplateSaveFailed(String error) {
-    return 'Impossible d’enregistrer le modèle : $error';
+    return 'Impossible d\'enregistrer le modèle : $error';
   }
 
   @override
@@ -13807,7 +13808,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String nutritionTemplateLogFailed(String error) {
-    return 'Impossible d’enregistrer le modèle : $error';
+    return 'Impossible d\'enregistrer le modèle : $error';
   }
 
   @override
@@ -13861,7 +13862,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String nutritionRecipeSaveFailed(String error) {
-    return 'Impossible d’enregistrer la recette : $error';
+    return 'Impossible d\'enregistrer la recette : $error';
   }
 
   @override
@@ -13874,7 +13875,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String nutritionRecipeLogFailed(String error) {
-    return 'Impossible d’enregistrer la recette : $error';
+    return 'Impossible d\'enregistrer la recette : $error';
   }
 
   @override
@@ -13899,7 +13900,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String nutritionDeleteRecipeMessage(String name) {
-    return '$name sera supprimée. Les repas déjà enregistrés à partir d’elle restent dans votre journal.';
+    return '$name sera supprimée. Les repas déjà enregistrés à partir d\'elle restent dans votre journal.';
   }
 
   @override
@@ -16241,7 +16242,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String simWatchPushRoadbookFailed(String error) {
-    return 'Échec de l’envoi du plan de course : $error';
+    return 'Échec de l\'envoi du plan de course : $error';
   }
 
   @override
@@ -16968,13 +16969,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get undoHint =>
-      'L’annulation reste possible pendant un court instant.';
+      'L\'annulation reste possible pendant un court instant.';
 
   @override
   String get undoRestored => 'Rétabli';
 
   @override
-  String get prefsUndoWindow => 'Délai d’annulation';
+  String get prefsUndoWindow => 'Délai d\'annulation';
 
   @override
   String get prefsUndoWindow8s => '8 secondes';
@@ -16983,7 +16984,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prefsUndoWindow30s => '30 secondes';
 
   @override
-  String get prefsUndoWindowManual => 'Jusqu’à ce que je le ferme';
+  String get prefsUndoWindowManual => 'Jusqu\'à ce que je le ferme';
 
   @override
   String undoDismissed(int count) {
@@ -17094,11 +17095,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get comebackMeaningEasingIn =>
-      'Cette semaine reste nettement en dessous des semaines que vous couriez avant la coupure. Reconstruire progressivement à partir d’ici, c’est ce qui rend le retour durable.';
+      'Cette semaine reste nettement en dessous des semaines que vous couriez avant la coupure. Reconstruire progressivement à partir d\'ici, c\'est ce qui rend le retour durable.';
 
   @override
   String get comebackMeaningSteep =>
-      'Cette semaine dépasse déjà la moitié de ce que vous couriez avant la coupure. Votre corps a perdu la base qui rendait ces semaines routinières : une semaine plus courte maintenant coûte bien moins qu’une rechute plus tard.';
+      'Cette semaine dépasse déjà la moitié de ce que vous couriez avant la coupure. Votre corps a perdu la base qui rendait ces semaines routinières : une semaine plus courte maintenant coûte bien moins qu\'une rechute plus tard.';
 
   @override
   String get comebackThisWeekLabel => '7 derniers jours';
@@ -17108,7 +17109,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get comebackFootnote =>
-      'Votre courbe de charge d’entraînement revient dès que vous enchaînez à nouveau quelques semaines régulières.';
+      'Votre courbe de charge d\'entraînement revient dès que vous enchaînez à nouveau quelques semaines régulières.';
 
   @override
   String get segmentCatalogueTitle => 'Segments célèbres';
@@ -17403,17 +17404,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get backExitRecordingTitle =>
-      'Course toujours en cours d’enregistrement';
+      'Course toujours en cours d\'enregistrement';
 
   @override
   String get backExitRecordingBody =>
-      'Quitter l’application peut interrompre l’enregistrement. Votre course est conservée, vous pourrez la reprendre à votre retour.';
+      'Quitter l\'application peut interrompre l\'enregistrement. Votre course est conservée, vous pourrez la reprendre à votre retour.';
 
   @override
   String get backExitRecordingLeave => 'Quitter quand même';
 
   @override
-  String get backExitRecordingStay => 'Continuer l’enregistrement';
+  String get backExitRecordingStay => 'Continuer l\'enregistrement';
 
   @override
   String logAlreadyOnPage(String page) {
@@ -17936,7 +17937,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventCancelOccurrence => 'Annuler cette occurrence';
 
   @override
-  String get eventCancelEvent => 'Annuler l’événement';
+  String get eventCancelEvent => 'Annuler l\'événement';
 
   @override
   String get eventCancelSeries => 'Annuler toute la série';
@@ -17947,11 +17948,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventCancelEventBody =>
-      'L’événement est annulé. Toutes les personnes ayant répondu (présent, peut-être ou en liste d’attente) sont prévenues.';
+      'L\'événement est annulé. Toutes les personnes ayant répondu (présent, peut-être ou en liste d\'attente) sont prévenues.';
 
   @override
   String get eventCancelSeriesBody =>
-      'La série s’arrête maintenant et aucune occurrence ultérieure n’est prévue. Chaque occurrence à venir à laquelle quelqu’un a répondu est annulée, et les personnes concernées sont prévenues.';
+      'La série s\'arrête maintenant et aucune occurrence ultérieure n\'est prévue. Chaque occurrence à venir à laquelle quelqu\'un a répondu est annulée, et les personnes concernées sont prévenues.';
 
   @override
   String get eventCancelPaidNote =>
@@ -17980,10 +17981,10 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count remboursements n’ont pas pu être lancés',
-      one: '$count remboursement n’a pas pu être lancé',
+      other: '$count remboursements n\'ont pas pu être lancés',
+      one: '$count remboursement n\'a pas pu être lancé',
     );
-    return 'Annulé, mais $_temp0. Réessayez depuis la page de l’événement sur le web.';
+    return 'Annulé, mais $_temp0. Réessayez depuis la page de l\'événement sur le web.';
   }
 
   @override
@@ -17994,14 +17995,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventCancelNotConfigured =>
-      'Il y a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : l’annulation n’est donc pas encore possible. Rien n’a été modifié.';
+      'Il y a des inscriptions payées et les paiements ne sont pas disponibles pour le moment : l\'annulation n\'est donc pas encore possible. Rien n\'a été modifié.';
 
   @override
   String get eventCancelNotOrganiser =>
       'Seuls les organisateurs de ce club peuvent annuler une occurrence.';
 
   @override
-  String get eventCancelFailed => 'Impossible d’annuler. Veuillez réessayer.';
+  String get eventCancelFailed => 'Impossible d\'annuler. Veuillez réessayer.';
 
   @override
   String get eventReinstateOccurrence => 'Rétablir cette occurrence';
@@ -18020,7 +18021,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String eventWaitlistOfferHeld(String time) {
-    return 'Une place vous est réservée jusqu’à $time. Payez pour l’obtenir, sinon elle revient à la personne suivante sur la liste d’attente.';
+    return 'Une place vous est réservée jusqu\'à $time. Payez pour l\'obtenir, sinon elle revient à la personne suivante sur la liste d\'attente.';
   }
 
   @override
@@ -18088,7 +18089,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventFormCurrency => 'Devise';
 
   @override
-  String get eventFormErrPrice => 'Saisissez un prix d’au moins 0,50.';
+  String get eventFormErrPrice => 'Saisissez un prix d\'au moins 0,50.';
 
   @override
   String get eventFormErrCurrency =>
@@ -18111,22 +18112,22 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventFormRefundFullUntilStart =>
-      'Remboursement intégral jusqu’à l’heure de début';
+      'Remboursement intégral jusqu\'à l\'heure de début';
 
   @override
   String get eventFormRefundFullUntil24h =>
-      'Remboursement intégral jusqu’à 24 h avant';
+      'Remboursement intégral jusqu\'à 24 h avant';
 
   @override
   String get eventFormRefundNone => 'Aucun remboursement';
 
   @override
   String get eventFormPricingFailed =>
-      'Événement créé, mais l’enregistrement du prix a échoué. Définissez le prix depuis la page de l’événement sur le web.';
+      'Événement créé, mais l\'enregistrement du prix a échoué. Définissez le prix depuis la page de l\'événement sur le web.';
 
   @override
   String get eventFormSessionPlanFailed =>
-      'Événement créé, mais le plan de séance n’a pas pu être associé. Associez-le depuis la page de l’événement.';
+      'Événement créé, mais le plan de séance n\'a pas pu être associé. Associez-le depuis la page de l\'événement.';
 
   @override
   String get eventFormGymRoutine => 'Routine de gym';
@@ -18140,11 +18141,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventFormGymRoutineEmpty =>
-      'Ce club n’a pas encore de modèle de routine. Publiez d’abord une routine dans le club.';
+      'Ce club n\'a pas encore de modèle de routine. Publiez d\'abord une routine dans le club.';
 
   @override
   String get eventFormGymRoutineFailed =>
-      'Événement créé, mais la routine n’a pas pu être associée. Associez-la depuis la page de l’événement.';
+      'Événement créé, mais la routine n\'a pas pu être associée. Associez-la depuis la page de l\'événement.';
 
   @override
   String get clubEventGymRoutineTitle => 'Routine du cours';
@@ -18713,7 +18714,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String profilePrivateBody(String name) {
-    return 'Abonnez-vous à $name pour voir ses courses et ses abonnements. Chaque demande est validée.';
+    return 'Abonnez-vous à $name pour voir ses courses et ses abonnements. Chaque demande doit être validée par cette personne.';
   }
 
   @override
@@ -18873,14 +18874,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get seasonPlanIntro =>
-      'Indiquez les courses de votre saison. Chaque course A a son propre plan, les plans s’enchaînent avec de la récupération entre eux, et chaque course B ou C rejoint le plan dans lequel elle tombe.';
+      'Indiquez les courses de votre saison. Chaque course A a son propre plan, les plans s\'enchaînent avec de la récupération entre eux, et chaque course B ou C rejoint le plan dans lequel elle tombe.';
 
   @override
   String get seasonPlanDescribeTitle => 'Décrivez votre saison';
 
   @override
   String get seasonPlanDescribeHint =>
-      'Indiquez vos courses, leurs dates et distances, et celles qui comptent le plus. Les courses s’affichent ci-dessous pour vérification ; rien n’est planifié avant votre confirmation.';
+      'Indiquez vos courses, leurs dates et distances, et celles qui comptent le plus. Les courses s\'affichent ci-dessous pour vérification ; rien n\'est planifié avant votre confirmation.';
 
   @override
   String get seasonPlanDescribePlaceholder =>
@@ -18898,7 +18899,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get seasonPlanErrorConsent =>
-      'L’assistant de saison nécessite l’information sur l’IA mise à jour. Vous pouvez quand même ajouter vos courses ci-dessous.';
+      'L\'assistant de saison nécessite l\'information sur l\'IA mise à jour. Vous pouvez quand même ajouter vos courses ci-dessous.';
 
   @override
   String get seasonPlanErrorDailyLimit =>
@@ -18906,30 +18907,30 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get seasonPlanErrorNotUnderstood =>
-      'Aucune course n’a été trouvée. Ajoutez-les vous-même ci-dessous.';
+      'Aucune course n\'a été trouvée. Ajoutez-les vous-même ci-dessous.';
 
   @override
   String get seasonPlanErrorInvalid =>
-      'Cette description n’a pas pu être utilisée. Ajoutez vos courses vous-même ci-dessous.';
+      'Cette description n\'a pas pu être utilisée. Ajoutez vos courses vous-même ci-dessous.';
 
   @override
   String get seasonPlanErrorSignIn =>
-      'Reconnectez-vous pour utiliser l’assistant. Vous pouvez quand même ajouter vos courses ci-dessous.';
+      'Reconnectez-vous pour utiliser l\'assistant. Vous pouvez quand même ajouter vos courses ci-dessous.';
 
   @override
   String get seasonPlanErrorUnavailable =>
-      'L’assistant n’est pas disponible pour le moment. Ajoutez vos courses vous-même ci-dessous.';
+      'L\'assistant n\'est pas disponible pour le moment. Ajoutez vos courses vous-même ci-dessous.';
 
   @override
   String get seasonPlanRacesTitle => 'Vos courses';
 
   @override
   String get seasonPlanRacesHint =>
-      'Les courses A sont les objectifs de la saison, chacune a son propre plan. Les courses B sont des courses de préparation courues à fond ; les courses C sont courues à l’entraînement.';
+      'Les courses A sont les objectifs de la saison, chacune a son propre plan. Les courses B sont des courses de préparation courues à fond ; les courses C sont courues à l\'entraînement.';
 
   @override
   String get seasonPlanNoRaces =>
-      'Aucune course pour l’instant. Décrivez votre saison ci-dessus ou ajoutez une course.';
+      'Aucune course pour l\'instant. Décrivez votre saison ci-dessus ou ajoutez une course.';
 
   @override
   String seasonPlanRaceLegend(int n) {
@@ -18962,7 +18963,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get seasonPlanPriorityB => 'B — préparation';
 
   @override
-  String get seasonPlanPriorityC => 'C — course d’entraînement';
+  String get seasonPlanPriorityC => 'C — course d\'entraînement';
 
   @override
   String get seasonPlanRaceGoal => 'Temps visé (facultatif)';
@@ -18975,7 +18976,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get seasonPlanDaysPerWeekHint =>
-      'Le nombre de jours d’entraînement par semaine, utilisé pour chaque plan de la saison.';
+      'Le nombre de jours d\'entraînement par semaine, utilisé pour chaque plan de la saison.';
 
   @override
   String get seasonPlanPreviewButton =>
@@ -18994,7 +18995,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String seasonPlanRefusedNotAhead(String races) {
-    return 'Ces courses ont lieu aujourd’hui ou sont passées : $races. Retirez-les ou changez la date.';
+    return 'Ces courses ont lieu aujourd\'hui ou sont passées : $races. Retirez-les ou changez la date.';
   }
 
   @override
@@ -19008,7 +19009,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String seasonPlanRefusedTooClose(String races) {
-    return '$races sont trop proches pour une récupération et un plan d’au moins quatre semaines entre elles. Passez l’une d’elles en B.';
+    return '$races sont trop proches pour une récupération et un plan d\'au moins quatre semaines entre elles. Passez l\'une d\'elles en B.';
   }
 
   @override
@@ -19019,7 +19020,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other: '$count plans',
       one: '$count plan',
     );
-    return '$_temp0, construits par le générateur de l’app. Vérifiez-les, puis créez-les.';
+    return '$_temp0, construits par le générateur de l\'app. Vérifiez-les, puis créez-les.';
   }
 
   @override
@@ -19090,7 +19091,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String seasonPlanUnplacedSameDay(String race, String date) {
-    return '$race le $date tombe le même jour qu’une autre course de son plan.';
+    return '$race le $date tombe le même jour qu\'une autre course de son plan.';
   }
 
   @override
@@ -19116,12 +19117,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String seasonPlanBlocked(String plan, String existing) {
-    return '$plan chevaucherait votre plan $existing. Rien n’a été créé. Terminez ou déplacez d’abord ce plan.';
+    return '$plan chevaucherait votre plan $existing. Rien n\'a été créé. Terminez ou déplacez d\'abord ce plan.';
   }
 
   @override
   String seasonPlanFailedNone(String error) {
-    return 'Aucun plan n’a été créé : $error';
+    return 'Aucun plan n\'a été créé : $error';
   }
 
   @override
@@ -19130,7 +19131,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get seasonPlanReviewDisclosure => 'Consulter l’information sur l’IA';
+  String get seasonPlanReviewDisclosure => 'Consulter l\'information sur l\'IA';
 
   @override
   String get seasonPlanRaceDatePick => 'Choisir le jour de la course';
@@ -19388,7 +19389,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailStartedFromRunner =>
-      'Commencé à partir du plan d’un autre coureur';
+      'Commencé à partir du plan d\'un autre coureur';
 
   @override
   String planDetailWeekOfN(int week, int total) {
@@ -19950,9 +19951,9 @@ class AppLocalizationsFr extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Votre course passe au $date. $n semaines de développement sont ajoutées avant l’affûtage, qui reste tel quel. Les semaines déjà commencées ne changent pas.',
+          'Votre course passe au $date. $n semaines de développement sont ajoutées avant l\'affûtage, qui reste tel quel. Les semaines déjà commencées ne changent pas.',
       one:
-          'Votre course passe au $date. $n semaine de développement est ajoutée avant l’affûtage, qui reste tel quel. Les semaines déjà commencées ne changent pas.',
+          'Votre course passe au $date. $n semaine de développement est ajoutée avant l\'affûtage, qui reste tel quel. Les semaines déjà commencées ne changent pas.',
     );
     return '$_temp0';
   }
@@ -19963,16 +19964,16 @@ class AppLocalizationsFr extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Votre course passe au $date. $n semaines de développement sont retirées, et l’affûtage reste tel quel. Les semaines déjà commencées ne changent pas.',
+          'Votre course passe au $date. $n semaines de développement sont retirées, et l\'affûtage reste tel quel. Les semaines déjà commencées ne changent pas.',
       one:
-          'Votre course passe au $date. $n semaine de développement est retirée, et l’affûtage reste tel quel. Les semaines déjà commencées ne changent pas.',
+          'Votre course passe au $date. $n semaine de développement est retirée, et l\'affûtage reste tel quel. Les semaines déjà commencées ne changent pas.',
     );
     return '$_temp0';
   }
 
   @override
   String planDetailRaceDateConfirmSameWeek(String date) {
-    return 'Votre course passe au $date, dans la même semaine. Aucune semaine n’est ajoutée ni retirée, et l’affûtage reste tel quel.';
+    return 'Votre course passe au $date, dans la même semaine. Aucune semaine n\'est ajoutée ni retirée, et l\'affûtage reste tel quel.';
   }
 
   @override
@@ -19990,17 +19991,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailRaceDatePast =>
-      'Choisissez une date de course après aujourd’hui.';
+      'Choisissez une date de course après aujourd\'hui.';
 
   @override
-  String get planDetailRaceDateInvalid => 'Cette date n’est pas valide.';
+  String get planDetailRaceDateInvalid => 'Cette date n\'est pas valide.';
 
   @override
   String get planDetailRaceDateUnchanged => 'Votre course est déjà ce jour-là.';
 
   @override
   String get planDetailRaceDateNoRace =>
-      'Ce plan n’a pas de course à venir à déplacer.';
+      'Ce plan n\'a pas de course à venir à déplacer.';
 
   @override
   String get planDetailRaceDateWeekStarted =>
@@ -20008,19 +20009,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailRaceDateTooFar =>
-      'C’est plus d’un an plus tard. Créez plutôt un nouveau plan pour cette course.';
+      'C\'est plus d\'un an plus tard. Créez plutôt un nouveau plan pour cette course.';
 
   @override
   String get planDetailRaceDateNoBuild =>
-      'Ce plan n’a aucune semaine de développement à répéter, il ne peut donc pas être allongé.';
+      'Ce plan n\'a aucune semaine de développement à répéter, il ne peut donc pas être allongé.';
 
   @override
   String get planDetailRaceDateInTheWay =>
-      'Une autre course ou une séance terminée se trouve dans les semaines qui seraient déplacées. Modifiez-la d’abord.';
+      'Une autre course ou une séance terminée se trouve dans les semaines qui seraient déplacées. Modifiez-la d\'abord.';
 
   @override
   String get planDetailRaceDateOverlap =>
-      'La nouvelle date de course empiète sur un autre plan actif. Déplacez ou terminez d’abord ce plan.';
+      'La nouvelle date de course empiète sur un autre plan actif. Déplacez ou terminez d\'abord ce plan.';
 
   @override
   String get phoneSurfaceVibrationCues => 'Signaux par vibration';
@@ -20245,7 +20246,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailRepeatWeekOfferBody =>
-      'Refaites cette semaine la semaine prochaine. Ce que vous avez fait reste fait, et le reste du plan recule d’une semaine.';
+      'Refaites cette semaine la semaine prochaine. Ce que vous avez fait reste fait, et le reste du plan recule d\'une semaine.';
 
   @override
   String planDetailRepeatWeekConfirmTitle(int n) {
@@ -20259,7 +20260,7 @@ class AppLocalizationsFr extends AppLocalizations {
     String start,
     String end,
   ) {
-    return 'La semaine $n est refaite en semaine $copy, à partir du $start. Chaque semaine suivante recule d’une semaine, et le plan se termine désormais le $end. Les séances faites restent telles quelles.';
+    return 'La semaine $n est refaite en semaine $copy, à partir du $start. Chaque semaine suivante recule d\'une semaine, et le plan se termine désormais le $end. Les séances faites restent telles quelles.';
   }
 
   @override
@@ -20269,7 +20270,7 @@ class AppLocalizationsFr extends AppLocalizations {
     String start,
     String race,
   ) {
-    return 'La semaine $n est refaite en semaine $copy, à partir du $start. Pour garder la course le $race, une semaine plus loin avant l’affûtage est retirée. Les séances faites restent telles quelles.';
+    return 'La semaine $n est refaite en semaine $copy, à partir du $start. Pour garder la course le $race, une semaine plus loin avant l\'affûtage est retirée. Les séances faites restent telles quelles.';
   }
 
   @override
@@ -20282,7 +20283,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailRepeatWeekNoRoom =>
-      'Il ne reste aucune semaine avant l’affûtage pour faire de la place : refaire cette semaine déplacerait le jour de course. Changez plutôt la date de course.';
+      'Il ne reste aucune semaine avant l\'affûtage pour faire de la place : refaire cette semaine déplacerait le jour de course. Changez plutôt la date de course.';
 
   @override
   String get planDetailRepeatWeekInTheWay =>
@@ -20290,11 +20291,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailRepeatWeekLastWeek =>
-      'C’est la dernière semaine du plan : il n’y a rien à décaler.';
+      'C\'est la dernière semaine du plan : il n\'y a rien à décaler.';
 
   @override
   String get planDetailRepeatWeekNotNow =>
-      'Seule cette semaine ou la précédente d’un plan actif peut être refaite.';
+      'Seule cette semaine ou la précédente d\'un plan actif peut être refaite.';
 
   @override
   String rateLimitRepeatWeek(String wait) {
@@ -20308,7 +20309,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailRepeatWeekOverlap =>
-      'Refaire cette semaine ferait empiéter le plan sur un autre plan actif. Déplacez ou terminez d’abord ce plan.';
+      'Refaire cette semaine ferait empiéter le plan sur un autre plan actif. Déplacez ou terminez d\'abord ce plan.';
 
   @override
   String get missedPromptRepeatWeekBody =>
@@ -20594,11 +20595,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get dashboardTrainingLoadSection => 'Charge d’entraînement';
+  String get dashboardTrainingLoadSection => 'Charge d\'entraînement';
 
   @override
   String get dashboardTrainingLoadSectionHint =>
-      'Vos chiffres de forme, de fatigue et de fraîcheur. Replié parce que vous avez demandé l’essentiel : ouvrez-le quand vous voulez.';
+      'Vos chiffres de forme, de fatigue et de fraîcheur. Replié parce que vous avez demandé l\'essentiel : ouvrez-le quand vous voulez.';
 
   @override
   String get dashboardTrainingLoadSectionAction =>
@@ -20944,7 +20945,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String badgesShareText(String badge, String url) {
-    return 'J’ai obtenu le badge « $badge » sur Threkir : $url';
+    return 'J\'ai obtenu le badge « $badge » sur Threkir : $url';
   }
 
   @override
@@ -21538,10 +21539,10 @@ class AppLocalizationsFr extends AppLocalizations {
       n,
       locale: localeName,
       other:
-          'Carte du parcours avec $n points de contrôle. La légende en dessous explique chaque repère.',
+          'Carte du parcours avec $n points de contrôle. La légende ci-dessous explique chaque repère.',
       one:
-          'Carte du parcours avec $n point de contrôle. La légende en dessous explique chaque repère.',
-      zero: 'Carte du parcours. La légende en dessous explique chaque repère.',
+          'Carte du parcours avec $n point de contrôle. La légende ci-dessous explique chaque repère.',
+      zero: 'Carte du parcours. La légende ci-dessous explique chaque repère.',
     );
     return '$_temp0';
   }
@@ -21560,7 +21561,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventCourseLinesMapBoth =>
-      'Carte des lignes de départ et d’arrivée du parcours';
+      'Carte des lignes de départ et d\'arrivée du parcours';
 
   @override
   String get eventCourseLinesMapStart =>
@@ -21568,7 +21569,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventCourseLinesMapFinish =>
-      'Carte de la ligne d’arrivée du parcours';
+      'Carte de la ligne d\'arrivée du parcours';
 
   @override
   String get eventRacePreflightTitle => 'Vérifiez les parcours avant d\'armer';
@@ -21579,7 +21580,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventRacePreflightFixOnWeb =>
-      'Les lignes du parcours se modifient dans l’éditeur d’événement sur le web.';
+      'Les lignes du parcours se modifient dans l\'éditeur d\'événement sur le web.';
 
   @override
   String get eventRaceArmAnyway => 'Armer quand même';
@@ -21589,7 +21590,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String eventRacePreflightNoFinish(String course) {
-    return '$course : ni ligne ni point d’arrivée, les coureurs terminent donc à la main.';
+    return '$course : ni ligne ni point d\'arrivée, les coureurs terminent donc à la main.';
   }
 
   @override
@@ -21599,17 +21600,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String eventRacePreflightSelfCross(String course) {
-    return '$course : l’itinéraire croise sa propre ligne d’arrivée avant la fin, une arrivée par la ligne pourrait donc venir trop tôt.';
+    return '$course : l\'itinéraire croise sa propre ligne d\'arrivée avant la fin, une arrivée par la ligne pourrait donc venir trop tôt.';
   }
 
   @override
   String eventRacePreflightFarStart(String course) {
-    return '$course : la ligne de départ est à plus de 100 m de l’itinéraire.';
+    return '$course : la ligne de départ est à plus de 100 m de l\'itinéraire.';
   }
 
   @override
   String eventRacePreflightFarFinish(String course) {
-    return '$course : la ligne d’arrivée est à plus de 100 m de l’itinéraire.';
+    return '$course : la ligne d\'arrivée est à plus de 100 m de l\'itinéraire.';
   }
 
   @override

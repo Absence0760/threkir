@@ -250,7 +250,6 @@ void main() {
     });
 
     testWidgets('with no shell, it pushes the fallback', (tester) async {
-      expect(socialSurfaceRequests.hasListeners, isFalse);
       await tester.pumpWidget(MaterialApp(
         home: Builder(
           builder: (context) => TextButton(

@@ -1,3 +1,5 @@
+import type { FileChooser } from '@playwright/test';
+
 import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
@@ -19,6 +21,13 @@ test.describe('/settings/integrations — bulk-import pickers are keyboard-reach
 
 	for (const label of ['Choose Strava export zip', 'Choose Garmin export'] as const) {
 		test(`"${label}" opens the file chooser from the keyboard`, async ({ page }) => {
+			// Listen before the page loads. Adding the first `filechooser`
+			// listener asks the browser to intercept file dialogs, and the
+			// client sends that request without waiting for it, so a listener
+			// added just before the key press can lose the race and the dialog
+			// opens un-intercepted (CI run 43515566452, e2e shard 13).
+			const choosers: FileChooser[] = [];
+			page.on('filechooser', (c) => choosers.push(c));
 			await page.goto('/settings/integrations');
 
 			// A <label> has no button role, so resolving one at all is half
@@ -31,9 +40,8 @@ test.describe('/settings/integrations — bulk-import pickers are keyboard-reach
 
 			// Enter on the focused control must reach the input — the whole
 			// path a keyboard or screen-reader user takes.
-			const chooser = page.waitForEvent('filechooser', { timeout: 10_000 });
 			await page.keyboard.press('Enter');
-			expect(await chooser).toBeTruthy();
+			await expect.poll(() => choosers.length, { timeout: 10_000 }).toBe(1);
 		});
 	}
 

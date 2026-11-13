@@ -181,7 +181,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with AuthChangeAware<HomeScreen>, WidgetsBindingObserver {
+    with AuthChangeAware<HomeScreen> {
   // PageView page indices. The bottom nav exposes four destinations
   // (Home / Fitness / Social / You) plus a centre Log action; the Run page
   // has no nav destination but stays a keep-alive PageView page so an
@@ -294,7 +294,6 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.addListener(_syncRunPageShown);
     _currentIndex.addListener(_dropFocusLeftBehind);
     _currentIndex.addListener(_refreshSocialUnread);
-    WidgetsBinding.instance.addObserver(this);
     // The nav dot needs the count before the lazily built Social page
     // exists, so the shell binds it; binding the same client again is free.
     if (widget.socialUnread == null) _socialUnread.bind(widget.apiClient);
@@ -389,17 +388,12 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void onAuthUserChanged(String? userId) {
     _setupWizardShown = false;
-    unawaited(_socialUnread.refresh());
     if (userId != null) _runSignInGates();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(_socialUnread.refresh());
-  }
-
   /// The dot is re-read whenever the runner changes page, which is when a
-  /// conversation they just read in Social (or You) stops counting.
+  /// conversation they just read in Social stops counting. Resume and an
+  /// account switch are [UnreadMessages]'s own to answer.
   void _refreshSocialUnread() => unawaited(_socialUnread.refresh());
 
   Future<void> _runSignInGates() async {
@@ -1041,7 +1035,6 @@ class _HomeScreenState extends State<HomeScreen>
     _currentIndex.removeListener(_syncRunPageShown);
     _currentIndex.removeListener(_dropFocusLeftBehind);
     _currentIndex.removeListener(_refreshSocialUnread);
-    WidgetsBinding.instance.removeObserver(this);
     _currentIndex.dispose();
     _runPageShown.dispose();
     _fitnessTab.dispose();

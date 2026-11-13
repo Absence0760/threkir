@@ -201,7 +201,8 @@ Layer 2, none of them needs a foreign key between activity rows.
 > the **Social** item carries a dot while messages wait unread (the count is
 > in its semantics value), read from `UnreadMessages` (`lib/unread_messages.dart`, the count
 > Social's Messages button shows), which the shell binds and re-reads on
-> launch, resume, sign-in and every page change; and Home's toolbar is the title and the Add / Import overflow only,
+> launch and every page change (the count re-reads itself on resume and on
+> an account switch); and Home's toolbar is the title and the Add / Import overflow only,
 > its Feed, bell and Profile glyphs gone to Social and You.
 
 The `Run` tab disappears as a top-level destination. The centre slot

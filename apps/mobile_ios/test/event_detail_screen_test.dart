@@ -20,6 +20,7 @@ import '../lib/social_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 import 'realtime_drain.dart';
+import 'worst_case_layout.dart';
 import 'supabase_test_init.dart';
 
 ClubView _club(String? viewerRole) => ClubView(
@@ -582,6 +583,24 @@ Future<void> _pump(WidgetTester tester) {
 
 void main() {
   setUpAll(_ensureSupabase);
+
+  worstCaseTestWidgets('Event detail', (tester, locale) async {
+    await tester.pumpWidget(worstCaseApp(
+      locale: locale,
+      home: EventDetailScreen(
+        social: _EventSocial(club: _club('member'), viewerRsvp: 'going'),
+        clubSlug: 'fake-slug',
+        eventId: 'fake-event-id',
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.byKey(const Key('event-hero')), findsOneWidget);
+    await walkScrollable(tester, primaryScrollable(), 'Event detail');
+    // The checks run before the realtime drain unmounts the page.
+    expectTitlesNotCut(tester, 'Event detail [$locale]');
+    await drainRealtimeTimers(tester);
+  });
 
   group('EventDetailScreen — initial render', () {
     realtimeWidgetTest('first frame shows a skeleton of the detail page', (

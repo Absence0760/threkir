@@ -5,7 +5,6 @@ import '../challenge_list.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../leaderboard_standing.dart';
 import '../social_service.dart';
-import '../widgets/app_bar_actions.dart';
 import '../widgets/challenge_invite_card.dart';
 import '../widgets/challenge_progress_bar.dart';
 import '../widgets/confirm_destructive.dart';
@@ -154,23 +153,18 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     final l10n = AppLocalizations.of(context);
     final c = _challenge;
     final isCreator = c != null && c.creatorId != null && c.creatorId == widget.social.currentUserId;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(c?.title ?? l10n.challengesTitle),
-        actions: [
-          if (isCreator)
-            AppBarActions(
-              actions: [
-                AppBarAction(
-                  icon: const Icon(Icons.delete_outline),
-                  label: l10n.challengesDeleteChallenge,
-                  onPressed: _delete,
-                  destructive: true,
-                ),
-              ],
-            ),
-        ],
-      ),
+    return DetailPage(
+      title: c?.title ?? l10n.challengesTitle,
+      moreTooltip: l10n.commonMore,
+      actions: [
+        if (isCreator)
+          AppBarAction(
+            icon: const Icon(Icons.delete_outline),
+            label: l10n.challengesDeleteChallenge,
+            onPressed: _delete,
+            destructive: true,
+          ),
+      ],
       body: !_loaded
           ? SectionedDetailSkeleton(
               label: l10n.commonLoading,
@@ -187,36 +181,52 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                   title: l10n.challengesNotFound,
                 )
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   children: [
-                    if (c.isOfficial) ...[
-                      const Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: OfficialBadge(size: 16),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    Text(_windowLabel(l10n, c), style: TextStyle(color: Theme.of(context).hintColor)),
-                    if ((c.description ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(c.description!),
-                    ],
-                    if (c.metric == 'park_courses' && c.parkRegionCode != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.challengesParkRegion(c.parkRegionCode!),
-                        key: const Key('challenge-park-region'),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    if (c.joined && c.scope != 'club_vs_club') _progress(context, c),
-                    const SizedBox(height: 12),
-                    if (c.joined)
-                      OutlinedButton(onPressed: _busy ? null : _leave, child: Text(l10n.challengesLeave))
-                    else
-                      FilledButton(onPressed: _busy ? null : _join, child: Text(l10n.challengesJoin)),
+                    DetailHero(
+                      title: c.title,
+                      padding: const EdgeInsets.only(top: 16),
+                      badges: [
+                        if (c.isOfficial) const OfficialBadge(size: 16),
+                      ],
+                      meta: [
+                        DetailMeta(
+                          icon: Icons.schedule,
+                          text: _windowLabel(l10n, c),
+                        ),
+                      ],
+                      description: (c.description ?? '').isNotEmpty
+                          ? Text(c.description!)
+                          : null,
+                      children: [
+                        if (c.metric == 'park_courses' &&
+                            c.parkRegionCode != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            l10n.challengesParkRegion(c.parkRegionCode!),
+                            key: const Key('challenge-park-region'),
+                          ),
+                        ],
+                        if (c.joined && c.scope != 'club_vs_club') ...[
+                          const SizedBox(height: 16),
+                          _progress(context, c),
+                        ],
+                      ],
+                      cta: c.joined
+                          ? HeroCta(
+                              label: l10n.challengesLeave,
+                              outlined: true,
+                              onPressed: _leave,
+                              busy: _busy,
+                            )
+                          : HeroCta(
+                              label: l10n.challengesJoin,
+                              onPressed: _join,
+                              busy: _busy,
+                            ),
+                    ),
                     const SizedBox(height: 24),
-                    Text(l10n.challengesLeaderboard, style: Theme.of(context).textTheme.titleMedium),
+                    SectionHeader.title(label: l10n.challengesLeaderboard),
                     const SizedBox(height: 8),
                     _leaderboard(context, c),
                     const SizedBox(height: 16),

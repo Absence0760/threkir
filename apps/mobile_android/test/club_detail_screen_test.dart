@@ -1145,6 +1145,9 @@ void main() {
 
         final sendBtn = find.widgetWithText(FilledButton, 'Send');
         expect(sendBtn, findsOneWidget);
+        // The hero above the tabs pushes the composer below the fold.
+        await tester.ensureVisible(sendBtn);
+        await tester.pump();
 
         await tester.tap(sendBtn);
         await tester.pump();

@@ -1611,80 +1611,77 @@ class _PeriodStatCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final value = UnitFormat.distanceValue(distanceMetres, unit);
     final unitLabel = UnitFormat.distanceLabel(unit);
-    final inner = Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.06,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+    final inner = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.06,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(height: 6),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Flexible(
+              child: Text(
+                value,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              unitLabel,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.dashboardRunCount(runCount),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        if (vertMetres > 0) ...[
+          const SizedBox(height: 2),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            mainAxisSize: MainAxisSize.min,
             children: [
+              Icon(
+                Icons.terrain,
+                size: 14,
+                color: theme.colorScheme.outline,
+              ),
+              const SizedBox(width: 3),
               Flexible(
                 child: Text(
-                  value,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  metricText(l10n, Metric.vert, variant: 'total', args: {
+                    'value': UnitFormat.elevation(vertMetres, unit)
+                  }),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.fade,
                   softWrap: false,
                 ),
               ),
-              const SizedBox(width: 3),
-              Text(
-                unitLabel,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            l10n.dashboardRunCount(runCount),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (vertMetres > 0) ...[
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.terrain,
-                  size: 14,
-                  color: theme.colorScheme.outline,
-                ),
-                const SizedBox(width: 3),
-                Flexible(
-                  child: Text(
-                    metricText(l10n, Metric.vert, variant: 'total', args: {
-                      'value': UnitFormat.elevation(vertMetres, unit)
-                    }),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    softWrap: false,
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
-      ),
+      ],
     );
     final isTappable = onTap != null;
     final theme0 = Theme.of(context);
@@ -1697,13 +1694,15 @@ class _PeriodStatCard extends StatelessWidget {
     // report: "clickable sections should be distinguishable from non-
     // clickable fields … Week / Month / All Time look the same but
     // only Week and Month are clickable."
+    // The chevron sits in the card's corner, over the padding.
     final body = Stack(
+      clipBehavior: Clip.none,
       children: [
         inner,
         if (isTappable)
           Positioned(
-            right: 8,
-            top: 8,
+            right: -AppSpace.sm,
+            top: -AppSpace.xs,
             child: Icon(
               Icons.chevron_right,
               size: 16,
@@ -1712,44 +1711,25 @@ class _PeriodStatCard extends StatelessWidget {
           ),
       ],
     );
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: isTappable
-          ? RoundedRectangleBorder(
-              side: BorderSide(
-                color: theme0.colorScheme.primary,
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(12),
+    // audit/accessibility (2026-05-25) High, WCAG 4.1.2: a tappable tile
+    // reads as one button-roled label, not the raw stat numbers in order.
+    return ListCard(
+      dense: true,
+      outline: isTappable ? theme0.colorScheme.primary : null,
+      onTap: onTap,
+      semanticLabel: isTappable
+          ? l10n.dashboardPeriodSummaryA11y(
+              label,
+              '${UnitFormat.distanceValue(distanceMetres, unit)} '
+                  '${UnitFormat.distanceLabel(unit)}',
+              l10n.dashboardRunCount(runCount),
+              vertMetres > 0
+                  ? l10n.dashboardElevationGainSuffix(
+                      UnitFormat.elevation(vertMetres, unit))
+                  : '',
             )
-          : RoundedRectangleBorder(
-              side: BorderSide(
-                color: theme0.dividerColor,
-                width: 1,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-      // audit/accessibility (2026-05-25) High — WCAG 4.1.2. The
-      // tappable InkWell was bare; without Semantics TalkBack
-      // announced only the raw stat numbers in reading order.
-      // Wrapping with a button-roled label restores the semantics
-      // for the period summary drill-in.
-      child: isTappable
-          ? Semantics(
-              button: true,
-              label: l10n.dashboardPeriodSummaryA11y(
-                label,
-                '${UnitFormat.distanceValue(distanceMetres, unit)} '
-                    '${UnitFormat.distanceLabel(unit)}',
-                l10n.dashboardRunCount(runCount),
-                vertMetres > 0
-                    ? l10n.dashboardElevationGainSuffix(
-                        UnitFormat.elevation(vertMetres, unit))
-                    : '',
-              ),
-              child: InkWell(onTap: onTap, child: body),
-            )
-          : body,
+          : null,
+      child: body,
     );
   }
 }

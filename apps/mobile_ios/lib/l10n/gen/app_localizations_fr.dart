@@ -338,18 +338,21 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other: '$runs courses',
       one: '$runs course',
+      zero: 'aucune course',
     );
     String _temp1 = intl.Intl.pluralLogic(
       tracks,
       locale: localeName,
       other: '$tracks traces',
       one: '$tracks trace',
+      zero: 'aucune trace',
     );
     String _temp2 = intl.Intl.pluralLogic(
       routes,
       locale: localeName,
       other: '$routes itinéraires',
       one: '$routes itinéraire',
+      zero: 'aucun itinéraire',
     );
     return 'Restauration : $_temp0 · $_temp1 · $_temp2';
   }
@@ -9056,6 +9059,7 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other: '$runs courses ont été restaurées',
       one: '$runs course a été restaurée',
+      zero: 'Aucune course n\'a été restaurée',
     );
     return 'Cette archive se déclarait incomplète. $_temp0 et rien n\'a été écrasé — restaurez depuis une sauvegarde complète pour combler les manques.';
   }
@@ -9093,18 +9097,21 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other: '$runs courses',
       one: '$runs course',
+      zero: 'aucune course',
     );
     String _temp1 = intl.Intl.pluralLogic(
       tracks,
       locale: localeName,
       other: '$tracks traces',
       one: '$tracks trace',
+      zero: 'aucune trace',
     );
     String _temp2 = intl.Intl.pluralLogic(
       routes,
       locale: localeName,
       other: '$routes itinéraires',
       one: '$routes itinéraire',
+      zero: 'aucun itinéraire',
     );
     return 'Restauration : $_temp0 · $_temp1 · $_temp2$warnings';
   }

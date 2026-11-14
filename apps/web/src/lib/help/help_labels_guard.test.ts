@@ -17,9 +17,8 @@
 // paragraph is not tagged with the platform it describes.
 //
 // A label matches a catalogue string that reads the same once both are
-// normalised (`...` is `…`, a trailing `↗` external-link mark is decoration,
-// runs of spaces are one). A placeholder (`{n}`, `%1$s`, `%@`) matches any
-// run of digits, spaces and punctuation, or nothing, together with the
+// normalised (`...` is `…`, runs of spaces are one). A placeholder (`{n}`,
+// `%1$s`, `%@`) matches any run of digits, spaces and punctuation, or nothing, together with the
 // brackets around it, so `**Pending requests**` matches "Pending requests
 // ({n})" and `**Show all 12 upcoming**` matches "Show all {n} upcoming". It
 // never matches a word: "{a} of {b}" would otherwise match every label with
@@ -240,7 +239,6 @@ function normalise(s: string): string {
 	return s
 		.replace(/\.\.\./g, '…')
 		.replace(/[  ]/g, ' ')
-		.replace(/\s*↗\s*$/u, '')
 		.replace(/\s+/g, ' ')
 		.trim();
 }
@@ -476,14 +474,14 @@ const allowed = (q: Quoted) => NOT_IN_A_CATALOGUE.some((e) => e.guide === q.guid
 
 // ---------------------------------------------------------------------------
 
-test('the matcher reads placeholders, plurals, decoration and leading clauses', () => {
+test('the matcher reads placeholders, plurals and leading clauses', () => {
 	const icu = catalogue(
 		[
 			'Pending requests ({n})',
 			'GO at {when}',
 			'Show all {n} upcoming',
 			'{n, plural, one {# run} other {# runs}}',
-			'Spectator view ↗',
+			'Spectator view',
 			'Tracking paused while you were away — your run kept timing.',
 			'Search places...',
 			'{a} of {b}',

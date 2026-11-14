@@ -93,7 +93,11 @@ test.describe('/sitemap.xml — prerendered SEO sitemap', () => {
 		expect(lines).toHaveLength(1);
 		const url = new URL(lines.join('').replace(/^Sitemap:\s*/, ''));
 		expect(url.pathname).toBe('/sitemap.xml');
-		expect(url.hostname.startsWith('www.')).toBe(false);
+		// The same origin the sitemap index names its children on, so the two
+		// files can never point a crawler at different hosts.
+		const index = await (await request.get('/sitemap.xml')).text();
+		const firstLoc = index.match(/<loc>([^<]+)<\/loc>/)?.[1] ?? '';
+		expect(url.origin).toBe(new URL(firstLoc).origin);
 	});
 
 	test('sitemap does NOT include private / signed-in surfaces', async ({ request }) => {

@@ -3362,7 +3362,7 @@ abstract class AppLocalizations {
   /// Setup wizard demographics step hint
   ///
   /// In en, this message translates to:
-  /// **'Optional. Helps tailor pace and calorie estimates. You choose whether to share health data.'**
+  /// **'Optional. Helps tailor pace and calorie estimates. You choose whether to give health-data consent.'**
   String get setupAboutHint;
 
   /// Setup wizard gender field label
@@ -3398,7 +3398,7 @@ abstract class AppLocalizations {
   /// Setup wizard date-of-birth field note
   ///
   /// In en, this message translates to:
-  /// **'Used to keep accounts of under-18s out of people search, and for age-graded results if you share health data.'**
+  /// **'Used to keep accounts of under-18s out of people search, and for age-graded results if you give health-data consent.'**
   String get setupDobNote;
 
   /// Setup wizard date-of-birth empty-state text

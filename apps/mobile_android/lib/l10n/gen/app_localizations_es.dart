@@ -2065,7 +2065,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get setupAboutHint =>
-      'Opcional. Ayuda a adaptar las estimaciones de ritmo y calorías. Tú decides si compartes datos de salud.';
+      'Opcional. Ayuda a adaptar las estimaciones de ritmo y calorías. Tú decides si das tu consentimiento de datos de salud.';
 
   @override
   String get setupGenderLabel => 'Género';
@@ -2084,7 +2084,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Se usa para mantener las cuentas de menores de 18 años fuera de la búsqueda de personas y para resultados ajustados por edad si compartes datos de salud.';
+      'Se usa para mantener las cuentas de menores de 18 años fuera de la búsqueda de personas y para resultados ajustados por edad si das tu consentimiento de datos de salud.';
 
   @override
   String get setupDobPlaceholder => 'Toca para elegir';

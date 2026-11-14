@@ -2076,7 +2076,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupAboutHint =>
-      'Opcional. Ajuda a personalizar estimativas de ritmo e calorias. Decide se partilha dados de saúde.';
+      'Opcional. Ajuda a personalizar estimativas de ritmo e calorias. Decide se dá o seu consentimento de dados de saúde.';
 
   @override
   String get setupGenderLabel => 'Género';
@@ -2095,7 +2095,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Utilizada para manter contas de menores de 18 anos fora da pesquisa de pessoas e para resultados ajustados por idade, se partilhar dados de saúde.';
+      'Utilizada para manter contas de menores de 18 anos fora da pesquisa de pessoas e para resultados ajustados por idade, se der o seu consentimento de dados de saúde.';
 
   @override
   String get setupDobPlaceholder => 'Toque para escolher';
@@ -26206,7 +26206,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupAboutHint =>
-      'Opcional. Ajuda a personalizar estimativas de ritmo e calorias. Você decide se compartilha dados de saúde.';
+      'Opcional. Ajuda a personalizar estimativas de ritmo e calorias. Você decide se dá seu consentimento de dados de saúde.';
 
   @override
   String get setupGenderLabel => 'Gênero';
@@ -26225,7 +26225,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupDobNote =>
-      'Usada para manter contas de menores de 18 anos fora da busca de pessoas e para resultados ajustados por idade, se você compartilhar dados de saúde.';
+      'Usada para manter contas de menores de 18 anos fora da busca de pessoas e para resultados ajustados por idade, se você der seu consentimento de dados de saúde.';
 
   @override
   String get setupDobPlaceholder => 'Toque para escolher';

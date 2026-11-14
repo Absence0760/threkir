@@ -2074,7 +2074,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupAboutHint =>
-      'Facultatif. Aide à personnaliser les estimations d\'allure et de calories. Vous choisissez de partager ou non des données de santé.';
+      'Facultatif. Aide à personnaliser les estimations d\'allure et de calories. Vous choisissez de donner ou non votre consentement aux données de santé.';
 
   @override
   String get setupGenderLabel => 'Genre';
@@ -2093,7 +2093,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Sert à exclure les comptes de moins de 18 ans de la recherche de personnes, et pour les résultats ajustés à l\'âge si vous partagez des données de santé.';
+      'Sert à exclure les comptes de moins de 18 ans de la recherche de personnes, et pour les résultats ajustés à l\'âge si vous donnez votre consentement aux données de santé.';
 
   @override
   String get setupDobPlaceholder => 'Touchez pour choisir';

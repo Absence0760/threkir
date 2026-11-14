@@ -2072,7 +2072,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupAboutHint =>
-      'Optional. Hilft, Tempo- und Kalorienschätzungen anzupassen. Du entscheidest, ob du Gesundheitsdaten teilst.';
+      'Optional. Hilft, Tempo- und Kalorienschätzungen anzupassen. Du entscheidest, ob du die Einwilligung zu Gesundheitsdaten erteilst.';
 
   @override
   String get setupGenderLabel => 'Geschlecht';
@@ -2091,7 +2091,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Wird verwendet, um Konten von unter 18-Jährigen aus der Personensuche herauszuhalten, und für altersbewertete Ergebnisse, wenn du Gesundheitsdaten teilst.';
+      'Wird verwendet, um Konten von unter 18-Jährigen aus der Personensuche herauszuhalten, und für altersbewertete Ergebnisse, wenn du die Einwilligung zu Gesundheitsdaten erteilst.';
 
   @override
   String get setupDobPlaceholder => 'Zum Auswählen tippen';

@@ -2041,7 +2041,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupAboutHint =>
-      'Optional. Helps tailor pace and calorie estimates. You choose whether to share health data.';
+      'Optional. Helps tailor pace and calorie estimates. You choose whether to give health-data consent.';
 
   @override
   String get setupGenderLabel => 'Gender';
@@ -2060,7 +2060,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      'Used to keep accounts of under-18s out of people search, and for age-graded results if you share health data.';
+      'Used to keep accounts of under-18s out of people search, and for age-graded results if you give health-data consent.';
 
   @override
   String get setupDobPlaceholder => 'Tap to choose';

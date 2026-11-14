@@ -1943,7 +1943,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupAboutTitle => 'あなたについて少し';
 
   @override
-  String get setupAboutHint => '任意です。ペースやカロリーの推定を最適化します。健康データを共有するかはあなたが選べます。';
+  String get setupAboutHint =>
+      '任意です。ペースやカロリーの推定を最適化します。健康データの利用に同意するかはあなたが選べます。';
 
   @override
   String get setupGenderLabel => '性別';
@@ -1962,7 +1963,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupDobNote =>
-      '18歳未満のアカウントを人物検索から除外するため、また健康データを共有する場合は年齢補正結果のために使用します。';
+      '18歳未満のアカウントを人物検索から除外するため、また健康データの利用に同意した場合は年齢補正結果のために使用します。';
 
   @override
   String get setupDobPlaceholder => 'タップして選択';

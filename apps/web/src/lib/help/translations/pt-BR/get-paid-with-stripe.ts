@@ -11,7 +11,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'A inscrição paga ainda não está no ar. Cobrar por um evento exige duas coisas: sua própria conta Stripe conectada aqui e a plataforma ativar o sistema de pagamentos dela. Enquanto as duas não forem verdadeiras, ninguém pode ser cobrado. Se, ao clicar em **Configurar pagamentos**, aparecer **Os pagamentos ainda não estão configurados nesta versão.**, é a segunda que ainda falta, e não há nada para você fazer por enquanto.',
+					text: 'A inscrição paga ainda não está no ar. Cobrar por um evento exige duas coisas: sua própria conta Stripe conectada aqui e a plataforma ativar o sistema de pagamentos dela. Enquanto as duas não forem verdadeiras, ninguém pode ser cobrado. Se, ao clicar em **Configurar repasses**, aparecer **Os pagamentos ainda não estão configurados nesta versão.**, é a segunda que ainda falta, e não há nada para você fazer por enquanto.',
 				},
 				{
 					type: 'p',
@@ -26,9 +26,9 @@ export const translation: GuideTranslation = {
 					type: 'steps',
 					items: [
 						'Abra [[route:/settings/payouts|Repasses]] na web.',
-						'Clique em **Configurar pagamentos**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.',
+						'Clique em **Configurar repasses**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.',
 						'Conclua as etapas do Stripe. Quando você voltar, a página mostra a sua situação.',
-						'Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de pagamentos precisa de atenção antes de você poder receber**, clique em **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar de onde parou.',
+						'Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de repasses precisa de atenção antes de você poder receber**, clique em **Concluir a configuração dos repasses** para voltar ao Stripe e continuar de onde parou.',
 					],
 				},
 			],
@@ -39,14 +39,14 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva você à sua conta Stripe. É isso que “cobranças ativadas” significa, e é o único estado em que a opção **Cobrar por este evento** de um novo evento pode ser ativada.',
+						'**Tudo pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva você à sua conta Stripe. É isso que “cobranças ativadas” significa, e é o único estado em que a opção **Cobrar por este evento** de um novo evento pode ser ativada.',
 						'**Cadastro incompleto — conclua para começar a cobrar**: o Stripe ainda precisa de algo seu antes de aceitar uma cobrança.',
-						'**Sua conta de pagamentos precisa de atenção antes de você poder receber**: o Stripe restringiu a conta, geralmente porque quer mais informações. **Concluir a configuração de pagamentos** leva você ao que ele está pedindo.',
+						'**Sua conta de repasses precisa de atenção antes de você poder receber**: o Stripe restringiu a conta, geralmente porque quer mais informações. **Concluir a configuração dos repasses** leva você ao que ele está pedindo.',
 					],
 				},
 				{
 					type: 'p',
-					text: 'Até você estar pronto para receber pagamentos, o formulário do evento mostra **Configure os pagamentos para cobrar por eventos.** com um link **Configurar pagamentos** de volta para esta página.',
+					text: 'Até você estar pronto para receber pagamentos, o formulário do evento mostra **Configure os repasses para cobrar por eventos.** com um link **Configurar repasses** de volta para esta página.',
 				},
 			],
 		},

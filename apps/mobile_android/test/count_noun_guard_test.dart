@@ -37,89 +37,6 @@ const _neverOne = <String, String>{
   'routesImportedMany count': 'shown only for two or more; one import is routesImported, which names the route',
 };
 
-/// Counts still written into English. Each is owed an ICU plural in all
-/// seven ARBs; the set may only shrink.
-const _owed = <String>{
-  'billingDaysAgo count',
-  'challengesUnitDays n',
-  'clubDetailRoutineExerciseCount n',
-  'coachDailyLimitError limit',
-  'coachingAthleteAssignAfterMany count',
-  'comebackLayoff weeks',
-  'fundraiserDonorCount count',
-  'heatmapRoutesStartHere count',
-  'historySetCount n',
-  'importStatusImported count',
-  'importStatusImportedWithErrors count',
-  'intensityWindow days',
-  'nutritionRecipeMeta n',
-  'nutritionRecipeMeta servings',
-  'nutritionTargetsAgeYears n',
-  'nutritionTemplateItems n',
-  'nutritionTemplateLogged n',
-  'nutritionWeekProtein total',
-  'planDetailSectionWeeksHint n',
-  'planNewDaysOption count',
-  'planNewReturnBody weeks',
-  'planNewSessions count',
-  'planNudgeRestBody total',
-  'planNudgeUnderBody total',
-  'profileNotifAndOthers count',
-  'profileNotifNameAndOthers count',
-  'racesEmptyRecent days',
-  'racesWhenHint days',
-  'recapShareBestStreak days',
-  'recapShareTotals count',
-  'routeDetailAppleWatchRouteSent points',
-  'routeDetailAppleWatchRouteSimplified source',
-  'routeDetailStatReviews count',
-  'routeDetailWatchCourseAndScheduleSent checkpoints',
-  'routeDetailWatchCourseAndScheduleSent points',
-  'routeDetailWatchCourseSent points',
-  'routeDetailWatchCourseSentMarkersFailed points',
-  'routeDetailWatchCourseSimplified source',
-  'routeDetailWatchScheduleClockCutoffs checkpoints',
-  'routeDetailWatchScheduleThinned checkpoints',
-  'routeDetailWatchScheduleThinned points',
-  'routeDetailWatchScheduleTooManyCutoffs points',
-  'runDetailBlockedTrackTooLarge waypoints',
-  'runDetailRouteSaved kept',
-  'sessionStepReps reps',
-  'settingsAccountBackupPartial total',
-  'settingsAccountBackupPartialNotice total',
-  'settingsAccountExportRateLimited seconds',
-  'settingsAccountExportReadyBanner count',
-  'shareCardSplitsHeading count',
-  'simWatchCoursePushed points',
-  'simWatchRoadbookPushed checkpoints',
-  'simWatchWorkoutPushed steps',
-  'trainingLoadSubtitleHr days',
-  'ttsDistanceMetres value',
-  'ttsDistanceYards value',
-  'ttsDurationMinutesSeconds sec',
-  'ttsDurationSeconds sec',
-  'ttsPaceAlertSlowDownByKm sec',
-  'ttsPaceAlertSlowDownByMi sec',
-  'ttsPaceAlertSpeedUpByKm sec',
-  'ttsPaceAlertSpeedUpByMi sec',
-  'ttsPaceDriftAheadKm delta',
-  'ttsPaceDriftAheadMi delta',
-  'ttsPaceDriftBehindKm delta',
-  'ttsPaceDriftBehindMi delta',
-  'ttsPaceKm min',
-  'ttsPaceKm sec',
-  'ttsPaceMi min',
-  'ttsPaceMi sec',
-  'ttsRunComplete mins',
-  'ttsStepPaceKm min',
-  'ttsStepPaceKm sec',
-  'ttsStepPaceKmWhole min',
-  'ttsStepPaceMi min',
-  'ttsStepPaceMi sec',
-  'ttsStepPaceMiWhole min',
-  'upcomingEventInDays count',
-};
-
 /// The span and argument of every plural / select block in [s]. Inside one,
 /// its own argument agrees with the branch; any other placeholder is still a
 /// bare count.
@@ -208,7 +125,7 @@ void main() {
 
   test('no English message writes a count before a plural noun', () {
     final offenders = found
-        .where((h) => !_owed.contains(h) && !_neverOne.containsKey(h))
+        .where((h) => !_neverOne.containsKey(h))
         .toList()
       ..sort();
     expect(offenders, isEmpty,
@@ -216,16 +133,11 @@ void main() {
             '({n, plural, one{{n} day} other{{n} days}}) in all seven ARBs');
   });
 
-  test('every _owed and _neverOne entry is still needed', () {
-    for (final h in _owed) {
-      expect(found, contains(h),
-          reason: '$h is no longer a bare count; drop it from _owed');
-    }
+  test('every _neverOne entry is still needed', () {
     for (final e in _neverOne.entries) {
       expect(e.value.trim(), isNotEmpty, reason: '${e.key}: name the constant');
       expect(found, contains(e.key),
           reason: '${e.key} is no longer a bare count; drop it from _neverOne');
-      expect(_owed, isNot(contains(e.key)), reason: '${e.key} is listed twice');
     }
   });
 }

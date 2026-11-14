@@ -5,9 +5,9 @@
 /// Sitemap spec: https://www.sitemaps.org/protocol.html
 ///   - Document declares xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
 ///   - Each <url> carries <loc> (required) + <lastmod> (optional)
-///   - Hard caps: 50,000 URLs per file, 50 MB uncompressed. Our
-///     run + route counts are far below either ceiling for the
-///     foreseeable future.
+///   - Hard caps: 50,000 URLs per file, 50 MB uncompressed. A file over
+///     either is rejected whole, so /sitemap.xml is an index of child
+///     files (see `SITEMAP_KINDS` below) rather than one urlset.
 
 import { buildClubShareCanonical } from './share_club_meta';
 import { courseShareKey } from './share_course_lookup';
@@ -74,19 +74,11 @@ export function changefreqForRunCount(
 	return 'monthly';
 }
 
-/// Compose the full entries list from the base URL + raw db rows.
-/// Top-level surfaces (landing, feed, explore) come first; share
-/// pages follow. `runCountByRouteId` is an optional popularity map
-/// from a `public_runs.route_id` aggregation — present values bump
-/// the route's <priority> + <changefreq>.
-export function composeEntries(
-	base: string,
-	routes: Array<{ id: string; updated_at?: string | null }>,
-	runs: Array<{ id: string; updated_at?: string | null; started_at?: string | null }>,
-	runCountByRouteId?: Map<string, number>,
-): SitemapEntry[] {
+/// The top-level surfaces (landing, feed, explore, segment catalogue). They
+/// head the `pages` child sitemap, ahead of the learn entries.
+export function topLevelEntries(base: string): SitemapEntry[] {
 	const b = normaliseBase(base);
-	const entries: SitemapEntry[] = [
+	return [
 		{ loc: `${b}/`, changefreq: 'weekly', priority: 1.0 },
 		// /feed is auth-gated but the URL is well-known; let crawlers
 		// know it exists so the login redirect resolves to a stable
@@ -102,65 +94,85 @@ export function composeEntries(
 		// § 677).
 		{ loc: `${b}/segments`, changefreq: 'weekly', priority: 0.6 },
 	];
-	for (const r of routes) {
+}
+
+/// Public route share pages. `runCountByRouteId` is an optional popularity
+/// map from a `public_runs.route_id` aggregation — present values bump the
+/// route's <priority> + <changefreq>.
+export function routeEntries(
+	base: string,
+	routes: Array<{ id: string; updated_at?: string | null }>,
+	runCountByRouteId?: Map<string, number>,
+): SitemapEntry[] {
+	const b = normaliseBase(base);
+	return routes.map((r) => {
 		const count = runCountByRouteId?.get(r.id) ?? 0;
-		entries.push({
+		return {
 			loc: buildRouteShareCanonical(b, r.id),
 			lastmod: r.updated_at ?? undefined,
 			changefreq: changefreqForRunCount(count),
 			priority: priorityForRunCount(count),
-		});
-	}
-	for (const r of runs) {
-		entries.push({
-			loc: buildRunShareCanonical(b, r.id),
-			lastmod: r.updated_at ?? r.started_at ?? undefined,
-			changefreq: 'monthly',
-			priority: 0.6,
-		});
-	}
-	return entries;
+		};
+	});
 }
 
-/// Sitemap entries for the public entity share pages served by the
-/// entity-SSR Lambda: club events, public clubs, and race-calendar
-/// listings. Deliberately excludes public PROFILES — enumerating every
-/// runner in a sitemap is an aggressive people-directory the app doesn't
-/// want; profiles are discoverable via links, not a crawl manifest.
-/// Pure — the caller passes the anon-readable rows.
-export function entityEntries(
+/// Public run share pages.
+export function runEntries(
+	base: string,
+	runs: Array<{ id: string; updated_at?: string | null; started_at?: string | null }>,
+): SitemapEntry[] {
+	const b = normaliseBase(base);
+	return runs.map((r) => ({
+		loc: buildRunShareCanonical(b, r.id),
+		lastmod: r.updated_at ?? r.started_at ?? undefined,
+		changefreq: 'monthly',
+		priority: 0.6,
+	}));
+}
+
+/// The public entity share pages served by the entity-SSR Lambda: club
+/// events, public clubs, and race-calendar listings. There is deliberately
+/// no profile builder — enumerating every runner in a sitemap is an
+/// aggressive people-directory the app doesn't want; profiles are
+/// discoverable via links, not a crawl manifest. Pure — the caller passes
+/// the anon-readable rows.
+export function eventEntries(
 	base: string,
 	events: Array<{ id: string; updated_at?: string | null }>,
+): SitemapEntry[] {
+	const b = normaliseBase(base);
+	return events.map((e) => ({
+		loc: buildEventShareCanonical(b, e.id),
+		lastmod: e.updated_at ?? undefined,
+		changefreq: 'weekly',
+		priority: 0.6,
+	}));
+}
+
+export function clubEntries(
+	base: string,
 	clubs: Array<{ slug: string; updated_at?: string | null }>,
+): SitemapEntry[] {
+	const b = normaliseBase(base);
+	return clubs.map((c) => ({
+		loc: buildClubShareCanonical(b, c.slug),
+		lastmod: c.updated_at ?? undefined,
+		changefreq: 'weekly',
+		priority: 0.6,
+	}));
+}
+
+export function raceEntries(
+	base: string,
 	races: Array<{ id: string; updated_at?: string | null }>,
 ): SitemapEntry[] {
 	const b = normaliseBase(base);
-	const entries: SitemapEntry[] = [];
-	for (const e of events) {
-		entries.push({
-			loc: buildEventShareCanonical(b, e.id),
-			lastmod: e.updated_at ?? undefined,
-			changefreq: 'weekly',
-			priority: 0.6,
-		});
-	}
-	for (const c of clubs) {
-		entries.push({
-			loc: buildClubShareCanonical(b, c.slug),
-			lastmod: c.updated_at ?? undefined,
-			changefreq: 'weekly',
-			priority: 0.6,
-		});
-	}
-	for (const r of races) {
-		entries.push({
-			loc: buildRaceShareCanonical(b, r.id),
-			lastmod: r.updated_at ?? undefined,
-			changefreq: 'weekly',
-			priority: 0.6,
-		});
-	}
-	return entries;
+	return races.map((r) => ({
+		loc: buildRaceShareCanonical(b, r.id),
+		lastmod: r.updated_at ?? undefined,
+		changefreq: 'weekly',
+		priority: 0.6,
+	}));
 }
 
 /// Park course pages (`/share/course/<region>/<park>/<course>`). A course
@@ -229,4 +241,90 @@ export function buildRunCountByRouteId(
 		out.set(id, (out.get(id) ?? 0) + 1);
 	}
 	return out;
+}
+
+/// Protocol limits per file (sitemaps.org). Search engines reject a file over
+/// either one outright, so `renderSitemapFile` throws rather than emit it.
+export const SITEMAP_MAX_URLS = 50_000;
+export const SITEMAP_MAX_BYTES = 50 * 1024 * 1024;
+
+/// The row-backed kinds, each split into child files by the first hex digit of
+/// the row's uuid. The split is a pure function of the id, so the set of child
+/// files is known without reading a row: the prerender's `entries()` runs in a
+/// separate process from the render, and a split by count would have to agree
+/// across two reads of a moving table. Sixteen shards hold 800,000 URLs a
+/// kind; past that `renderSitemapFile` throws, and the fix is a second digit.
+export const SITEMAP_KINDS = ['routes', 'runs', 'events', 'clubs', 'races', 'courses'] as const;
+export type SitemapKind = (typeof SITEMAP_KINDS)[number];
+export const SITEMAP_SHARDS: readonly string[] = [...'0123456789abcdef'];
+
+/// The child that holds the fixed pages: top-level surfaces and learn.
+export const SITEMAP_PAGES_CHILD = 'pages';
+
+export type SitemapChild = { kind: 'pages' } | { kind: SitemapKind; shard: string };
+
+/// The shard a row with this uuid belongs to. Throws on an id that is not a
+/// uuid, which would otherwise fall into no shard and drop silently.
+export function sitemapShardOf(id: string): string {
+	if (!UUID.test(id)) throw new Error(`sitemap: not a uuid: ${id}`);
+	return id.charAt(0).toLowerCase();
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function sitemapChildName(child: SitemapChild): string {
+	return child.kind === 'pages' ? SITEMAP_PAGES_CHILD : `${child.kind}-${child.shard}`;
+}
+
+/// Every child file the build can emit, in index order.
+export function allSitemapChildren(): SitemapChild[] {
+	return [
+		{ kind: 'pages' },
+		...SITEMAP_KINDS.flatMap((kind) => SITEMAP_SHARDS.map((shard) => ({ kind, shard }))),
+	];
+}
+
+export function parseSitemapChild(name: string): SitemapChild | null {
+	if (name === SITEMAP_PAGES_CHILD) return { kind: 'pages' };
+	const m = /^([a-z]+)-([0-9a-f])$/.exec(name);
+	if (!m) return null;
+	const kind = SITEMAP_KINDS.find((k) => k === m[1]);
+	return kind ? { kind, shard: m[2] } : null;
+}
+
+/// The URL of one child file, under the same normalised base as every <loc>.
+export function sitemapChildCanonical(base: string, child: SitemapChild): string {
+	return `${normaliseBase(base)}/sitemaps/${sitemapChildName(child)}.xml`;
+}
+
+/// A <sitemapindex> listing `children`. Pure; the caller decides which
+/// children are worth listing (the empty ones are left out).
+export function buildSitemapIndex(base: string, children: SitemapChild[]): string {
+	const lines: string[] = [];
+	lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+	lines.push('<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+	for (const child of children) {
+		lines.push('  <sitemap>');
+		lines.push(`    <loc>${escapeXml(sitemapChildCanonical(base, child))}</loc>`);
+		lines.push('  </sitemap>');
+	}
+	lines.push('</sitemapindex>');
+	return lines.join('\n') + '\n';
+}
+
+/// One child file's body, refusing to emit a file past the protocol limits:
+/// a crawler rejects such a file whole, and cutting it is the silent loss the
+/// index exists to prevent.
+export function renderSitemapFile(entries: SitemapEntry[]): string {
+	if (entries.length > SITEMAP_MAX_URLS) {
+		throw new Error(
+			`sitemap: ${entries.length} URLs in one file exceeds the ${SITEMAP_MAX_URLS} limit; shard by more id digits`,
+		);
+	}
+	const body = buildSitemap(entries);
+	const bytes = new TextEncoder().encode(body).length;
+	if (bytes > SITEMAP_MAX_BYTES) {
+		throw new Error(`sitemap: ${bytes} bytes in one file exceeds the ${SITEMAP_MAX_BYTES} limit`);
+	}
+	return body;
 }

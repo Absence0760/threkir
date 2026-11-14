@@ -39,14 +39,14 @@ void main() {
     expect(_l10n.coachConsentProcessing, contains('privacy policy'));
     expect(
       _l10n.coachConsentProcessing,
-      contains('under ${_l10n.settingsAccountTitle} in the ${_l10n.navYou} tab'),
+      contains('on your ${_l10n.settingsAccountTitle} page'),
     );
   });
 
   // Where consent is withdrawn is part of the consent text, so in every
-  // locale it names the two labels a runner actually taps: the You tab and
-  // its Account row. The phone has no Settings screen (decisions § 2494).
-  test('every locale names the You tab and Account as where to withdraw', () {
+  // locale it names the page by its title, Account. It names the page, not a
+  // path to it: a path drifts whenever navigation moves (decisions § 2496).
+  test('every locale names the Account page as where to withdraw', () {
     final dir = Directory('lib/l10n');
     final arbs = dir
         .listSync()
@@ -57,7 +57,6 @@ void main() {
     for (final f in arbs) {
       final arb = jsonDecode(f.readAsStringSync()) as Map<String, dynamic>;
       final text = arb['coachConsentProcessing'] as String;
-      expect(text, contains(arb['navYou'] as String), reason: f.path);
       expect(text, contains(arb['settingsAccountTitle'] as String),
           reason: f.path);
       expect(text, isNot(contains('→')), reason: f.path);

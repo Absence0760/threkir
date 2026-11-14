@@ -237,9 +237,16 @@ List<KeysetKey> publicRouteOrder(String sort) {
   }
 }
 
-/// The size a walk ASKS for: PostgREST's `db.max-rows`. Deliberately not
-/// assumed to be the size it gets — see [walkKeyset].
-const int kKeysetWalkPageSize = 1000;
+/// PostgREST's `db.max-rows`: the most rows any one response carries, whatever
+/// the request asked for. `[api] max_rows` in apps/backend/supabase/config.toml
+/// pins it for the local and CI stacks (a test fails when the two differ), and
+/// every backend release fails its "Sync production state" step when the
+/// production project's value is lower. A walk reads it as a proven lower
+/// bound on the cap — see [walkKeyset].
+const int kPostgrestMaxRows = 1000;
+
+/// The size a walk ASKS for: the cap, since asking for more buys nothing.
+const int kKeysetWalkPageSize = kPostgrestMaxRows;
 
 bool _sameCursor(List<Object?> a, List<Object?> b) {
   if (a.length != b.length) return false;
@@ -262,12 +269,16 @@ bool _sameCursor(List<Object?> a, List<Object?> b) {
 /// OFFSET walk names positions instead, so the same delete skips a row and the
 /// same insert repeats one.
 ///
-/// **A short page is not proof of exhaustion.** A server whose `db.max-rows`
-/// is below [pageSize] answers every page short with a 200, so the walk stops
-/// only on an empty page, or on one both short of the ask AND shorter than the
-/// page before it — the shape a genuinely exhausted result set has and a
-/// consistently-capping one does not. A short first page therefore costs one
-/// confirming read.
+/// **A short page is proof of exhaustion only below the cap.** A server whose
+/// `db.max-rows` is below [pageSize] answers every page short with a 200, so a
+/// page short of the ask may still have rows behind it. The server returns
+/// `min(ask, cap)` rows while it has them, so a page is the last one when it is
+/// short of BOTH the ask and a known lower bound on the cap: [maxRows] (the
+/// deployment's declared cap) or the longest page this walk has received, since
+/// the cap can be no lower than a page it sent. Otherwise the walk reads on and
+/// stops on an empty page. With the declared cap, a short first page of an ask
+/// at or under it is the whole result in one request; with `maxRows: null`, or
+/// a page that lands exactly on the cap, it costs one confirming read.
 ///
 /// Errors propagate: a caller archiving a history would rather fail loudly
 /// than write a file that is partial but reads as complete. There is no row
@@ -283,6 +294,7 @@ Future<List<Map<String, dynamic>>> walkKeyset(
       fetchPage, {
   int pageSize = kKeysetWalkPageSize,
   List<Object?>? start,
+  int? maxRows = kPostgrestMaxRows,
 }) async {
   if (pageSize <= 0) {
     throw ArgumentError.value(
@@ -291,9 +303,16 @@ Future<List<Map<String, dynamic>>> walkKeyset(
       'keyset: page size must be a positive integer',
     );
   }
+  if (maxRows != null && maxRows <= 0) {
+    throw ArgumentError.value(
+      maxRows,
+      'maxRows',
+      'keyset: max rows must be a positive integer or null',
+    );
+  }
   final rows = <Map<String, dynamic>>[];
   var cursor = start;
-  int? previous;
+  var capFloor = maxRows ?? 0;
   while (true) {
     String? after;
     if (cursor != null) {
@@ -307,10 +326,8 @@ Future<List<Map<String, dynamic>>> walkKeyset(
       throw StateError('keyset: the walk stopped advancing');
     }
     rows.addAll(page);
-    if (page.length < pageSize && previous != null && page.length < previous) {
-      return rows;
-    }
-    previous = page.length;
+    if (page.length < pageSize && page.length < capFloor) return rows;
+    if (page.length > capFloor) capFloor = page.length;
     cursor = next;
   }
 }

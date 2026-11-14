@@ -185,7 +185,6 @@
 		if (today > end) return m('plansPage.ended');
 		const d = Math.round((end.getTime() - today.getTime()) / dayMs);
 		if (d === 0) return m('plansPage.raceDay');
-		if (d === 1) return m('plansPage.oneDayToGo');
 		return m('plansPage.daysToGo', { d });
 	}
 

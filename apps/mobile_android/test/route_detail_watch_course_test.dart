@@ -592,7 +592,7 @@ void main() {
 
       expect(transport.roadbookWrites, isNotEmpty);
       expect(transport.cutoffCount, 0);
-      expect(find.textContaining('need a race start time'), findsOneWidget);
+      expect(find.textContaining('1 clock cut-off needs a race start time'), findsOneWidget);
     });
 
     testWidgets('a marker-fetch failure degrades to a course-only push',

@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 75080,
-		"sha256": "9700e1ad2b7b53e98d8c3992e0e24acc2ca6a3f950ea5119b0a38f0c9fb4300a",
-		"glyphs": 336,
-		"ligatures": 453
+		"bytes": 75092,
+		"sha256": "7c99323fe19b270be5c066759f6dce9af1cbb4fcb5684c959e16a3e1c472326d",
+		"glyphs": 337,
+		"ligatures": 454
 	},
 	"icons": [
 		"10k",
@@ -233,6 +233,7 @@
 		"open_with",
 		"overview",
 		"pace",
+		"pages",
 		"paid",
 		"park",
 		"password",

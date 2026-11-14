@@ -43,7 +43,7 @@ Un mes que empieza vacío es una oportunidad nueva para cualquiera, no solo para
 
 ## Dos clasificaciones, dos formas de ganar
 
-- **Más rápidos** ordena a cada corredor por su mejor tiempo, una vez por corredor. Cambia entre este mes, este año y todos los tiempos, y filtra por género o por grupo de edad.
+- **Más rápidos** ordena a cada corredor por su mejor tiempo, una vez por corredor. Cambia entre este mes, este año y todos los tiempos, y filtra por género o por franja de edad.
 - **Más completados** cuenta los días en que completaste el recorrido durante la temporada. Varias vueltas el mismo día cuentan como una, así que premia a los habituales que vuelven semana tras semana en lugar de un largo día de vueltas.
 
 Las carreras privadas siguen siendo privadas: el tiempo de una carrera que los demás no pueden ver no se les muestra.

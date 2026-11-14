@@ -84,6 +84,27 @@ export function oneChoices(src: string): { line: number; keys: [string, string] 
 	return out;
 }
 
+// The same choice made by statements: `if (n === 1) return m('x.one');`
+// followed by a message that is handed the same count. plansPage, the race-day
+// panel and the plan header each answered 1 this way, past the ternary scan.
+export function oneStatements(src: string): { line: number; keys: [string, string] }[] {
+	const out: { line: number; keys: [string, string] }[] = [];
+	const re = /if\s*\(\s*([\w.]+)\s*===\s*1\s*\)\s*(?:\{\s*)?(?:return\b)?/g;
+	for (let m = re.exec(src); m; m = re.exec(src)) {
+		const count = m[1].split('.').pop()!;
+		const at = m.index + m[0].length;
+		const end = src.indexOf(';', at);
+		if (end < 0) continue;
+		const a = messageKeys(src.slice(at, end));
+		if (!a.length) continue;
+		const next = src.slice(end + 1, end + 600);
+		const uses = new RegExp(`['"]([\\w]+\\.[\\w.]+)['"]\\s*,\\s*\\{[^}]*\\b${count}\\b`);
+		const b = uses.exec(next);
+		if (b && KEYS.has(b[1]) && b[1] !== a[0]) out.push({ line: src.slice(0, m.index).split('\n').length, keys: [a[0], b[1]] });
+	}
+	return out;
+}
+
 test('the scan finds a key choice made by a count of 1, inline or split', () => {
 	const k = [...KEYS];
 	const [x, y] = [k[0], k[1]];
@@ -93,6 +114,10 @@ test('the scan finds a key choice made by a count of 1, inline or split', () => 
 	assert.equal(oneChoices(`m('${x}', { n })`).length, 0);
 	assert.equal(oneChoices(`n === 1 ? a : '${y}'`).length, 0);
 	assert.equal(oneChoices(`n === 1 ? 'not a key' : 'nor.this-one'`).length, 0);
+	assert.equal(oneStatements(`if (d === 1) return m('${x}');\n\treturn m('${y}', { d });`).length, 1);
+	assert.equal(oneStatements(`if (d === 1) {\n\tr = m('${x}');\n} else {\n\tr = m('${y}', { name, d });\n}`).length, 1);
+	assert.equal(oneStatements(`if (d === 1) return m('${x}');\n\treturn m('${y}', { n: other });`).length, 0);
+	assert.equal(oneStatements(`if (d === 1) return m('${x}');\n\treturn format(d);`).length, 0);
 });
 
 test('no message is chosen by comparing a count with 1', () => {
@@ -100,7 +125,8 @@ test('no message is chosen by comparing a count with 1', () => {
 	const used = new Set<string>();
 	for (const file of sources(ROOT)) {
 		const rel = relative(ROOT, file);
-		for (const { line, keys } of oneChoices(readFileSync(file, 'utf8'))) {
+		const src = readFileSync(file, 'utf8');
+		for (const { line, keys } of [...oneChoices(src), ...oneStatements(src)]) {
 			const id = `${rel} ${keys[0]}`;
 			if (id in EXEMPT) used.add(id);
 			else offenders.push(`${rel}:${line} ${keys.join(' / ')}`);

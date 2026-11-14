@@ -1252,7 +1252,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "A inscrição paga ainda não está no ar. Cobrar por um evento exige duas coisas: sua própria conta Stripe conectada aqui e a plataforma ativar o sistema de pagamentos dela. Enquanto as duas não forem verdadeiras, ninguém pode ser cobrado. Se, ao clicar em **Configurar pagamentos**, aparecer **Os pagamentos ainda não estão configurados nesta versão.**, é a segunda que ainda falta, e não há nada para você fazer por enquanto."
+            "text": "A inscrição paga ainda não está no ar. Cobrar por um evento exige duas coisas: sua própria conta Stripe conectada aqui e a plataforma ativar o sistema de pagamentos dela. Enquanto as duas não forem verdadeiras, ninguém pode ser cobrado. Se, ao clicar em **Configurar repasses**, aparecer **Os pagamentos ainda não estão configurados nesta versão.**, é a segunda que ainda falta, e não há nada para você fazer por enquanto."
           },
           {
             "type": "p",
@@ -1267,9 +1267,9 @@
             "type": "steps",
             "items": [
               "Abra [[route:/settings/payouts|Repasses]] na web.",
-              "Clique em **Configurar pagamentos**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.",
+              "Clique em **Configurar repasses**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.",
               "Conclua as etapas do Stripe. Quando você voltar, a página mostra a sua situação.",
-              "Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de repasses precisa de atenção antes de você poder receber**, clique em **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar de onde parou."
+              "Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de repasses precisa de atenção antes de você poder receber**, clique em **Concluir a configuração dos repasses** para voltar ao Stripe e continuar de onde parou."
             ]
           }
         ]
@@ -1280,14 +1280,14 @@
           {
             "type": "list",
             "items": [
-              "**Pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva você à sua conta Stripe. É isso que “cobranças ativadas” significa, e é o único estado em que a opção **Cobrar por este evento** de um novo evento pode ser ativada.",
+              "**Tudo pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva você à sua conta Stripe. É isso que “cobranças ativadas” significa, e é o único estado em que a opção **Cobrar por este evento** de um novo evento pode ser ativada.",
               "**Cadastro incompleto — conclua para começar a cobrar**: o Stripe ainda precisa de algo seu antes de aceitar uma cobrança.",
-              "**Sua conta de repasses precisa de atenção antes de você poder receber**: o Stripe restringiu a conta, geralmente porque quer mais informações. **Concluir a configuração de pagamentos** leva você ao que ele está pedindo."
+              "**Sua conta de repasses precisa de atenção antes de você poder receber**: o Stripe restringiu a conta, geralmente porque quer mais informações. **Concluir a configuração dos repasses** leva você ao que ele está pedindo."
             ]
           },
           {
             "type": "p",
-            "text": "Até você estar pronto para receber pagamentos, o formulário do evento mostra **Configure os repasses para cobrar por eventos.** com um link **Configurar pagamentos** de volta para esta página."
+            "text": "Até você estar pronto para receber pagamentos, o formulário do evento mostra **Configure os repasses para cobrar por eventos.** com um link **Configurar repasses** de volta para esta página."
           }
         ]
       },
@@ -1435,7 +1435,7 @@
           {
             "type": "list",
             "items": [
-              "Os participantes se inscrevem e pagam na web, veem **Você está inscrito** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].",
+              "Os participantes se inscrevem e pagam na web, veem **Inscrição feita** e podem cancelar de acordo com a sua [[guide:refund-policies|política de reembolso]].",
               "Quando as vagas acabam, aparece **Esgotado** com a opção **Entrar na lista de espera**: veja [[guide:waitlist-and-claim-window|Listas de espera e o prazo de 12 horas para garantir a vaga]].",
               "Marque quem compareceu: [[guide:take-attendance|Registrar a presença]].",
               "Cancelar uma sessão reembolsa todos que pagaram: [[guide:cancel-a-class|Cancelar uma aula]]."
@@ -1490,7 +1490,7 @@
           {
             "type": "list",
             "items": [
-              "Você precisa ser administrador ou organizador de eventos do clube. A página do clube mostra qual dos dois com **Você é administrador** ou **Você é organizador de eventos**.",
+              "Você precisa ser administrador ou organizador de eventos do clube. A página do clube mostra qual dos dois com **Você tem a função de administrador** ou **Você tem a função de organizador de eventos**.",
               "Preço, capacidade, a programação de repetição e o plano de sessão são todos definidos na web. O app para celular pode criar uma aula e mostrá-la aos membros, mas não tem campos de preço, capacidade nem plano de sessão.",
               "Se quiser vincular uma sequência, monte-a primeiro: veja [[guide:build-a-session-plan|Montar um plano de sessão]]."
             ]
@@ -1541,7 +1541,7 @@
             "type": "list",
             "items": [
               "A disciplina, o horário, o local, o **Preço** e uma linha sobre cancelamento, como **Cancelamento gratuito até 24 horas antes do início**.",
-              "Um botão com o texto *Inscrever-se · US$ 22* (com o seu preço) que leva ao pagamento. Quando a pessoa volta, ele mostra **Pagamento confirmado — você está inscrito.**",
+              "Um botão com o texto *Inscrever-se · US$ 22* (com o seu preço) que leva ao pagamento. Quando a pessoa volta, ele mostra **Pagamento confirmado — sua inscrição está feita.**",
               "**Esgotado** quando os tapetes acabam, com **Entrar na lista de espera** enquanto as vendas estão abertas ([[guide:waitlist-and-claim-window|como funciona a lista de espera]]), e **Inscrições encerradas** quando as vendas terminam.",
               "A sua sequência em **Sequência da sessão**. A pessoa pode abri-la e clicar em **Iniciar sessão** para acompanhar em casa."
             ]
@@ -1645,7 +1645,7 @@
           {
             "type": "steps",
             "items": [
-              "Abra o evento na web. Onde aparece **Você está inscrito**, clique em **Cancelar inscrição**.",
+              "Abra o evento na web. Onde aparece **Inscrição feita**, clique em **Cancelar inscrição**.",
               "Leia a caixa de diálogo. Dentro do prazo de reembolso, ela diz que você será reembolsado na forma de pagamento original e que sua vaga fica disponível para alguém da lista de espera.",
               "Clique em **Cancelar inscrição** para continuar, ou em **Manter minha vaga** para desistir."
             ]

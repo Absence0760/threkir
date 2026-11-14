@@ -36,7 +36,7 @@ class PostRunSignInTest {
     }
 
     private fun postRunBody(): String {
-        val start = ui.indexOf("private fun PostRunScreen(")
+        val start = ui.indexOf("internal fun PostRunScreen(")
         assertTrue("`PostRunScreen` is gone or renamed", start >= 0)
         val end = ui.indexOf("\nprivate fun ", start + 1)
         assertTrue("could not find the end of `PostRunScreen`", end > start)

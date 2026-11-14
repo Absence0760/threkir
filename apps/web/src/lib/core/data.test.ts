@@ -1620,18 +1620,23 @@ test('every "answered empty" read that a stranger can hit reports the failure se
 		return source.slice(start, next > start ? next : undefined);
 	};
 
-	// The public run read a stranger hits. PGRST116 is the only "no row".
+	// The public run read a stranger hits, and the owner read every non-owner
+	// passes through first. Both are `maybeSingle`, so no row is `data: null`
+	// with no error, and every error is a genuine failure to find out.
 	const publicRun = bodyOf('fetchPublicRun');
 	assert.match(
 		publicRun,
 		/Promise<\{ run: Run \| null; error: Error \| null \}>/,
 		'fetchPublicRun must report the failure alongside the row, like fetchRunById',
 	);
-	assert.match(
-		publicRun,
-		/error\.code !== 'PGRST116'/,
-		'only "no rows matched" may read as a genuine miss',
-	);
+	for (const [name, body] of [
+		['fetchPublicRun', publicRun],
+		['fetchRunById', bodyOf('fetchRunById')],
+	] as const) {
+		assert.match(body, /\.maybeSingle\(\)/, `${name}: a missing row is not an error, so no 406`);
+		assert.doesNotMatch(body, /\.single\(\)/, `${name}: .single() answers "no row" with a 406`);
+		assert.match(body, /if \(error\) return \{ run: null, error: dbError\(error\) \};/, `${name} must report every error`);
+	}
 	assert.doesNotMatch(
 		publicRun,
 		/const \{ data \} =/,

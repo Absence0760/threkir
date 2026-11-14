@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Sem marca**: o telemóvel ou o relógio do corredor cronometrou a chegada, no momento em que atravessou a linha de chegada, ou no círculo de 30 m à volta da chegada num percurso sem linha de chegada. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.',
+						'*Sem marca*: o telemóvel ou o relógio do corredor cronometrou a chegada, no momento em que atravessou a linha de chegada, ou no círculo de 30 m à volta da chegada num percurso sem linha de chegada. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.',
 						'**Manual**: o corredor terminou à mão, com **Terminar prova** depois de percorrer pelo menos 90% do percurso, ou usando **Enviar o meu tempo** na web durante a prova.',
 						'**Organizador** (na web, **Editado pelo organizador**): o organizador introduziu ou corrigiu este resultado, ou o corredor ficou como DNF quando o organizador encerrou a prova.',
 					],
@@ -131,7 +131,7 @@ export const translation: GuideTranslation = {
 		's1.b0': '86d271497a41304f',
 		's1.b1': '692dd04c06057463',
 		's2.heading': '6e3b7d9c6cfced31',
-		's2.b0.i0': '35a51ea02054bef1',
+		's2.b0.i0': '8376fb6f54bdb6f2',
 		's2.b0.i1': '53388c67a2b02b1b',
 		's2.b0.i2': '811f16eecd7e7ab7',
 		's3.heading': '6a340a4c16d7e613',

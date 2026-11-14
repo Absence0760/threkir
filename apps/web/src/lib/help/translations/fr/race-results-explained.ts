@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Aucun badge** : le téléphone ou la montre du coureur a chronométré l\'arrivée, au moment où il a franchi la ligne d\'arrivée, ou au cercle de 30 m autour de l\'arrivée sur un parcours sans ligne d\'arrivée. C\'est le cas normal : ni le web ni l\'app mobile ne le signalent.',
+						'*Aucun badge* : le téléphone ou la montre du coureur a chronométré l\'arrivée, au moment où il a franchi la ligne d\'arrivée, ou au cercle de 30 m autour de l\'arrivée sur un parcours sans ligne d\'arrivée. C\'est le cas normal : ni le web ni l\'app mobile ne le signalent.',
 						'**Manuel** : le coureur a terminé à la main, soit avec **Terminer la course** après avoir couvert au moins 90 % du parcours, soit avec **Soumettre mon temps** sur le web pendant la course.',
 						'**Organisateur** (sur le web, **Modifié par l\'organisateur**) : l\'organisateur a saisi ou corrigé ce résultat, ou le coureur a été marqué DNF quand l\'organisateur a terminé la course.',
 					],
@@ -131,7 +131,7 @@ export const translation: GuideTranslation = {
 		's1.b0': '86d271497a41304f',
 		's1.b1': '692dd04c06057463',
 		's2.heading': '6e3b7d9c6cfced31',
-		's2.b0.i0': '35a51ea02054bef1',
+		's2.b0.i0': '8376fb6f54bdb6f2',
 		's2.b0.i1': '53388c67a2b02b1b',
 		's2.b0.i2': '811f16eecd7e7ab7',
 		's3.heading': '6a340a4c16d7e613',

@@ -401,7 +401,7 @@
               "Las carreras que haces públicas aparecen en tu perfil y en el feed. Las carreras privadas solo las ves tú.",
               "Tu pertenencia a un club público, y todo lo que publiques en él, pueden verlo las personas que pueden ver el club.",
               "Mientras compartes un enlace en directo, cualquiera que tenga el enlace puede ver la carrera en curso.",
-              "Una foto que marques con **Mostrar en la página de la carrera**, en una carrera pública vinculada a una prueba, aparece en la página pública de esa prueba con su pie de foto y tu nombre. Desmárcala, o haz privada la carrera, para retirarla."
+              "Una foto que marques con **Mostrar en la página de la prueba**, en una carrera pública vinculada a una prueba, aparece en la página pública de esa prueba con su pie de foto y tu nombre. Desmárcala, o haz privada la carrera, para retirarla."
             ]
           },
           {
@@ -2207,7 +2207,7 @@
           },
           {
             "type": "p",
-            "text": "Los corredores que dijeron **Voy** ven ahora **Carrera preparada** en la pestaña Correr de su móvil y «CARRERA PREPARADA» en su reloj Wear OS."
+            "text": "Los corredores que dijeron **Me apunto** ven ahora **Carrera preparada** en la pestaña Correr de su móvil y «CARRERA PREPARADA» en su reloj Wear OS."
           },
           {
             "type": "note",
@@ -2385,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Sin insignia**: el móvil o el reloj del corredor cronometró la llegada, en el momento en que cruzó la línea de meta o, en un recorrido sin línea de meta, al entrar en el círculo de 30 m alrededor de la meta. Es el caso normal, así que ni la web ni la app del móvil lo marcan.",
+              "*Sin insignia*: el móvil o el reloj del corredor cronometró la llegada, en el momento en que cruzó la línea de meta o, en un recorrido sin línea de meta, al entrar en el círculo de 30 m alrededor de la meta. Es el caso normal, así que ni la web ni la app del móvil lo marcan.",
               "**Manual**: el corredor terminó a mano, ya sea con **Terminar carrera** tras cubrir al menos el 90 % del recorrido o con **Enviar mi tiempo** en la web durante la carrera.",
               "**Organizador** (en la web, **Editado por el organizador**): el organizador introdujo o corrigió este resultado, o el corredor quedó marcado como DNF al finalizar el organizador la carrera."
             ]
@@ -2878,7 +2878,7 @@
             "type": "list",
             "items": [
               "En la página del evento, los corredores ven los recorridos. Cuando hay más de uno, tienen que elegir uno en **Tu recorrido** para que **Me apunto** funcione; si no, ven «Elige tu recorrido primero.»",
-              "En la app del móvil, al tocar **Voy** en una carrera con varios recorridos se les pide **Elige tu recorrido**, y más tarde pueden usar **Cambiar recorrido**.",
+              "En la app del móvil, al tocar **Me apunto** en una carrera con varios recorridos se les pide **Elige tu recorrido**, y más tarde pueden usar **Cambiar recorrido**.",
               "Con un único recorrido, nadie tiene que elegir nada.",
               "Las inscripciones de pago todavía no piden un recorrido. Un corredor que ha pagado elige uno después desde el mismo menú **Tu recorrido**."
             ]

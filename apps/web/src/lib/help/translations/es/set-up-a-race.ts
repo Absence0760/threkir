@@ -85,7 +85,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'En la página del evento, los corredores ven los recorridos. Cuando hay más de uno, tienen que elegir uno en **Tu recorrido** para que **Me apunto** funcione; si no, ven «Elige tu recorrido primero.»',
-						'En la app del móvil, al tocar **Voy** en una carrera con varios recorridos se les pide **Elige tu recorrido**, y más tarde pueden usar **Cambiar recorrido**.',
+						'En la app del móvil, al tocar **Me apunto** en una carrera con varios recorridos se les pide **Elige tu recorrido**, y más tarde pueden usar **Cambiar recorrido**.',
 						'Con un único recorrido, nadie tiene que elegir nada.',
 						'Las inscripciones de pago todavía no piden un recorrido. Un corredor que ha pagado elige uno después desde el mismo menú **Tu recorrido**.',
 					],

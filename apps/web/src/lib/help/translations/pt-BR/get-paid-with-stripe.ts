@@ -28,7 +28,7 @@ export const translation: GuideTranslation = {
 						'Abra [[route:/settings/payouts|Repasses]] na web.',
 						'Clique em **Configurar pagamentos**. Você é levado ao Stripe para informar seus dados e a conta bancária em que quer receber.',
 						'Conclua as etapas do Stripe. Quando você voltar, a página mostra a sua situação.',
-						'Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de pagamentos precisa de atenção antes de você poder receber**, clique em **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar de onde parou.',
+						'Se aparecer **Cadastro incompleto — conclua para começar a cobrar** ou **Sua conta de repasses precisa de atenção antes de você poder receber**, clique em **Concluir a configuração de pagamentos** para voltar ao Stripe e continuar de onde parou.',
 					],
 				},
 			],
@@ -41,12 +41,12 @@ export const translation: GuideTranslation = {
 					items: [
 						'**Pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva você à sua conta Stripe. É isso que “cobranças ativadas” significa, e é o único estado em que a opção **Cobrar por este evento** de um novo evento pode ser ativada.',
 						'**Cadastro incompleto — conclua para começar a cobrar**: o Stripe ainda precisa de algo seu antes de aceitar uma cobrança.',
-						'**Sua conta de pagamentos precisa de atenção antes de você poder receber**: o Stripe restringiu a conta, geralmente porque quer mais informações. **Concluir a configuração de pagamentos** leva você ao que ele está pedindo.',
+						'**Sua conta de repasses precisa de atenção antes de você poder receber**: o Stripe restringiu a conta, geralmente porque quer mais informações. **Concluir a configuração de pagamentos** leva você ao que ele está pedindo.',
 					],
 				},
 				{
 					type: 'p',
-					text: 'Até você estar pronto para receber pagamentos, o formulário do evento mostra **Configure os pagamentos para cobrar por eventos.** com um link **Configurar pagamentos** de volta para esta página.',
+					text: 'Até você estar pronto para receber pagamentos, o formulário do evento mostra **Configure os repasses para cobrar por eventos.** com um link **Configurar pagamentos** de volta para esta página.',
 				},
 			],
 		},

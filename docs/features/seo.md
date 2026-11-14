@@ -46,6 +46,7 @@ module that carries English prose a reader would see.
 | `/learn/[slug]` | prerendered (`entries()`) | inline `<svelte:head>` + `buildGuideJsonLd` | `Article` (with an embedded `BreadcrumbList`) |
 | `/learn` | prerendered | inline `<svelte:head>` + `buildLearnCollectionJsonLd` | `CollectionPage` (with an embedded `BreadcrumbList` + an `ItemList` of the guides listed) |
 | `/learn/category/[category]` | prerendered (`entries()`) | inline `<svelte:head>` + `buildLearnCollectionJsonLd` | `CollectionPage` (with an embedded `BreadcrumbList` + an `ItemList` of the guides listed) |
+| `/robots.txt` | prerendered (`robots.txt/+server.ts`) | — | — |
 | `/sitemap.xml` | prerendered (a `<sitemapindex>`) | — | — |
 | `/sitemaps/[name].xml` | prerendered (`entries()`, the fixed child set) | — | — |
 | `/share/run/[id]`, `/og/run/[id].png` | Lambda-SSR (`share-run`) | `share_run_meta` | `WebPage` + breadcrumb |
@@ -508,9 +509,19 @@ the map failed). Three guards, pinned by `consent_guards.test.ts`:
 
 ## Crawl & redirect contract
 
-- **`static/robots.txt`** — allows `/`, disallows the auth-gated app paths
-  (`/dashboard`, `/settings`, …), points at `/sitemap.xml`. `/share/*` is
-  allowed.
+- **`/robots.txt`** (`robots.txt/+server.ts`, prerendered from
+  `#lib/share/robots.ts`) — allows `/`, disallows the auth-gated app paths
+  (`/dashboard`, `/settings`, …) plus the signed-out-but-`noindex` `/help` and
+  `/nutrition`; `/share/*` is allowed. Its `Sitemap:` line is absolute,
+  `Sitemap: <origin>/sitemap.xml`, on `sitemapBase()` — the same
+  `siteOrigin(PUBLIC_SITE_URL)` the sitemap's `<loc>`s use, so the two never
+  name different hosts. RFC 9309 and the sitemaps protocol require an absolute
+  URL there; the old static file's relative `Sitemap: /sitemap.xml` is ignored
+  or flagged by crawlers. An unset or blank `PUBLIC_SITE_URL` (the release
+  build sets none, as do local and e2e builds) folds to the apex default, so
+  every build advertises `https://threkir.com/sitemap.xml`, never `www`. There
+  is deliberately no `static/robots.txt`: under `vite dev` a static file
+  shadows the route, and `robots.test.ts` fails if one comes back.
 - **`/sitemap.xml`** (`sitemap.xml/+server.ts`) is a **sitemap index**
   over child files at **`/sitemaps/<name>.xml`** (`sitemaps/[name].xml/+server.ts`),
   built by `#lib/share/sitemap.ts` from the anon reads in

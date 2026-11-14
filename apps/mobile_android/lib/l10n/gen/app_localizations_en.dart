@@ -12061,6 +12061,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditRacePriorityAuto => 'Automatic';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'An A race is the one the plan peaks for. A B race is a tune-up you race properly, and a C race is run as training. B and C races get their own countdown without changing the plan\'s goal.';
+
+  @override
   String get racePriorityOptionA => 'A — goal race';
 
   @override

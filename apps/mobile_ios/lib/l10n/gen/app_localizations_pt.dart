@@ -12194,6 +12194,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutEditRacePriorityAuto => 'Automática';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'Uma prova A é aquela para a qual o plano atinge o pico. Uma prova B é uma prova preparatória que corre a sério; uma C corre-a como treino. As provas B e C têm a sua própria contagem decrescente sem alterar o objetivo do plano.';
+
+  @override
   String get racePriorityOptionA => 'A — prova-alvo';
 
   @override
@@ -20153,7 +20157,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'As provas A são os objetivos da época e cada uma tem o seu plano. Uma prova B é uma prova preparatória que corre a sério; uma C corre-a como treino.';
+      'As provas A são os objetivos da época e cada uma tem o seu plano. As B são provas preparatórias que corre a sério; as C são provas que corre como treino.';
 
   @override
   String get seasonPlanNoRaces =>
@@ -36316,6 +36320,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutEditRacePriorityAuto => 'Automática';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'A prova A é aquela para a qual o plano chega ao pico. Uma prova B é uma prova preparatória que você corre para valer; a C você corre como treino. As provas B e C ganham a própria contagem regressiva sem mudar o objetivo do plano.';
+
+  @override
   String get racePriorityOptionA => 'A — prova-alvo';
 
   @override
@@ -44271,7 +44279,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get seasonPlanRacesHint =>
-      'As provas A são os objetivos da temporada e cada uma tem seu plano. Uma prova B é uma prova preparatória que você corre para valer; a C você corre como treino.';
+      'As provas A são os objetivos da temporada e cada uma tem seu plano. As B são provas preparatórias que você corre para valer; as C você corre como treino.';
 
   @override
   String get seasonPlanNoRaces =>

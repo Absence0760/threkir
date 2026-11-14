@@ -3187,6 +3187,7 @@
   "workoutEditRaceNameLabel": "レース名",
   "workoutEditRacePriorityLabel": "レースの優先度",
   "workoutEditRacePriorityAuto": "自動",
+  "workoutEditRacePriorityHint": "Aレースはプランのピークを合わせるレースです。Bレースは本気で走る調整レース、Cレースは練習として走るレースです。BとCのレースはプランの目標を変えずに、それぞれ独自のカウントダウンが表示されます。",
   "racePriorityOptionA": "A — 目標レース",
   "racePriorityOptionB": "B — 調整レース",
   "racePriorityOptionC": "C — 練習レース",

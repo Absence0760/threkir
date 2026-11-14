@@ -11363,6 +11363,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutEditRacePriorityAuto => '自動';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'Aレースはプランのピークを合わせるレースです。Bレースは本気で走る調整レース、Cレースは練習として走るレースです。BとCのレースはプランの目標を変えずに、それぞれ独自のカウントダウンが表示されます。';
+
+  @override
   String get racePriorityOptionA => 'A — 目標レース';
 
   @override

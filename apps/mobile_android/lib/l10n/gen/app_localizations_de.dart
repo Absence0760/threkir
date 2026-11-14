@@ -12186,6 +12186,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get workoutEditRacePriorityAuto => 'Automatisch';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'Ein A-Rennen ist das, auf das der Plan seine Formspitze ausrichtet. Ein B-Rennen ist ein Vorbereitungsrennen, das du voll läufst; ein C-Rennen läufst du als Training. B- und C-Rennen bekommen einen eigenen Countdown, ohne das Ziel des Plans zu ändern.';
+
+  @override
   String get racePriorityOptionA => 'A — Zielrennen';
 
   @override
@@ -20125,7 +20129,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'A-Rennen sind die Saisonhöhepunkte, jedes bekommt einen eigenen Plan. Ein B-Rennen ist ein Vorbereitungsrennen, das du voll läufst; ein C-Rennen läufst du als Training.';
+      'A-Rennen sind die Saisonhöhepunkte, jedes bekommt einen eigenen Plan. B-Rennen sind Vorbereitungsrennen, die du voll läufst; C-Rennen läufst du als Training.';
 
   @override
   String get seasonPlanNoRaces =>

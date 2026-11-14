@@ -15936,6 +15936,10 @@
   "@workoutEditRacePriorityAuto": {
     "description": "Race priority picker option for no explicit priority: the app treats a race on the plan's last day as A and any other race as C"
   },
+  "workoutEditRacePriorityHint": "An A race is the one the plan peaks for. A B race is a tune-up you race properly, and a C race is run as training. B and C races get their own countdown without changing the plan's goal.",
+  "@workoutEditRacePriorityHint": {
+    "description": "Helper text under the race priority picker in the workout editor: what A, B and C mean (docs/features/training.md § Race priority). Mirrors web workoutEditor.racePriorityHint"
+  },
   "racePriorityOptionA": "A — goal race",
   "@racePriorityOptionA": {
     "description": "Race priority picker option A: the race the plan is built for. Keep the letter A"

@@ -373,8 +373,11 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
           isExpanded: true,
           key: const Key('workoutEditRacePriority'),
           initialValue: _racePriority,
-          decoration:
-              InputDecoration(labelText: l10n.workoutEditRacePriorityLabel),
+          decoration: InputDecoration(
+            labelText: l10n.workoutEditRacePriorityLabel,
+            helperText: l10n.workoutEditRacePriorityHint,
+            helperMaxLines: 6,
+          ),
           items: [
             DropdownMenuItem<String?>(
               value: null,

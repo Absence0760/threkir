@@ -254,6 +254,8 @@ void main() {
       expect(find.widgetWithText(TextField, 'Two Oceans Ultra'),
           findsOneWidget);
       expect(find.text('B — tune-up race'), findsOneWidget);
+      expect(find.textContaining('A B race is a tune-up you race properly'),
+          findsOneWidget);
       expect(find.widgetWithText(TextField, '6:30:00'), findsOneWidget);
     });
 

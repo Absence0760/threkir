@@ -12176,6 +12176,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutEditRacePriorityAuto => 'Automática';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'Una carrera A es aquella para la que el plan alcanza su pico. Una carrera B es una carrera de preparación que corres a fondo; una C la corres como entrenamiento. Las carreras B y C tienen su propia cuenta atrás sin cambiar el objetivo del plan.';
+
+  @override
   String get racePriorityOptionA => 'A — carrera objetivo';
 
   @override
@@ -20119,7 +20123,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'Las carreras A son los objetivos de la temporada y cada una tiene su plan. Una carrera B es una carrera de preparación que corres a fondo; una C la corres como entrenamiento.';
+      'Las carreras A son los objetivos de la temporada y cada una tiene su plan. Las B son carreras de preparación que corres a fondo; las C las corres como entrenamiento.';
 
   @override
   String get seasonPlanNoRaces =>

@@ -12217,6 +12217,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutEditRacePriorityAuto => 'Automatique';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'Une épreuve A est celle pour laquelle le plan atteint son pic de forme. Une épreuve B est une épreuve de préparation courue à fond ; une épreuve C est courue à l\'entraînement. Les épreuves B et C ont leur propre compte à rebours sans changer l\'objectif du plan.';
+
+  @override
   String get racePriorityOptionA => 'A — épreuve objectif';
 
   @override
@@ -20174,7 +20178,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'Les épreuves A sont les objectifs de la saison, chacune a son propre plan. Une épreuve B est une épreuve de préparation courue à fond ; une épreuve C est courue à l\'entraînement.';
+      'Les épreuves A sont les objectifs de la saison, chacune a son propre plan. Les épreuves B sont des épreuves de préparation courues à fond ; les épreuves C sont courues à l\'entraînement.';
 
   @override
   String get seasonPlanNoRaces =>

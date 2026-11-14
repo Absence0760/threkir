@@ -19030,6 +19030,12 @@ abstract class AppLocalizations {
   /// **'Automatic'**
   String get workoutEditRacePriorityAuto;
 
+  /// Helper text under the race priority picker in the workout editor: what A, B and C mean (docs/features/training.md § Race priority). Mirrors web workoutEditor.racePriorityHint
+  ///
+  /// In en, this message translates to:
+  /// **'An A race is the one the plan peaks for. A B race is a tune-up you race properly, and a C race is run as training. B and C races get their own countdown without changing the plan\'s goal.'**
+  String get workoutEditRacePriorityHint;
+
   /// Race priority picker option A: the race the plan is built for. Keep the letter A
   ///
   /// In en, this message translates to:

@@ -305,7 +305,6 @@
 		const diffMs = now.getTime() - d.getTime();
 		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 		if (diffDays === 0) return t('coachChat.today');
-		if (diffDays === 1) return t('coachChat.yesterday');
 		if (diffDays < 7) return t('coachChat.daysAgo', { n: diffDays });
 		return d.toLocaleDateString(activeFormatLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
 	}

@@ -43,7 +43,7 @@ export const translation: GuideTranslation = {
 					items: [
 						"**Más rápidos** ordena a cada corredor por su mejor tiempo en el recorrido. Apareces una sola vez, con tu mejor carrera.",
 						"Por defecto muestra este año. Selecciona **Este mes** para ver lo que va de mes, o **Histórico** para ver los mejores tiempos de siempre.",
-						"Filtra por género o por grupo de edad. El filtro de edad solo incluye a quienes han aceptado compartir datos de salud, así que puede ser más corto que la clasificación completa.",
+						"Filtra por género o por grupo de edad. El filtro de edad solo incluye a quienes han dado su consentimiento de datos de salud, así que la lista filtrada puede ser más corta que la clasificación completa.",
 					],
 				},
 			],
@@ -104,7 +104,7 @@ export const translation: GuideTranslation = {
 		"s3.heading": "f90c634a3c69c00f",
 		"s3.b0.i0": "8bab47facf52e4fd",
 		"s3.b0.i1": "01322b98d3fa4762",
-		"s3.b0.i2": "a26ad1f8b547015d",
+		"s3.b0.i2": "1b3d5a9034e460c5",
 		"s4.heading": "d62c88ea85d104ce",
 		"s4.b0": "23512913978ca5c1",
 		"s5.heading": "2158104d68549d3e",

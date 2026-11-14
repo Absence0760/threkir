@@ -355,7 +355,7 @@ void main() {
     await tester.tap(find.byKey(const Key('season-add-race')));
     await tester.pump();
     expect(find.text('Race 2'), findsOneWidget);
-    expect(find.text('B — tune-up'), findsOneWidget);
+    expect(find.text('B — tune-up race'), findsOneWidget);
     await tester.tap(find.byKey(const Key('season-remove-1')));
     await tester.pump();
     expect(find.text('Race 2'), findsNothing);

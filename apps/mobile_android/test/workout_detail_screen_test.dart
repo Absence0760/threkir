@@ -417,7 +417,7 @@ void main() {
           tester.widget<Text>(find.descendant(of: find.byType(PageHeading), matching: find.byType(Text))).data,
           'Two Oceans Ultra');
       expect(find.text('RACE PRIORITY'), findsOneWidget);
-      expect(find.text('B — important race'), findsOneWidget);
+      expect(find.text('B — tune-up race'), findsOneWidget);
       expect(find.text('GOAL TIME'), findsOneWidget);
       expect(find.text('6:30:00'), findsOneWidget);
     });

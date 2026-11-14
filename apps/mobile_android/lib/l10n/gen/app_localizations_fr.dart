@@ -12220,10 +12220,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get racePriorityOptionA => 'A — épreuve objectif';
 
   @override
-  String get racePriorityOptionB => 'B — épreuve importante';
+  String get racePriorityOptionB => 'B — épreuve de préparation';
 
   @override
-  String get racePriorityOptionC => 'C — épreuve de préparation';
+  String get racePriorityOptionC => 'C — épreuve d\'entraînement';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Temps visé';
@@ -20174,7 +20174,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'Les épreuves A sont les objectifs de la saison, chacune a son propre plan. Les épreuves B sont des épreuves de préparation courues à fond ; les épreuves C sont courues à l\'entraînement.';
+      'Les épreuves A sont les objectifs de la saison, chacune a son propre plan. Une épreuve B est une épreuve de préparation courue à fond ; une épreuve C est courue à l\'entraînement.';
 
   @override
   String get seasonPlanNoRaces =>
@@ -20208,7 +20208,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get seasonPlanPriorityA => 'A — épreuve objectif';
 
   @override
-  String get seasonPlanPriorityB => 'B — préparation';
+  String get seasonPlanPriorityB => 'B — épreuve de préparation';
 
   @override
   String get seasonPlanPriorityC => 'C — épreuve d\'entraînement';

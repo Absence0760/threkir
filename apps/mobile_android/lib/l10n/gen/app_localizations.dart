@@ -19036,16 +19036,16 @@ abstract class AppLocalizations {
   /// **'A — goal race'**
   String get racePriorityOptionA;
 
-  /// Race priority picker option B: a race that matters but is not the main goal. Keep the letter B
+  /// Race priority picker option B: a tune-up race, raced properly inside the block (a short taper before it and easy days after; docs/features/training.md § Race priority). Keep the letter B
   ///
   /// In en, this message translates to:
-  /// **'B — important race'**
+  /// **'B — tune-up race'**
   String get racePriorityOptionB;
 
-  /// Race priority picker option C: a low-key race run as training. Keep the letter C
+  /// Race priority picker option C: a training race, run as part of training (a light easing either side). Keep the letter C
   ///
   /// In en, this message translates to:
-  /// **'C — tune-up race'**
+  /// **'C — training race'**
   String get racePriorityOptionC;
 
   /// Label for the race goal finish time field in the workout editor (Race workouts only)
@@ -31654,7 +31654,7 @@ abstract class AppLocalizations {
   /// Season planner (issue #1181)
   ///
   /// In en, this message translates to:
-  /// **'B — tune-up'**
+  /// **'B — tune-up race'**
   String get seasonPlanPriorityB;
 
   /// Season planner (issue #1181)

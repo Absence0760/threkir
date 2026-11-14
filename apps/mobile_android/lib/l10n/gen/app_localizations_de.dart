@@ -7381,15 +7381,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewSeasonAssumptionRaceDroppedInvalid =>
-      'Ein Wettkampf, der nicht gelesen werden konnte, wurde weggelassen.';
+      'Ein Rennen, das nicht gelesen werden konnte, wurde weggelassen.';
 
   @override
   String get planNewSeasonAssumptionRaceDroppedDate =>
-      'Ein Wettkampf wurde weggelassen, weil sein Datum nicht übernommen werden konnte — es muss in der Zukunft und höchstens zwei Jahre entfernt liegen.';
+      'Ein Rennen wurde weggelassen, weil sein Datum nicht übernommen werden konnte — es muss in der Zukunft und höchstens zwei Jahre entfernt liegen.';
 
   @override
   String get planNewSeasonAssumptionRaceDroppedDistance =>
-      'Ein Wettkampf wurde weggelassen, weil seine Distanz außerhalb dessen liegt, was der Planer unterstützt (5 km bis 400 km).';
+      'Ein Rennen wurde weggelassen, weil seine Distanz außerhalb dessen liegt, was der Planer unterstützt (5 km bis 400 km).';
 
   @override
   String get planNewSeasonAssumptionRaceDateNextYear =>
@@ -7397,23 +7397,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewSeasonAssumptionGoalTimeDropped =>
-      'Eine Zielzeit wirkte für ihre Distanz unrealistisch, daher hat dieser Wettkampf keine Zielzeit.';
+      'Eine Zielzeit wirkte für ihre Distanz unrealistisch, daher hat dieses Rennen keine Zielzeit.';
 
   @override
   String get planNewSeasonAssumptionRaceDuplicateMerged =>
-      'Ein doppelt genannter Wettkampf wird nur einmal aufgeführt.';
+      'Ein doppelt genanntes Rennen wird nur einmal aufgeführt.';
 
   @override
   String get planNewSeasonAssumptionRacesCapped =>
-      'Nur die ersten 12 Wettkämpfe werden aufgeführt — eine Saison umfasst höchstens 12.';
+      'Nur die ersten 12 Rennen werden aufgeführt — eine Saison umfasst höchstens 12.';
 
   @override
   String get planNewSeasonAssumptionPriorityDefault =>
-      'Wettkämpfe ohne Priorität wurden auf B gesetzt.';
+      'Rennen ohne Priorität wurden auf B gesetzt.';
 
   @override
   String get planNewSeasonAssumptionPriorityAAssigned =>
-      'Kein Wettkampf war als A-Wettkampf markiert, daher ist es der längste.';
+      'Kein Rennen war als A-Rennen markiert, daher ist es das längste.';
 
   @override
   String get planNewAiErrorConsent =>
@@ -7955,15 +7955,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Schaut auf deine letzten drei abgeschlossenen Wochen und schlägt Änderungen vor, wenn mindestens zwei über oder unter Plan lagen — so verschiebt eine einzelne Ausreißerwoche deinen Plan nicht. Nutze das, wenn du länger vom Plan abweichst.';
 
   @override
-  String get planDetailRaceTaper => 'Tapering rund um B/C-Wettkämpfe';
+  String get planDetailRaceTaper => 'Tapering rund um B/C-Rennen';
 
   @override
   String get planDetailAdjustRaceTaperDesc =>
-      'Entlastet die Tage vor jedem anstehenden B- oder C-Wettkampf und die Tage danach, damit du ihn frisch läufst und dich erholst, bevor das Training wieder anzieht. Dein A-Wettkampf und sein Tapering bleiben unverändert.';
+      'Entlastet die Tage vor jedem anstehenden B- oder C-Rennen und die Tage danach, damit du es frisch läufst und dich erholst, bevor das Training wieder anzieht. Dein A-Rennen und sein Tapering bleiben unverändert.';
 
   @override
   String get planDetailRaceTaperNone =>
-      'Kein anstehender B- oder C-Wettkampf braucht ein Tapering.';
+      'Kein anstehendes B- oder C-Rennen braucht ein Tapering.';
 
   @override
   String get planDetailRaceTaperPreviewTitle =>
@@ -12180,19 +12180,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get workoutEditRaceNameLabel => 'Name des Wettkampfs';
 
   @override
-  String get workoutEditRacePriorityLabel => 'Wettkampfpriorität';
+  String get workoutEditRacePriorityLabel => 'Rennpriorität';
 
   @override
   String get workoutEditRacePriorityAuto => 'Automatisch';
 
   @override
-  String get racePriorityOptionA => 'A — Zielwettkampf';
+  String get racePriorityOptionA => 'A — Zielrennen';
 
   @override
-  String get racePriorityOptionB => 'B — wichtiger Wettkampf';
+  String get racePriorityOptionB => 'B — Vorbereitungsrennen';
 
   @override
-  String get racePriorityOptionC => 'C — Vorbereitungswettkampf';
+  String get racePriorityOptionC => 'C — Trainingsrennen';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Zielzeit';
@@ -20125,7 +20125,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'A-Rennen sind die Saisonhöhepunkte, jedes bekommt einen eigenen Plan. B-Rennen sind Vorbereitungsrennen, die du voll läufst; C-Rennen läufst du als Training.';
+      'A-Rennen sind die Saisonhöhepunkte, jedes bekommt einen eigenen Plan. Ein B-Rennen ist ein Vorbereitungsrennen, das du voll läufst; ein C-Rennen läufst du als Training.';
 
   @override
   String get seasonPlanNoRaces =>
@@ -20159,7 +20159,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get seasonPlanPriorityA => 'A — Zielrennen';
 
   @override
-  String get seasonPlanPriorityB => 'B — Vorbereitung';
+  String get seasonPlanPriorityB => 'B — Vorbereitungsrennen';
 
   @override
   String get seasonPlanPriorityC => 'C — Trainingsrennen';

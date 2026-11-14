@@ -12179,10 +12179,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racePriorityOptionA => 'A — carrera objetivo';
 
   @override
-  String get racePriorityOptionB => 'B — carrera importante';
+  String get racePriorityOptionB => 'B — carrera de preparación';
 
   @override
-  String get racePriorityOptionC => 'C — carrera de preparación';
+  String get racePriorityOptionC => 'C — carrera de entrenamiento';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Tiempo objetivo';
@@ -20119,7 +20119,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'Las carreras A son los objetivos de la temporada y cada una tiene su plan. Las B son carreras de preparación que corres a fondo; las C las corres como entrenamiento.';
+      'Las carreras A son los objetivos de la temporada y cada una tiene su plan. Una carrera B es una carrera de preparación que corres a fondo; una C la corres como entrenamiento.';
 
   @override
   String get seasonPlanNoRaces =>
@@ -20153,7 +20153,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get seasonPlanPriorityA => 'A — carrera objetivo';
 
   @override
-  String get seasonPlanPriorityB => 'B — preparación';
+  String get seasonPlanPriorityB => 'B — carrera de preparación';
 
   @override
   String get seasonPlanPriorityC => 'C — carrera de entrenamiento';

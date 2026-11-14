@@ -253,7 +253,7 @@ void main() {
       await _pumpSheet(tester, race(), _FakeTraining());
       expect(find.widgetWithText(TextField, 'Two Oceans Ultra'),
           findsOneWidget);
-      expect(find.text('B — important race'), findsOneWidget);
+      expect(find.text('B — tune-up race'), findsOneWidget);
       expect(find.widgetWithText(TextField, '6:30:00'), findsOneWidget);
     });
 

@@ -12064,10 +12064,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racePriorityOptionA => 'A — goal race';
 
   @override
-  String get racePriorityOptionB => 'B — important race';
+  String get racePriorityOptionB => 'B — tune-up race';
 
   @override
-  String get racePriorityOptionC => 'C — tune-up race';
+  String get racePriorityOptionC => 'C — training race';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Goal time';
@@ -19960,7 +19960,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get seasonPlanPriorityA => 'A — goal race';
 
   @override
-  String get seasonPlanPriorityB => 'B — tune-up';
+  String get seasonPlanPriorityB => 'B — tune-up race';
 
   @override
   String get seasonPlanPriorityC => 'C — training race';

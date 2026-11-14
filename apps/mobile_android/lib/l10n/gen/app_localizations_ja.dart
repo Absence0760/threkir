@@ -11366,10 +11366,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racePriorityOptionA => 'A — 目標レース';
 
   @override
-  String get racePriorityOptionB => 'B — 重要なレース';
+  String get racePriorityOptionB => 'B — 調整レース';
 
   @override
-  String get racePriorityOptionC => 'C — 調整レース';
+  String get racePriorityOptionC => 'C — 練習レース';
 
   @override
   String get workoutEditRaceGoalTimeLabel => '目標タイム';
@@ -18671,7 +18671,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get seasonPlanIntro =>
-      'シーズンのレースを入力してください。A レースごとに専用のプランを作り、プランは回復期間をはさんで順に続きます。B・C レースはその日を含むプランに入ります。';
+      'シーズンのレースを入力してください。Aレースごとに専用のプランを作り、プランは回復期間をはさんで順に続きます。B・Cレースはその日を含むプランに入ります。';
 
   @override
   String get seasonPlanDescribeTitle => 'シーズンを説明';
@@ -18720,7 +18720,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'A レースはシーズンの目標で、それぞれ専用のプランを持ちます。B レースは本気で走る調整レース、C レースは練習として走るレースです。';
+      'Aレースはシーズンの目標で、それぞれ専用のプランを持ちます。Bレースは本気で走る調整レース、Cレースは練習として走るレースです。';
 
   @override
   String get seasonPlanNoRaces => 'まだレースがありません。上でシーズンを説明するか、レースを追加してください。';
@@ -18791,16 +18791,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get seasonPlanRefusedNoA =>
-      '少なくとも 1 つのレースを A にしてください。シーズンのプランは A レースのために作られます。';
+      '少なくとも 1 つのレースを A にしてください。シーズンのプランはAレースのために作られます。';
 
   @override
   String seasonPlanRefusedFirstTooSoon(String races) {
-    return '$races まで4週間未満で、プランを作るには早すぎます。B か C にするか、もっと後の A レースを計画してください。';
+    return '$races まで4週間未満で、プランを作るには早すぎます。B か C にするか、もっと後のAレースを計画してください。';
   }
 
   @override
   String seasonPlanRefusedTooClose(String races) {
-    return '$races は近すぎて、間に回復期間と4週間以上のプランを入れられません。どちらかを B レースにしてください。';
+    return '$races は近すぎて、間に回復期間と4週間以上のプランを入れられません。どちらかをBレースにしてください。';
   }
 
   @override
@@ -18874,7 +18874,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String seasonPlanUnplacedAfter(String race, String date) {
-    return '$date の $race は最後の A レースの後です。';
+    return '$date の $race は最後のAレースの後です。';
   }
 
   @override

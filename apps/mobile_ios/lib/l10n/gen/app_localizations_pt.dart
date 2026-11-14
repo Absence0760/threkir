@@ -12197,10 +12197,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racePriorityOptionA => 'A — prova-alvo';
 
   @override
-  String get racePriorityOptionB => 'B — prova importante';
+  String get racePriorityOptionB => 'B — prova preparatória';
 
   @override
-  String get racePriorityOptionC => 'C — prova de preparação';
+  String get racePriorityOptionC => 'C — prova de treino';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Tempo-alvo';
@@ -20153,7 +20153,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'As provas A são os objetivos da época e cada uma tem o seu plano. As B são provas de preparação que corre a sério; as C são provas que corre como treino.';
+      'As provas A são os objetivos da época e cada uma tem o seu plano. Uma prova B é uma prova preparatória que corre a sério; uma C corre-a como treino.';
 
   @override
   String get seasonPlanNoRaces =>
@@ -20184,10 +20184,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get seasonPlanRacePriority => 'Prioridade';
 
   @override
-  String get seasonPlanPriorityA => 'A — prova objetivo';
+  String get seasonPlanPriorityA => 'A — prova-alvo';
 
   @override
-  String get seasonPlanPriorityB => 'B — preparação';
+  String get seasonPlanPriorityB => 'B — prova preparatória';
 
   @override
   String get seasonPlanPriorityC => 'C — prova de treino';
@@ -36319,10 +36319,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racePriorityOptionA => 'A — prova-alvo';
 
   @override
-  String get racePriorityOptionB => 'B — prova importante';
+  String get racePriorityOptionB => 'B — prova preparatória';
 
   @override
-  String get racePriorityOptionC => 'C — prova preparatória';
+  String get racePriorityOptionC => 'C — prova de treino';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Tempo-alvo';
@@ -44271,7 +44271,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get seasonPlanRacesHint =>
-      'As provas A são os objetivos da temporada e cada uma tem seu plano. As B são provas de preparação que você corre para valer; as C você corre como treino.';
+      'As provas A são os objetivos da temporada e cada uma tem seu plano. Uma prova B é uma prova preparatória que você corre para valer; a C você corre como treino.';
 
   @override
   String get seasonPlanNoRaces =>
@@ -44305,7 +44305,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get seasonPlanPriorityA => 'A — prova-alvo';
 
   @override
-  String get seasonPlanPriorityB => 'B — preparação';
+  String get seasonPlanPriorityB => 'B — prova preparatória';
 
   @override
   String get seasonPlanPriorityC => 'C — prova de treino';

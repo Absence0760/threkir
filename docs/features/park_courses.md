@@ -635,7 +635,11 @@ changes a course: alerts are free text written for visitors.
   `park_course_status_actions`), and marks every pending flag on the course
   reviewed, in one call (`admin_review_park_nps_alert`); *Mark reviewed* and
   *Dismiss* file the flag. No admin notice is sent; the count on the reports
-  queue is the signal.
+  queue is the signal. The page opens on the pending flags; the reviewed and
+  dismissed history is a tab away. Each state is read whole: the history grows
+  daily, so `fetchParkNpsAlerts` walks the queue by keyset on `id` (no 200-row
+  cap in the RPC, no cut at `db.max-rows`), puts it back in queue order
+  (`parks/nps_alert_queue.ts`) and fails on a walk that ends short.
 - **Fail closed:** with `NPS_API_KEY` unset the function asks NPS nothing,
   records nothing, logs why and answers `{ "configured": false }`; with its
   Vault URL unset the schedule calls nothing.
@@ -1089,7 +1093,9 @@ These gate going live, not the code:
   a failed chunk recording nothing, the schedule and the gate); pgTAP
   `park_course_nps_alerts_test.sql` (the code's CHECK and its load, grants, the
   targets, created / seen / changed / gone, each refusal, the admin queue,
-  close from a flag and dismiss); `node --test
+  close from a flag and dismiss, 250 flags in one state all returned with the
+  gone one last); web `parks/nps_alert_queue.test.ts` (the queue order) and
+  `core/keyset_readers.test.ts` (the whole-queue walk); `node --test
   scripts/parks/lib/catalogue_payload.test.mjs` (the code required for an
   `nps` park and refused for any other); Playwright
   `parks/park-nps-alerts.spec.ts` (a runner refused, the link from the reports

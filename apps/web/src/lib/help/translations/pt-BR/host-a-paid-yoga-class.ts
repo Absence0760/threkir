@@ -16,7 +16,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Você precisa ser administrador ou organizador de eventos do clube. A página do clube mostra qual dos dois com **Você é administrador** ou **Você é organizador de eventos**.',
+						'Você precisa ser administrador ou organizador de eventos do clube. A página do clube mostra qual dos dois com **Você tem a função de administrador** ou **Você tem a função de organizador de eventos**.',
 						'Preço, capacidade, a programação de repetição e o plano de sessão são todos definidos na web. O app para celular pode criar uma aula e mostrá-la aos membros, mas não tem campos de preço, capacidade nem plano de sessão.',
 						'Se quiser vincular uma sequência, monte-a primeiro: veja [[guide:build-a-session-plan|Montar um plano de sessão]].',
 					],
@@ -67,7 +67,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'A disciplina, o horário, o local, o **Preço** e uma linha sobre cancelamento, como **Cancelamento gratuito até 24 horas antes do início**.',
-						'Um botão com o texto *Inscrever-se · US$ 22* (com o seu preço) que leva ao pagamento. Quando a pessoa volta, ele mostra **Pagamento confirmado — você está inscrito.**',
+						'Um botão com o texto *Inscrever-se · US$ 22* (com o seu preço) que leva ao pagamento. Quando a pessoa volta, ele mostra **Pagamento confirmado — sua inscrição está feita.**',
 						'**Esgotado** quando os tapetes acabam, com **Entrar na lista de espera** enquanto as vendas estão abertas ([[guide:waitlist-and-claim-window|como funciona a lista de espera]]), e **Inscrições encerradas** quando as vendas terminam.',
 						'A sua sequência em **Sequência da sessão**. A pessoa pode abri-la e clicar em **Iniciar sessão** para acompanhar em casa.',
 					],

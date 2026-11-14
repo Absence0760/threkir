@@ -298,7 +298,7 @@
 
 <style>
 	.external-mark {
-		font-size: 1em;
+		font-size: inherit;
 		vertical-align: -0.125em;
 	}
 	.race-mode-panel .head {

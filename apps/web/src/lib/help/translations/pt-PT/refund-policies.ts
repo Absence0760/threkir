@@ -47,7 +47,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'steps',
 					items: [
-						'Abra o evento na web. Onde diz **Está inscrito**, prima **Cancelar inscrição**.',
+						'Abra o evento na web. Onde diz **Inscrição feita**, prima **Cancelar inscrição**.',
 						'Leia a caixa de diálogo. Dentro do prazo de reembolso, indica que será reembolsado no seu método de pagamento original e que o seu lugar fica disponível para alguém na lista de espera.',
 						'Prima **Cancelar inscrição** para avançar, ou **Manter o meu lugar** para desistir.',
 					],

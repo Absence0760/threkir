@@ -5665,7 +5665,7 @@ export const messages = {
 	"runsNewPage.title": "Ajouter une course",
 	"runsNewPage.backToRuns": "Retour aux courses",
 	"runsNewPage.kicker": "Nouvelle course",
-	"runsNewPage.tagline": "Enregistrez manuellement une course que l'appli n'a pas captée — une séance sur tapis, une compétition chronométrée par puce, ou un trail où le GPS a lâché. La distance et la durée suffisent pour commencer.",
+	"runsNewPage.tagline": "Enregistrez manuellement une course que l'app n'a pas captée — une séance sur tapis, une compétition chronométrée par puce, ou un trail où le GPS a lâché. La distance et la durée suffisent pour commencer.",
 	"settingsLayout.pageTitle": "Réglages — Threkir",
 	"settingsLayout.searchLabel": "Rechercher dans les réglages",
 	"settingsLayout.searchEmpty": "Aucun réglage ne correspond à « {query} ».",

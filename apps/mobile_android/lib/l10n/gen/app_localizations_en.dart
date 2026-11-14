@@ -252,7 +252,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return 'Requesting $label permission...';
+    return 'Requesting $label permission…';
   }
 
   @override
@@ -261,7 +261,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get importHealthReadingWorkouts => 'Reading workouts...';
+  String get importHealthReadingWorkouts => 'Reading workouts…';
 
   @override
   String importHealthFailed(Object label, Object error) {
@@ -269,7 +269,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get importStatusSavingLocally => 'Saving locally...';
+  String get importStatusSavingLocally => 'Saving locally…';
 
   @override
   String importStatusSkippedDuplicates(int count) {
@@ -288,7 +288,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get importStatusSyncingToCloud => 'Syncing to cloud...';
+  String get importStatusSyncingToCloud => 'Syncing to cloud…';
 
   @override
   String importStatusSyncProgress(Object done, Object total) {
@@ -296,7 +296,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingCsv => 'Reading CSV...';
+  String get importStatusReadingCsv => 'Reading CSV…';
 
   @override
   String importCsvFailed(Object error) {
@@ -358,7 +358,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingExport => 'Reading export...';
+  String get importStatusReadingExport => 'Reading export…';
 
   @override
   String importStravaFailed(Object error) {
@@ -432,7 +432,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String importErrorsMore(Object count) {
-    return '... and $count more';
+    return '… and $count more';
   }
 
   @override
@@ -621,15 +621,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Asking Health Connect for map access...';
+      'Asking Health Connect for map access…';
 
   @override
   String get importHealthRoutesDenied =>
       'Map access not granted. Imports stay summary-only — you can change this in Health Connect at any time.';
 
   @override
-  String get importHealthRoutesAdding =>
-      'Adding maps to imported activities...';
+  String get importHealthRoutesAdding => 'Adding maps to imported activities…';
 
   @override
   String importHealthRoutesAdded(int count) {
@@ -2366,7 +2365,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runSynced => 'Synced';
 
   @override
-  String get runSyncing => 'Syncing...';
+  String get runSyncing => 'Syncing…';
 
   @override
   String get runHeartRateNotSaved =>
@@ -3349,7 +3348,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runDetailDelete => 'Delete';
 
   @override
-  String get runDetailLoadingGps => 'Loading GPS data...';
+  String get runDetailLoadingGps => 'Loading GPS data…';
 
   @override
   String get runDetailGpsUnavailable => 'GPS track unavailable offline';
@@ -5096,7 +5095,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exploreRoutesModeNearMe => 'Near Me';
 
   @override
-  String get exploreRoutesSearchHint => 'Search routes by name...';
+  String get exploreRoutesSearchHint => 'Search routes by name…';
 
   @override
   String get exploreRoutesFeatured => 'Featured';
@@ -12062,13 +12061,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutEditRacePriorityAuto => 'Automatic';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'An A race is the one the plan peaks for. A B race is a tune-up you race properly, and a C race is run as training. B and C races get their own countdown without changing the plan\'s goal.';
+
+  @override
   String get racePriorityOptionA => 'A — goal race';
 
   @override
-  String get racePriorityOptionB => 'B — important race';
+  String get racePriorityOptionB => 'B — tune-up race';
 
   @override
-  String get racePriorityOptionC => 'C — tune-up race';
+  String get racePriorityOptionC => 'C — training race';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Goal time';
@@ -12480,7 +12483,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'Waiting for GPS...';
+  String get liveRunMapWaitingGps => 'Waiting for GPS…';
 
   @override
   String get liveRunMapApproximateLocation =>
@@ -19961,7 +19964,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get seasonPlanPriorityA => 'A — goal race';
 
   @override
-  String get seasonPlanPriorityB => 'B — tune-up';
+  String get seasonPlanPriorityB => 'B — tune-up race';
 
   @override
   String get seasonPlanPriorityC => 'C — training race';

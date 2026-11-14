@@ -39,7 +39,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva-o à sua conta Stripe. É isto que significa “cobranças ativadas”, e é o único estado em que o interruptor **Cobrar por este evento** de um novo evento pode ser ativado.',
+						'**Tudo pronto para receber pagamentos**: o Stripe ativou as cobranças na sua conta, e **Abrir o painel do Stripe** leva-o à sua conta Stripe. É isto que significa “cobranças ativadas”, e é o único estado em que o interruptor **Cobrar por este evento** de um novo evento pode ser ativado.',
 						'**Registo incompleto — conclua para começar a cobrar**: o Stripe ainda precisa de algo da sua parte antes de aceitar uma cobrança.',
 						'**A sua conta de pagamentos precisa de atenção antes de poder receber**: o Stripe restringiu a conta, normalmente porque quer mais informações. **Concluir a configuração de pagamentos** leva-o ao que está a ser pedido.',
 					],

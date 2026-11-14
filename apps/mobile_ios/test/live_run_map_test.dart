@@ -122,7 +122,7 @@ void main() {
         'shows GPS-waiting indicator when track is empty and no current position',
         (tester) async {
       await _pump(tester, track: const []);
-      expect(find.text('Waiting for GPS...'), findsOneWidget);
+      expect(find.text('Waiting for GPS…'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
@@ -130,7 +130,7 @@ void main() {
         'an approximate grant explains the empty map instead of waiting',
         (tester) async {
       await _pump(tester, track: const [], approximateLocation: true);
-      expect(find.text('Waiting for GPS...'), findsNothing);
+      expect(find.text('Waiting for GPS…'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing,
           reason: 'no precise fix is coming, so no spinner promises one');
       expect(
@@ -143,7 +143,7 @@ void main() {
         (tester) async {
       final pos = _w(51.5, -0.1);
       await _pump(tester, track: const [], currentPosition: pos);
-      expect(find.text('Waiting for GPS...'), findsNothing);
+      expect(find.text('Waiting for GPS…'), findsNothing);
     });
 
     testWidgets('re-centre FAB is absent before the user pans', (tester) async {
@@ -179,7 +179,7 @@ void main() {
       );
       await tester.pump();
       await tester.pump(Duration.zero);
-      expect(find.text('Waiting for GPS...'), findsNothing);
+      expect(find.text('Waiting for GPS…'), findsNothing);
     });
 
     testWidgets('renders without throwing when decorations + totalDistanceM are supplied',

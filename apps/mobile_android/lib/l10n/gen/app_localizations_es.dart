@@ -253,7 +253,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return 'Solicitando permiso de $label...';
+    return 'Solicitando permiso de $label…';
   }
 
   @override
@@ -262,7 +262,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get importHealthReadingWorkouts => 'Leyendo entrenamientos...';
+  String get importHealthReadingWorkouts => 'Leyendo entrenamientos…';
 
   @override
   String importHealthFailed(Object label, Object error) {
@@ -270,7 +270,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get importStatusSavingLocally => 'Guardando localmente...';
+  String get importStatusSavingLocally => 'Guardando localmente…';
 
   @override
   String importStatusSkippedDuplicates(int count) {
@@ -289,7 +289,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get importStatusSyncingToCloud => 'Sincronizando con la nube...';
+  String get importStatusSyncingToCloud => 'Sincronizando con la nube…';
 
   @override
   String importStatusSyncProgress(Object done, Object total) {
@@ -297,7 +297,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingCsv => 'Leyendo CSV...';
+  String get importStatusReadingCsv => 'Leyendo CSV…';
 
   @override
   String importCsvFailed(Object error) {
@@ -361,7 +361,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get importStatusReadingExport => 'Leyendo exportación...';
+  String get importStatusReadingExport => 'Leyendo exportación…';
 
   @override
   String importStravaFailed(Object error) {
@@ -436,7 +436,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String importErrorsMore(Object count) {
-    return '... y $count más';
+    return '… y $count más';
   }
 
   @override
@@ -625,7 +625,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Solicitando acceso a los mapas a Salud conectada...';
+      'Solicitando acceso a los mapas a Salud conectada…';
 
   @override
   String get importHealthRoutesDenied =>
@@ -633,7 +633,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthRoutesAdding =>
-      'Añadiendo mapas a las actividades importadas...';
+      'Añadiendo mapas a las actividades importadas…';
 
   @override
   String importHealthRoutesAdded(int count) {
@@ -3388,7 +3388,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailDelete => 'Eliminar';
 
   @override
-  String get runDetailLoadingGps => 'Cargando datos GPS...';
+  String get runDetailLoadingGps => 'Cargando datos GPS…';
 
   @override
   String get runDetailGpsUnavailable => 'Traza GPS no disponible sin conexión';
@@ -4465,7 +4465,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$points puntos',
       one: '$points punto',
     );
-    return 'Recorrido enviado al reloj ($_temp0), pero no se pudieron cargar sus marcadores, así que no se envió ningún plan de carrera.';
+    return 'Recorrido enviado al reloj ($_temp0), pero no se pudieron cargar sus marcadores, así que no se envió ningún horario de carrera.';
   }
 
   @override
@@ -4540,7 +4540,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$checkpoints puntos de control',
       one: '$checkpoints punto de control',
     );
-    return 'Recorrido ($_temp0) y plan de carrera ($_temp1) enviados al reloj';
+    return 'Recorrido ($_temp0) y horario de carrera ($_temp1) enviados al reloj';
   }
 
   @override
@@ -4561,7 +4561,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$checkpoints puntos de control',
       one: '$checkpoints punto de control',
     );
-    return 'Recorrido ($_temp0) enviado. Plan de carrera reducido de $source a $_temp1 para caber en el reloj';
+    return 'Recorrido ($_temp0) enviado. Horario de carrera reducido de $source a $_temp1 para caber en el reloj';
   }
 
   @override
@@ -4578,7 +4578,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$unresolved cortes por hora necesitan',
       one: '$unresolved corte por hora necesita',
     );
-    return 'Plan de carrera enviado ($_temp0), pero $_temp1 una hora de salida — defínela en la hoja de equipo para que lleguen al reloj';
+    return 'Horario de carrera enviado ($_temp0), pero $_temp1 una hora de salida — defínela en la hoja de equipo para que lleguen al reloj';
   }
 
   @override
@@ -4599,7 +4599,7 @@ class AppLocalizationsEs extends AppLocalizations {
       other: '$cutoffs cortes',
       one: '$cutoffs corte',
     );
-    return 'Recorrido ($_temp0) enviado, pero el plan de carrera tiene $_temp1 y el reloj admite $max — elimina algunos para enviarlo';
+    return 'Recorrido ($_temp0) enviado, pero el horario de carrera tiene $_temp1 y el reloj admite $max — elimina algunos para enviarlo';
   }
 
   @override
@@ -5151,7 +5151,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get exploreRoutesModeNearMe => 'Cerca de mí';
 
   @override
-  String get exploreRoutesSearchHint => 'Buscar rutas por nombre...';
+  String get exploreRoutesSearchHint => 'Buscar rutas por nombre…';
 
   @override
   String get exploreRoutesFeatured => 'Destacadas';
@@ -12176,13 +12176,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workoutEditRacePriorityAuto => 'Automática';
 
   @override
+  String get workoutEditRacePriorityHint =>
+      'Una carrera A es aquella para la que el plan alcanza su pico. Una carrera B es una carrera de preparación que corres a fondo; una C la corres como entrenamiento. Las carreras B y C tienen su propia cuenta atrás sin cambiar el objetivo del plan.';
+
+  @override
   String get racePriorityOptionA => 'A — carrera objetivo';
 
   @override
-  String get racePriorityOptionB => 'B — carrera importante';
+  String get racePriorityOptionB => 'B — carrera de preparación';
 
   @override
-  String get racePriorityOptionC => 'C — carrera de preparación';
+  String get racePriorityOptionC => 'C — carrera de entrenamiento';
 
   @override
   String get workoutEditRaceGoalTimeLabel => 'Tiempo objetivo';
@@ -12597,7 +12601,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get liveRunMapWaitingGps => 'Esperando GPS...';
+  String get liveRunMapWaitingGps => 'Esperando GPS…';
 
   @override
   String get liveRunMapApproximateLocation =>
@@ -20153,7 +20157,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get seasonPlanPriorityA => 'A — carrera objetivo';
 
   @override
-  String get seasonPlanPriorityB => 'B — preparación';
+  String get seasonPlanPriorityB => 'B — carrera de preparación';
 
   @override
   String get seasonPlanPriorityC => 'C — carrera de entrenamiento';

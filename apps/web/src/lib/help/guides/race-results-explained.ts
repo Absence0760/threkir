@@ -47,7 +47,7 @@ export const guide: Guide = {
 				{
 					type: 'list',
 					items: [
-						"**No badge**: the racer's phone or watch timed the finish, at the moment they crossed the finish line, or at the 30 m circle around the finish on a course with no finish line. This is the normal case, so neither the web nor the phone app marks it.",
+						"*No badge*: the racer's phone or watch timed the finish, at the moment they crossed the finish line, or at the 30 m circle around the finish on a course with no finish line. This is the normal case, so neither the web nor the phone app marks it.",
 						'**Manual**: the racer finished by hand, either with **Finish race** after covering at least 90% of the course, or by using **Submit my time** on the web during the race.',
 						'**Host** (on the web, **Host edited**): the host entered or corrected this result, or the racer was marked DNF when the host ended the race.'
 					]

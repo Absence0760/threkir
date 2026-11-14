@@ -225,7 +225,7 @@
   "dashboardTrendGroupFitness": "Condition et forme",
   "dashboardTrendGroupFitnessHint": "Forme du jour, condition physique et charge d'entraînement",
   "dashboardTrendGroupPerformance": "Performances",
-  "dashboardTrendGroupPerformanceHint": "Records personnels et temps de course prévus",
+  "dashboardTrendGroupPerformanceHint": "Records personnels et temps prévus en compétition",
   "dashboardTrendGroupEffort": "Effort",
   "dashboardTrendGroupEffortHint": "L'intensité de votre entraînement",
   "dashboardTrendGroupRecent": "Récent",
@@ -892,7 +892,7 @@
   "runDetailSave": "Enregistrer",
   "runDetailCancel": "Annuler",
   "runDetailDelete": "Supprimer",
-  "runDetailLoadingGps": "Chargement des données GPS...",
+  "runDetailLoadingGps": "Chargement des données GPS…",
   "runDetailGpsUnavailable": "Aucune trace GPS hors ligne",
   "runDetailPauseReplay": "Mettre en pause la relecture",
   "runDetailReplay": "Rejouer cette course",
@@ -1167,7 +1167,7 @@
   "routeDetailShareLink": "Partager le lien",
   "routeDetailSendToWatch": "Envoyer à la montre",
   "routeDetailWatchCourseSent": "Parcours envoyé à la montre ({points, plural, one{{points} point} other{{points} points}})",
-  "routeDetailWatchCourseSentMarkersFailed": "Parcours envoyé à la montre ({points, plural, one{{points} point} other{{points} points}}), mais ses repères n'ont pas pu être chargés : aucun horaire n'a été envoyé avec.",
+  "routeDetailWatchCourseSentMarkersFailed": "Parcours envoyé à la montre ({points, plural, one{{points} point} other{{points} points}}), mais ses repères n'ont pas pu être chargés : aucun tableau de marche n'a été envoyé avec.",
   "routeDetailWatchCourseSimplified": "Parcours envoyé à la montre — réduit de {source} à {points, plural, one{{points} point} other{{points} points}} pour tenir",
   "routeDetailWatchCourseTooShort": "Cet itinéraire a trop peu de points pour être suivi sur la montre",
   "routeDetailWatchPushRejected": "La montre a refusé l'envoi et a conservé ce qu'elle avait déjà. Réessayez.",
@@ -1177,7 +1177,7 @@
   "routeDetailAppleWatchRouteSimplified": "Itinéraire envoyé à l'Apple Watch — réduit de {source} à {points, plural, one{{points} point} other{{points} points}} pour tenir",
   "routeDetailAppleWatchRouteTooShort": "Cet itinéraire a trop peu de points pour être suivi sur l'Apple Watch",
   "routeDetailAppleWatchRouteFailed": "Impossible d'envoyer l'itinéraire à l'Apple Watch : {error}",
-  "routeDetailWatchCourseAndScheduleSent": "Parcours ({points, plural, one{{points} point} other{{points} points}}) et plan de course ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}) envoyés à la montre",
+  "routeDetailWatchCourseAndScheduleSent": "Parcours ({points, plural, one{{points} point} other{{points} points}}) et tableau de marche ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}) envoyés à la montre",
   "@routeDetailWatchCourseAndScheduleSent": {
     "placeholders": {
       "points": {
@@ -1189,7 +1189,7 @@
     },
     "description": "Banner when both the course and its full race schedule reached the watch"
   },
-  "routeDetailWatchScheduleThinned": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé. Plan de course réduit de {source} à {checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}} pour tenir dans la montre",
+  "routeDetailWatchScheduleThinned": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé. Tableau de marche réduit de {source} à {checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}} pour tenir dans la montre",
   "@routeDetailWatchScheduleThinned": {
     "placeholders": {
       "points": {
@@ -1204,7 +1204,7 @@
     },
     "description": "Banner when the race schedule had to be reduced to the watch's checkpoint cap"
   },
-  "routeDetailWatchScheduleClockCutoffs": "Plan de course envoyé ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}), mais {unresolved, plural, one{{unresolved} barrière exprimée en heure de la journée nécessite} other{{unresolved} barrières exprimées en heure de la journée nécessitent}} une heure de départ — définissez-la sur la feuille d'assistance pour que la montre les reçoive",
+  "routeDetailWatchScheduleClockCutoffs": "Tableau de marche envoyé ({checkpoints, plural, one{{checkpoints} point de contrôle} other{{checkpoints} points de contrôle}}), mais {unresolved, plural, one{{unresolved} barrière exprimée en heure de la journée nécessite} other{{unresolved} barrières exprimées en heure de la journée nécessitent}} une heure de départ — définissez-la sur la feuille d'assistance pour que la montre les reçoive",
   "@routeDetailWatchScheduleClockCutoffs": {
     "placeholders": {
       "checkpoints": {
@@ -1216,7 +1216,7 @@
     },
     "description": "Banner when clock-only cutoffs could not be resolved without a race start time"
   },
-  "routeDetailWatchScheduleTooManyCutoffs": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé, mais le plan de course compte {cutoffs, plural, one{{cutoffs} barrière horaire} other{{cutoffs} barrières horaires}} et la montre en accepte {max} — supprimez-en pour l'envoyer",
+  "routeDetailWatchScheduleTooManyCutoffs": "Parcours ({points, plural, one{{points} point} other{{points} points}}) envoyé, mais le tableau de marche compte {cutoffs, plural, one{{cutoffs} barrière horaire} other{{cutoffs} barrières horaires}} et la montre en accepte {max} — supprimez-en pour l'envoyer",
   "@routeDetailWatchScheduleTooManyCutoffs": {
     "placeholders": {
       "points": {
@@ -1354,7 +1354,7 @@
   "routeDetailClubMemberCount": "{location} · {count, plural, one{{count} membre} other{{count} membres}}",
   "exploreRoutesTitle": "Explorer les itinéraires",
   "exploreRoutesModeNearMe": "À proximité",
-  "exploreRoutesSearchHint": "Rechercher des itinéraires par nom...",
+  "exploreRoutesSearchHint": "Rechercher des itinéraires par nom…",
   "exploreRoutesFeatured": "En vedette",
   "exploreRoutesSignInRequired": "Connectez-vous et accédez à Internet pour explorer les itinéraires",
   "exploreRoutesTimeout": "Délai de connexion dépassé. Vérifiez votre réseau et réessayez.",
@@ -2684,7 +2684,7 @@
   "prefsPageRecording": "Enregistrement et voix",
   "prefsPageRecordingSummary": "L'activité par défaut d'un nouvel enregistrement et ce que votre téléphone ou votre montre annonce pendant la course.",
   "prefsPageTraining": "Entraînement",
-  "prefsPageTrainingSummary": "Votre objectif de distance hebdomadaire, votre fréquence cardiaque et vos zones, votre ravitaillement en course et le ton du coach.",
+  "prefsPageTrainingSummary": "Votre objectif de distance hebdomadaire, votre fréquence cardiaque et vos zones, votre ravitaillement en compétition et le ton du coach.",
   "prefsPagePrivacy": "Confidentialité et partage",
   "prefsPagePrivacySummary": "Qui voit vos courses, si d'autres coureurs peuvent vous trouver, les zones de confidentialité et les rapports d'erreur.",
   "prefsPageNotifications": "Notifications",
@@ -2752,7 +2752,7 @@
   "prefsMaxHr": "Fréquence cardiaque maximale",
   "prefsMaxHrNotSet": "Non défini — repli sur 208 − 0,7 × âge",
   "prefsHrBpm": "{bpm} bpm",
-  "prefsSectionFueling": "Ravitaillement de course",
+  "prefsSectionFueling": "Ravitaillement en compétition",
   "prefsCarbsPerHour": "Glucides par heure",
   "prefsCarbsPerHourValue": "{grams} g/h",
   "prefsFluidPerHour": "Liquide par heure",
@@ -2907,7 +2907,7 @@
   "fitnessStatVo2Max": "VO₂ max",
   "fitnessStatVo2MaxTooltip": "Votre moteur aérobie : la quantité d'oxygène que votre corps peut utiliser par minute. Plus c'est élevé, plus vous êtes en forme.",
   "fitnessStatVdot": "VDOT",
-  "fitnessStatVdotTooltip": "Le score de forme de course de Daniels d'après votre meilleur effort récent. Détermine vos allures d'entraînement.",
+  "fitnessStatVdotTooltip": "Le score de forme de course de Daniels d'après votre meilleur effort récent en compétition. Détermine vos allures d'entraînement.",
   "fitnessStatRuns": "Courses",
   "fitnessStatRunsTooltip": "Courses récentes assez longues pour compter dans votre estimation de forme.",
   "fitnessNextHardSession": "{days, plural, one{Prochaine séance difficile dans ~{days} jour de course facile.} other{Prochaine séance difficile dans ~{days} jours de course facile.}}",
@@ -3187,9 +3187,10 @@
   "workoutEditRaceNameLabel": "Nom de l'épreuve",
   "workoutEditRacePriorityLabel": "Priorité de l'épreuve",
   "workoutEditRacePriorityAuto": "Automatique",
+  "workoutEditRacePriorityHint": "Une épreuve A est celle pour laquelle le plan atteint son pic de forme. Une épreuve B est une épreuve de préparation courue à fond ; une épreuve C est courue à l'entraînement. Les épreuves B et C ont leur propre compte à rebours sans changer l'objectif du plan.",
   "racePriorityOptionA": "A — épreuve objectif",
-  "racePriorityOptionB": "B — épreuve importante",
-  "racePriorityOptionC": "C — épreuve de préparation",
+  "racePriorityOptionB": "B — épreuve de préparation",
+  "racePriorityOptionC": "C — épreuve d'entraînement",
   "workoutEditRaceGoalTimeLabel": "Temps visé",
   "workoutEditRaceGoalTimeHint": "ex. 6:30:00",
   "workoutEditErrRaceGoalTime": "Le temps visé doit être au format 6:30:00",
@@ -3306,7 +3307,7 @@
   "gearWearLogDeleteError": "Impossible de supprimer l'observation : {error}",
   "notificationBellTooltip": "Notifications",
   "notificationBellUnread": "{count, plural, one{Notifications, {count} non lue} other{Notifications, {count} non lues}}",
-  "liveRunMapWaitingGps": "En attente du GPS...",
+  "liveRunMapWaitingGps": "En attente du GPS…",
   "liveRunMapApproximateLocation": "La position exacte est désactivée — la carte ne peut pas afficher où vous êtes",
   "liveRunMapRecentre": "Recentrer sur ma position",
   "ttsRunStarted": "Course démarrée",
@@ -4562,7 +4563,7 @@
   "badgesParkMonths12Desc": "Un parcours de parc terminé pendant 12 mois différents",
   "badgesParkMonths24Label": "Deux années de parcs",
   "badgesParkMonths24Desc": "Un parcours de parc terminé pendant 24 mois différents",
-  "racePredictorTitle": "Prédicteur de temps de course",
+  "racePredictorTitle": "Prédicteur de temps en compétition",
   "racePredictorAnchoredOn": "D'après votre effort sur {distance} en {time}",
   "racePredictorColDistance": "Distance",
   "racePredictorColTime": "Temps",
@@ -4776,7 +4777,7 @@
   "runPhaseChip": "Phase {index}/{total} — {intent}",
   "phaseIntentHoldBack": "Retenue",
   "phaseIntentSettle": "Calage",
-  "phaseIntentRace": "Course",
+  "phaseIntentRace": "Compétition",
   "phaseIntentEven": "Régulier",
   "routeMarkerTargetChip": "Objectif {time}",
   "routeMarkerTargetLabel": "Temps visé",
@@ -4822,7 +4823,7 @@
   "watchMetricPacerDelta": "Écart au meneur d'allure",
   "watchMetricGuidedRunRemaining": "Consigne de course guidée",
   "watchMetricWorkoutRemaining": "Étape de séance",
-  "watchMetricRacePrediction": "Prévision de course",
+  "watchMetricRacePrediction": "Temps prévu en compétition",
   "watchMetricCutoffMargin": "Marge avant barrière",
   "watchMetricTrainingStress": "Charge d'entraînement",
   "watchMetricRoadbookNext": "Prochain ravitaillement",
@@ -5429,7 +5430,7 @@
   "seasonPlanRaceDistance": "Distance ({unit})",
   "seasonPlanRacePriority": "Priorité",
   "seasonPlanPriorityA": "A — épreuve objectif",
-  "seasonPlanPriorityB": "B — préparation",
+  "seasonPlanPriorityB": "B — épreuve de préparation",
   "seasonPlanPriorityC": "C — épreuve d'entraînement",
   "seasonPlanRaceGoal": "Temps visé (facultatif)",
   "seasonPlanAddRace": "Ajouter une épreuve",
@@ -6060,7 +6061,7 @@
   "parksSignInForBoards": "Connectez-vous pour voir les classements de ce parcours.",
   "parksSignIn": "Se connecter",
   "parksBoardFailed": "Impossible de charger ce classement.",
-  "parksSafetyNotice": "Restez sur le sentier balisé. Le chronométrage exige chaque point de contrôle : un raccourci ne compte jamais. C'est un contre-la-montre, pas une course : le sentier reste ouvert à tous et personne ne l'encadre.",
+  "parksSafetyNotice": "Restez sur le sentier balisé. Le chronométrage exige chaque point de contrôle : un raccourci ne compte jamais. C'est un contre-la-montre, pas une compétition : le sentier reste ouvert à tous et personne ne l'encadre.",
   "parksNotAffiliated": "Threkir publie ces parcours. Ils ne sont ni organisés, ni parrainés, ni approuvés par le parc ou l'organisme qui le gère. Les règles, horaires, droits d'entrée et fermetures du parc s'appliquent.",
   "parksLongCourseNotice": "Parcours long. Partez assez tôt pour finir avant la fermeture du parc. Attendez-vous à partager le sentier avec des vélos et des chevaux, et à des passages à gué parfois infranchissables après la pluie.",
   "parksTimesNotEventResults": "Les temps affichés ici sont des temps Threkir sur ces chemins. Ce ne sont les résultats d'aucun événement qui s'y déroule.",

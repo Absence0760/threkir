@@ -127,7 +127,7 @@ The placeholders are deliberately loud magenta, so a renderer that forgot one sh
 3. List the `routes` it describes, and mount `<HelpLink route="…" />` on those pages if they don't have one.
 4. Translate it into every non-English locale (§ Translation) — until then it shows in English, with a note, in those locales.
 5. Run `pnpm gen:help-guides` and commit every JSON file it writes with the guide.
-6. Run `npx tsx --test src/lib/help/help_guides_guard.test.ts` from `apps/web` and `node scripts/check_help_translations.mjs`.
+6. Run `npx tsx --test src/lib/help/help_guides_guard.test.ts src/lib/help/help_labels_guard.test.ts` from `apps/web` and `node scripts/check_help_translations.mjs`.
 
 ## Guides by surface
 
@@ -157,6 +157,8 @@ Most guides are listed by their own `routes`; one is worth naming because its su
 - an illustration's alt text (English or translated) is empty, over 240 characters or carries markup;
 - `scripts/check_help_illustrations.mjs` fails: an illustration holds anything outside the allow-list (so a `<text>`, `<script>`, `<foreignObject>`, `<image>`, `<style>`, an `href`, an event handler or a `url(...)`), paints a colour outside the token set, has the wrong view box or a fixed size, is over 4 KB, or is not `<kebab-case-id>.svg`; a block names no file or has no alt; or a file is referenced by no guide;
 - any per-locale JSON is stale.
+
+`apps/web/src/lib/help/help_labels_guard.test.ts` (unit job) fails when a `**label**` in any guide or translation is not a string the app shows in that locale. It reads every catalogue of the locale whatever the guide's `platforms` (a web guide still names the phone app's button): the web catalogue, the phone ARB (`apps/mobile_android/lib/l10n/app_<locale>.arb`, which iOS shares), the Wear OS `strings.xml` and the Apple Watch `Localizable.xcstrings`. Mobile renders the same generated JSON, so there is no Dart twin of this check. The match is exact and case-sensitive after `...` → `…`, a trailing `↗` and runs of spaces are normalised; a placeholder (`{n}`, `%1$s`, `%@`) stands for digits, spaces and punctuation but never a word, so `**Show all 12 upcoming**` matches `Show all {n} upcoming`; a bracketed count may be left out (`**Save entries**` for `Save entries ({n})`, `**項目を保存**` for `項目を保存（{n}件）`); an ICU plural or select matches any branch; and a label may be the leading clause of a longer message, up to a dash, colon or full stop. A label the app does not draw at all (Android's and iOS's own permission prompts and settings, which `location-permission` and `record-your-first-run` walk through) goes in the test's `NOT_IN_A_CATALOGUE` with a reason, per guide and locale; that list may only shrink, and an entry fails once its label is in a catalogue or no longer quoted. A word that names a state rather than a control (the results list's *No badge*) is emphasis, `*…*`, not a label.
 
 `apps/web/src/lib/i18n/locale_reach.test.ts` scans the pt-PT and pt-BR translations for the other variant's words and for `tu`, as it does the catalogues and the Learn guides.
 

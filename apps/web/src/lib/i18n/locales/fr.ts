@@ -7141,7 +7141,7 @@ export const messages = {
 	"checkpoint.bodyWeightLabel": "Poids corporel ({unit})",
 	"checkpoint.medicalHold": "Arrêt médical",
 	"checkpoint.medicalNoteLabel": "Note",
-	"checkpoint.healthConsent": "Le coureur a consenti à l'enregistrement de ces données de santé",
+	"checkpoint.healthConsent": "Le coureur consent à l'enregistrement de ces données de santé",
 	"checkpoint.healthConsentRequired": "Le consentement est requis pour enregistrer les données de pesée.",
 	"checkpoint.recordWeighIn": "Enregistrer la pesée",
 	"checkpoint.weighInSaved": "Pesée enregistrée.",

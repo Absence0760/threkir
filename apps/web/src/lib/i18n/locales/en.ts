@@ -7163,7 +7163,7 @@ export const en = {
 	"checkpoint.bodyWeightLabel": "Body weight ({unit})",
 	"checkpoint.medicalHold": "Medical hold",
 	"checkpoint.medicalNoteLabel": "Note",
-	"checkpoint.healthConsent": "Runner consented to record this health data",
+	"checkpoint.healthConsent": "Runner consents to recording this health data",
 	"checkpoint.healthConsentRequired": "Consent is required to save weigh-in data.",
 	"checkpoint.recordWeighIn": "Record weigh-in",
 	"checkpoint.weighInSaved": "Weigh-in recorded.",

@@ -7136,7 +7136,7 @@ export const messages = {
 	"checkpoint.bodyWeightLabel": "体重（{unit}）",
 	"checkpoint.medicalHold": "医療ホールド",
 	"checkpoint.medicalNoteLabel": "メモ",
-	"checkpoint.healthConsent": "ランナーがこの健康データの記録に同意しました",
+	"checkpoint.healthConsent": "ランナーはこの健康データの記録に同意します",
 	"checkpoint.healthConsentRequired": "計量データを保存するには同意が必要です。",
 	"checkpoint.recordWeighIn": "計量を記録",
 	"checkpoint.weighInSaved": "計量を記録しました。",

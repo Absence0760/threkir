@@ -1,0 +1,18 @@
+{
+  "record": {
+    "headline": ["Every run,", "mapped"],
+    "subline": "Pace, heart rate and elevation for every kilometre."
+  },
+  "train": {
+    "headline": ["A plan built", "for race day"],
+    "subline": "Week by week, toward the race you picked."
+  },
+  "coach": {
+    "headline": ["An AI coach that", "knows your training"],
+    "subline": "Ask anything. Answers draw on your plan and runs."
+  },
+  "today": {
+    "headline": ["Today's run,", "one tap away"],
+    "subline": "Your workout, your week and your progress."
+  }
+}

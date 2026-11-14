@@ -1,0 +1,12 @@
+{
+  "targets": {
+    "play-phone": { "width": 1080, "height": 1920 },
+    "appstore-6.9": { "width": 1320, "height": 2868 }
+  },
+  "panels": [
+    { "id": "record", "capture": "record.png" },
+    { "id": "train", "capture": "train.png" },
+    { "id": "coach", "capture": "coach.png" },
+    { "id": "today", "capture": "today.png" }
+  ]
+}
